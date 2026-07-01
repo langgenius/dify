@@ -52,6 +52,10 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Dual Retrieval" is available
 
+  Scenario: Dual retrieval Agent includes dual retrieval fixture configuration
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E Agent With Dual Retrieval" includes the dual retrieval fixture configuration
+
   Scenario: Published Web app Agent exposes Web app access
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent Published Web App" has published Web app access

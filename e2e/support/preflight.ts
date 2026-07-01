@@ -1,6 +1,7 @@
 import type { DifyWorld } from '../features/support/world'
 import {
   agentBuilderExpectedTokens,
+  agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from './agent-builder-resources'
 import { createApiContext, expectApiResponseOK } from './api'
@@ -291,6 +292,36 @@ const hasKnowledgeDataset = (
       const record = asRecord(item)
       return record.id === dataset.id || record.name === dataset.name
     })
+  })
+}
+
+const hasKnowledgeSet = (
+  soul: Record<string, unknown>,
+  dataset: NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>,
+  {
+    queryMode,
+    queryValue,
+  }: {
+    queryMode: 'generated_query' | 'user_query'
+    queryValue?: string
+  },
+) => {
+  const knowledge = asRecord(soul.knowledge)
+  const sets = asArray(knowledge.sets)
+
+  return sets.some((set) => {
+    const record = asRecord(set)
+    const query = asRecord(record.query)
+    const datasets = asArray(record.datasets)
+    const hasExpectedDataset = datasets.some((item) => {
+      const datasetRecord = asRecord(item)
+      return datasetRecord.id === dataset.id || datasetRecord.name === dataset.name
+    })
+
+    if (!hasExpectedDataset || query.mode !== queryMode) return false
+    if (queryValue === undefined) return true
+
+    return asString(query.value).trim() === queryValue
   })
 }
 
@@ -681,6 +712,52 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
       return skipBlockedPrecondition(
         world,
         `Preseeded Agent "${agentName}" is missing tool state fixture configuration: ${missing.join(', ')}.`,
+      )
+    }
+
+    return agent
+  } finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededDualRetrievalAgentConfiguration(
+  world: DifyWorld,
+  agentName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped') return agent
+
+  const knowledgeBase = await skipMissingReadyPreseededDataset(
+    world,
+    agentBuilderPreseededResources.agentKnowledgeBase,
+  )
+  if (knowledgeBase === 'skipped') return knowledgeBase
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
+    await expectApiResponseOK(response, `Check preseeded Agent dual retrieval ${agentName}`)
+    const body = (await response.json()) as AgentComposerResponse
+    const soul = body.agent_soul ?? {}
+    const missing: string[] = []
+
+    if (!hasKnowledgeSet(soul, knowledgeBase, { queryMode: 'generated_query' }))
+      missing.push('Agent decide Knowledge Retrieval')
+
+    if (
+      !hasKnowledgeSet(soul, knowledgeBase, {
+        queryMode: 'user_query',
+        queryValue: agentBuilderFixedInputs.customKnowledgeQuery,
+      })
+    ) {
+      missing.push('Custom query Knowledge Retrieval')
+    }
+
+    if (missing.length > 0) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" is missing dual retrieval fixture configuration: ${missing.join(', ')}.`,
       )
     }
 

@@ -11,6 +11,7 @@ import {
   skipMissingPreseededAgentPublishedWebApp,
   skipMissingPreseededAgentWorkflowReference,
   skipMissingPreseededDataset,
+  skipMissingPreseededDualRetrievalAgentConfiguration,
   skipMissingPreseededFullConfigAgentCoreConfiguration,
   skipMissingPreseededTool,
   skipMissingPreseededToolStatesAgentConfiguration,
@@ -119,6 +120,17 @@ Given(
     if (resource === 'skipped') return resource
 
     this.agentBuilderPreseededResources[`${agentName} / tool state fixture configuration`] =
+      resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} includes the dual retrieval fixture configuration',
+  async function (this: DifyWorld, agentName: string) {
+    const resource = await skipMissingPreseededDualRetrievalAgentConfiguration(this, agentName)
+    if (resource === 'skipped') return resource
+
+    this.agentBuilderPreseededResources[`${agentName} / dual retrieval fixture configuration`] =
       resource
   },
 )
