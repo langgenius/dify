@@ -1011,9 +1011,7 @@ export type WorkflowDraftVariableList = {
 }
 
 export type ConversationVariableUpdatePayload = {
-  conversation_variables: Array<{
-    [key: string]: unknown
-  }>
+  conversation_variables: Array<ConversationVariableItemPayload>
 }
 
 export type EnvironmentVariableListResponse = {
@@ -1021,15 +1019,11 @@ export type EnvironmentVariableListResponse = {
 }
 
 export type EnvironmentVariableUpdatePayload = {
-  environment_variables: Array<{
-    [key: string]: unknown
-  }>
+  environment_variables: Array<EnvironmentVariableItemPayload>
 }
 
 export type WorkflowFeaturesPayload = {
-  features: {
-    [key: string]: unknown
-  }
+  features: WorkflowFeaturesConfigPayload
 }
 
 export type HumanInputDeliveryTestPayload = {
@@ -1816,6 +1810,7 @@ export type WorkflowCommentBasic = {
 
 export type AccountWithRole = {
   avatar?: string | null
+  readonly avatar_url: string | null
   created_at?: number | null
   email: string
   id: string
@@ -1903,6 +1898,15 @@ export type PipelineVariableResponse = {
   variable: string
 }
 
+export type ConversationVariableItemPayload = {
+  description?: string | null
+  id?: string | null
+  name?: string | null
+  value?: unknown | null
+  value_type?: string | null
+  [key: string]: unknown
+}
+
 export type EnvironmentVariableItemResponse = {
   description?: string | null
   editable: boolean
@@ -1914,6 +1918,27 @@ export type EnvironmentVariableItemResponse = {
   value: unknown
   value_type: string
   visible: boolean
+}
+
+export type EnvironmentVariableItemPayload = {
+  description?: string | null
+  id?: string | null
+  name?: string | null
+  value?: unknown | null
+  value_type?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowFeaturesConfigPayload = {
+  file_upload?: WorkflowFileUploadPayload | null
+  opening_statement?: string | null
+  retriever_resource?: WorkflowFeatureTogglePayload | null
+  sensitive_word_avoidance?: WorkflowSensitiveWordAvoidancePayload | null
+  speech_to_text?: WorkflowFeatureTogglePayload | null
+  suggested_questions?: Array<string> | null
+  suggested_questions_after_answer?: WorkflowSuggestedQuestionsAfterAnswerPayload | null
+  text_to_speech?: WorkflowTextToSpeechPayload | null
+  [key: string]: unknown
 }
 
 export type AgentConfigSnapshotSummaryResponse = {
@@ -2259,6 +2284,55 @@ export type WorkflowRunForArchivedLogResponse = {
   triggered_from?: string | null
 }
 
+export type WorkflowFileUploadPayload = {
+  allowed_file_extensions?: Array<string> | null
+  allowed_file_types?: Array<string> | null
+  allowed_file_upload_methods?: Array<string> | null
+  audio?: WorkflowFileUploadTransferPayload | null
+  custom?: WorkflowFileUploadTransferPayload | null
+  document?: WorkflowFileUploadTransferPayload | null
+  enabled?: boolean | null
+  fileUploadConfig?: {
+    [key: string]: unknown
+  } | null
+  image?: WorkflowFileUploadImagePayload | null
+  number_limits?: number | null
+  preview_config?: WorkflowFileUploadPreviewConfigPayload | null
+  video?: WorkflowFileUploadTransferPayload | null
+  [key: string]: unknown
+}
+
+export type WorkflowFeatureTogglePayload = {
+  enabled?: boolean | null
+  [key: string]: unknown
+}
+
+export type WorkflowSensitiveWordAvoidancePayload = {
+  config?: {
+    [key: string]: unknown
+  } | null
+  enabled?: boolean | null
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowSuggestedQuestionsAfterAnswerPayload = {
+  enabled?: boolean | null
+  model?: {
+    [key: string]: unknown
+  } | null
+  prompt?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowTextToSpeechPayload = {
+  autoPlay?: string | null
+  enabled?: boolean | null
+  language?: string | null
+  voice?: string | null
+  [key: string]: unknown
+}
+
 export type AgentScope = 'roster' | 'workflow_only'
 
 export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'workflow'
@@ -2504,6 +2578,26 @@ export type FormInputConfig
   } & FileListInputConfig)
 
 export type JsonValue2 = unknown
+
+export type WorkflowFileUploadTransferPayload = {
+  enabled?: boolean | null
+  number_limits?: number | null
+  transfer_methods?: Array<string> | null
+  [key: string]: unknown
+}
+
+export type WorkflowFileUploadImagePayload = {
+  detail?: string | null
+  enabled?: boolean | null
+  number_limits?: number | null
+  transfer_methods?: Array<string> | null
+  [key: string]: unknown
+}
+
+export type WorkflowFileUploadPreviewConfigPayload = {
+  file_type_list?: Array<string> | null
+  mode?: string | null
+}
 
 export type AgentFeatureToggleConfig = {
   enabled?: boolean
@@ -2922,6 +3016,10 @@ export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
 }
 
+export type WorkflowCommentMentionUsersPayloadWritable = {
+  users: Array<AccountWithRoleWritable>
+}
+
 export type WorkflowCommentDetailWritable = {
   content: string
   created_at?: number | null
@@ -3010,6 +3108,21 @@ export type WorkflowCommentBasicWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type AccountWithRoleWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  last_active_at?: number | null
+  last_login_at?: number | null
+  name: string
+  role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
+  status: string
 }
 
 export type WorkflowCommentAccountWritable = {
