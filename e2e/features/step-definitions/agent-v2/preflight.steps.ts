@@ -7,6 +7,7 @@ import {
   skipMissingPreseededAgent,
   skipMissingPreseededAgentBackendApiKey,
   skipMissingPreseededAgentDriveSkill,
+  skipMissingPreseededAgentPublishedWebApp,
   skipMissingPreseededDataset,
   skipMissingPreseededTool,
   skipMissingPreseededWorkflow,
@@ -114,5 +115,16 @@ Given(
       return resource
 
     this.agentBuilderPreseededResources[`${agentName} / Backend service API key`] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} has published Web app access',
+  async function (this: DifyWorld, agentName: string) {
+    const resource = await skipMissingPreseededAgentPublishedWebApp(this, agentName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilderPreseededResources[`${agentName} / Web app`] = resource
   },
 )

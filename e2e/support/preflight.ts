@@ -148,6 +148,16 @@ type AgentApiKeyListResponse = {
   }>
 }
 
+type PreseededAgentDetailResponse = {
+  active_config_is_published?: boolean
+  enable_site?: boolean
+  site?: {
+    access_token?: string | null
+    app_base_url?: string | null
+    code?: string | null
+  } | null
+}
+
 const findConsoleResourceByName = async <T extends NamedResource = NamedResource>({
   action,
   path,
@@ -456,6 +466,52 @@ export async function skipMissingPreseededAgentBackendApiKey(
       id: key.id,
       kind: 'api-key',
       name: `${agentName} Backend service API key`,
+    }
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededAgentPublishedWebApp(
+  world: DifyWorld,
+  agentName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped')
+    return agent
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agent.id}`)
+    await expectApiResponseOK(response, `Check preseeded Agent published Web app ${agentName}`)
+    const detail = (await response.json()) as PreseededAgentDetailResponse
+    if (detail.active_config_is_published !== true) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" is not published.`,
+      )
+    }
+
+    if (detail.enable_site !== true) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" Web app is not enabled.`,
+      )
+    }
+
+    const siteToken = detail.site?.access_token ?? detail.site?.code
+    if (!siteToken || !detail.site?.app_base_url) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" Web app URL is not available.`,
+      )
+    }
+
+    return {
+      id: agent.id,
+      kind: 'agent',
+      name: agent.name,
     }
   }
   finally {
