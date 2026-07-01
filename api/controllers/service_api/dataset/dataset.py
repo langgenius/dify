@@ -519,6 +519,7 @@ class DatasetListApi(DatasetApiResource):
                 embedding_model_name=payload.embedding_model,
                 retrieval_model=payload.retrieval_model,
                 summary_index_setting=payload.summary_index_setting,
+                session=db.session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -561,11 +562,11 @@ class DatasetApi(DatasetApiResource):
     )
     def get(self, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = _dump_service_dataset_detail(dataset)
@@ -597,7 +598,7 @@ class DatasetApi(DatasetApiResource):
                 retrieval_model_dict["search_method"] = "keyword_search"
 
         if data.get("permission") == "partial_members":
-            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str, db.session)
             data.update({"partial_member_list": part_users_list})
 
         return _dump_service_dataset_with_partial_members(data), 200
@@ -635,7 +636,7 @@ class DatasetApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
@@ -676,9 +677,10 @@ class DatasetApi(DatasetApiResource):
                 dataset,
                 str(payload.permission) if payload.permission else None,
                 payload.partial_member_list,
+                db.session,
             )
 
-        dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user)
+        dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user, db.session)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -688,12 +690,14 @@ class DatasetApi(DatasetApiResource):
         tenant_id = current_user.current_tenant_id
 
         if payload.partial_member_list and payload.permission == DatasetPermissionEnum.PARTIAL_TEAM:
-            DatasetPermissionService.update_partial_member_list(tenant_id, dataset_id_str, payload.partial_member_list)
+            DatasetPermissionService.update_partial_member_list(
+                tenant_id, dataset_id_str, payload.partial_member_list, db.session
+            )
         # clear partial member list when permission is only_me or all_team_members
         elif payload.permission in {DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM}:
-            DatasetPermissionService.clear_partial_member_list(dataset_id_str)
+            DatasetPermissionService.clear_partial_member_list(dataset_id_str, db.session)
 
-        partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+        partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str, db.session)
         result_data.update({"partial_member_list": partial_member_list})
 
         return _dump_service_dataset_with_partial_members(result_data), 200
@@ -746,8 +750,8 @@ class DatasetApi(DatasetApiResource):
         dataset_id_str = str(dataset_id)
 
         try:
-            if DatasetService.delete_dataset(dataset_id_str, current_user):
-                DatasetPermissionService.clear_partial_member_list(dataset_id_str)
+            if DatasetService.delete_dataset(dataset_id_str, current_user, db.session):
+                DatasetPermissionService.clear_partial_member_list(dataset_id_str, db.session)
                 return "", 204
             else:
                 raise NotFound("Dataset not found.")
@@ -812,14 +816,14 @@ class DocumentStatusApi(DatasetApiResource):
             InvalidActionError: If the action is invalid or cannot be performed.
         """
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
 
         # Check user's permission
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -831,7 +835,7 @@ class DocumentStatusApi(DatasetApiResource):
         document_ids = data.get("document_ids", [])
 
         try:
-            DocumentService.batch_update_document_status(dataset, document_ids, action, current_user)
+            DocumentService.batch_update_document_status(dataset, document_ids, action, current_user, db.session)
         except services.errors.document.DocumentIndexingError as e:
             raise InvalidActionError(str(e))
         except ValueError as e:
@@ -939,9 +943,11 @@ class DatasetTagsApi(DatasetApiResource):
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
-        tag = TagService.update_tags(UpdateTagServicePayload(name=payload.name), tag_id, db.session)
+        tag = TagService.update_tags(
+            UpdateTagServicePayload(name=payload.name), tag_id, db.session, tag_type=TagType.KNOWLEDGE
+        )
 
-        binding_count = TagService.get_tag_binding_count(tag_id, db.session)
+        binding_count = TagService.get_tag_binding_count(tag_id, db.session, tag_type=TagType.KNOWLEDGE)
 
         response = dump_response(
             KnowledgeTagResponse,
@@ -971,7 +977,7 @@ class DatasetTagsApi(DatasetApiResource):
     def delete(self, _):
         """Delete a knowledge type tag."""
         payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
-        TagService.delete_tag(payload.tag_id, db.session)
+        TagService.delete_tag(payload.tag_id, db.session, tag_type=TagType.KNOWLEDGE)
 
         return "", 204
 

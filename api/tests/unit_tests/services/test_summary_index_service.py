@@ -1169,7 +1169,7 @@ def test_get_document_summary_status_detail_counts_and_previews(monkeypatch: pyt
 
     monkeypatch.setattr(SummaryIndexService, "get_document_summaries", MagicMock(return_value=[summary1]))
 
-    detail = SummaryIndexService.get_document_summary_status_detail("doc-1", "dataset-1")
+    detail = SummaryIndexService.get_document_summary_status_detail("doc-1", "dataset-1", MagicMock())
     assert detail["total_segments"] == 2
     assert detail["summary_status"]["completed"] == 1
     assert detail["summary_status"]["not_started"] == 1

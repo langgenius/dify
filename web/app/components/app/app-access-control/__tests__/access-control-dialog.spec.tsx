@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { AccessControlDialog } from '../access-control-dialog'
+import AccessControlDialog from '../access-control-dialog'
 
 describe('AccessControlDialog', () => {
   it('should render dialog content when visible', () => {

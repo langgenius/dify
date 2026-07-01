@@ -3,14 +3,14 @@ import type { PluginDetail } from '../../types'
 import PluginItem from '../../plugin-item'
 
 type IPluginListProps = {
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   children?: ReactNode
   pluginList: PluginDetail[]
 }
 
 const PluginList: FC<IPluginListProps> = ({
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   children,
   pluginList,
@@ -22,7 +22,7 @@ const PluginList: FC<IPluginListProps> = ({
           <PluginItem
             key={plugin.plugin_id}
             plugin={plugin}
-            canManagePlugin={canManagePlugin}
+            canDeletePlugin={canDeletePlugin}
             canUpdatePlugin={canUpdatePlugin}
           />
         ))}

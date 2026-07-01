@@ -169,7 +169,7 @@ class EndpointCollectionApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -198,7 +198,7 @@ class DeprecatedEndpointCreateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -290,7 +290,7 @@ class EndpointItemApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -310,7 +310,7 @@ class EndpointItemApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -340,7 +340,7 @@ class DeprecatedEndpointDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -371,7 +371,7 @@ class DeprecatedEndpointUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -394,7 +394,7 @@ class EndpointEnableApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -422,7 +422,7 @@ class EndpointDisableApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id

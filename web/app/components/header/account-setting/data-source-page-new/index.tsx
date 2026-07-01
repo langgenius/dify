@@ -60,14 +60,13 @@ const DataSourcePage = ({
   const [searchText, setSearchText] = useState('')
   const {
     canSetPluginPreferences,
-    canViewInstalledPlugins,
   } = usePluginSettingsAccess()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
   const { data, isLoading: isDataSourceListLoading } = useGetDataSourceListAuth()
-  const { data: installedPluginList } = useInstalledPluginList(!canViewInstalledPlugins)
+  const { data: installedPluginList } = useInstalledPluginList()
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(installedPluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()

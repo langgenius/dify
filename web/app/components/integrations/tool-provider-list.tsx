@@ -88,10 +88,9 @@ const ProviderList = ({
   const { t } = useTranslation()
   const { getTagLabel } = useTags()
   const {
-    canManagePlugin,
+    canDeletePlugin,
     canSetPluginPreferences,
     canUpdatePlugin,
-    canViewInstalledPlugins,
   } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()
   const canManageMCP = useCanManageMCP()
@@ -104,22 +103,11 @@ const ProviderList = ({
   const toolListFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
   const showToolsUpdateSetting = activeTab === 'builtin' && canSetPluginPreferences
   const showLabelFilter = activeTab === 'builtin'
-  const isToolManageTab = activeTab === 'api' || activeTab === 'workflow'
-  const isMCPManageTab = activeTab === 'mcp'
-  const canReadActiveTab = isMCPManageTab ? canManageMCP : !isToolManageTab || canManageTools
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
-    ...(canManageTools
-      ? [
-          { value: 'api', text: t('type.custom', { ns: 'tools' }) },
-          { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
-        ]
-      : []),
-    ...(canManageMCP
-      ? [
-          { value: 'mcp', text: 'MCP' },
-        ]
-      : []),
+    { value: 'api', text: t('type.custom', { ns: 'tools' }) },
+    { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
+    { value: 'mcp', text: 'MCP' },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const handleTagsChange = (value: string[]) => {
@@ -136,13 +124,10 @@ const ProviderList = ({
   const handleCreatedMCPProviderHandled = useCallback(() => {
     setCreatedMCPProviderId(undefined)
   }, [])
-  const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders(canReadActiveTab)
+  const { data: collectionList = [], isLoading: isCollectionListLoading, refetch } = useAllToolProviders()
   const activeTabCollectionList = useMemo(() => {
-    if (!canReadActiveTab)
-      return []
-
     return collectionList.filter(collection => collection.type === activeTab)
-  }, [activeTab, canReadActiveTab, collectionList])
+  }, [activeTab, collectionList])
   const hasCategoryCollections = activeTabCollectionList.length > 0
   const shouldShowCustomToolCreateCard = canManageTools && !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
   const shouldShowMCPCreateCard = canManageMCP && !(activeTab === 'mcp' && hasCategoryCollections)
@@ -172,7 +157,7 @@ const ProviderList = ({
   }, [currentProviderId, filteredCollectionList])
   const { data: checkedInstalledData } = useCheckInstalled({
     pluginIds: currentProvider?.plugin_id ? [currentProvider.plugin_id] : [],
-    enabled: canViewInstalledPlugins && !!currentProvider?.plugin_id,
+    enabled: !!currentProvider?.plugin_id,
   })
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginDetail = useMemo(() => {
@@ -249,7 +234,7 @@ const ProviderList = ({
                   tagFilterValue={tagFilterValue}
                 />
               )}
-              {activeTab === 'mcp' && canManageMCP && (
+              {activeTab === 'mcp' && (
                 <MCPList
                   searchText={keywords}
                   contentInset={contentInset}
@@ -260,7 +245,7 @@ const ProviderList = ({
               )}
             </ScrollAreaContent>
           </ScrollAreaViewport>
-          <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+          <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
         </ScrollAreaRoot>
@@ -276,7 +261,7 @@ const ProviderList = ({
         detail={currentPluginDetail}
         onUpdate={() => invalidateInstalledPluginList()}
         onHide={() => setCurrentProviderId(undefined)}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
       />
     </>

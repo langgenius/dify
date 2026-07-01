@@ -912,6 +912,7 @@ export const zUpdateEnvironmentRequest = z.object({
   environmentId: z.string().optional(),
   displayName: z.string(),
   description: z.string().optional(),
+  cpuCount: z.number().optional(),
 })
 
 export const zUpdateEnvironmentResponse = z.object({
@@ -2072,6 +2073,7 @@ export const zInfoConfigReply = z.object({
   Branding: zBrandingInfo.optional(),
   WebAppAuth: zWebAppAuthInfo.optional(),
   PluginInstallationPermission: zPluginInstallationPermissionInfo.optional(),
+  EnableAppDeploy: z.boolean().optional(),
 })
 
 export const zWebOAuth2LoginReply = z.object({
@@ -2243,11 +2245,6 @@ export const zListRollbackTargetsResponse = z.object({
   pagination: zPagination,
 })
 
-export const zListAccessSubjectsReply = z.object({
-  subjects: z.array(zSubject).optional(),
-  pagination: zPagination.optional(),
-})
-
 export const zListMembersReply = z.object({
   data: z.array(zAccountDetail).optional(),
   pagination: zPagination.optional(),
@@ -2267,26 +2264,6 @@ export const zListWorkspacesReply = z.object({
   data: z.array(zWorkspace).optional(),
   pagination: zPagination.optional(),
 })
-
-export const zAccessSubjectServiceListAccessSubjectsQuery = z.object({
-  keyword: z.string().optional(),
-  groupId: z.string().optional(),
-  pageNumber: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-  resultsPerPage: z
-    .int()
-    .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
-    .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
-    .optional(),
-})
-
-/**
- * OK
- */
-export const zAccessSubjectServiceListAccessSubjectsResponse = zListAccessSubjectsReply
 
 export const zAppInstanceServiceListAppInstanceSummariesQuery = z.object({
   pageNumber: z

@@ -10,34 +10,40 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
-  EnvVarBindingsPanel,
-} from '@/features/deployments/components/env-var-bindings'
+  envVarValuesAtom,
+  isCreatingReleaseOnlyAtom,
+  isSubmittingDeploymentGuideAtom,
+  selectedEnvironmentIdAtom,
+  stepAtom,
+} from '@/features/deployments/create-guide/state/primitives'
 import {
-  RuntimeCredentialBindingsPanel,
-} from '@/features/deployments/components/runtime-credential-bindings'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
+  deployableEnvironmentsQueryAtom,
+  deploymentOptionsQueryAtom,
+  unsupportedDslNodesAtom,
+} from '@/features/deployments/create-guide/state/queries'
+import {
+  createDeploymentGuideSubmissionAtom,
+  CreateDeploymentGuideSubmissionBlockedError,
+} from '@/features/deployments/create-guide/state/submission'
 import {
   canDeployAtom,
   canSkipDeploymentAtom,
-  createDeploymentGuideSubmissionAtom,
-  CreateDeploymentGuideSubmissionBlockedError,
   deployableEnvironmentsAtom,
-  deployableEnvironmentsQueryAtom,
-  deploymentOptionsQueryAtom,
   deploymentTargetBindingSelectionsAtom,
   deploymentTargetBindingSlotsAtom,
   deploymentTargetEnvVarSlotsAtom,
   effectiveSelectedEnvironmentIdAtom,
-  envVarValuesAtom,
-  isCreatingReleaseOnlyAtom,
-  isSubmittingDeploymentGuideAtom,
   selectBindingAtom,
-  selectedEnvironmentIdAtom,
   setEnvVarAtom,
-  stepAtom,
-  unsupportedDslNodesAtom,
-} from '@/features/deployments/create-guide/state'
+} from '@/features/deployments/create-guide/state/target'
+import {
+  EnvVarBindingsPanel,
+} from '@/features/deployments/shared/components/env-var-bindings'
+import {
+  RuntimeCredentialBindingsPanel,
+} from '@/features/deployments/shared/components/runtime-credential-bindings'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
+import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
 import { deploymentErrorMessage } from '@/features/deployments/shared/domain/error'
 import { useRouter } from '@/next/navigation'
 import { StepShell } from './layout'

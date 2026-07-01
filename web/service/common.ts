@@ -2,13 +2,9 @@ import type {
   DefaultModelResponse,
   Model,
   ModelItem,
-  ModelLoadBalancingConfig,
   ModelParameterRule,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type {
-  ValidateOpenAIKeyResponse,
-} from '@/models/app'
 import type {
   CommonResponse,
   ICurrentWorkspace,
@@ -104,39 +100,13 @@ export const invitationCheck = ({ url, params }: { url: string, params: { worksp
 export const activateMember = ({ url, body }: { url: string, body: ActivateMemberBody }): Promise<LoginResponse> => {
   return post<LoginResponse>(url, { body })
 }
-export type ModelProviderCredentials = {
-  credentials?: Record<string, string | undefined | boolean>
-  load_balancing: ModelLoadBalancingConfig
-}
-export const fetchModelProviderCredentials = (url: string): Promise<ModelProviderCredentials> => {
-  return get<ModelProviderCredentials>(url)
-}
+
 export const fetchModelProviderModelList = (url: string): Promise<{ data: ModelItem[] }> => {
   return get<{ data: ModelItem[] }>(url)
 }
 
 export const fetchModelList = (url: string): Promise<{ data: Model[] }> => {
   return get<{ data: Model[] }>(url)
-}
-
-export const validateModelProvider = ({ url, body }: { url: string, body: any }): Promise<ValidateOpenAIKeyResponse> => {
-  return post<ValidateOpenAIKeyResponse>(url, { body })
-}
-
-export const validateModelLoadBalancingCredentials = ({ url, body }: { url: string, body: any }): Promise<ValidateOpenAIKeyResponse> => {
-  return post<ValidateOpenAIKeyResponse>(url, { body })
-}
-
-export const setModelProvider = ({ url, body }: { url: string, body: any }): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
-}
-
-export const deleteModelProvider = ({ url, body }: { url: string, body?: any }): Promise<CommonResponse> => {
-  return del<CommonResponse>(url, { body })
-}
-
-export const getPayUrl = (url: string): Promise<{ url: string }> => {
-  return get<{ url: string }>(url)
 }
 
 export const fetchDefaultModal = (url: string): Promise<{ data: DefaultModelResponse }> => {

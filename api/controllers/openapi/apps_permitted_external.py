@@ -25,6 +25,7 @@ from controllers.openapi.auth.data import AuthData, Edition
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
+from models.enums import AppStatus
 from services.account_service import TenantService
 from services.app_service import AppService
 from services.enterprise.app_permitted_service import list_permitted_apps
@@ -62,7 +63,7 @@ class PermittedExternalAppsListApi(Resource):
         items: list[AppListRow] = []
         for app_id in page_result.app_ids:
             app = apps_by_id.get(app_id)
-            if not app or app.status != "normal":
+            if not app or app.status != AppStatus.NORMAL:
                 continue
             tenant = tenants_by_id.get(str(app.tenant_id))
             items.append(
