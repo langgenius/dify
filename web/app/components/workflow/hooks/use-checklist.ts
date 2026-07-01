@@ -31,6 +31,7 @@ import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
@@ -185,11 +186,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   }, [nodes])
   const knowledgeBaseProviderModelMap = useQueries({
     queries: knowledgeBaseEmbeddingProviders.map(provider =>
-      consoleQuery.modelProviders.models.queryOptions({
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
         input: { params: { provider } },
         enabled: !!provider,
         refetchOnWindowFocus: false,
-        select: response => response.data,
+        select: normalizeModelProviderModelsResponse,
       }),
     ),
     combine: (results) => {
@@ -467,13 +468,13 @@ export const useChecklistBeforePublish = () => {
       await Promise.all(knowledgeBaseEmbeddingProviders.map(async (provider) => {
         try {
           const modelList = await queryClient.fetchQuery(
-            consoleQuery.modelProviders.models.queryOptions({
+            consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
               input: { params: { provider } },
             }),
           )
 
           if (modelList.data)
-            modelMap[provider] = modelList.data
+            modelMap[provider] = normalizeModelProviderModelsResponse(modelList)
         }
         catch {
         }
