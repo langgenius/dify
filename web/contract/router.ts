@@ -48,7 +48,6 @@ import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.
 import { exploreRouterContract } from './console/explore'
 import { pluginsRouterContract } from './console/plugins'
 import { snippetsRouterContract } from './console/snippets'
-import { triggersRouterContract } from './console/trigger'
 import { trialAppsRouterContract } from './console/try-app'
 
 const communityContract = {
@@ -106,6 +105,5 @@ export const consoleRouterContract = {
   explore: exploreRouterContract,
   plugins: pluginsRouterContract,
   snippets: snippetsRouterContract,
-  triggers: triggersRouterContract,
   trialApps: trialAppsRouterContract,
 }

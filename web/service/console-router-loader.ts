@@ -16,7 +16,6 @@ const customConsoleContractLoaders: Record<string, () => Promise<AnyContractRout
   explore: () => import('@/contract/console/explore').then(({ exploreRouterContract }) => wrapConsoleContract('explore', exploreRouterContract)),
   plugins: () => import('@/contract/console/plugins').then(({ pluginsRouterContract }) => wrapConsoleContract('plugins', pluginsRouterContract)),
   snippets: () => import('@/contract/console/snippets').then(({ snippetsRouterContract }) => wrapConsoleContract('snippets', snippetsRouterContract)),
-  triggers: () => import('@/contract/console/trigger').then(({ triggersRouterContract }) => wrapConsoleContract('triggers', triggersRouterContract)),
   trialApps: () => import('@/contract/console/try-app').then(({ trialAppsRouterContract }) => wrapConsoleContract('trialApps', trialAppsRouterContract)),
 }
 
