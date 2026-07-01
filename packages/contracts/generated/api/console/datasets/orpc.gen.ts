@@ -81,6 +81,8 @@ import {
   zGetDatasetsByDatasetIdResponse,
   zGetDatasetsByDatasetIdUseCheckPath,
   zGetDatasetsByDatasetIdUseCheckResponse,
+  zGetDatasetsByDatasetIdWebsiteSyncPath,
+  zGetDatasetsByDatasetIdWebsiteSyncResponse,
   zGetDatasetsByResourceIdApiKeysPath,
   zGetDatasetsByResourceIdApiKeysResponse,
   zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath,
@@ -1625,6 +1627,21 @@ export const useCheck2 = {
   get: get33,
 }
 
+export const get34 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdWebsiteSync',
+    path: '/datasets/{dataset_id}/website-sync',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdWebsiteSyncPath }))
+  .output(zGetDatasetsByDatasetIdWebsiteSyncResponse)
+
+export const websiteSync2 = {
+  get: get34,
+}
+
 export const delete9 = oc
   .route({
     inputStructure: 'detailed',
@@ -1640,7 +1657,7 @@ export const delete9 = oc
 /**
  * Get dataset details
  */
-export const get34 = oc
+export const get35 = oc
   .route({
     description: 'Get dataset details',
     inputStructure: 'detailed',
@@ -1669,7 +1686,7 @@ export const patch11 = oc
 
 export const byDatasetId = {
   delete: delete9,
-  get: get34,
+  get: get35,
   patch: patch11,
   apiKeys: apiKeys2,
   autoDisableLogs,
@@ -1686,6 +1703,7 @@ export const byDatasetId = {
   relatedApps,
   retry,
   useCheck: useCheck2,
+  websiteSync: websiteSync2,
 }
 
 /**
@@ -1716,7 +1734,7 @@ export const byApiKeyId2 = {
  *
  * Get all API keys for a dataset
  */
-export const get35 = oc
+export const get36 = oc
   .route({
     description: 'Get all API keys for a dataset',
     inputStructure: 'detailed',
@@ -1749,7 +1767,7 @@ export const post22 = oc
   .output(zPostDatasetsByResourceIdApiKeysResponse)
 
 export const apiKeys3 = {
-  get: get35,
+  get: get36,
   post: post22,
   byApiKeyId: byApiKeyId2,
 }
@@ -1761,7 +1779,7 @@ export const byResourceId = {
 /**
  * Get list of datasets
  */
-export const get36 = oc
+export const get37 = oc
   .route({
     description: 'Get list of datasets',
     inputStructure: 'detailed',
@@ -1790,7 +1808,7 @@ export const post23 = oc
   .output(zPostDatasetsResponse)
 
 export const datasets = {
-  get: get36,
+  get: get37,
   post: post23,
   apiBaseInfo,
   apiKeys,

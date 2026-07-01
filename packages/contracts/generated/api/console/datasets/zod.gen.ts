@@ -2318,6 +2318,15 @@ export const zGetDatasetsByDatasetIdUseCheckPath = z.object({
  */
 export const zGetDatasetsByDatasetIdUseCheckResponse = zUsageCheckResponse
 
+export const zGetDatasetsByDatasetIdWebsiteSyncPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetDatasetsByDatasetIdWebsiteSyncResponse = zSimpleResultResponse
+
 export const zGetDatasetsByResourceIdApiKeysPath = z.object({
   resource_id: z.uuid(),
 })
