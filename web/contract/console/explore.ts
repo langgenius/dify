@@ -158,3 +158,7 @@ export const exploreRouterContract = {
   installedAppMeta: exploreInstalledAppMetaContract,
   banners: exploreBannersContract,
 }
+
+export const exploreConsoleRouterContract = {
+  explore: exploreRouterContract,
+}

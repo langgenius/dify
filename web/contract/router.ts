@@ -46,9 +46,10 @@ import { workflowGenerate } from '@dify/contracts/api/console/workflow-generate/
 import { workflow } from '@dify/contracts/api/console/workflow/orpc.gen'
 import { workspaces } from '@dify/contracts/api/console/workspaces/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
-import { exploreRouterContract } from './console/explore'
-import { pluginsRouterContract } from './console/plugins'
-import { snippetsRouterContract } from './console/snippets'
+import { exploreConsoleRouterContract } from './console/explore'
+import { pluginsConsoleRouterContract } from './console/plugins'
+import { snippetsConsoleRouterContract } from './console/snippets'
+import { trialAppsConsoleRouterContract } from './console/try-app'
 
 const communityContract = {
   account,
@@ -103,7 +104,8 @@ const communityContract = {
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
   ...communityContract,
-  explore: exploreRouterContract,
-  plugins: pluginsRouterContract,
-  snippets: snippetsRouterContract,
+  ...exploreConsoleRouterContract,
+  ...pluginsConsoleRouterContract,
+  ...snippetsConsoleRouterContract,
+  ...trialAppsConsoleRouterContract,
 }
