@@ -9,7 +9,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CLIENT_SHARED_DTO_DEPENDENCIES = {
     "httpx==0.28.1",
     "pydantic>=2.12.5,<2.13",
-    "pydantic-ai-slim>=1.85.1,<2.0.0",
+    "pydantic-ai-slim>=1.102.0,<2.0.0",
     "typer>=0.16.1,<0.17",
     "typing-extensions>=4.12.2,<5.0.0",
 }
@@ -23,7 +23,7 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1,<2.0.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
-    "shell-session-manager==2.3.0",
+    "shell-session-manager==2.3.1",
     "uvicorn[standard]==0.46.0",
 }
 

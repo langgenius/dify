@@ -330,7 +330,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 observation.text,
             )
         except (RuntimeError, ValueError) as exc:
-            return _tool_error(str(exc))
+            return _tool_error_from_exception(exc)
+        except Exception as exc:
+            return _tool_unexpected_error("shell_run", exc, session_id=self.runtime_state.session_id)
 
     async def _tool_wait(self, job_id: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         try:
@@ -354,7 +356,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 observation.text,
             )
         except (RuntimeError, ValueError) as exc:
-            return _tool_error(str(exc), job_id=job_id)
+            return _tool_error_from_exception(exc, job_id=job_id)
+        except Exception as exc:
+            return _tool_unexpected_error("shell_wait", exc, session_id=self.runtime_state.session_id, job_id=job_id)
 
     async def _tool_input(self, job_id: str, text: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         try:
@@ -378,7 +382,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 observation.text,
             )
         except (RuntimeError, ValueError) as exc:
-            return _tool_error(str(exc), job_id=job_id)
+            return _tool_error_from_exception(exc, job_id=job_id)
+        except Exception as exc:
+            return _tool_unexpected_error("shell_input", exc, session_id=self.runtime_state.session_id, job_id=job_id)
 
     async def _tool_interrupt(
         self,
@@ -392,6 +398,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             self._remember_job_offset(result.job_id, result.offset)
             output_path: str | None = None
             try:
+                # Once the interrupt itself succeeds, resolving the output path is
+                # best-effort metadata enrichment and must not turn the interrupt
+                # into a failed tool result.
                 output_path = (await self._require_resource().commands.tail(job_id)).output_path
             except (RuntimeError, ValueError) as exc:
                 logger.warning(
@@ -399,6 +408,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     job_id,
                     self.runtime_state.session_id,
                     exc,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to fetch output path for interrupted shell job %s in session %s",
+                    job_id,
+                    self.runtime_state.session_id,
                 )
             return _tagged_shell_observation(
                 _metadata_dict(
@@ -411,7 +426,11 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 "Job was interrupted.",
             )
         except (RuntimeError, ValueError) as exc:
-            return _tool_error(str(exc), job_id=job_id)
+            return _tool_error_from_exception(exc, job_id=job_id)
+        except Exception as exc:
+            return _tool_unexpected_error(
+                "shell_interrupt", exc, session_id=self.runtime_state.session_id, job_id=job_id
+            )
 
     async def run_remote_script_complete(
         self,
@@ -736,6 +755,36 @@ def _tool_error(message: str, *, job_id: str | None = None) -> ShellToolErrorObs
     if job_id is not None:
         result["job_id"] = job_id
     return result
+
+
+def _tool_error_from_exception(exc: Exception, *, job_id: str | None = None) -> ShellToolErrorObservation:
+    # Expected provider/runtime failures stay inside the tool contract and are
+    # returned to the model as observations. The broader Exception fallback
+    # below handles unexpected failures; BaseException, including cancellation,
+    # is intentionally left uncaught at the tool boundary.
+    code = getattr(exc, "code", None)
+    if isinstance(code, str) and code:
+        return _tool_error(f"{code}: {exc}", job_id=job_id)
+    return _tool_error(str(exc), job_id=job_id)
+
+
+def _tool_unexpected_error(
+    tool_name: str,
+    exc: Exception,
+    *,
+    session_id: str | None,
+    job_id: str | None = None,
+) -> ShellToolErrorObservation:
+    # Unexpected Exception still becomes a tool observation so one shell tool
+    # failure does not abort the agent loop, but it is logged with traceback for
+    # debugging. BaseException is intentionally not caught by callers.
+    logger.exception(
+        "Unexpected shell tool failure: tool=%s session_id=%s job_id=%s",
+        tool_name,
+        session_id,
+        job_id,
+    )
+    return _tool_error_from_exception(exc, job_id=job_id)
 
 
 def _generate_session_id() -> str:
