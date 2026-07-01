@@ -4375,9 +4375,6 @@
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
     },
-    "react/set-state-in-effect": {
-      "count": 4
-    },
     "ts/no-explicit-any": {
       "count": 2
     }

@@ -20,7 +20,7 @@ import { RiSettings2Line } from '@remixicon/react'
 import { useDebounce, useGetState } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -55,7 +55,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const isAdd = !payload
   const isEdit = !!payload
 
-  const [editFirst, setEditFirst] = useState(!isAdd)
+  const editFirstRef = useRef(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
   const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
@@ -77,14 +77,17 @@ const EditCustomCollectionModal: FC<Props> = ({
 
   const originalProvider = isEdit ? payload.provider : ''
 
-  // Sync customCollection state when payload changes
-  useEffect(() => {
+  // Sync state with the payload prop during render instead of in an effect.
+  // Tracking the previous payload keeps the sync running only when payload actually changes.
+  const [prevPayload, setPrevPayload] = useState(payload)
+  if (payload !== prevPayload) {
+    setPrevPayload(payload)
     if (isEdit) {
       setCustomCollection(payload)
       setParamsSchemas(payload.tools || [])
       setLabels(payload.labels || [])
     }
-  }, [isEdit, payload])
+  }
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
@@ -106,8 +109,8 @@ const EditCustomCollectionModal: FC<Props> = ({
   useEffect(() => {
     if (!debouncedSchema)
       return
-    if (isEdit && editFirst) {
-      setEditFirst(false)
+    if (isEdit && editFirstRef.current) {
+      editFirstRef.current = false
       return
     }
     (async () => {
