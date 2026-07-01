@@ -46,6 +46,19 @@ const writeArtifact = async (
   return artifactPath
 }
 
+const recordCleanup = async (
+  errors: string[],
+  label: string,
+  cleanup: () => Promise<void>,
+) => {
+  try {
+    await cleanup()
+  }
+  catch (error) {
+    errors.push(`${label}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
   await mkdir(artifactsDir, { recursive: true })
 
@@ -102,17 +115,35 @@ After(async function (this: DifyWorld, { pickle, result }) {
     `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
   )
 
-  for (const skill of this.createdAgentConfigSkills.toReversed())
-    await deleteAgentConfigSkill(skill.agentId, skill.name).catch(() => {})
-  for (const file of this.createdAgentConfigFiles.toReversed())
-    await deleteAgentConfigFile(file.agentId, file.name).catch(() => {})
-  for (const file of this.createdAgentDriveFiles.toReversed())
-    await deleteAgentDriveFile(file.agentId, file.key).catch(() => {})
-  for (const id of this.createdAppIds) await deleteTestApp(id).catch(() => {})
-  for (const id of this.createdAgentIds) await deleteTestAgent(id).catch(() => {})
-  for (const id of this.createdDatasetIds) await deleteTestDataset(id).catch(() => {})
-  for (const credential of this.createdBuiltinToolCredentials.toReversed())
-    await deleteBuiltinToolCredential(credential.provider, credential.credentialId).catch(() => {})
+  const cleanupErrors: string[] = []
+
+  for (const skill of this.createdAgentConfigSkills.toReversed()) {
+    await recordCleanup(cleanupErrors, `Delete Agent config skill ${skill.name}`, () =>
+      deleteAgentConfigSkill(skill.agentId, skill.name))
+  }
+  for (const file of this.createdAgentConfigFiles.toReversed()) {
+    await recordCleanup(cleanupErrors, `Delete Agent config file ${file.name}`, () =>
+      deleteAgentConfigFile(file.agentId, file.name))
+  }
+  for (const file of this.createdAgentDriveFiles.toReversed()) {
+    await recordCleanup(cleanupErrors, `Delete Agent drive file ${file.key}`, () =>
+      deleteAgentDriveFile(file.agentId, file.key))
+  }
+  for (const id of this.createdAppIds)
+    await recordCleanup(cleanupErrors, `Delete app ${id}`, () => deleteTestApp(id))
+  for (const id of this.createdAgentIds)
+    await recordCleanup(cleanupErrors, `Delete Agent ${id}`, () => deleteTestAgent(id))
+  for (const id of this.createdDatasetIds)
+    await recordCleanup(cleanupErrors, `Delete dataset ${id}`, () => deleteTestDataset(id))
+  for (const credential of this.createdBuiltinToolCredentials.toReversed()) {
+    await recordCleanup(
+      cleanupErrors,
+      `Delete builtin tool credential ${credential.provider}/${credential.credentialId}`,
+      () => deleteBuiltinToolCredential(credential.provider, credential.credentialId),
+    )
+  }
+  if (cleanupErrors.length > 0)
+    this.attach(`Typed cleanup errors:\n${cleanupErrors.join('\n')}`, 'text/plain')
   await this.runRegisteredCleanups()
 
   await this.closeSession()
