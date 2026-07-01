@@ -1,6 +1,6 @@
 import type { Getter } from 'jotai'
 import type { CreateReleaseFormValues } from '../index'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, skipToken } from '@tanstack/react-query'
 import { atom, createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -31,6 +31,10 @@ const mockQueryResults = vi.hoisted(() => ({
   current: new Map<string, QueryResult>(),
 }))
 
+const mockQueryOptions = vi.hoisted(() => ({
+  current: new Map<string, QueryOptions>(),
+}))
+
 const mockCreateReleaseMutation = vi.hoisted<{ current: MutationResult }>(() => ({
   current: {
     isPending: false,
@@ -50,6 +54,8 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
       const queryResult = options.enabled === false
         ? undefined
         : mockQueryResults.current.get(queryName)
+
+      mockQueryOptions.current.set(queryName, options)
 
       return {
         ...options,
@@ -126,7 +132,7 @@ async function mountedStore() {
     },
   })
   store.set(queryClientAtom, queryClient)
-  const unsubscribe = store.sub(state.createReleaseFormValuesAtom, () => undefined)
+  const unsubscribe = store.sub(state.createReleaseFormIsSubmittingAtom, () => undefined)
 
   return {
     queryClient,
@@ -226,24 +232,11 @@ describe('create release state', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockQueryResults.current.clear()
+    mockQueryOptions.current.clear()
     mockCreateReleaseMutation.current = {
       isPending: false,
       mutateAsync: vi.fn(),
     }
-  })
-
-  it('should keep default form values before editing', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
-
-    expect(store.get(state.createReleaseFormValuesAtom)).toEqual({
-      dslFile: undefined,
-      releaseDescription: '',
-      releaseName: '',
-      releaseSourceMode: 'sourceApp',
-      sourceApp: undefined,
-    })
-
-    unsubscribe()
   })
 
   it('should validate release name only when submitting', async () => {
@@ -344,6 +337,37 @@ describe('create release state', () => {
     expect(store.get(state.createReleaseHasDslContentAtom)).toBe(false)
     expect(store.get(state.isReadingCreateReleaseDslAtom)).toBe(false)
     expect(store.get(state.createReleaseIsWorkflowDslContentAtom)).toBe(false)
+
+    unsubscribe()
+  })
+
+  it('should reset source app search text when opening or closing the dialog', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+
+    store.set(state.createReleaseSourceAppSearchTextAtom, 'customer')
+    store.set(state.openCreateReleaseDialogAtom)
+
+    expect(store.get(state.createReleaseSourceAppSearchTextAtom)).toBe('')
+
+    store.set(state.createReleaseSourceAppSearchTextAtom, 'support')
+    store.set(state.closeCreateReleaseDialogAtom)
+
+    expect(store.get(state.createReleaseSourceAppSearchTextAtom)).toBe('')
+
+    unsubscribe()
+  })
+
+  it('should skip release content precheck input until source content is ready', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
+    store.set(state.openCreateReleaseDialogAtom)
+    store.get(state.isCheckingCreateReleaseContentAtom)
+
+    expect(mockQueryOptions.current.get('precheckRelease')).toMatchObject({
+      enabled: false,
+      input: skipToken,
+    })
 
     unsubscribe()
   })

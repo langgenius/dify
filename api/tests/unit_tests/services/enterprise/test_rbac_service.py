@@ -621,6 +621,7 @@ class TestMyPermissions:
 
         mock_send.assert_not_called()
         assert out.workspace.permission_keys == workspace_keys
+        assert len(out.workspace.permission_keys) == len(set(out.workspace.permission_keys))
         assert out.app.default_permission_keys == app_keys
         assert out.dataset.default_permission_keys == dataset_keys
         assert out.app.overrides == []
@@ -632,6 +633,8 @@ class TestMyPermissions:
             assert "dataset.acl.preview" in out.workspace.permission_keys
             assert "app.acl.preview" in out.app.default_permission_keys
             assert "dataset.acl.preview" in out.dataset.default_permission_keys
+        if role == "editor":
+            assert "app.acl.log_and_annotation" in out.app.default_permission_keys
 
     @pytest.mark.parametrize(
         ("role", "expected_snippet_keys"),

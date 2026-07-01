@@ -1,24 +1,15 @@
 import type { SnippetInputField } from '@/models/snippet'
 import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { useSnippetDraftStore } from '../../../draft-store'
 import { useSnippetInputFieldActions } from '../use-snippet-input-field-actions'
 
 const mockSyncInputFieldsDraft = vi.fn()
-const mockSetFields = vi.fn()
-
-let snippetDetailStoreState: {
-  fields: SnippetInputField[]
-  setFields: typeof mockSetFields
-}
 
 vi.mock('../../../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     syncInputFieldsDraft: mockSyncInputFieldsDraft,
   }),
-}))
-
-vi.mock('../../../store', () => ({
-  useSnippetDetailStore: (selector: (state: typeof snippetDetailStoreState) => unknown) => selector(snippetDetailStoreState),
 }))
 
 const createField = (overrides: Partial<SnippetInputField> = {}): SnippetInputField => ({
@@ -32,19 +23,13 @@ const createField = (overrides: Partial<SnippetInputField> = {}): SnippetInputFi
 describe('useSnippetInputFieldActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    snippetDetailStoreState = {
-      fields: [],
-      setFields: mockSetFields,
-    }
-    mockSetFields.mockImplementation((fields: SnippetInputField[]) => {
-      snippetDetailStoreState.fields = fields
-    })
+    useSnippetDraftStore.getState().reset()
     mockSyncInputFieldsDraft.mockResolvedValue(undefined)
   })
 
   describe('Field sync', () => {
     it('should update fields and sync the draft', () => {
-      snippetDetailStoreState.fields = [createField()]
+      useSnippetDraftStore.getState().setInputFields([createField()])
       const { result } = renderHook(() => useSnippetInputFieldActions({
         snippetId: 'snippet-1',
       }))
@@ -60,8 +45,8 @@ describe('useSnippetInputFieldActions', () => {
         result.current.handleFieldsChange(nextFields)
       })
 
-      expect(result.current.fields).toEqual([createField()])
-      expect(mockSetFields).toHaveBeenCalledWith(nextFields)
+      expect(result.current.fields).toEqual(nextFields)
+      expect(useSnippetDraftStore.getState().inputFields).toEqual(nextFields)
       expect(mockSyncInputFieldsDraft).toHaveBeenCalledWith(nextFields, {
         onRefresh: expect.any(Function),
       })

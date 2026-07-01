@@ -82,7 +82,7 @@ const SnippetCard = ({
   }
 
   const handleExportSnippet = async () => {
-    if (!canManageSnippet)
+    if (!canCreateAndModifySnippet)
       return
 
     setIsOperationsMenuOpen(false)
@@ -155,13 +155,7 @@ const SnippetCard = ({
         </Link>
 
         <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-1.5 pb-1.5 pl-3.5">
-          <div
-            className="flex w-0 grow items-center gap-1"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}
-          >
+          <div className="flex w-0 grow items-center gap-1">
             <div className="mr-10.25 min-w-0 grow overflow-hidden">
               <TagSelector
                 placement="bottom-start"
@@ -170,6 +164,7 @@ const SnippetCard = ({
                 value={snippet.tags}
                 onOpenTagManagement={onOpenTagManagement}
                 onTagsChange={onTagsChange}
+                canBindOrUnbindTags={canManageSnippet}
               />
             </div>
           </div>
@@ -203,16 +198,18 @@ const SnippetCard = ({
                   popupClassName="w-[216px]"
                 >
                   {canCreateAndModifySnippet && (
-                    <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
-                      <span className="system-sm-regular text-text-secondary">{t('menu.editInfo')}</span>
-                    </DropdownMenuItem>
-                  )}
-                  {canManageSnippet && (
                     <>
+                      <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
+                        <span className="system-sm-regular text-text-secondary">{t('menu.editInfo')}</span>
+                      </DropdownMenuItem>
                       <DropdownMenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
                         <span className="system-sm-regular text-text-secondary">{t('menu.exportSnippet')}</span>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  {canManageSnippet && (
+                    <>
+                      {canCreateAndModifySnippet && <DropdownMenuSeparator />}
                       <DropdownMenuItem
                         variant="destructive"
                         className="gap-2 px-3"

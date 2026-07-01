@@ -81,6 +81,7 @@ from models.account import TenantStatus
 from models.model import AppMode, Site
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
+from services.app_ref_service import AppRefService
 from services.app_service import AppService
 from services.audio_service import AudioService
 from services.dataset_service import DatasetService
@@ -414,6 +415,14 @@ class TrialChatTextApi(TrialAppResource):
             message_id = request_data.message_id
             text = request_data.text
             voice = request_data.voice
+            message_ref = None
+            if message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    account_id=current_user.id,
+                )
 
             # Get IDs before they might be detached from session
             app_id = app_model.id
@@ -424,7 +433,7 @@ class TrialChatTextApi(TrialAppResource):
                 session=db.session,
                 text=text,
                 voice=voice,
-                message_id=message_id,
+                message_ref=message_ref,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return response

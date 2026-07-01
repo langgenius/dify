@@ -1788,6 +1788,9 @@ class TenantService:
                 account_id,
             )
 
+        if dify_config.RBAC_ENABLED:
+            RBACService.MemberRoles.delete_rbac_bindings(tenant_id=tenant.id, account_id=account_id)
+
     @staticmethod
     def update_member_role(
         tenant: Tenant, member: Account, new_role: str, operator: Account, *, session: scoped_session | Session

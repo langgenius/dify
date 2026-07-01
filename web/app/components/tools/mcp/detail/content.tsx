@@ -60,7 +60,7 @@ const MCPDetailContent: FC<Props> = ({
   const { t } = useTranslation()
   const canManageMCP = useCanManageMCP()
 
-  const { data, isFetching: isGettingTools } = useMCPTools(canManageMCP && detail.is_team_authorization ? detail.id : '')
+  const { data, isFetching: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
   const invalidateAllMCPTools = useInvalidateAllMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
@@ -162,7 +162,7 @@ const MCPDetailContent: FC<Props> = ({
       handleAuthorize()
   }, [])
 
-  if (!detail || !canManageMCP)
+  if (!detail)
     return null
   const identifierLabel = t('mcp.identifier', { ns: 'tools' })
   const serverUrlLabel = t('mcp.modal.serverUrl', { ns: 'tools' })
@@ -280,6 +280,7 @@ const MCPDetailContent: FC<Props> = ({
             <Button
               variant="primary"
               onClick={handleUpdateTools}
+              disabled={!canManageMCP}
             >
               {t('mcp.getTools', { ns: 'tools' })}
             </Button>
@@ -293,7 +294,7 @@ const MCPDetailContent: FC<Props> = ({
                 {toolList.length === 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.onlyTool', { ns: 'tools' })}</div>}
               </div>
               <div>
-                <Button size="small" onClick={showUpdateConfirm}>
+                <Button size="small" onClick={showUpdateConfirm} disabled={!canManageMCP}>
                   <span aria-hidden className="mr-1 i-ri-loop-left-line size-3.5" />
                   {t('mcp.update', { ns: 'tools' })}
                 </Button>
@@ -344,7 +345,7 @@ const MCPDetailContent: FC<Props> = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={isShowUpdateConfirm} onOpenChange={open => !open && hideUpdateConfirm()}>
+      <AlertDialog open={canManageMCP && isShowUpdateConfirm} onOpenChange={open => !open && hideUpdateConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">

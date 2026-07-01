@@ -9,6 +9,8 @@ export const AppACLPermission = {
   Delete: 'app.acl.delete',
   ReleaseAndVersion: 'app.acl.release_and_version',
   Monitor: 'app.acl.monitor',
+  TracingConfig: 'app.acl.tracing_config',
+  LogAndAnnotation: 'app.acl.log_and_annotation',
   AccessConfig: 'app.acl.access_config',
 } as const
 
@@ -51,6 +53,8 @@ type AppACLCapabilities = {
   canDelete: boolean
   canReleaseAndVersion: boolean
   canMonitor: boolean
+  canConfigureTracing: boolean
+  canAccessLogAndAnnotation: boolean
   canAccessConfig: boolean
 }
 
@@ -124,6 +128,8 @@ export const getAppACLCapabilities = (
     canDelete: hasResourcePermission(permissionKeys, AppACLPermission.Delete, hasMaintainerPermissions),
     canReleaseAndVersion: hasResourcePermission(permissionKeys, AppACLPermission.ReleaseAndVersion, hasMaintainerPermissions),
     canMonitor: hasResourcePermission(permissionKeys, AppACLPermission.Monitor, hasMaintainerPermissions),
+    canConfigureTracing: hasResourcePermission(permissionKeys, AppACLPermission.TracingConfig, hasMaintainerPermissions),
+    canAccessLogAndAnnotation: hasResourcePermission(permissionKeys, AppACLPermission.LogAndAnnotation, hasMaintainerPermissions),
     canAccessConfig: Boolean(options?.isRbacEnabled) && hasResourcePermission(permissionKeys, AppACLPermission.AccessConfig, hasMaintainerPermissions),
   }
 }

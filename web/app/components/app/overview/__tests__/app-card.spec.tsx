@@ -17,6 +17,7 @@ const mockPush = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockOnChangeStatus = vi.fn()
 const mockOnGenerateCode = vi.fn()
+const mockFetchAppDetail = vi.fn()
 
 let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string, variables?: Array<Record<string, unknown>> } }> } } | null = null
 let mockAccessSubjects: { groups?: unknown[], members?: unknown[] } = { groups: [], members: [] }
@@ -59,6 +60,10 @@ vi.mock('@/service/access-control/use-app-access-control', () => ({
   }),
 }))
 
+vi.mock('@/service/apps', () => ({
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
+}))
+
 vi.mock('@/app/components/develop/secret-key/secret-key-button', () => ({
   default: ({ appId }: { appId: string }) => <div data-testid="secret-key-button">{appId}</div>,
 }))
@@ -75,14 +80,19 @@ vi.mock('../customize', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => isShow ? <button data-testid="customize-modal" onClick={onClose}>customize-modal</button> : null,
 }))
 
-vi.mock('../../app-access-control', () => ({
-  AccessControl: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
+vi.mock('../../app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
     <div data-testid="access-control-modal">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 const mockWindowOpen = vi.fn()
 Object.defineProperty(window, 'open', {
@@ -125,6 +135,14 @@ describe('AppCard', () => {
       groups: [],
       members: [],
     }
+    mockFetchAppDetail.mockResolvedValue({
+      id: 'app-1',
+      access_mode: AccessMode.PUBLIC,
+      site: {
+        app_base_url: 'https://example.com',
+        access_token: 'access-token',
+      },
+    } as AppDetailResponse)
   })
 
   it('should open the published webapp when launch is clicked', () => {
@@ -405,7 +423,7 @@ describe('AppCard', () => {
         onGenerateCode={mockOnGenerateCode}
       />,
     )
-    const invalidateQueriesSpy = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
 
     fireEvent.click(screen.getByText('publishApp.notSet'))
     expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
@@ -413,8 +431,14 @@ describe('AppCard', () => {
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
+    expect(setQueryDataSpy).toHaveBeenCalledWith(['apps', 'detail', 'app-1'], expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
+    expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
   })
 
   it('should surface the learn-more tooltip action for workflows without a start node', () => {
@@ -467,14 +491,14 @@ describe('AppCard', () => {
 
   it('should report refresh failures from access control updates', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+    mockFetchAppDetail.mockRejectedValueOnce(new Error('refresh failed'))
 
-    const { queryClient } = render(
+    render(
       <AppCard
         appInfo={appInfo}
         onChangeStatus={mockOnChangeStatus}
       />,
     )
-    vi.spyOn(queryClient, 'invalidateQueries').mockRejectedValueOnce(new Error('refresh failed'))
 
     fireEvent.click(screen.getByText('publishApp.notSet'))
     fireEvent.click(screen.getByText('confirm-access-control'))

@@ -33,6 +33,7 @@ type CreateWorkflowStreamHandlersParams = {
 const createInitialWorkflowProcess = (): WorkflowProcess => ({
   status: WorkflowRunningStatus.Running,
   tracing: [],
+  error: undefined,
   expand: false,
   resultText: '',
 })
@@ -148,9 +149,11 @@ const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
 const applyWorkflowFinishedState = (
   current: WorkflowProcess | undefined,
   status: WorkflowRunningStatus,
+  error?: string,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = status
+    draft.error = error
     if ([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Failed].includes(status))
       markNodesStopped(draft.tracing)
   })
@@ -162,6 +165,7 @@ const applyWorkflowOutputs = (
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = WorkflowRunningStatus.Succeeded
+    draft.error = undefined
     draft.files = getFilesInLogs(outputs || []) as unknown as WorkflowProcess['files']
   })
 }
@@ -301,6 +305,7 @@ export const createWorkflowStreamHandlers = ({
         setWorkflowProcessData(updateWorkflowProcess(workflowProcessData, (draft) => {
           draft.expand = true
           draft.status = WorkflowRunningStatus.Running
+          draft.error = undefined
         }))
         return
       }
@@ -342,14 +347,18 @@ export const createWorkflowStreamHandlers = ({
 
       const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (workflowStatus === WorkflowRunningStatus.Stopped) {
-        setWorkflowProcessData(applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Stopped))
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Stopped, data.error),
+        )
         finishWithFailure()
         return
       }
 
       if (data.error) {
         notify({ type: 'error', message: data.error })
-        setWorkflowProcessData(applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed))
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed, data.error),
+        )
         finishWithFailure()
         return
       }

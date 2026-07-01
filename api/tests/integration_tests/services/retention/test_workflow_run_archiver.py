@@ -1,7 +1,7 @@
 import datetime
 import json
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -12,6 +12,24 @@ from services.retention.workflow_run.archive_paid_plan_workflow_run import (
     WorkflowRunArchiver,
 )
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
+
+
+class FakeArchiveStorage:
+    def __init__(self, objects: dict[str, bytes] | None = None):
+        self.objects = objects or {}
+
+    def object_exists(self, key: str) -> bool:
+        return key in self.objects
+
+    def get_object(self, key: str) -> bytes:
+        return self.objects[key]
+
+    def put_object(self, key: str, data: bytes) -> str:
+        self.objects[key] = data
+        return "checksum"
+
+    def list_objects(self, prefix: str) -> list[str]:
+        return sorted(key for key in self.objects if key.startswith(prefix))
 
 
 class TestWorkflowRunArchiverInit:
@@ -162,7 +180,9 @@ class TestBuildArchiveBundle:
 
 class TestGenerateManifest:
     def test_manifest_structure(self):
-        archiver = WorkflowRunArchiver(days=90)
+        start = datetime.datetime(2025, 1, 1, tzinfo=datetime.UTC)
+        end = datetime.datetime(2025, 4, 1, tzinfo=datetime.UTC)
+        archiver = WorkflowRunArchiver(start_from=start, end_before=end, run_shard_index=1, run_shard_total=4)
         from services.retention.workflow_run.archive_paid_plan_workflow_run import TableStats
 
         run = MagicMock()
@@ -197,6 +217,10 @@ class TestGenerateManifest:
         assert manifest["workflow_run_count"] == 1
         assert manifest["workflow_node_execution_count"] == 2
         assert manifest["run_ids"] == [run.id]
+        assert manifest["campaign_id"] == "2025-01-01T00:00:00Z_2025-04-01T00:00:00Z"
+        assert manifest["archive_window_start"] == "2025-01-01T00:00:00Z"
+        assert manifest["archive_window_end"] == "2025-04-01T00:00:00Z"
+        assert manifest["run_shard"] == "01-of-04"
         assert "tables" in manifest
         assert manifest["tables"]["workflow_runs"]["row_count"] == 1
         assert manifest["tables"]["workflow_runs"]["checksum"] == "abc123"
@@ -328,6 +352,21 @@ class TestDryRunArchive:
 
 
 class TestArchiveRunIdempotency:
+    def _index_payload(self, archiver: WorkflowRunArchiver, run_ids: list[str], run) -> tuple[str, bytes]:
+        identity = archiver._build_bundle_identity([run])
+        index_key = archiver._get_index_object_key(identity)
+        payload = json.dumps(
+            {
+                "schema_version": ARCHIVE_BUNDLE_SCHEMA_VERSION,
+                "archive_format": ARCHIVE_BUNDLE_FORMAT,
+                "object_prefix": archiver._get_shard_object_prefix(identity),
+                "updated_at": "2025-03-15T00:00:00Z",
+                "manifest_keys": [],
+                "run_ids": run_ids,
+            }
+        ).encode()
+        return index_key, payload
+
     def test_locked_bundle_is_skipped(self):
         archiver = WorkflowRunArchiver(days=90)
         run = MagicMock()
@@ -360,3 +399,47 @@ class TestArchiveRunIdempotency:
         assert result.success is True
         assert result.skipped is True
         assert result.error == "bundle already archived"
+
+    def test_index_skips_all_already_archived_runs(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = MagicMock()
+        run.id = "run-1"
+        run.tenant_id = "tenant-1"
+        run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        index_key, index_payload = self._index_payload(archiver, ["run-1"], run)
+        storage = FakeArchiveStorage({index_key: index_payload})
+
+        result = archiver._archive_bundle(MagicMock(), storage, [run])
+
+        assert result.success is True
+        assert result.skipped is True
+        assert result.run_count == 0
+        assert result.skipped_run_count == 1
+        assert result.error == "all runs already archived in shard index"
+
+    def test_index_filters_duplicate_runs_before_archive(self):
+        archiver = WorkflowRunArchiver(days=90)
+        archived_run = MagicMock()
+        archived_run.id = "run-1"
+        archived_run.tenant_id = "tenant-1"
+        archived_run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        new_run = MagicMock()
+        new_run.id = "run-2"
+        new_run.tenant_id = "tenant-1"
+        new_run.created_at = datetime.datetime(2025, 3, 15, 11, 0, 0)
+        index_key, index_payload = self._index_payload(archiver, ["run-1"], archived_run)
+        storage = FakeArchiveStorage({index_key: index_payload})
+
+        with (
+            patch.object(archiver, "_lock_runs_for_archive", return_value=[new_run]) as lock_runs,
+            patch.object(archiver, "_extract_bundle_data", return_value={"workflow_runs": [{"id": "run-2"}]}),
+        ):
+            result = archiver._archive_bundle(MagicMock(), storage, [archived_run, new_run])
+
+        assert result.success is True
+        assert result.skipped is False
+        assert result.run_count == 1
+        assert result.skipped_run_count == 1
+        lock_runs.assert_called_once_with(ANY, ["run-2"])
+        manifest_keys = [key for key in storage.objects if key.endswith("/manifest.json")]
+        assert len(manifest_keys) == 1
