@@ -93,6 +93,12 @@ class AppQueueManager(ABC):
         """
         self._clear_task_belong_cache()
         self._q.put(None)
+        # NOTE: Do NOT clear self._graph_runtime_state here.
+        # stop_listen() is called from the worker thread (via _publish) immediately
+        # after enqueueing a terminal event. The consumer thread may not have processed
+        # the preceding events yet and still needs to read graph_runtime_state via
+        # _resolve_graph_runtime_state(). The reference is released in the listen()
+        # finally block once consumers finish or the generator closes.
 
     def _clear_task_belong_cache(self) -> None:
         """
