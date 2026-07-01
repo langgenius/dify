@@ -824,7 +824,7 @@ export type TriggerOAuthClientResponse = {
   configured: boolean
   custom_configured: boolean
   custom_enabled: boolean
-  oauth_client_schema: unknown
+  oauth_client_schema: Array<ProviderConfig>
   params: {
     [key: string]: unknown
   }
@@ -4817,7 +4817,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyByS
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponses
   = {
-    200: TriggerProviderOpaqueResponse
+    200: TriggerSubscriptionBuilderVerifyResponse
   }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse

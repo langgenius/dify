@@ -11,6 +11,7 @@ from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.fields import BinaryFileResponse, RedirectResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from core.entities.provider_entities import ProviderConfig
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.trigger.entities.api_entities import (
@@ -83,7 +84,7 @@ class TriggerOAuthClientResponse(BaseModel):
     configured: bool
     system_configured: bool
     custom_configured: bool
-    oauth_client_schema: Any
+    oauth_client_schema: list[ProviderConfig]
     custom_enabled: bool
     redirect_uri: str
     params: dict[str, Any]
@@ -724,7 +725,7 @@ class TriggerOAuthClientManageApi(Resource):
 )
 class TriggerSubscriptionVerifyApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderVerifyResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required

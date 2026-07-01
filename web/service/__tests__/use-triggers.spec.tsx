@@ -21,8 +21,7 @@ import {
 } from '../use-triggers'
 
 const {
-  mockBaseGet,
-  mockBasePost,
+  mockAuthorizeOAuth,
   mockBuildBuilder,
   mockConfigureOAuth,
   mockCreateBuilder,
@@ -37,9 +36,10 @@ const {
   mockUpdateBuilder,
   mockUpdateSubscription,
   mockUseInvalid,
+  mockVerifyAndUpdateBuilder,
+  mockVerifySubscription,
 } = vi.hoisted(() => ({
-  mockBaseGet: vi.fn(),
-  mockBasePost: vi.fn(),
+  mockAuthorizeOAuth: vi.fn(),
   mockBuildBuilder: vi.fn(),
   mockConfigureOAuth: vi.fn(),
   mockCreateBuilder: vi.fn(),
@@ -54,11 +54,8 @@ const {
   mockUpdateBuilder: vi.fn(),
   mockUpdateSubscription: vi.fn(),
   mockUseInvalid: vi.fn(() => mockInvalid),
-}))
-
-vi.mock('../base', () => ({
-  get: mockBaseGet,
-  post: mockBasePost,
+  mockVerifyAndUpdateBuilder: vi.fn(),
+  mockVerifySubscription: vi.fn(),
 }))
 
 vi.mock('../use-base', () => ({
@@ -97,13 +94,23 @@ vi.mock('@/service/client', () => ({
                     post: mockUpdateBuilder,
                   },
                 },
+                verifyAndUpdate: {
+                  bySubscriptionBuilderId: {
+                    post: mockVerifyAndUpdateBuilder,
+                  },
+                },
               },
               list: {
                 get: mockGetSubscriptions,
               },
               oauth: {
                 authorize: {
-                  get: vi.fn(),
+                  get: mockAuthorizeOAuth,
+                },
+              },
+              verify: {
+                bySubscriptionId: {
+                  post: mockVerifySubscription,
                 },
               },
             },
@@ -224,22 +231,33 @@ const createWrapper = () => {
 
 const triggerProvider = {
   author: 'Dify',
-  description: 'Starts the workflow',
+  description: {
+    en_US: 'Starts the workflow',
+    zh_Hans: 'Starts the workflow',
+  },
   events: [
     {
-      description: 'Webhook received',
+      description: {
+        en_US: 'Webhook received',
+        zh_Hans: 'Webhook received',
+      },
       identity: {
+        author: 'Dify',
         label: {
           en_US: 'Webhook received',
           zh_Hans: 'Webhook received',
         },
+        name: 'webhook.received',
       },
       name: 'webhook.received',
       output_schema: { type: 'object' },
       parameters: [
         {
           default: 'topic',
-          description: 'Topic',
+          description: {
+            en_US: 'Topic',
+            zh_Hans: 'Topic',
+          },
           label: {
             en_US: 'Topic',
             zh_Hans: 'Topic',
@@ -271,9 +289,60 @@ const triggerProvider = {
   plugin_id: 'plugin-webhook',
   plugin_unique_identifier: 'plugin-webhook@1.0.0',
   subscription_constructor: {},
-  subscription_schema: {},
-  supported_creation_methods: ['manual'],
+  subscription_schema: [],
+  supported_creation_methods: ['MANUAL'],
   tags: ['automation'],
+}
+
+const subscriptionBuilder = {
+  credential_type: 'oauth2',
+  credentials: {},
+  endpoint: 'https://example.com/endpoint',
+  id: 'builder-1',
+  name: 'Builder',
+  parameters: {},
+  properties: {},
+  provider: 'provider-a',
+}
+
+const triggerSubscription = {
+  ...subscriptionBuilder,
+  id: 'sub-1',
+  workflows_in_use: 0,
+}
+
+const triggerLog = {
+  created_at: '2026-01-01T00:00:00Z',
+  endpoint: 'https://example.com/endpoint',
+  id: 'log-1',
+  request: {
+    data: '{}',
+    headers: {
+      Host: 'example.com',
+    },
+    method: 'POST',
+    url: 'https://example.com/endpoint',
+  },
+  response: {
+    data: '{}',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    status_code: 200,
+  },
+}
+
+const oauthConfig = {
+  configured: true,
+  custom_configured: true,
+  custom_enabled: true,
+  oauth_client_schema: [],
+  params: {
+    client_id: 'client-id',
+    client_secret: 'client-secret',
+  },
+  redirect_uri: 'https://example.com/oauth/callback',
+  system_configured: false,
 }
 
 describe('use-triggers generated client hooks', () => {
@@ -307,9 +376,9 @@ describe('use-triggers generated client hooks', () => {
 
   it('should fetch provider info, subscriptions, logs, and OAuth config with provider params', async () => {
     mockGetProviderInfo.mockResolvedValue(triggerProvider)
-    mockGetSubscriptions.mockResolvedValue([{ id: 'sub-1' }])
-    mockGetBuilderLogs.mockResolvedValue({ logs: [{ message: 'ok' }] })
-    mockGetOAuthConfig.mockResolvedValue({ enabled: true })
+    mockGetSubscriptions.mockResolvedValue([triggerSubscription])
+    mockGetBuilderLogs.mockResolvedValue({ logs: [triggerLog] })
+    mockGetOAuthConfig.mockResolvedValue(oauthConfig)
 
     renderHook(() => useTriggerProviderInfo('provider-a'), { wrapper: createWrapper() })
     renderHook(() => useTriggerSubscriptions('provider-a'), { wrapper: createWrapper() })
@@ -328,8 +397,8 @@ describe('use-triggers generated client hooks', () => {
   })
 
   it('should call generated subscription builder mutations with snake_case params', async () => {
-    mockCreateBuilder.mockResolvedValue({ subscription_builder: { id: 'builder-1' } })
-    mockUpdateBuilder.mockResolvedValue({ id: 'builder-1' })
+    mockCreateBuilder.mockResolvedValue({ subscription_builder: subscriptionBuilder })
+    mockUpdateBuilder.mockResolvedValue(subscriptionBuilder)
     mockBuildBuilder.mockResolvedValue({ id: 'sub-1' })
 
     const wrapper = createWrapper()
@@ -370,7 +439,7 @@ describe('use-triggers generated client hooks', () => {
     mockUpdateSubscription.mockResolvedValue({})
     mockConfigureOAuth.mockResolvedValue({})
     mockDeleteOAuth.mockResolvedValue({})
-    mockBaseGet.mockResolvedValue({ authorization_url: 'https://example.com', subscription_builder: {} })
+    mockAuthorizeOAuth.mockResolvedValue({ authorization_url: 'https://example.com', subscription_builder: subscriptionBuilder })
 
     const wrapper = createWrapper()
     const deleteSubscriptionMutation = renderHook(() => useDeleteTriggerSubscription(), { wrapper })
@@ -401,15 +470,12 @@ describe('use-triggers generated client hooks', () => {
       params: { provider: 'provider-a' },
     })
     expect(mockDeleteOAuth).toHaveBeenCalledWith({ params: { provider: 'provider-a' } })
-    expect(mockBaseGet).toHaveBeenCalledWith(
-      '/workspaces/current/trigger-provider/provider-a/subscriptions/oauth/authorize',
-      {},
-      { silent: true },
-    )
+    expect(mockAuthorizeOAuth).toHaveBeenCalledWith({ params: { provider: 'provider-a' } })
   })
 
-  it('should verify trigger subscriptions through legacy endpoints while using generated mutation keys', async () => {
-    mockBasePost.mockResolvedValue({ verified: true })
+  it('should verify trigger subscriptions through generated endpoints', async () => {
+    mockVerifyAndUpdateBuilder.mockResolvedValue({ verified: true })
+    mockVerifySubscription.mockResolvedValue({ verified: true })
 
     const wrapper = createWrapper()
     const verifyAndUpdateBuilderMutation = renderHook(() => useVerifyAndUpdateTriggerSubscriptionBuilder(), { wrapper })
@@ -428,15 +494,13 @@ describe('use-triggers generated client hooks', () => {
       })
     })
 
-    expect(mockBasePost).toHaveBeenCalledWith(
-      '/workspaces/current/trigger-provider/provider-a/subscriptions/builder/verify-and-update/builder-1',
-      { body: { credentials: { token: 'secret' } } },
-      { silent: true },
-    )
-    expect(mockBasePost).toHaveBeenCalledWith(
-      '/workspaces/current/trigger-provider/provider-a/subscriptions/verify/sub-1',
-      { body: { credentials: { token: 'secret' } } },
-      { silent: true },
-    )
+    expect(mockVerifyAndUpdateBuilder).toHaveBeenCalledWith({
+      body: { credentials: { token: 'secret' } },
+      params: { provider: 'provider-a', subscription_builder_id: 'builder-1' },
+    })
+    expect(mockVerifySubscription).toHaveBeenCalledWith({
+      body: { credentials: { token: 'secret' } },
+      params: { provider: 'provider-a', subscription_id: 'sub-1' },
+    })
   })
 })
