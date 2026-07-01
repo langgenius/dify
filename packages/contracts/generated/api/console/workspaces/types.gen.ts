@@ -551,7 +551,7 @@ export type AppAccessMatrix = {
 
 export type ResourceUserAccessPoliciesResponse = {
   data?: Array<ResourceUserAccessPolicies>
-  scope: string
+  scope: RbacResourceWhitelistScope
 }
 
 export type ReplaceUserAccessPolicies = {

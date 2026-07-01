@@ -263,4 +263,4 @@ export type RemoveAppAccessPolicyMemberBindingsRequest = RemoveResourceAccessPol
 
 export type RemoveDatasetAccessPolicyMemberBindingsRequest = RemoveResourceAccessPolicyMemberBindingsRequest
 
-export type ResourceOpenScope = 'all' | 'specific'
+export type ResourceOpenScope = 'all' | 'only_me' | 'specific'

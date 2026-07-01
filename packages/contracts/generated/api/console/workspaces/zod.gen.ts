@@ -1841,7 +1841,7 @@ export const zResourceUserAccessPolicies = z.object({
  */
 export const zResourceUserAccessPoliciesResponse = z.object({
   data: z.array(zResourceUserAccessPolicies).optional(),
-  scope: z.string(),
+  scope: zRbacResourceWhitelistScope,
 })
 
 /**

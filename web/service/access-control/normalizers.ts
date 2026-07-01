@@ -19,6 +19,7 @@ type GeneratedAppAccessMatrix = import('@dify/contracts/api/console/workspaces/t
 type GeneratedDatasetAccessMatrix = import('@dify/contracts/api/console/workspaces/types.gen').DatasetAccessMatrix
 type GeneratedRbacRole = import('@dify/contracts/api/console/workspaces/types.gen').RbacRole
 type GeneratedRbacRoleAccount = import('@dify/contracts/api/console/workspaces/types.gen').RbacRoleAccount
+type GeneratedResourceOpenScope = import('@dify/contracts/api/console/workspaces/types.gen').RbacResourceWhitelistScope
 type GeneratedResourceUserAccessPoliciesResponse = import('@dify/contracts/api/console/workspaces/types.gen').ResourceUserAccessPoliciesResponse
 type GeneratedResourceUserAccessPolicies = NonNullable<GeneratedResourceUserAccessPoliciesResponse['data']>[number]
 
@@ -101,11 +102,15 @@ const isAccessPolicyWithBindings = (item: AccessPolicyWithBindings | null): item
   return item !== null
 }
 
-const normalizeResourceOpenScope = (scope: string): ResourceOpenScope => {
-  if (scope === 'all')
-    return 'all'
-
-  return 'specific'
+const normalizeResourceOpenScope = (scope: GeneratedResourceOpenScope): ResourceOpenScope => {
+  switch (scope) {
+    case 'all':
+      return 'all'
+    case 'only_me':
+      return 'only_me'
+    case 'specific':
+      return 'specific'
+  }
 }
 
 const normalizeAccount = (account: GeneratedRbacRoleAccount): ResourceUserAccessSetting['account'] => ({
