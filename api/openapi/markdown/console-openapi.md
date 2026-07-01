@@ -18093,7 +18093,7 @@ Enum class for large language model mode.
 | alternative_plugin_id | string |  | Yes |
 | deprecated_reason | string |  | Yes |
 | plugin_id | string |  | Yes |
-| status | string |  | Yes |
+| status | string, <br>**Available values:** "active", "deleted" | *Enum:* `"active"`, `"deleted"` | Yes |
 | unique_identifier | string |  | Yes |
 | version | string |  | Yes |
 
@@ -19590,7 +19590,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | checksum | string |  | Yes |
 | created_at | dateTime |  | Yes |
-| declaration | object |  | Yes |
+| declaration | [PluginDeclarationResponse](#plugindeclarationresponse) |  | Yes |
 | endpoints_active | integer |  | Yes |
 | endpoints_setups | integer |  | Yes |
 | id | string |  | Yes |

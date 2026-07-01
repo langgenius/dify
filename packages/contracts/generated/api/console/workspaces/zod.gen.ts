@@ -1101,7 +1101,7 @@ export const zLatestPluginCache = z.object({
   alternative_plugin_id: z.string(),
   deprecated_reason: z.string(),
   plugin_id: z.string(),
-  status: z.string(),
+  status: z.enum(['active', 'deleted']),
   unique_identifier: z.string(),
   version: z.string(),
 })
@@ -1717,33 +1717,6 @@ export const zPluginAutoUpgradeFetchResponse = z.object({
 export const zPluginInstallationSource = z.enum(['github', 'marketplace', 'package', 'remote'])
 
 /**
- * PluginInstallationItemResponse
- */
-export const zPluginInstallationItemResponse = z.object({
-  checksum: z.string(),
-  created_at: z.iso.datetime(),
-  declaration: z.record(z.string(), z.unknown()),
-  endpoints_active: z.int(),
-  endpoints_setups: z.int(),
-  id: z.string(),
-  meta: z.record(z.string(), z.unknown()),
-  plugin_id: z.string(),
-  plugin_unique_identifier: z.string(),
-  runtime_type: z.string(),
-  source: zPluginInstallationSource,
-  tenant_id: z.string(),
-  updated_at: z.iso.datetime(),
-  version: z.string(),
-})
-
-/**
- * PluginInstallationsResponse
- */
-export const zPluginInstallationsResponse = z.object({
-  plugins: z.array(zPluginInstallationItemResponse),
-})
-
-/**
  * I18nObject
  *
  * Model class for i18n object.
@@ -2346,6 +2319,33 @@ export const zPluginDeclarationResponse = z.object({
   trigger: z.record(z.string(), z.unknown()).nullish(),
   verified: z.boolean().optional().default(false),
   version: z.string(),
+})
+
+/**
+ * PluginInstallationItemResponse
+ */
+export const zPluginInstallationItemResponse = z.object({
+  checksum: z.string(),
+  created_at: z.iso.datetime(),
+  declaration: zPluginDeclarationResponse,
+  endpoints_active: z.int(),
+  endpoints_setups: z.int(),
+  id: z.string(),
+  meta: z.record(z.string(), z.unknown()),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  runtime_type: z.string(),
+  source: zPluginInstallationSource,
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  version: z.string(),
+})
+
+/**
+ * PluginInstallationsResponse
+ */
+export const zPluginInstallationsResponse = z.object({
+  plugins: z.array(zPluginInstallationItemResponse),
 })
 
 /**

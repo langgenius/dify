@@ -63,3 +63,7 @@ export const trialAppsRouterContract = {
   parameters: trialAppParametersContract,
   workflows: trialAppWorkflowsContract,
 }
+
+export const trialAppsConsoleRouterContract = {
+  trialApps: trialAppsRouterContract,
+}
