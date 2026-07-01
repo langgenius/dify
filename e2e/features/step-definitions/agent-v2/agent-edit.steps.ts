@@ -6,9 +6,9 @@ import { createE2EResourceName } from '../../../support/naming'
 import {
   getAgentComposerDraft,
   getTestAgent,
-  normalAgentPrompt,
 } from '../../agent-v2/support/agent'
 import { agentBuilderExpectedTokens, agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
+import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
 import {
   asArray,
   asRecord,

@@ -11,7 +11,8 @@ import { deleteTestApp } from '../../support/api'
 import { deleteTestDataset } from '../../support/datasets'
 import { deleteBuiltinToolCredential } from '../../support/tools'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
-import { deleteAgentConfigFile, deleteAgentConfigSkill, deleteAgentDriveFile, deleteTestAgent } from '../agent-v2/support/agent'
+import { deleteTestAgent } from '../agent-v2/support/agent'
+import { deleteAgentConfigFile, deleteAgentConfigSkill, deleteAgentDriveFile } from '../agent-v2/support/agent-drive'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')

@@ -9,12 +9,12 @@ import {
   syncAgentV2WorkflowDraft,
 } from '../../../support/api'
 import { createE2EResourceName } from '../../../support/naming'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
 import {
   createAgentSoulConfigWithModel,
-  createConfiguredTestAgent,
   normalAgentPrompt,
   normalAgentSoulConfig,
-} from '../../agent-v2/support/agent'
+} from '../../agent-v2/support/agent-soul'
 
 const agentV2WorkflowNodeId = 'agent-v2'
 const taskFileOutputName = 'e2e_report.pdf'

@@ -4,20 +4,21 @@ import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
 import {
-  concurrentFirstAgentPrompt,
-  concurrentSecondAgentPrompt,
-  createAgentSoulConfigWithModel,
   createConfiguredTestAgent,
   createTestAgent,
   getAgentComposerDraft,
   getAgentConfigurePath,
-  getAgentDriveSkills,
+  saveAgentComposerDraft,
+} from '../../agent-v2/support/agent'
+import { getAgentDriveSkills, uploadAgentDriveSkill } from '../../agent-v2/support/agent-drive'
+import {
+  concurrentFirstAgentPrompt,
+  concurrentSecondAgentPrompt,
+  createAgentSoulConfigWithModel,
   normalAgentPrompt,
   normalAgentSoulConfig,
-  saveAgentComposerDraft,
   updatedAgentPrompt,
-  uploadAgentDriveSkill,
-} from '../../agent-v2/support/agent'
+} from '../../agent-v2/support/agent-soul'
 import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {
   expectNormalAgentPromptDraft,

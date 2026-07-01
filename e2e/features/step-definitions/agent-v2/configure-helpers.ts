@@ -1,12 +1,10 @@
 import type { Locator } from '@playwright/test'
-import type { AgentComposerEnvVariable } from '../../agent-v2/support/agent'
+import type { AgentComposerEnvVariable } from '../../agent-v2/support/agent-soul'
 import type { DifyWorld } from '../../support/world'
 import { expect } from '@playwright/test'
-import {
-  getAgentComposerDraft,
-  normalAgentPrompt,
-  uploadAgentConfigSkillToDraft,
-} from '../../agent-v2/support/agent'
+import { getAgentComposerDraft } from '../../agent-v2/support/agent'
+import { uploadAgentConfigSkillToDraft } from '../../agent-v2/support/agent-drive'
+import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,

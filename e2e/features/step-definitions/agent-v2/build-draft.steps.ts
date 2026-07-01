@@ -3,17 +3,19 @@ import { readFile } from 'node:fs/promises'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import {
-  createAgentSoulConfigWithModel,
   getAgentComposerDraft,
+  saveAgentComposerDraft,
+} from '../../agent-v2/support/agent'
+import { saveAgentBuildDraft } from '../../agent-v2/support/agent-build-draft'
+import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
+import { uploadAgentConfigFileToDraft } from '../../agent-v2/support/agent-drive'
+import {
+  createAgentSoulConfigWithModel,
   normalAgentPrompt,
   normalAgentSoulConfig,
-  saveAgentBuildDraft,
-  saveAgentComposerDraft,
   updatedAgentPrompt,
   updatedAgentSoulConfig,
-  uploadAgentConfigFileToDraft,
-} from '../../agent-v2/support/agent'
-import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
+} from '../../agent-v2/support/agent-soul'
 import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
 import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {

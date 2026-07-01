@@ -3,12 +3,14 @@ import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import {
-  createAgentSoulConfigWithKnowledgeDataset,
   createConfiguredTestAgent,
   getAgentComposerDraft,
-  normalAgentSoulConfig,
 } from '../../agent-v2/support/agent'
 import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
+import {
+  createAgentSoulConfigWithKnowledgeDataset,
+  normalAgentSoulConfig,
+} from '../../agent-v2/support/agent-soul'
 import { asArray, asRecord } from '../../agent-v2/support/preflight/common'
 import { getCurrentAgentId } from './configure-helpers'
 
