@@ -1,4 +1,4 @@
-@agent-v2 @authenticated @core
+@agent-v2 @authenticated @preview
 Feature: Agent v2 configure validation
   Scenario: Preview is unavailable until a required model is configured
     Given I am signed in as the default E2E admin

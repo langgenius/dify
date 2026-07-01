@@ -6,7 +6,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentEnvEditor, EnvVariablesTable } from '../env'
-import { getEnvImportPlatform, parseEnvVariables } from '../env-utils'
+import { getEnvImportPlatform, parseEnvImport, parseEnvVariables } from '../env-utils'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -64,6 +64,22 @@ describe('AgentEnvEditor', () => {
         { key: 'PASSWORD', value: 'secret' },
         { key: 'MULTILINE', value: 'first\nsecond' },
       ])
+    })
+
+    it('should report invalid dotenv lines without blocking valid entries', () => {
+      expect(parseEnvImport([
+        '# ignored',
+        'API_KEY=abc123',
+        'INVALID_LINE',
+        '=missing_key',
+        'SECOND_KEY=enabled',
+      ].join('\n'))).toEqual({
+        invalidLineCount: 2,
+        variables: [
+          { key: 'API_KEY', value: 'abc123' },
+          { key: 'SECOND_KEY', value: 'enabled' },
+        ],
+      })
     })
   })
 
@@ -143,6 +159,27 @@ describe('AgentEnvEditor', () => {
       expect(screen.getByDisplayValue('abc123')).toBeInTheDocument()
       expect(screen.getByDisplayValue('BASE_URL')).toBeInTheDocument()
       expect(screen.getByDisplayValue('https://example.com')).toBeInTheDocument()
+    })
+
+    it('should show a visible error when imported dotenv content includes invalid lines', async () => {
+      const user = userEvent.setup()
+      const { container } = renderAgentEnvEditor()
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement
+
+      const file = new File([
+        'API_KEY=abc123\n',
+        'INVALID_LINE\n',
+        '=missing_key\n',
+      ], '.env', { type: 'text/plain' })
+
+      await user.upload(input, file)
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('API_KEY')).toBeInTheDocument()
+      })
+      expect(mockToastError).toHaveBeenCalledWith(
+        'agentV2.agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines:{"count":2}',
+      )
     })
 
     it('should hide import, add, edit, and delete controls when readonly', () => {

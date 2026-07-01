@@ -153,6 +153,18 @@ When(
   },
 )
 
+When(
+  'I import the invalid Agent v2 environment file from Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    const fileChooserPromise = page.waitForEvent('filechooser')
+    await advancedSettings.getByRole('button', { name: 'Import .env' }).click()
+    await (await fileChooserPromise).setFiles(getAgentBuilderTestMaterialPath('invalidEnv'))
+  },
+)
+
 Then('I should be on the Agent v2 configure page', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 
@@ -251,6 +263,44 @@ Then(
 )
 
 Then(
+  'the invalid Agent v2 environment import should report skipped lines',
+  async function (this: DifyWorld) {
+    await expect(this.getPage().getByText('2 invalid .env lines were skipped.')).toBeVisible()
+  },
+)
+
+Then(
+  'the Agent v2 environment variables from the invalid import should be saved in the Agent v2 draft',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+
+    await expect
+      .poll(async () => {
+        const variables = (await getAgentComposerDraft(agentId)).agent_soul?.env?.variables ?? []
+
+        return {
+          importedValue: variables.find((item) => {
+            const key = item.key ?? item.name ?? item.variable
+
+            return key === agentBuilderFixedInputs.envAfterInvalidImportKey
+          })?.value,
+          plainValue: variables.find((item) => {
+            const key = item.key ?? item.name ?? item.variable
+
+            return key === agentBuilderFixedInputs.envPlainKey
+          })?.value,
+        }
+      }, {
+        timeout: 30_000,
+      })
+      .toEqual({
+        importedValue: agentBuilderFixedInputs.envAfterInvalidImportValue,
+        plainValue: agentBuilderFixedInputs.envPlainValue,
+      })
+  },
+)
+
+Then(
   'I should see the plain Agent v2 environment variable in Advanced Settings',
   async function (this: DifyWorld) {
     const page = this.getPage()
@@ -263,7 +313,30 @@ Then(
     await expect(advancedSettings.getByRole('textbox', { name: 'Value' }))
       .toHaveValue(agentBuilderFixedInputs.envPlainValue)
     await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Preview$/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
+  },
+)
+
+Then(
+  'I should see the Agent v2 environment variables from the invalid import in Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+    await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
+    await expect.poll(
+      async () => advancedSettings.getByRole('textbox').evaluateAll(inputs =>
+        inputs.map(input => (input as HTMLInputElement).value),
+      ),
+      { timeout: 30_000 },
+    ).toEqual(expect.arrayContaining([
+      agentBuilderFixedInputs.envPlainKey,
+      agentBuilderFixedInputs.envPlainValue,
+      agentBuilderFixedInputs.envAfterInvalidImportKey,
+      agentBuilderFixedInputs.envAfterInvalidImportValue,
+    ]))
+    await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
   },
 )
 
