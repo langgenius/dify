@@ -346,13 +346,17 @@ function PublishBarActions({
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
-      <div className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden">
+      <div
+        role="status"
+        aria-label={`${statusLabel}. ${metaLabel}`}
+        className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-0.5 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden"
+      >
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={dotStatus} />
         </span>
         <span className="shrink-0">{statusLabel}</span>
         <span aria-hidden className="shrink-0">·</span>
-        <span className="min-w-0 truncate">
+        <span className="min-w-0 basis-full truncate pl-5">
           {metaLabel}
         </span>
       </div>
