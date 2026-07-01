@@ -14,7 +14,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 describe('fetchTryAppDatasets', () => {
-  it('serializes ids as repeated query params', async () => {
+  it('passes ids to the generated client', async () => {
     vi.mocked(consoleClient.trialApps.byAppId.datasets.get).mockResolvedValue({
       data: [],
       has_more: false,
