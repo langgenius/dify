@@ -7,6 +7,7 @@ import { useAppContext } from '@/context/app-context'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
 import MainNavLayout from '../layout'
+import { MAIN_CONTENT_ID } from '../skip-nav'
 
 vi.mock('@/app/components/header', () => ({
   default: () => <div data-testid="desktop-header">Header</div>,
@@ -120,9 +121,16 @@ describe('MainNavLayout', () => {
   it('lets detail routes own their sidebar instead of rendering the global main nav', () => {
     ;(usePathname as Mock).mockReturnValue('/datasets/dataset-1/documents')
 
-    render(<MainNavLayout><div>dataset detail</div></MainNavLayout>)
+    render(
+      <MainNavLayout>
+        <main id={MAIN_CONTENT_ID} tabIndex={-1}>
+          dataset detail
+        </main>
+      </MainNavLayout>,
+    )
 
     expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('main')).toHaveLength(1)
     expect(screen.getByRole('main')).toHaveTextContent('dataset detail')
   })
 

@@ -12,6 +12,7 @@ import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
+import { MainContent } from '@/app/components/main-nav/skip-nav'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -137,10 +138,32 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, isRbacEnabled, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
 
   const isWorkflowPage = pathname.endsWith('/workflow')
+  const shouldShowDetailSidebar = !isCurrentWorkspaceDatasetOperator
+  const content = !appDetail
+    ? (
+        <div className="flex min-w-0 grow items-center justify-center bg-background-body">
+          <Loading />
+        </div>
+      )
+    : (
+        <div className={cn(
+          'relative flex h-0 min-w-0 grow overflow-hidden',
+          !isWorkflowPage && 'pt-1 pr-1 pb-1',
+        )}
+        >
+          <div className={cn(
+            'min-w-0 grow overflow-hidden bg-components-panel-bg',
+            !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          )}
+          >
+            {children}
+          </div>
+        </div>
+      )
 
   return (
-    <div className="flex h-0 grow overflow-hidden bg-background-body">
-      {!isCurrentWorkspaceDatasetOperator && (
+    <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
+      {shouldShowDetailSidebar && (
         <DetailSidebarFrame
           renderTop={({ expand, onToggle }) => (
             <AppDetailTop
@@ -151,27 +174,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
           renderSection={({ expand }) => <AppDetailSection expand={expand} />}
         />
       )}
-      {!appDetail
-        ? (
-            <div className="flex min-w-0 grow items-center justify-center bg-background-body">
-              <Loading />
-            </div>
-          )
-        : (
-            <div className={cn(
-              'relative flex h-0 grow overflow-hidden',
-              !isWorkflowPage && 'pt-1 pr-1 pb-1',
-            )}
-            >
-              <div className={cn(
-                'grow overflow-hidden bg-components-panel-bg',
-                !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
-              )}
-              >
-                {children}
-              </div>
-            </div>
-          )}
+      {shouldShowDetailSidebar
+        ? <MainContent>{content}</MainContent>
+        : content}
     </div>
   )
 }

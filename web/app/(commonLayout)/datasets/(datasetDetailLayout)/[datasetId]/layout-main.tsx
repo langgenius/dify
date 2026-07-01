@@ -10,6 +10,8 @@ import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-se
 import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import Loading from '@/app/components/base/loading'
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
+import { isDatasetDetailPathname } from '@/app/components/main-nav/routes'
+import { MainContent } from '@/app/components/main-nav/skip-nav'
 import { useAppContext } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -107,43 +109,49 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const isPipelinePage = pathname.endsWith('/pipeline') || pathname.includes('/create-from-pipeline')
   const shouldShowLoading = (!datasetRes && !error) || shouldRedirect || isCheckingRouteAccess || shouldRedirectUnauthorizedRoute
+  const shouldShowDetailSidebar = isDatasetDetailPathname(pathname)
+  const content = shouldShowLoading
+    ? <Loading type="app" />
+    : (
+        <div
+          className={cn(
+            'relative flex h-0 min-w-0 grow overflow-hidden',
+            !isPipelinePage && 'pt-1 pr-1 pb-1',
+          )}
+        >
+          <DatasetDetailContext.Provider value={{
+            indexingTechnique: datasetRes?.indexing_technique,
+            dataset: datasetRes,
+            mutateDatasetRes,
+          }}
+          >
+            <div className={cn(
+              'min-w-0 grow overflow-hidden bg-components-panel-bg',
+              !isPipelinePage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+            )}
+            >
+              {children}
+            </div>
+          </DatasetDetailContext.Provider>
+        </div>
+      )
 
   return (
-    <div className="flex h-0 grow overflow-hidden bg-background-body">
-      <DetailSidebarFrame
-        renderTop={({ expand, onToggle }) => (
-          <DatasetDetailTop
-            expand={expand}
-            onToggle={onToggle}
-          />
-        )}
-        renderSection={({ expand }) => <DatasetDetailSection expand={expand} />}
-      />
-      {shouldShowLoading
-        ? <Loading type="app" />
-        : (
-            <div
-              className={cn(
-                'relative flex h-0 grow overflow-hidden',
-                !isPipelinePage && 'pt-1 pr-1 pb-1',
-              )}
-            >
-              <DatasetDetailContext.Provider value={{
-                indexingTechnique: datasetRes?.indexing_technique,
-                dataset: datasetRes,
-                mutateDatasetRes,
-              }}
-              >
-                <div className={cn(
-                  'grow overflow-hidden bg-components-panel-bg',
-                  !isPipelinePage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
-                )}
-                >
-                  {children}
-                </div>
-              </DatasetDetailContext.Provider>
-            </div>
+    <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
+      {shouldShowDetailSidebar && (
+        <DetailSidebarFrame
+          renderTop={({ expand, onToggle }) => (
+            <DatasetDetailTop
+              expand={expand}
+              onToggle={onToggle}
+            />
           )}
+          renderSection={({ expand }) => <DatasetDetailSection expand={expand} />}
+        />
+      )}
+      {shouldShowDetailSidebar
+        ? <MainContent>{content}</MainContent>
+        : content}
     </div>
   )
 }

@@ -12,7 +12,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
 import { shouldUseDetailSidebar } from './routes'
-import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
+import { MainContent, SkipNav } from './skip-nav'
 
 type MainNavLayoutProps = {
   children: ReactNode
@@ -53,13 +53,9 @@ const MainNavLayout = ({
       <SkipNav>{t('navigation.skipToMain')}</SkipNav>
       <AppDetailStoreCleanup />
       {!shouldHideMainNav && <MainNav />}
-      <main
-        id={MAIN_CONTENT_ID}
-        tabIndex={-1}
-        className="flex min-w-0 grow flex-col overflow-hidden outline-hidden focus:outline-hidden focus-visible:outline-hidden"
-      >
-        {children}
-      </main>
+      {shouldHideMainNav
+        ? children
+        : <MainContent>{children}</MainContent>}
     </div>
   )
 }

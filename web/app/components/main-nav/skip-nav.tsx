@@ -6,6 +6,25 @@ import { cn } from '@langgenius/dify-ui/cn'
 export const MAIN_CONTENT_ID = 'main-content'
 const MAIN_CONTENT_HREF = `#${MAIN_CONTENT_ID}`
 
+type MainContentProps = Omit<ComponentProps<'main'>, 'id' | 'tabIndex'>
+
+export function MainContent({
+  className,
+  ...props
+}: MainContentProps) {
+  return (
+    <main
+      id={MAIN_CONTENT_ID}
+      tabIndex={-1}
+      className={cn(
+        'flex min-w-0 grow flex-col overflow-hidden outline-hidden focus:outline-hidden focus-visible:outline-hidden',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
 export function SkipNav({
   className,
   children,

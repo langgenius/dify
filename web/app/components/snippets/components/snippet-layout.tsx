@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type { SnippetDetail, SnippetSection } from '@/models/snippet'
 import { useTranslation } from 'react-i18next'
 import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
+import { MainContent } from '@/app/components/main-nav/skip-nav'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { SnippetDetailSection } from './snippet-detail-section'
 import SnippetDetailTop from './snippet-detail-top'
@@ -24,7 +25,7 @@ const SnippetLayout = ({
   useDocumentTitle(snippet.name || t('typeLabel'))
 
   return (
-    <div className="relative flex h-full overflow-hidden bg-background-body">
+    <div className="relative flex h-full min-w-0 overflow-hidden bg-background-body">
       <DetailSidebarFrame
         renderTop={({ expand, onToggle }) => (
           <SnippetDetailTop
@@ -34,11 +35,13 @@ const SnippetLayout = ({
         )}
         renderSection={({ expand }) => <SnippetDetailSection expand={expand} />}
       />
-      <div className="relative min-h-0 min-w-0 grow overflow-hidden">
-        <div className="absolute inset-0 min-h-0 min-w-0 overflow-hidden">
-          {children}
+      <MainContent>
+        <div className="relative min-h-0 min-w-0 grow overflow-hidden">
+          <div className="absolute inset-0 min-h-0 min-w-0 overflow-hidden">
+            {children}
+          </div>
         </div>
-      </div>
+      </MainContent>
     </div>
   )
 }

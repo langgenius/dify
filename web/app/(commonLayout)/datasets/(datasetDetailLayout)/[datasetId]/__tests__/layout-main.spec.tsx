@@ -216,6 +216,33 @@ describe('DatasetDetailLayout', () => {
       // Assert
       expect(screen.getByText('Create from pipeline content').parentElement).not.toHaveClass('rounded-lg')
     })
+
+    it('should not render detail sidebar on document creation routes owned by global navigation', () => {
+      // Arrange
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'rag_pipeline',
+          is_published: true,
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Create document content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      expect(screen.getByText('Create document content')).toBeInTheDocument()
+      expect(screen.queryByTestId('detail-sidebar-frame')).not.toBeInTheDocument()
+    })
   })
 
   describe('Permission Route Guards', () => {

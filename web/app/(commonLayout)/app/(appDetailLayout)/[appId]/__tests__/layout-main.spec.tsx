@@ -117,6 +117,23 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
+  it('should keep detail sidebar outside the main skip navigation target', async () => {
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    const main = screen.getByRole('main')
+    const detailSidebar = screen.getByTestId('detail-sidebar-frame')
+
+    expect(main).toHaveAttribute('id', 'main-content')
+    expect(main).toHaveTextContent('App page content')
+    expect(main).not.toContainElement(detailSidebar)
+  })
+
   it('should redirect restricted app pages before exposing app detail content', async () => {
     mockPathname = '/app/app-1/logs'
     mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }))
