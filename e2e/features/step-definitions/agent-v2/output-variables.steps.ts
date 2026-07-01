@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Then } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { skipBlockedPrecondition } from '../../../support/preflight'
+import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
 
 Then('Agent v2 standalone Output Variables should be available', async function (this: DifyWorld) {
   const page = this.getPage()

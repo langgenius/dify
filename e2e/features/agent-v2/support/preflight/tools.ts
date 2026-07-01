@@ -1,6 +1,6 @@
-import type { DifyWorld } from '../../features/support/world'
+import type { DifyWorld } from '../../../support/world'
 import type { LocalizedLabel, PreseededResource } from './common'
-import { createApiContext, expectApiResponseOK } from '../api'
+import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import {
   asRecord,
   asString,

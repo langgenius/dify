@@ -1,24 +1,30 @@
 import type { DifyWorld } from '../../support/world'
 import { Given } from '@cucumber/cucumber'
 import {
-  skipMissingAgentBuilderBrokenChatModel,
-  skipMissingAgentBuilderStableChatModel,
-  skipMissingIndexingPreseededDataset,
-  skipMissingPreseededAgent,
   skipMissingPreseededAgentBackendApiKey,
+  skipMissingPreseededAgentPublishedWebApp,
+  skipMissingPreseededAgentWorkflowReference,
+} from '../../agent-v2/support/preflight/access'
+import {
+  skipMissingPreseededAgent,
   skipMissingPreseededAgentDriveSkill,
   skipMissingPreseededAgentFileTreeFixture,
   skipMissingPreseededAgentFlatFileFixtureConfiguration,
-  skipMissingPreseededAgentPublishedWebApp,
-  skipMissingPreseededAgentWorkflowReference,
-  skipMissingPreseededDataset,
   skipMissingPreseededDualRetrievalAgentConfiguration,
   skipMissingPreseededFullConfigAgentCoreConfiguration,
-  skipMissingPreseededTool,
   skipMissingPreseededToolStatesAgentConfiguration,
   skipMissingPreseededWorkflow,
+} from '../../agent-v2/support/preflight/agents'
+import {
+  skipMissingIndexingPreseededDataset,
+  skipMissingPreseededDataset,
   skipMissingReadyPreseededDataset,
-} from '../../../support/preflight'
+} from '../../agent-v2/support/preflight/datasets'
+import {
+  skipMissingAgentBuilderBrokenChatModel,
+  skipMissingAgentBuilderStableChatModel,
+} from '../../agent-v2/support/preflight/models'
+import { skipMissingPreseededTool } from '../../agent-v2/support/preflight/tools'
 
 Given('the Agent Builder stable chat model is available', async function (this: DifyWorld) {
   const stableModel = await skipMissingAgentBuilderStableChatModel(this)

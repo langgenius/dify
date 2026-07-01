@@ -1,8 +1,8 @@
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentVersionDetail, getTestAgent, normalAgentPrompt } from '../../../support/agent'
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
+import { getAgentVersionDetail, getTestAgent, normalAgentPrompt } from '../../agent-v2/support/agent'
 import { getCurrentAgentId } from './configure-helpers'
 
 When('I publish the Agent v2 draft', async function (this: DifyWorld) {

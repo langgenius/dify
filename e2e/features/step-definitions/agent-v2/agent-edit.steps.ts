@@ -1,8 +1,8 @@
 import type { DifyWorld } from '../../support/world'
 import { Then } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { agentBuilderExpectedTokens, agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../../support/agent-builder-resources'
-import { agentBuilderTestMaterials } from '../../../support/test-materials'
+import { agentBuilderExpectedTokens, agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
+import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
 import { expectProviderToolActionVisible, openAgentKnowledgeRetrievalDialog } from './configure-helpers'
 
 Then('I should see the Agent v2 full-config fixture sections', async function (this: DifyWorld) {

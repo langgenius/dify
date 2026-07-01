@@ -12,10 +12,10 @@ import {
   updatedAgentPrompt,
   updatedAgentSoulConfig,
   uploadAgentConfigFileToDraft,
-} from '../../../support/agent'
-import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../../support/agent-builder-resources'
-import { skipBlockedPrecondition } from '../../../support/preflight'
-import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../../support/test-materials'
+} from '../../agent-v2/support/agent'
+import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
+import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
+import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {
   getAgentEnvVariableValue,
   getCurrentAgentId,

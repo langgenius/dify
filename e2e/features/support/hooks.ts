@@ -7,11 +7,11 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
-import { deleteAgentConfigFile, deleteAgentConfigSkill, deleteAgentDriveFile, deleteTestAgent } from '../../support/agent'
 import { deleteTestApp } from '../../support/api'
 import { deleteTestDataset } from '../../support/datasets'
 import { deleteBuiltinToolCredential } from '../../support/tools'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
+import { deleteAgentConfigFile, deleteAgentConfigSkill, deleteAgentDriveFile, deleteTestAgent } from '../agent-v2/support/agent'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')

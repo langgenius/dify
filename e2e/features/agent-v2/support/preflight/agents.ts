@@ -1,11 +1,11 @@
-import type { DifyWorld } from '../../features/support/world'
+import type { DifyWorld } from '../../../support/world'
 import type { AgentComposerResponse, PreseededResource } from './common'
+import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../agent-builder-resources'
-import { createApiContext, expectApiResponseOK } from '../api'
 import {
   agentBuilderFileTreeFixtureFileNames,
   agentBuilderFileTreeFixtureFiles,

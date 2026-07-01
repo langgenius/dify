@@ -7,8 +7,8 @@ import {
   getAgentReferencingWorkflows,
   setAgentApiAccess,
   setAgentSiteAccessAndGetURL,
-} from '../../../support/agent'
-import { agentBuilderPreseededResources } from '../../../support/agent-builder-resources'
+} from '../../agent-v2/support/agent'
+import { agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
 
 const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)

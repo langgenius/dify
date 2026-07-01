@@ -1,16 +1,16 @@
 import type { Locator } from '@playwright/test'
-import type { AgentComposerEnvVariable } from '../../../support/agent'
+import type { AgentComposerEnvVariable } from '../../agent-v2/support/agent'
 import type { DifyWorld } from '../../support/world'
 import { expect } from '@playwright/test'
 import {
   getAgentComposerDraft,
   normalAgentPrompt,
   uploadAgentConfigSkillToDraft,
-} from '../../../support/agent'
+} from '../../agent-v2/support/agent'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,
-} from '../../../support/test-materials'
+} from '../../agent-v2/support/test-materials'
 
 export const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)

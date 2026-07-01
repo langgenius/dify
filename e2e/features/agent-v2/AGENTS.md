@@ -62,7 +62,7 @@ Use the existing namespace shape:
 - `world.agentBuilder.accessPoint.composerDraftSnapshot`
 - `world.agentBuilder.workflow.outputVariables`
 
-Use `support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, Agent drive file cleanup, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
+Use `features/agent-v2/support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, Agent drive file cleanup, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
 
 Use `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario and `DifyWorld.createdBuiltinToolCredentials` for built-in tool credentials created during a scenario. The shared `After` hook deletes Agent drive files first so cleanup also works for scenarios that upload into a preseeded Agent.
 
@@ -70,7 +70,7 @@ Use `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a 
 
 Use `a basic configured Agent v2 test agent has been created via API` when a scenario only needs a created Agent with a composer draft. Do not use that basic shell for runtime, model, tool, skill, knowledge, environment variable, moderation, or output-variable coverage until those resources have explicit seed helpers and readiness checks.
 
-Use `a runnable Agent v2 test agent has been created via API` after `the Agent Builder stable chat model is available` when a scenario needs a real model-backed Agent. The step writes the preflight model into the Agent Soul model config through `support/agent.ts` with deterministic E2E model settings; do not duplicate provider/model payload construction in individual steps.
+Use `a runnable Agent v2 test agent has been created via API` after `the Agent Builder stable chat model is available` when a scenario needs a real model-backed Agent. The step writes the preflight model into the Agent Soul model config through `features/agent-v2/support/agent.ts` with deterministic E2E model settings; do not duplicate provider/model payload construction in individual steps.
 
 Use `the Agent v2 configuration should be saved automatically` after UI edits that rely on Configure autosave. It waits for the user-visible publish bar saved state; do not replace it with network-idle waits or internal store checks.
 
@@ -96,7 +96,7 @@ Keep Preview/Test Run scenarios out of the current build-mode slice unless the t
 
 ## Preflight Resources
 
-Keep `support/preflight.ts` as the public barrel. Agent Builder resource checks live under `support/preflight/`:
+Agent Builder resource checks live under `features/agent-v2/support/preflight/`. Import from the specific module that owns the resource contract; do not add a preflight barrel file:
 
 - `models.ts`
 - `agents.ts`

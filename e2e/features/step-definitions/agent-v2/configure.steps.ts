@@ -13,8 +13,8 @@ import {
   saveAgentComposerDraft,
   updatedAgentPrompt,
   uploadAgentDriveSkill,
-} from '../../../support/agent'
-import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../../support/test-materials'
+} from '../../agent-v2/support/agent'
+import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {
   expectNormalAgentPromptDraft,
   getCurrentAgentId,

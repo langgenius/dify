@@ -1,6 +1,6 @@
-import type { DifyWorld } from '../../features/support/world'
+import type { DifyWorld } from '../../../support/world'
+import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
-import { createApiContext, expectApiResponseOK } from '../api'
 
 export type PreseededResource = NonNullable<
   DifyWorld['agentBuilder']['preflight']['preseededResources'][string]

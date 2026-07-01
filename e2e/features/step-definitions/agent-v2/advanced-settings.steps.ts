@@ -2,10 +2,10 @@ import type { Locator } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentComposerDraft } from '../../../support/agent'
-import { agentBuilderFixedInputs } from '../../../support/agent-builder-resources'
-import { skipBlockedPrecondition } from '../../../support/preflight'
-import { getAgentBuilderTestMaterialPath } from '../../../support/test-materials'
+import { getAgentComposerDraft } from '../../agent-v2/support/agent'
+import { agentBuilderFixedInputs } from '../../agent-v2/support/agent-builder-resources'
+import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
+import { getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
 import {
   expectAgentEnvVariableHidden,
   expectAgentEnvVariableVisible,

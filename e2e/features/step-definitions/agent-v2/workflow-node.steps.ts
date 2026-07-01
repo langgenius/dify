@@ -3,16 +3,16 @@ import type { AgentV2WorkflowOutputVariable, DifyWorld } from '../../support/wor
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import {
-  createAgentSoulConfigWithModel,
-  createConfiguredTestAgent,
-  normalAgentSoulConfig,
-} from '../../../support/agent'
-import {
   createTestApp,
   getWorkflowDraft,
   syncAgentV2WorkflowDraft,
 } from '../../../support/api'
 import { createE2EResourceName } from '../../../support/naming'
+import {
+  createAgentSoulConfigWithModel,
+  createConfiguredTestAgent,
+  normalAgentSoulConfig,
+} from '../../agent-v2/support/agent'
 
 const agentV2WorkflowNodeId = 'agent-v2'
 

@@ -1,6 +1,6 @@
-import type { DifyWorld } from '../../features/support/world'
+import type { DifyWorld } from '../../../support/world'
+import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
-import { createApiContext, expectApiResponseOK } from '../api'
 import { skipBlockedPrecondition } from './common'
 
 const stableChatModelProviderEnv = 'E2E_STABLE_MODEL_PROVIDER'

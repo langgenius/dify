@@ -296,9 +296,9 @@ Use `support/naming.ts` for generated test resource names. New app, Agent, datas
 
 Use `fixtures/test-materials/` for checked-in files that scenarios upload, preview, index, or retrieve. Keep these fixtures small and deterministic, and use `support/test-materials.ts` to resolve their absolute paths.
 
-Use `support/preflight.ts` for scenarios that require optional external resources such as a model provider, plugin/tool credential, knowledge base seed, or fixed app. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
+Use scoped feature support for scenarios that require optional external resources such as a model provider, plugin/tool credential, knowledge base seed, or fixed app. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
 
-Keep `support/preflight.ts` as the public barrel when feature-specific checks need implementation modules underneath it. The step wording should stay explicit in the feature area, while support code owns API checks, readiness polling, and blocked-precondition messages.
+Keep package-level support limited to broadly reusable primitives such as API clients, naming, fixture path resolution, and cleanup helpers. Feature-specific seed contracts and preflight checks belong under the owning feature's support folder.
 
 Use typed cleanup fields on `DifyWorld` for resource types created by scenarios, and use `DifyWorld.registerCleanup(...)` when a scenario creates any resource type that is not covered by typed cleanup fields. Cleanup callbacks run after typed cleanup queues, even when the scenario fails.
 

@@ -1,8 +1,8 @@
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from './api'
-import { assertE2EResourceName, createE2EResourceName } from './naming'
+import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from '../../../support/api'
+import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming'
 
 export type AgentSeed = {
   active_config_is_published?: boolean

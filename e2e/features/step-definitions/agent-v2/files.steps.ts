@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { agentBuilderFileTreeFixtureFileNames } from '../../../support/test-materials'
+import { agentBuilderFileTreeFixtureFileNames } from '../../agent-v2/support/test-materials'
 import {
   expectAgentConfigFileHidden,
   expectAgentConfigFileSaved,
