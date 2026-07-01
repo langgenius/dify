@@ -318,3 +318,32 @@ def test_inline_noqa_suppression_with_explanatory_text_skips_added_getattr(tmp_p
         tmp_path / "pkg/existing.py"
     ).read_text(encoding="utf-8")
     assert result.returncode == 0, stderr_lines(result)
+
+
+def test_inline_noqa_without_explanatory_text_is_not_sufficient(tmp_path: Path) -> None:
+    init_repo(tmp_path)
+    write_repo_file(
+        tmp_path,
+        "pkg/existing.py",
+        """
+        def stable() -> str:
+            return "ok"
+        """,
+    )
+    commit_all(tmp_path, "baseline")
+    checkout_feature_branch(tmp_path)
+
+    write_repo_file(
+        tmp_path,
+        "pkg/existing.py",
+        """
+        def read_value(obj):
+            return getattr(obj, "dynamic_name", None)  # noqa: no-new-getattr
+        """,
+    )
+    commit_all(tmp_path, "add bare noqa getattr")
+
+    result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
+
+    assert result.returncode == 1
+    assert_has_actionable_violation(result.stderr, "pkg/existing.py")
