@@ -11,6 +11,7 @@ import json
 from typing import TypedDict
 
 from pydantic import BaseModel
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 
 
 class PluginDaemonErrorPayload(TypedDict):
@@ -24,6 +25,8 @@ def to_plugin_daemon_jsonable(value: object) -> object:
     """Convert nested request data into JSON-safe daemon payload values."""
     if isinstance(value, BaseModel):
         return value.model_dump(mode="json")
+    if isinstance(value, TextPromptMessageContent):
+        return value.data
     if isinstance(value, dict):
         return {key: to_plugin_daemon_jsonable(item) for key, item in value.items()}
     if isinstance(value, list | tuple):
