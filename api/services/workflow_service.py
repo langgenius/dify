@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -84,6 +84,7 @@ from services.errors.app import (
 )
 from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
+from services.workflow_ref_service import WorkflowRef
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .human_input_delivery_test_service import (
@@ -142,7 +143,7 @@ class WorkflowService:
         return db.session.execute(stmt).scalar_one()
 
     def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, session: Session | None = None
+        self, app_model: App, workflow_id: str | None = None, session: Session | scoped_session | None = None
     ) -> Workflow | None:
         """
         Get draft workflow
@@ -169,7 +170,7 @@ class WorkflowService:
         return workflow
 
     def get_published_workflow_by_id(
-        self, app_model: App, workflow_id: str, session: Session | None = None
+        self, app_model: App, workflow_id: str, session: Session | scoped_session | None = None
     ) -> Workflow | None:
         """
         fetch published workflow by workflow_id
@@ -1593,19 +1594,27 @@ class WorkflowService:
             raise ValueError(f"Invalid HumanInput node data: {str(e)}")
 
     def update_workflow(
-        self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict[str, Any]
+        self,
+        *,
+        session: Session,
+        account_id: str,
+        data: dict[str, Any],
+        workflow_ref: WorkflowRef,
     ) -> Workflow | None:
         """
         Update workflow attributes
 
         :param session: SQLAlchemy database session
-        :param workflow_id: Workflow ID
-        :param tenant_id: Tenant ID
         :param account_id: Account ID (for permission check)
         :param data: Dictionary containing fields to update
+        :param workflow_ref: Owner-bound workflow reference
         :return: Updated workflow or None if not found
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_ref.workflow_id,
+            Workflow.tenant_id == workflow_ref.tenant_id,
+            Workflow.app_id == workflow_ref.owner_id,
+        )
         workflow = session.scalar(stmt)
 
         if not workflow:
@@ -1622,30 +1631,33 @@ class WorkflowService:
 
         return workflow
 
-    def delete_workflow(self, *, session: Session, workflow_id: str, tenant_id: str) -> bool:
+    def delete_workflow(self, *, session: Session, workflow_ref: WorkflowRef) -> bool:
         """
         Delete a workflow
 
         :param session: SQLAlchemy database session
-        :param workflow_id: Workflow ID
-        :param tenant_id: Tenant ID
+        :param workflow_ref: Owner-bound workflow reference
         :return: True if successful
         :raises: ValueError if workflow not found
         :raises: WorkflowInUseError if workflow is in use
         :raises: DraftWorkflowDeletionError if workflow is a draft version
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_ref.workflow_id,
+            Workflow.tenant_id == workflow_ref.tenant_id,
+            Workflow.app_id == workflow_ref.owner_id,
+        )
         workflow = session.scalar(stmt)
 
         if not workflow:
-            raise ValueError(f"Workflow with ID {workflow_id} not found")
+            raise ValueError(f"Workflow with ID {workflow_ref.workflow_id} not found")
 
         # Check if workflow is a draft version
         if workflow.version == Workflow.VERSION_DRAFT:
             raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
 
         # Check if this workflow is currently referenced by an app
-        app_stmt = select(App).where(App.workflow_id == workflow_id)
+        app_stmt = select(App).where(App.workflow_id == workflow_ref.workflow_id)
         app = session.scalar(app_stmt)
         if app:
             # Cannot delete a workflow that's currently in use by an app

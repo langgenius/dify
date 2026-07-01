@@ -30,9 +30,11 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import App, AppMode
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -139,12 +141,21 @@ class ChatMessageTextApi(Resource):
     def post(self, app_model: App):
         try:
             payload = TextToSpeechPayload.model_validate(console_ns.payload)
+            message_ref = None
+            if payload.message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    payload.message_id,
+                    account_id=current_user.id,
+                )
 
             response = AudioService.transcript_tts(
                 app_model=app_model,
+                session=db.session,
                 text=payload.text,
                 voice=payload.voice,
-                message_id=payload.message_id,
+                message_ref=message_ref,
                 is_draft=True,
             )
             return response

@@ -1,5 +1,5 @@
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from './tag-combobox-item'
-import type { TagType } from '@/contract/console/tags'
 import { ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,7 @@ type TagSearchContentProps = {
   onInputValueChange: (value: string) => void
   onOpenTagManagement?: () => void
   onClose?: () => void
+  canBindOrUnbindTags?: boolean
 }
 
 export const TagSearchContent = ({
@@ -22,6 +23,7 @@ export const TagSearchContent = ({
   onInputValueChange,
   onOpenTagManagement,
   onClose,
+  canBindOrUnbindTags = false,
 }: TagSearchContentProps) => {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
@@ -56,7 +58,7 @@ export const TagSearchContent = ({
       </div>
       <ComboboxList className="max-h-58">
         {(tag: TagComboboxItem) => {
-          if (isCreateTagOption(tag)) {
+          if (isCreateTagOption(tag) && canManageTags) {
             return (
               <Fragment key={tag.id}>
                 <ComboboxItem
@@ -76,7 +78,11 @@ export const TagSearchContent = ({
           }
 
           return (
-            <ComboboxItem key={tag.id} value={tag}>
+            <ComboboxItem
+              key={tag.id}
+              value={tag}
+              disabled={!canBindOrUnbindTags && !canManageTags}
+            >
               <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
               <ComboboxItemIndicator />
             </ComboboxItem>

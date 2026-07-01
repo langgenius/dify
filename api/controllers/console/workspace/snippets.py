@@ -455,9 +455,6 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     @with_current_tenant_id
     def post(self, current_tenant_id: str, snippet_id: str):
         """Increment snippet use count when it is inserted into a workflow."""

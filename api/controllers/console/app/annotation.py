@@ -4,6 +4,8 @@ from uuid import UUID
 from flask import abort, make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from sqlalchemy import select
+from werkzeug.exceptions import NotFound
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -19,6 +21,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     Annotation,
@@ -29,7 +32,8 @@ from fields.annotation_fields import (
 )
 from fields.base import ResponseModel
 from libs.helper import uuid_value
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
+from models.model import App
 from services.annotation_service import (
     AppAnnotationService,
     EnableAnnotationArgs,
@@ -37,6 +41,17 @@ from services.annotation_service import (
     UpdateAnnotationSettingArgs,
     UpsertAnnotationArgs,
 )
+from services.app_ref_service import AppRef, AppRefService
+
+
+def _get_app_ref(app_id: str) -> AppRef:
+    _, current_tenant_id = current_account_with_tenant()
+    app = db.session.scalar(
+        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
+    )
+    if app is None:
+        raise NotFound("App not found")
+    return AppRefService.create_app_ref(app)
 
 
 class AnnotationReplyPayload(BaseModel):
@@ -329,7 +344,8 @@ class AnnotationApi(Resource):
                     "message": "annotation_ids are required if the parameter is provided.",
                 }, 400
 
-            AppAnnotationService.delete_app_annotations_in_batch(str(app_id), annotation_ids)
+            app_ref = _get_app_ref(str(app_id))
+            AppAnnotationService.delete_app_annotations_in_batch(app_ref, annotation_ids)
             return "", 204
         # If no annotation_ids are provided, handle clearing all annotations
         else:
@@ -388,7 +404,9 @@ class AnnotationUpdateDeleteApi(Resource):
             update_args["answer"] = args.answer
         if args.question is not None:
             update_args["question"] = args.question
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, str(app_id), str(annotation_id))
+        app_ref = _get_app_ref(str(app_id))
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, db.session)
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
@@ -398,7 +416,9 @@ class AnnotationUpdateDeleteApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Annotation deleted successfully")
     def delete(self, app_id: UUID, annotation_id: UUID):
-        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
+        app_ref = _get_app_ref(str(app_id))
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
+        AppAnnotationService.delete_app_annotation(annotation_ref, db.session)
         return "", 204
 
 
@@ -511,8 +531,12 @@ class AnnotationHitHistoryListApi(Resource):
     def get(self, app_id: UUID, annotation_id: UUID):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
+        app_ref = _get_app_ref(str(app_id))
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
         annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(
-            str(app_id), str(annotation_id), page, limit
+            annotation_ref,
+            page,
+            limit,
         )
         history_models = TypeAdapter(list[AnnotationHitHistory]).validate_python(
             annotation_hit_history_list, from_attributes=True

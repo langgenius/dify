@@ -26,7 +26,6 @@ import {
   ACCOUNT_SETTING_MODAL_ACTION,
   SETTINGS_TAB_VALUES,
 } from '@/app/components/header/account-setting/constants'
-import { isServer } from '@/utils/client'
 
 /**
  * Modal State Query Parameters
@@ -172,27 +171,4 @@ export function usePluginInstallation() {
       },
     },
   )
-}
-
-/**
- * Utility to clear specific query parameters from URL
- * This is a client-side utility that should be called from client components
- *
- * @param keys - Single key or array of keys to remove from URL
- *
- * @example
- * // In a client component
- * clearQueryParams('param1')
- * clearQueryParams(['param1', 'param2'])
- */
-export function clearQueryParams(keys: string | string[]) {
-  if (isServer)
-    return
-
-  const url = new URL(window.location.href)
-  const keysArray = Array.isArray(keys) ? keys : [keys]
-
-  keysArray.forEach(key => url.searchParams.delete(key))
-
-  window.history.replaceState(null, '', url.toString())
 }

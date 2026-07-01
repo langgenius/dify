@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.agent.app_helpers import resolve_agent_app_model, resolve_agent_runtime_app_model
 from controllers.console.apikey import ApiKeyItem, ApiKeyList, BaseApiKeyListResource, BaseApiKeyResource
 from controllers.console.app.app import (
     AppDetailWithSite as GenericAppDetailWithSite,
@@ -54,8 +54,10 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
+from models.agent import Agent, AgentStatus
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
+from services.agent.composer_service import AgentComposerService
 from services.agent.errors import AgentNotFoundError
 from services.agent.observability_service import (
     AgentLogQueryParams,
@@ -65,7 +67,7 @@ from services.agent.observability_service import (
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.agent_entities import RosterListQuery
+from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.feature_service import FeatureService
 
 
@@ -232,6 +234,8 @@ class AgentStatisticsQuery(BaseModel):
 
 class AgentAppPartial(GenericAppPartial):
     app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
     debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
@@ -241,13 +245,49 @@ class AgentAppPartial(GenericAppPartial):
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
     app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
     debug_conversation_id: str | None = None
+    debug_conversation_has_messages: bool = False
+    debug_conversation_message_count: int = 0
     role: str | None = None
     active_config_is_published: bool = False
 
 
 class AgentDebugConversationRefreshResponse(BaseModel):
     debug_conversation_id: str
+    debug_conversation_has_messages: bool = False
+    debug_conversation_message_count: int = 0
+
+
+class AgentPublishPayload(BaseModel):
+    version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
+
+
+class AgentPublishResponse(BaseModel):
+    result: str
+    active_config_snapshot_id: str
+    active_config_snapshot: dict[str, object] | None = None
+    draft: dict[str, object] | None = None
+
+
+class AgentBuildDraftCheckoutPayload(BaseModel):
+    force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
+
+
+class AgentBuildDraftResponse(BaseModel):
+    variant: str
+    draft: dict[str, object]
+    agent_soul: dict[str, object]
+
+
+class AgentBuildDraftApplyResponse(BaseModel):
+    result: str
+    draft: dict[str, object]
+
+
+class AgentSimpleResultResponse(BaseModel):
+    result: str
 
 
 class AgentAppPagination(GenericAppPagination):
@@ -261,6 +301,9 @@ register_schema_models(
     AgentAppCreatePayload,
     AgentAppUpdatePayload,
     AgentAppCopyPayload,
+    AgentPublishPayload,
+    AgentBuildDraftCheckoutPayload,
+    ComposerSavePayload,
     AgentApiStatusPayload,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
@@ -277,6 +320,10 @@ register_response_schema_models(
     AgentAppDetailWithSite,
     AgentAppPartial,
     AgentDebugConversationRefreshResponse,
+    AgentPublishResponse,
+    AgentBuildDraftResponse,
+    AgentBuildDraftApplyResponse,
+    AgentSimpleResultResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -294,7 +341,7 @@ def _agent_roster_service() -> AgentRosterService:
     return AgentRosterService(db.session)
 
 
-def _serialize_agent_app_detail(app_model, *, current_user: Account) -> dict:
+def _serialize_agent_app_detail(app_model, *, current_user: Account, agent_id: str | None = None) -> dict:
     """Serialize an Agent App detail using roster-only DTOs.
 
     `/agent` responses are roster-shaped rather than raw app-shaped: `id`
@@ -311,17 +358,35 @@ def _serialize_agent_app_detail(app_model, *, current_user: Account) -> dict:
 
     roster_service = _agent_roster_service()
     payload = AgentAppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
-    agent = roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=str(app_model.id))
+    agent = (
+        db.session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == app_model.tenant_id,
+                Agent.id == agent_id,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        if agent_id
+        else roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=str(app_model.id))
+    )
     if not agent:
         raise AgentNotFoundError()
     payload.pop("bound_agent_id", None)
-    payload["app_id"] = str(app_model.id)
+    payload["app_id"] = agent.app_id
+    payload["backing_app_id"] = roster_service.runtime_backing_app_id(agent)
+    payload["hidden_app_backed"] = bool(agent.backing_app_id and agent.backing_app_id != agent.app_id)
     payload["id"] = agent.id
-    payload["debug_conversation_id"] = roster_service.get_or_create_agent_app_debug_conversation_id(
+    debug_conversation_id = roster_service.get_or_create_agent_app_debug_conversation_id(
         tenant_id=app_model.tenant_id,
         agent_id=agent.id,
         account_id=current_user.id,
     )
+    message_count = roster_service.count_agent_app_debug_conversation_messages(
+        conversation_id=debug_conversation_id,
+    )
+    payload["debug_conversation_id"] = debug_conversation_id
+    payload["debug_conversation_has_messages"] = message_count > 0
+    payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
     payload["active_config_is_published"] = roster_service.active_config_is_published(
         tenant_id=app_model.tenant_id,
@@ -365,6 +430,8 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str, current_u
         agent = agents_by_app_id.get(app_id)
         if agent:
             item["app_id"] = app_id
+            item["backing_app_id"] = agent.backing_app_id or app_id
+            item["hidden_app_backed"] = False
             item["id"] = agent.id
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
             item["role"] = agent.role or ""
@@ -516,8 +583,8 @@ class AgentAppApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_app_detail(app_model, current_user=current_user)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        return _serialize_agent_app_detail(app_model, current_user=current_user, agent_id=str(agent_id))
 
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
@@ -578,8 +645,116 @@ class AgentDebugConversationRefreshApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
         )
-        return AgentDebugConversationRefreshResponse(debug_conversation_id=debug_conversation_id).model_dump(
-            mode="json"
+        return AgentDebugConversationRefreshResponse(
+            debug_conversation_id=debug_conversation_id,
+            debug_conversation_has_messages=False,
+            debug_conversation_message_count=0,
+        ).model_dump(mode="json")
+
+
+@console_ns.route("/agent/<uuid:agent_id>/publish")
+class AgentPublishApi(Resource):
+    @console_ns.expect(console_ns.models[AgentPublishPayload.__name__])
+    @console_ns.response(200, "Agent draft published", console_ns.models[AgentPublishResponse.__name__])
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        args = AgentPublishPayload.model_validate(console_ns.payload or {})
+        return AgentComposerService.publish_agent_app_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+            version_note=args.version_note,
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/build-draft/checkout")
+class AgentBuildDraftCheckoutApi(Resource):
+    @console_ns.expect(console_ns.models[AgentBuildDraftCheckoutPayload.__name__])
+    @console_ns.response(200, "Agent build draft checked out", console_ns.models[AgentBuildDraftResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        args = AgentBuildDraftCheckoutPayload.model_validate(console_ns.payload or {})
+        return AgentComposerService.checkout_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+            force=args.force,
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/build-draft")
+class AgentBuildDraftApi(Resource):
+    @console_ns.response(200, "Agent build draft", console_ns.models[AgentBuildDraftResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        return AgentComposerService.load_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+        )
+
+    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def put(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
+        return AgentComposerService.save_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+            payload=payload,
+        )
+
+    @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        return AgentComposerService.discard_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/build-draft/apply")
+class AgentBuildDraftApplyApi(Resource):
+    @console_ns.response(200, "Agent build draft applied", console_ns.models[AgentBuildDraftApplyResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        return AgentComposerService.apply_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
         )
 
 
@@ -712,7 +887,7 @@ class AgentLogsApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
         query_data["sources"] = _multi_query_values("sources", "source")
         query_data["statuses"] = _multi_query_values("statuses", "status")
@@ -749,7 +924,7 @@ class AgentLogMessagesApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
         query_data["sources"] = _multi_query_values("sources", "source")
         query_data["statuses"] = _multi_query_values("statuses", "status")
@@ -786,7 +961,7 @@ class AgentLogSourcesApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         payload = _agent_observability_service().list_log_sources(app=app_model, agent_id=str(agent_id))
         return dump_response(AgentLogSourceListResponse, payload)
 
@@ -805,7 +980,7 @@ class AgentStatisticsSummaryApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = AgentStatisticsQuery.model_validate(request.args.to_dict(flat=True))
         timezone = current_user.timezone or "UTC"
         start, end = _parse_observability_time_range(query.start, query.end, current_user)

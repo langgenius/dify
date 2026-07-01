@@ -16,13 +16,13 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
   const appDetail = useAppStore(state => state.appDetail)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canMonitor = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+  const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  }).canMonitor, [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
 
-  if (!appDetail || !canMonitor)
+  if (!appDetail || !appACLCapabilities.canMonitor)
     return null
 
   return (
@@ -31,7 +31,7 @@ const OverviewView = ({ appId }: OverviewViewProps) => {
       <div className="min-h-0 flex-1">
         <ChartView
           appId={appId}
-          headerRight={<TracingPanel />}
+          headerRight={appACLCapabilities.canConfigureTracing ? <TracingPanel /> : null}
         />
       </div>
     </div>

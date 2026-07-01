@@ -385,7 +385,7 @@ class TestParagraphIndexProcessor:
         with pytest.raises(ValueError, match="model_name and model_provider_name"):
             ParagraphIndexProcessor.generate_summary("tenant-1", "text", {"enable": True})
 
-    def test_generate_summary_text_only_flow(self, caplog) -> None:
+    def test_generate_summary_text_only_flow(self, caplog: pytest.LogCaptureFixture) -> None:
         model_instance = Mock()
         model_instance.credentials = {"k": "v"}
         model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
@@ -459,7 +459,7 @@ class TestParagraphIndexProcessor:
         assert summary == "vision summary"
         mock_extract_text.assert_not_called()
 
-    def test_generate_summary_fallbacks_for_prompt_and_result_types(self, caplog) -> None:
+    def test_generate_summary_fallbacks_for_prompt_and_result_types(self, caplog: pytest.LogCaptureFixture) -> None:
         model_instance = Mock()
         model_instance.credentials = {"k": "v"}
         model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(
@@ -503,7 +503,7 @@ class TestParagraphIndexProcessor:
             "Failed to convert image file to prompt message content" in record.message for record in caplog.records
         )
 
-    def test_extract_images_from_text_handles_patterns_and_build_errors(self, caplog) -> None:
+    def test_extract_images_from_text_handles_patterns_and_build_errors(self, caplog: pytest.LogCaptureFixture) -> None:
         text = (
             "![img](/files/11111111-1111-1111-1111-111111111111/image-preview) "
             "![img2](/files/22222222-2222-2222-2222-222222222222/file-preview) "
@@ -554,7 +554,7 @@ class TestParagraphIndexProcessor:
         session.scalars.return_value = scalars_result
         assert ParagraphIndexProcessor._extract_images_from_text("tenant-1", "no images here", session) == []
 
-    def test_extract_images_from_text_logs_when_build_fails(self, caplog) -> None:
+    def test_extract_images_from_text_logs_when_build_fails(self, caplog: pytest.LogCaptureFixture) -> None:
         text = "![img](/files/11111111-1111-1111-1111-111111111111/image-preview)"
         image_upload = SimpleNamespace(
             id="11111111-1111-1111-1111-111111111111",
@@ -583,7 +583,7 @@ class TestParagraphIndexProcessor:
         assert files == []
         assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
 
-    def test_extract_images_from_segment_attachments(self, caplog) -> None:
+    def test_extract_images_from_segment_attachments(self, caplog: pytest.LogCaptureFixture) -> None:
         image_upload = SimpleNamespace(
             id="file-1",
             name="image",

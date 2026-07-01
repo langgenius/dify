@@ -1,7 +1,7 @@
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
 import type { ComponentProps } from 'react'
 import type { TagComboboxItem } from './tag-combobox-item'
-import type { Tag, TagType } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -78,8 +78,8 @@ export const TagSelector = ({
   const {
     isPending: isCreatingTag,
     mutate: createTag,
-  } = useMutation(consoleQuery.tags.create.mutationOptions())
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+  } = useMutation(consoleQuery.tags.post.mutationOptions())
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.get.queryOptions({
     input: {
       query: {
         type,
@@ -98,7 +98,10 @@ export const TagSelector = ({
       return tagName ? [tagName] : []
     })
   }, [tagList, value])
-  const triggerLabel = tagNames.length ? tagNames.join(', ') : t('tag.addTag', { ns: 'common' })
+  const emptyTriggerLabel = canBindOrUnbindTags
+    ? t('tag.addTag', { ns: 'common' })
+    : t('tag.noTag', { ns: 'common' })
+  const triggerLabel = tagNames.length ? tagNames.join(', ') : emptyTriggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
     const tagIds = new Set<string>()
@@ -122,7 +125,7 @@ export const TagSelector = ({
         id: `__create_tag__:${inputValue}`,
         name: inputValue,
         type,
-        binding_count: 0,
+        binding_count: '0',
         isCreateOption: true,
       })
     }
@@ -227,7 +230,10 @@ export const TagSelector = ({
         )}
         icon={false}
       >
-        <TagTrigger tags={tagNames} />
+        <TagTrigger
+          tags={tagNames}
+          canBindOrUnbindTags={canBindOrUnbindTags}
+        />
       </ComboboxTrigger>
       <ComboboxContent
         placement={placement}
@@ -242,6 +248,7 @@ export const TagSelector = ({
           type={type}
           inputValue={inputValue}
           onInputValueChange={setInputValue}
+          canBindOrUnbindTags={canBindOrUnbindTags}
           onOpenTagManagement={onOpenTagManagement}
           onClose={() => handleOpenChange(false)}
         />

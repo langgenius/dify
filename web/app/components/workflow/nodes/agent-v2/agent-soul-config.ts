@@ -1,7 +1,8 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { AgentSoulConfig, WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
+import isEqual from 'fast-deep-equal'
 import { useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -54,6 +55,8 @@ export function useWorkflowInlineAgentConfigureSync({
   nodeId,
   baseConfig,
   currentModel,
+  autoSaveEnabled = true,
+  onDraftSaved,
   enabled,
 }: {
   nodeId: string
@@ -63,6 +66,8 @@ export function useWorkflowInlineAgentConfigureSync({
     model: string
     plugin_id?: string
   }
+  autoSaveEnabled?: boolean
+  onDraftSaved?: (composerState: WorkflowAgentComposerResponse) => void
   enabled: boolean
 }) {
   const queryClient = useQueryClient()
@@ -74,6 +79,7 @@ export function useWorkflowInlineAgentConfigureSync({
   const baseConfigRef = useRef(baseConfig)
   const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
+  const onDraftSavedRef = useRef(onDraftSaved)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
   const saveComposerMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
@@ -82,6 +88,7 @@ export function useWorkflowInlineAgentConfigureSync({
   baseConfigRef.current = baseConfig
   currentModelRef.current = currentModel
   enabledRef.current = enabled
+  onDraftSavedRef.current = onDraftSaved
 
   const getAgentSoulDraft = useCallback(() => formStateToAgentSoulConfig({
     baseConfig: baseConfigRef.current,
@@ -89,7 +96,7 @@ export function useWorkflowInlineAgentConfigureSync({
     currentModel: currentModelRef.current,
   }), [store])
 
-  const saveComposer = useSerialAsyncCallback(async (configSnapshot: AgentSoulConfig) => {
+  const saveComposer = useSerialAsyncCallback(async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
     if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow)
       return
 
@@ -121,6 +128,8 @@ export function useWorkflowInlineAgentConfigureSync({
     setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
     setDraftSavedAt(Date.now())
     lastAutosavedDraftKeyRef.current = savedDraftKey
+    onDraftSavedRef.current?.(composerState)
+    return composerState
   })
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
@@ -136,9 +145,18 @@ export function useWorkflowInlineAgentConfigureSync({
     if (!enabledRef.current)
       return
 
+    const configSnapshot = getAgentSoulDraft()
+    const hasEffectiveModelChange = !isEqual(configSnapshot.model, baseConfigRef.current?.model)
     debouncedSaveDraft.cancel?.()
-    await saveComposer(getAgentSoulDraft())
-  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer])
+    if (!store.get(isAgentComposerDirtyAtom) && !hasEffectiveModelChange)
+      return
+
+    return saveComposer(configSnapshot)
+  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
+  const saveAgentSoulConfig = useCallback(async (agentSoulConfig: AgentSoulConfig) => {
+    debouncedSaveDraft.cancel?.()
+    return saveComposer(agentSoulConfig)
+  }, [debouncedSaveDraft, saveComposer])
 
   useEffect(() => {
     return store.sub(agentComposerDraftAtom, () => {
@@ -147,6 +165,7 @@ export function useWorkflowInlineAgentConfigureSync({
 
       if (
         !enabledRef.current
+        || !autoSaveEnabled
         || !store.get(isAgentComposerDirtyAtom)
         || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {
@@ -155,16 +174,18 @@ export function useWorkflowInlineAgentConfigureSync({
 
       debouncedSaveDraft()
     })
-  }, [debouncedSaveDraft, getAgentSoulDraft, store])
+  }, [autoSaveEnabled, debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     return () => {
-      debouncedSaveDraft.flush?.()
+      if (autoSaveEnabled)
+        debouncedSaveDraft.flush?.()
     }
-  }, [debouncedSaveDraft])
+  }, [autoSaveEnabled, debouncedSaveDraft])
 
   return {
     draftSavedAt,
+    saveAgentSoulConfig,
     saveDraft,
   }
 }

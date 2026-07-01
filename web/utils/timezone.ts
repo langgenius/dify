@@ -10,5 +10,5 @@ export const getBrowserTimezone = () => {
   if (typeof Intl === 'undefined')
     return undefined
 
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined
+  return new Intl.DateTimeFormat().resolvedOptions().timeZone || undefined
 }

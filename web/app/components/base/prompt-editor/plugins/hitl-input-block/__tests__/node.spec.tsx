@@ -12,7 +12,6 @@ import {
 import HITLInputBlockComponent from '../component'
 import {
   $createHITLInputNode,
-  $isHITLInputNode,
   HITLInputNode,
 } from '../node'
 
@@ -202,7 +201,7 @@ describe('HITLInputNode', () => {
     })
   })
 
-  it('should create and update DOM and support helper type guard', () => {
+  it('should create and update DOM', () => {
     const editor = createTestEditor()
     const props = createNodeProps()
 
@@ -227,11 +226,7 @@ describe('HITLInputNode', () => {
 
         expectInlineWrapperDom(dom, ['w-[calc(100%-1px)]', 'support-drag'])
         expect(node.updateDOM()).toBe(false)
-        expect($isHITLInputNode(node)).toBe(true)
       })
     })
-
-    expect($isHITLInputNode(null)).toBe(false)
-    expect($isHITLInputNode(undefined)).toBe(false)
   })
 })

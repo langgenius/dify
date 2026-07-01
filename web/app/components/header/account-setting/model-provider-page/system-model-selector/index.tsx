@@ -38,6 +38,7 @@ type SystemModelSelectorProps = {
   notConfigured: boolean
   isLoading?: boolean
   hideProviderSettingsFooter?: boolean
+  onOpenMarketplace?: () => void
 }
 
 type SystemModelLabelKey
@@ -64,11 +65,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   notConfigured,
   isLoading,
   hideProviderSettingsFooter,
+  onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
   const { workspacePermissionKeys } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
-  const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.manage')
+  const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -189,6 +191,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentTextGenerationDefaultModel}
                     modelList={textGenerationModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
@@ -202,6 +205,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentEmbeddingsDefaultModel}
                     modelList={embeddingModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
@@ -215,6 +219,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentRerankDefaultModel}
                     modelList={rerankModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
@@ -228,6 +233,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentSpeech2textDefaultModel}
                     modelList={speech2textModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
@@ -241,6 +247,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     defaultModel={currentTTSDefaultModel}
                     modelList={ttsModelList}
                     hideProviderSettingsFooter={hideProviderSettingsFooter}
+                    onOpenMarketplace={onOpenMarketplace}
                     onConfigureEmptyState={() => setOpen(false)}
                     showModelMeta={false}
                     onSelect={model => handleChangeDefaultModel(ModelTypeEnum.tts, model)}

@@ -53,25 +53,23 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     permission: mockReferenceSetting().permission,
     canInstallPlugin: mockCanManagement(),
-    canManagePlugin: true,
+    canDeletePlugin: true,
     canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
     canSetPluginPreferences: mockCanSetPermissions(),
     canUpdatePlugin: true,
-    canViewInstalledPlugins: true,
     setPluginPermissionSettings: mockSetReferenceSettings,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
     canInstallPlugin: mockCanManagement(),
-    canManagePlugin: true,
+    canDeletePlugin: true,
     canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
     canSetPluginPreferences: mockCanSetPermissions(),
     canUpdatePlugin: true,
-    canViewInstalledPlugins: true,
     setReferenceSettings: mockSetReferenceSettings,
   }),
 }))
@@ -142,14 +140,23 @@ vi.mock('@/app/components/plugins/plugin-page/plugin-tasks', () => ({
   default: () => <button type="button" aria-label="plugin tasks">tasks</button>,
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace-query', () => ({
+  __esModule: true,
+  default: ({ installContextCategory }: { installContextCategory?: string }) => (
+    <div data-testid="install-from-marketplace-query" data-install-context-category={installContextCategory} />
+  ),
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
   __esModule: true,
   default: ({
     layout,
+    onOpenMarketplace,
     onSearchTextChange,
     searchText,
   }: {
     layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode
+    onOpenMarketplace?: () => void
     onSearchTextChange?: (value: string) => void
     searchText: string
   }) => {
@@ -162,7 +169,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
         />
       </div>
     )
-    const body = <div data-testid="model-provider-page" />
+    const body = (
+      <div data-testid="model-provider-page">
+        <button type="button" aria-label="model provider marketplace" onClick={onOpenMarketplace}>marketplace</button>
+      </div>
+    )
 
     if (layout)
       return layout({ body, toolbar })
@@ -181,9 +192,13 @@ vi.mock('@/app/components/header/account-setting/model-provider-page', () => ({
 
 vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
   __esModule: true,
-  default: ({ layout }: { layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode }) => {
+  default: ({ layout, onOpenMarketplace }: { layout?: (parts: { body: React.ReactNode, toolbar: React.ReactNode }) => React.ReactNode, onOpenMarketplace?: () => void }) => {
     const toolbar = <div data-testid="data-source-toolbar" />
-    const body = <div data-testid="data-source-page" />
+    const body = (
+      <div data-testid="data-source-page">
+        <button type="button" aria-label="data source marketplace" onClick={onOpenMarketplace}>marketplace</button>
+      </div>
+    )
 
     if (layout)
       return layout({ body, toolbar })
@@ -294,6 +309,7 @@ describe('IntegrationsPage', () => {
     renderIntegrationsPage({ section: 'provider' })
 
     expect(screen.getByTestId('model-provider-page')).toBeInTheDocument()
+    expect(screen.getByTestId('install-from-marketplace-query')).toHaveAttribute('data-install-context-category', 'model')
     expect(screen.getByTestId('model-provider-toolbar').closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6', 'pt-3', 'pb-2')
     expect(within(screen.getByTestId('model-provider-toolbar').closest('section')!).getByText('common.settings.provider')).toHaveClass('title-2xl-semi-bold')
     expect(screen.getByTestId('model-provider-page').parentElement).toHaveClass('max-w-[1600px]', 'px-6')
@@ -355,13 +371,17 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('link', { name: 'plugin.categorySingle.extension' })).toHaveAttribute('href', '/integrations/extension')
   })
 
-  it('opens the integrations marketplace path from plugin category empty states', () => {
-    renderIntegrationsPage({ section: 'extension' })
+  it.each([
+    ['provider', 'model provider marketplace', '/plugins/model'],
+    ['data-source', 'data source marketplace', '/plugins/datasource'],
+    ['extension', 'empty marketplace', '/plugins/extension'],
+  ] as const)('opens the %s marketplace path from integrations', (section, buttonName, marketplacePath) => {
+    renderIntegrationsPage({ section })
 
-    fireEvent.click(screen.getByRole('button', { name: 'empty marketplace' }))
+    fireEvent.click(screen.getByRole('button', { name: buttonName }))
 
     expect(mockWindowOpen).toHaveBeenCalledWith(
-      expect.stringContaining('/plugins/extension?source='),
+      expect.stringContaining(`${marketplacePath}?source=`),
       '_blank',
       'noopener,noreferrer',
     )
@@ -382,6 +402,7 @@ describe('IntegrationsPage', () => {
     const { unmount } = renderIntegrationsPage({ section: 'data-source' })
 
     expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
+    expect(screen.getByTestId('install-from-marketplace-query')).toHaveAttribute('data-install-context-category', 'datasource')
     expect(screen.getByRole('button', { name: 'plugin debug' })).toHaveTextContent('plugin.debugInfo.title')
 
     unmount()
@@ -417,22 +438,20 @@ describe('IntegrationsPage', () => {
     expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
   })
 
-  it('does not render the MCP management route without mcp.manage', () => {
+  it('renders the MCP route as read-only without mcp.manage', () => {
     mockAppContextState.workspacePermissionKeys = ['tool.manage']
 
-    const { container } = renderIntegrationsPage(undefined, 'mcp')
+    renderIntegrationsPage(undefined, 'mcp')
 
-    expect(screen.queryByTestId('tool-provider-list')).not.toBeInTheDocument()
-    expect(container.firstElementChild).toBeNull()
+    expect(screen.getByTestId('tool-provider-list')).toHaveTextContent('mcp')
   })
 
-  it.each(['custom-tool', 'workflow-tool'] as const)('does not render the %s management route without tool.manage', (section) => {
+  it.each(['custom-tool', 'workflow-tool'] as const)('renders the %s route as read-only without tool.manage', (section) => {
     mockAppContextState.workspacePermissionKeys = ['mcp.manage']
 
-    const { container } = renderIntegrationsPage(undefined, section)
+    renderIntegrationsPage(undefined, section)
 
-    expect(screen.queryByTestId('tool-provider-list')).not.toBeInTheDocument()
-    expect(container.firstElementChild).toBeNull()
+    expect(screen.getByTestId('tool-provider-list')).toBeInTheDocument()
   })
 
   it('remounts the tools section content when the route section changes', () => {
@@ -529,7 +548,7 @@ describe('IntegrationsPage', () => {
     expect(onSectionChange).toHaveBeenCalledTimes(2)
   })
 
-  it('hides custom and workflow tool entries without tool.manage while keeping MCP with mcp.manage', () => {
+  it('keeps custom, workflow, and MCP tool entries visible without manage permissions', () => {
     mockAppContextState.workspacePermissionKeys = ['mcp.manage']
     renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
 
@@ -537,8 +556,8 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'workflow.common.workflowAsTool' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.settings.swaggerAPIAsTool' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.common.workflowAsTool' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.settings.swaggerAPIAsTool' })).toBeInTheDocument()
   })
 
   it('opens tools to the tools plugin page when the parent tools nav is clicked', () => {

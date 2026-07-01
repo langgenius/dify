@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 import pytest
 
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig, WorkflowPreviousNodeOutputRef
 from services.agent.prompt_mentions import (
     MAX_MENTION_REF_ID_LENGTH,
     NODE_JOB_PROMPT_ALLOWED_KINDS,
@@ -20,8 +20,12 @@ from services.agent.prompt_mentions import (
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
     expand_prompt_mentions,
+    extract_workflow_node_output_selectors,
+    extract_workflow_variable_selectors,
+    normalize_previous_node_output_selector,
     parse_prompt_mentions,
     scrub_mention_markers,
+    workflow_previous_node_output_refs_from_selectors,
 )
 
 # ── parse ─────────────────────────────────────────────────────────────────────
@@ -42,6 +46,13 @@ def test_parse_supports_ids_with_slash_and_dot():
     mentions = parse_prompt_mentions("[§tool:langgenius/tavily/tavily_search:tavily§] [§node_output:node-1.tenders§]")
     assert mentions[0].ref_id == "langgenius/tavily/tavily_search"
     assert mentions[1].ref_id == "node-1.tenders"
+
+
+def test_parse_supports_legacy_bare_output_tokens():
+    mentions = parse_prompt_mentions("Use §output:summary:summary§")
+    assert [(mention.kind, mention.ref_id, mention.label) for mention in mentions] == [
+        (MentionKind.OUTPUT, "summary", "summary")
+    ]
 
 
 def test_parse_ignores_legacy_template_forms_and_unknown_kinds():
@@ -89,6 +100,34 @@ def test_expand_empty_prompt_is_noop():
     assert expand_prompt_mentions("", lambda m: "x") == ""
 
 
+def test_extract_workflow_variable_selectors_supports_frontend_agent_task_format():
+    selectors = extract_workflow_variable_selectors(
+        "Read {{#node-1.output#}}, compare {{#start.question#}}, leave {{#context#}} alone."
+    )
+    assert selectors == [("node-1", "output"), ("start", "question")]
+
+
+def test_extract_workflow_node_output_selectors_supports_current_frontend_markers_only():
+    selectors = extract_workflow_node_output_selectors(
+        "Read {{#node-1.output#}}, {{#sys.query#}}, [§node_output:legacy-node.report:PREV/report§], "
+        "and {{#node-1.output#}} again."
+    )
+    assert selectors == [("node-1", "output")]
+
+
+def test_workflow_previous_node_output_refs_from_selectors_materializes_refs():
+    refs = workflow_previous_node_output_refs_from_selectors([("node-1", "output"), ("node-2", "report", "url")])
+
+    assert refs == [
+        WorkflowPreviousNodeOutputRef(selector=["node-1", "output"], node_id="node-1", output="output"),
+        WorkflowPreviousNodeOutputRef(
+            selector=["node-2", "report", "url"],
+            node_id="node-2",
+            output="report",
+        ),
+    ]
+
+
 # ── soul resolver ─────────────────────────────────────────────────────────────
 
 
@@ -107,7 +146,17 @@ def soul() -> AgentSoulConfig:
                 ],
                 "cli_tools": [{"id": "ct-1", "name": "ffmpeg"}],
             },
-            "knowledge": {"datasets": [{"id": "ds-1", "name": "产品手册"}]},
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "kb-1",
+                        "name": "产品手册",
+                        "datasets": [{"id": "ds-1", "name": "产品手册"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
+            },
             "human": {"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
         }
     )
@@ -117,7 +166,7 @@ def test_soul_resolver_resolves_each_kind(soul: AgentSoulConfig):
     resolver = build_soul_mention_resolver(soul)
     prompt = (
         "Use [§tool:tavily/tavily_search:tavily§], run [§cli_tool:ct-1:ffmpeg§], "
-        "ground in [§knowledge:ds-1§], ask [§human:c-1§]."
+        "ground in [§knowledge:kb-1§], ask [§human:c-1§]."
     )
 
     expanded = expand_prompt_mentions(prompt, resolver)
@@ -192,7 +241,21 @@ def test_node_job_resolver_resolves_each_kind(node_job: WorkflowNodeJobConfig):
 
     expanded = expand_prompt_mentions(prompt, resolver)
 
-    assert expanded == ("Read START/tenders and produce qna_report (file); if unsure contact EMAIL · David Hayes.")
+    assert expanded == (
+        "Read START/tenders and produce qna_report (file output; create the file locally, run "
+        "`dify-agent file upload <path>`, then copy the returned AgentStubFileMapping JSON "
+        "as final_output.qna_report; do not call final_output before upload succeeds, and do not use "
+        "the local path, filename, URL, or a synthesized dify-file-ref as the reference); "
+        "if unsure contact EMAIL · David Hayes."
+    )
+
+
+def test_node_job_resolver_accepts_legacy_reversed_output_token(node_job: WorkflowNodeJobConfig):
+    resolver = build_node_job_mention_resolver(node_job)
+
+    expanded = expand_prompt_mentions("[§qna_report:qna_report:output§]", resolver)
+
+    assert "final_output.qna_report" in expanded
 
 
 def test_node_job_resolver_matches_ref_by_node_id_and_output_fields():
@@ -202,6 +265,17 @@ def test_node_job_resolver_matches_ref_by_node_id_and_output_fields():
     expanded = expand_prompt_mentions("[§node_output:n-2.text:LLM/text§]", build_node_job_mention_resolver(node_job))
     # ref has no display name -> degrade to the mention label
     assert expanded == "LLM/text"
+
+
+def test_normalize_previous_node_output_selector_returns_canonical_selector():
+    assert normalize_previous_node_output_selector(
+        WorkflowPreviousNodeOutputRef(selector=["node-1", "report", "url"])
+    ) == ("node-1", "report", "url")
+    assert normalize_previous_node_output_selector(WorkflowPreviousNodeOutputRef(node_id="node-2", output="text")) == (
+        "node-2",
+        "text",
+    )
+    assert normalize_previous_node_output_selector(WorkflowPreviousNodeOutputRef(selector=["node-3", 1])) is None
 
 
 # ── allowlists ────────────────────────────────────────────────────────────────

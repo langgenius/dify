@@ -125,7 +125,6 @@ export function Button({
       className={cn(buttonVariants({ variant, size, tone, className }))}
       disabled={disabled || loading}
       focusableWhenDisabled={focusableWhenDisabled ?? loading}
-      aria-busy={loading || undefined}
       {...props}
     >
       {children}

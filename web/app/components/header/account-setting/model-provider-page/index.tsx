@@ -31,6 +31,7 @@ type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-co
 
 type Props = Readonly<{
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  onOpenMarketplace?: () => void
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
@@ -41,6 +42,7 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 
 const ModelProviderPage = ({
   layout,
+  onOpenMarketplace,
   onSearchTextChange,
   searchText,
   stickyToolbar,
@@ -50,7 +52,6 @@ const ModelProviderPage = ({
   const { t } = useTranslation()
   const {
     canSetPluginPreferences,
-    canViewInstalledPlugins,
   } = usePluginSettingsAccess()
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -65,7 +66,7 @@ const ModelProviderPage = ({
   }, [providers])
   const { data: installedPlugins } = useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
     input: { body: { plugin_ids: allPluginIds } },
-    enabled: canViewInstalledPlugins && allPluginIds.length > 0,
+    enabled: allPluginIds.length > 0,
     staleTime: 0,
   }))
   const enrichedPlugins = usePluginsWithLatestVersion(installedPlugins?.plugins)
@@ -140,6 +141,7 @@ const ModelProviderPage = ({
       ttsDefaultModel={ttsDefaultModel}
       isLoading={isDefaultModelLoading}
       hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+      onOpenMarketplace={onOpenMarketplace}
     />
   )
 
@@ -211,6 +213,7 @@ const ModelProviderPage = ({
       enableMarketplace={enableMarketplace}
       searchText={searchText}
       pluginDetailMap={pluginDetailMap}
+      onOpenMarketplace={onOpenMarketplace}
     />
   )
 

@@ -188,7 +188,7 @@ class TestAnnotationReplyActionApi:
 
         api = AnnotationReplyActionApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(id="app")
+        app_model = SimpleNamespace(id="app", tenant_id="tenant")
 
         with app.test_request_context(
             "/apps/annotation-reply/enable",
@@ -206,7 +206,7 @@ class TestAnnotationReplyActionApi:
 
         api = AnnotationReplyActionApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(id="app")
+        app_model = SimpleNamespace(id="app", tenant_id="tenant")
 
         with app.test_request_context(
             "/apps/annotation-reply/disable",
@@ -333,7 +333,7 @@ class TestAnnotationUpdateDeleteApi:
         api = AnnotationUpdateDeleteApi()
         put_handler = unwrap(api.put)
         delete_handler = unwrap(api.delete)
-        app_model = SimpleNamespace(id="app")
+        app_model = SimpleNamespace(id="app", tenant_id="tenant")
 
         with app.test_request_context("/apps/annotations/1", method="PUT", json={"question": "q", "answer": "a"}):
             response = put_handler(api, app_model=app_model, annotation_id="1")

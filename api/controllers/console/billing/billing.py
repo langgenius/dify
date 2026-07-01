@@ -16,6 +16,8 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from enums.cloud_plan import CloudPlan
+from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.login import login_required
 from models import Account
 from services.billing_service import BillingService
@@ -34,8 +36,12 @@ class BillingResponse(RootModel[dict[str, Any]]):
     root: dict[str, Any]
 
 
+class BillingInvoiceResponse(ResponseModel):
+    url: str
+
+
 register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)
-register_response_schema_models(console_ns, BillingResponse)
+register_response_schema_models(console_ns, BillingResponse, BillingInvoiceResponse)
 
 
 @console_ns.route("/billing/subscription")
@@ -50,13 +56,13 @@ class Subscription(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
         args = SubscriptionQuery.model_validate(request.args.to_dict(flat=True))
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(db.session, current_user)
         return BillingService.get_subscription(args.plan, args.interval, current_user.email, current_tenant_id)
 
 
 @console_ns.route("/billing/invoices")
 class Invoices(Resource):
-    @console_ns.response(200, "Success", console_ns.models[BillingResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[BillingInvoiceResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -64,7 +70,7 @@ class Invoices(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(db.session, current_user)
         return BillingService.get_invoices(current_user.email, current_tenant_id)
 
 

@@ -22,9 +22,11 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
 from models.model import App, EndUser
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -129,8 +131,21 @@ class TextApi(WebApiResource):
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
+            message_ref = None
+            if message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    end_user_id=end_user.id,
+                )
             response = AudioService.transcript_tts(
-                app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
+                app_model=app_model,
+                session=db.session,
+                text=text,
+                voice=voice,
+                end_user=end_user.external_user_id,
+                message_ref=message_ref,
             )
 
             return response

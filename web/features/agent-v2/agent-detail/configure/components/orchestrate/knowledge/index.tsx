@@ -3,7 +3,7 @@
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { useAtom } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
@@ -49,7 +49,9 @@ export function AgentKnowledgeRetrieval() {
   const { t } = useTranslation('agentV2')
   const [retrievals, setRetrievals] = useAtom(agentComposerKnowledgeRetrievalsAtom)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [addDialogName, setAddDialogName] = useState<string>()
   const [editingRetrieval, setEditingRetrieval] = useState<AgentKnowledgeRetrievalItem | null>(null)
+  const addOptionsRef = useRef<AgentOrchestrateAddActionOptions | undefined>(undefined)
   const knowledgeRetrievalTip = t('agentDetail.configure.knowledgeRetrieval.tip')
   const retrievalListId = 'agent-configure-knowledge-retrieval-list'
   const isDialogOpen = isAddDialogOpen || !!editingRetrieval
@@ -66,16 +68,16 @@ export function AgentKnowledgeRetrieval() {
     return t('agentDetail.configure.knowledgeRetrieval.defaultName', { index })
   }
   const addRetrieval = (options?: AgentOrchestrateAddActionOptions) => {
-    const nextRetrieval: AgentKnowledgeRetrievalItem = {
-      id: globalThis.crypto?.randomUUID?.() ?? `retrieval-${Date.now()}`,
-      name: getDefaultRetrievalName(retrievals.length + 1),
-      queryMode: 'agent',
-    }
-
-    setRetrievals([...retrievals, nextRetrieval])
-    setEditingRetrieval(nextRetrieval)
+    addOptionsRef.current = options
+    setAddDialogName(getDefaultRetrievalName(retrievals.length + 1))
     setIsAddDialogOpen(true)
-    options?.onAdded?.(nextRetrieval)
+  }
+  const createRetrieval = (nextRetrieval: AgentKnowledgeRetrievalItem) => {
+    setRetrievals(current => [...current, nextRetrieval])
+    setEditingRetrieval(nextRetrieval)
+    setIsAddDialogOpen(false)
+    addOptionsRef.current?.onAdded?.(nextRetrieval)
+    addOptionsRef.current = undefined
   }
   useRegisterAgentOrchestrateAddAction('knowledge', addRetrieval)
 
@@ -113,15 +115,17 @@ export function AgentKnowledgeRetrieval() {
             ))}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
-        key={editingRetrieval?.id ?? 'add'}
         item={editingRetrieval ?? undefined}
-        initialName={editingRetrieval ? (editingRetrieval.name ?? (editingRetrieval.nameKey ? t(editingRetrieval.nameKey) : editingRetrieval.id)) : undefined}
+        initialName={editingRetrieval ? (editingRetrieval.name ?? (editingRetrieval.nameKey ? t(editingRetrieval.nameKey) : editingRetrieval.id)) : addDialogName}
+        onItemCreate={createRetrieval}
         onItemChange={updateRetrieval}
         open={isDialogOpen}
         onOpenChange={(open) => {
           setIsAddDialogOpen(open)
-          if (!open)
+          if (!open) {
             setEditingRetrieval(null)
+            addOptionsRef.current = undefined
+          }
         }}
       />
     </>

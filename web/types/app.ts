@@ -1,6 +1,6 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { CollectionType } from '@/app/components/tools/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import type { Tag } from '@/contract/console/tags'
 import type { LanguagesSupported } from '@/i18n-config/language'
 import type { AccessMode } from '@/models/access-control'
 import type { ExternalDataTool } from '@/models/common'
@@ -302,6 +302,8 @@ export type SiteConfig = {
   privacy_policy: string
   /** Custom Disclaimer */
   custom_disclaimer: string
+  /** Custom placeholder text for the chat input box. Empty means fall back to the default. */
+  input_placeholder: string
 
   icon_type: AppIconType | null
   icon: string

@@ -1,5 +1,5 @@
 import type { Getter } from 'jotai'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, skipToken } from '@tanstack/react-query'
 import { atom, createStore } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,6 +33,10 @@ const mockQueryResults = vi.hoisted(() => ({
   current: new Map<string, QueryResult>(),
 }))
 
+const mockQueryOptions = vi.hoisted(() => ({
+  current: new Map<string, QueryOptions | InfiniteQueryOptions>(),
+}))
+
 const mockCreateReleaseMutation = vi.hoisted<{ current: MutationResult }>(() => ({
   current: {
     isPending: false,
@@ -57,6 +61,8 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
         ? undefined
         : mockQueryResults.current.get(queryName)
 
+      mockQueryOptions.current.set(queryName, options)
+
       return {
         ...options,
         data: undefined,
@@ -74,6 +80,8 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
       const queryResult = options.enabled === false
         ? undefined
         : mockQueryResults.current.get(queryName)
+
+      mockQueryOptions.current.set(queryName, options)
 
       return {
         ...options,
@@ -95,7 +103,7 @@ vi.mock('jotai-tanstack-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
-      list: {
+      get: {
         infiniteOptions: (options: InfiniteQueryOptions) => ({
           ...options,
           queryKey: ['sourceApps', options.input],
@@ -139,7 +147,7 @@ async function mountedStore() {
     },
   })
   store.set(queryClientAtom, queryClient)
-  const unsubscribe = store.sub(state.createReleaseFormValuesAtom, () => undefined)
+  const unsubscribe = store.sub(state.createReleaseFormIsSubmittingAtom, () => undefined)
 
   return {
     state,
@@ -180,6 +188,7 @@ describe('create release state with DSL import enabled', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockQueryResults.current.clear()
+    mockQueryOptions.current.clear()
     mockCreateReleaseMutation.current = {
       isPending: false,
       mutateAsync: vi.fn(),
@@ -202,6 +211,22 @@ describe('create release state with DSL import enabled', () => {
         name: 'customer',
         mode: 'workflow',
       },
+    })
+
+    unsubscribe()
+  })
+
+  it('should skip DSL release precheck input until DSL content is ready', async () => {
+    const { state, store, unsubscribe } = await mountedStore()
+
+    store.set(state.createReleaseAppInstanceIdAtom, 'app-instance-1')
+    store.set(state.openCreateReleaseDialogAtom)
+    store.set(state.selectCreateReleaseSourceModeAtom, 'dsl')
+    store.get(state.isCheckingCreateReleaseContentAtom)
+
+    expect(mockQueryOptions.current.get('precheckRelease')).toMatchObject({
+      enabled: false,
+      input: skipToken,
     })
 
     unsubscribe()

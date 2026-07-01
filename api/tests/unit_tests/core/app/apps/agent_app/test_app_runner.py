@@ -23,22 +23,35 @@ from dify_agent.protocol import (
     RunSucceededEventData,
     RuntimeLayerSpec,
 )
-from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
+    ThinkingPartDelta,
+    ToolCallPart,
+    ToolReturnPart,
+)
 
 from clients.agent_backend import (
     AgentBackendError,
     AgentBackendRunEventAdapter,
+    AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
+from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from models.agent_config_entities import AgentSoulConfig
+from models.model import MessageAgentThought
 
 
 class _FakeCredentialsProvider:
@@ -46,9 +59,17 @@ class _FakeCredentialsProvider:
         return {"openai_api_key": "sk-test"}
 
 
+@pytest.fixture(autouse=True)
+def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
+    )
+
+
 class _NoToolsBuilder:
-    def build(self, **kwargs):
+    def build_layers(self, **kwargs):
         del kwargs
+        return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
 
 
 class _FakeQueueManager:
@@ -77,6 +98,24 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         self.cancelled_run_ids.append(run_id)
         return super().cancel_run(run_id, request=request)
+
+
+class _BlockingRecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.wait_calls: list[tuple[str, float | None]] = []
+        self.stream_called = False
+
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del run_id, after
+        self.stream_called = True
+        return iter(())
+
+    @override
+    def wait_run(self, run_id: str, *, timeout_seconds: float | None = None):
+        self.wait_calls.append((run_id, timeout_seconds))
+        return super().wait_run(run_id, timeout_seconds=timeout_seconds)
 
 
 class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
@@ -129,6 +168,65 @@ class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
             ),
         )
+
+
+class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=ThinkingPartDelta(content_delta="I need to inspect the file.")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=FunctionToolCallEvent(part=ToolCallPart(tool_name="bash", args={"cmd": "ls"}, tool_call_id="tool-1")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="4-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=FunctionToolResultEvent(part=ToolReturnPart(tool_name="bash", content="ok", tool_call_id="tool-1")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="5-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=1, delta=TextPartDelta(content_delta="final answer")),
+        )
+        yield RunSucceededEvent(
+            id="6-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "final answer"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _FakeDbSession:
+    def __init__(self) -> None:
+        self.rows: dict[str, MessageAgentThought] = {}
+        self.rollback_count = 0
+
+    def add(self, row: MessageAgentThought) -> None:
+        self.rows[str(row.id)] = row
+
+    def commit(self) -> None:
+        pass
+
+    def get(self, _model: type[MessageAgentThought], row_id: str) -> MessageAgentThought | None:
+        return self.rows.get(row_id)
+
+    def rollback(self) -> None:
+        self.rollback_count += 1
 
 
 class _FakeSessionStore:
@@ -205,7 +303,7 @@ def _runner(client: FakeAgentBackendRunClient, store: _FakeSessionStore) -> Agen
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         ),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
@@ -224,6 +322,18 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
         message_id="msg-1",
         model_name="gpt-4o-mini",
         queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+
+def _run_stateless(runner: AgentAppRunner) -> None:
+    runner.run_stateless(
+        dify_context=_dify_ctx(),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snap-1",
+        agent_soul=_soul(),
+        conversation_id="conv-1",
+        query="finalize",
+        idempotency_key="run-req-1",
     )
 
 
@@ -304,6 +414,116 @@ def test_successful_turn_forwards_part_start_text_and_publishes_missing_terminal
     assert end_events[0].llm_result.message.content == "hello agent"
 
 
+def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    client = _ProcessStreamingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["final answer"]
+    thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+    assert len(thought_events) >= 3
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert rows[0].thought == "I need to inspect the file."
+    assert rows[0].tool is None
+    assert rows[1].tool == "bash"
+    assert rows[1].tool_input == '{"cmd": "ls"}'
+    assert rows[1].observation == "ok"
+
+
+def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"script": "npx skills find browser"},
+                    "tool_call_id": "shell-call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "content": "Knowledge base search results: browser skill",
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 2
+    assert rows[0].tool == "shell_run"
+    assert rows[0].tool_input == '{"script": "npx skills find browser"}'
+    assert rows[0].observation is None
+    assert rows[1].tool is None
+    assert rows[1].tool_input is None
+    assert rows[1].observation == "Knowledge base search results: browser skill"
+
+
+def test_tool_result_without_call_id_matches_unique_open_tool_name(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "knowledge_base_search",
+                    "args": {"query": "browser"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "knowledge_base_search",
+                    "content": "Knowledge base search results: browser skill",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].tool == "knowledge_base_search"
+    assert rows[0].tool_input == '{"query": "browser"}'
+    assert rows[0].observation == "Knowledge base search results: browser skill"
+
+
 def test_prior_session_snapshot_is_threaded_into_request():
     prior = CompositorSessionSnapshot(layers=[])
     client = FakeAgentBackendRunClient()
@@ -339,6 +559,31 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots():
     assert client.request.session_snapshot is prior
     assert store.loaded_scopes[0].agent_config_snapshot_id is None
     assert store.saved[0][0].agent_config_snapshot_id is None
+
+
+def test_stateless_run_uses_bounded_wait_and_does_not_save_session_state():
+    prior = CompositorSessionSnapshot(layers=[])
+    client = _BlockingRecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore(loaded=prior)
+
+    _run_stateless(_runner(client, store))
+
+    assert client.request is not None
+    assert client.request.session_snapshot is prior
+    assert client.wait_calls == [("fake-run-1", app_runner_module.dify_config.APP_MAX_EXECUTION_TIME)]
+    assert client.stream_called is False
+    assert store.saved == []
+
+
+def test_stateless_run_raises_backend_error_on_failed_bounded_wait():
+    client = _BlockingRecordingFakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
+    store = _FakeSessionStore()
+
+    with pytest.raises(AgentBackendError):
+        _run_stateless(_runner(client, store))
+
+    assert client.wait_calls == [("fake-run-1", app_runner_module.dify_config.APP_MAX_EXECUTION_TIME)]
+    assert store.saved == []
 
 
 def test_failed_run_raises_agent_backend_error():

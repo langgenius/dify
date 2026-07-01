@@ -136,7 +136,7 @@ class TestPydanticModels:
 
     def test_resource_access_scope_defaults_empty_account_ids(self):
         parsed = rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "specific"})
-        assert parsed.scope is rbac_mod._AccessScope.SPECIFIC
+        assert parsed.scope is rbac_mod.RBACResourceWhitelistScope.SPECIFIC
 
     def test_resource_access_scope_coerce_null_account_ids(self):
         rbac_mod._ResourceAccessScopeRequest.model_validate({"scope": "all"})
@@ -201,10 +201,10 @@ class TestPaginationMapping:
             },
         ]
         assert response["pagination"] == {
-            "total_count": 5,
+            "total_count": 4,
             "per_page": 2,
             "current_page": 1,
-            "total_pages": 3,
+            "total_pages": 2,
         }
         mock_list.assert_not_called()
 

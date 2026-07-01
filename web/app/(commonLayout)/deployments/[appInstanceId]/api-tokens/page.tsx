@@ -1,8 +1,5 @@
-import { DeveloperApiTab } from '@/features/deployments/detail/developer-api-tab'
+import { DeploymentApiTokens } from '@/features/deployments/detail/api-tokens'
 
-export default async function InstanceDetailApiTokensPage({ params }: {
-  params: Promise<{ appInstanceId: string }>
-}) {
-  const { appInstanceId } = await params
-  return <DeveloperApiTab appInstanceId={appInstanceId} />
+export default function InstanceDetailApiTokensPage() {
+  return <DeploymentApiTokens />
 }

@@ -86,21 +86,26 @@ class TestRoles:
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/roles"
-        assert call.params == {"page_number": 2, "results_per_page": 50, "reverse": "true"}
+        assert call.params == {
+            "dataset_operator_enabled": False,
+            "page_number": 2,
+            "results_per_page": 50,
+            "reverse": "true",
+        }
         assert out.pagination
         assert out.pagination.total_count == 1
 
     def test_list_omits_params_when_default(self, mock_send: MagicMock):
         mock_send.return_value = {"data": [], "pagination": None}
         svc.RBACService.Roles.list("tenant-1")
-        assert _call_args(mock_send).params is None
+        assert _call_args(mock_send).params is not None
 
     def test_list_forwards_include_owner(self, mock_send: MagicMock):
         mock_send.return_value = {"data": [], "pagination": None}
 
         svc.RBACService.Roles.list("tenant-1", include_owner=1)
 
-        assert _call_args(mock_send).params == {"include_owner": 1}
+        assert _call_args(mock_send).params == {"dataset_operator_enabled": False, "include_owner": 1}
 
     def test_list_coerces_null_permission_keys(self, mock_send: MagicMock):
         mock_send.return_value = {
@@ -616,6 +621,7 @@ class TestMyPermissions:
 
         mock_send.assert_not_called()
         assert out.workspace.permission_keys == workspace_keys
+        assert len(out.workspace.permission_keys) == len(set(out.workspace.permission_keys))
         assert out.app.default_permission_keys == app_keys
         assert out.dataset.default_permission_keys == dataset_keys
         assert out.app.overrides == []
@@ -627,6 +633,8 @@ class TestMyPermissions:
             assert "dataset.acl.preview" in out.workspace.permission_keys
             assert "app.acl.preview" in out.app.default_permission_keys
             assert "dataset.acl.preview" in out.dataset.default_permission_keys
+        if role == "editor":
+            assert "app.acl.log_and_annotation" in out.app.default_permission_keys
 
     @pytest.mark.parametrize(
         ("role", "expected_snippet_keys"),

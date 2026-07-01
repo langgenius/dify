@@ -203,6 +203,85 @@ describe('runApp', () => {
     expect(io.errBuf()).toContain('secret reasoning')
   })
 
+  it('--stream chat --think: routes separated reasoning to stderr, clean answer to stdout', async () => {
+    mock.setScenario('chat-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-1', message: 'hi', stream: true, think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toContain('final answer')
+    expect(io.outBuf()).not.toContain('secret reasoning')
+    expect(io.errBuf()).toContain('<think>')
+    expect(io.errBuf()).toContain('secret reasoning')
+  })
+
+  it('--stream chat without --think: separated reasoning stays hidden', async () => {
+    mock.setScenario('chat-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-1', message: 'hi', stream: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toContain('final answer')
+    expect(io.errBuf()).not.toContain('secret reasoning')
+  })
+
+  it('chat -o json --think: echoes separated reasoning to stderr, persists it in metadata', async () => {
+    mock.setScenario('chat-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-1', message: 'hi', format: 'json', think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.errBuf()).toContain('secret reasoning')
+    const parsed = JSON.parse(io.outBuf()) as { answer: string, metadata: { reasoning: Record<string, string> } }
+    expect(parsed.answer).toBe('final answer')
+    expect(parsed.metadata.reasoning).toEqual({ 'llm-1': 'secret reasoning' })
+  })
+
+  it('--stream workflow --think: routes separated reasoning to stderr, clean outputs to stdout', async () => {
+    mock.setScenario('workflow-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, stream: true, think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.errBuf()).toContain('<think>')
+    expect(io.errBuf()).toContain('secret reasoning')
+    expect(io.outBuf()).toContain('final answer')
+    expect(io.outBuf()).not.toContain('secret reasoning')
+  })
+
+  it('workflow -o json --think: echoes reasoning to stderr, accumulates into metadata.reasoning', async () => {
+    mock.setScenario('workflow-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, format: 'json', think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.errBuf()).toContain('secret reasoning')
+    const parsed = JSON.parse(io.outBuf()) as { metadata: { reasoning: Record<string, string> } }
+    expect(parsed.metadata.reasoning).toEqual({ 'llm-1': 'secret reasoning' })
+  })
+
+  it('--stream workflow without --think: reasoning stays hidden', async () => {
+    mock.setScenario('workflow-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, stream: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toContain('final answer')
+    expect(io.errBuf()).not.toContain('secret reasoning')
+  })
+
   it('stream-error scenario: error event surfaces typed BaseError', async () => {
     mock.setScenario('stream-error')
     const io = bufferStreams()

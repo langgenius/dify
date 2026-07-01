@@ -2,11 +2,11 @@ import type { ReactElement } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
 import { act, renderHook } from '@testing-library/react'
-import { SNIPPET_INPUT_FIELD_NODE_ID } from '@/app/components/workflow/nodes/_base/hooks/snippet-input-field-vars'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippetFromSelection } from '../use-create-snippet-from-selection'
 
+const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
 const mockHandleOpenCreateSnippetDialog = vi.fn()
 const mockHandleCloseCreateSnippetDialog = vi.fn()
 const mockHandleCreateSnippet = vi.fn()
