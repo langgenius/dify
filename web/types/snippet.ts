@@ -109,6 +109,6 @@ export type PublishSnippetWorkflowResponse = {
 }
 
 export type SnippetDraftRunPayload = {
-  inputs?: Record<string, unknown>
+  inputs: Record<string, unknown>
   files?: Record<string, unknown>[]
 }
