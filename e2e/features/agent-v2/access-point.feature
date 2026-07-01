@@ -87,7 +87,7 @@ Feature: Agent v2 Access Point
     Then the Agent v2 Workflow access reference for "E2E Agent Reference Workflow" should open in Studio
 
   @core
-  Scenario: Backend service API supports endpoint copy, key creation, and API reference navigation
+  Scenario: Backend service API endpoint can be copied
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
     And Agent v2 Backend service API access has been enabled via API
@@ -96,13 +96,28 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Backend service API endpoint
     When I copy the Agent v2 Backend service API endpoint
     Then the Agent v2 Backend service API endpoint should show it was copied
-    When I open Agent v2 API key management
+
+  @core
+  Scenario: Backend service API keys are managed without exposing existing secrets
+    Given I am signed in as the default E2E admin
+    And an Agent v2 test agent has been created via API
+    And Agent v2 Backend service API access has been enabled via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
+    And I open Agent v2 API key management
     Then Agent v2 API keys should not expose a secret by default
     When I create a new Agent v2 API key
     Then I should see the newly generated Agent v2 API key once
     When I close the newly generated Agent v2 API key
     Then the Agent v2 API key list should not expose the full generated secret
-    When I close Agent v2 API key management
+
+  @core
+  Scenario: Backend service API Reference opens from Access Point
+    Given I am signed in as the default E2E admin
+    And an Agent v2 test agent has been created via API
+    And Agent v2 Backend service API access has been enabled via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
     And I open the Agent v2 API Reference
     Then the Agent v2 API Reference should open in a new tab
 
