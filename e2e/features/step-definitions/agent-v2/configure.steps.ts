@@ -13,6 +13,7 @@ import {
   updatedAgentPrompt,
   updatedAgentSoulConfig,
 } from '../../../support/agent'
+import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
 
 const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)
@@ -145,6 +146,10 @@ Then('the Agent v2 Build draft should no longer be active', async function (this
   await expect(page.getByText('Build draft')).not.toBeVisible()
   await expect(page.getByRole('button', { name: 'Apply' })).not.toBeVisible()
   await expect(page.getByRole('button', { name: 'Discard' })).not.toBeVisible()
+})
+
+Then('the Agent v2 configuration should be saved automatically', async function (this: DifyWorld) {
+  await waitForAgentConfigureAutosaved(this.getPage())
 })
 
 Then('the Agent v2 draft should be published and up to date', async function (this: DifyWorld) {
