@@ -66,8 +66,8 @@ Feature: Agent v2 publish
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
-    When Agent v2 Web app access has been enabled via API
-    And I fill the Agent v2 prompt editor with the updated E2E prompt
+    Given Agent v2 Web app access has been enabled via API
+    When I fill the Agent v2 prompt editor with the updated E2E prompt
     Then the Agent v2 configuration should be saved automatically
     And the normal Agent v2 draft should use the updated E2E prompt
     When I open the Agent v2 Web app URL
@@ -88,7 +88,7 @@ Feature: Agent v2 publish
     And the normal Agent v2 draft should use the updated E2E prompt
     When I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
-    When Agent v2 Web app access has been enabled via API
-    And I open the Agent v2 Web app URL
+    Given Agent v2 Web app access has been enabled via API
+    When I open the Agent v2 Web app URL
     And I send an E2E message in the Agent v2 Web app
     Then the Agent v2 Web app response should include the updated E2E marker
