@@ -83,6 +83,32 @@ def test_normalize_snippet_list_query_args_sorts_indexed_values():
     }
 
 
+def test_normalize_snippet_list_query_args_accepts_generated_creator_keys():
+    query_args = snippets_module.MultiDict(
+        [
+            ("creators[1]", "account-b"),
+            ("creators[0]", "account-a"),
+        ]
+    )
+
+    assert snippets_module._normalize_snippet_list_query_args(query_args) == {
+        "creators": ["account-a", "account-b"],
+    }
+
+
+def test_normalize_snippet_list_query_args_accepts_repeated_creator_keys():
+    query_args = snippets_module.MultiDict(
+        [
+            ("creators", "account-a"),
+            ("creators", "account-b"),
+        ]
+    )
+
+    assert snippets_module._normalize_snippet_list_query_args(query_args) == {
+        "creators": ["account-a", "account-b"],
+    }
+
+
 def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippets = [_snippet()]
     tag_id = "11111111-1111-1111-1111-111111111111"
@@ -93,7 +119,7 @@ def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.Monkey
     handler = unwrap(api.get)
 
     with app.test_request_context(
-        f"/workspaces/current/customized-snippets?page=2&limit=10&tag_ids[0]={tag_id}&creator_ids[0]=account-2"
+        f"/workspaces/current/customized-snippets?page=2&limit=10&tag_ids[0]={tag_id}&creators[0]=account-2"
     ):
         response, status_code = handler(api, "tenant-1")
 

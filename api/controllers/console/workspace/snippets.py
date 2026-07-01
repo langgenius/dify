@@ -45,6 +45,7 @@ from services.snippet_service import SnippetService
 logger = logging.getLogger(__name__)
 _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
+_CREATORS_BRACKET_PATTERN = re.compile(r"^creators\[(\d+)\]$")
 
 
 class SnippetImportResponse(ResponseModel):
@@ -151,9 +152,17 @@ def _normalize_snippet_list_query_args(query_args: MultiDict[str, str]) -> dict[
             indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
             continue
 
-        match = _CREATOR_IDS_BRACKET_PATTERN.fullmatch(key)
+        match = _CREATOR_IDS_BRACKET_PATTERN.fullmatch(key) or _CREATORS_BRACKET_PATTERN.fullmatch(key)
         if match:
             indexed_creator_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
+            continue
+
+        if key in {"tag_ids", "creators", "creator_ids"}:
+            values = query_args.getlist(key)
+            if values:
+                normalized["creators" if key in {"creators", "creator_ids"} else key] = (
+                    values if len(values) > 1 else values[0]
+                )
             continue
 
         value = query_args.get(key)
