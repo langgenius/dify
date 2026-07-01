@@ -74,7 +74,7 @@ export function MainNav({
   return (
     <aside
       className={cn(
-        'relative flex h-full w-60 shrink-0 flex-col bg-background-body',
+        'relative flex h-full w-60 shrink-0 flex-col overflow-hidden bg-background-body transition-all',
         className,
       )}
     >

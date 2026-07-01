@@ -113,7 +113,7 @@ export function DetailSidebarFrame({
     <aside
       className={cn(
         'relative flex h-full shrink-0 bg-background-body p-1',
-        detailNavigationTransitionDisabled ? 'transition-none' : 'transition-[width,padding]',
+        detailNavigationTransitionDisabled ? 'transition-none' : 'transition-all',
         isDetailNavigationHoverPreviewOpen ? 'w-16 overflow-visible' : detailNavigationExpanded ? 'w-62 overflow-hidden' : 'w-16 overflow-hidden',
         className,
       )}

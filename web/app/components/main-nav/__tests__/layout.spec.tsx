@@ -117,8 +117,11 @@ describe('MainNavLayout', () => {
     expect(main).toHaveFocus()
   })
 
-  it('renders the detail sidebar slot outside the single skip navigation target', () => {
-    ;(usePathname as Mock).mockReturnValue('/datasets/dataset-1/documents')
+  it.each([
+    '/datasets/dataset-1/documents',
+    '/datasets/dataset-1/documents/document-1/settings',
+  ])('renders the detail sidebar slot outside the single skip navigation target on route %s', (pathname) => {
+    ;(usePathname as Mock).mockReturnValue(pathname)
 
     render(
       <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
