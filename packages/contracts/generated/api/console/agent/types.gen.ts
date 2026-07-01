@@ -111,7 +111,9 @@ export type ApiKeyItem = {
   type: string
 }
 
-export type GeneratedAppResponse = JsonValue
+export type SimpleResultResponse = {
+  result: string
+}
 
 export type AgentSimpleResultResponse = {
   result: string
@@ -164,10 +166,6 @@ export type MessageInfiniteScrollPaginationResponse = {
 
 export type SuggestedQuestionsResponse = {
   data: Array<string>
-}
-
-export type SimpleResultResponse = {
-  result: string
 }
 
 export type AgentAppComposerResponse = {
@@ -1871,8 +1869,6 @@ export type AgentAppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type GeneratedAppResponseWritable = JsonValue
-
 export type AgentAppPartialWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
@@ -2161,7 +2157,7 @@ export type PostAgentByAgentIdBuildChatFinalizeErrors = {
 }
 
 export type PostAgentByAgentIdBuildChatFinalizeResponses = {
-  200: GeneratedAppResponse
+  200: SimpleResultResponse
 }
 
 export type PostAgentByAgentIdBuildChatFinalizeResponse
