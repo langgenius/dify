@@ -10,20 +10,22 @@ const {
   unbindTag,
 } = vi.hoisted(() => ({
   bindTag: vi.fn(),
-  listKey: vi.fn((options: { type: 'query', input: { query: { type: string } } }) => ['console', 'tags', 'list', 'query', options.input.query.type]),
+  listKey: vi.fn((options: { type: 'query', input: { query: { type: string } } }) => ['console', 'tags', 'get', 'query', options.input.query.type]),
   unbindTag: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    tags: {
-      bind: bindTag,
-      unbind: unbindTag,
+    tagBindings: {
+      post: bindTag,
+      remove: {
+        post: unbindTag,
+      },
     },
   },
   consoleQuery: {
     tags: {
-      list: {
+      get: {
         key: listKey,
       },
     },
@@ -92,7 +94,7 @@ describe('useTagMutations', () => {
       })
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['console', 'tags', 'list', 'query', 'app'],
+          queryKey: ['console', 'tags', 'get', 'query', 'app'],
         })
       })
       expect(listKey).toHaveBeenCalledWith({
@@ -122,7 +124,7 @@ describe('useTagMutations', () => {
       expect(unbindTag).not.toHaveBeenCalled()
       await waitFor(() => {
         expect(invalidateQueries).toHaveBeenCalledWith({
-          queryKey: ['console', 'tags', 'list', 'query', 'knowledge'],
+          queryKey: ['console', 'tags', 'get', 'query', 'knowledge'],
         })
       })
       expect(listKey).toHaveBeenCalledWith({
