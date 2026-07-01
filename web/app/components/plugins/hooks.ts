@@ -109,7 +109,7 @@ export function usePluginsWithLatestVersion(plugins: PluginDetail[] = EMPTY_PLUG
     [plugins],
   )
 
-  const { data: latestVersionData } = useQuery(consoleQuery.plugins.latestVersions.queryOptions({
+  const { data: latestVersionData } = useQuery(consoleQuery.workspaces.current.plugin.list.latestVersions.post.queryOptions({
     input: { body: { plugin_ids: marketplacePluginIds } },
     enabled: !!marketplacePluginIds.length,
   }))
