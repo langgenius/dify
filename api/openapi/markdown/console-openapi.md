@@ -12396,7 +12396,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [TriggerSubscriptionBuilderVerifyResponse](#triggersubscriptionbuilderverifyresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
 **Delete a subscription instance**
@@ -20219,7 +20219,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ResourceUserAccessPolicies](#resourceuseraccesspolicies) ] |  | No |
-| scope | string |  | Yes |
+| scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
 
 #### ResourceWhitelist
 
@@ -21714,7 +21714,7 @@ Enum class for tool provider
 | configured | boolean |  | Yes |
 | custom_configured | boolean |  | Yes |
 | custom_enabled | boolean |  | Yes |
-| oauth_client_schema |  |  | Yes |
+| oauth_client_schema | [ [TriggerProviderConfigResponse](#triggerproviderconfigresponse) ] |  | Yes |
 | params | object |  | Yes |
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
@@ -21736,6 +21736,29 @@ Enum class for tool provider
 | subscription_schema | [ [ProviderConfig](#providerconfig) ] | The subscription schema of the trigger provider | No |
 | supported_creation_methods | [ [TriggerCreationMethod](#triggercreationmethod) ] | Supported creation methods for the trigger provider. like 'OAUTH', 'APIKEY', 'MANUAL'. | No |
 | tags | [ string ] | The tags of the trigger provider | No |
+
+#### TriggerProviderConfigOptionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
+
+#### TriggerProviderConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [TriggerProviderConfigOptionResponse](#triggerproviderconfigoptionresponse) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | string, <br>**Available values:** "app-selector", "array[tools]", "boolean", "model-selector", "secret-input", "select", "text-input" | The type of the credentials<br>*Enum:* `"app-selector"`, `"array[tools]"`, `"boolean"`, `"model-selector"`, `"secret-input"`, `"select"`, `"text-input"` | Yes |
+| url | string |  | No |
 
 #### TriggerProviderListResponse
 
