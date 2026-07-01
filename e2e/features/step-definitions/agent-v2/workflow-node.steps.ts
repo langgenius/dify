@@ -1,4 +1,5 @@
 import type { DataTable } from '@cucumber/cucumber'
+import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentV2WorkflowOutputVariable, DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
@@ -25,7 +26,7 @@ const getCurrentAppId = (world: DifyWorld) => {
   return appId
 }
 
-const getOutputVariablesFromDraft = async (appId: string) => {
+const getDeclaredOutputsFromDraft = async (appId: string): Promise<DeclaredOutputConfig[]> => {
   const draft = await getWorkflowDraft(appId)
   const agentNode = draft.graph.nodes.find(node => node.id === agentV2WorkflowNodeId)
   if (!agentNode)
@@ -35,11 +36,50 @@ const getOutputVariablesFromDraft = async (appId: string) => {
   if (!Array.isArray(outputs))
     return []
 
-  return outputs as Array<{
-    array_item?: { type?: string }
-    name?: string
+  return outputs as DeclaredOutputConfig[]
+}
+
+const getOutputVariablesFromDraft = async (appId: string) => getDeclaredOutputsFromDraft(appId)
+
+const waitForWorkflowDraftSave = (world: DifyWorld, appId: string) =>
+  world.getPage().waitForResponse(response => (
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith(`/console/api/apps/${appId}/workflows/draft`)
+  ))
+
+const openWorkflowOutputVariablesPanel = async (world: DifyWorld) => {
+  const page = world.getPage()
+  const newOutputButton = page.getByRole('button', { name: 'New output' })
+
+  if (!await newOutputButton.isVisible().catch(() => false))
+    await page.getByRole('button', { name: 'Output Variables' }).click()
+
+  await expect(newOutputButton).toBeVisible()
+}
+
+const fillOutputVariableEditor = async (
+  world: DifyWorld,
+  {
+    name,
+    required = false,
+    type = 'string',
+  }: {
+    name: string
+    required?: boolean
     type?: string
-  }>
+  },
+) => {
+  const page = world.getPage()
+  const editor = page.getByRole('form', { name: 'Output variable editor' })
+
+  await expect(editor).toBeVisible()
+  await editor.getByRole('textbox', { name: 'Field name' }).fill(name)
+  if (type !== 'string') {
+    await editor.getByRole('button', { name: 'Output type' }).click()
+    await page.getByRole('option', { name: type, exact: true }).click()
+  }
+  if (required)
+    await editor.getByRole('switch', { name: 'Required' }).click()
 }
 
 Given(
@@ -109,26 +149,47 @@ When(
     const rows = table.hashes() as AgentV2WorkflowOutputVariable[]
     this.agentBuilder.workflow.outputVariables = rows
 
-    await page.getByRole('button', { name: 'Output Variables' }).click()
+    await openWorkflowOutputVariablesPanel(this)
 
     for (const row of rows) {
       await page.getByRole('button', { name: 'New output' }).click()
+      await fillOutputVariableEditor(this, row)
+
       const editor = page.getByRole('form', { name: 'Output variable editor' })
-      await expect(editor).toBeVisible()
-
-      await editor.getByRole('textbox', { name: 'Field name' }).fill(row.name)
-      if (row.type !== 'string') {
-        await editor.getByRole('button', { name: 'Output type' }).click()
-        await page.getByRole('option', { name: row.type }).click()
-      }
-
-      const saveResponse = page.waitForResponse(response => (
-        response.request().method() === 'POST'
-        && new URL(response.url()).pathname.endsWith(`/console/api/apps/${appId}/workflows/draft`)
-      ))
+      const saveResponse = waitForWorkflowDraftSave(this, appId)
       await editor.getByRole('button', { name: 'Confirm' }).click()
       expect((await saveResponse).ok()).toBe(true)
       await expect(editor).not.toBeVisible()
+    }
+  },
+)
+
+When(
+  'I add a required Agent v2 workflow node object output variable with text and analysis fields',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const appId = getCurrentAppId(this)
+
+    await openWorkflowOutputVariablesPanel(this)
+    await page.getByRole('button', { name: 'New output' }).click()
+    await fillOutputVariableEditor(this, {
+      name: 'response',
+      required: true,
+      type: 'object',
+    })
+
+    let saveResponse = waitForWorkflowDraftSave(this, appId)
+    await page.getByRole('form', { name: 'Output variable editor' }).getByRole('button', { name: 'Confirm' }).click()
+    expect((await saveResponse).ok()).toBe(true)
+
+    for (const fieldName of ['text', 'analysis']) {
+      await page.getByText('response', { exact: true }).hover()
+      await page.getByRole('button', { name: 'Add response' }).click()
+      await fillOutputVariableEditor(this, { name: fieldName })
+
+      saveResponse = waitForWorkflowDraftSave(this, appId)
+      await page.getByRole('form', { name: 'Output variable editor' }).getByRole('button', { name: 'Confirm' }).click()
+      expect((await saveResponse).ok()).toBe(true)
     }
   },
 )
@@ -223,10 +284,65 @@ Then('I should see the Agent v2 workflow node output variables', async function 
   if (expectedOutputVariables.length === 0)
     throw new Error('No Agent v2 workflow output variables were recorded for this scenario.')
 
-  await page.getByRole('button', { name: 'Output Variables' }).click()
+  await openWorkflowOutputVariablesPanel(this)
 
   for (const output of expectedOutputVariables) {
     await expect(page.getByText(output.name, { exact: true })).toBeVisible()
     await expect(page.getByText(output.type, { exact: true })).toBeVisible()
   }
+})
+
+Then(
+  'the Agent v2 workflow node nested object output variable should be saved in the workflow draft',
+  async function (this: DifyWorld) {
+    const appId = getCurrentAppId(this)
+
+    await expect
+      .poll(async () => {
+        const outputs = await getDeclaredOutputsFromDraft(appId)
+        const response = outputs.find(output => output.name === 'response')
+
+        return {
+          children: response?.children?.map(child => ({
+            name: child.name,
+            required: child.required,
+            type: child.type,
+          })),
+          name: response?.name,
+          required: response?.required,
+          type: response?.type,
+        }
+      }, {
+        timeout: 30_000,
+      })
+      .toEqual({
+        children: [
+          {
+            name: 'text',
+            required: false,
+            type: 'string',
+          },
+          {
+            name: 'analysis',
+            required: false,
+            type: 'string',
+          },
+        ],
+        name: 'response',
+        required: true,
+        type: 'object',
+      })
+  },
+)
+
+Then('I should see the Agent v2 workflow node nested object output variable', async function (this: DifyWorld) {
+  const page = this.getPage()
+
+  await openWorkflowOutputVariablesPanel(this)
+  await expect(page.getByText('response', { exact: true })).toBeVisible()
+  await expect(page.getByText('object', { exact: true })).toBeVisible()
+  await expect(page.getByText('Required', { exact: true })).toBeVisible()
+  await expect(page.getByText('text', { exact: true })).toBeVisible()
+  await expect(page.getByText('analysis', { exact: true })).toBeVisible()
+  await expect(page.getByText('string', { exact: true })).toBeVisible()
 })
