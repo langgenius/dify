@@ -39,6 +39,7 @@ import {
 } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useCallback, useEffect, useRef } from 'react'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
@@ -61,6 +62,38 @@ type PluginTaskListResponse = {
 
 const getString = (value: unknown) => {
   return typeof value === 'string' ? value : ''
+}
+
+const getBoolean = (value: unknown) => {
+  return value === true
+}
+
+const getNumber = (value: unknown) => {
+  return typeof value === 'number' ? value : undefined
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+const getRecord = (value: unknown, key: string) => {
+  if (!isRecord(value))
+    return undefined
+
+  const child = value[key]
+  return isRecord(child) ? child : undefined
+}
+
+const getRecordArray = (value: unknown, key: string) => {
+  if (!isRecord(value))
+    return []
+
+  const child = value[key]
+  return Array.isArray(child) ? child.filter(isRecord) : []
+}
+
+const getStringArray = (value: unknown) => {
+  return Array.isArray(value) ? value.filter(item => typeof item === 'string') : []
 }
 
 const getI18nValue = (value: object | null | undefined, key: string) => {
@@ -143,6 +176,187 @@ const normalizePluginMeta = (meta: Record<string, unknown>): MetaData => {
   }
 }
 
+const normalizeToolCredentialOption = (
+  option: Record<string, unknown>,
+): NonNullable<NonNullable<PluginDeclaration['tool']>['credentials_schema'][number]['options']>[number] => ({
+  label: normalizeI18nObject(getRecord(option, 'label'), getString(option.value)),
+  value: getString(option.value),
+})
+
+const normalizeToolCredential = (
+  credential: Record<string, unknown>,
+): NonNullable<PluginDeclaration['tool']>['credentials_schema'][number] => ({
+  name: getString(credential.name),
+  label: normalizeI18nObject(getRecord(credential, 'label'), getString(credential.name)),
+  help: credential.help === null ? null : normalizeI18nObject(getRecord(credential, 'help')),
+  placeholder: normalizeI18nObject(getRecord(credential, 'placeholder')),
+  type: getString(credential.type),
+  required: getBoolean(credential.required),
+  default: getString(credential.default),
+  options: getRecordArray(credential, 'options').map(normalizeToolCredentialOption),
+})
+
+const normalizePluginToolDeclaration = (value: unknown): PluginDeclaration['tool'] => {
+  if (!isRecord(value))
+    return undefined
+
+  const identity = getRecord(value, 'identity')
+  if (!identity)
+    return undefined
+
+  const name = getString(identity.name)
+
+  return {
+    identity: {
+      author: getString(identity.author),
+      name,
+      description: normalizeI18nObject(getRecord(identity, 'description')),
+      icon: getString(identity.icon),
+      label: normalizeI18nObject(getRecord(identity, 'label'), name),
+      tags: getStringArray(identity.tags),
+    },
+    credentials_schema: getRecordArray(value, 'credentials_schema').map(normalizeToolCredential),
+  }
+}
+
+const normalizePluginEndpointDeclaration = (value: unknown): PluginDeclaration['endpoint'] => {
+  if (!isRecord(value))
+    return undefined
+
+  return {
+    settings: getRecordArray(value, 'settings').map(normalizeToolCredential),
+    endpoints: getRecordArray(value, 'endpoints').map(endpoint => ({
+      path: getString(endpoint.path),
+      method: getString(endpoint.method),
+      hidden: endpoint.hidden === undefined ? undefined : getBoolean(endpoint.hidden),
+    })),
+  }
+}
+
+const normalizeParameterDefault = (value: unknown) => {
+  if (Array.isArray(value))
+    return value.filter(item => typeof item === 'string')
+  if (typeof value === 'string')
+    return value
+  if (value === undefined || value === null)
+    return undefined
+  return String(value)
+}
+
+const normalizeFormType = (type: unknown): FormTypeEnum => {
+  switch (type) {
+    case FormTypeEnum.appSelector:
+      return FormTypeEnum.appSelector
+    case FormTypeEnum.boolean:
+      return FormTypeEnum.boolean
+    case FormTypeEnum.checkbox:
+      return FormTypeEnum.checkbox
+    case FormTypeEnum.dynamicSelect:
+      return FormTypeEnum.dynamicSelect
+    case FormTypeEnum.file:
+      return FormTypeEnum.file
+    case FormTypeEnum.files:
+      return FormTypeEnum.files
+    case FormTypeEnum.modelSelector:
+      return FormTypeEnum.modelSelector
+    case FormTypeEnum.multiToolSelector:
+      return FormTypeEnum.multiToolSelector
+    case FormTypeEnum.radio:
+      return FormTypeEnum.radio
+    case FormTypeEnum.secretInput:
+      return FormTypeEnum.secretInput
+    case FormTypeEnum.select:
+      return FormTypeEnum.select
+    case FormTypeEnum.textNumber:
+      return FormTypeEnum.textNumber
+    case FormTypeEnum.textInput:
+      return FormTypeEnum.textInput
+  }
+  return FormTypeEnum.textInput
+}
+
+const normalizeParameterOption = (
+  option: Record<string, unknown>,
+): NonNullable<PluginDeclaration['trigger']['subscription_schema'][number]['options']>[number] => ({
+  value: getString(option.value),
+  label: normalizeI18nObject(getRecord(option, 'label'), getString(option.value)),
+  icon: getString(option.icon) || undefined,
+})
+
+const normalizeParameterSchema = (
+  parameter: Record<string, unknown>,
+): PluginDeclaration['trigger']['subscription_schema'][number] => ({
+  name: getString(parameter.name),
+  label: normalizeI18nObject(getRecord(parameter, 'label'), getString(parameter.name)),
+  type: normalizeFormType(parameter.type),
+  auto_generate: parameter.auto_generate ?? undefined,
+  template: parameter.template ?? undefined,
+  scope: parameter.scope ?? undefined,
+  required: getBoolean(parameter.required),
+  multiple: getBoolean(parameter.multiple),
+  default: normalizeParameterDefault(parameter.default),
+  min: parameter.min ?? undefined,
+  max: parameter.max ?? undefined,
+  precision: parameter.precision ?? undefined,
+  options: getRecordArray(parameter, 'options').map(normalizeParameterOption),
+  description: normalizeI18nObject(getRecord(parameter, 'description')),
+})
+
+const normalizeCredentialSchema = (
+  schema: Record<string, unknown>,
+): PluginDeclaration['trigger']['subscription_constructor']['credentials_schema'][number] => ({
+  name: getString(schema.name),
+  label: normalizeI18nObject(getRecord(schema, 'label'), getString(schema.name)),
+  description: normalizeI18nObject(getRecord(schema, 'description')),
+  type: normalizeFormType(schema.type),
+  scope: schema.scope ?? undefined,
+  required: getBoolean(schema.required),
+  default: schema.default ?? undefined,
+  options: getRecordArray(schema, 'options').map(normalizeParameterOption),
+  help: normalizeI18nObject(getRecord(schema, 'help')),
+  url: getString(schema.url),
+  placeholder: normalizeI18nObject(getRecord(schema, 'placeholder')),
+})
+
+const normalizeTriggerEventParameter = (
+  parameter: Record<string, unknown>,
+): PluginDeclaration['trigger']['events'][number]['parameters'][number] => ({
+  name: getString(parameter.name),
+  label: normalizeI18nObject(getRecord(parameter, 'label'), getString(parameter.name)),
+  type: getString(parameter.type),
+  auto_generate: parameter.auto_generate ?? undefined,
+  template: parameter.template ?? undefined,
+  scope: parameter.scope ?? undefined,
+  required: getBoolean(parameter.required),
+  multiple: getBoolean(parameter.multiple),
+  default: parameter.default ?? '',
+  min: getNumber(parameter.min),
+  max: getNumber(parameter.max),
+  precision: getNumber(parameter.precision),
+  options: getRecordArray(parameter, 'options').map(normalizeParameterOption),
+  description: normalizeI18nObject(getRecord(parameter, 'description')),
+})
+
+const normalizeTriggerEvent = (
+  event: Record<string, unknown>,
+): PluginDeclaration['trigger']['events'][number] => {
+  const identity = getRecord(event, 'identity')
+  const name = getString(event.name)
+
+  return {
+    name,
+    identity: {
+      author: getString(identity?.author),
+      name: getString(identity?.name) || name,
+      label: normalizeI18nObject(getRecord(identity, 'label'), name),
+      provider: getString(identity?.provider) || undefined,
+    },
+    description: normalizeI18nObject(getRecord(event, 'description'), name),
+    parameters: getRecordArray(event, 'parameters').map(normalizeTriggerEventParameter),
+    output_schema: getRecord(event, 'output_schema') ?? {},
+  }
+}
+
 const createEmptyTrigger = (name: string): PluginDeclaration['trigger'] => ({
   events: [],
   identity: {
@@ -164,6 +378,39 @@ const createEmptyTrigger = (name: string): PluginDeclaration['trigger'] => ({
   subscription_schema: [],
 })
 
+const normalizePluginTriggerDeclaration = (
+  value: unknown,
+  fallbackName: string,
+): PluginDeclaration['trigger'] => {
+  if (!isRecord(value))
+    return createEmptyTrigger(fallbackName)
+
+  const identity = getRecord(value, 'identity')
+  const subscriptionConstructor = getRecord(value, 'subscription_constructor')
+  const oauthSchema = getRecord(subscriptionConstructor, 'oauth_schema')
+
+  return {
+    events: getRecordArray(value, 'events').map(normalizeTriggerEvent),
+    identity: {
+      author: getString(identity?.author),
+      name: getString(identity?.name) || fallbackName,
+      label: normalizeI18nObject(getRecord(identity, 'label'), fallbackName),
+      description: normalizeI18nObject(getRecord(identity, 'description')),
+      icon: getString(identity?.icon),
+      tags: getStringArray(identity?.tags),
+    },
+    subscription_constructor: {
+      credentials_schema: getRecordArray(subscriptionConstructor, 'credentials_schema').map(normalizeCredentialSchema),
+      oauth_schema: {
+        client_schema: getRecordArray(oauthSchema, 'client_schema').map(normalizeCredentialSchema),
+        credentials_schema: getRecordArray(oauthSchema, 'credentials_schema').map(normalizeCredentialSchema),
+      },
+      parameters: getRecordArray(subscriptionConstructor, 'parameters').map(normalizeParameterSchema),
+    },
+    subscription_schema: getRecordArray(value, 'subscription_schema').map(normalizeParameterSchema),
+  }
+}
+
 const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): PluginDeclaration => {
   const { declaration } = plugin
   return {
@@ -180,9 +427,9 @@ const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): Plu
     resource: declaration.resource,
     plugins: declaration.plugins,
     verified: declaration.verified ?? false,
-    endpoint: undefined,
-    tool: undefined,
-    datasource: undefined,
+    endpoint: normalizePluginEndpointDeclaration(declaration.endpoint),
+    tool: normalizePluginToolDeclaration(declaration.tool),
+    datasource: normalizePluginToolDeclaration(declaration.datasource),
     model: declaration.model,
     tags: declaration.tags ?? [],
     agent_strategy: declaration.agent_strategy,
@@ -190,11 +437,11 @@ const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): Plu
       version: getString(declaration.meta.version) || declaration.version,
       minimum_dify_version: getString(declaration.meta.minimum_dify_version) || undefined,
     },
-    trigger: createEmptyTrigger(declaration.name),
+    trigger: normalizePluginTriggerDeclaration(declaration.trigger, declaration.name),
   }
 }
 
-const normalizeInstalledPluginDetail = (plugin: PluginInstallationItemResponse): PluginDetail => {
+export const normalizeInstalledPluginDetail = (plugin: PluginInstallationItemResponse): PluginDetail => {
   return {
     id: plugin.id,
     created_at: plugin.created_at,
