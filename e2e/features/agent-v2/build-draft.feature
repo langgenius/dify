@@ -12,6 +12,7 @@ Feature: Agent v2 build draft
     Then I should see the Agent v2 Build draft pending changes
     And I should see the Agent v2 Build mode confirmation state
     And the normal Agent v2 draft should still use the normal E2E prompt
+    And the normal Agent v2 draft should not include the Agent Builder JSON Replace tool
 
   @core
   Scenario: Discarding a Build draft keeps the original Agent configuration

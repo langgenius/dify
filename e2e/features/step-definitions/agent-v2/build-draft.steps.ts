@@ -16,8 +16,10 @@ import {
   updatedAgentPrompt,
   updatedAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul'
-import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
+import { asArray, asRecord, skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
+import { hasToolEntry } from '../../agent-v2/support/preflight/tools'
 import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../agent-v2/support/test-materials'
+import { getPreseededToolContract } from '../../agent-v2/support/tools'
 import {
   getAgentEnvVariableValue,
   getCurrentAgentId,
@@ -239,6 +241,24 @@ Then('I should see one e2e-summary-skill Skill in the Skills section', async fun
     name: agentBuilderPreseededResources.summarySkill,
   })).toHaveCount(1)
 })
+
+Then(
+  'the normal Agent v2 draft should not include the Agent Builder JSON Replace tool',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+    const tool = getPreseededToolContract(this, agentBuilderPreseededResources.jsonReplaceTool)
+
+    await expect.poll(
+      async () => {
+        const draft = await getAgentComposerDraft(agentId)
+        const tools = asArray(asRecord(draft.agent_soul?.tools).dify_tools)
+
+        return hasToolEntry(tools, tool)
+      },
+      { timeout: 30_000 },
+    ).toBe(false)
+  },
+)
 
 Then(
   'the Agent v2 draft should include the supported Build draft config',

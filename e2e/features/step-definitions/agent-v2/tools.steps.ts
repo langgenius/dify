@@ -4,7 +4,8 @@ import { expect } from '@playwright/test'
 import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
 import { asArray, asRecord } from '../../agent-v2/support/preflight/common'
-import { hasToolEntry, splitToolDisplayName } from '../../agent-v2/support/preflight/tools'
+import { hasToolEntry } from '../../agent-v2/support/preflight/tools'
+import { getPreseededToolContract } from '../../agent-v2/support/tools'
 import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-helpers'
 
 const getToolsSection = (world: DifyWorld) =>
@@ -13,34 +14,9 @@ const getToolsSection = (world: DifyWorld) =>
 const getToolSelectorSearch = (world: DifyWorld) =>
   world.getPage().getByRole('textbox', { name: 'Search integrations...' })
 
-const getPreseededJsonReplaceTool = (world: DifyWorld) => {
-  const resource = world.agentBuilder.preflight.preseededResources[
-    agentBuilderPreseededResources.jsonReplaceTool
-  ]
-  if (!resource || resource.kind !== 'tool') {
-    throw new Error(
-      `Preseeded tool "${agentBuilderPreseededResources.jsonReplaceTool}" is not available. Run the matching preflight step first.`,
-    )
-  }
-
-  const parsedDisplayName = splitToolDisplayName(resource.name)
-  const parsedToolId = splitToolDisplayName(resource.id)
-  if (!parsedDisplayName.ok)
-    throw new Error(parsedDisplayName.reason)
-  if (!parsedToolId.ok)
-    throw new Error(parsedToolId.reason)
-
-  return {
-    providerDisplayName: parsedDisplayName.providerName,
-    providerName: parsedToolId.providerName,
-    toolDisplayName: parsedDisplayName.toolName,
-    toolName: parsedToolId.toolName,
-  }
-}
-
 const expectJsonReplaceToolDraft = async (world: DifyWorld) => {
   const agentId = getCurrentAgentId(world)
-  const tool = getPreseededJsonReplaceTool(world)
+  const tool = getPreseededToolContract(world, agentBuilderPreseededResources.jsonReplaceTool)
 
   await expect.poll(
     async () => {
