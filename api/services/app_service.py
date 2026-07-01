@@ -6,7 +6,7 @@ from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
-from libs.pagination import PaginatedResult
+from libs.pagination import PaginatedResult, paginate_query
 from pydantic import BaseModel, Field
 from sqlalchemy import ColumnElement, select
 from sqlalchemy.exc import IntegrityError
