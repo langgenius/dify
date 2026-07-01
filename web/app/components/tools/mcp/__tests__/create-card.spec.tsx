@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import NewMCPCard, { NewMCPButton } from '../create-card'
 
 // Track the mock functions
@@ -112,6 +113,19 @@ describe('NewMCPCard', () => {
       render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
 
       expect(screen.getByRole('button', { name: /tools\.mcp\.create\.cardTitle/i })).toBeInTheDocument()
+    })
+
+    it('should expose the tour target on the toolbar add action only', () => {
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd)
+
+      render(<NewMCPCard {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(document.querySelectorAll(selector)).toHaveLength(0)
+
+      render(<NewMCPButton {...defaultProps} />, { wrapper: createWrapper() })
+
+      expect(document.querySelectorAll(selector)).toHaveLength(1)
+      expect(document.querySelector(selector)).toHaveTextContent('tools.mcp.create.cardTitle')
     })
   })
 

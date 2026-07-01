@@ -4,6 +4,7 @@ import type { FilterState } from '../../filter-management'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { InstallationScope } from '@/features/system-features/constants'
 
 // ==================== Imports (after mocks) ====================
@@ -180,6 +181,19 @@ describe('Empty Component', () => {
       buttons.forEach(button => expect(button).toHaveClass('h-8', 'w-full', 'justify-start'))
     })
 
+    it('should anchor the trigger tour target to the empty state content instead of the grow root', async () => {
+      const { container } = render(<Empty contentInset="compact" variant="integrationsTrigger" />)
+      await flushEffects()
+
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid)
+      const target = document.querySelector<HTMLElement>(selector)
+
+      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(target).toContainElement(screen.getByText('plugin.list.noTriggerFound'))
+      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
+      expect(target).not.toContainElement(screen.getByText('plugin.installModal.dropIntegrationToInstall'))
+    })
+
     it('should render the Figma agent strategy empty layout at the shared center position', async () => {
       // Arrange & Act
       const { container } = render(<Empty contentInset="compact" variant="integrationsAgentStrategy" />)
@@ -198,6 +212,19 @@ describe('Empty Component', () => {
       expect(container.querySelector('.i-custom-vender-integrations-agent-strategy-active')).toHaveClass('size-6', 'shrink-0')
     })
 
+    it('should anchor the agent strategy tour target to the empty state content instead of the grow root', async () => {
+      const { container } = render(<Empty contentInset="compact" variant="integrationsAgentStrategy" />)
+      await flushEffects()
+
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty)
+      const target = document.querySelector<HTMLElement>(selector)
+
+      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(target).toContainElement(screen.getByText('plugin.list.noAgentStrategyFound'))
+      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
+      expect(target).not.toContainElement(screen.getByText('plugin.installModal.dropIntegrationToInstall'))
+    })
+
     it('should render the Figma extension empty layout with extension copy', async () => {
       // Arrange & Act
       const { container } = render(<Empty contentInset="compact" variant="integrationsExtension" />)
@@ -212,6 +239,19 @@ describe('Empty Component', () => {
       expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
       expect(skeletonGrid).toHaveStyle({ background: 'radial-gradient(ellipse at 50% 48%, #F3F4F7 0%, #FFFFFF 58%)' })
       expect(container.querySelector('.i-custom-vender-integrations-extension-active')).toHaveClass('size-6', 'shrink-0')
+    })
+
+    it('should anchor the extension tour target to the empty state content instead of the grow root', async () => {
+      const { container } = render(<Empty contentInset="compact" variant="integrationsExtension" />)
+      await flushEffects()
+
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid)
+      const target = document.querySelector<HTMLElement>(selector)
+
+      expect(container.firstElementChild).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(target).toContainElement(screen.getByText('plugin.list.noExtensionFound'))
+      expect(target).toContainElement(screen.getByText('plugin.source.marketplace'))
+      expect(target).not.toContainElement(screen.getByText('plugin.installModal.dropIntegrationToInstall'))
     })
   })
 

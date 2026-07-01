@@ -1,5 +1,6 @@
 'use client'
 
+import type { KeyboardEvent } from 'react'
 import type { Collection } from './types'
 import type { ToolCategory } from '@/app/components/integrations/routes'
 import type { CardPayload } from '@/app/components/plugins/card'
@@ -8,6 +9,7 @@ import IntegrationsToolProviderCard from '@/app/components/integrations/tool-pro
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
@@ -60,6 +62,9 @@ const collectionToCardPayload = (collection: Collection): CardPayload => {
   }
 }
 
+const isKeyboardSelectEvent = (event: KeyboardEvent) =>
+  event.key === 'Enter' || event.key === ' '
+
 export function ToolProviderGrid({
   activeTab,
   collections,
@@ -95,18 +100,23 @@ export function ToolProviderGrid({
       ? 'integrations-labeled'
       : 'integrations-default'
     : 'default'
+  const stepByStepTourTarget = activeTab === 'workflow'
+    ? STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid
+    : activeTab === 'api'
+      ? STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid
+      : undefined
 
   return (
     <div
       data-testid="tool-provider-grid"
       className={cn(
         useCustomToolGrid
-          ? 'relative grid shrink-0 grid-cols-1 content-start gap-2.5 pt-1 pb-4 md:grid-cols-2 xl:grid-cols-3'
+          ? 'relative grid w-full shrink-0 grid-cols-1 content-start gap-2.5 pt-1 pb-4 md:grid-cols-2 xl:grid-cols-3'
           : useThreeColumnIntegrationsGrid
-            ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 sm:grid-cols-2 md:grid-cols-3'
+            ? 'relative grid w-full shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 sm:grid-cols-2 md:grid-cols-3'
             : useIntegrationsCard
-              ? 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 lg:grid-cols-2'
-              : 'relative grid shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
+              ? 'relative grid w-full shrink-0 grid-cols-1 content-start gap-2 pt-1 pb-4 lg:grid-cols-2'
+              : 'relative grid w-full shrink-0 grid-cols-1 content-start gap-2 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3',
         frameClassName,
         showWorkflowEmptyState && 'grow',
       )}
@@ -115,14 +125,30 @@ export function ToolProviderGrid({
         ? <ToolCardSkeletonGrid variant={skeletonVariant} />
         : (
             <>
-              {activeTab === 'api' && showCreateCard && <CustomCreateCard onRefreshData={onRefreshData} />}
-              {collections.map(collection => (
+              {activeTab === 'api' && showCreateCard && (
+                <CustomCreateCard
+                  onRefreshData={onRefreshData}
+                  stepByStepTourTarget={stepByStepTourTarget}
+                />
+              )}
+              {collections.map((collection, index) => (
                 <div
                   key={collection.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={currentProviderId === collection.id}
+                  data-step-by-step-tour-target={index === 0 ? stepByStepTourTarget : undefined}
                   className={cn(
                     useCustomToolGrid && 'min-w-0',
                     useIntegrationsCard && !useCustomToolGrid && 'min-w-0',
                   )}
+                  onKeyDown={(event) => {
+                    if (!isKeyboardSelectEvent(event))
+                      return
+
+                    event.preventDefault()
+                    onSelectProvider(collection.id)
+                  }}
                   onClick={() => onSelectProvider(collection.id)}
                 >
                   {useIntegrationsCard
@@ -152,7 +178,10 @@ export function ToolProviderGrid({
                 </div>
               ))}
               {showWorkflowEmptyState && (
-                <div className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6">
+                <div
+                  className="absolute top-1/2 left-1/2 w-full max-w-[1060px] -translate-x-1/2 -translate-y-1/2 px-6"
+                  data-step-by-step-tour-target={stepByStepTourTarget}
+                >
                   <WorkflowToolEmpty type={getToolType(activeTab)} />
                 </div>
               )}

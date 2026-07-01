@@ -64,6 +64,8 @@ type PluginsPanelResultsProps = {
   contentFrameClassName: string
   contentInset: PluginPageContentInset
   currentBuiltinToolID?: string
+  firstBuiltinToolTarget?: string
+  firstPluginTarget?: string
   filteredBuiltinTools: Collection[]
   filteredList: Array<PluginDetail & { latest_version: string }>
   hasToolMarketplacePanel: boolean
@@ -86,6 +88,8 @@ const PluginsPanelResults = ({
   contentFrameClassName,
   contentInset,
   currentBuiltinToolID,
+  firstBuiltinToolTarget,
+  firstPluginTarget,
   filteredBuiltinTools,
   filteredList,
   hasToolMarketplacePanel,
@@ -115,23 +119,26 @@ const PluginsPanelResults = ({
         className="overscroll-contain"
         role={scrollAreaLabel ? 'region' : undefined}
       >
-        <ScrollAreaContent className={cn(
-          'flex min-h-full flex-col',
-          isAgentStrategyIntegrationPage && 'pt-2',
-        )}
+        <ScrollAreaContent
+          className={cn(
+            'flex min-h-full flex-col',
+            isAgentStrategyIntegrationPage && 'pt-2',
+          )}
         >
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
             <List
               pluginList={filteredList}
               canDeletePlugin={canDeletePlugin}
               canUpdatePlugin={canUpdatePlugin}
+              firstPluginTarget={firstPluginTarget}
             >
-              {filteredBuiltinTools.map(collection => (
+              {filteredBuiltinTools.map((collection, index) => (
                 <button
                   key={collection.id}
                   type="button"
                   aria-pressed={currentBuiltinToolID === collection.id}
                   className="min-w-0 cursor-pointer appearance-none border-0 bg-transparent p-0 text-left"
+                  data-step-by-step-tour-target={filteredList.length === 0 && index === 0 ? firstBuiltinToolTarget : undefined}
                   onClick={() => setCurrentBuiltinToolID(collection.id)}
                 >
                   <IntegrationsToolProviderCard

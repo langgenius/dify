@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import IntegrationsPage from '../page'
 
@@ -545,7 +545,7 @@ describe('IntegrationsPage', () => {
     expect(mockRouterPush).toHaveBeenCalledWith('/integrations/tools/built-in')
   })
 
-  it('keeps the tools disclosure independent from route section changes', () => {
+  it('opens the tools disclosure when a route section moves into tools', async () => {
     const view = renderIntegrationsPage(undefined, 'mcp')
 
     expect(screen.getByTestId('tool-provider-list')).toHaveAttribute('data-mounted-category', 'mcp')
@@ -566,6 +566,13 @@ describe('IntegrationsPage', () => {
     expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('link', { name: 'common.toolsPage.toolPlugin' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'MCP' })).not.toBeInTheDocument()
+
+    view.rerender(<IntegrationsPage section="mcp" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'common.menus.tools' })).toHaveAttribute('aria-expanded', 'true')
+    })
+    expect(screen.getByRole('link', { name: 'MCP' })).toHaveClass('bg-state-base-active')
   })
 
   it('renders the tools header for tool sections', () => {

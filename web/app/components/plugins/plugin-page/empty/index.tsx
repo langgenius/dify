@@ -14,6 +14,7 @@ import { Github } from '@/app/components/base/icons/src/vender/solid/general'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useInstalledPluginList } from '@/service/use-plugins'
@@ -132,6 +133,13 @@ const Empty = ({
       : isIntegrationsExtension
         ? t('list.noExtensionFound', { ns: 'plugin' })
         : text
+  const emptyTarget = isIntegrationsTrigger
+    ? STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid
+    : isIntegrationsAgentStrategy
+      ? STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty
+      : isIntegrationsExtension
+        ? STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid
+        : undefined
 
   return (
     <div className="relative z-0 w-full grow bg-components-panel-bg">
@@ -163,10 +171,12 @@ const Empty = ({
             showDropInstallTip ? 'min-h-0 flex-1' : 'h-full w-full',
           )}
         >
-          <div className={cn(
-            'flex flex-col items-center',
-            isIntegrationsCategory ? 'gap-y-6' : 'gap-y-3',
-          )}
+          <div
+            className={cn(
+              'flex flex-col items-center',
+              isIntegrationsCategory ? 'gap-y-6' : 'gap-y-3',
+            )}
+            data-step-by-step-tour-target={emptyTarget}
           >
             <div className="flex flex-col items-center gap-y-3">
               <div className={cn(

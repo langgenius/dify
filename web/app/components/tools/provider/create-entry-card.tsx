@@ -10,6 +10,7 @@ type CreateEntryCardProps = {
   linkText: string
   linkUrl: string
   onCreate: () => void
+  stepByStepTourTarget?: string
   title: string
 }
 
@@ -18,10 +19,14 @@ const CreateEntryCard = ({
   linkText,
   linkUrl,
   onCreate,
+  stepByStepTourTarget,
   title,
 }: CreateEntryCardProps) => {
   return (
-    <div className={cn('col-span-1 flex h-[120px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md', className)}>
+    <div
+      data-step-by-step-tour-target={stepByStepTourTarget}
+      className={cn('col-span-1 flex h-[120px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-md', className)}
+    >
       <button
         type="button"
         aria-label={title}

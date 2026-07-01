@@ -3,6 +3,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useDocLink } from '@/context/i18n'
 import { useCreateMCP } from '@/service/use-tools'
@@ -52,6 +53,7 @@ export function NewMCPButton({ handleCreate }: Props) {
       <Button
         variant="secondary"
         className="gap-0.5 px-3!"
+        data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd}
         onClick={() => setShowModal(true)}
         title={addMCPServerLabel}
         aria-label={addMCPServerLabel}

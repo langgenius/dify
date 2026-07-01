@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useDocLink } from '@/context/i18n'
 
 export function Empty() {
@@ -6,7 +7,10 @@ export function Empty() {
   const docLink = useDocLink()
 
   return (
-    <div className="mb-2 flex flex-col items-start gap-3 rounded-xl bg-background-section p-6">
+    <div
+      className="mb-2 flex flex-col items-start gap-3 rounded-xl bg-background-section p-6"
+      data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationCustomEndpointEmpty}
+    >
       <div className="flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg-alt shadow-lg backdrop-blur-xs">
         <span aria-hidden className="i-custom-vender-workflow-api-aggregate size-5 text-text-tertiary" />
       </div>

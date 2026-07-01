@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { getToolType } from '@/app/components/tools/utils'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { ToolTypeEnum } from '../../workflow/block-selector/types'
@@ -203,7 +204,9 @@ vi.mock('@/app/components/tools/labels/filter', () => ({
 }))
 
 vi.mock('@/app/components/tools/provider/custom-create-card', () => ({
-  default: () => <div data-testid="custom-create-card">Create Custom Tool</div>,
+  default: ({ stepByStepTourTarget }: { stepByStepTourTarget?: string }) => (
+    <div data-testid="custom-create-card" data-step-by-step-tour-target={stepByStepTourTarget}>Create Custom Tool</div>
+  ),
   NewCustomToolButton: () => <button type="button" data-testid="toolbar-add-custom-tool">tools.addSwaggerAPIAsTool</button>,
 }))
 
@@ -601,8 +604,11 @@ describe('ProviderList', () => {
       mockCollectionData = createDefaultCollections().filter(c => c.type !== 'api')
       renderProviderList({ category: 'api' })
 
-      expect(screen.getByTestId('custom-create-card')).toBeInTheDocument()
+      const customCreateCard = screen.getByTestId('custom-create-card')
+      expect(customCreateCard).toBeInTheDocument()
       expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid)
+      expect(document.querySelector(selector)).toBe(customCreateCard)
     })
 
     it('moves custom creation into the toolbar when API tools exist', () => {
@@ -619,6 +625,16 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap')
       expect(screen.getByTestId('card-my-api').parentElement).toHaveClass('min-w-0')
       expect(screen.getByTestId('card-my-api').parentElement).not.toHaveClass('flex-1')
+    })
+
+    it('anchors the Swagger API tour target to the first custom tool card', () => {
+      renderProviderList(undefined, 'api', 'compact')
+
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid)
+      const target = document.querySelector(selector)
+
+      expect(target).toBe(screen.getByTestId('card-my-api').parentElement)
+      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
     })
 
     it('shows custom API card author and label tags from collection labels', () => {
@@ -661,6 +677,16 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('card-wf-tool').parentElement).toHaveClass('min-w-0')
     })
 
+    it('anchors the Workflow as Tool tour target to the first workflow card', () => {
+      renderProviderList(undefined, 'workflow', 'compact')
+
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid)
+      const target = document.querySelector(selector)
+
+      expect(target).toBe(screen.getByTestId('card-wf-tool').parentElement)
+      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
+    })
+
     it('does not show the built-in badge on workflow cards', () => {
       renderProviderList(undefined, 'workflow', 'compact')
 
@@ -681,6 +707,17 @@ describe('ProviderList', () => {
       mockCollectionData = createDefaultCollections().filter(c => c.type !== 'workflow')
       renderProviderList({ category: 'workflow' })
       expect(screen.getByTestId('workflow-empty')).toBeInTheDocument()
+    })
+
+    it('anchors the Workflow as Tool tour target to the bounded empty state when no workflow collections exist', () => {
+      mockCollectionData = createDefaultCollections().filter(c => c.type !== 'workflow')
+      renderProviderList(undefined, 'workflow', 'compact')
+
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid)
+      const target = document.querySelector<HTMLElement>(selector)
+
+      expect(target).not.toBe(screen.getByTestId('tool-provider-grid'))
+      expect(target).toContainElement(screen.getByTestId('workflow-empty'))
     })
 
     it('does not show workflow empty state when search has no matches', () => {
@@ -843,6 +880,7 @@ describe('ProviderList', () => {
     it('passes compact content inset to MCPList when rendered by integrations layout', () => {
       renderProviderList(undefined, 'mcp', 'compact')
 
+      expect(screen.getByTestId('toolbar-add-mcp')).toBeInTheDocument()
       expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-content-inset', 'compact')
     })
   })

@@ -7,6 +7,7 @@ import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/compone
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useGetDataSourceListAuth, useInvalidDataSourceListAuth } from '@/service/use-datasource'
@@ -123,7 +124,7 @@ const DataSourcePage = ({
     <>
       {isDataSourceListLoading && <DataSourceListSkeleton />}
       {!isDataSourceListLoading && !dataSources.length && (
-        <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
+        <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4" data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceFirstCard}>
           <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
             <span className="i-ri-database-2-line h-5 w-5 text-text-primary" />
           </div>
@@ -144,16 +145,20 @@ const DataSourcePage = ({
       {!isDataSourceListLoading && !!filteredDataSources.length && (
         <div className="space-y-2">
           {
-            filteredDataSources.map((item) => {
+            filteredDataSources.map((item, index) => {
               const pluginDetail = dataSourcePluginDetails.find(plugin => plugin.plugin_id === item.plugin_id)
 
               return (
-                <Card
+                <div
                   key={item.plugin_unique_identifier}
-                  item={item}
-                  pluginDetail={pluginDetail}
-                  onPluginUpdate={handlePluginUpdate}
-                />
+                  data-step-by-step-tour-target={index === 0 ? STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceFirstCard : undefined}
+                >
+                  <Card
+                    item={item}
+                    pluginDetail={pluginDetail}
+                    onPluginUpdate={handlePluginUpdate}
+                  />
+                </div>
               )
             })
           }

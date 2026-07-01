@@ -1,6 +1,7 @@
 import type { PluginDeclaration, PluginDetail } from '../../../types'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 
 // ==================== Imports (after mocks) ====================
@@ -409,6 +410,25 @@ describe('PluginList', () => {
       // Assert
       const outerDiv = container.firstChild as HTMLElement
       expect(outerDiv)!.toHaveClass('pb-3')
+    })
+
+    it('should anchor the first plugin tour target to the first result wrapper only', () => {
+      const pluginList = createPluginList(2)
+
+      render(
+        <PluginList
+          firstPluginTarget={STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginFirstCard}
+          pluginList={pluginList}
+        />,
+      )
+
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginFirstCard)
+      const target = document.querySelector<HTMLElement>(selector)
+      const firstPluginItem = screen.getByText('plugin-1')
+      const secondPluginItem = screen.getByText('plugin-2')
+
+      expect(target).toContainElement(firstPluginItem)
+      expect(target).not.toContainElement(secondPluginItem)
     })
   })
 

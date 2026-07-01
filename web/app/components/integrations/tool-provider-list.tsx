@@ -132,7 +132,7 @@ const ProviderList = ({
   const shouldShowCustomToolCreateCard = canManageTools && !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
   const shouldShowMCPCreateCard = canManageMCP && !(activeTab === 'mcp' && hasCategoryCollections)
   const shouldShowToolbarCreateAction
-    = (activeTab === 'mcp' && canManageMCP && hasCategoryCollections)
+    = (activeTab === 'mcp' && canManageMCP && (hasCategoryCollections || isRouteCategory))
       || (activeTab === 'api' && canManageTools && !isCollectionListLoading && hasCategoryCollections)
   const filteredCollectionList = useMemo(() => {
     return activeTabCollectionList.filter((collection) => {

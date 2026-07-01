@@ -10,6 +10,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -173,6 +174,13 @@ const PluginsPanel = ({
         : isToolIntegrationPage
           ? t('categorySingle.tool', { ns: 'plugin' })
           : undefined
+  const resultTarget = isTriggerIntegrationPage
+    ? STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid
+    : isAgentStrategyIntegrationPage
+      ? STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty
+      : isExtensionIntegrationPage
+        ? STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid
+        : undefined
 
   const toolbar = (
     <div className={cn(
@@ -208,6 +216,8 @@ const PluginsPanel = ({
                   contentFrameClassName={contentFrameClassName}
                   contentInset={contentInset}
                   currentBuiltinToolID={currentBuiltinToolID}
+                  firstBuiltinToolTarget={isToolIntegrationPage ? STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginFirstCard : undefined}
+                  firstPluginTarget={isToolIntegrationPage ? STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginFirstCard : resultTarget}
                   filteredBuiltinTools={filteredBuiltinTools}
                   filteredList={filteredList}
                   hasToolMarketplacePanel={hasToolMarketplacePanel}

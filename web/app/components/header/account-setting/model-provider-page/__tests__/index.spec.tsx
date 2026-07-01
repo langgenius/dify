@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import {
   CurrentSystemQuotaTypeEnum,
   CustomConfigurationStatusEnum,
@@ -400,6 +401,16 @@ describe('ModelProviderPage', () => {
     expect(screen.getByText('anthropic')).toBeInTheDocument()
   })
 
+  it('should use the empty provider state as the production tour target when no provider cards exist', () => {
+    mockProviders.splice(0)
+
+    renderModelProviderPage()
+
+    const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction)
+    const target = document.querySelector(selector)
+    expect(target).toContainElement(screen.getByText('common.modelProvider.emptyProviderTitle'))
+  })
+
   it('should show provider placeholders while model providers are loading', () => {
     mockProviderContextState.isLoadingModelProviders = true
 
@@ -453,6 +464,9 @@ describe('ModelProviderPage', () => {
       expect(screen.getByText('common.modelProvider.noneConfigured')).toBeInTheDocument()
       expect(screen.queryByText('common.modelProvider.notConfigured')).not.toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.emptyProviderTitle')).toBeInTheDocument()
+      const selector = getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction)
+      const target = document.querySelector(selector)
+      expect(target).toContainElement(screen.getByText('anthropic'))
     })
 
     it('should show none-configured warning when providers exist but no default models set', () => {

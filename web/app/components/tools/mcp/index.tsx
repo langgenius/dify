@@ -3,6 +3,7 @@ import type { ToolsContentInset } from '../content-inset'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
 import {
@@ -107,15 +108,19 @@ const MCPList = ({
         {!isLoading && canManageMCP && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
         {isLoading
           ? <ToolCardSkeletonGrid variant="mcp" />
-          : filteredList.map(provider => (
-              <MCPCard
+          : filteredList.map((provider, index) => (
+              <div
                 key={provider.id}
-                data={provider}
-                currentProvider={currentProvider as ToolWithProvider}
-                handleSelect={setCurrentProviderID}
-                onUpdate={handleUpdate}
-                onDeleted={refetch}
-              />
+                data-step-by-step-tour-target={index === 0 ? STEP_BY_STEP_TOUR_TARGETS.integrationMcpFirstCard : undefined}
+              >
+                <MCPCard
+                  data={provider}
+                  currentProvider={currentProvider as ToolWithProvider}
+                  handleSelect={setCurrentProviderID}
+                  onUpdate={handleUpdate}
+                  onDeleted={refetch}
+                />
+              </div>
             ))}
       </div>
       {currentProvider && (

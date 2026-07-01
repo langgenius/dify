@@ -2,6 +2,7 @@ import type { PluginDetail } from '../../types'
 import type { Collection } from '@/app/components/tools/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { PluginCategoryEnum } from '../../types'
 import PluginsPanel from '../plugins-panel'
 
@@ -92,9 +93,17 @@ vi.mock('../empty', () => ({
 }))
 
 vi.mock('../list', () => ({
-  default: ({ children, pluginList }: { children?: React.ReactNode, pluginList: PluginDetail[] }) => (
+  default: ({ children, firstPluginTarget, pluginList }: { children?: React.ReactNode, firstPluginTarget?: string, pluginList: PluginDetail[] }) => (
     <div data-testid="plugin-list">
-      {pluginList.map(plugin => <div key={plugin.plugin_id} data-testid="plugin-list-item">{plugin.plugin_id}</div>)}
+      {pluginList.map((plugin, index) => (
+        <div
+          key={plugin.plugin_id}
+          data-step-by-step-tour-target={index === 0 ? firstPluginTarget : undefined}
+          data-testid="plugin-list-item"
+        >
+          {plugin.plugin_id}
+        </div>
+      ))}
       {children}
     </div>
   ),
@@ -484,6 +493,24 @@ describe('PluginsPanel', () => {
 
     expect(screen.getByTestId('plugin-list')).toHaveTextContent('search-extension')
     expect(screen.getByTestId('plugin-list')).toHaveTextContent('rag-extension')
+  })
+
+  it.each([
+    [PluginCategoryEnum.trigger, 'trigger-plugin', STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid],
+    [PluginCategoryEnum.agent, 'agent-plugin', STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty],
+    [PluginCategoryEnum.extension, 'extension-plugin', STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid],
+  ] as const)('anchors the %s integration tour target to the first plugin result', (category, pluginId, targetName) => {
+    mockPluginListWithLatestVersion.mockReturnValue([
+      createPlugin(pluginId, pluginId, [], category),
+      createPlugin(`${pluginId}-2`, `${pluginId} 2`, [], category),
+    ])
+
+    render(<PluginsPanel contentInset="compact" fixedCategory={category} />)
+
+    const selector = getStepByStepTourTargetSelector(targetName)
+
+    expect(document.querySelector(selector)).toBe(screen.getAllByTestId('plugin-list-item')[0])
+    expect(document.querySelector(selector)).not.toBe(screen.getByTestId('plugin-list'))
   })
 
   it('leaves the result area blank when a fixed integrations category search has no matches', () => {
