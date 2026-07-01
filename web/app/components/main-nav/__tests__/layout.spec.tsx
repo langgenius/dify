@@ -146,6 +146,54 @@ describe('MainNavLayout', () => {
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
   })
 
+  it.each([
+    {
+      label: 'agent detail route for dataset operators',
+      pathname: '/roster/agent/agent-1/configure',
+      appContext: {
+        isCurrentWorkspaceDatasetOperator: true,
+        isCurrentWorkspaceEditor: true,
+      },
+      systemFeatures: {
+        enable_app_deploy: true,
+      },
+    },
+    {
+      label: 'deployment detail route for non-editor workspaces',
+      pathname: '/deployments/app-instance-1/overview',
+      appContext: {
+        isCurrentWorkspaceDatasetOperator: false,
+        isCurrentWorkspaceEditor: false,
+      },
+      systemFeatures: {
+        enable_app_deploy: true,
+      },
+    },
+    {
+      label: 'deployment detail route when deployment is disabled',
+      pathname: '/deployments/app-instance-1/overview',
+      appContext: {
+        isCurrentWorkspaceDatasetOperator: false,
+        isCurrentWorkspaceEditor: true,
+      },
+      systemFeatures: {
+        enable_app_deploy: false,
+      },
+    },
+  ])('keeps the global main nav on $label', ({ pathname, appContext, systemFeatures }) => {
+    ;(usePathname as Mock).mockReturnValue(pathname)
+    ;(useAppContext as Mock).mockReturnValue(appContext)
+    ;(useSuspenseQuery as Mock).mockReturnValue({
+      data: systemFeatures,
+    })
+
+    render(<MainNavLayout><div>detail route content</div></MainNavLayout>)
+
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+    expect(screen.getAllByRole('main')).toHaveLength(1)
+    expect(screen.getByRole('main')).toHaveTextContent('detail route content')
+  })
+
   it('clears app detail state after leaving app routes', () => {
     useAppStore.getState().setAppDetail({ id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'])
     ;(usePathname as Mock).mockReturnValue('/datasets')

@@ -5,8 +5,6 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
@@ -313,19 +311,6 @@ describe('MainNav', () => {
       mutateAsync: mockUpdatePinStatus,
     })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
-  })
-
-  it('keeps feature-owned detail sidebar modules out of the global main nav entry', () => {
-    const mainNavSource = readFileSync(resolve(process.cwd(), 'app/components/main-nav/index.tsx'), 'utf8')
-
-    expect(mainNavSource).not.toContain('@/app/components/app-sidebar/app-detail-section')
-    expect(mainNavSource).not.toContain('@/app/components/app-sidebar/app-detail-top')
-    expect(mainNavSource).not.toContain('@/app/components/app-sidebar/dataset-detail-section')
-    expect(mainNavSource).not.toContain('@/app/components/app-sidebar/dataset-detail-top')
-    expect(mainNavSource).not.toContain('@/features/agent-v2/agent-detail/navigation')
-    expect(mainNavSource).not.toContain('@/features/deployments/detail/deployment-sidebar')
-    expect(mainNavSource).not.toContain('./components/snippet-detail-top')
-    expect(mainNavSource).not.toContain('./components/snippet-detail-section')
   })
 
   it('renders primary navigation with the planned routes', () => {
