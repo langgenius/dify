@@ -26,6 +26,8 @@ export const agentBuilderFixedInputs = {
   customKnowledgeQuery: 'Dify Agent E2E 测试暗号',
   envPlainKey: 'E2E_AGENT_FLAG',
   envPlainValue: 'enabled',
+  envModeKey: 'E2E_AGENT_MODE',
+  envModeValue: 'plain',
   envAfterInvalidImportKey: 'E2E_AGENT_AFTER_INVALID',
   envAfterInvalidImportValue: 'still-valid',
   inputModerationReply: 'E2E_INPUT_BLOCKED_REPLY',

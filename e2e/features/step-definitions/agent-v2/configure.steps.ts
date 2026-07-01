@@ -1,3 +1,4 @@
+import type { AgentComposerEnvVariable } from '../../../support/agent'
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
@@ -26,6 +27,17 @@ const getCurrentAgentId = (world: DifyWorld) => {
 
   return agentId
 }
+
+const getEnvVariableKey = (variable: AgentComposerEnvVariable) =>
+  variable.key ?? variable.name ?? variable.variable
+
+const getAgentEnvVariableValue = (
+  variables: AgentComposerEnvVariable[],
+  key: string,
+) => variables.find(variable => getEnvVariableKey(variable) === key)?.value
+
+const getAgentEnvVariables = async (agentId: string) =>
+  (await getAgentComposerDraft(agentId)).agent_soul?.env?.variables ?? []
 
 Given('an Agent v2 test agent has been created via API', async function (this: DifyWorld) {
   const agent = await createTestAgent()
@@ -199,6 +211,21 @@ When(
   },
 )
 
+When(
+  'I import the valid Agent v2 environment file from Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+    await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
+
+    const fileChooserPromise = page.waitForEvent('filechooser')
+    await advancedSettings.getByRole('button', { name: 'Import .env' }).click()
+    await (await fileChooserPromise).setFiles(getAgentBuilderTestMaterialPath('validEnv'))
+  },
+)
+
 When('I expand Agent v2 Advanced Settings', async function (this: DifyWorld) {
   const page = this.getPage()
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
@@ -300,11 +327,9 @@ Then(
     await expect
       .poll(async () => {
         const env = (await getAgentComposerDraft(agentId)).agent_soul?.env
-        const variable = env?.variables?.find((item) => {
-          const key = item.key ?? item.name ?? item.variable
-
-          return key === agentBuilderFixedInputs.envPlainKey
-        })
+        const variable = env?.variables?.find(item =>
+          getEnvVariableKey(item) === agentBuilderFixedInputs.envPlainKey,
+        )
 
         return {
           secretCount: env?.secret_refs?.length ?? 0,
@@ -316,6 +341,29 @@ Then(
       .toEqual({
         secretCount: 0,
         value: agentBuilderFixedInputs.envPlainValue,
+      })
+  },
+)
+
+Then(
+  'the valid Agent v2 environment import should be saved in the Agent v2 draft',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+
+    await expect
+      .poll(async () => {
+        const variables = await getAgentEnvVariables(agentId)
+
+        return {
+          modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
+          plainValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envPlainKey),
+        }
+      }, {
+        timeout: 30_000,
+      })
+      .toEqual({
+        modeValue: agentBuilderFixedInputs.envModeValue,
+        plainValue: agentBuilderFixedInputs.envPlainValue,
       })
   },
 )
@@ -334,19 +382,14 @@ Then(
 
     await expect
       .poll(async () => {
-        const variables = (await getAgentComposerDraft(agentId)).agent_soul?.env?.variables ?? []
+        const variables = await getAgentEnvVariables(agentId)
 
         return {
-          importedValue: variables.find((item) => {
-            const key = item.key ?? item.name ?? item.variable
-
-            return key === agentBuilderFixedInputs.envAfterInvalidImportKey
-          })?.value,
-          plainValue: variables.find((item) => {
-            const key = item.key ?? item.name ?? item.variable
-
-            return key === agentBuilderFixedInputs.envPlainKey
-          })?.value,
+          importedValue: getAgentEnvVariableValue(
+            variables,
+            agentBuilderFixedInputs.envAfterInvalidImportKey,
+          ),
+          plainValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envPlainKey),
         }
       }, {
         timeout: 30_000,
@@ -372,6 +415,29 @@ Then(
     await expect(envEditor.getByText('Key', { exact: true })).toBeVisible()
     await expect(envEditor.getByText('Value', { exact: true })).toBeVisible()
     await expect(envEditor.getByText('Scope', { exact: true })).toBeVisible()
+  },
+)
+
+Then(
+  'I should see the Agent v2 environment variables from the valid import in Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+    await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
+    await expect.poll(
+      async () => advancedSettings.getByRole('textbox').evaluateAll(inputs =>
+        inputs.map(input => (input as HTMLInputElement).value),
+      ),
+      { timeout: 30_000 },
+    ).toEqual(expect.arrayContaining([
+      agentBuilderFixedInputs.envPlainKey,
+      agentBuilderFixedInputs.envPlainValue,
+      agentBuilderFixedInputs.envModeKey,
+      agentBuilderFixedInputs.envModeValue,
+    ]))
+    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
   },
 )
 
