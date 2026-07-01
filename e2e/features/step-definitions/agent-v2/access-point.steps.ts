@@ -252,6 +252,33 @@ Then(
   },
 )
 
+Then(
+  'the Agent v2 Web app response should include the normal E2E marker',
+  async function (this: DifyWorld) {
+    const webAppPage = this.agentBuilder.accessPoint.webAppPage
+    if (!webAppPage)
+      throw new Error('No Agent v2 Web app page was opened.')
+
+    await expect(webAppPage.getByText(agentBuilderExpectedTokens.agentReply))
+      .toBeVisible({ timeout: 120_000 })
+  },
+)
+
+Then(
+  'the Agent v2 Web app response should not include the updated E2E marker',
+  async function (this: DifyWorld) {
+    const webAppPage = this.agentBuilder.accessPoint.webAppPage
+    if (!webAppPage)
+      throw new Error('No Agent v2 Web app page was opened.')
+
+    await expect(webAppPage.getByText(agentBuilderExpectedTokens.updatedAgentReply))
+      .not
+      .toBeVisible()
+    await webAppPage.close()
+    this.agentBuilder.accessPoint.webAppPage = undefined
+  },
+)
+
 When('I open Agent v2 Embedded configuration', async function (this: DifyWorld) {
   await getWebAppCard(this).getByRole('button', { name: 'Embedded' }).click()
 })

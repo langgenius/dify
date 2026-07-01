@@ -10,7 +10,7 @@ Agent v2 scenarios live under `features/agent-v2/` and use the `@agent-v2` capab
 
 The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/roster` routes are guarded by that feature flag.
 
-Preview/Test Run scenarios are not part of the current build-mode slice unless explicitly requested. Current Agent v2 coverage should prioritize Configure, Build draft, saved configuration display, publish state, Access Point, preflight, files, advanced settings, and other build-mode behavior.
+Preview/Test Run scenarios are not part of the current build-mode slice unless explicitly requested. Current Agent v2 coverage should prioritize Configure, Build draft, saved configuration display, publish state, Access Point, preflight, files, advanced settings, and other build-mode behavior. Published Web app runtime is not Builder Preview; keep it as a separate `@web-app-runtime` slice because it exercises the public app surface and real model-backed responses after publish.
 
 Use API setup for prerequisite state, then use Playwright only for user-observable navigation, editing, and assertions. Do not make assertions pass by mirroring the current implementation blindly; if a failure exposes a product ambiguity, resource gap, or test-quality problem, identify the owner before changing the test.
 
@@ -27,7 +27,7 @@ Use API setup for prerequisite state, then use Playwright only for user-observab
 - `@agent-edit` — saved Agent detail/configuration display surfaces.
 - `@publish` — publish and publish-bar state.
 - `@access-point` — Web app, Backend service API, and Workflow access surfaces.
-- `@web-app-runtime` — published public Web app runtime behavior. Keep this outside `@core` until runtime coverage is explicitly in scope.
+- `@web-app-runtime` — published public Web app runtime behavior. Use it for scenarios that open the public Web app and assert real chat responses. Access Point URL, launch, customization, and settings surfaces remain `@access-point` behavior unless they send messages through the public Web app.
 - `@feature-gated` — product capability is optional. This tag alone does not skip execution; the scenario must include an explicit step that returns `skipped` with a blocked-precondition reason when the feature is unavailable.
 
 ## Step Organization
