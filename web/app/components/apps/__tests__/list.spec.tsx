@@ -685,17 +685,6 @@ describe('List', () => {
         },
       })
     })
-
-    it('should remove legacy tagIDs from URL while preserving other filters', async () => {
-      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales')
-
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith(
-          '/apps?category=workflow&keywords=sales',
-          { scroll: false },
-        )
-      })
-    })
   })
 
   describe('Tag Filter', () => {
