@@ -7357,11 +7357,6 @@
       "count": 4
     }
   },
-  "web/service/use-snippet-workflows.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-tools.ts": {
     "no-restricted-imports": {
       "count": 1
