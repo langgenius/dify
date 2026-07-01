@@ -83,6 +83,7 @@ COPY --from=tools ${UV_TOOL_BIN_DIR} ${UV_TOOL_BIN_DIR}
 
 RUN useradd --create-home --shell /bin/sh dify \
     && mkdir -p /mnt/drive \
+    && chown dify:dify /home \
     && chown -R dify:dify /home/dify /mnt/drive
 
 USER dify
