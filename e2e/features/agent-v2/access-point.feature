@@ -21,7 +21,7 @@ Feature: Agent v2 Access Point
     Then the Agent v2 Web app access URL should show it was copied
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access
+  @core @web-app-access @stable-model
   Scenario: Published Web app can be launched from Access Point
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -72,7 +72,7 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Web app settings dialog
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access
+  @core @web-app-access @stable-model
   Scenario: Web app access can be disabled and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -140,7 +140,7 @@ Feature: Agent v2 Access Point
     And I open the Agent v2 API Reference
     Then the Agent v2 API Reference should open in a new tab
 
-  @service-api-runtime
+  @service-api-runtime @stable-model
   Scenario: Backend service API can be disabled and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available

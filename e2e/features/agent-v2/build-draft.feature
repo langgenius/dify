@@ -1,6 +1,6 @@
 @agent-v2 @authenticated @build
 Feature: Agent v2 build draft
-  @core
+  @core @stable-model
   Scenario: Generating a Build draft leaves the normal Agent configuration unchanged
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -57,7 +57,7 @@ Feature: Agent v2 build draft
     And the Agent v2 draft should not include the supported Build draft config
     And the Agent v2 Build draft should no longer be active
 
-  @core
+  @core @stable-model
   Scenario: Applying a pending Build draft updates the normal Agent configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -75,7 +75,7 @@ Feature: Agent v2 build draft
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
-  @core
+  @core @stable-model
   Scenario: Applying a Build draft updates supported configuration sections
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -102,7 +102,7 @@ Feature: Agent v2 build draft
     And I should see the supported E2E environment variable in Advanced Settings
     And the Agent v2 Build draft should no longer be active
 
-  @core
+  @core @stable-model
   Scenario: Applying a Build draft with an existing Skill keeps a single Skill entry
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -143,7 +143,7 @@ Feature: Agent v2 build draft
     When I open the Agent v2 configure page
     Then Agent v2 Build chat Dify Tool writeback should be available
 
-  @build-unavailable-resources @feature-gated
+  @build-unavailable-resources @feature-gated @stable-model
   Scenario: Build chat reports unavailable Skill or Tool requests clearly
     Given I am signed in as the default E2E admin
     And Agent v2 Build chat unavailable Skill and Tool recovery is available

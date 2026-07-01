@@ -1,6 +1,6 @@
 @agent-v2 @authenticated @core
 Feature: Agent v2 configure persistence
-  @configure-persistence
+  @configure-persistence @stable-model
   Scenario: Selecting a stable model in Configure persists after refresh
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -16,7 +16,7 @@ Feature: Agent v2 configure persistence
     And I should see the normal E2E prompt in the Agent v2 prompt editor
     And the Agent v2 draft should use the stable E2E model
 
-  @configure-persistence
+  @configure-persistence @stable-model
   Scenario: Persisted Agent v2 instructions remain visible after refresh
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available

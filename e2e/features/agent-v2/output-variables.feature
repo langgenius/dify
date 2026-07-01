@@ -8,7 +8,7 @@ Feature: Agent v2 output variables
     When I open the Agent v2 configure page
     Then Agent v2 standalone Output Variables should be available
 
-  @core
+  @core @stable-model
   Scenario: Workflow Agent v2 output variables persist after refresh
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -25,7 +25,7 @@ Feature: Agent v2 output variables
     And I open the Agent v2 workflow node panel
     Then I should see the Agent v2 workflow node output variables
 
-  @core
+  @core @stable-model
   Scenario: Workflow Agent v2 nested object output variables persist after refresh
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -38,7 +38,7 @@ Feature: Agent v2 output variables
     And I open the Agent v2 workflow node panel
     Then I should see the Agent v2 workflow node nested object output variable
 
-  @core
+  @core @stable-model
   Scenario: Workflow Agent v2 prompt output reference stays synced when renamed
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -53,7 +53,7 @@ Feature: Agent v2 output variables
     And I open the Agent v2 workflow node panel
     Then the Agent v2 workflow node task should reference the renamed file output
 
-  @output-reference-delete @feature-gated
+  @output-reference-delete @feature-gated @stable-model
   Scenario: Workflow Agent v2 prompt output reference deletion remains explicit
     Given I am signed in as the default E2E admin
     And Agent v2 workflow task output reference deletion consistency is available
@@ -64,7 +64,7 @@ Feature: Agent v2 output variables
     And I insert a file output reference from the Agent v2 workflow node task editor
     Then Agent v2 workflow task output reference deletion consistency should be available
 
-  @output-retry-strategy @feature-gated
+  @output-retry-strategy @feature-gated @stable-model
   Scenario: Workflow Agent v2 output retry strategy can be saved after refresh
     Given I am signed in as the default E2E admin
     And Agent v2 workflow output retry strategy is available
@@ -74,7 +74,7 @@ Feature: Agent v2 output variables
     And I open the Agent v2 workflow node panel
     Then Agent v2 workflow output retry strategy should be available
 
-  @output-retry-validation @feature-gated
+  @output-retry-validation @feature-gated @stable-model
   Scenario: Workflow Agent v2 output retry count validation is enforced
     Given I am signed in as the default E2E admin
     And Agent v2 workflow output retry count validation is available

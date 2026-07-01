@@ -1,6 +1,6 @@
 @agent-v2 @authenticated @agent-edit
 Feature: Agent v2 Agent Edit page
-  @core
+  @core @stable-model
   Scenario: Saved orchestration sections are visible on the Agent Edit page
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -9,7 +9,7 @@ Feature: Agent v2 Agent Edit page
     When I open the preseeded Agent v2 configure page for "E2E New Agent Builder Full Config" from the Agent Roster
     Then I should see the Agent v2 full-config fixture sections
 
-  @core
+  @core @stable-model
   Scenario: Duplicated Agent inherits configuration without changing the original Agent
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -57,7 +57,7 @@ Feature: Agent v2 Agent Edit page
     When I open the preseeded Agent v2 configure page for "E2E Agent With Dual Retrieval" from the Agent Roster
     Then I should see the Agent v2 dual retrieval fixture settings
 
-  @core
+  @core @stable-model
   Scenario: Agent Edit opens the same Agent in Agent Console
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
