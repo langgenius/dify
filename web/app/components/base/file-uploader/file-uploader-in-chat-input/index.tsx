@@ -25,7 +25,7 @@ const FileUploaderInChatInput = ({
         className={cn(
           'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg p-1.5 text-text-tertiary outline-hidden',
           'hover:bg-state-base-hover hover:text-text-secondary',
-          'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
           'data-popup-open:bg-state-base-hover',
           'disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
         )}

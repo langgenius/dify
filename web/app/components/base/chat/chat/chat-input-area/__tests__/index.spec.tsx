@@ -361,6 +361,32 @@ describe('ChatInputArea', () => {
       expect(textarea).toHaveValue('')
     })
 
+    it('should keep the textarea when async send is rejected by the owner', async () => {
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn().mockResolvedValue(false)
+      render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
+      const textarea = getTextarea()!
+
+      await user.type(textarea, 'Keep this message')
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+
+      await waitFor(() => expect(onSend).toHaveBeenCalled())
+      expect(textarea).toHaveValue('Keep this message')
+    })
+
+    it('should keep the textarea when async send fails', async () => {
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn().mockRejectedValue(new Error('send failed'))
+      render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
+      const textarea = getTextarea()!
+
+      await user.type(textarea, 'Retry this message')
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+
+      await waitFor(() => expect(onSend).toHaveBeenCalled())
+      expect(textarea).toHaveValue('Retry this message')
+    })
+
     it('should call onSend and reset the input when pressing Enter', async () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()

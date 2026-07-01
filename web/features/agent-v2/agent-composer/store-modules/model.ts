@@ -1,12 +1,12 @@
+import type { AgentComposerModel } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { atom } from 'jotai'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
 export const agentComposerModelAtom = atom(
   get => get(agentComposerDraftAtom).model,
-  (get, set, modelUpdate: DraftFieldUpdate<DefaultModel | undefined>) => {
+  (get, set, modelUpdate: DraftFieldUpdate<AgentComposerModel | undefined>) => {
     const draft = get(agentComposerDraftAtom)
 
     set(agentComposerDraftAtom, {

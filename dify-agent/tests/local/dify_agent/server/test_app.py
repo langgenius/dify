@@ -8,7 +8,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 
 import dify_agent.server.app as app_module
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -246,7 +246,7 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert isinstance(knowledge_layer, DifyKnowledgeBaseLayer)
         assert knowledge_layer.inner_api_url == "http://dify-api"
         assert knowledge_layer.inner_api_key == "inner-secret"
-        assert isinstance(shell_layer.shell_provisioner, ShellctlProvisioner)
+        assert isinstance(shell_layer.shell_provider, ShellctlProvider)
         assert shell_layer.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client
