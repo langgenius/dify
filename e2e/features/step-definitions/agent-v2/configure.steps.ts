@@ -18,8 +18,7 @@ import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure
 
 const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)
-  if (!agentId)
-    throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
+  if (!agentId) throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
 
   return agentId
 }
@@ -41,23 +40,20 @@ Given(
   },
 )
 
-Given(
-  'a runnable Agent v2 test agent has been created via API',
-  async function (this: DifyWorld) {
-    if (!this.agentBuilderStableChatModel)
-      throw new Error('Create a runnable Agent v2 test agent after stable model preflight.')
+Given('a runnable Agent v2 test agent has been created via API', async function (this: DifyWorld) {
+  if (!this.agentBuilderStableChatModel)
+    throw new Error('Create a runnable Agent v2 test agent after stable model preflight.')
 
-    const agent = await createConfiguredTestAgent({
-      agentSoul: createAgentSoulConfigWithModel(
-        normalAgentSoulConfig,
-        this.agentBuilderStableChatModel,
-      ),
-    })
-    this.createdAgentIds.push(agent.id)
-    this.lastCreatedAgentName = agent.name
-    this.lastCreatedAgentRole = agent.role
-  },
-)
+  const agent = await createConfiguredTestAgent({
+    agentSoul: createAgentSoulConfigWithModel(
+      normalAgentSoulConfig,
+      this.agentBuilderStableChatModel,
+    ),
+  })
+  this.createdAgentIds.push(agent.id)
+  this.lastCreatedAgentName = agent.name
+  this.lastCreatedAgentRole = agent.role
+})
 
 Given('a minimal Agent v2 composer draft has been synced', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
@@ -81,8 +77,7 @@ When('I open the Agent v2 configure page from the Agent Roster', async function 
   const page = this.getPage()
   const agentId = getCurrentAgentId(this)
   const agentName = this.lastCreatedAgentName
-  if (!agentName)
-    throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
+  if (!agentName) throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
 
   await page.goto('/roster')
   await page.getByRole('link', { name: agentName }).click()

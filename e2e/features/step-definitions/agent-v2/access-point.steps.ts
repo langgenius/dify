@@ -5,8 +5,7 @@ import { getAgentAccessPath, setAgentApiAccess } from '../../../support/agent'
 
 const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)
-  if (!agentId)
-    throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
+  if (!agentId) throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
 
   return agentId
 }
@@ -115,8 +114,7 @@ Then('I should see the newly generated Agent v2 API key once', async function (t
   await expect(generatedKeyDialog.getByLabel('Copy')).toBeVisible()
 
   this.lastGeneratedAgentApiKey = (await generatedKey.textContent())?.trim()
-  if (!this.lastGeneratedAgentApiKey)
-    throw new Error('Generated Agent v2 API key was empty.')
+  if (!this.lastGeneratedAgentApiKey) throw new Error('Generated Agent v2 API key was empty.')
 })
 
 When('I close the newly generated Agent v2 API key', async function (this: DifyWorld) {
@@ -131,8 +129,7 @@ Then(
   'the Agent v2 API key list should not expose the full generated secret',
   async function (this: DifyWorld) {
     const fullSecret = this.lastGeneratedAgentApiKey
-    if (!fullSecret)
-      throw new Error('No generated Agent v2 API key found.')
+    if (!fullSecret) throw new Error('No generated Agent v2 API key found.')
 
     const apiKeyDialog = this.getPage().getByRole('dialog', { name: /API Secret key/i })
 
@@ -166,8 +163,7 @@ When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
 
 Then('the Agent v2 API Reference should open in a new tab', async function (this: DifyWorld) {
   const apiReferencePage = this.lastAgentApiReferencePage
-  if (!apiReferencePage)
-    throw new Error('No Agent v2 API Reference page was opened.')
+  if (!apiReferencePage) throw new Error('No Agent v2 API Reference page was opened.')
 
   await expect(apiReferencePage).toHaveURL(/developing-with-apis/)
   await apiReferencePage.close()

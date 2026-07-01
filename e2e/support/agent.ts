@@ -57,11 +57,11 @@ export const defaultAgentSoulConfig: AgentSoulConfig = {
   },
 }
 
-export const normalAgentPrompt
-  = 'You are a Dify Agent E2E test assistant. Reply briefly to every user message, and always include AGENT_E2E_PASS in your response.'
+export const normalAgentPrompt =
+  'You are a Dify Agent E2E test assistant. Reply briefly to every user message, and always include AGENT_E2E_PASS in your response.'
 
-export const updatedAgentPrompt
-  = 'You are a Dify Agent E2E test assistant. Every response must start with E2E_AGENT_UPDATED.'
+export const updatedAgentPrompt =
+  'You are a Dify Agent E2E test assistant. Every response must start with E2E_AGENT_UPDATED.'
 
 export const normalAgentSoulConfig: AgentSoulConfig = {
   prompt: {
@@ -81,8 +81,7 @@ export const getAgentAccessPath = (agentId: string) => `/roster/agent/${agentId}
 const getAgentModelPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
 
-  if (organization && pluginName)
-    return `${organization}/${pluginName}`
+  if (organization && pluginName) return `${organization}/${pluginName}`
 
   return provider ? `langgenius/${provider}` : ''
 }
@@ -134,8 +133,7 @@ export async function createTestAgent({
     })
     await expectApiResponseOK(response, 'Create Agent v2 test agent')
     return (await response.json()) as AgentSeed
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -158,8 +156,7 @@ export async function getTestAgent(agentId: string): Promise<AgentSeed> {
     const response = await ctx.get(`/console/api/agent/${agentId}`)
     await expectApiResponseOK(response, `Get Agent v2 test agent ${agentId}`)
     return (await response.json()) as AgentSeed
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -169,8 +166,7 @@ export async function deleteTestAgent(agentId: string): Promise<void> {
   try {
     const response = await ctx.delete(`/console/api/agent/${agentId}`)
     await expectApiResponseOK(response, `Delete Agent v2 test agent ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -190,8 +186,7 @@ export async function saveAgentComposerDraft(
     })
     await expectApiResponseOK(response, `Save Agent v2 composer draft for ${agentId}`)
     return (await response.json()) as AgentComposerResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -204,8 +199,7 @@ export async function checkoutAgentBuildDraft(agentId: string): Promise<AgentBui
     })
     await expectApiResponseOK(response, `Checkout Agent v2 build draft for ${agentId}`)
     return (await response.json()) as AgentBuildDraftResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -225,8 +219,7 @@ export async function saveAgentBuildDraft(
     })
     await expectApiResponseOK(response, `Save Agent v2 build draft for ${agentId}`)
     return (await response.json()) as AgentBuildDraftResponse
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -236,8 +229,7 @@ export async function discardAgentBuildDraft(agentId: string): Promise<void> {
   try {
     const response = await ctx.delete(`/console/api/agent/${agentId}/build-draft`)
     await expectApiResponseOK(response, `Discard Agent v2 build draft for ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -249,8 +241,7 @@ export async function publishAgent(agentId: string, versionNote = 'E2E publish')
       data: { version_note: versionNote },
     })
     await expectApiResponseOK(response, `Publish Agent v2 test agent ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -258,8 +249,7 @@ export async function publishAgent(agentId: string, versionNote = 'E2E publish')
 export async function enableAgentSiteAndGetURL(agentId: string): Promise<string> {
   const agent = await getTestAgent(agentId)
   const appId = agent.app_id ?? agent.backing_app_id
-  if (!appId)
-    throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
+  if (!appId) throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
 
   const appDetail = await setAppSiteEnabled(appId, true)
   const token = agent.site?.access_token ?? agent.site?.code ?? appDetail.site.access_token
@@ -274,8 +264,7 @@ export async function getAgentApiAccess(agentId: string): Promise<AgentApiAccess
     const response = await ctx.get(`/console/api/agent/${agentId}/api-access`)
     await expectApiResponseOK(response, `Get Agent v2 API access for ${agentId}`)
     return (await response.json()) as AgentApiAccess
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -294,8 +283,7 @@ export async function setAgentApiAccess(
       `${enabled ? 'Enable' : 'Disable'} Agent v2 API access for ${agentId}`,
     )
     return (await response.json()) as AgentApiAccess
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -306,8 +294,7 @@ export async function createAgentApiKey(agentId: string): Promise<AgentApiKey> {
     const response = await ctx.post(`/console/api/agent/${agentId}/api-keys`)
     await expectApiResponseOK(response, `Create Agent v2 API key for ${agentId}`)
     return (await response.json()) as AgentApiKey
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -317,8 +304,7 @@ export async function deleteAgentApiKey(agentId: string, apiKeyId: string): Prom
   try {
     const response = await ctx.delete(`/console/api/agent/${agentId}/api-keys/${apiKeyId}`)
     await expectApiResponseOK(response, `Delete Agent v2 API key ${apiKeyId} for ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }
@@ -329,8 +315,7 @@ export async function deleteAgentDriveFile(agentId: string, key: string): Promis
     const searchParams = new URLSearchParams({ key })
     const response = await ctx.delete(`/console/api/agent/${agentId}/files?${searchParams}`)
     await expectApiResponseOK(response, `Delete Agent v2 drive file ${key} for ${agentId}`)
-  }
-  finally {
+  } finally {
     await ctx.dispose()
   }
 }

@@ -50,18 +50,16 @@ BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
 })
 
 Before(async function (this: DifyWorld, { pickle }) {
-  if (!browser)
-    throw new Error('Shared Playwright browser is not available.')
+  if (!browser) throw new Error('Shared Playwright browser is not available.')
 
-  const isUnauthenticatedScenario = pickle.tags.some(tag => tag.name === '@unauthenticated')
+  const isUnauthenticatedScenario = pickle.tags.some((tag) => tag.name === '@unauthenticated')
 
-  if (isUnauthenticatedScenario)
-    await this.startUnauthenticatedSession(browser)
+  if (isUnauthenticatedScenario) await this.startUnauthenticatedSession(browser)
   else await this.startAuthenticatedSession(browser)
 
   this.scenarioStartedAt = Date.now()
 
-  const tags = pickle.tags.map(tag => tag.name).join(' ')
+  const tags = pickle.tags.map((tag) => tag.name).join(' ')
   console.warn(`[e2e] start ${pickle.name}${tags ? ` ${tags}` : ''}`)
 })
 

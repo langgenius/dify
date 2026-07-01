@@ -89,8 +89,7 @@ export class DifyWorld extends World {
     this.page.setDefaultTimeout(30_000)
 
     this.page.on('console', (message: ConsoleMessage) => {
-      if (message.type() === 'error')
-        this.consoleErrors.push(message.text())
+      if (message.type() === 'error') this.consoleErrors.push(message.text())
     })
     this.page.on('pageerror', (error) => {
       this.pageErrors.push(error.message)
@@ -109,8 +108,7 @@ export class DifyWorld extends World {
   }
 
   getPage() {
-    if (!this.page)
-      throw new Error('Playwright page has not been initialized for this scenario.')
+    if (!this.page) throw new Error('Playwright page has not been initialized for this scenario.')
 
     return this.page
   }
@@ -130,14 +128,12 @@ export class DifyWorld extends World {
     for (const cleanup of this.scenarioCleanups.toReversed()) {
       try {
         await cleanup()
-      }
-      catch (error) {
+      } catch (error) {
         errors.push(error instanceof Error ? error.message : String(error))
       }
     }
 
-    if (errors.length > 0)
-      this.attach(`Cleanup errors:\n${errors.join('\n')}`, 'text/plain')
+    if (errors.length > 0) this.attach(`Cleanup errors:\n${errors.join('\n')}`, 'text/plain')
   }
 
   async closeSession() {
