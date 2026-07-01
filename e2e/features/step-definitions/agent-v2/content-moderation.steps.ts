@@ -70,7 +70,7 @@ Then('Agent v2 Content Moderation Settings should be available', async function 
       'Agent v2 Content Moderation Settings is not available in this build.',
       {
         owner: 'product',
-        remediation: 'Enable ENABLE_AGENT_CONTENT_MODERATION or keep this scenario feature-gated.',
+        remediation: 'Enable the Agent v2 Content Moderation feature flag in the product or keep this scenario feature-gated.',
       },
     )
   }
