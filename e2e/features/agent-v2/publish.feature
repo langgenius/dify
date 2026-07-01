@@ -33,6 +33,27 @@ Feature: Agent v2 publish
     And the normal Agent v2 draft should use the updated E2E prompt
     And the active published Agent v2 version should still use the normal E2E prompt
 
+  Scenario: Restoring a published Agent v2 version shows the restored configuration in Builder
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    And I publish the Agent v2 draft
+    Then the Agent v2 draft should be published and up to date
+    When I fill the Agent v2 prompt editor with the updated E2E prompt
+    Then the Agent v2 configuration should be saved automatically
+    And the normal Agent v2 draft should use the updated E2E prompt
+    When I publish the Agent v2 draft
+    Then the Agent v2 draft should be published and up to date
+    When I open the Agent v2 version history
+    And I select Agent v2 published version 1
+    Then the selected Agent v2 version should be displayed in view-only mode
+    And I should see the normal E2E prompt in the Agent v2 prompt editor
+    When I restore the selected Agent v2 version
+    Then I should see the normal E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should use the normal E2E prompt
+    And the Agent v2 publish action should be available for unpublished changes
+
   @web-app-runtime
   Scenario: Published Web app uses the latest Agent v2 published configuration
     Given I am signed in as the default E2E admin

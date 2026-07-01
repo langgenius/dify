@@ -159,9 +159,10 @@ Then(
   'I should see the normal E2E prompt in the Agent v2 prompt editor',
   async function (this: DifyWorld) {
     const page = this.getPage()
+    const promptSection = page.getByRole('region', { name: 'Prompt' })
 
-    await expect(page.getByRole('heading', { name: 'Prompt' })).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText(normalAgentPrompt)).toBeVisible()
+    await expect(promptSection).toBeVisible({ timeout: 30_000 })
+    await expect(promptSection.getByRole('textbox', { name: 'Prompt' })).toContainText(normalAgentPrompt)
   },
 )
 
@@ -181,9 +182,10 @@ Then(
   'I should see the updated E2E prompt in the Agent v2 prompt editor',
   async function (this: DifyWorld) {
     const page = this.getPage()
+    const promptSection = page.getByRole('region', { name: 'Prompt' })
 
-    await expect(page.getByRole('heading', { name: 'Prompt' })).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText(updatedAgentPrompt)).toBeVisible()
+    await expect(promptSection).toBeVisible({ timeout: 30_000 })
+    await expect(promptSection.getByRole('textbox', { name: 'Prompt' })).toContainText(updatedAgentPrompt)
   },
 )
 
