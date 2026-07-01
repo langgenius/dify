@@ -17,6 +17,10 @@ import {
 } from '../../agent-v2/support/agent'
 
 const agentV2WorkflowNodeId = 'agent-v2'
+const taskFileOutputName = 'e2e_report.pdf'
+const renamedTaskFileOutputName = 'e2e_final_report.pdf'
+
+const getAgentOutputToken = (name: string) => `[§output:${name}:${name}§]`
 
 const getCurrentAppId = (world: DifyWorld) => {
   const appId = world.createdAppIds.at(-1)
@@ -26,13 +30,18 @@ const getCurrentAppId = (world: DifyWorld) => {
   return appId
 }
 
-const getDeclaredOutputsFromDraft = async (appId: string): Promise<DeclaredOutputConfig[]> => {
+const getAgentV2WorkflowNodeData = async (appId: string) => {
   const draft = await getWorkflowDraft(appId)
   const agentNode = draft.graph.nodes.find(node => node.id === agentV2WorkflowNodeId)
   if (!agentNode)
     throw new Error(`Workflow draft ${appId} does not include Agent v2 node ${agentV2WorkflowNodeId}.`)
 
-  const outputs = agentNode.data?.agent_declared_outputs
+  return agentNode.data ?? {}
+}
+
+const getDeclaredOutputsFromDraft = async (appId: string): Promise<DeclaredOutputConfig[]> => {
+  const data = await getAgentV2WorkflowNodeData(appId)
+  const outputs = data.agent_declared_outputs
   if (!Array.isArray(outputs))
     return []
 
@@ -140,6 +149,46 @@ When('I open the Agent v2 workflow Agent in Agent Console', async function (this
 
   this.agentBuilder.workflow.agentConsolePage = agentConsolePage
 })
+
+When(
+  'I insert a file output reference from the Agent v2 workflow node task editor',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const appId = getCurrentAppId(this)
+    const taskEditor = page.getByRole('textbox', { name: 'Agent task' })
+
+    await expect(taskEditor).toBeVisible()
+    await taskEditor.click()
+    await page.getByRole('button', { name: 'Insert' }).click()
+    await page.getByRole('button', { name: 'New output' }).click()
+
+    const nameInput = page.getByRole('textbox', { name: 'Field name' })
+    await expect(nameInput).toBeVisible()
+    await nameInput.fill(taskFileOutputName)
+
+    const saveResponse = waitForWorkflowDraftSave(this, appId)
+    await nameInput.press('Enter')
+    expect((await saveResponse).ok()).toBe(true)
+  },
+)
+
+When(
+  'I rename the Agent v2 workflow node task output reference',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const appId = getCurrentAppId(this)
+
+    await page.getByText(taskFileOutputName, { exact: true }).hover()
+    const editor = page.getByRole('form', { name: 'Output variable editor' })
+    await expect(editor).toBeVisible()
+    await editor.getByRole('textbox', { name: 'Field name' }).fill(renamedTaskFileOutputName)
+
+    const saveResponse = waitForWorkflowDraftSave(this, appId)
+    await editor.getByRole('button', { name: 'Confirm' }).click()
+    expect((await saveResponse).ok()).toBe(true)
+    await expect(editor).not.toBeVisible()
+  },
+)
 
 When(
   'I add these Agent v2 workflow node output variables',
@@ -335,6 +384,20 @@ Then(
   },
 )
 
+Then(
+  'the Agent v2 workflow node task should reference the file output',
+  async function (this: DifyWorld) {
+    await expectAgentTaskOutputReference(this, taskFileOutputName)
+  },
+)
+
+Then(
+  'the Agent v2 workflow node task should reference the renamed file output',
+  async function (this: DifyWorld) {
+    await expectAgentTaskOutputReference(this, renamedTaskFileOutputName, taskFileOutputName)
+  },
+)
+
 Then('I should see the Agent v2 workflow node nested object output variable', async function (this: DifyWorld) {
   const page = this.getPage()
 
@@ -346,3 +409,48 @@ Then('I should see the Agent v2 workflow node nested object output variable', as
   await expect(page.getByText('analysis', { exact: true })).toBeVisible()
   await expect(page.getByText('string', { exact: true })).toBeVisible()
 })
+
+async function expectAgentTaskOutputReference(
+  world: DifyWorld,
+  expectedName: string,
+  unexpectedName?: string,
+) {
+  const page = world.getPage()
+  const appId = getCurrentAppId(world)
+
+  await expect.poll(
+    async () => {
+      const data = await getAgentV2WorkflowNodeData(appId)
+      const outputs = Array.isArray(data.agent_declared_outputs)
+        ? data.agent_declared_outputs as DeclaredOutputConfig[]
+        : []
+      const expectedOutput = outputs.find(output => output.name === expectedName)
+
+      return {
+        agentTask: data.agent_task,
+        expectedOutput: expectedOutput
+          ? {
+              name: expectedOutput.name,
+              type: expectedOutput.type,
+            }
+          : undefined,
+        unexpectedOutput: unexpectedName
+          ? outputs.some(output => output.name === unexpectedName)
+          : false,
+      }
+    },
+    { timeout: 30_000 },
+  ).toEqual({
+    agentTask: expect.stringContaining(getAgentOutputToken(expectedName)),
+    expectedOutput: {
+      name: expectedName,
+      type: 'file',
+    },
+    unexpectedOutput: false,
+  })
+
+  await expect(page.getByText(expectedName, { exact: true })).toBeVisible()
+  await expect(page.getByText('file', { exact: true })).toBeVisible()
+  if (unexpectedName)
+    await expect(page.getByText(unexpectedName, { exact: true })).toHaveCount(0)
+}
