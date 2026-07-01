@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import FirstEmptyActionCard from '@/app/components/apps/first-empty-state/action-card'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 
 const EMPTY_PLACEHOLDER_CARD_IDS = Array.from({ length: 16 }, (_, index) => `dataset-placeholder-card-${index}`)
 
@@ -9,6 +10,7 @@ type EmptyCreateAction = {
   href: string
   icon: ReactNode
   id: string
+  target: string
   title: string
   description: string
 }
@@ -31,6 +33,7 @@ function DatasetFirstEmptyState({
           href: '/datasets/create',
           icon: <span aria-hidden className="i-ri-add-line size-4" />,
           id: 'create',
+          target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyCreate,
           title: t('firstEmpty.createTitle', { ns: 'dataset' }),
           description: t('firstEmpty.createDescription', { ns: 'dataset' }),
         },
@@ -38,6 +41,7 @@ function DatasetFirstEmptyState({
           href: '/datasets/create-from-pipeline',
           icon: <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4" />,
           id: 'pipeline',
+          target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyPipeline,
           title: t('firstEmpty.pipelineTitle', { ns: 'dataset' }),
           description: t('firstEmpty.pipelineDescription', { ns: 'dataset' }),
         },
@@ -48,6 +52,7 @@ function DatasetFirstEmptyState({
         href: '/datasets/connect',
         icon: <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4" />,
         id: 'connect',
+        target: STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyConnect,
         title: t('connectDataset', { ns: 'dataset' }),
         description: t('firstEmpty.connectDescription', { ns: 'dataset' }),
       }
@@ -88,6 +93,7 @@ function DatasetFirstEmptyState({
                       description={action.description}
                       href={action.href}
                       icon={action.icon}
+                      stepByStepTourTarget={action.target}
                       title={action.title}
                       visualStyle="list"
                     />
@@ -106,6 +112,7 @@ function DatasetFirstEmptyState({
                   description={connectAction.description}
                   href={connectAction.href}
                   icon={connectAction.icon}
+                  stepByStepTourTarget={connectAction.target}
                   title={connectAction.title}
                   visualStyle="list"
                 />

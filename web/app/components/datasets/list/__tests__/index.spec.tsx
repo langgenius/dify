@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { STEP_BY_STEP_TOUR_STORAGE_KEY } from '@/app/components/step-by-step-tour/constants'
 import List from '../index'
 
 const mockPush = vi.fn()
@@ -129,6 +130,7 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    localStorage.clear()
     mockAppContextState = {
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
@@ -297,6 +299,67 @@ describe('List', () => {
 
       expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
       expect(screen.getByRole('link', { name: /dataset\.firstEmpty\.pipelineTitle/ })).toHaveAttribute('href', '/datasets/create-from-pipeline')
+    })
+
+    it('should activate the Knowledge empty walkthrough for users with all empty-state permissions', async () => {
+      localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+        activeTaskId: 'knowledge',
+        activeGuideIndex: 0,
+        manuallyEnabledWorkspaceIds: ['workspace-1'],
+        manuallyDisabledWorkspaceIds: [],
+        minimized: true,
+        completedTaskIds: ['home', 'studio'],
+        skipped: false,
+      }))
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [], total: 0 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<List />)
+
+      await waitFor(() => {
+        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        expect(state.activeGuideGroup).toBe('knowledgeEmpty')
+        expect(state.activeGuideIndex).toBe(0)
+      })
+    })
+
+    it('should not activate the Knowledge empty walkthrough until all three empty-state actions are available', async () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: false,
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      }
+      localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+        activeTaskId: 'knowledge',
+        activeGuideIndex: 0,
+        manuallyEnabledWorkspaceIds: ['workspace-1'],
+        manuallyDisabledWorkspaceIds: [],
+        minimized: true,
+        completedTaskIds: ['home', 'studio'],
+        skipped: false,
+      }))
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [], total: 0 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<List />)
+
+      await waitFor(() => {
+        expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      })
+      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      expect(state.activeGuideGroup).toBeUndefined()
     })
 
     it('should not render first empty state for legacy editors without dataset creation permissions', async () => {

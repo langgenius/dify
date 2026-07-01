@@ -1,6 +1,5 @@
 'use client'
 
-import type { ComponentProps } from 'react'
 import type { AppListCategory } from './app-type-filter-shared'
 import type { AppListSortBy } from '@/contract/console/apps'
 import { Button } from '@langgenius/dify-ui/button'
@@ -8,24 +7,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
+import { getStepByStepTourDropdownMenuContentProps } from '@/app/components/step-by-step-tour/dropdown-menu'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
-
-const STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR = 'data-step-by-step-tour-highlight-part'
-const STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME = 'transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100'
-type DropdownMenuPositionerProps = ComponentProps<typeof DropdownMenuContent>['positionerProps']
-
-const getStepByStepTourHighlightPartPositionerProps = (target?: string): DropdownMenuPositionerProps => {
-  if (!target)
-    return undefined
-
-  return {
-    [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]: target,
-  } as DropdownMenuPositionerProps
-}
 
 type AppListHeaderFiltersProps = {
   category: AppListCategory
@@ -122,11 +109,11 @@ export function AppListHeaderFilters({
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={4}
-              popupClassName={cn(
-                'w-70 p-0',
-                stepByStepTourCreateMenuOpen && STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME,
-              )}
-              positionerProps={getStepByStepTourHighlightPartPositionerProps(stepByStepTourCreateMenuHighlightPart)}
+              {...getStepByStepTourDropdownMenuContentProps({
+                highlightPart: stepByStepTourCreateMenuHighlightPart,
+                popupClassName: 'w-70 p-0',
+                presentationOnly: Boolean(stepByStepTourCreateMenuOpen),
+              })}
             >
               <div className="py-1">
                 <DropdownMenuItem

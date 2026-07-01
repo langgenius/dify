@@ -23,12 +23,18 @@ type DatasetCardProps = {
   dataset: DataSet
   onSuccess?: () => void
   onOpenTagManagement?: () => void
+  stepByStepTourActionMenuHighlightPart?: string
+  stepByStepTourActionMenuOpen?: boolean
+  stepByStepTourCardTarget?: string
 }
 
 const DatasetCard = ({
   dataset,
   onSuccess,
   onOpenTagManagement = () => {},
+  stepByStepTourActionMenuHighlightPart,
+  stepByStepTourActionMenuOpen,
+  stepByStepTourCardTarget,
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
@@ -113,6 +119,7 @@ const DatasetCard = ({
         aria-label={isPreviewOnly ? dataset.name : undefined}
         className={cardClassName}
         data-disable-nprogress={true}
+        data-step-by-step-tour-target={stepByStepTourCardTarget}
         onClick={handleCardClick}
         onKeyDown={handlePreviewOnlyCardKeyDown}
       >
@@ -136,6 +143,8 @@ const DatasetCard = ({
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}
             openAccessConfig={openAccessConfig}
+            stepByStepTourHighlightPart={stepByStepTourActionMenuHighlightPart}
+            stepByStepTourOpen={stepByStepTourActionMenuOpen}
           />
         )}
       </div>

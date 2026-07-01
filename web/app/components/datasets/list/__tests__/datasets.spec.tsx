@@ -3,6 +3,7 @@ import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Datasets from '../datasets'
@@ -69,9 +70,22 @@ vi.mock('../../rename-modal', () => ({
 }))
 
 vi.mock('../dataset-card', () => ({
-  default: ({ dataset }: { dataset: DataSet }) => (
+  default: ({
+    dataset,
+    stepByStepTourActionMenuHighlightPart,
+    stepByStepTourActionMenuOpen,
+    stepByStepTourCardTarget,
+  }: {
+    dataset: DataSet
+    stepByStepTourActionMenuHighlightPart?: string
+    stepByStepTourActionMenuOpen?: boolean
+    stepByStepTourCardTarget?: string
+  }) => (
     <article data-testid={`dataset-card-${dataset.id}`}>
       {dataset.name}
+      <span data-testid={`dataset-card-target-${dataset.id}`}>{stepByStepTourCardTarget}</span>
+      <span data-testid={`dataset-card-menu-open-${dataset.id}`}>{String(stepByStepTourActionMenuOpen)}</span>
+      <span data-testid={`dataset-card-highlight-${dataset.id}`}>{stepByStepTourActionMenuHighlightPart}</span>
     </article>
   ),
 }))
@@ -190,6 +204,26 @@ describe('Datasets', () => {
       render(<Datasets {...defaultProps} />)
       expect(screen.getByText('Dataset 1')).toBeInTheDocument()
       expect(screen.getByText('Dataset 2')).toBeInTheDocument()
+    })
+
+    it('should pass step-by-step tour targets to the first dataset card only', () => {
+      render((
+        <Datasets
+          {...defaultProps}
+          stepByStepTourActionMenuOpen
+          stepByStepTourActionMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu}
+          stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
+        />
+      ))
+
+      expect(screen.getByTestId('dataset-card-target-dataset-1'))
+        .toHaveTextContent(STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard)
+      expect(screen.getByTestId('dataset-card-menu-open-dataset-1')).toHaveTextContent('true')
+      expect(screen.getByTestId('dataset-card-highlight-dataset-1'))
+        .toHaveTextContent(STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu)
+      expect(screen.getByTestId('dataset-card-target-dataset-2')).toBeEmptyDOMElement()
+      expect(screen.getByTestId('dataset-card-menu-open-dataset-2')).toHaveTextContent('undefined')
+      expect(screen.getByTestId('dataset-card-highlight-dataset-2')).toBeEmptyDOMElement()
     })
 
     it('should render empty element when there are no datasets', () => {

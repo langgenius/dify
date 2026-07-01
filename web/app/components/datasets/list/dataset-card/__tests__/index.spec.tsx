@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCardFooter from '../components/dataset-card-footer'
@@ -99,8 +100,21 @@ vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
   ),
 }))
 vi.mock('../components/operations-dropdown', () => ({
-  default: ({ openAccessConfig }: { openAccessConfig?: () => void }) => (
-    <div data-testid="operations-dropdown" data-has-open-access-config={typeof openAccessConfig === 'function'} />
+  default: ({
+    openAccessConfig,
+    stepByStepTourHighlightPart,
+    stepByStepTourOpen,
+  }: {
+    openAccessConfig?: () => void
+    stepByStepTourHighlightPart?: string
+    stepByStepTourOpen?: boolean
+  }) => (
+    <div
+      data-testid="operations-dropdown"
+      data-has-open-access-config={typeof openAccessConfig === 'function'}
+      data-step-by-step-tour-highlight-part={stepByStepTourHighlightPart}
+      data-step-by-step-tour-open={String(stepByStepTourOpen)}
+    />
   ),
 }))
 
@@ -137,6 +151,27 @@ describe('DatasetCard Integration', () => {
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
     }
+  })
+
+  describe('Step-by-step tour targets', () => {
+    it('should expose card and operations targets for the Knowledge walkthrough', () => {
+      const dataset = createMockDataset()
+
+      const { container } = render(
+        <DatasetCard
+          dataset={dataset}
+          stepByStepTourActionMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu}
+          stepByStepTourActionMenuOpen
+          stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
+        />,
+      )
+
+      expect(container.querySelector(`[data-step-by-step-tour-target="${STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}"]`))
+        .toBeInTheDocument()
+      expect(screen.getByTestId('operations-dropdown'))
+        .toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu)
+      expect(screen.getByTestId('operations-dropdown')).toHaveAttribute('data-step-by-step-tour-open', 'true')
+    })
   })
 
   // Integration tests for Description component

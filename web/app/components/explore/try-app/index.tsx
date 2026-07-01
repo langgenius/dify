@@ -22,7 +22,9 @@ import { TypeEnum } from './types'
 type Props = Readonly<{
   appId: string
   app?: AppType
+  canCreate?: boolean
   categories?: string[]
+  createButtonStepByStepTourTarget?: string
   onClose: () => void
   onCreate: () => void
 }>
@@ -30,7 +32,9 @@ type Props = Readonly<{
 const TryApp: FC<Props> = ({
   appId,
   app,
+  canCreate = true,
   categories,
+  createButtonStepByStepTourTarget,
   onClose,
   onCreate,
 }) => {
@@ -112,7 +116,9 @@ const TryApp: FC<Props> = ({
                 className="w-[360px] shrink-0"
                 appDetail={appDetail}
                 appId={appId}
+                canCreate={canCreate}
                 categories={categories}
+                createButtonStepByStepTourTarget={createButtonStepByStepTourTarget}
                 onCreate={onCreate}
               />
             </div>

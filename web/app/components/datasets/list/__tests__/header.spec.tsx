@@ -1,15 +1,16 @@
 import { render, screen } from '@testing-library/react'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import DatasetListHeader from '../header'
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <button type="button" className={className}>{children}</button>
+  Button: ({ children, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" className={className} {...props}>{children}</button>
   ),
 }))
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuContent: ({ children, positionerProps }: { children: React.ReactNode, positionerProps?: React.HTMLAttributes<HTMLDivElement> }) => <div {...positionerProps}>{children}</div>,
   DropdownMenuItem: ({ children, className, onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
     <button type="button" className={className} onClick={onClick}>{children}</button>
   ),
@@ -86,5 +87,25 @@ describe('DatasetListHeader', () => {
     ))
 
     expect(screen.queryByRole('button', { name: /common\.operation\.create/ })).not.toBeInTheDocument()
+  })
+
+  it('exposes step-by-step tour targets for the create menu walkthrough', () => {
+    render((
+      <DatasetListHeader
+        {...defaultProps}
+        stepByStepTourCreateMenuOpen
+        stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate}
+        stepByStepTourCreateMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu}
+      />
+    ))
+
+    expect(screen.getByRole('button', { name: /common\.operation\.create/ }))
+      .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate)
+    expect(screen.getByText('dataset.firstEmpty.createTitle')).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'dataset.firstEmpty.createTitle' })).not.toBeInTheDocument()
+    const createMenuHighlightPart = document.body.querySelector(`[data-step-by-step-tour-highlight-part="${STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu}"]`)
+    expect(createMenuHighlightPart).toBeInTheDocument()
+    expect(createMenuHighlightPart).toHaveAttribute('inert')
+    expect(createMenuHighlightPart?.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
   })
 })

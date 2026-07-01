@@ -1,6 +1,7 @@
 'use client'
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
@@ -17,6 +18,11 @@ import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-conf
 import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
+import {
+  useSetStepByStepTourAccountState,
+  useStepByStepTourAccountStateValue,
+} from '@/app/components/step-by-step-tour/storage'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -48,6 +54,14 @@ const homeContinueWorkAppsInput = {
 }
 
 const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled'] as const
+const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
+
+const addHomeStepByStepTourTask = (completedTaskIds: StepByStepTourTaskId[]): StepByStepTourTaskId[] => {
+  if (completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID))
+    return completedTaskIds
+
+  return [...completedTaskIds, HOME_STEP_BY_STEP_TOUR_TASK_ID]
+}
 
 function getLocaleQueryInput(locale?: string) {
   return locale
@@ -122,6 +136,10 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   })
   const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
+  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
+  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -197,21 +215,114 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     TrackCreateAppParams,
     'source' | 'templateId'
   > | null>(null)
+  const isCurrentTryAppFromLearnDifyRef = useRef(false)
+  const shouldCompleteHomeTourOnCreateRef = useRef(false)
+  const isSubmittingHomeTourCreateRef = useRef(false)
   const isShowTryAppPanel = !!currentTryApp
+  const abandonHomeTour = useCallback(() => {
+    if (
+      stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID
+      || stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+    ) {
+      return
+    }
+
+    setStepByStepTourAccountState({
+      ...stepByStepTourAccountState,
+      activeTaskId: undefined,
+      activeGuideIndex: undefined,
+      activeGuideGroup: undefined,
+      minimized: true,
+    })
+  }, [setStepByStepTourAccountState, stepByStepTourAccountState])
+
+  const completeHomeTourAfterCreate = useCallback(() => {
+    if (!shouldCompleteHomeTourOnCreateRef.current)
+      return
+
+    setStepByStepTourAccountState({
+      ...stepByStepTourAccountState,
+      activeTaskId: undefined,
+      activeGuideIndex: undefined,
+      activeGuideGroup: undefined,
+      completedTaskIds: addHomeStepByStepTourTask(stepByStepTourAccountState.completedTaskIds),
+      minimized: false,
+    })
+    isCurrentTryAppFromLearnDifyRef.current = false
+    shouldCompleteHomeTourOnCreateRef.current = false
+    isSubmittingHomeTourCreateRef.current = false
+  }, [setStepByStepTourAccountState, stepByStepTourAccountState])
+
+  const completeHomeTourAfterOpenDetails = useCallback(() => {
+    if (
+      stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID
+      || stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+      || (stepByStepTourAccountState.activeGuideIndex ?? 0) !== 0
+    ) {
+      return
+    }
+
+    setStepByStepTourAccountState({
+      ...stepByStepTourAccountState,
+      activeTaskId: undefined,
+      activeGuideIndex: undefined,
+      activeGuideGroup: undefined,
+      completedTaskIds: addHomeStepByStepTourTask(stepByStepTourAccountState.completedTaskIds),
+      minimized: false,
+    })
+  }, [setStepByStepTourAccountState, stepByStepTourAccountState])
+
+  const abandonHomeTourCreate = useCallback(() => {
+    if (!isCurrentTryAppFromLearnDifyRef.current || isSubmittingHomeTourCreateRef.current)
+      return
+
+    abandonHomeTour()
+    isCurrentTryAppFromLearnDifyRef.current = false
+    shouldCompleteHomeTourOnCreateRef.current = false
+  }, [abandonHomeTour])
+
   const hideTryAppPanel = useCallback(() => {
+    abandonHomeTourCreate()
     setCurrentTryApp(undefined)
-  }, [])
+  }, [abandonHomeTourCreate])
   const handleTryApp = useCallback((params: TryAppSelection) => {
+    isCurrentTryAppFromLearnDifyRef.current = false
     setCurrentTryApp(params)
   }, [])
+  const handleTryAppFromLearnDify = useCallback((params: TryAppSelection) => {
+    isCurrentTryAppFromLearnDifyRef.current = true
+    setCurrentTryApp(params)
+
+    if (
+      stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
+      && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+      && (stepByStepTourAccountState.activeGuideIndex ?? 0) === 0
+    ) {
+      if (!canCreateApp) {
+        completeHomeTourAfterOpenDetails()
+        isCurrentTryAppFromLearnDifyRef.current = false
+        return
+      }
+
+      setStepByStepTourAccountState({
+        ...stepByStepTourAccountState,
+        activeGuideIndex: 1,
+        minimized: true,
+      })
+    }
+  }, [canCreateApp, completeHomeTourAfterOpenDetails, setStepByStepTourAccountState, stepByStepTourAccountState])
   const handleShowFromTryApp = useCallback(() => {
     setCurrApp(currentTryApp?.app || null)
     currentCreateAppTrackingRef.current = {
       source: 'explore_template_preview',
       templateId: currentTryApp?.appId || currentTryApp?.app.app_id,
     }
+    shouldCompleteHomeTourOnCreateRef.current = isCurrentTryAppFromLearnDifyRef.current
+      && stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
+      && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+      && stepByStepTourAccountState.activeGuideIndex === 1
     setIsShowCreateModal(true)
-  }, [currentTryApp?.app, currentTryApp?.appId])
+  }, [currentTryApp?.app, currentTryApp?.appId, stepByStepTourAccountState])
   const handleCreateFromLearnDify = useCallback((app: App) => {
     setCurrApp(app)
     setIsShowCreateModal(true)
@@ -240,9 +351,16 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     },
     [],
   )
+  const handleCreateModalHide = useCallback(() => {
+    if (!isSubmittingHomeTourCreateRef.current)
+      abandonHomeTourCreate()
+
+    setIsShowCreateModal(false)
+  }, [abandonHomeTourCreate])
 
   const onCreate: CreateAppModalProps['onConfirm'] = useCallback(
     async ({ name, icon_type, icon, icon_background, description }) => {
+      isSubmittingHomeTourCreateRef.current = shouldCompleteHomeTourOnCreateRef.current
       hideTryAppPanel()
 
       const { export_data, mode } = await fetchAppDetail(
@@ -258,27 +376,42 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
         icon_background,
         description,
       }
+      let didTransitionCreateFlow = false
       await handleImportDSL(payload, {
         onSuccess: (response) => {
+          didTransitionCreateFlow = true
           trackCurrentCreateApp(response.app_mode)
+          completeHomeTourAfterCreate()
           setIsShowCreateModal(false)
         },
         onPending: () => {
+          didTransitionCreateFlow = true
           setShowDSLConfirmModal(true)
         },
       })
+      if (!didTransitionCreateFlow && shouldCompleteHomeTourOnCreateRef.current) {
+        isSubmittingHomeTourCreateRef.current = false
+        abandonHomeTourCreate()
+      }
     },
-    [currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp],
+    [abandonHomeTourCreate, completeHomeTourAfterCreate, currApp?.app.id, handleImportDSL, hideTryAppPanel, trackCurrentCreateApp],
   )
 
   const onConfirmDSL = useCallback(async () => {
     await handleImportDSLConfirm({
       onSuccess: (response) => {
         trackCurrentCreateApp(response.app_mode)
+        completeHomeTourAfterCreate()
         onSuccess?.()
       },
     })
-  }, [handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
+  }, [completeHomeTourAfterCreate, handleImportDSLConfirm, onSuccess, trackCurrentCreateApp])
+
+  const handleCancelDSLConfirm = useCallback(() => {
+    setShowDSLConfirmModal(false)
+    isSubmittingHomeTourCreateRef.current = false
+    abandonHomeTourCreate()
+  }, [abandonHomeTourCreate])
 
   if (homeQueries.isAppListError)
     return null
@@ -303,7 +436,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
                   canCreate={canCreateApp}
                   continueWorkApps={homeQueries.continueWorkApps}
                   onCreate={handleCreateFromLearnDify}
-                  onTry={handleTryApp}
+                  onTry={handleTryAppFromLearnDify}
                 />
 
                 <ExploreAppListHeader
@@ -347,13 +480,13 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
           show={isShowCreateModal}
           onConfirm={onCreate}
           confirmDisabled={isFetching}
-          onHide={() => setIsShowCreateModal(false)}
+          onHide={handleCreateModalHide}
         />
       )}
       {showDSLConfirmModal && (
         <DSLConfirmModal
           versions={versions}
-          onCancel={() => setShowDSLConfirmModal(false)}
+          onCancel={handleCancelDSLConfirm}
           onConfirm={onConfirmDSL}
           confirmDisabled={isFetching}
         />
@@ -363,7 +496,13 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
         <TryApp
           appId={currentTryApp?.appId || ''}
           app={currentTryApp?.app}
+          canCreate={canCreateApp}
           categories={currentTryApp?.app?.categories}
+          createButtonStepByStepTourTarget={
+            canCreateApp && isCurrentTryAppFromLearnDifyRef.current && !isShowCreateModal
+              ? STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate
+              : undefined
+          }
           onClose={hideTryAppPanel}
           onCreate={handleShowFromTryApp}
         />
