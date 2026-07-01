@@ -3888,7 +3888,17 @@ class TestDatasetRetrievalAdditionalHelpers:
         trace_manager.add_trace_task.assert_not_called()
 
     def test_on_query(self, retrieval: DatasetRetrieval) -> None:
-        with patch("core.rag.retrieval.dataset_retrieval.db.session") as mock_session:
+        db_mock = Mock()
+        audit_session = MagicMock()
+        session_factory = MagicMock()
+        session_factory.begin.return_value.__enter__.return_value = audit_session
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.db", db_mock),
+            patch(
+                "core.rag.retrieval.dataset_retrieval.sessionmaker", return_value=session_factory
+            ) as sessionmaker_mock,
+        ):
             retrieval._on_query(
                 query=None,
                 attachment_ids=None,
@@ -3897,7 +3907,7 @@ class TestDatasetRetrievalAdditionalHelpers:
                 user_from="account",
                 user_id="u1",
             )
-            mock_session.add_all.assert_not_called()
+            audit_session.add_all.assert_not_called()
 
             retrieval._on_query(
                 query="python",
@@ -3907,11 +3917,22 @@ class TestDatasetRetrievalAdditionalHelpers:
                 user_from="account",
                 user_id="u1",
             )
-            mock_session.add_all.assert_called()
-            mock_session.commit.assert_called()
+            sessionmaker_mock.assert_called_once_with(bind=db_mock.engine, expire_on_commit=False)
+            audit_session.add_all.assert_called_once()
+            added_queries = audit_session.add_all.call_args.args[0]
+            assert len(added_queries) == 2
+            db_mock.session.commit.assert_not_called()
 
     def test_on_query_normalizes_workflow_end_user_role(self, retrieval: DatasetRetrieval) -> None:
-        with patch("core.rag.retrieval.dataset_retrieval.db.session") as mock_session:
+        db_mock = Mock()
+        audit_session = MagicMock()
+        session_factory = MagicMock()
+        session_factory.begin.return_value.__enter__.return_value = audit_session
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.db", db_mock),
+            patch("core.rag.retrieval.dataset_retrieval.sessionmaker", return_value=session_factory),
+        ):
             retrieval._on_query(
                 query="python",
                 attachment_ids=None,
@@ -3921,12 +3942,11 @@ class TestDatasetRetrievalAdditionalHelpers:
                 user_id="u1",
             )
 
-            mock_session.add_all.assert_called_once()
-            added_queries = mock_session.add_all.call_args.args[0]
+            audit_session.add_all.assert_called_once()
+            added_queries = audit_session.add_all.call_args.args[0]
 
             assert len(added_queries) == 1
             assert added_queries[0].created_by_role == CreatorUserRole.END_USER
-            mock_session.commit.assert_called_once()
 
     def test_handle_invoke_result(self, retrieval: DatasetRetrieval) -> None:
         usage = LLMUsage.empty_usage()

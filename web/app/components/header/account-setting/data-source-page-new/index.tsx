@@ -18,6 +18,7 @@ import InstallFromMarketplace from './install-from-marketplace'
 
 type DataSourcePageProps = {
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  onOpenMarketplace?: () => void
   stickyToolbar?: boolean
 }
 
@@ -53,6 +54,7 @@ function DataSourceListSkeleton() {
 
 const DataSourcePage = ({
   layout,
+  onOpenMarketplace,
   stickyToolbar,
 }: DataSourcePageProps) => {
   const { t } = useTranslation()
@@ -164,6 +166,7 @@ const DataSourcePage = ({
           <InstallFromMarketplace
             providers={dataSources}
             searchText={searchText}
+            onOpenMarketplace={onOpenMarketplace}
           />
         )
       }

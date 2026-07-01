@@ -8,9 +8,9 @@ from typing import NotRequired, TypedDict
 class AdminConfig(TypedDict):
     """Configuration for admin section."""
 
+    email: str
     username: str
     password: str
-    base_url: str
 
 
 class AuthConfig(TypedDict):
@@ -18,6 +18,7 @@ class AuthConfig(TypedDict):
 
     access_token: str
     refresh_token: NotRequired[str]
+    csrf_token: NotRequired[str]
     expires_at: NotRequired[int]
 
 
@@ -253,9 +254,16 @@ class ConfigHelper:
         Returns:
             Access token string or None if not found
         """
-        auth = self.get_state_section[AuthConfig]("auth")
+        auth = self.get_state_section("auth")
         if auth:
             return auth.get("access_token")
+        return None
+
+    def get_csrf_token(self) -> str | None:
+        """Get the CSRF token from auth section."""
+        auth = self.get_state_section("auth")
+        if auth:
+            return auth.get("csrf_token")
         return None
 
     def get_app_id(self) -> str | None:
@@ -264,7 +272,7 @@ class ConfigHelper:
         Returns:
             App ID string or None if not found
         """
-        app = self.get_state_section[AppConfig]("app")
+        app = self.get_state_section("app")
         if app:
             return app.get("app_id")
         return None
@@ -275,10 +283,30 @@ class ConfigHelper:
         Returns:
             API key token string or None if not found
         """
-        api_key = self.get_state_section[ApiKeyConfig]("api_key")
+        api_key = self.get_state_section("api_key")
         if api_key:
             return api_key.get("token")
         return None
+
+    def console_auth_headers(self) -> dict[str, str]:
+        access_token = self.get_token()
+        csrf_token = self.get_csrf_token()
+        headers: dict[str, str] = {}
+        if access_token:
+            headers["authorization"] = f"Bearer {access_token}"
+        if csrf_token:
+            headers["X-CSRF-Token"] = csrf_token
+        return headers
+
+    def console_auth_cookies(self) -> dict[str, str]:
+        access_token = self.get_token()
+        csrf_token = self.get_csrf_token()
+        cookies = {"locale": "en-US"}
+        if access_token:
+            cookies["access_token"] = access_token
+        if csrf_token:
+            cookies["csrf_token"] = csrf_token
+        return cookies
 
 
 # Create a default instance for convenience

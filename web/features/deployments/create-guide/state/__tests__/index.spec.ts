@@ -94,7 +94,7 @@ vi.mock('jotai-tanstack-query', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
-      list: {
+      get: {
         infiniteOptions: (options: InfiniteQueryOptions) => ({
           ...options,
           queryKey: ['sourceApps'],
