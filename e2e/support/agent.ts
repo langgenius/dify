@@ -99,6 +99,18 @@ export async function createTestAgent({
   }
 }
 
+export async function createConfiguredTestAgent({
+  agentSoul = normalAgentSoulConfig,
+  seed,
+}: {
+  agentSoul?: AgentSoulConfig
+  seed?: CreateTestAgentOptions
+} = {}): Promise<AgentSeed> {
+  const agent = await createTestAgent(seed)
+  await saveAgentComposerDraft(agent.id, agentSoul)
+  return agent
+}
+
 export async function getTestAgent(agentId: string): Promise<AgentSeed> {
   const ctx = await createApiContext()
   try {

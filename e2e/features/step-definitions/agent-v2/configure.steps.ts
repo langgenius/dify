@@ -2,6 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import {
+  createConfiguredTestAgent,
   createTestAgent,
   getAgentConfigurePath,
   getTestAgent,
@@ -27,6 +28,16 @@ Given('an Agent v2 test agent has been created via API', async function (this: D
   this.lastCreatedAgentName = agent.name
   this.lastCreatedAgentRole = agent.role
 })
+
+Given(
+  'a basic configured Agent v2 test agent has been created via API',
+  async function (this: DifyWorld) {
+    const agent = await createConfiguredTestAgent()
+    this.createdAgentIds.push(agent.id)
+    this.lastCreatedAgentName = agent.name
+    this.lastCreatedAgentRole = agent.role
+  },
+)
 
 Given('a minimal Agent v2 composer draft has been synced', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
