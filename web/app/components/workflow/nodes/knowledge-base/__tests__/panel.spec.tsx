@@ -19,9 +19,17 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    modelProviders: {
-      models: {
-        queryOptions: mockQueryOptions,
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              get: {
+                queryOptions: mockQueryOptions,
+              },
+            },
+          },
+        },
       },
     },
   },

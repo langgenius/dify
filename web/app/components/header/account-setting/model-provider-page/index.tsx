@@ -31,6 +31,7 @@ type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-co
 
 type Props = Readonly<{
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  onOpenMarketplace?: () => void
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
@@ -41,6 +42,7 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 
 const ModelProviderPage = ({
   layout,
+  onOpenMarketplace,
   onSearchTextChange,
   searchText,
   stickyToolbar,
@@ -139,6 +141,7 @@ const ModelProviderPage = ({
       ttsDefaultModel={ttsDefaultModel}
       isLoading={isDefaultModelLoading}
       hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+      onOpenMarketplace={onOpenMarketplace}
     />
   )
 
@@ -210,6 +213,7 @@ const ModelProviderPage = ({
       enableMarketplace={enableMarketplace}
       searchText={searchText}
       pluginDetailMap={pluginDetailMap}
+      onOpenMarketplace={onOpenMarketplace}
     />
   )
 

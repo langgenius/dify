@@ -562,7 +562,7 @@ describe('AppPublisher', () => {
     fireEvent.click(screen.getByText('publisher-open-in-explore'))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('No app found in Explore')
+      expect(mockToastError).toHaveBeenCalledWith('notPublishedYet')
     })
   })
 
