@@ -11,6 +11,8 @@ const brokenChatModelProviderEnv = 'E2E_BROKEN_MODEL_PROVIDER'
 const brokenChatModelNameEnv = 'E2E_BROKEN_MODEL_NAME'
 const brokenChatModelTypeEnv = 'E2E_BROKEN_MODEL_TYPE'
 const activeModelStatus = 'active'
+const defaultStableChatModelProvider = 'openai'
+const defaultStableChatModelName = 'gpt-5.4-mini'
 const defaultStableChatModelType = 'llm'
 const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
 
@@ -33,22 +35,9 @@ type ModelPreflightConfig
   }
 
 export function readAgentBuilderStableChatModelConfig(): ModelPreflightConfig {
-  const provider = process.env[stableChatModelProviderEnv]?.trim()
-  const name = process.env[stableChatModelNameEnv]?.trim()
+  const provider = process.env[stableChatModelProviderEnv]?.trim() || defaultStableChatModelProvider
+  const name = process.env[stableChatModelNameEnv]?.trim() || defaultStableChatModelName
   const type = process.env[stableChatModelTypeEnv]?.trim() || defaultStableChatModelType
-
-  const missing: string[] = []
-  if (!provider)
-    missing.push(stableChatModelProviderEnv)
-  if (!name)
-    missing.push(stableChatModelNameEnv)
-
-  if (!provider || !name) {
-    return {
-      ok: false,
-      reason: `${agentBuilderPreseededResources.stableChatModel} requires ${missing.join(', ')}.`,
-    }
-  }
 
   return {
     ok: true,

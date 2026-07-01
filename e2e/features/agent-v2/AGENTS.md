@@ -119,11 +119,11 @@ Agent Builder resource checks live under `features/agent-v2/support/preflight/`.
 
 `preflight.steps.ts` should remain the explicit `Given` entrypoint. Do not move preflight into hidden hooks.
 
-Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios and build-mode workflows whose backend API requires model config, such as Agent workflow nodes. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults the type to `llm`, verifies the model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
+Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios and build-mode workflows whose backend API requires model config, such as Agent workflow nodes. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5.4-mini` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
 
 Do not pass model provider API keys through Cucumber or Playwright env vars. Provider credentials belong to the Dify environment seed/admin setup. If the selected provider/model is missing or inactive, the scenario must be blocked by preflight instead of trying to create or patch provider credentials during the test.
 
-Use this stable OpenAI GPT-5 family selector unless a scenario explicitly needs a different model:
+Override the default selector only when a scenario or environment explicitly needs a different stable model:
 
 ```bash
 E2E_STABLE_MODEL_PROVIDER=openai
