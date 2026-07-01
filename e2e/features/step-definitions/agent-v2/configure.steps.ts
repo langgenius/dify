@@ -15,6 +15,7 @@ import {
   updatedAgentPrompt,
   updatedAgentSoulConfig,
 } from '../../../support/agent'
+import { agentBuilderFixedInputs } from '../../../support/agent-builder-resources'
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
 import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../../support/test-materials'
 
@@ -133,6 +134,25 @@ When('I upload the small Agent v2 file from the Files section', async function (
   this.createdAgentConfigFiles.push({ agentId, name: committedName })
 })
 
+When(
+  'I add the plain Agent v2 environment variable from Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+    await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
+
+    await advancedSettings
+      .getByRole('textbox', { name: 'Key' })
+      .fill(agentBuilderFixedInputs.envPlainKey)
+    await advancedSettings
+      .getByRole('textbox', { name: 'Value' })
+      .fill(agentBuilderFixedInputs.envPlainValue)
+    await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
+  },
+)
+
 Then('I should be on the Agent v2 configure page', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 
@@ -199,6 +219,51 @@ Then(
         timeout: 30_000,
       })
       .toContain(fileName)
+  },
+)
+
+Then(
+  'the plain Agent v2 environment variable should be saved in the Agent v2 draft',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+
+    await expect
+      .poll(async () => {
+        const env = (await getAgentComposerDraft(agentId)).agent_soul?.env
+        const variable = env?.variables?.find((item) => {
+          const key = item.key ?? item.name ?? item.variable
+
+          return key === agentBuilderFixedInputs.envPlainKey
+        })
+
+        return {
+          secretCount: env?.secret_refs?.length ?? 0,
+          value: variable?.value,
+        }
+      }, {
+        timeout: 30_000,
+      })
+      .toEqual({
+        secretCount: 0,
+        value: agentBuilderFixedInputs.envPlainValue,
+      })
+  },
+)
+
+Then(
+  'I should see the plain Agent v2 environment variable in Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+    await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
+    await expect(advancedSettings.getByRole('textbox', { name: 'Key' }))
+      .toHaveValue(agentBuilderFixedInputs.envPlainKey)
+    await expect(advancedSettings.getByRole('textbox', { name: 'Value' }))
+      .toHaveValue(agentBuilderFixedInputs.envPlainValue)
+    await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Preview$/i })).toBeVisible()
   },
 )
 

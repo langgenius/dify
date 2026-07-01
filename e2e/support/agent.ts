@@ -25,9 +25,20 @@ export type AgentComposerConfigFile = {
   name: string
   size?: number | null
 }
+export type AgentComposerEnvVariable = {
+  id?: string | null
+  key?: string | null
+  name?: string | null
+  value?: unknown
+  variable?: string | null
+}
 
 export type AgentSoulConfig = Record<string, unknown> & {
   config_files?: AgentComposerConfigFile[]
+  env?: {
+    secret_refs?: unknown[]
+    variables?: AgentComposerEnvVariable[]
+  }
 }
 export type AgentModelSelection = {
   name: string
