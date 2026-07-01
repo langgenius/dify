@@ -21,6 +21,13 @@ let browser: Browser | undefined
 
 setDefaultTimeout(60_000)
 
+const diagnosticArtifactStatuses = new Set([
+  Status.FAILED,
+  Status.AMBIGUOUS,
+  Status.PENDING,
+  Status.UNDEFINED,
+])
+
 const sanitizeForPath = (value: string) =>
   value.replaceAll(/[^\w-]+/g, '-').replaceAll(/^-+|-+$/g, '')
 
@@ -68,8 +75,9 @@ Before(async function (this: DifyWorld, { pickle }) {
 
 After(async function (this: DifyWorld, { pickle, result }) {
   const elapsedMs = this.scenarioStartedAt ? Date.now() - this.scenarioStartedAt : undefined
+  const status = result?.status || Status.UNKNOWN
 
-  if (result?.status !== Status.PASSED && this.page) {
+  if (diagnosticArtifactStatuses.has(status) && this.page) {
     const screenshot = await this.page.screenshot({
       fullPage: true,
     })
@@ -89,7 +97,6 @@ After(async function (this: DifyWorld, { pickle, result }) {
     this.attach(`Artifacts:\n${[screenshotPath, htmlPath].join('\n')}`, 'text/plain')
   }
 
-  const status = result?.status || 'UNKNOWN'
   console.warn(
     `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
   )
