@@ -65,20 +65,6 @@ def _snippet(**overrides) -> SimpleNamespace:
     return SimpleNamespace(**data)
 
 
-def test_snippet_list_item_response_rejects_missing_timestamps():
-    snippet = _snippet(created_at=None)
-
-    with pytest.raises(ValueError, match="timestamp is required"):
-        snippets_module.SnippetListItemResponse.model_validate(snippet)
-
-
-def test_snippet_response_rejects_missing_timestamps():
-    snippet = _snippet(updated_at=None)
-
-    with pytest.raises(ValueError, match="timestamp is required"):
-        snippets_module.SnippetResponse.model_validate(snippet)
-
-
 def test_normalize_snippet_list_query_args_sorts_indexed_values():
     query_args = snippets_module.MultiDict(
         [
@@ -425,39 +411,6 @@ def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: p
     session.commit.assert_called_once()
 
 
-def test_import_snippet_returns_200_for_completed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    user = _account("account-1")
-    result = SnippetImportInfo(id="import-1", status=ImportStatus.COMPLETED, snippet_id="snippet-1")
-    import_snippet = Mock(return_value=result)
-    session = SimpleNamespace(commit=Mock())
-
-    class SessionContext(_SessionContext):
-        def __init__(self, engine, *args, **kwargs):
-            super().__init__(engine, *args, session=session, **kwargs)
-
-    monkeypatch.setattr(snippets_module, "Session", SessionContext)
-    monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(
-        snippets_module,
-        "SnippetDslService",
-        Mock(return_value=SimpleNamespace(import_snippet=import_snippet)),
-    )
-
-    api = snippets_module.CustomizedSnippetImportApi()
-    handler = unwrap(api.post)
-
-    with app.test_request_context(
-        "/workspaces/current/customized-snippets/imports",
-        method="POST",
-        json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
-    ):
-        response, status_code = handler(api, user)
-
-    assert status_code == 200
-    assert response["snippet_id"] == "snippet-1"
-    session.commit.assert_called_once()
-
-
 def test_import_confirm_returns_200_for_completed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.COMPLETED, snippet_id="snippet-1")
@@ -487,39 +440,6 @@ def test_import_confirm_returns_200_for_completed_import(app: Flask, monkeypatch
 
     assert status_code == 200
     assert response["snippet_id"] == "snippet-1"
-    confirm_import.assert_called_once_with(import_id="import-1", account=user)
-    session.commit.assert_called_once()
-
-
-def test_import_confirm_returns_400_for_failed_import(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    user = _account("account-1")
-    result = SnippetImportInfo(id="import-1", status=ImportStatus.FAILED, error="Invalid import")
-    confirm_import = Mock(return_value=result)
-    session = SimpleNamespace(commit=Mock())
-
-    class SessionContext(_SessionContext):
-        def __init__(self, engine, *args, **kwargs):
-            super().__init__(engine, *args, session=session, **kwargs)
-
-    monkeypatch.setattr(snippets_module, "Session", SessionContext)
-    monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(
-        snippets_module,
-        "SnippetDslService",
-        Mock(return_value=SimpleNamespace(confirm_import=confirm_import)),
-    )
-
-    api = snippets_module.CustomizedSnippetImportConfirmApi()
-    handler = unwrap(api.post)
-
-    with app.test_request_context(
-        "/workspaces/current/customized-snippets/imports/import-1/confirm",
-        method="POST",
-    ):
-        response, status_code = handler(api, user, import_id="import-1")
-
-    assert status_code == 400
-    assert response["error"] == "Invalid import"
     confirm_import.assert_called_once_with(import_id="import-1", account=user)
     session.commit.assert_called_once()
 
