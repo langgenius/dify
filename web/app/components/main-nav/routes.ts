@@ -117,11 +117,11 @@ export function isMainNavRouteVisible(route: MainNavRouteConfig, options: MainNa
   return options.canUseAppDeploy
 }
 
-export function isAppDetailPathname(pathname: string) {
+function isAppDetailPathname(pathname: string) {
   return pathname.startsWith('/app/')
 }
 
-export function isDatasetDetailPathname(pathname: string) {
+function isDatasetDetailPathname(pathname: string) {
   const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
 
   if (section !== 'datasets' || !datasetId)
@@ -136,19 +136,19 @@ export function isDatasetDetailPathname(pathname: string) {
   return true
 }
 
-export function isAgentDetailPathname(pathname: string) {
+function isAgentDetailPathname(pathname: string) {
   const [section, type, agentId] = pathname.split('/').filter(Boolean)
 
   return section === 'roster' && type === 'agent' && !!agentId
 }
 
-export function isDeploymentDetailPathname(pathname: string) {
+function isDeploymentDetailPathname(pathname: string) {
   const [section, appInstanceId] = pathname.split('/').filter(Boolean)
 
   return section === 'deployments' && !!appInstanceId && !DEPLOYMENT_COLLECTION_ROUTES.has(appInstanceId)
 }
 
-export function isSnippetDetailPathname(pathname: string) {
+function isSnippetDetailPathname(pathname: string) {
   const [section, snippetId] = pathname.split('/').filter(Boolean)
 
   return section === 'snippets' && !!snippetId

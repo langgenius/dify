@@ -38,6 +38,10 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('@/app/components/detail-sidebar', () => ({
+  DetailSidebarFrame: () => <aside data-testid="detail-sidebar-frame" />,
+}))
+
 vi.mock('@/app/components/workflow', () => ({
   default: ({
     children,
