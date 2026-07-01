@@ -2,7 +2,7 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient } from '@tanstack/react-query'
-import { screen } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -97,6 +97,32 @@ describe('MemberMenu', () => {
     } as unknown as ReturnType<typeof useWorkspaceRoleList>)
   })
 
+  it('should show edit role copy when multiple roles are disabled', async () => {
+    const user = userEvent.setup()
+
+    renderWithSystemFeatures(
+      <MemberMenu
+        member={member}
+        isCurrentUser={false}
+        allowMultipleRoles={false}
+      />,
+      {
+        systemFeatures: {
+          rbac_enabled: false,
+        },
+      },
+    )
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+
+    expect(screen.getByRole('menuitem', { name: /common\.members\.editRole/i })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /common\.members\.assignRoles/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('menuitem', { name: /common\.members\.editRole/i }))
+
+    expect(screen.getByRole('dialog', { name: /common\.members\.editRole/i })).toBeInTheDocument()
+  })
+
   it('should submit only one selected role from the assign modal when RBAC is disabled', async () => {
     const user = userEvent.setup()
 
@@ -114,7 +140,7 @@ describe('MemberMenu', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
-    await user.click(screen.getByRole('menuitem', { name: /members\.assignRoles/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.editRole/i }))
     await user.click(screen.getByRole('radio', { name: /Second role/i }))
     await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
@@ -124,7 +150,7 @@ describe('MemberMenu', () => {
     }, expect.any(Object))
   })
 
-  it('should refresh and invalidate members after removing a member', async () => {
+  it('should require confirmation before removing a member', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()
     const membersQueryKey = [...commonQueryKeys.members, 'en-US']
@@ -143,8 +169,18 @@ describe('MemberMenu', () => {
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
     await user.click(screen.getByRole('menuitem', { name: /members\.removeFromTeam/i }))
 
-    expect(deleteMemberOrCancelInvitation).toHaveBeenCalledWith({
-      url: '/workspaces/current/members/member-1',
+    const dialog = screen.getByRole('alertdialog', {
+      name: /common\.members\.removeFromTeamConfirmTitle:\{"memberName":"Member User"\}/i,
+    })
+    expect(dialog).toHaveTextContent('common.members.removeFromTeamConfirmDescription')
+    expect(deleteMemberOrCancelInvitation).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: /common\.operation\.confirm/i }))
+
+    await waitFor(() => {
+      expect(deleteMemberOrCancelInvitation).toHaveBeenCalledWith({
+        url: '/workspaces/current/members/member-1',
+      })
     })
     expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)
     expect(toast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')

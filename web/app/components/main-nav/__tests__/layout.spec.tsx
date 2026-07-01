@@ -17,7 +17,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('../index', () => ({
-  default: ({ className }: { className?: string }) => <aside className={className} data-testid="main-nav">MainNav</aside>,
+  MainNav: ({ className }: { className?: string }) => <aside className={className} data-testid="main-nav">MainNav</aside>,
 }))
 
 describe('MainNavLayout', () => {

@@ -42,6 +42,24 @@ describe('permission', () => {
       expect(capabilities.canComment).toBe(true)
       expect(capabilities.canTestAndRun).toBe(false)
     })
+
+    it('keeps monitor, tracing config, and log/annotation permissions independent', () => {
+      const monitorCapabilities = getAppACLCapabilities([AppACLPermission.Monitor])
+      const tracingCapabilities = getAppACLCapabilities([AppACLPermission.TracingConfig])
+      const logAndAnnotationCapabilities = getAppACLCapabilities([AppACLPermission.LogAndAnnotation])
+
+      expect(monitorCapabilities.canMonitor).toBe(true)
+      expect(monitorCapabilities.canConfigureTracing).toBe(false)
+      expect(monitorCapabilities.canAccessLogAndAnnotation).toBe(false)
+
+      expect(tracingCapabilities.canMonitor).toBe(false)
+      expect(tracingCapabilities.canConfigureTracing).toBe(true)
+      expect(tracingCapabilities.canAccessLogAndAnnotation).toBe(false)
+
+      expect(logAndAnnotationCapabilities.canMonitor).toBe(false)
+      expect(logAndAnnotationCapabilities.canConfigureTracing).toBe(false)
+      expect(logAndAnnotationCapabilities.canAccessLogAndAnnotation).toBe(true)
+    })
   })
 
   describe('hasOnlyAppPreviewPermission', () => {
@@ -87,6 +105,8 @@ describe('permission', () => {
       expect(capabilities.canDelete).toBe(true)
       expect(capabilities.canReleaseAndVersion).toBe(true)
       expect(capabilities.canMonitor).toBe(true)
+      expect(capabilities.canConfigureTracing).toBe(true)
+      expect(capabilities.canAccessLogAndAnnotation).toBe(true)
       expect(capabilities.canAccessConfig).toBe(true)
       expect(permissionKeys).toEqual([])
     })

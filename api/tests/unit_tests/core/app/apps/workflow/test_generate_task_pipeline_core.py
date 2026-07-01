@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -639,7 +640,9 @@ class TestWorkflowGenerateTaskPipeline:
         assert sleep_spy
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_wrapper_process_stream_response_handles_audio_exception(self, monkeypatch: pytest.MonkeyPatch):
+    def test_wrapper_process_stream_response_handles_audio_exception(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -659,20 +662,16 @@ class TestWorkflowGenerateTaskPipeline:
             def publish(self, message):
                 _ = message
 
-        logger_exception = []
         monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.time.time", lambda: 0.0)
-        monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.logger.exception",
-            lambda *args, **kwargs: logger_exception.append((args, kwargs)),
-        )
         monkeypatch.setattr(
             "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
-        responses = list(pipeline._wrapper_process_stream_response())
+        with caplog.at_level(logging.ERROR, logger="core.app.apps.workflow.generate_task_pipeline"):
+            responses = list(pipeline._wrapper_process_stream_response())
 
-        assert logger_exception
+        assert "Fails to get audio trunk, task_id: task" in caplog.messages
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
     def test_database_session_rolls_back_on_error(self, monkeypatch: pytest.MonkeyPatch):

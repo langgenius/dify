@@ -69,7 +69,6 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     canSetPermissions: true,
     canSetPluginPreferences: true,
-    canViewInstalledPlugins: true,
   }),
   default: () => ({
     canSetPermissions: true,

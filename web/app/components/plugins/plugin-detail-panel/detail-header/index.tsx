@@ -34,7 +34,7 @@ import { HeaderModals, PluginSourceBadge } from './components'
 import { useDetailHeaderState, usePluginOperations } from './hooks'
 
 type Props = Readonly<{
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   detail: PluginDetail
   isReadmeView?: boolean
@@ -71,7 +71,7 @@ const getDetailUrl = (
 }
 
 const DetailHeader = ({
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   detail,
   isReadmeView = false,
@@ -123,7 +123,7 @@ const DetailHeader = ({
     modalStates,
     versionPicker,
     isFromMarketplace,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
     onUpdate,
   })
@@ -271,7 +271,7 @@ const DetailHeader = ({
               onViewReadme={canViewReadme ? handleViewReadme : undefined}
               detailUrl={detailUrl}
               showCheckVersion={canUpdatePlugin}
-              showRemove={canManagePlugin}
+              showRemove={canDeletePlugin}
             />
             <ActionButton onClick={onHide}>
               <span aria-hidden className="i-ri-close-line size-4" />

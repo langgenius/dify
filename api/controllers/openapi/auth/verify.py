@@ -5,7 +5,7 @@ from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.data import AuthData, CallerKind
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from services.account_service import AccountService, TenantService
@@ -58,7 +58,7 @@ def check_rbac_permission(data: AuthData) -> None:
     if not dify_config.RBAC_ENABLED:
         return
     # Only account callers are subject to RBAC; end_user access is scope-controlled.
-    if data.caller_kind != "account":
+    if data.caller_kind != CallerKind.ACCOUNT:
         return
     if data.account_id is None or data.tenant is None:
         raise Forbidden("rbac context missing")
