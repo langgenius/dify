@@ -3,7 +3,8 @@ Feature: Agent v2 Access Point
   Scenario: Access Point shows the available Agent v2 access surfaces
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
-    When I open the Agent v2 Access Point page
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Access Point overview
 
   @workflow-reference

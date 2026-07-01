@@ -76,7 +76,7 @@ Then('I should see the Agent v2 Access Point overview', async function (this: Di
   await expect(accessRegion.getByText('Access URL')).toBeVisible()
   await expect(accessRegion.getByLabel('Copy access URL')).toBeVisible()
   await expect(accessRegion.getByLabel('Toggle Web app access')).toBeVisible()
-  await expect(accessRegion.getByRole('button', { name: 'Launch' })).toBeVisible()
+  await expect(accessRegion.getByRole('link', { name: 'Launch' })).toBeVisible()
   await expect(accessRegion.getByRole('button', { name: 'Embedded' })).toBeVisible()
   await expect(accessRegion.getByRole('button', { name: 'Customize' })).toBeVisible()
   await expect(accessRegion.getByRole('button', { name: 'Settings' })).toBeVisible()
