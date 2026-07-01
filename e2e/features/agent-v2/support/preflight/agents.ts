@@ -210,7 +210,7 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
     if (!prompt.includes(agentBuilderExpectedTokens.agentReply))
       missing.push(`Prompt token ${agentBuilderExpectedTokens.agentReply}`)
 
-    const files = asArray(asRecord(soul.files).files)
+    const files = asArray(soul.config_files)
     for (const fileName of [
       agentBuilderTestMaterials.smallFile,
       agentBuilderTestMaterials.specialFilename,

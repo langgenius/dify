@@ -28,7 +28,7 @@ const getComposerInheritanceSnapshot = async (agentId: string) => {
   const soul = draft.agent_soul ?? {}
   const model = asRecord(soul.model)
   const prompt = asRecord(soul.prompt)
-  const files = asArray(asRecord(soul.files).files)
+  const files = asArray(soul.config_files)
   const tools = asArray(asRecord(soul.tools).dify_tools)
   const knowledgeSets = asArray(asRecord(soul.knowledge).sets)
 
