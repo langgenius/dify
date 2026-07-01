@@ -1739,6 +1739,7 @@ class TestChildChunkApiGet:
         assert response["total"] == 2
         assert response["page"] == 1
 
+    @patch("controllers.service_api.dataset.segment._get_segment_for_document", return_value=(Mock(), Mock()))
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
@@ -1749,6 +1750,7 @@ class TestChildChunkApiGet:
         mock_account_fn,
         mock_doc_svc,
         mock_seg_svc,
+        mock_get_segment,
         app: Flask,
         mock_tenant,
         mock_dataset,
@@ -1756,8 +1758,7 @@ class TestChildChunkApiGet:
         """Test malformed non-empty pagination values are rejected for child chunk listing."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock()
-        mock_seg_svc.get_segment_by_id.return_value = Mock()
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks?page=bad&limit=abc",
