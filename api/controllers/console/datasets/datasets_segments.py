@@ -43,6 +43,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
+from libs.pagination import paginate_query
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.segment_fields import (
@@ -254,7 +255,7 @@ class DatasetDocumentSegmentListApi(Resource):
             elif args.enabled.lower() == "false":
                 query = query.where(DocumentSegment.enabled == False)
 
-        segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        segments = paginate_query(query, page=page, per_page=limit, max_per_page=100)
 
         segment_list = list(segments.items)
         segment_ids = [segment.id for segment in segment_list]

@@ -11,6 +11,7 @@ from configs import dify_config
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
+from libs.pagination import paginate_query
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DatasetAutoDisableLog, DatasetQuery, Document
 from services.feature_service import FeatureService
@@ -88,7 +89,7 @@ def clean_unused_datasets_task():
                     .order_by(Dataset.created_at.desc())
                 )
 
-                datasets = db.paginate(stmt, page=page, per_page=50, error_out=False)
+                datasets = paginate_query(stmt, page=page, per_page=50)
 
             except SQLAlchemyError:
                 raise

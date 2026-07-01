@@ -23,6 +23,7 @@ from controllers.console.wraps import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
+from libs.pagination import paginate_query
 from fields.conversation_fields import (
     Conversation as ConversationResponse,
 )
@@ -155,7 +156,7 @@ class CompletionConversationApi(Resource):
 
         query = query.order_by(Conversation.created_at.desc())
 
-        conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
+        conversations = paginate_query(query, page=args.page, per_page=args.limit)
 
         return ConversationPaginationResponse.model_validate(conversations, from_attributes=True).model_dump(
             mode="json"
@@ -312,7 +313,7 @@ class ChatConversationApi(Resource):
             case _:
                 query = query.order_by(Conversation.created_at.desc())
 
-        conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
+        conversations = paginate_query(query, page=args.page, per_page=args.limit)
 
         return ConversationWithSummaryPaginationResponse.model_validate(conversations, from_attributes=True).model_dump(
             mode="json"

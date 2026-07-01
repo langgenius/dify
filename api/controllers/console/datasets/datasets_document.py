@@ -33,6 +33,7 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
+from libs.pagination import paginate_query
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentMetadataResponse,
@@ -367,7 +368,7 @@ class DatasetDocumentListApi(Resource):
                     desc(Document.position),
                 )
 
-        paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_documents = paginate_query(query, page=page, per_page=limit, max_per_page=100)
         documents = paginated_documents.items
 
         DocumentService.enrich_documents_with_summary_index_status(

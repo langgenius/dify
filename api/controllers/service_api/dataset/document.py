@@ -50,6 +50,7 @@ from core.errors.error import ProviderTokenNotInitError
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
+from libs.pagination import paginate_query
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentListResponse,
@@ -941,8 +942,8 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        paginated_documents = db.paginate(
-            select=query, page=query_params.page, per_page=query_params.limit, max_per_page=100, error_out=False
+        paginated_documents = paginate_query(
+            query, page=query_params.page, per_page=query_params.limit, max_per_page=100
         )
         documents = paginated_documents.items
 

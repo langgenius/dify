@@ -10,6 +10,7 @@ from werkzeug.exceptions import NotFound
 
 from core.helper.csv_sanitizer import CSVSanitizer
 from extensions.ext_database import db
+from libs.pagination import paginate_query
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
@@ -230,7 +231,7 @@ class AppAnnotationService:
                 .where(MessageAnnotation.app_id == app_id)
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
             )
-        annotations = db.paginate(select=stmt, page=page, per_page=limit, max_per_page=100, error_out=False)
+        annotations = paginate_query(stmt, page=page, per_page=limit, max_per_page=100)
         return annotations.items, annotations.total or 0
 
     @classmethod
@@ -585,9 +586,7 @@ class AppAnnotationService:
             )
             .order_by(AppAnnotationHitHistory.created_at.desc())
         )
-        annotation_hit_histories = db.paginate(
-            select=stmt, page=page, per_page=limit, max_per_page=100, error_out=False
-        )
+        annotation_hit_histories = paginate_query(stmt, page=page, per_page=limit, max_per_page=100)
         return annotation_hit_histories.items, annotation_hit_histories.total or 0
 
     @classmethod

@@ -30,6 +30,7 @@ from controllers.console.wraps import (
 )
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
+from libs.pagination import paginate_query
 from fields.base import ResponseModel
 from libs.helper import OptionalTimestampField, TimestampField, dump_response, to_timestamp
 from libs.login import login_required
@@ -293,7 +294,7 @@ class WorkspaceListApi(Resource):
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
-        tenants = db.paginate(select=stmt, page=args.page, per_page=args.limit, error_out=False)
+        tenants = paginate_query(stmt, page=args.page, per_page=args.limit)
         has_more = False
 
         if tenants.has_next:
