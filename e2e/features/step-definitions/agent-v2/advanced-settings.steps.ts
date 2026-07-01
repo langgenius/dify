@@ -11,6 +11,16 @@ When('I expand Agent v2 Advanced Settings', async function (this: DifyWorld) {
   await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
 })
 
+When('I collapse Agent v2 Advanced Settings', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+  await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+  await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' }))
+    .not
+    .toBeVisible()
+})
+
 Then(
   'Agent v2 Advanced Settings should describe supported entries while collapsed',
   async function (this: DifyWorld) {

@@ -8,6 +8,8 @@ Feature: Agent v2 advanced settings
     Then Agent v2 Advanced Settings should describe supported entries while collapsed
     When I expand Agent v2 Advanced Settings
     Then I should see the supported Agent v2 Advanced Settings entries
+    When I collapse Agent v2 Advanced Settings
+    Then Agent v2 Advanced Settings should describe supported entries while collapsed
 
   @core
   Scenario: Plain environment variables are saved and restored
