@@ -302,7 +302,7 @@ Use `fixtures/test-materials/` for checked-in files that scenarios upload, previ
 
 Use scoped feature support for scenarios that require optional external resources such as a model provider, plugin/tool credential, knowledge base seed, or fixed app. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
 
-Treat preflight checks as read-only readiness checks. A preflight step may query the environment, record typed state on `DifyWorld`, attach a blocked-precondition reason, or return `skipped`; it must not create, repair, publish, reconfigure, or mutate shared seed resources. Long-lived resources belong to the environment seed/setup process and need an explicit owner outside individual scenarios.
+Treat preflight checks as read-only readiness checks. A preflight step may query the environment, record typed state on `DifyWorld`, attach a blocked-precondition reason, or return `skipped`; it must not create, repair, publish, reconfigure, or mutate shared seed resources. Treat the preflight suite as a readiness and drift report, not as a seed manager. Long-lived resources belong to the environment seed/setup process and need an explicit owner outside individual scenarios.
 
 Keep package-level support limited to broadly reusable primitives such as API clients, naming, fixture path resolution, and cleanup helpers. Feature-specific seed contracts and preflight checks belong under the owning feature's support folder.
 
