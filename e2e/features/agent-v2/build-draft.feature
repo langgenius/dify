@@ -15,3 +15,20 @@ Feature: Agent v2 build draft
     When I refresh the current page
     Then I should see the normal E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
+
+  Scenario: Applying a pending Build draft updates the normal Agent configuration
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    And an Agent v2 Build draft uses the updated E2E prompt with the stable E2E model
+    When I open the Agent v2 configure page
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    When I apply the Agent v2 Build draft
+    Then I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should use the updated E2E prompt
+    And the Agent v2 Build draft should no longer be active
+    When I refresh the current page
+    Then I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the Agent v2 Build draft should no longer be active

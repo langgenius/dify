@@ -73,6 +73,19 @@ Given('an Agent v2 Build draft uses the updated E2E prompt', async function (thi
   await saveAgentBuildDraft(getCurrentAgentId(this), updatedAgentSoulConfig)
 })
 
+Given(
+  'an Agent v2 Build draft uses the updated E2E prompt with the stable E2E model',
+  async function (this: DifyWorld) {
+    if (!this.agentBuilderStableChatModel)
+      throw new Error('Create an Agent v2 Build draft with a stable model after stable model preflight.')
+
+    await saveAgentBuildDraft(
+      getCurrentAgentId(this),
+      createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilderStableChatModel),
+    )
+  },
+)
+
 When('I open the Agent v2 configure page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentConfigurePath(getCurrentAgentId(this)))
 })
@@ -92,6 +105,27 @@ When('I open the Agent v2 configure page from the Agent Roster', async function 
 
 When('I discard the Agent v2 Build draft', async function (this: DifyWorld) {
   await this.getPage().getByRole('button', { name: 'Discard' }).click()
+})
+
+When('I apply the Agent v2 Build draft', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const agentId = getCurrentAgentId(this)
+  const applyButton = page.getByRole('button', { name: 'Apply' })
+
+  await expect(applyButton).toBeEnabled({ timeout: 30_000 })
+  const finalizeResponsePromise = page.waitForResponse(response => (
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-chat/finalize`)
+  ), { timeout: 120_000 })
+  const applyResponsePromise = page.waitForResponse(response => (
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-draft/apply`)
+  ), { timeout: 120_000 })
+
+  await applyButton.click()
+  expect((await finalizeResponsePromise).ok()).toBe(true)
+  expect((await applyResponsePromise).ok()).toBe(true)
+  await expect(page.getByText('Action succeeded')).toBeVisible()
 })
 
 When('I publish the Agent v2 draft', async function (this: DifyWorld) {
@@ -355,6 +389,16 @@ Then(
       async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt,
       { timeout: 30_000 },
     ).toEqual({ system_prompt: normalAgentPrompt })
+  },
+)
+
+Then(
+  'the normal Agent v2 draft should use the updated E2E prompt',
+  async function (this: DifyWorld) {
+    await expect.poll(
+      async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt,
+      { timeout: 30_000 },
+    ).toEqual({ system_prompt: updatedAgentPrompt })
   },
 )
 
