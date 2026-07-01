@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Could not verify the code",
   "errorRateLimited.body": "Wait a moment and try again.",
   "errorRateLimited.title": "Too many attempts",
+  "ssoError.default": "Single sign-on could not be completed. Try again.",
+  "ssoError.emailBelongsToDifyAccount": "This identity is linked to a Dify account. Use “Sign in with Dify account” instead.",
   "success.goToConsole": "Go to Dify console →",
   "success.subtitle": "Return to your terminal to continue.",
   "success.title": "You're signed in",

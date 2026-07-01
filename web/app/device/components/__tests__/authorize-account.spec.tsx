@@ -54,27 +54,27 @@ describe('AuthorizeAccount', () => {
 
   it('calls deviceApproveAccount with userCode on Authorize click', async () => {
     render(<AuthorizeAccount {...makeProps()} />)
-    fireEvent.click(screen.getByRole('button', { name: /Authorize/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.authorize.approve/i }))
     await waitFor(() => expect(mockApproveAccount).toHaveBeenCalledWith('ABCD-3456'))
   })
 
   it('calls onApproved after successful approve', async () => {
     const props = makeProps()
     render(<AuthorizeAccount {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: /Authorize/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.authorize.approve/i }))
     await waitFor(() => expect(props.onApproved).toHaveBeenCalled())
   })
 
   it('calls deviceDenyAccount with userCode on Cancel click', async () => {
     render(<AuthorizeAccount {...makeProps()} />)
-    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
+    fireEvent.click(screen.getByRole('button', { name: /common.operation.cancel/i }))
     await waitFor(() => expect(mockDenyAccount).toHaveBeenCalledWith('ABCD-3456'))
   })
 
   it('calls onDenied after successful deny', async () => {
     const props = makeProps()
     render(<AuthorizeAccount {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: /Cancel/i }))
+    fireEvent.click(screen.getByRole('button', { name: /common.operation.cancel/i }))
     await waitFor(() => expect(props.onDenied).toHaveBeenCalled())
   })
 
@@ -82,7 +82,7 @@ describe('AuthorizeAccount', () => {
     mockApproveAccount.mockRejectedValue(new Error('unexpected'))
     const props = makeProps()
     render(<AuthorizeAccount {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: /Authorize/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.authorize.approve/i }))
     await waitFor(() => expect(props.onError).toHaveBeenCalledWith(expect.any(String)))
   })
 })
