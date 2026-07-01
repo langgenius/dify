@@ -212,6 +212,37 @@ When(
 )
 
 When(
+  'I add the secondary plain Agent v2 environment variable from Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await advancedSettings.getByRole('button', { name: 'Add environment variable' }).click()
+    await advancedSettings
+      .getByRole('textbox', { name: 'Key' })
+      .last()
+      .fill(agentBuilderFixedInputs.envModeKey)
+    await advancedSettings
+      .getByRole('textbox', { name: 'Value' })
+      .last()
+      .fill(agentBuilderFixedInputs.envModeValue)
+    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
+  },
+)
+
+When(
+  'I delete the plain Agent v2 environment variable from Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await advancedSettings
+      .getByRole('button', { name: `Delete ${agentBuilderFixedInputs.envPlainKey}` })
+      .click()
+  },
+)
+
+When(
   'I import the valid Agent v2 environment file from Advanced Settings',
   async function (this: DifyWorld) {
     const page = this.getPage()
@@ -346,6 +377,52 @@ Then(
 )
 
 Then(
+  'the Agent v2 environment variables for deletion should be saved in the Agent v2 draft',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+
+    await expect
+      .poll(async () => {
+        const variables = await getAgentEnvVariables(agentId)
+
+        return {
+          modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
+          plainValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envPlainKey),
+        }
+      }, {
+        timeout: 30_000,
+      })
+      .toEqual({
+        modeValue: agentBuilderFixedInputs.envModeValue,
+        plainValue: agentBuilderFixedInputs.envPlainValue,
+      })
+  },
+)
+
+Then(
+  'the plain Agent v2 environment variable should be removed from the Agent v2 draft',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+
+    await expect
+      .poll(async () => {
+        const variables = await getAgentEnvVariables(agentId)
+
+        return {
+          modeValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envModeKey),
+          plainValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envPlainKey),
+        }
+      }, {
+        timeout: 30_000,
+      })
+      .toEqual({
+        modeValue: agentBuilderFixedInputs.envModeValue,
+        plainValue: undefined,
+      })
+  },
+)
+
+Then(
   'the valid Agent v2 environment import should be saved in the Agent v2 draft',
   async function (this: DifyWorld) {
     const agentId = getCurrentAgentId(this)
@@ -438,6 +515,33 @@ Then(
       agentBuilderFixedInputs.envModeValue,
     ]))
     await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(2)
+  },
+)
+
+Then(
+  'I should not see the deleted Agent v2 environment variable in Advanced Settings',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+    await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
+    await expect.poll(
+      async () => advancedSettings.getByRole('textbox').evaluateAll(inputs =>
+        inputs.map(input => (input as HTMLInputElement).value),
+      ),
+      { timeout: 30_000 },
+    ).toEqual(expect.arrayContaining([
+      agentBuilderFixedInputs.envModeKey,
+      agentBuilderFixedInputs.envModeValue,
+    ]))
+    await expect.poll(
+      async () => advancedSettings.getByRole('textbox').evaluateAll(inputs =>
+        inputs.map(input => (input as HTMLInputElement).value),
+      ),
+      { timeout: 30_000 },
+    ).not.toContain(agentBuilderFixedInputs.envPlainKey)
+    await expect(advancedSettings.getByText('Plain', { exact: true })).toHaveCount(1)
   },
 )
 
