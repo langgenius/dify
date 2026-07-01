@@ -663,6 +663,7 @@ class TestDifyNodeFactoryCreateNode:
 
         assert result is created_node
         kwargs = constructor.call_args.kwargs
+        assert kwargs['hitl_callback'] is
         assert kwargs["runtime"] is factory._human_input_runtime
         assert kwargs["form_repository"] is form_repository
         assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
