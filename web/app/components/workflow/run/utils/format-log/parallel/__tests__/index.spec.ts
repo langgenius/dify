@@ -89,4 +89,30 @@ describe('formatParallel', () => {
 
     expect(formatParallel([standalone], t)).toEqual([standalone])
   })
+
+  it('does not group loop-end nodes as parallel children', () => {
+    const loopEnd = createNodeTracing({
+      id: 'loop-end',
+      node_id: 'loop-end',
+      node_type: BlockEnum.LoopEnd,
+      title: 'Loop End',
+      parallel_id: 'parallel-1',
+      parallel_start_node_id: 'parallel-start',
+    })
+    const parallelStart = createNodeTracing({
+      id: 'parallel-start',
+      node_id: 'parallel-start',
+      title: 'Parallel Start',
+      parallel_id: 'parallel-1',
+      parallel_start_node_id: 'parallel-start',
+    })
+
+    const result = formatParallel([parallelStart, loopEnd], t)
+
+    expect(result).toEqual([
+      expect.objectContaining({ node_id: 'parallel-start' }),
+      expect.objectContaining({ node_id: 'loop-end' }),
+    ])
+    expect(result[1]!.parallelDetail).toBeUndefined()
+  })
 })

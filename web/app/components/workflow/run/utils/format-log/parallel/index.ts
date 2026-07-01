@@ -10,15 +10,10 @@ function findLastIndex<T>(list: T[], predicate: (item: T) => boolean): number {
   return -1
 }
 
-function printNodeStructure(node: NodeTracing, depth: number) {
-  const indent = '  '.repeat(depth)
-  console.log(`${indent}${node.title}`)
-  if (node.parallelDetail?.children) {
-    node.parallelDetail.children.forEach((child) => {
-      printNodeStructure(child, depth + 1)
-    })
-  }
-}
+type Translator = (key: string, options?: Record<string, string>) => string
+
+const isParallelBoundaryNode = (node: NodeTracing) =>
+  node.node_type === BlockEnum.End || node.node_type === BlockEnum.LoopEnd
 
 function addTitle({
   list,
@@ -28,14 +23,14 @@ function addTitle({
   list: NodeTracing[]
   depth: number
   belongParallelIndexInfo?: string
-}, t: any) {
+}, t: Translator) {
   let branchIndex = 0
   const hasMoreThanOneParallel = list.filter(node => node.parallelDetail?.isParallelStartNode).length > 1
   list.forEach((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
     const parallel_start_node_id = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
 
-    const isNotInParallel = !parallel_id || node.node_type === BlockEnum.End
+    const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
     if (isNotInParallel)
       return
 
@@ -80,10 +75,7 @@ function addTitle({
 }
 
 // list => group by parallel_id(parallel tree).
-const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] => {
-  if (isPrint)
-    console.log(list)
-
+const format = (list: NodeTracing[], t: Translator): NodeTracing[] => {
   const result: NodeTracing[] = [...list]
   // list to tree by parent_parallel_start_node_id and branch by parallel_start_node_id. Each parallel may has more than one branch.
   result.forEach((node) => {
@@ -92,7 +84,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
     const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
     const branchStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
     const parentParallelBranchStartNodeId = node.parent_parallel_start_node_id ?? node.execution_metadata?.parent_parallel_start_node_id ?? null
-    const isNotInParallel = !parallel_id || node.node_type === BlockEnum.End
+    const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
     if (isNotInParallel)
       return
 
@@ -149,7 +141,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
 
   const filteredInParallelSubNodes = result.filter((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
-    const isNotInParallel = !parallel_id || node.node_type === BlockEnum.End
+    const isNotInParallel = !parallel_id || isParallelBoundaryNode(node)
     if (isNotInParallel)
       return true
 
@@ -165,16 +157,6 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
 
     return true
   })
-
-  // print node structure for debug
-  if (isPrint) {
-    filteredInParallelSubNodes.forEach((node) => {
-      const now = Date.now()
-      console.log(`----- p: ${now} start -----`)
-      printNodeStructure(node, 0)
-      console.log(`----- p: ${now} end -----`)
-    })
-  }
 
   addTitle({
     list: filteredInParallelSubNodes,

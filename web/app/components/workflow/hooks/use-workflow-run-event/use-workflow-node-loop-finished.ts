@@ -3,6 +3,7 @@ import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 export const useWorkflowNodeLoopFinished = () => {
   const store = useStoreApi()
@@ -35,6 +36,10 @@ export const useWorkflowNodeLoopFinished = () => {
       const currentNode = draft.find(node => node.id === data.node_id)!
 
       currentNode.data._runningStatus = data.status
+      draft.forEach((node) => {
+        if (node.parentId === data.node_id && node.data._runningStatus === NodeRunningStatus.Running)
+          node.data._runningStatus = data.status
+      })
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
