@@ -291,8 +291,7 @@ function AppCardOperationsMenuContent(props: AppCardOperationsMenuContentProps) 
   const shouldShowOpenInExploreOption = !props.app.has_draft_trigger
     && (
       needsPublishBeforeExplore
-      ||
-      !systemFeatures.webapp_auth.enabled
+      || !systemFeatures.webapp_auth.enabled
       || (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result))
     )
 
