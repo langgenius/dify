@@ -3,6 +3,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
+import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
 
 import { cn } from '@langgenius/dify-ui/cn'
@@ -59,11 +60,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     isFetching: loading,
     isSuccess: hasFetchedModelList,
     refetch: refetchModelList,
-  } = useQuery(consoleQuery.modelProviders.models.queryOptions({
+  } = useQuery(consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
     input: { params: { provider: currentProviderName } },
     enabled: expanded,
     refetchOnWindowFocus: false,
-    select: response => response.data,
+    select: response => response.data as ModelItem[],
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
   const showCollapsedSection = !expanded || !hasFetchedModelList

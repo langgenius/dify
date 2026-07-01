@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
+import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -54,11 +55,11 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   const retrievalRerankingEnable = retrievalModel?.reranking_enable
   const embeddingModelProvider = data.embedding_model_provider
   const { data: embeddingProviderModelList } = useQuery(
-    consoleQuery.modelProviders.models.queryOptions({
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: embeddingModelProvider || '' } },
       enabled: indexingTechnique === IndexMethodEnum.QUALIFIED && !!embeddingModelProvider,
       refetchOnWindowFocus: false,
-      select: response => response.data,
+      select: response => response.data as ModelItem[],
     }),
   )
 

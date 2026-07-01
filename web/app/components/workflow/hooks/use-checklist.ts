@@ -185,11 +185,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   }, [nodes])
   const knowledgeBaseProviderModelMap = useQueries({
     queries: knowledgeBaseEmbeddingProviders.map(provider =>
-      consoleQuery.modelProviders.models.queryOptions({
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
         input: { params: { provider } },
         enabled: !!provider,
         refetchOnWindowFocus: false,
-        select: response => response.data,
+        select: response => response.data as ModelItem[],
       }),
     ),
     combine: (results) => {
@@ -467,13 +467,13 @@ export const useChecklistBeforePublish = () => {
       await Promise.all(knowledgeBaseEmbeddingProviders.map(async (provider) => {
         try {
           const modelList = await queryClient.fetchQuery(
-            consoleQuery.modelProviders.models.queryOptions({
+            consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
               input: { params: { provider } },
             }),
           )
 
           if (modelList.data)
-            modelMap[provider] = modelList.data
+            modelMap[provider] = modelList.data as ModelItem[]
         }
         catch {
         }
