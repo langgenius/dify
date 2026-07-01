@@ -11,6 +11,7 @@ import { SearchInput } from '@/app/components/base/search-input'
 import Sort from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
+import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentLogsTable } from './components/logs-table'
 import { AgentLogSourcePicker } from './components/source-picker'
 
@@ -107,10 +108,7 @@ export function AgentLogsPage({
   const currentPage = logsQuery.data?.page ?? page
 
   return (
-    <section
-      aria-label={t('agentDetail.sections.logs')}
-      className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-components-panel-bg-blur"
-    >
+    <AgentDetailSectionSurface label={t('agentDetail.sections.logs')}>
       <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
@@ -222,6 +220,6 @@ export function AgentLogsPage({
           ariaLabel: tCommon('pagination.perPage'),
         }}
       />
-    </section>
+    </AgentDetailSectionSurface>
   )
 }

@@ -18,6 +18,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
+import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentMonitoringChart } from './chart'
 import { getAgentMonitoringMetrics } from './metrics'
 import { AgentMonitoringTimeRangePicker } from './time-range-picker'
@@ -91,10 +92,7 @@ export function AgentMonitoringPage({
   const shouldShowError = statisticsQuery.isError && !statisticsQuery.data
 
   return (
-    <section
-      aria-label={t('agentDetail.sections.monitoring')}
-      className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-components-panel-bg-blur"
-    >
+    <AgentDetailSectionSurface label={t('agentDetail.sections.monitoring')}>
       <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
@@ -175,7 +173,7 @@ export function AgentMonitoringPage({
           </div>
         )}
       </ScrollArea>
-    </section>
+    </AgentDetailSectionSurface>
   )
 }
 

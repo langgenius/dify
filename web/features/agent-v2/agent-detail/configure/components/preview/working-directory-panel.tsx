@@ -1,6 +1,7 @@
 'use client'
 
 import type { SandboxFileEntryResponse, SandboxListResponse, SandboxReadResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentWorkingDirectoryRootPath } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { skipToken, useQueries, useQuery } from '@tanstack/react-query'
@@ -9,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
+import { AgentWorkingDirectoryBreadcrumb } from './working-directory-breadcrumb'
 
 type AgentWorkingDirectoryPanelProps = {
   source: AgentWorkingDirectorySource
@@ -176,6 +178,7 @@ export function AgentWorkingDirectoryPanel({
 }: AgentWorkingDirectoryPanelProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const [rootPath, setRootPath] = useState<AgentWorkingDirectoryRootPath>('.')
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const [loadedFolderPaths, setLoadedFolderPaths] = useState<string[]>([])
   const [openFolderPaths, setOpenFolderPaths] = useState<string[]>([])
@@ -220,7 +223,14 @@ export function AgentWorkingDirectoryPanel({
           silent: true,
         },
       })
-  const fileListQueryOptions = getFileListQueryOptions('.')
+  const handleRootPathChange = (path: AgentWorkingDirectoryRootPath) => {
+    setRootPath(path)
+    setSelectedFileId(undefined)
+    setLoadedFolderPaths([])
+    setOpenFolderPaths([])
+    setPendingOpenFolderPaths([])
+  }
+  const fileListQueryOptions = getFileListQueryOptions(rootPath)
   const fileListQuery = useQuery({
     ...fileListQueryOptions,
     queryFn: async (context): Promise<SandboxListResponse> => {
@@ -340,6 +350,22 @@ export function AgentWorkingDirectoryPanel({
         detail={{
           description: t('agentDetail.configure.workingDirectory.description'),
           fileCount: countReadableFiles(workingDirectoryFiles),
+          fileListHeader: (
+            <div className="flex shrink-0 flex-col">
+              <div className="flex items-center gap-1 px-4 pt-3.5 pb-3">
+                <h3 id="agent-skill-detail-files-heading" className="system-xl-semibold text-text-primary">
+                  {t('agentDetail.configure.workingDirectory.fileSystem')}
+                </h3>
+              </div>
+              <AgentWorkingDirectoryBreadcrumb
+                path={rootPath}
+                onPathChange={handleRootPathChange}
+              />
+            </div>
+          ),
+          fileListPanelClassName: 'w-[360px]',
+          fileListTreeClassName: 'px-0',
+          fileListTreeListClassName: 'px-1',
           fileListTitle: t('agentDetail.configure.workingDirectory.title'),
           files: workingDirectoryFiles,
           filePreview: {

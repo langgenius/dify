@@ -127,10 +127,11 @@ export function AgentPreviewHeader({
             <button
               type="button"
               onClick={onOpenWorkingDirectory}
-              className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              className="flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               aria-label={t('agentDetail.configure.workingDirectory.open')}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
+              <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.workingDirectory.fileSystem')}</span>
             </button>
           )}
         </div>
