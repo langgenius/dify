@@ -217,14 +217,17 @@ export async function skipMissingAgentBuilderStableChatModel(
 
   const ctx = await createApiContext()
   try {
-    const response = await ctx.get(`/console/api/workspaces/current/models/model-types/${config.type}`)
+    const response = await ctx.get(
+      `/console/api/workspaces/current/models/model-types/${config.type}`,
+    )
     await expectApiResponseOK(response, `Check ${agentBuilderPreseededResources.stableChatModel}`)
     const body = (await response.json()) as ModelTypeListResponse
     const provider = body.data.find(item => item.provider === config.provider)
-    const model = provider?.models.find(item =>
-      item.model === config.value
-      || item.label?.en_US === config.value
-      || item.label?.zh_Hans === config.value,
+    const model = provider?.models.find(
+      item =>
+        item.model === config.value
+        || item.label?.en_US === config.value
+        || item.label?.zh_Hans === config.value,
     )
 
     if (!provider || !model) {
