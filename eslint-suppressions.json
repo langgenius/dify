@@ -7274,11 +7274,6 @@
       "count": 1
     }
   },
-  "web/service/try-app.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/try-app.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
