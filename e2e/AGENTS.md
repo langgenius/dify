@@ -35,7 +35,7 @@ Run only one `pnpm -C e2e e2e*` process against a local workspace at a time. Sep
 Use root lint plus the package type check as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue:
 
 ```bash
-vpr lint --fix
+vpr lint --fix --quiet
 pnpm -C e2e type-check
 ```
 
@@ -180,7 +180,7 @@ open cucumber-report/report.html
 1. Add step definitions under `features/step-definitions/<capability>/`
 1. Reuse existing steps from `common/` and other definition files before writing new ones
 1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
-1. Run `vpr lint --fix` from the repository root and `pnpm -C e2e type-check` before committing
+1. Run `vpr lint --fix --quiet` from the repository root and `pnpm -C e2e type-check` before committing
 
 ### Feature file conventions
 
