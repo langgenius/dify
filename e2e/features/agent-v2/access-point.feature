@@ -8,7 +8,7 @@ Feature: Agent v2 Access Point
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Access Point overview
 
-  @core @web-app-access @published-web-app
+  @core @web-app-access
   Scenario: Web app access URL can be copied without changing orchestration
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -36,7 +36,7 @@ Feature: Agent v2 Access Point
     Then the Agent v2 Web app should open in a new tab
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access @published-web-app
+  @core @web-app-access
   Scenario: Web app Embedded configuration opens from Access Point
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -48,7 +48,7 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Embedded configuration dialog
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access @published-web-app
+  @core @web-app-access
   Scenario: Web app customization opens from Access Point
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -60,7 +60,7 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Web app customization dialog
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access @published-web-app
+  @core @web-app-access
   Scenario: Web app settings open from Access Point without changing orchestration
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API

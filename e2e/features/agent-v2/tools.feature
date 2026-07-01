@@ -1,5 +1,6 @@
-@agent-v2 @authenticated @tools @core @tool-fixture
+@agent-v2 @authenticated @tools @core
 Feature: Agent v2 tools
+  @tool-fixture
   Scenario: JSON Replace tool is saved after adding it from the Tools selector
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded tool "JSON Process / JSON Replace" is available
