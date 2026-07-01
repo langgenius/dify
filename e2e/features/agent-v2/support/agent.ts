@@ -16,9 +16,14 @@ import type {
   AgentSoulConfig,
   ApiKeyItem,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  ChatRequestPayloadWithUser,
+  PostChatMessagesResponse,
+} from '@dify/contracts/api/service/types.gen'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { request } from '@playwright/test'
 import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from '../../../support/api'
 import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming'
 
@@ -56,6 +61,12 @@ export type CreateTestAgentOptions = {
   description?: string
   name?: string
   role?: string
+}
+
+export type AgentServiceApiChatResult = {
+  body: PostChatMessagesResponse | unknown
+  ok: boolean
+  status: number
 }
 
 export const defaultAgentSoulConfig: AgentSoulConfig = {
@@ -615,6 +626,45 @@ export async function deleteAgentApiKey(agentId: string, apiKeyId: string): Prom
   try {
     const response = await ctx.delete(`/console/api/agent/${agentId}/api-keys/${apiKeyId}`)
     await expectApiResponseOK(response, `Delete Agent v2 API key ${apiKeyId} for ${agentId}`)
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function sendAgentServiceApiChatMessage({
+  apiKey,
+  query = 'Please reply with the test success marker.',
+  serviceApiBaseURL,
+}: {
+  apiKey: string
+  query?: string
+  serviceApiBaseURL: string
+}): Promise<AgentServiceApiChatResult> {
+  const ctx = await request.newContext()
+  const body = {
+    inputs: {},
+    query,
+    response_mode: 'blocking',
+    user: 'e2e-agent-access-point',
+  } satisfies ChatRequestPayloadWithUser
+
+  try {
+    const response = await ctx.post(`${serviceApiBaseURL.replace(/\/$/, '')}/chat-messages`, {
+      data: body,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    })
+    const responseBody = await response.json().catch(async () => ({
+      message: await response.text().catch(() => ''),
+    }))
+
+    return {
+      body: responseBody as PostChatMessagesResponse | unknown,
+      ok: response.ok(),
+      status: response.status(),
+    }
   }
   finally {
     await ctx.dispose()

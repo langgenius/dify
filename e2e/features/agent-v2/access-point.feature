@@ -74,3 +74,20 @@ Feature: Agent v2 Access Point
     When I close Agent v2 API key management
     And I open the Agent v2 API Reference
     Then the Agent v2 API Reference should open in a new tab
+
+  Scenario: Backend service API can be disabled and restored
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    And the Agent v2 draft has been published via API
+    And Agent v2 Backend service API access has been enabled with a key via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
+    And I disable Agent v2 Backend service API access
+    Then Agent v2 Backend service API access should be out of service
+    When I send the Agent v2 Backend service API minimal request
+    Then the Agent v2 Backend service API request should be rejected while disabled
+    When I enable Agent v2 Backend service API access
+    Then Agent v2 Backend service API access should be in service
+    When I send the Agent v2 Backend service API minimal request
+    Then the Agent v2 Backend service API request should succeed with the normal E2E marker

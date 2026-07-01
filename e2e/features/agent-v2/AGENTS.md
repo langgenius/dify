@@ -56,6 +56,7 @@ Use the existing namespace shape:
 - `world.agentBuilder.preflight.preseededResources`
 - `world.agentBuilder.accessPoint.serviceApiBaseURL`
 - `world.agentBuilder.accessPoint.generatedApiKey`
+- `world.agentBuilder.accessPoint.serviceApiResponse`
 - `world.agentBuilder.accessPoint.apiReferencePage`
 - `world.agentBuilder.accessPoint.webAppPage`
 - `world.agentBuilder.accessPoint.webAppURL`

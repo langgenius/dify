@@ -47,6 +47,7 @@ export const createAgentBuilderWorldState = () => ({
     apiReferencePage: undefined as Page | undefined,
     composerDraftSnapshot: undefined as string | undefined,
     generatedApiKey: undefined as string | undefined,
+    serviceApiResponse: undefined as { body: unknown, ok: boolean, status: number } | undefined,
     serviceApiBaseURL: undefined as string | undefined,
     webAppPage: undefined as Page | undefined,
     webAppURL: undefined as string | undefined,
