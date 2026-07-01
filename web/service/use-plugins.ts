@@ -1,4 +1,4 @@
-import type { MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
+import type { MutateOptions, QueryClient, QueryOptions, UseQueryResult } from '@tanstack/react-query'
 import type {
   FormOption,
   ModelProvider,
@@ -18,6 +18,7 @@ import type {
   Permissions,
   Plugin,
   PluginDeclaration,
+  PluginDetail,
   PluginInfoFromMarketPlace,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
@@ -54,6 +55,10 @@ const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 
 type PluginTaskListResponse = {
   tasks: PluginTask[]
+}
+
+type PluginInstallationsResponse = {
+  plugins: PluginDetail[]
 }
 
 const isUnfinishedPluginTask = (task: PluginTask) => task.status === TaskStatus.pending || task.status === TaskStatus.running
@@ -114,18 +119,18 @@ export const useCheckInstalled = ({
   pluginIds: string[]
   enabled: boolean
 }) => {
-  return useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
+  return useQuery(consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
     input: { body: { plugin_ids: pluginIds } },
     enabled,
     staleTime: 0,
-  }))
+  })) as unknown as UseQueryResult<PluginInstallationsResponse>
 }
 
 export const useInvalidateCheckInstalled = () => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries({
-      queryKey: consoleQuery.plugins.checkInstalled.key(),
+      queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
     })
   }
 }

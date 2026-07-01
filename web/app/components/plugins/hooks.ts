@@ -1,5 +1,6 @@
+import type { UseQueryResult } from '@tanstack/react-query'
 import type { CategoryKey, TagKey } from './constants'
-import type { PluginDetail } from './types'
+import type { InstalledLatestVersionResponse, PluginDetail } from './types'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -109,10 +110,10 @@ export function usePluginsWithLatestVersion(plugins: PluginDetail[] = EMPTY_PLUG
     [plugins],
   )
 
-  const { data: latestVersionData } = useQuery(consoleQuery.plugins.latestVersions.queryOptions({
+  const { data: latestVersionData } = useQuery(consoleQuery.workspaces.current.plugin.list.latestVersions.post.queryOptions({
     input: { body: { plugin_ids: marketplacePluginIds } },
     enabled: !!marketplacePluginIds.length,
-  }))
+  })) as UseQueryResult<InstalledLatestVersionResponse>
 
   return useMemo(() => {
     const versions = latestVersionData?.versions

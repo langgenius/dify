@@ -48,7 +48,6 @@ import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.
 import { rbacAccessConfigContract } from './console/access-control'
 import { exploreRouterContract } from './console/explore'
 import { modelProvidersRouterContract } from './console/model-providers'
-import { pluginsRouterContract } from './console/plugins'
 import { snippetsRouterContract } from './console/snippets'
 import { triggersRouterContract } from './console/trigger'
 import { trialAppsRouterContract } from './console/try-app'
@@ -107,7 +106,6 @@ export const consoleRouterContract = {
   ...communityContract,
   explore: exploreRouterContract,
   modelProviders: modelProvidersRouterContract,
-  plugins: pluginsRouterContract,
   rbacAccessConfig: rbacAccessConfigContract,
   snippets: snippetsRouterContract,
   triggers: triggersRouterContract,
