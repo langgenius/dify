@@ -2,7 +2,8 @@
 
 import _thread
 import logging
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
 
 from celery.signals import worker_shutdown, worker_shutting_down
 
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 _WORKER_SHUTTING_DOWN_DISPATCH_UID = "dify.workflow_warm_shutdown.shutting_down"
 _WORKER_SHUTDOWN_DISPATCH_UID = "dify.workflow_warm_shutdown.shutdown"
 WORKFLOW_WARM_SHUTDOWN_ABORT_REASON = "Workflow stopped because the worker is shutting down."
+type _NativeThreadStarter = Callable[[Any, tuple[object, ...]], int]
 
 
 def _start_native_thread(function: Any, args: tuple[object, ...]) -> int:
@@ -22,7 +24,7 @@ def _start_native_thread(function: Any, args: tuple[object, ...]) -> int:
 
         start_new_thread = monkey.get_original("_thread", "start_new_thread")
         if callable(start_new_thread):
-            return start_new_thread(function, args)
+            return cast(_NativeThreadStarter, start_new_thread)(function, args)
     except Exception:
         logger.debug("Failed to resolve original _thread.start_new_thread; falling back to current one", exc_info=True)
 
