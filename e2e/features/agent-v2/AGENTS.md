@@ -169,7 +169,7 @@ Use `the Agent Builder broken chat model is available` before model-recovery sce
 
 Use `the Agent Builder preseeded Agent "{name}" is available`, `the Agent Builder preseeded workflow "{name}" is available`, `the Agent Builder preseeded dataset "{name}" is available`, and `the Agent Builder preseeded tool "{provider} / {tool}" is available` when a scenario depends on a fixed environment resource. These steps verify the resource through Console APIs, store the result in `DifyWorld.agentBuilder.preflight.preseededResources`, and return `skipped` when the resource is missing.
 
-Use `the Agent Builder preseeded dataset "{name}" is indexed and ready` for knowledge retrieval scenarios that require a completed knowledge base. It verifies that the dataset exists, has documents, all listed documents are available, and every document indexing status is `completed`.
+Use `the Agent Builder preseeded dataset "{name}" is indexed and ready` for knowledge retrieval scenarios that require a completed knowledge base. It verifies that the dataset exists, has documents, all listed documents are available, and every document indexing status is `completed`. For `E2E Agent Knowledge Base`, it also verifies through the Console segment list API that at least one enabled segment contains `AGENT_KNOWLEDGE_PASS`.
 
 Use `the Agent Builder preseeded dataset "{name}" is indexing` for failure-recovery scenarios that require an indexing or queued knowledge base. It verifies at least one document is in `waiting`, `parsing`, `cleaning`, `splitting`, or `indexing`.
 
