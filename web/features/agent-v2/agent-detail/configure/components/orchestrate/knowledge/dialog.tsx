@@ -218,12 +218,14 @@ const createMetadataCondition = ({ id, name, type }: MetadataInDoc): MetadataFil
 export function AgentKnowledgeRetrievalDialog({
   item,
   initialName,
+  onItemCreate,
   onItemChange,
   open,
   onOpenChange,
 }: {
   item?: AgentKnowledgeRetrievalItem
   initialName?: string
+  onItemCreate?: (item: AgentKnowledgeRetrievalItem) => void
   onItemChange?: (item: AgentKnowledgeRetrievalItem) => void
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -294,6 +296,20 @@ export function AgentKnowledgeRetrievalDialog({
       }
     })
   }
+  const createItemFromDialogState = (patch: Partial<AgentKnowledgeRetrievalItem>): AgentKnowledgeRetrievalItem => ({
+    id: globalThis.crypto?.randomUUID?.() ?? `retrieval-${Date.now()}`,
+    name,
+    queryMode,
+    customQuery,
+    selectedDatasets,
+    retrievalMode,
+    multipleRetrievalConfig,
+    singleRetrievalConfig,
+    metadataFilterMode,
+    metadataFilteringConditions,
+    metadataModelConfig,
+    ...patch,
+  })
   const updateItem = (patch: Partial<AgentKnowledgeRetrievalItem>) => {
     if (!item)
       return
@@ -312,6 +328,17 @@ export function AgentKnowledgeRetrievalDialog({
       metadataModelConfig,
       ...patch,
     })
+  }
+  const handleSelectedDatasetsChange = (nextDatasets: DataSet[]) => {
+    patchDialogState({ selectedDatasets: nextDatasets })
+
+    if (item) {
+      updateItem({ selectedDatasets: nextDatasets })
+      return
+    }
+
+    if (nextDatasets.length > 0)
+      onItemCreate?.(createItemFromDialogState({ selectedDatasets: nextDatasets }))
   }
   const metadataList = useMemo(() => {
     const datasetsWithMetadata = selectedDatasets.filter(dataset => !!dataset.doc_metadata)
@@ -523,10 +550,7 @@ export function AgentKnowledgeRetrievalDialog({
                   <AddKnowledge
                     selectedIds={selectedDatasets.map(dataset => dataset.id)}
                     modal
-                    onChange={(nextDatasets) => {
-                      patchDialogState({ selectedDatasets: nextDatasets })
-                      updateItem({ selectedDatasets: nextDatasets })
-                    }}
+                    onChange={handleSelectedDatasetsChange}
                   />
                 </div>
               )}
@@ -534,10 +558,7 @@ export function AgentKnowledgeRetrievalDialog({
               <>
                 <DatasetList
                   list={selectedDatasets}
-                  onChange={(nextDatasets) => {
-                    patchDialogState({ selectedDatasets: nextDatasets })
-                    updateItem({ selectedDatasets: nextDatasets })
-                  }}
+                  onChange={handleSelectedDatasetsChange}
                   settingsDrawerBackdropClassName="bg-background-overlay"
                   settingsDrawerBackdropForceRender
                   settingsDrawerPopupClassName="data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:bottom-6"

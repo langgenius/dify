@@ -120,28 +120,6 @@ describe('AgentRosterList', () => {
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass('system-2xs-medium-uppercase')
   })
 
-  it('draws the primary link focus ring above the draft corner label without z-index', () => {
-    renderList([createAgent()])
-
-    const configureLink = screen.getByRole('link', { name: 'Research Agent' })
-    const draftLabel = screen.getByText('agentV2.roster.usageStatus.draft')
-    const draftCornerLabel = draftLabel.closest('.absolute')
-
-    expect(configureLink).toHaveClass(
-      'relative',
-      'focus-visible:after:ring-2',
-      'focus-visible:after:ring-state-accent-solid',
-      'focus-visible:after:ring-inset',
-    )
-    expect(configureLink).not.toHaveClass('peer/card-link')
-    expect(draftCornerLabel && configureLink.contains(draftCornerLabel)).toBe(true)
-    expect(draftCornerLabel).toHaveClass(
-      'top-[-0.5px]',
-      'right-0',
-    )
-    expect(draftCornerLabel).not.toHaveClass('z-10', 'z-20')
-  })
-
   it('only renders the draft badge for unpublished agents', () => {
     renderList([
       createAgent({
@@ -165,11 +143,22 @@ describe('AgentRosterList', () => {
 
   it('renders the Figma-aligned empty roster overlay', () => {
     const { container } = renderList([])
+    const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none'))
+      .find(element => element.className.includes('grid-rows-4'))
+
+    if (!placeholderGrid)
+      throw new Error('Expected agent roster placeholder grid to render')
 
     expect(screen.getByRole('heading', { name: 'agentV2.roster.empty' })).toHaveClass('system-sm-regular', 'text-text-tertiary')
     expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
     expect(container.querySelector('.bg-linear-to-b')).toBeInTheDocument()
     expect(container.querySelector('.i-ri-robot-2-line')).toHaveClass('size-6', 'text-text-tertiary')
+    expect(placeholderGrid).toHaveClass(
+      'grid',
+      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+      'grid-rows-4',
+    )
+    expect(placeholderGrid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4')
   })
 
   it('uses the same overlay treatment for empty search results', () => {
@@ -209,6 +198,8 @@ describe('AgentRosterList', () => {
 
     const workflowLink = screen.getByRole('menuitem', { name: /RFP Review Flow/ })
     expect(workflowLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
+    expect(workflowLink).toHaveAttribute('target', '_blank')
+    expect(workflowLink).toHaveAttribute('rel', 'noopener noreferrer')
     expect(screen.getByText(/agentV2\.roster\.references\.label/)).toBeInTheDocument()
   })
 

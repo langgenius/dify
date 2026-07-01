@@ -23,6 +23,7 @@ def create_agent_stub_app(settings: ServerSettings | None = None) -> FastAPI:
         create_agent_stub_router(
             token_codec=resolved_settings.create_agent_stub_token_codec(),
             file_request_handler=resolved_settings.create_agent_stub_file_request_handler(),
+            config_request_handler=resolved_settings.create_agent_stub_config_request_handler(),
             drive_request_handler=resolved_settings.create_agent_stub_drive_request_handler(),
         )
     )

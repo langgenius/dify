@@ -1,5 +1,6 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentV2NodeType } from '../types'
+import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
@@ -61,6 +62,7 @@ export function AgentTaskField({
   onChange,
   outputs,
   onOutputsChange,
+  onEditOutput,
 }: {
   id: string
   data: AgentV2NodeType
@@ -68,6 +70,7 @@ export function AgentTaskField({
   onChange: (value: string) => void
   outputs: DeclaredOutputConfig[]
   onOutputsChange: (outputs: DeclaredOutputConfig[], prompt?: string) => void
+  onEditOutput?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 }) {
   const { t } = useTranslation()
   const getVarType = useWorkflowVariableType()
@@ -140,6 +143,7 @@ export function AgentTaskField({
               show: true,
               outputs,
               onChange: onOutputsChange,
+              onEdit: onEditOutput,
             }}
           >
             {isFocus && (

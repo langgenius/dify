@@ -71,7 +71,10 @@ export type GetFilesUploadResponses = {
 export type GetFilesUploadResponse = GetFilesUploadResponses[keyof GetFilesUploadResponses]
 
 export type PostFilesUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+    source?: 'datasets'
+  }
   path?: never
   query?: never
   url: '/files/upload'
