@@ -26,6 +26,7 @@ Use tags in three layers:
 - `@core` — stable non-runtime scenario expected to run in the regular Agent v2 suite when its explicit preconditions are met. Do not apply `@core` to Preview/Test Run, Web app chat runtime, or Backend service API chat runtime scenarios.
 - `@infra` — infrastructure or readiness checks.
 - `@build` — Build mode and Build draft behavior.
+- `@build-unavailable-resources` — feature-gated Build chat recovery when the user requests unavailable Skills or Tools.
 - `@files` — Files section upload, display, and fixture behavior.
 - `@files-limits` — feature-gated file format, size, count, and in-progress upload limit behavior.
 - `@knowledge` — Knowledge Retrieval configuration display, persistence, and reference cleanup.

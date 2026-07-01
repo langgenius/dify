@@ -141,3 +141,12 @@ Feature: Agent v2 build draft
     And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     Then Agent v2 Build chat Dify Tool writeback should be available
+
+  @build-unavailable-resources @feature-gated
+  Scenario: Build chat reports unavailable Skill or Tool requests clearly
+    Given I am signed in as the default E2E admin
+    And Agent v2 Build chat unavailable Skill and Tool recovery is available
+    And the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    Then Agent v2 Build chat unavailable Skill and Tool recovery should be available

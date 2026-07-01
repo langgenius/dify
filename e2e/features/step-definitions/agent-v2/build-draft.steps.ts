@@ -172,6 +172,25 @@ Then('Agent v2 Build chat Dify Tool writeback should be available', async functi
   return skipBuildDraftToolWriteback(this)
 })
 
+async function skipBuildDraftUnavailableResourceRecovery(world: DifyWorld) {
+  return skipBlockedPrecondition(
+    world,
+    'Build chat unavailable Skill/Tool recovery is not covered: the product needs a stable user-visible failure state and deterministic request fixture before this can be automated.',
+    {
+      owner: 'product/seed',
+      remediation: 'Define the unavailable-resource UX contract, then seed a stable model-backed prompt that requests a missing Skill and Tool without mutating the saved Agent config.',
+    },
+  )
+}
+
+Given('Agent v2 Build chat unavailable Skill and Tool recovery is available', async function (this: DifyWorld) {
+  return skipBuildDraftUnavailableResourceRecovery(this)
+})
+
+Then('Agent v2 Build chat unavailable Skill and Tool recovery should be available', async function (this: DifyWorld) {
+  return skipBuildDraftUnavailableResourceRecovery(this)
+})
+
 Then('I should see the Agent v2 Build draft pending changes', async function (this: DifyWorld) {
   const page = this.getPage()
 
