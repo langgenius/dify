@@ -3,7 +3,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "check": "eslint --fix . && tsgo --noEmit --pretty false",
+    "check": "vp check --fix",
     "e2e": "tsx ./scripts/run-cucumber.ts",
     "e2e:full": "tsx ./scripts/run-cucumber.ts --full",
     "e2e:full:headed": "tsx ./scripts/run-cucumber.ts --full --headed",
