@@ -10,8 +10,7 @@ Feature: Agent v2 advanced settings
 
   Scenario: Plain environment variables are saved and restored
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I add the plain Agent v2 environment variable from Advanced Settings
     Then the plain Agent v2 environment variable should be saved in the Agent v2 draft
@@ -21,8 +20,7 @@ Feature: Agent v2 advanced settings
 
   Scenario: Valid environment imports are saved and restored
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I import the valid Agent v2 environment file from Advanced Settings
     Then the valid Agent v2 environment import should be saved in the Agent v2 draft
@@ -32,8 +30,7 @@ Feature: Agent v2 advanced settings
 
   Scenario: Deleted environment variables are removed after refresh
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I add the plain Agent v2 environment variable from Advanced Settings
     And I add the secondary plain Agent v2 environment variable from Advanced Settings
@@ -46,8 +43,7 @@ Feature: Agent v2 advanced settings
 
   Scenario: Invalid environment imports report skipped lines and keep existing variables
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I add the plain Agent v2 environment variable from Advanced Settings
     Then the plain Agent v2 environment variable should be saved in the Agent v2 draft
