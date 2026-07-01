@@ -294,7 +294,7 @@ Use `fixtures/test-materials/` for checked-in files that scenarios upload, previ
 
 Use `support/preflight.ts` for scenarios that require optional external resources such as a stable model provider, plugin/tool credential, or knowledge base seed. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
 
-Use `the Agent Builder stable chat model is available` before scenarios that must run an Agent with a real model. The step requires `E2E_STABLE_MODEL_PROVIDER` and `E2E_STABLE_MODEL_NAME`, defaults `E2E_STABLE_MODEL_TYPE` to `llm`, and verifies the model through `/console/api/workspaces/current/models/model-types/{type}` before storing it on `DifyWorld.agentBuilderStableChatModel`.
+Use `the Agent Builder stable chat model is available` before scenarios that must run an Agent with a real model. The step requires `E2E_STABLE_MODEL_PROVIDER` and `E2E_STABLE_MODEL_NAME`, defaults `E2E_STABLE_MODEL_TYPE` to `llm`, and verifies the model through `/console/api/workspaces/current/models/model-types/{type}` before storing it on `DifyWorld.agentBuilderStableChatModel`. Any Agent Builder scenario that needs a usable model should explicitly apply this stored model during its own setup instead of hard-coding provider or model names in feature files or hooks.
 
 Use `the Agent Builder broken chat model is available` before model-recovery scenarios that intentionally start from an invalid model. The step requires `E2E_BROKEN_MODEL_PROVIDER`, defaults `E2E_BROKEN_MODEL_NAME` to `e2e-broken-model`, defaults `E2E_BROKEN_MODEL_TYPE` to `llm`, and only verifies that the model entry exists. The scenario must still assert the user-visible failure and recovery behavior.
 
@@ -302,7 +302,7 @@ Use `the Agent Builder preseeded Agent "{name}" is available`, `the Agent Builde
 
 Use `the Agent Builder preseeded Agent "{agent}" includes drive skill "{skill}"` to verify that a fixed Agent has a drive-backed Skill attached. Use `the Agent Builder preseeded Agent "{agent}" has Backend service API access with an API key` to verify that a fixed Agent has Backend service API enabled and at least one key. The API key step does not validate a human-readable key name because the Console API key response does not expose one.
 
-Use `DifyWorld.createdDatasetIds` for datasets created by a scenario and `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario. The shared `After` hook deletes Agent drive files before deleting created Agents so file cleanup also works for scenarios that upload into a preseeded Agent. Use `DifyWorld.registerCleanup(...)` when a scenario creates any other resource type that is not covered by the typed cleanup fields. Cleanup callbacks run after the typed cleanup queues, even when the scenario fails.
+Use `DifyWorld.createdDatasetIds` for datasets created by a scenario, `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario, and `DifyWorld.createdBuiltinToolCredentials` for built-in tool credentials created during a scenario. The shared `After` hook deletes Agent drive files first so file cleanup also works for scenarios that upload into a preseeded Agent, then deletes created Agents and Apps before deleting dependent datasets and tool credentials. Use `DifyWorld.registerCleanup(...)` when a scenario creates any other resource type that is not covered by the typed cleanup fields. Cleanup callbacks run after the typed cleanup queues, even when the scenario fails.
 
 ## Reusing existing steps
 

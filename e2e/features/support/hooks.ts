@@ -10,6 +10,7 @@ import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtu
 import { deleteAgentDriveFile, deleteTestAgent } from '../../support/agent'
 import { deleteTestApp } from '../../support/api'
 import { deleteTestDataset } from '../../support/datasets'
+import { deleteBuiltinToolCredential } from '../../support/tools'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
@@ -94,9 +95,11 @@ After(async function (this: DifyWorld, { pickle, result }) {
 
   for (const file of this.createdAgentDriveFiles.toReversed())
     await deleteAgentDriveFile(file.agentId, file.key).catch(() => {})
-  for (const id of this.createdDatasetIds) await deleteTestDataset(id).catch(() => {})
   for (const id of this.createdAgentIds) await deleteTestAgent(id).catch(() => {})
   for (const id of this.createdAppIds) await deleteTestApp(id).catch(() => {})
+  for (const id of this.createdDatasetIds) await deleteTestDataset(id).catch(() => {})
+  for (const credential of this.createdBuiltinToolCredentials.toReversed())
+    await deleteBuiltinToolCredential(credential.provider, credential.credentialId).catch(() => {})
   await this.runRegisteredCleanups()
 
   await this.closeSession()

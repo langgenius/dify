@@ -10,6 +10,10 @@ export type CreatedAgentDriveFile = {
   agentId: string
   key: string
 }
+export type CreatedBuiltinToolCredential = {
+  credentialId: string
+  provider: string
+}
 export type AgentBuilderStableChatModel = {
   name: string
   provider: string
@@ -38,6 +42,7 @@ export class DifyWorld extends World {
   createdAgentIds: string[] = []
   createdDatasetIds: string[] = []
   createdAgentDriveFiles: CreatedAgentDriveFile[] = []
+  createdBuiltinToolCredentials: CreatedBuiltinToolCredential[] = []
   agentBuilderBrokenChatModel: AgentBuilderStableChatModel | undefined
   agentBuilderStableChatModel: AgentBuilderStableChatModel | undefined
   agentBuilderPreseededResources: Record<string, AgentBuilderPreseededResource> = {}
@@ -63,6 +68,7 @@ export class DifyWorld extends World {
     this.createdAgentIds = []
     this.createdDatasetIds = []
     this.createdAgentDriveFiles = []
+    this.createdBuiltinToolCredentials = []
     this.agentBuilderBrokenChatModel = undefined
     this.agentBuilderStableChatModel = undefined
     this.agentBuilderPreseededResources = {}
