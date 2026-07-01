@@ -45,7 +45,7 @@ class AnnotationReplyFeature:
             embedding_model_name = collection_binding_detail.model_name
 
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name, embedding_model_name, CollectionBindingType.ANNOTATION
+                embedding_provider_name, embedding_model_name, db.session, CollectionBindingType.ANNOTATION
             )
 
             dataset = Dataset(

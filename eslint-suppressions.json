@@ -1,22 +1,4 @@
 {
-  "e2e/features/support/hooks.ts": {
-    "no-console": {
-      "count": 3
-    },
-    "node/prefer-global/buffer": {
-      "count": 1
-    }
-  },
-  "e2e/scripts/common.ts": {
-    "node/prefer-global/buffer": {
-      "count": 2
-    }
-  },
-  "e2e/support/process.ts": {
-    "ts/no-use-before-define": {
-      "count": 2
-    }
-  },
   "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/migrate.ts": {
     "no-console": {
       "count": 11
@@ -1936,6 +1918,9 @@
   },
   "web/app/components/base/markdown-blocks/form.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "prefer-regex-literals": {
       "count": 1
     }
   },
@@ -4362,14 +4347,6 @@
       "count": 1
     }
   },
-  "web/app/components/snippet-list/components/snippet-card.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/snippets/components/snippet-run-panel.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 5
@@ -4383,11 +4360,6 @@
   },
   "web/app/components/snippets/create-snippet-dialog.tsx": {
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/snippets/hooks/use-nodes-sync-draft.ts": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -6312,9 +6284,6 @@
     },
     "ts/no-explicit-any": {
       "count": 5
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/panel/chat-variable-panel/components/object-value-list.tsx": {

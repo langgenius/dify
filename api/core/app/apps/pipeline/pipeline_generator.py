@@ -144,7 +144,7 @@ class PipelineGenerator(BaseAppGenerator):
             DocumentService.check_document_creation_limits(len(datasource_info_list), features)
 
             for datasource_info in datasource_info_list:
-                position = DocumentService.get_documents_position(dataset.id)
+                position = DocumentService.get_documents_position(dataset.id, session)
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,

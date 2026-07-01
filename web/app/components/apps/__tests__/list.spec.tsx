@@ -46,15 +46,17 @@ vi.mock('@/service/client', () => ({
   },
   consoleQuery: {
     apps: {
-      list: {
+      get: {
         infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
       },
-      starredList: {
-        queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
+      starred: {
+        get: {
+          queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
+        },
       },
     },
     tags: {
-      list: {
+      get: {
         queryOptions: (options: unknown) => options,
       },
     },
@@ -229,6 +231,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: (response: unknown) => response,
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -426,16 +429,18 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
     })
 
-    it('should render sort filter before search and hide the snippets link', () => {
+    it('should render sort filter before search and the snippets link', () => {
       renderList()
 
       const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
       const searchInput = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
+      const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
+      expect(snippetsLink).toHaveAttribute('href', '/snippets')
       expect(sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(searchInput.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(screen.queryByRole('link', { name: 'app.studio.viewSnippets' })).not.toBeInTheDocument()
+      expect(searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 
     it('should render app cards when apps exist', () => {

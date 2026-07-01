@@ -181,11 +181,11 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(await screen.findByRole('menuitem', { name: 'snippet.menu.editInfo' })).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'snippet.menu.exportSnippet' })).not.toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'snippet.menu.exportSnippet' })).toBeInTheDocument()
       expect(screen.queryByRole('menuitem', { name: 'snippet.menu.deleteSnippet' })).not.toBeInTheDocument()
     })
 
-    it('should show export and delete with snippet management permission without edit info', async () => {
+    it('should show delete with snippet management permission without create-and-modify actions', async () => {
       mockIsCurrentWorkspaceEditor.mockReturnValue(false)
       mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
 
@@ -194,7 +194,7 @@ describe('SnippetCard', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
       expect(screen.queryByRole('menuitem', { name: 'snippet.menu.editInfo' })).not.toBeInTheDocument()
-      expect(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' })).toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'snippet.menu.exportSnippet' })).not.toBeInTheDocument()
       expect(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' })).toBeInTheDocument()
     })
 
@@ -228,7 +228,7 @@ describe('SnippetCard', () => {
 
       render(
         <SnippetCard
-          snippet={createSnippet({ tags: [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: 1 }] })}
+          snippet={createSnippet({ tags: [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '' }] })}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onTagsChange}
         />,
@@ -243,7 +243,7 @@ describe('SnippetCard', () => {
     })
 
     it('should export a snippet from the operations menu', async () => {
-      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
       mockExportMutateAsync.mockResolvedValue('snippet-yaml')
 
       render(<SnippetCard snippet={createSnippet()} />)
@@ -260,7 +260,7 @@ describe('SnippetCard', () => {
     })
 
     it('should show an error toast when snippet export fails', async () => {
-      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetCard snippet={createSnippet()} />)
