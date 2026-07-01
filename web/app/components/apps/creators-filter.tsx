@@ -26,7 +26,7 @@ type CreatorOption = {
   isYou: boolean
 }
 
-const baseChipClassName = 'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const baseChipClassName = 'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const CreatorsFilter = ({
   value,
