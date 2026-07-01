@@ -117,7 +117,7 @@ const LearnDifyContent = ({
             </button>
           )}
         </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(296px,1fr))] gap-2.5">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
           {visibleItems.map(item => (
             <LearnDifyItem
               key={item.app_id}

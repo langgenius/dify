@@ -262,7 +262,7 @@ export function AgentRosterList({
   const { t } = useTranslation('agentV2')
 
   return (
-    <section aria-label={label} className="grid grid-cols-[repeat(auto-fit,minmax(296px,1fr))] gap-2.5" aria-busy={isFetching || undefined}>
+    <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5" aria-busy={isFetching || undefined}>
       {isPending && <AgentRosterSkeleton />}
       {!isPending && isError && (
         <AgentRosterPlaceholderState title={t('roster.loadingError')} />

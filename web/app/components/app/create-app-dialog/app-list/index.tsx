@@ -222,7 +222,7 @@ const Apps = ({
               </div>
               <div
                 className={cn(
-                  'grid shrink-0 grid-cols-[repeat(auto-fit,minmax(296px,1fr))] content-start gap-3',
+                  'grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3',
                 )}
               >
                 {searchFilteredList.map(app => (

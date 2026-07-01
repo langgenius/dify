@@ -452,14 +452,14 @@ describe('List', () => {
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
     })
 
-    it('should lay out app cards with auto-fit grid columns', () => {
+    it('should lay out app cards with auto-fill grid columns', () => {
       renderList()
 
       const grid = screen.getByTestId('app-card-app-1').parentElement
 
       expect(grid).toHaveClass(
         'grid',
-        'grid-cols-[repeat(auto-fit,minmax(296px,1fr))]',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
       )
     })
 

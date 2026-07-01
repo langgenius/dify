@@ -270,7 +270,7 @@ describe('SnippetList', () => {
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
   })
 
-  it('lays out snippet cards with auto-fit grid columns', () => {
+  it('lays out snippet cards with auto-fill grid columns', () => {
     renderList()
 
     const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
@@ -278,7 +278,7 @@ describe('SnippetList', () => {
 
     expect(grid).toHaveClass(
       'grid',
-      'grid-cols-[repeat(auto-fit,minmax(296px,1fr))]',
+      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
     )
   })
 
