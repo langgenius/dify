@@ -1,9 +1,9 @@
 import type { DifyWorld } from '../../support/world'
-import { Then, When } from '@cucumber/cucumber'
+import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
-import { asArray, asRecord } from '../../agent-v2/support/preflight/common'
+import { asArray, asRecord, skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
 import { hasToolEntry } from '../../agent-v2/support/preflight/tools'
 import { getPreseededToolContract } from '../../agent-v2/support/tools'
 import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-helpers'
@@ -27,6 +27,17 @@ const expectJsonReplaceToolDraft = async (world: DifyWorld) => {
     },
     { timeout: 30_000 },
   ).toBe(true)
+}
+
+async function skipJsonReplaceRuntimeVerification(world: DifyWorld) {
+  return skipBlockedPrecondition(
+    world,
+    'Agent v2 JSON Replace runtime verification is blocked: the suite needs the JSON Process / JSON Replace runtime parameter contract and a deterministic published-runtime prompt before asserting tool execution.',
+    {
+      owner: 'test/seed',
+      remediation: 'Seed the JSON Replace tool runtime contract, then verify execution through published Web app or Backend service API instead of Builder Preview.',
+    },
+  )
 }
 
 When(
@@ -70,6 +81,14 @@ When('I clear the Agent v2 tool selector search', async function (this: DifyWorl
   const search = getToolSelectorSearch(this)
 
   await search.fill('')
+})
+
+Given('Agent v2 JSON Replace runtime verification is available', async function (this: DifyWorld) {
+  return skipJsonReplaceRuntimeVerification(this)
+})
+
+Then('Agent v2 JSON Replace runtime verification should be available', async function (this: DifyWorld) {
+  return skipJsonReplaceRuntimeVerification(this)
 })
 
 Then(
