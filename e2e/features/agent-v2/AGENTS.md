@@ -141,7 +141,9 @@ Use `the Agent Builder preseeded dataset "{name}" is indexed and ready` for know
 
 Use `the Agent Builder preseeded dataset "{name}" is indexing` for failure-recovery scenarios that require an indexing or queued knowledge base. It verifies at least one document is in `waiting`, `parsing`, `cleaning`, `splitting`, or `indexing`.
 
-Use `the Agent Builder preseeded Agent "{agent}" includes drive skill "{skill}"` to verify that a fixed Agent has a drive-backed Skill attached.
+`e2e-summary-skill` has two separate E2E contracts. The checked-in package under `e2e/fixtures/test-materials/e2e-summary-skill/SKILL.md` is used by scenario-owned Agents to verify that the Skill package can be uploaded to an Agent drive. Fixed display/configuration scenarios use `e2e-summary-skill` as a preseeded resource: the environment-owned `E2E New Agent Builder Full Config` Agent must already include that drive-backed Skill before the scenario starts. Do not mutate fixed preseeded Agents during a scenario to add missing Skills.
+
+Use `the Agent Builder preseeded Agent "{agent}" includes drive skill "{skill}"` to verify that a fixed Agent has a drive-backed Skill attached. If it is missing, return a blocked precondition owned by seed/product instead of uploading the Skill into the fixed Agent.
 
 Use `the Agent Builder preseeded Agent "{agent}" has Backend service API access with an API key` to verify that a fixed Agent has Backend service API enabled and at least one key. The API key step does not validate a human-readable key name because the Console API key response does not expose one.
 
