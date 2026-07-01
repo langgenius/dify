@@ -55,6 +55,8 @@
   "firstEmpty.title": "अभी कोई ऐप नहीं है",
   "gotoAnything.actions.accountDesc": "खाता पृष्ठ पर जाएं",
   "gotoAnything.actions.communityDesc": "ओपन डिस्कॉर्ड समुदाय",
+  "gotoAnything.actions.createAuto": "स्वचालित",
+  "gotoAnything.actions.createAutoDesc": "AI को आपके विवरण से Workflow या Chatflow चुनने दें",
   "gotoAnything.actions.createCategoryDesc": "एआई-जनरेटेड वर्कफ़्लो या चैटफ़्लो बनाएं",
   "gotoAnything.actions.createChatflow": "चैटफ़्लो",
   "gotoAnything.actions.createChatflowDesc": "विवरण से एक चैटफ़्लो (उन्नत चैट) ऐप बनाएं",
