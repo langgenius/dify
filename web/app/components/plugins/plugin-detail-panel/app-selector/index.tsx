@@ -14,7 +14,7 @@ import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-sel
 import { AppPicker } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import { AppTrigger } from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
 import { consoleQuery } from '@/service/client'
-import { useAppDetail } from '@/service/use-apps'
+import { normalizeAppPagination, useAppDetail } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
 
@@ -58,7 +58,7 @@ export function AppSelector({
     fetchNextPage,
     hasNextPage,
   } = useInfiniteQuery({
-    ...consoleQuery.apps.list.infiniteOptions({
+    ...consoleQuery.apps.get.infiniteOptions({
       input: pageParam => ({
         query: {
           ...appListQuery,
@@ -68,6 +68,10 @@ export function AppSelector({
       getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
       initialPageParam: 1,
       placeholderData: keepPreviousData,
+    }),
+    select: data => ({
+      ...data,
+      pages: data.pages.map(normalizeAppPagination),
     }),
   })
 
