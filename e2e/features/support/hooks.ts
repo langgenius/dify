@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
-import { deleteAgentConfigFile, deleteAgentDriveFile, deleteTestAgent } from '../../support/agent'
+import { deleteAgentConfigFile, deleteAgentConfigSkill, deleteAgentDriveFile, deleteTestAgent } from '../../support/agent'
 import { deleteTestApp } from '../../support/api'
 import { deleteTestDataset } from '../../support/datasets'
 import { deleteBuiltinToolCredential } from '../../support/tools'
@@ -93,6 +93,8 @@ After(async function (this: DifyWorld, { pickle, result }) {
     `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
   )
 
+  for (const skill of this.createdAgentConfigSkills.toReversed())
+    await deleteAgentConfigSkill(skill.agentId, skill.name).catch(() => {})
   for (const file of this.createdAgentConfigFiles.toReversed())
     await deleteAgentConfigFile(file.agentId, file.name).catch(() => {})
   for (const file of this.createdAgentDriveFiles.toReversed())

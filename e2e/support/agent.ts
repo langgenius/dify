@@ -667,6 +667,17 @@ export async function deleteAgentConfigFile(agentId: string, name: string): Prom
   }
 }
 
+export async function deleteAgentConfigSkill(agentId: string, name: string): Promise<void> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.delete(`/console/api/agent/${agentId}/config/skills/${encodeURIComponent(name)}`)
+    await expectApiResponseOK(response, `Delete Agent v2 config skill ${name} for ${agentId}`)
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
 export async function deleteAgentDriveFile(agentId: string, key: string): Promise<void> {
   const ctx = await createApiContext()
   try {

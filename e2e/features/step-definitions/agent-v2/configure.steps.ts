@@ -276,6 +276,7 @@ Given(
     if (!skill.file_id)
       throw new Error('Agent v2 build draft Skill fixture did not return a file_id.')
     this.createdAgentConfigFiles.push({ agentId, name: configFile.name })
+    this.createdAgentConfigSkills.push({ agentId, name: skill.name })
 
     const normalConfig = this.agentBuilderStableChatModel
       ? createAgentSoulConfigWithModel(normalAgentSoulConfig, this.agentBuilderStableChatModel)

@@ -14,6 +14,10 @@ export type CreatedAgentConfigFile = {
   agentId: string
   name: string
 }
+export type CreatedAgentConfigSkill = {
+  agentId: string
+  name: string
+}
 export type CreatedBuiltinToolCredential = {
   credentialId: string
   provider: string
@@ -51,6 +55,7 @@ export class DifyWorld extends World {
   createdAgentIds: string[] = []
   createdDatasetIds: string[] = []
   createdAgentConfigFiles: CreatedAgentConfigFile[] = []
+  createdAgentConfigSkills: CreatedAgentConfigSkill[] = []
   createdAgentDriveFiles: CreatedAgentDriveFile[] = []
   createdBuiltinToolCredentials: CreatedBuiltinToolCredential[] = []
   agentBuilderBrokenChatModel: AgentBuilderStableChatModel | undefined
@@ -80,6 +85,7 @@ export class DifyWorld extends World {
     this.createdAgentIds = []
     this.createdDatasetIds = []
     this.createdAgentConfigFiles = []
+    this.createdAgentConfigSkills = []
     this.createdAgentDriveFiles = []
     this.createdBuiltinToolCredentials = []
     this.agentBuilderBrokenChatModel = undefined
