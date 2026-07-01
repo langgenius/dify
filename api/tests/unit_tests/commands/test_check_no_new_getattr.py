@@ -71,6 +71,15 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert python_style_job is not None
 
     job_text = python_style_job.group("job")
+    checkout_step = re.search(
+        r"(?ms)^      - name: Checkout code\n(?P<step>.*?)(?=^      - name: |\Z)",
+        job_text,
+    )
+    assert checkout_step is not None
+
+    checkout_step_text = checkout_step.group("step")
+    assert "fetch-depth: 0" in checkout_step_text
+
     changed_files_step = re.search(
         r"(?ms)^      - name: Check changed files\n.*?^          files: \|\n(?P<files>(?:^            \S[^\n]*\n)+)",
         job_text,
@@ -83,7 +92,18 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert "scripts/ast_grep_rules/no_new_getattr.yml\n" in files_block
     assert ".github/workflows/style.yml\n" in files_block
 
-    assert "scripts/check_no_new_getattr.py --mode ci --merge-target main" in job_text
+    guard_command = "scripts/check_no_new_getattr.py --mode ci --merge-target main"
+    assert guard_command in job_text
+
+    guard_step = re.search(
+        rf"(?ms)^      - name: Run No New Getattr Guard\n(?P<step>.*?{re.escape(guard_command)}.*?)(?=^      - name: |\Z)",
+        job_text,
+    )
+    assert guard_step is not None
+
+    pre_guard_text = job_text[: guard_step.start()]
+    assert "refs/heads/main" in pre_guard_text
+    assert "origin/main" in pre_guard_text
 
 
 def test_ci_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
