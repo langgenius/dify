@@ -4779,6 +4779,11 @@
       "count": 6
     }
   },
+  "web/app/components/workflow/hooks/__tests__/use-checklist.spec.ts": {
+    "react/error-boundaries": {
+      "count": 1
+    }
+  },
   "web/app/components/workflow/hooks/index.ts": {
     "no-barrel-files/no-barrel-files": {
       "count": 25
