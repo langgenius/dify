@@ -199,6 +199,14 @@ When(
   },
 )
 
+When('I expand Agent v2 Advanced Settings', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+  await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+  await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
+})
+
 Then('I should be on the Agent v2 configure page', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 
@@ -269,6 +277,22 @@ Then(
 )
 
 Then(
+  'Agent v2 Advanced Settings should describe supported entries while collapsed',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+
+    await expect(advancedSettings).toBeVisible()
+    await expect(
+      advancedSettings.getByText('For power users. Env vars, sandbox & memory.'),
+    ).toBeVisible()
+    await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' }))
+      .not
+      .toBeVisible()
+  },
+)
+
+Then(
   'the plain Agent v2 environment variable should be saved in the Agent v2 draft',
   async function (this: DifyWorld) {
     const agentId = getCurrentAgentId(this)
@@ -331,6 +355,23 @@ Then(
         importedValue: agentBuilderFixedInputs.envAfterInvalidImportValue,
         plainValue: agentBuilderFixedInputs.envPlainValue,
       })
+  },
+)
+
+Then(
+  'I should see the supported Agent v2 Advanced Settings entries',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+    const envEditor = advancedSettings.getByRole('region', { name: 'Env Editor' })
+
+    await expect(envEditor).toBeVisible()
+    await expect(envEditor.getByRole('button', { name: 'Import .env' })).toBeVisible()
+    await expect(envEditor.getByRole('button', { name: 'Add environment variable' }))
+      .toBeVisible()
+    await expect(envEditor.getByText('Key', { exact: true })).toBeVisible()
+    await expect(envEditor.getByText('Value', { exact: true })).toBeVisible()
+    await expect(envEditor.getByText('Scope', { exact: true })).toBeVisible()
   },
 )
 
