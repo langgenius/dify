@@ -79,6 +79,102 @@ type ModelTypeListResponse = {
   }>
 }
 
+type NamedResource = {
+  id: string
+  name: string
+}
+
+type NamedResourceListResponse = {
+  data: NamedResource[]
+}
+
+const findConsoleResourceByName = async ({
+  action,
+  path,
+  resourceName,
+}: {
+  action: string
+  path: string
+  resourceName: string
+}) => {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(path)
+    await expectApiResponseOK(response, action)
+    const body = (await response.json()) as NamedResourceListResponse
+
+    return body.data.find(item => item.name === resourceName)
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+const buildQuery = (params: Record<string, string>) => new URLSearchParams(params).toString()
+
+export async function skipMissingPreseededAgent(
+  world: DifyWorld,
+  resourceName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const query = buildQuery({ limit: '20', name: resourceName, page: '1' })
+  const resource = await findConsoleResourceByName({
+    action: `Check preseeded Agent ${resourceName}`,
+    path: `/console/api/agent?${query}`,
+    resourceName,
+  })
+
+  if (!resource)
+    return skipBlockedPrecondition(world, `Preseeded Agent "${resourceName}" was not found.`)
+
+  return {
+    id: resource.id,
+    kind: 'agent',
+    name: resource.name,
+  }
+}
+
+export async function skipMissingPreseededWorkflow(
+  world: DifyWorld,
+  resourceName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const query = buildQuery({ limit: '20', mode: 'workflow', name: resourceName, page: '1' })
+  const resource = await findConsoleResourceByName({
+    action: `Check preseeded workflow ${resourceName}`,
+    path: `/console/api/apps?${query}`,
+    resourceName,
+  })
+
+  if (!resource)
+    return skipBlockedPrecondition(world, `Preseeded workflow "${resourceName}" was not found.`)
+
+  return {
+    id: resource.id,
+    kind: 'workflow',
+    name: resource.name,
+  }
+}
+
+export async function skipMissingPreseededDataset(
+  world: DifyWorld,
+  resourceName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const query = buildQuery({ keyword: resourceName, limit: '20', page: '1' })
+  const resource = await findConsoleResourceByName({
+    action: `Check preseeded dataset ${resourceName}`,
+    path: `/console/api/datasets?${query}`,
+    resourceName,
+  })
+
+  if (!resource)
+    return skipBlockedPrecondition(world, `Preseeded dataset "${resourceName}" was not found.`)
+
+  return {
+    id: resource.id,
+    kind: 'dataset',
+    name: resource.name,
+  }
+}
+
 type StableChatModelConfig
   = | {
     ok: true

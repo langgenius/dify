@@ -15,6 +15,11 @@ export type AgentBuilderStableChatModel = {
   provider: string
   type: string
 }
+export type AgentBuilderPreseededResource = {
+  id: string
+  kind: 'agent' | 'dataset' | 'workflow'
+  name: string
+}
 
 export class DifyWorld extends World {
   context: BrowserContext | undefined
@@ -34,6 +39,7 @@ export class DifyWorld extends World {
   createdDatasetIds: string[] = []
   createdAgentDriveFiles: CreatedAgentDriveFile[] = []
   agentBuilderStableChatModel: AgentBuilderStableChatModel | undefined
+  agentBuilderPreseededResources: Record<string, AgentBuilderPreseededResource> = {}
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
@@ -57,6 +63,7 @@ export class DifyWorld extends World {
     this.createdDatasetIds = []
     this.createdAgentDriveFiles = []
     this.agentBuilderStableChatModel = undefined
+    this.agentBuilderPreseededResources = {}
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined
