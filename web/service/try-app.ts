@@ -1,14 +1,14 @@
-import type { Parameters as TryAppParameters } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { SupportUploadFileTypes as SupportUploadFileTypeValues } from '@/app/components/workflow/types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING } from '@/config'
 import { PromptMode } from '@/models/debug'
 import { consoleClient } from '@/service/client'
 import { Resolution, RETRIEVE_TYPE, TransferMethod, TtsAutoPlay } from '@/types/app'
 
+type TryAppParameters = import('@dify/contracts/api/console/trial-apps/types.gen').Parameters
+
 const transferMethodValues = new Set<string>(Object.values(TransferMethod))
-const supportUploadFileTypeValues = new Set<string>(Object.values(SupportUploadFileTypeValues))
+const supportUploadFileTypeValues = new Set<string>(Object.values(SupportUploadFileTypes))
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
