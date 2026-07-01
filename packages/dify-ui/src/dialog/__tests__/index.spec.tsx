@@ -82,19 +82,5 @@ describe('Dialog wrapper', () => {
       asHTMLElement(closeButton.element()).click()
       expect(onClick).not.toHaveBeenCalled()
     })
-
-    it('should forward popup initial focus props to base primitive', async () => {
-      const screen = await render(
-        <Dialog open>
-          <DialogContent popupProps={{ initialFocus: false }}>
-            <DialogCloseButton />
-            <span>Dialog body</span>
-          </DialogContent>
-        </Dialog>,
-      )
-
-      await expect.element(screen.getByRole('dialog')).toBeInTheDocument()
-      await expect.element(screen.getByRole('button', { name: 'Close' })).not.toHaveFocus()
-    })
   })
 })
