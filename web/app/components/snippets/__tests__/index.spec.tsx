@@ -1,5 +1,6 @@
 import type { SnippetDetailPayload } from '@/models/snippet'
 import { render, screen } from '@testing-library/react'
+import { MAIN_CONTENT_ID } from '@/app/components/main-nav/skip-nav'
 import SnippetPage from '..'
 
 const mockUseSnippetInit = vi.fn()
@@ -206,5 +207,20 @@ describe('SnippetPage', () => {
     render(<SnippetPage snippetId="missing-snippet" />)
 
     expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('should keep the detail route shell while orchestrate data is loading', () => {
+    mockUseSnippetInit.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    })
+
+    render(<SnippetPage snippetId="snippet-1" />)
+
+    const main = screen.getByRole('main')
+    expect(screen.getAllByRole('main')).toHaveLength(1)
+    expect(main).toHaveAttribute('id', MAIN_CONTENT_ID)
+    expect(main).toContainElement(screen.getByRole('status'))
+    expect(screen.getByTestId('detail-sidebar-frame')).toBeInTheDocument()
   })
 })
