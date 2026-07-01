@@ -2,13 +2,28 @@
 
 from __future__ import annotations
 
+import importlib.util
 import re
 import subprocess
+import sys
 import textwrap
+import types
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "check_no_new_getattr.py"
+
+
+def load_guard_module() -> types.ModuleType:
+    spec = importlib.util.spec_from_file_location("check_no_new_getattr_under_test", SCRIPT_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def git(repo: Path, *args: str) -> str:
@@ -60,6 +75,59 @@ def stderr_lines(result: subprocess.CompletedProcess[str]) -> list[str]:
 def assert_has_actionable_violation(stderr: str, path: str) -> None:
     assert re.search(rf"{re.escape(path)}:\d+:", stderr), stderr
     assert "no-new-getattr" in stderr
+
+
+def test_resolve_ast_grep_command_prefers_ast_grep(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = load_guard_module()
+    monkeypatch.setattr(
+        module.shutil,
+        "which",
+        lambda name: f"/usr/bin/{name}" if name == "ast-grep" else None,
+    )
+
+    assert module.resolve_ast_grep_command() == ["ast-grep"]
+
+
+def test_resolve_ast_grep_command_falls_back_to_uvx(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = load_guard_module()
+    monkeypatch.setattr(
+        module.shutil,
+        "which",
+        lambda name: "/usr/bin/uvx" if name == "uvx" else None,
+    )
+
+    assert module.resolve_ast_grep_command() == ["uvx", "--from", "ast-grep-cli", "ast-grep"]
+
+
+def test_resolve_ast_grep_command_never_uses_sg(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = load_guard_module()
+    monkeypatch.setattr(
+        module.shutil,
+        "which",
+        lambda name: f"/usr/bin/{name}" if name in {"sg", "uvx"} else None,
+    )
+
+    assert module.resolve_ast_grep_command() == ["uvx", "--from", "ast-grep-cli", "ast-grep"]
+
+
+def test_resolve_ast_grep_command_rejects_sg_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = load_guard_module()
+    monkeypatch.setattr(
+        module.shutil,
+        "which",
+        lambda name: "/usr/bin/sg" if name == "sg" else None,
+    )
+
+    with pytest.raises(RuntimeError, match="ast-grep executable not found"):
+        module.resolve_ast_grep_command()
+
+
+def test_resolve_ast_grep_command_raises_without_explicit_binary(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = load_guard_module()
+    monkeypatch.setattr(module.shutil, "which", lambda _name: None)
+
+    with pytest.raises(RuntimeError, match="ast-grep executable not found"):
+        module.resolve_ast_grep_command()
 
 
 def test_style_workflow_wires_no_new_getattr_guard() -> None:
