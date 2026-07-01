@@ -483,9 +483,7 @@ def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch:
 
 def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
-    check_dependencies = Mock(
-        return_value=SimpleNamespace(model_dump=Mock(return_value={"leaked_dependencies": []}))
-    )
+    check_dependencies = Mock(return_value=SimpleNamespace(model_dump=Mock(return_value={"leaked_dependencies": []})))
     session = SimpleNamespace()
 
     class SessionContext(_SessionContext):
