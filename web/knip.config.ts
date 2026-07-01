@@ -38,7 +38,6 @@ const config: KnipConfig = {
     'i18n-config/locale-resources/*.ts',
   ],
   ignoreBinaries: [
-    'only-allow',
     'pbcopy',
     'which',
   ],
