@@ -30,3 +30,7 @@ export const pluginsRouterContract = {
   checkInstalled: pluginCheckInstalledContract,
   latestVersions: pluginLatestVersionsContract,
 }
+
+export const pluginsConsoleRouterContract = {
+  plugins: pluginsRouterContract,
+}

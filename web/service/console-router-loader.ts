@@ -1,7 +1,9 @@
 import type { AnyContractRouter } from '@orpc/contract'
 import { contractLoaders } from '@dify/contracts/api/console/orpc.gen'
 
-const wrapConsoleContract = (segment: string, contract: unknown) => ({ [segment]: contract }) as AnyContractRouter
+type ConsoleContractExtension = Record<string, unknown>
+
+const wrapConsoleContract = (segment: string, contract: unknown): ConsoleContractExtension => ({ [segment]: contract })
 
 async function loadGeneratedConsoleContract(segment: string) {
   const loader = contractLoaders[segment as keyof typeof contractLoaders]
@@ -11,17 +13,21 @@ async function loadGeneratedConsoleContract(segment: string) {
   return loader() as Promise<AnyContractRouter>
 }
 
-const customConsoleContractLoaders: Record<string, () => Promise<AnyContractRouter>> = {
+const customConsoleContractLoaders: Record<string, () => Promise<ConsoleContractExtension>> = {
   enterprise: () => import('@dify/contracts/enterprise/orpc.gen').then(({ contract }) => wrapConsoleContract('enterprise', contract)),
-  explore: () => import('@/contract/console/explore').then(({ exploreRouterContract }) => wrapConsoleContract('explore', exploreRouterContract)),
-  plugins: () => import('@/contract/console/plugins').then(({ pluginsRouterContract }) => wrapConsoleContract('plugins', pluginsRouterContract)),
-  trialApps: () => import('@/contract/console/try-app').then(({ trialAppsRouterContract }) => wrapConsoleContract('trialApps', trialAppsRouterContract)),
+  explore: () => import('@/contract/console/explore').then(({ exploreConsoleRouterContract }) => exploreConsoleRouterContract),
+  plugins: () => import('@/contract/console/plugins').then(({ pluginsConsoleRouterContract }) => pluginsConsoleRouterContract),
+  snippets: () => import('@/contract/console/snippets').then(({ snippetsConsoleRouterContract }) => snippetsConsoleRouterContract),
+  trialApps: () => import('@/contract/console/try-app').then(({ trialAppsConsoleRouterContract }) => trialAppsConsoleRouterContract),
 }
 
 export async function loadConsoleContractForSegment(segment: string) {
   const customContractLoader = customConsoleContractLoaders[segment]
-  if (customContractLoader)
-    return customContractLoader()
+  if (customContractLoader) {
+    const customContract = await customContractLoader()
+    if (Object.keys(customContract).length > 0)
+      return customContract as AnyContractRouter
+  }
 
   const generatedContract = await loadGeneratedConsoleContract(segment)
   if (generatedContract)
