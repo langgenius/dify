@@ -156,6 +156,13 @@ def _build_human_input_required_reason(
     return reason
 
 
+def _to_dify_pause_reason(reason_model: WorkflowPauseReason) -> DifyPauseReason:
+    """Map persisted pause reasons onto the Dify-facing repository contract."""
+    if reason_model.type_ in _HITL_REASON_TYPES:
+        return _build_human_input_required_reason(reason_model, None)
+    return cast("DifyPauseReason", reason_model.to_entity())
+
+
 class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
     """
     SQLAlchemy implementation of APIWorkflowRunRepository.
@@ -1102,7 +1109,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     )
                 )
             else:
-                pause_reasons.append(reason.to_entity())
+                pause_reasons.append(_to_dify_pause_reason(reason))
         return pause_reasons
 
     @override
@@ -1617,7 +1624,7 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     def get_pause_reasons(self) -> Sequence[DifyPauseReason]:
         if self._pause_reasons is not None:
             return tuple(self._pause_reasons)
-        return tuple(reason.to_entity() for reason in self._reason_models)
+        return tuple(_to_dify_pause_reason(reason) for reason in self._reason_models)
 
     @property
     @override

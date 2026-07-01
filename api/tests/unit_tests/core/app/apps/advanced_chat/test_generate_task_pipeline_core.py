@@ -51,8 +51,8 @@ from core.app.entities.task_entities import (
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.nodes.human_input.entities import UserActionConfig
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from core.workflow.system_variables import build_system_variables
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import BuiltinNodeTypes
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
@@ -168,7 +168,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert response.data.paused_nodes == ["node-1"]
         assert response.data.reasons == [
             {
-                "TYPE": PauseReasonType.HUMAN_INPUT_REQUIRED,
+                "TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED,
                 "form_id": "form-1",
                 "node_id": "node-1",
                 "node_title": "Approval",

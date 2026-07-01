@@ -39,8 +39,8 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HitlRequired, PauseReason as GraphonPauseReason
-from graphon.entities.pause_reason import PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,

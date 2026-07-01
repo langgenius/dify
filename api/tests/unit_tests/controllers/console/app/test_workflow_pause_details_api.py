@@ -11,7 +11,7 @@ from flask import Flask
 from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
-from graphon.entities.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from models.workflow import WorkflowRun
 

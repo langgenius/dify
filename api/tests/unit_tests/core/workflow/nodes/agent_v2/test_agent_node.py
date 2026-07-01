@@ -27,6 +27,7 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentRuntimeSessionStore,
     WorkflowAgentSessionScope,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import GraphInitParams
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
