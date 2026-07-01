@@ -9,6 +9,19 @@ export const agentComposerOriginalDraftAtom = atom<AgentSoulConfigFormState | un
 export const agentComposerPublishedDraftAtom = atom<AgentSoulConfigFormState | undefined>(defaultAgentSoulConfigFormState)
 export const agentComposerDraftAtom = atom<AgentSoulConfigFormState>(defaultAgentSoulConfigFormState)
 
+export const rebaseAgentComposerDraftAtom = atom(null, (_get, set, {
+  draft,
+  originalConfig,
+}: {
+  draft: AgentSoulConfigFormState
+  originalConfig?: AgentSoulConfig
+}) => {
+  set(agentComposerOriginalConfigAtom, originalConfig)
+  set(agentComposerDraftAtom, draft)
+  set(agentComposerOriginalDraftAtom, draft)
+  set(agentComposerPublishedDraftAtom, draft)
+})
+
 export const isAgentComposerDirtyAtom = atom((get) => {
   const originalDraft = get(agentComposerOriginalDraftAtom)
   const draft = get(agentComposerDraftAtom)

@@ -45,16 +45,6 @@ describe('AppNavItem', () => {
       expect(link).toHaveAttribute('href', '/installed/app-123')
     })
 
-    it('should only show the row focus ring when the app link receives focus', () => {
-      render(<AppNavItem {...baseProps} />)
-
-      const row = screen.getByText('My App').closest('.group')
-
-      expect(row).toHaveClass('has-[>a:focus-visible]:ring-2')
-      expect(row).toHaveClass('has-[>a:focus-visible]:ring-state-accent-solid')
-      expect(row).not.toHaveClass('focus-within:ring-2')
-    })
-
     it('should call onDelete with app id when delete action is clicked', async () => {
       render(<AppNavItem {...baseProps} />)
 

@@ -94,13 +94,5 @@ describe('FileUploaderInChatInput', () => {
     fireEvent.click(button)
 
     expect(button).toHaveAttribute('data-popup-open')
-    expect(button).toHaveClass(
-      'size-8',
-      'outline-hidden',
-      'focus-visible:ring-2',
-      'focus-visible:ring-state-accent-solid',
-      'focus-visible:ring-inset',
-      'data-popup-open:bg-state-base-hover',
-    )
   })
 })

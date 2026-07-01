@@ -47,7 +47,7 @@ export function PermissionSummaryButton({
       aria-label={t('access.permissions.editAriaLabel', { environment: environmentLabel })}
       onClick={onClick}
       className={cn(
-        'flex h-9 w-full min-w-0 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5 outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+        'flex h-9 w-full min-w-0 cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal py-1 pr-2 pl-2.5 outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active',
         disabled && 'cursor-not-allowed opacity-50 hover:bg-components-input-bg-normal',
       )}
     >

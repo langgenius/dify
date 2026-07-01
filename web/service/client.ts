@@ -9,7 +9,7 @@ import type {
 import type { ClientLink } from '@orpc/client'
 import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import type { RouterUtils } from '@orpc/tanstack-query'
+import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { consoleRouterContract } from '@/contract/router'
 import { createORPCClient, onError } from '@orpc/client'
@@ -58,19 +58,23 @@ export function getBaseURL(path: string) {
   return url
 }
 
-type ConsoleClientContext = Record<never, never>
+export type ConsoleClientContext = TanstackQueryOperationContext & {
+  silent?: boolean
+}
+
 type ConsoleClientLink = ClientLink<ConsoleClientContext>
 
 function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLink {
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getBaseURL(API_PREFIX),
-    fetch: (input, init) => {
+    fetch: (input, init, options) => {
       return request(
         input.url,
         init,
         {
           fetchCompat: true,
           request: input,
+          silent: options.context.silent,
         },
       )
     },
@@ -118,7 +122,7 @@ type AppDeployInvalidationOptions = {
   developerApiSettings?: boolean
 }
 
-type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>>>
+type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>>>
 
 function isTagType(type: string | null | undefined): type is TagType {
   return type === 'app' || type === 'knowledge' || type === 'snippet'
@@ -353,7 +357,7 @@ async function invalidateReleaseMutationQueries(
 
 const consoleLink = createConsoleDynamicLink<ConsoleClientContext>(createConsoleOpenAPILink)
 
-export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>> = createORPCClient(consoleLink)
+export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>> = createORPCClient(consoleLink)
 
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
@@ -531,12 +535,12 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           put: {
             mutationOptions: {
               onSuccess: (_composerState, variables, _onMutateResult, context) => {
-                if (variables.body.save_strategy !== 'save_as_new_version')
-                  return
-
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.get.key(),
                 })
+                if (variables.body.save_strategy !== 'save_as_new_version')
+                  return
+
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.inviteOptions.get.key(),
                 })

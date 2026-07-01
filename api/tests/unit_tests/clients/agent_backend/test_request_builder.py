@@ -7,6 +7,11 @@ from agenton.layers import ExitIntent
 from agenton.layers.base import LifecycleState
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
+from dify_agent.layers.dify_core_tools import (
+    DIFY_CORE_TOOLS_LAYER_TYPE_ID,
+    DifyCoreToolConfig,
+    DifyCoreToolsLayerConfig,
+)
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
@@ -29,6 +34,7 @@ from pydantic import ValidationError
 
 from clients.agent_backend import (
     AGENT_SOUL_PROMPT_LAYER_ID,
+    DIFY_CORE_TOOLS_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
     DIFY_KNOWLEDGE_BASE_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
@@ -158,6 +164,30 @@ def test_request_builder_adds_dify_plugin_tools_layer_when_configured():
     assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     tools_config = cast(DifyPluginToolsLayerConfig, layers[DIFY_PLUGIN_TOOLS_LAYER_ID].config)
     assert tools_config.tools[0].tool_name == "current_time"
+
+
+def test_request_builder_adds_dify_core_tools_layer_when_configured():
+    run_input = _run_input()
+    run_input.core_tools = DifyCoreToolsLayerConfig(
+        tools=[
+            DifyCoreToolConfig(
+                provider_type="builtin",
+                provider_id="audio",
+                tool_name="transcribe",
+                name="transcribe",
+                description="Transcribe audio.",
+                runtime_parameters={"language": "en"},
+                parameters=[],
+                parameters_json_schema={"type": "object", "properties": {}, "required": []},
+            )
+        ]
+    )
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+
+    assert layers[DIFY_CORE_TOOLS_LAYER_ID].type == DIFY_CORE_TOOLS_LAYER_TYPE_ID
+    assert layers[DIFY_CORE_TOOLS_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
 
 
 def test_request_builder_adds_knowledge_layer_when_configured():

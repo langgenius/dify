@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { AgentBuildDraftChangeSection } from '../build-draft-changes-context'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   CollapsiblePanel,
@@ -8,12 +9,15 @@ import {
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
 import { Infotip } from '@/app/components/base/infotip'
+import { AgentBuildDraftChangeDot } from '../build-draft-change-dot'
+import { useIsAgentBuildDraftSectionChanged } from '../build-draft-changes-context'
 
 type ConfigureSectionBaseProps = {
   label: ReactNode
   labelId: string
   children: ReactNode
   actions?: ReactNode
+  buildDraftChangeSection?: AgentBuildDraftChangeSection
   description?: ReactNode
   defaultOpen?: boolean
   headingLevel?: 'h3' | 'h4'
@@ -40,6 +44,7 @@ export function ConfigureSection({
   labelId,
   children,
   actions,
+  buildDraftChangeSection,
   description,
   defaultOpen = true,
   headingLevel = 'h3',
@@ -54,6 +59,7 @@ export function ConfigureSection({
   const Heading = headingLevel
   const hasDescription = description !== undefined && description !== null
   const hasTip = tip !== undefined && tip !== null
+  const isBuildDraftChanged = useIsAgentBuildDraftSectionChanged(buildDraftChangeSection)
 
   return (
     <CollapsibleRoot
@@ -65,7 +71,8 @@ export function ConfigureSection({
       <div className={cn('mb-2 flex min-h-6 items-center gap-2', headerClassName)}>
         <div className="min-w-0 flex-1">
           <div className={cn('flex min-w-0 items-center', titleRowClassName)}>
-            <Heading id={labelId} className="min-w-0 shrink-0">
+            <Heading id={labelId} className="relative min-w-0 shrink-0">
+              {isBuildDraftChanged && <AgentBuildDraftChangeDot />}
               <CollapsibleTrigger
                 className="h-6 min-h-0 w-auto max-w-full justify-start gap-0 rounded-sm px-0 text-text-secondary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-secondary data-panel-open:text-text-secondary"
               >

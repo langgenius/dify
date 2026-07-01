@@ -11,19 +11,19 @@ import type {
 import type {
   ReactNode,
 } from 'react'
-import type { FeedbackType, IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType, IChatItem, InputForm, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
 import type { MessageRating } from '@/models/log'
 import type { FileResponse } from '@/types/workflow'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -40,7 +40,7 @@ import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/stor
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { PromptMode } from '@/models/debug'
 import dynamic from '@/next/dynamic'
-import { consoleClient } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { AgentStrategy, ModelModeType, RETRIEVE_TYPE, TransferMethod } from '@/types/app'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
@@ -155,6 +155,15 @@ const toInputForm = (variable: NonNullable<AgentSoulConfig['app_variables']>[num
   }
 }
 
+const getAgentSoulInputsForm = (agentSoulConfig?: AgentSoulConfig) => (agentSoulConfig?.app_variables ?? []).map(toInputForm)
+
+const getAgentSoulInputs = (inputsForm: InputForm[]) => {
+  return inputsForm.reduce<Inputs>((acc, input) => {
+    acc[input.variable] = (input.default ?? '') as Inputs[string]
+    return acc
+  }, {})
+}
+
 const toAgentTool = (tool: AgentSoulDifyToolConfig) => ({
   provider_id: tool.provider_id ?? tool.provider ?? tool.plugin_id ?? '',
   provider_type: tool.provider_type ?? 'builtin',
@@ -211,17 +220,6 @@ const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
     params: {
       agent_id: agentId,
       task_id: taskId,
-    },
-  })
-}
-
-const fetchAgentConversationMessages = (agentId: string, conversationId: string) => {
-  return consoleClient.agent.byAgentId.chatMessages.get({
-    params: {
-      agent_id: agentId,
-    },
-    query: {
-      conversation_id: conversationId,
     },
   })
 }
@@ -287,6 +285,16 @@ const getAgentDebugMessageAnswer = (message: MessageDetailResponse) => {
   return message.answer ?? ''
 }
 
+function getLastWorkflowRunId(messages: MessageDetailResponse[]) {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const workflowRunId = messages[index]?.workflow_run_id
+    if (workflowRunId)
+      return workflowRunId
+  }
+
+  return null
+}
+
 function getFormattedAgentDebugChatTree(messages: MessageDetailResponse[]): ChatItemInTree[] {
   const chatList: IChatItem[] = []
 
@@ -350,10 +358,10 @@ const buildChatConfig = ({
   prompt,
 }: {
   agentSoulConfig?: AgentSoulConfig
-  currentModel?: DefaultModel
+  currentModel?: AgentComposerModel
   prompt: string
 }): AgentPreviewChatConfig => {
-  const modelSettings = getModelSettings(agentSoulConfig)
+  const modelSettings = currentModel?.model_settings ?? getModelSettings(agentSoulConfig)
   const appFeatures = agentSoulConfig?.app_features ?? {}
   const difyTools = agentSoulConfig?.tools?.dify_tools ?? []
   const cliTools = ENABLE_AGENT_CLI_TOOLS ? (agentSoulConfig?.tools?.cli_tools ?? []) : []
@@ -443,9 +451,11 @@ export type AgentChatRuntimeProps = {
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
-  onConversationComplete?: (conversationId: string) => void
+  onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
-  onSaveDraftBeforeRun?: () => Promise<void>
+  onWorkflowRunIdChange?: (workflowRunId: string | null) => void
+  onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
+  onSendInterrupted?: () => void
 }
 
 export function AgentChatRuntime({
@@ -464,29 +474,54 @@ export function AgentChatRuntime({
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
+  onWorkflowRunIdChange,
+  onSendInterrupted,
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
-  const historyQuery = useQuery({
-    queryKey: ['agent-chat-conversation-messages', agentId, conversationId],
-    queryFn: () => fetchAgentConversationMessages(agentId, conversationId!),
-    enabled: !!conversationId,
-  })
+  const [currentSessionConversationId, setCurrentSessionConversationId] = useState<string | null>(null)
+  const handleClearChatListChange = useCallback((nextClearChatList: boolean) => {
+    if (!nextClearChatList)
+      setCurrentSessionConversationId(null)
+    onClearChatListChange(nextClearChatList)
+  }, [onClearChatListChange])
+  const historyQuery = useQuery(consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
+    input: conversationId
+      ? {
+          params: {
+            agent_id: agentId,
+          },
+          query: {
+            conversation_id: conversationId,
+          },
+        }
+      : skipToken,
+  }))
+  const conversationBelongsToCurrentSession = !!conversationId && conversationId === currentSessionConversationId
   const initialChatTree = useMemo(
     () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
     [historyQuery.data?.data],
   )
+  useEffect(() => {
+    if (!conversationId || !historyQuery.data)
+      return
 
-  if (conversationId && historyQuery.isPending) {
+    onWorkflowRunIdChange?.(getLastWorkflowRunId(historyQuery.data.data ?? []))
+  }, [conversationId, historyQuery.data, onWorkflowRunIdChange])
+
+  if (conversationId && historyQuery.isPending && !conversationBelongsToCurrentSession) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading type="app" />
       </div>
     )
   }
+  const chatSessionKey = !conversationId || conversationBelongsToCurrentSession
+    ? 'current-session'
+    : `${conversationId}-${historyQuery.dataUpdatedAt}`
 
   return (
     <AgentPreviewChatSession
-      key={`${conversationId ?? 'new'}-${historyQuery.dataUpdatedAt}`}
+      key={chatSessionKey}
       agentId={agentId}
       agentIcon={agentIcon}
       agentIconBackground={agentIconBackground}
@@ -500,9 +535,11 @@ export function AgentChatRuntime({
       inputPlaceholder={inputPlaceholder}
       sendButtonLabel={sendButtonLabel}
       renderEmptyState={renderEmptyState}
-      onClearChatListChange={onClearChatListChange}
+      onClearChatListChange={handleClearChatListChange}
       onConversationComplete={onConversationComplete}
       onConversationIdChange={onConversationIdChange}
+      onCurrentSessionConversationIdChange={setCurrentSessionConversationId}
+      onSendInterrupted={onSendInterrupted}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
   )
@@ -525,6 +562,8 @@ function AgentPreviewChatSession({
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
+  onCurrentSessionConversationIdChange,
+  onSendInterrupted,
   onSaveDraftBeforeRun,
 }: {
   agentId: string
@@ -541,10 +580,13 @@ function AgentPreviewChatSession({
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
-  onConversationComplete?: (conversationId: string) => void
+  onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
-  onSaveDraftBeforeRun?: () => Promise<void>
+  onCurrentSessionConversationIdChange: (conversationId: string) => void
+  onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
+  onSendInterrupted?: () => void
 }) {
+  const queryClient = useQueryClient()
   const { userProfile } = useAppContext()
   const prompt = useAtomValue(agentComposerPromptAtom)
   const currentModel = useAtomValue(agentComposerModelAtom)
@@ -553,13 +595,16 @@ function AgentPreviewChatSession({
     currentModel,
     prompt,
   }), [agentSoulConfig, currentModel, prompt])
-  const inputsForm = useMemo(() => (agentSoulConfig?.app_variables ?? []).map(toInputForm), [agentSoulConfig?.app_variables])
-  const inputs = useMemo(() => {
-    return inputsForm.reduce<Inputs>((acc, input) => {
-      acc[input.variable] = (input.default ?? '') as Inputs[string]
-      return acc
-    }, {})
-  }, [inputsForm])
+  const inputsForm = useMemo(() => getAgentSoulInputsForm(agentSoulConfig), [agentSoulConfig])
+  const inputs = useMemo(() => getAgentSoulInputs(inputsForm), [inputsForm])
+  const sendInterruptedRef = useRef(false)
+  const notifySendInterrupted = useCallback(() => {
+    if (sendInterruptedRef.current)
+      return
+
+    sendInterruptedRef.current = true
+    onSendInterrupted?.()
+  }, [onSendInterrupted])
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
@@ -589,40 +634,78 @@ function AgentPreviewChatSession({
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+    sendInterruptedRef.current = false
+
     try {
-      await onSaveDraftBeforeRun?.()
+      const preparedAgentSoulConfig = await onSaveDraftBeforeRun?.()
+      const runtimeAgentSoulConfig = preparedAgentSoulConfig || agentSoulConfig
+      const runtimeInputsForm = preparedAgentSoulConfig ? getAgentSoulInputsForm(runtimeAgentSoulConfig) : inputsForm
+      const runtimeInputs = preparedAgentSoulConfig ? getAgentSoulInputs(runtimeInputsForm) : inputs
+      const runtimeConfig = preparedAgentSoulConfig
+        ? buildChatConfig({
+            agentSoulConfig: runtimeAgentSoulConfig,
+            currentModel: undefined,
+            prompt: runtimeAgentSoulConfig?.prompt?.system_prompt ?? '',
+          })
+        : config
+
+      const currentProvider = textGenerationModelList.find(item => item.provider === runtimeConfig.model.provider)
+      const selectedModel = currentProvider?.models.find(model => model.model === runtimeConfig.model.name)
+      const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
+      const data: Record<string, unknown> = {
+        query: message,
+        inputs: runtimeInputs,
+        overrideInputsForm: runtimeInputsForm,
+        parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
+      }
+      if (draftType)
+        data.draft_type = draftType
+
+      if (files?.length && supportVision)
+        data.files = files
+
+      handleSend(
+        `agent/${agentId}/chat-messages`,
+        data as Parameters<typeof handleSend>[1],
+        {
+          onGetConversationMessages: async (conversationId) => {
+            return queryClient.fetchQuery({
+              ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
+                input: {
+                  params: {
+                    agent_id: agentId,
+                  },
+                  query: {
+                    conversation_id: conversationId,
+                  },
+                },
+              }),
+              staleTime: 0,
+            })
+          },
+          onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
+          onConversationComplete: (completedConversationId, workflowRunId) => {
+            if (completedConversationId && completedConversationId !== conversationId)
+              onCurrentSessionConversationIdChange(completedConversationId)
+            onConversationIdChange?.(completedConversationId)
+            onConversationComplete?.(completedConversationId, workflowRunId)
+          },
+          onSendSettled: (hasError) => {
+            if (hasError)
+              notifySendInterrupted()
+          },
+        },
+      )
     }
     catch {
-      return
+      return false
     }
+  }, [agentId, agentSoulConfig, chatList, config, conversationId, draftType, handleSend, inputs, inputsForm, notifySendInterrupted, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, queryClient, textGenerationModelList])
 
-    const currentProvider = textGenerationModelList.find(item => item.provider === config.model.provider)
-    const selectedModel = currentProvider?.models.find(model => model.model === config.model.name)
-    const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
-    const data: Record<string, unknown> = {
-      query: message,
-      inputs,
-      parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
-    }
-    if (draftType)
-      data.draft_type = draftType
-
-    if (files?.length && supportVision)
-      data.files = files
-
-    handleSend(
-      `agent/${agentId}/chat-messages`,
-      data as Parameters<typeof handleSend>[1],
-      {
-        onGetConversationMessages: conversationId => fetchAgentConversationMessages(agentId, conversationId),
-        onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
-        onConversationComplete: (conversationId) => {
-          onConversationIdChange?.(conversationId)
-          onConversationComplete?.(conversationId)
-        },
-      },
-    )
-  }, [agentId, chatList, config.model.name, config.model.provider, draftType, handleSend, inputs, onConversationComplete, onConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
+  const doStopResponding = useCallback(() => {
+    handleStop()
+    notifySendInterrupted()
+  }, [handleStop, notifySendInterrupted])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)
@@ -685,7 +768,7 @@ function AgentPreviewChatSession({
       inputsForm={inputsForm}
       onRegenerate={doRegenerate}
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
-      onStopResponding={handleStop}
+      onStopResponding={doStopResponding}
       noChatInput={isEmptyChat}
       showPromptLog
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}

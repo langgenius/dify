@@ -109,6 +109,7 @@ class OutputErrorStrategy(StrEnum):
 
 # JSON-schema-friendly name pattern. Stage 4 §3.1 / §10.1.
 _OUTPUT_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_CONFIG_SKILL_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 JsonPrimitive = str | int | float | bool | None
 RuntimeParameterValue = JsonPrimitive | list[str] | list[int] | list[float] | list[bool]
@@ -165,6 +166,63 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
 class AgentSoulFilesConfig(BaseModel):
     skills: list[AgentSkillRefConfig] = Field(default_factory=list)
     files: list[AgentFileRefConfig] = Field(default_factory=list)
+
+
+def validate_config_name(name: str) -> str:
+    normalized = name.strip()
+    if not normalized:
+        raise ValueError("config asset name must not be blank")
+    if normalized in {".", ".."}:
+        raise ValueError("config asset name must not be '.' or '..'")
+    if "/" in normalized or "\\" in normalized:
+        raise ValueError("config asset name must be a single path segment")
+    if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
+        raise ValueError("config asset name must not contain control characters")
+    return normalized
+
+
+def validate_config_skill_name(name: str) -> str:
+    normalized = validate_config_name(name)
+    if _CONFIG_SKILL_NAME_PATTERN.fullmatch(normalized) is None:
+        raise ValueError(f"config skill name {normalized!r} must match {_CONFIG_SKILL_NAME_PATTERN.pattern}")
+    return normalized
+
+
+class AgentConfigFileRefConfig(BaseModel):
+    """Stable Agent Soul reference to one config file payload."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    file_kind: Literal["upload_file", "tool_file"]
+    file_id: str = Field(min_length=1, max_length=255)
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        return validate_config_name(value)
+
+
+class AgentConfigSkillRefConfig(BaseModel):
+    """Stable Agent Soul reference to one normalized skill archive."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    description: str = ""
+    file_kind: Literal["tool_file"] = "tool_file"
+    file_id: str = Field(min_length=1, max_length=255)
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = "application/zip"
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        return validate_config_skill_name(value)
 
 
 class AgentPermissionConfig(BaseModel):
@@ -527,12 +585,15 @@ class AgentSoulDifyToolCredentialRef(BaseModel):
 
 
 class AgentSoulDifyToolConfig(BaseModel):
-    """One Dify Plugin Tool configured on Agent Soul.
+    """One Dify tool configured on Agent Soul.
 
     The API backend prepares this persisted product shape into
-    ``DifyPluginToolConfig`` before sending a run request to Agent backend.
-    ``provider_id`` keeps compatibility with existing Agent tool config payloads;
-    new callers should send ``plugin_id`` + ``provider`` when available.
+    either ``DifyPluginToolConfig`` or ``DifyCoreToolConfig`` before sending a
+    run request to Agent backend. ``plugin`` providers keep the direct
+    ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
+    ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
+    keeps compatibility with existing Agent tool config payloads; new callers
+    should send ``plugin_id`` + ``provider`` when available.
     """
 
     # ``extra="ignore"`` (not ``"allow"``) so historical Agent Soul payloads
@@ -542,10 +603,10 @@ class AgentSoulDifyToolConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     enabled: bool = True
-    # Dify Plugin Tools live behind the ``PLUGIN`` provider type. ``BUILT_IN`` /
-    # ``WORKFLOW`` / ``API`` providers are not exposed to the Agent backend in
-    # this layer — keep the default narrow so a missing field surfaces as
-    # ``agent_tool_declaration_not_found`` against the correct provider table.
+    # ``plugin`` remains the default for legacy Agent Soul payloads. The runtime
+    # now also accepts ``builtin`` / ``api`` / ``workflow`` / ``mcp`` here and
+    # routes them through ``dify.core.tools``; keeping the default narrow still
+    # makes a missing field resolve against the plugin provider table.
     provider_type: str = "plugin"
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
@@ -682,6 +743,9 @@ class AgentSoulConfig(BaseModel):
     knowledge: AgentSoulKnowledgeConfig = Field(default_factory=AgentSoulKnowledgeConfig)
     human: AgentSoulHumanConfig = Field(default_factory=AgentSoulHumanConfig)
     env: AgentSoulEnvConfig = Field(default_factory=AgentSoulEnvConfig)
+    config_skills: list[AgentConfigSkillRefConfig] = Field(default_factory=list)
+    config_files: list[AgentConfigFileRefConfig] = Field(default_factory=list)
+    config_note: str = ""
     files: AgentSoulFilesConfig = Field(default_factory=AgentSoulFilesConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
