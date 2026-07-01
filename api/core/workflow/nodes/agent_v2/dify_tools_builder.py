@@ -101,14 +101,14 @@ def _list_provider_tool_names(
     """Tool names a provider currently declares for provider-level Agent entries."""
     match provider_type:
         case ToolProviderType.PLUGIN:
-            provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
-            tools = provider.get_tools()
+            plugin_provider = ToolManager.get_plugin_provider(provider_id, tenant_id)
+            return [tool.entity.identity.name for tool in plugin_provider.get_tools() or []]
         case ToolProviderType.BUILT_IN:
-            provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
-            tools = provider.get_tools()
+            builtin_provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+            return [tool.entity.identity.name for tool in builtin_provider.get_tools() or []]
         case ToolProviderType.API:
-            provider, _ = ToolManager.get_api_provider_controller(tenant_id, provider_id)
-            tools = provider.get_tools(tenant_id)
+            api_provider, _ = ToolManager.get_api_provider_controller(tenant_id, provider_id)
+            return [tool.entity.identity.name for tool in api_provider.get_tools(tenant_id) or []]
         case ToolProviderType.WORKFLOW:
             db_provider = db.session.scalar(
                 select(WorkflowToolProvider)
@@ -120,14 +120,13 @@ def _list_provider_tool_names(
             )
             if db_provider is None:
                 raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
-            provider = WorkflowToolProviderController.from_db(db_provider)
-            tools = provider.get_tools(tenant_id)
+            workflow_provider = WorkflowToolProviderController.from_db(db_provider)
+            return [tool.entity.identity.name for tool in workflow_provider.get_tools(tenant_id) or []]
         case ToolProviderType.MCP:
-            provider = ToolManager.get_mcp_provider_controller(tenant_id, provider_id)
-            tools = provider.get_tools()
+            mcp_provider = ToolManager.get_mcp_provider_controller(tenant_id, provider_id)
+            return [tool.entity.identity.name for tool in mcp_provider.get_tools() or []]
         case _:
             raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
-    return [tool.entity.identity.name for tool in tools or []]
 
 
 def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
