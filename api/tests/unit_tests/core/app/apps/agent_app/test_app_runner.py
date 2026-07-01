@@ -14,6 +14,7 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
+    AgentRunUsage,
     CancelRunRequest,
     CancelRunResponse,
     PydanticAIStreamRunEvent,
@@ -136,6 +137,7 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             data=RunSucceededEventData(
                 output={"text": "hello agent"},
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
+                usage=AgentRunUsage(prompt_tokens=3, completion_tokens=5),
             ),
         )
 
@@ -392,6 +394,9 @@ def test_successful_turn_forwards_agent_backend_stream_text_deltas_without_dupli
     assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
+    assert end_events[0].llm_result.usage.prompt_tokens == 3
+    assert end_events[0].llm_result.usage.completion_tokens == 5
+    assert end_events[0].llm_result.usage.total_tokens == 8
     assert store.saved
 
 
