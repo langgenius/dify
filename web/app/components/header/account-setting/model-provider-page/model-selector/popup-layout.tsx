@@ -93,7 +93,7 @@ export function ModelSelectorScrollBody({
       >
         <ScrollAreaContent className="min-w-0 overflow-x-hidden">{children}</ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="z-2 data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+      <ScrollAreaScrollbar className="z-2">
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollAreaRoot>

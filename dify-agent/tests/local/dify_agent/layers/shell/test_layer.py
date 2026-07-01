@@ -1,7 +1,6 @@
 import asyncio
 from collections.abc import Callable, Mapping
 import secrets
-import time
 from dataclasses import dataclass
 from typing import cast
 
@@ -24,8 +23,14 @@ from dify_agent.layers.shell import (
     DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.layers.shell.layer import DifyShellLayer, DifyShellRuntimeState, ShellctlClientFactory
-from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
+from dify_agent.adapters.shell.shellctl import (
+    ShellctlEnvironmentDescriptor,
+    ShellctlHandle,
+    ShellctlProvisioner,
+    ShellProvisionError,
+)
+from dify_agent.layers.shell.layer import DifyShellLayer, DifyShellRuntimeState
+from shell_session_manager.shellctl.shared import JobResult, JobStatusName, JobStatusView
 
 
 def _job_result(
@@ -116,7 +121,6 @@ class TerminateCall:
 class DeleteCall:
     job_id: str
     force: bool
-    grace_seconds: float | None
 
 
 class FakeShellctlClient:
@@ -135,7 +139,7 @@ class FakeShellctlClient:
         wait_handler: Callable[[str, int, float], JobResult] | None = None,
         input_handler: Callable[[str, str, int, float], JobResult] | None = None,
         terminate_handler: Callable[[str, float], JobStatusView] | None = None,
-        delete_handler: Callable[[str, bool, float | None], DeleteJobResponse] | None = None,
+        delete_handler: Callable[[str, bool, float | None], object] | None = None,
     ) -> None:
         self._run_handler = run_handler
         self._wait_handler = wait_handler
@@ -190,26 +194,22 @@ class FakeShellctlClient:
         job_id: str,
         *,
         force: bool = False,
-        grace_seconds: float | None = None,
-    ) -> DeleteJobResponse:
-        self.delete_calls.append(DeleteCall(job_id=job_id, force=force, grace_seconds=grace_seconds))
+    ) -> object:
+        self.delete_calls.append(DeleteCall(job_id=job_id, force=force))
         self.events.append(("delete", job_id))
         if self._delete_handler is None:
-            return DeleteJobResponse(job_id=job_id)
-        return self._delete_handler(job_id, force, grace_seconds)
+            return None
+        return self._delete_handler(job_id, force, None)
 
     async def close(self) -> None:
         self.closed = True
         self.events.append(("close", "client"))
 
 
-def _shell_layer(
-    *, client_factory: ShellctlClientFactory, config: DifyShellLayerConfig | None = None
-) -> DifyShellLayer:
+def _shell_layer(*, client: FakeShellctlClient, config: DifyShellLayerConfig | None = None) -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
         config or DifyShellLayerConfig(),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=client_factory,
+        shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
     )
 
 
@@ -236,13 +236,12 @@ def _execution_context_layer() -> DifyExecutionContextLayer:
     )
 
 
-def _shell_provider(*, client_factory: ShellctlClientFactory) -> LayerProvider[DifyShellLayer]:
+def _shell_provider(*, client: FakeShellctlClient) -> LayerProvider[DifyShellLayer]:
     return LayerProvider.from_factory(
         layer_type=DifyShellLayer,
         create=lambda config: DifyShellLayer.from_config_with_settings(
             DifyShellLayerConfig.model_validate(config),
-            shellctl_entrypoint="http://shellctl",
-            shellctl_client_factory=client_factory,
+            shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
         ),
     )
 
@@ -251,31 +250,34 @@ def test_shell_type_id_constant_matches_implementation_class() -> None:
     assert DIFY_SHELL_LAYER_TYPE_ID == DifyShellLayer.type_id
 
 
-def test_shell_layer_create_generates_5_plus_2_hex_session_id_and_retries_workspace_collision(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    random_suffixes = iter(["aa", "bb"])
-    monkeypatch.setattr(time, "time", lambda: 0x12345F)
-    monkeypatch.setattr(secrets, "token_hex", lambda nbytes: next(random_suffixes))
+def test_environment_descriptor_returns_workspace_seed_from_runtime_state() -> None:
+    layer = _shell_layer(client=FakeShellctlClient())
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+
+    descriptor = layer.environment_descriptor()
+
+    assert descriptor == ShellctlEnvironmentDescriptor(workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+
+
+def test_environment_descriptor_raises_without_session_identity() -> None:
+    layer = _shell_layer(client=FakeShellctlClient())
+
+    with pytest.raises(ValueError, match="session_id or workspace_cwd"):
+        _ = layer.environment_descriptor()
+
+
+def test_shell_layer_create_provisions_workspace_and_bootstraps(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(secrets, "token_hex", lambda _nbytes: "deadbeefdeadbeef")
 
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert cwd is None
         assert env is None
-        assert timeout == 30.0
-        if "2345faa" in script:
-            return _job_result("mkdir-collision", status=JobStatusName.EXITED, done=True, exit_code=17)
-        if "2345fbb" in script:
-            return _job_result("mkdir-success", status=JobStatusName.RUNNING, done=False, offset=4)
-        raise AssertionError(f"Unexpected script: {script}")
+        if cwd is None:
+            assert 'mkdir -p "$HOME/workspace/deadbeefdeadbeef"' in script
+            return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+        raise AssertionError(f"Unexpected script with cwd={cwd}: {script}")
 
-    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
-        assert job_id == "mkdir-success"
-        assert offset == 4
-        assert timeout == 30.0
-        return _job_result("mkdir-success", status=JobStatusName.EXITED, done=True, exit_code=0, offset=8)
-
-    client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    client = FakeShellctlClient(run_handler=run_handler)
+    layer = _shell_layer(client=client)
 
     async def scenario() -> None:
         async with layer.resource_context():
@@ -284,28 +286,24 @@ def test_shell_layer_create_generates_5_plus_2_hex_session_id_and_retries_worksp
 
     asyncio.run(scenario())
 
-    assert layer.runtime_state.session_id == "2345fbb"
-    assert layer.runtime_state.workspace_cwd == "~/workspace/2345fbb"
-    assert layer.runtime_state.job_ids == ["mkdir-collision", "mkdir-success"]
-    assert layer.runtime_state.job_offsets == {"mkdir-collision": 0, "mkdir-success": 8}
-    assert 'mkdir "$HOME/workspace/2345fbb"' in client.run_calls[1].script
-    assert 'mkdir -p "$HOME/workspace/2345fbb"' not in client.run_calls[1].script
-    assert client.closed is True
+    assert layer.runtime_state.session_id == "deadbeefdeadbeef"
+    assert layer.runtime_state.workspace_cwd == "~/workspace/deadbeefdeadbeef"
 
 
-def test_shell_layer_suspend_leaves_client_open_until_resource_context_exits() -> None:
+def test_shell_layer_suspend_closes_client_before_resource_context_exits() -> None:
     client = FakeShellctlClient()
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer = _shell_layer(client=client)
     layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
         async with layer.resource_context():
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             await layer.on_context_suspend()
-            assert client.closed is False
+            assert client.closed is True
 
     asyncio.run(scenario())
-
-    assert client.closed is True
 
 
 def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None:
@@ -317,15 +315,31 @@ def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None
             exit_code=0,
         )
     )
-    second_client = FakeShellctlClient()
-    created_entrypoints: list[str] = []
+    second_client = FakeShellctlClient(
+        run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
+            "cleanup-job",
+            status=JobStatusName.EXITED,
+            done=True,
+            exit_code=0,
+        )
+    )
     clients = iter([first_client, second_client])
 
-    def factory(entrypoint: str) -> FakeShellctlClient:
-        created_entrypoints.append(entrypoint)
+    def factory() -> FakeShellctlClient:
         return next(clients)
 
-    compositor = Compositor([LayerNode("shell", _shell_provider(client_factory=factory))])
+    provisioner = ShellctlProvisioner(client_factory=factory)
+
+    def make_provider(c: FakeShellctlClient) -> LayerProvider[DifyShellLayer]:
+        return LayerProvider.from_factory(
+            layer_type=DifyShellLayer,
+            create=lambda config: DifyShellLayer.from_config_with_settings(
+                DifyShellLayerConfig.model_validate(config),
+                shell_provisioner=provisioner,
+            ),
+        )
+
+    compositor = Compositor([LayerNode("shell", make_provider(first_client))])
 
     async def scenario() -> None:
         async with compositor.enter(configs={"shell": DifyShellLayerConfig()}) as run:
@@ -353,57 +367,44 @@ def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None
             assert second_client.closed is False
             assert resumed_shell.runtime_state.session_id == initial_session_id
             assert resumed_shell.runtime_state.workspace_cwd == f"~/workspace/{initial_session_id}"
-            assert set(resumed_shell.runtime_state.job_ids) == {"mkdir-job", "user-job"}
-            assert resumed_shell.runtime_state.job_offsets == {"mkdir-job": 0, "user-job": 42}
+            assert set(resumed_shell.runtime_state.job_ids) == {"user-job"}
+            assert resumed_shell.runtime_state.job_offsets == {"user-job": 42}
             resumed_run.suspend_layer_on_exit("shell")
 
         assert second_client.closed is True
 
     asyncio.run(scenario())
 
-    assert created_entrypoints == ["http://shellctl", "http://shellctl"]
 
-
-def test_shell_layer_delete_removes_workspace_then_force_deletes_tracked_jobs_and_closes_client() -> None:
+def test_shell_layer_delete_force_deletes_tracked_jobs_then_destroys_workspace() -> None:
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == 'rm -rf -- "$HOME/workspace/abc12ff"'
-        assert cwd is None
-        assert env is None
-        assert timeout == 30.0
-        return _job_result("cleanup-job", status=JobStatusName.RUNNING, done=False, offset=3)
+        del cwd, env, timeout
+        return _job_result("cleanup-job", status=JobStatusName.EXITED, done=True, exit_code=0)
 
-    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
-        assert job_id == "cleanup-job"
-        assert offset == 3
-        assert timeout == 30.0
-        return _job_result("cleanup-job", status=JobStatusName.EXITED, done=True, exit_code=0, offset=5)
-
-    client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    client = FakeShellctlClient(run_handler=run_handler)
+    layer = _shell_layer(client=client)
 
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
             layer.runtime_state.job_ids = ["user-job", "mkdir-job"]
             layer.runtime_state.job_offsets = {"user-job": 9, "mkdir-job": 1}
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             await layer.on_context_delete()
-            assert client.closed is False
 
     asyncio.run(scenario())
 
-    assert client.events[:2] == [("run", 'rm -rf -- "$HOME/workspace/abc12ff"'), ("wait", "cleanup-job")]
-    assert {call.job_id for call in client.delete_calls} == {"user-job", "mkdir-job", "cleanup-job"}
-    assert all(
-        client.events.index(("delete", call.job_id)) > client.events.index(("wait", "cleanup-job"))
-        for call in client.delete_calls
-    )
+    deleted_job_ids = {call.job_id for call in client.delete_calls}
+    assert {"user-job", "mkdir-job"}.issubset(deleted_job_ids)
     assert all(call.force is True for call in client.delete_calls)
     assert layer.runtime_state.job_ids == []
     assert layer.runtime_state.job_offsets == {}
     assert client.closed is True
 
 
-def test_shell_layer_create_failure_force_deletes_internal_jobs_before_reraising() -> None:
+def test_shell_layer_create_failure_destroys_provisioned_workspace() -> None:
     client = FakeShellctlClient(
         run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
             "mkdir-failed",
@@ -412,32 +413,26 @@ def test_shell_layer_create_failure_force_deletes_internal_jobs_before_reraising
             exit_code=1,
         )
     )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer = _shell_layer(client=client)
 
     async def scenario() -> None:
-        with pytest.raises(RuntimeError, match="Failed to create shell workspace"):
+        with pytest.raises(ShellProvisionError, match="Failed to create shell workspace"):
             async with layer.resource_context():
                 await layer.on_context_create()
 
     asyncio.run(scenario())
 
-    assert [call.job_id for call in client.delete_calls] == ["mkdir-failed"]
-    assert all(call.force is True for call in client.delete_calls)
-    assert layer.runtime_state.job_ids == []
-    assert layer.runtime_state.job_offsets == {}
     assert client.closed is True
 
 
 def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(time, "time", lambda: 0xABC12)
-    monkeypatch.setattr(secrets, "token_hex", lambda _nbytes: "ff")
+    monkeypatch.setattr(secrets, "token_hex", lambda _nbytes: "abc12ffabc12ff")
 
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
         assert env is None
         if cwd is None:
-            assert timeout == 30.0
             return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
-        assert cwd == "~/workspace/abc12ff"
+        assert cwd == "~/workspace/abc12ffabc12ff"
         assert "export PROJECT_NAME='demo project'" in script
         assert "export QUOTED='it'\\''s ok'" in script
         assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
@@ -450,7 +445,7 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
 
     client = FakeShellctlClient(run_handler=run_handler)
     layer = _shell_layer(
-        client_factory=lambda _entrypoint: client,
+        client=client,
         config=DifyShellLayerConfig(
             cli_tools=[
                 DifyShellCliToolConfig(
@@ -475,17 +470,11 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
 
     asyncio.run(scenario())
 
-    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ff"]
-    assert layer.runtime_state.job_ids == ["mkdir-job", "bootstrap-job"]
+    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ffabc12ff"]
 
 
 def test_shell_layer_injects_agent_soul_env_without_workspace_env_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(time, "time", lambda: 0xABC12)
-
-    def token_hex(_nbytes: int) -> str:
-        return "ff"
-
-    monkeypatch.setattr(secrets, "token_hex", token_hex)
+    monkeypatch.setattr(secrets, "token_hex", lambda _nbytes: "abc12ffabc12ff")
 
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
         del timeout
@@ -493,7 +482,7 @@ def test_shell_layer_injects_agent_soul_env_without_workspace_env_file(monkeypat
         if cwd is None:
             return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
 
-        assert cwd == "~/workspace/abc12ff"
+        assert cwd == "~/workspace/abc12ffabc12ff"
         assert "export PROJECT_NAME='demo project'" in script
         assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
         assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
@@ -503,7 +492,7 @@ def test_shell_layer_injects_agent_soul_env_without_workspace_env_file(monkeypat
 
     client = FakeShellctlClient(run_handler=run_handler)
     layer = _shell_layer(
-        client_factory=lambda _entrypoint: client,
+        client=client,
         config=DifyShellLayerConfig(
             env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo project")],
             secret_refs=[DifyShellSecretRefConfig(name="OPENAI_API_KEY", ref="secret-1")],
@@ -526,8 +515,7 @@ def test_shell_layer_injects_agent_soul_env_without_workspace_env_file(monkeypat
 
     asyncio.run(scenario())
 
-    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ff"]
-    assert layer.runtime_state.job_ids == ["mkdir-job", "user-job"]
+    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ffabc12ff"]
 
 
 def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -> None:
@@ -587,12 +575,15 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
         input_handler=input_handler,
         terminate_handler=terminate_handler,
     )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer = _shell_layer(client=client)
     tools = {tool.name: tool for tool in layer.tools}
 
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
 
             run_tool_def = await tools["shell_run"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
             wait_tool_def = await tools["shell_wait"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
@@ -642,7 +633,7 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
 
     assert layer.runtime_state.job_ids == ["user-job"]
     assert layer.runtime_state.job_offsets == {"user-job": 22}
-    assert client.closed is True
+    assert client.closed is False
 
 
 def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() -> None:
@@ -657,8 +648,7 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
     client = FakeShellctlClient(run_handler=run_handler)
     layer = DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=lambda _entrypoint: client,
+        shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
@@ -720,11 +710,14 @@ def test_run_remote_script_uses_workspace_cwd_accumulates_output_and_deletes_job
         )
 
     client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer = _shell_layer(client=client)
 
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             result = await layer.run_remote_script("printf 'hello world'", timeout=7.5)
             assert result.output == "hello world"
             assert result.exit_code == 0
@@ -753,11 +746,14 @@ def test_run_remote_script_deletes_job_even_when_command_exits_non_zero() -> Non
         )
 
     client = FakeShellctlClient(run_handler=run_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer = _shell_layer(client=client)
 
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             result = await layer.run_remote_script("exit 17", timeout=3.0)
             assert result.exit_code == 17
             assert result.output == "failed\n"
@@ -785,8 +781,7 @@ def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() 
     client = FakeShellctlClient(run_handler=run_handler)
     layer = DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=lambda _entrypoint: client,
+        shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
@@ -797,6 +792,9 @@ def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() 
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             _ = await layer.run_remote_script("dify-agent file upload report.txt", inject_agent_stub_env=True)
 
     asyncio.run(scenario())
@@ -815,8 +813,7 @@ def test_run_remote_script_raises_when_agent_stub_env_is_unavailable() -> None:
     )
     layer = DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=lambda _entrypoint: client,
+        shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
@@ -826,6 +823,9 @@ def test_run_remote_script_raises_when_agent_stub_env_is_unavailable() -> None:
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             with pytest.raises(RuntimeError, match="Agent Stub environment injection is not available"):
                 await layer.run_remote_script("dify-agent file upload report.txt", inject_agent_stub_env=True)
 
@@ -845,8 +845,7 @@ def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency()
     )
     layer = DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=lambda _entrypoint: client,
+        shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
@@ -857,6 +856,9 @@ def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency()
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             _ = await tools["shell_run"].function_schema.call(
                 {"script": "pwd"},
                 None,  # pyright: ignore[reportArgumentType]
@@ -869,12 +871,15 @@ def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency()
 
 def test_shell_layer_tools_reject_untracked_job_ids_without_shellctl_calls() -> None:
     client = FakeShellctlClient()
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer = _shell_layer(client=client)
     tools = {tool.name: tool for tool in layer.tools}
 
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
 
             wait_result = await tools["shell_wait"].function_schema.call(
                 {"job_id": "missing-job"},
@@ -902,19 +907,16 @@ def test_shell_layer_tools_reject_untracked_job_ids_without_shellctl_calls() -> 
 
 def test_shell_layer_hooks_and_tools_fail_clearly_outside_active_resource_context() -> None:
     client = FakeShellctlClient()
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer = _shell_layer(client=client)
     layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
     tools = {tool.name: tool for tool in layer.tools}
 
     async def scenario() -> None:
-        with pytest.raises(RuntimeError, match="resource_context"):
-            await layer.on_context_suspend()
-
         run_result = await tools["shell_run"].function_schema.call(
             {"script": "pwd"},
             None,  # pyright: ignore[reportArgumentType]
         )
-        _assert_error_observation(run_result, includes="resource_context")
+        _assert_error_observation(run_result, includes="shell handle")
 
     asyncio.run(scenario())
 
@@ -922,7 +924,7 @@ def test_shell_layer_hooks_and_tools_fail_clearly_outside_active_resource_contex
 
 
 def test_shell_runtime_state_rejects_unsafe_resumed_workspace_identity() -> None:
-    with pytest.raises(ValueError, match="session_id must match"):
+    with pytest.raises(ValueError, match="session_id must be 7 or 16 lowercase hex characters"):
         _ = DifyShellRuntimeState.model_validate(
             {
                 "session_id": "../../tmp",

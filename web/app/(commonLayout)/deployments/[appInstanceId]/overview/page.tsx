@@ -1,5 +1,5 @@
-import { OverviewTab } from '@/features/deployments/detail/overview-tab'
+import { DeploymentOverview } from '@/features/deployments/detail/overview'
 
 export default function InstanceDetailOverviewPage() {
-  return <OverviewTab />
+  return <DeploymentOverview />
 }

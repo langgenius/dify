@@ -36,6 +36,7 @@ import ModelInfo from '@/app/components/app/log/model-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import Loading from '@/app/components/base/loading'
@@ -165,13 +166,25 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   })
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
+  const {
+    currentLogItem,
+    setCurrentLogItem,
+    showMessageLogModal,
+    setShowMessageLogModal,
+    showPromptLogModal,
+    setShowPromptLogModal,
+    showAgentLogModal,
+    setShowAgentLogModal,
+    currentLogModalActiveTab,
+  } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
     showPromptLogModal: state.showPromptLogModal,
     setShowPromptLogModal: state.setShowPromptLogModal,
+    showAgentLogModal: state.showAgentLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
@@ -395,6 +408,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
   const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+  const shouldShowPromptLogModal = showPromptLogModal && !!currentLogItem?.log
 
   const varList = getDetailVarList(detail, varValues)
   const message_files = getCompletionMessageFiles(detail, isChatMode)
@@ -507,6 +521,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 noChatInput
                 showPromptLog
                 hideProcessDetail
+                hideLogModal
                 chatContainerInnerClassName="px-3"
                 switchSibling={switchSibling}
               />
@@ -546,6 +561,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   noChatInput
                   showPromptLog
                   hideProcessDetail
+                  hideLogModal
                   chatContainerInnerClassName="px-3"
                   switchSibling={switchSibling}
                 />
@@ -574,7 +590,18 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           />
         </WorkflowContextProvider>
       )}
-      {!isChatMode && showPromptLogModal && (
+      {showAgentLogModal && (
+        <AgentLogModal
+          floating
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowAgentLogModal(false)
+          }}
+        />
+      )}
+      {shouldShowPromptLogModal && (
         <PromptLogModal
           width={width}
           currentLogItem={currentLogItem}

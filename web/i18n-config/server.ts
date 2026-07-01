@@ -2,7 +2,6 @@ import type { i18n as I18nInstance, Resource, ResourceLanguage } from 'i18next'
 import type { Locale } from '.'
 import type { Namespace, NamespaceInFileName } from './resources'
 import { match } from '@formatjs/intl-localematcher'
-import { kebabCase } from 'es-toolkit/compat'
 import { camelCase } from 'es-toolkit/string'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
@@ -12,6 +11,7 @@ import { initReactI18next } from 'react-i18next/initReactI18next'
 import { cookies, headers } from '@/next/headers'
 import { serverOnlyContext } from '@/utils/server-only-context'
 import { i18n } from '.'
+import { loadI18nResource } from './load-resource'
 import { namespacesInFileName } from './resources'
 import { getInitOptions } from './settings'
 
@@ -26,10 +26,7 @@ const getOrCreateI18next = async (lng: Locale) => {
   instance = createInstance()
   await instance
     .use(initReactI18next)
-    .use(resourcesToBackend((language: Locale, namespace: Namespace | NamespaceInFileName) => {
-      const fileNamespace = kebabCase(namespace)
-      return import(`../i18n/${language}/${fileNamespace}.json`)
-    }))
+    .use(resourcesToBackend((language: Locale, namespace: Namespace | NamespaceInFileName) => loadI18nResource(language, namespace)))
     .init({
       ...getInitOptions(),
       lng,
@@ -85,7 +82,7 @@ export const getResources = cache(async (lng: Locale): Promise<Resource> => {
 
   await Promise.all(
     (namespacesInFileName).map(async (ns) => {
-      const mod = await import(`../i18n/${lng}/${ns}.json`)
+      const mod = await loadI18nResource(lng, ns)
       messages[camelCase(ns)] = mod.default
     }),
   )
