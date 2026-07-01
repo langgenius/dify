@@ -1,6 +1,7 @@
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { DataSetListResponse } from '@/models/datasets'
 import type { TryAppFlowPreview, TryAppInfo } from '@/models/try-app'
+import { trialApps } from '@dify/contracts/api/console/trial-apps/orpc.gen'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -54,3 +55,11 @@ export const trialAppParametersContract = base
     }
   }>())
   .output(type<ChatConfig>())
+
+export const trialAppsRouterContract = {
+  ...trialApps,
+  info: trialAppInfoContract,
+  datasets: trialAppDatasetsContract,
+  parameters: trialAppParametersContract,
+  workflows: trialAppWorkflowsContract,
+}
