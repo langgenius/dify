@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from graphon.entities.pause_reason import HitlRequired, SchedulingPause
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
-
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import resolve_variable_select_input_options
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 
 from .pause_reason import HumanInputRequired, PauseReason
 from .session_binding import default_session_binding

@@ -28,6 +28,8 @@ from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.nodes.human_input.pause_reason import (
     HUMAN_INPUT_REQUIRED_REASON_TYPE,
     HumanInputRequired,
+)
+from core.workflow.nodes.human_input.pause_reason import (
     PauseReason as DifyPauseReason,
 )
 from core.workflow.variable_prefixes import (
@@ -37,7 +39,8 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import PauseReason as GraphonPauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
+from graphon.entities.pause_reason import PauseReasonType, SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,

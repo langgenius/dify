@@ -10,9 +10,9 @@ from core.workflow.nodes.agent_v2.ask_human_resume import (
     build_deferred_tool_results,
     map_form_to_outcome,
 )
-from graphon.entities.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from graphon.entities.pause_reason import HumanInputRequired
 
 
 def _form_definition_json() -> str:

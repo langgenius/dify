@@ -2844,9 +2844,7 @@ class TestWorkflowServiceFreeNodeExecution:
             service.validate_features_structure(app, {})
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
-        with patch(
-            "services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")
-        ):
+        with patch("services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")):
             with pytest.raises(ValueError, match="Invalid HumanInput node data"):
                 service._validate_human_input_node_data({})
 

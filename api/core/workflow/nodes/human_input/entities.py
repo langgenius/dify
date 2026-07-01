@@ -53,10 +53,7 @@ class StringSource(BaseModel):
         if self.type == ValueSourceType.CONSTANT:
             return self
         if len(self.selector) < SELECTORS_LENGTH:
-            msg = (
-                f"the length of selector should be at least {SELECTORS_LENGTH}, "
-                f"selector={self.selector}"
-            )
+            msg = f"the length of selector should be at least {SELECTORS_LENGTH}, selector={self.selector}"
             raise ValueError(msg)
         return self
 
@@ -133,24 +130,22 @@ class SelectInputConfig(BaseInputConfig):
         return None
 
 
-_ALLOWED_TRANSFER_METHOD = frozenset([
-    FileTransferMethod.LOCAL_FILE,
-    FileTransferMethod.REMOTE_URL,
-])
+_ALLOWED_TRANSFER_METHOD = frozenset(
+    [
+        FileTransferMethod.LOCAL_FILE,
+        FileTransferMethod.REMOTE_URL,
+    ]
+)
 
 
 class _FileInputCommonConfig(BaseModel):
     allowed_file_types: Sequence[FileType] = Field(default_factory=list[FileType])
     allowed_file_extensions: Sequence[str] = Field(default_factory=list)
-    allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(
-        default_factory=list[FileTransferMethod]
-    )
+    allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list[FileTransferMethod])
 
     @field_validator("allowed_file_upload_methods", mode="after")
     @classmethod
-    def _validate_upload_methods(
-        cls, transfer_methods: Sequence[FileTransferMethod]
-    ) -> Sequence[FileTransferMethod]:
+    def _validate_upload_methods(cls, transfer_methods: Sequence[FileTransferMethod]) -> Sequence[FileTransferMethod]:
         validated_values: list[FileTransferMethod] = []
         for value in transfer_methods:
             if value not in _ALLOWED_TRANSFER_METHOD:
@@ -248,9 +243,7 @@ class HumanInputNodeData(BaseNodeData):
 
     @field_validator("user_actions")
     @classmethod
-    def _validate_user_actions(
-        cls, user_actions: list[UserActionConfig]
-    ) -> list[UserActionConfig]:
+    def _validate_user_actions(cls, user_actions: list[UserActionConfig]) -> list[UserActionConfig]:
         seen_ids: set[str] = set()
         for action in user_actions:
             action_id = action.id
@@ -270,10 +263,7 @@ class HumanInputNodeData(BaseNodeData):
                 assert_never(self.timeout_unit)
 
     def outputs_field_names(self) -> Sequence[str]:
-        return [
-            match.group("field_name")
-            for match in _OUTPUT_VARIABLE_PATTERN.finditer(self.form_content)
-        ]
+        return [match.group("field_name") for match in _OUTPUT_VARIABLE_PATTERN.finditer(self.form_content)]
 
     def extract_variable_selector_to_variable_mapping(
         self,
@@ -285,18 +275,15 @@ class HumanInputNodeData(BaseNodeData):
             for selector in selectors:
                 if len(selector) < SELECTORS_LENGTH:
                     continue
-                qualified_variable_mapping_key = (
-                    f"{node_id}.#{'.'.join(selector[:SELECTORS_LENGTH])}#"
-                )
+                qualified_variable_mapping_key = f"{node_id}.#{'.'.join(selector[:SELECTORS_LENGTH])}#"
                 variable_mappings[qualified_variable_mapping_key] = list(
                     selector[:SELECTORS_LENGTH],
                 )
 
         form_template_parser = VariableTemplateParser(template=self.form_content)
-        _add_variable_selectors([
-            selector.value_selector
-            for selector in form_template_parser.extract_variable_selectors()
-        ])
+        _add_variable_selectors(
+            [selector.value_selector for selector in form_template_parser.extract_variable_selectors()]
+        )
 
         for form_input in self.inputs:
             selectors = form_input.extract_variable_selectors()

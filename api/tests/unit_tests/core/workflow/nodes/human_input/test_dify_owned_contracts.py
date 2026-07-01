@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 
-from pydantic import TypeAdapter
 import pytest
+from pydantic import TypeAdapter
 
 from core.workflow.nodes.human_input._exc import ExtensionsNotSetErrorValueError
 from core.workflow.nodes.human_input.entities import (
@@ -12,12 +12,10 @@ from core.workflow.nodes.human_input.entities import (
     FormDefinition,
     ParagraphInputConfig,
     SelectInputConfig,
-    StringListSource,
-    StringSource,
     UserActionConfig,
 )
-from core.workflow.nodes.human_input.enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReasonType
+from core.workflow.nodes.human_input.enums import ButtonStyle, FormInputType, ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from graphon.file import FileType
 
