@@ -26,3 +26,14 @@ Feature: Agent v2 configure persistence
     When I open the Agent v2 configure page from the Agent Roster
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the normal Agent v2 draft should use the updated E2E prompt
+
+  @configure-persistence
+  Scenario: Concurrent Agent v2 edits converge to one clear saved draft after refresh
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    And I open the same Agent v2 configure page in another tab
+    And I save the Agent v2 prompt from the first configure tab
+    And I save the Agent v2 prompt from the second configure tab
+    When I refresh both Agent v2 configure tabs
+    Then both Agent v2 configure tabs and the Agent v2 draft should show one saved concurrent prompt

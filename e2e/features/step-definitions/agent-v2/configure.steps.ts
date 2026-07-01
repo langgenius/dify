@@ -1,7 +1,11 @@
+import type { Page } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
+import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
 import {
+  concurrentFirstAgentPrompt,
+  concurrentSecondAgentPrompt,
   createAgentSoulConfigWithModel,
   createConfiguredTestAgent,
   createTestAgent,
@@ -20,6 +24,42 @@ import {
   getCurrentAgentId,
   getPreseededAgent,
 } from './configure-helpers'
+
+const concurrentAgentPrompts = [
+  concurrentFirstAgentPrompt,
+  concurrentSecondAgentPrompt,
+]
+
+function attachPageDiagnostics(world: DifyWorld, page: Page) {
+  page.setDefaultTimeout(30_000)
+  page.on('console', (message) => {
+    if (message.type() === 'error')
+      world.consoleErrors.push(message.text())
+  })
+  page.on('pageerror', (error) => {
+    world.pageErrors.push(error.message)
+  })
+  page.on('download', (dl) => {
+    world.capturedDownloads.push(dl)
+  })
+}
+
+const getPromptEditor = (page: Page) =>
+  page.getByRole('region', { name: 'Prompt' }).getByRole('textbox', { name: 'Prompt' })
+
+async function fillAgentPromptEditor(page: Page, prompt: string) {
+  const promptSection = page.getByRole('region', { name: 'Prompt' })
+
+  await expect(promptSection).toBeVisible({ timeout: 30_000 })
+  await getPromptEditor(page).fill(prompt)
+}
+
+async function expectAgentComposerPrompt(agentId: string, prompt: string) {
+  await expect.poll(
+    async () => (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt,
+    { timeout: 30_000 },
+  ).toBe(prompt)
+}
 
 Given('an Agent v2 test agent has been created via API', async function (this: DifyWorld) {
   const agent = await createTestAgent()
@@ -124,19 +164,58 @@ When(
 )
 
 When('I fill the Agent v2 prompt editor with the normal E2E prompt', async function (this: DifyWorld) {
-  const page = this.getPage()
-  const promptSection = page.getByRole('region', { name: 'Prompt' })
-
-  await expect(promptSection).toBeVisible({ timeout: 30_000 })
-  await promptSection.getByRole('textbox', { name: 'Prompt' }).fill(normalAgentPrompt)
+  await fillAgentPromptEditor(this.getPage(), normalAgentPrompt)
 })
 
 When('I fill the Agent v2 prompt editor with the updated E2E prompt', async function (this: DifyWorld) {
-  const page = this.getPage()
-  const promptSection = page.getByRole('region', { name: 'Prompt' })
+  await fillAgentPromptEditor(this.getPage(), updatedAgentPrompt)
+})
 
-  await expect(promptSection).toBeVisible({ timeout: 30_000 })
-  await promptSection.getByRole('textbox', { name: 'Prompt' }).fill(updatedAgentPrompt)
+When('I open the same Agent v2 configure page in another tab', async function (this: DifyWorld) {
+  if (!this.context)
+    throw new Error('Playwright context has not been initialized for this scenario.')
+
+  const agentId = getCurrentAgentId(this)
+  const concurrentPage = await this.context.newPage()
+  attachPageDiagnostics(this, concurrentPage)
+  this.agentBuilder.configure.concurrentPage = concurrentPage
+
+  await concurrentPage.goto(getAgentConfigurePath(agentId))
+  await expect(concurrentPage).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
+  await expect(concurrentPage.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+})
+
+When('I save the Agent v2 prompt from the first configure tab', async function (this: DifyWorld) {
+  const agentId = getCurrentAgentId(this)
+
+  await fillAgentPromptEditor(this.getPage(), concurrentFirstAgentPrompt)
+  await waitForAgentConfigureAutosaved(this.getPage())
+  await expectAgentComposerPrompt(agentId, concurrentFirstAgentPrompt)
+})
+
+When('I save the Agent v2 prompt from the second configure tab', async function (this: DifyWorld) {
+  const agentId = getCurrentAgentId(this)
+  const concurrentPage = this.agentBuilder.configure.concurrentPage
+  if (!concurrentPage)
+    throw new Error('Open the same Agent v2 configure page in another tab before editing it.')
+
+  await fillAgentPromptEditor(concurrentPage, concurrentSecondAgentPrompt)
+  await waitForAgentConfigureAutosaved(concurrentPage)
+  await expectAgentComposerPrompt(agentId, concurrentSecondAgentPrompt)
+})
+
+When('I refresh both Agent v2 configure tabs', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const concurrentPage = this.agentBuilder.configure.concurrentPage
+  if (!concurrentPage)
+    throw new Error('Open the same Agent v2 configure page in another tab before refreshing it.')
+
+  await Promise.all([
+    page.reload(),
+    concurrentPage.reload(),
+  ])
+  await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+  await expect(concurrentPage.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
 })
 
 Then('I should be on the Agent v2 configure page', async function (this: DifyWorld) {
@@ -159,10 +238,8 @@ Then(
   'I should see the normal E2E prompt in the Agent v2 prompt editor',
   async function (this: DifyWorld) {
     const page = this.getPage()
-    const promptSection = page.getByRole('region', { name: 'Prompt' })
 
-    await expect(promptSection).toBeVisible({ timeout: 30_000 })
-    await expect(promptSection.getByRole('textbox', { name: 'Prompt' })).toContainText(normalAgentPrompt)
+    await expect(getPromptEditor(page)).toContainText(normalAgentPrompt, { timeout: 30_000 })
   },
 )
 
@@ -182,10 +259,33 @@ Then(
   'I should see the updated E2E prompt in the Agent v2 prompt editor',
   async function (this: DifyWorld) {
     const page = this.getPage()
-    const promptSection = page.getByRole('region', { name: 'Prompt' })
 
-    await expect(promptSection).toBeVisible({ timeout: 30_000 })
-    await expect(promptSection.getByRole('textbox', { name: 'Prompt' })).toContainText(updatedAgentPrompt)
+    await expect(getPromptEditor(page)).toContainText(updatedAgentPrompt, { timeout: 30_000 })
+  },
+)
+
+Then(
+  'both Agent v2 configure tabs and the Agent v2 draft should show one saved concurrent prompt',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+    const concurrentPage = this.agentBuilder.configure.concurrentPage
+    if (!concurrentPage)
+      throw new Error('Open the same Agent v2 configure page in another tab before asserting convergence.')
+
+    let savedPrompt = ''
+    await expect.poll(
+      async () => {
+        const prompt = (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt
+        if (prompt && concurrentAgentPrompts.includes(prompt))
+          savedPrompt = prompt
+
+        return !!savedPrompt
+      },
+      { timeout: 30_000 },
+    ).toBe(true)
+
+    await expect(getPromptEditor(this.getPage())).toContainText(savedPrompt)
+    await expect(getPromptEditor(concurrentPage)).toContainText(savedPrompt)
   },
 )
 

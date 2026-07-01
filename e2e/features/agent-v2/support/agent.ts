@@ -70,6 +70,12 @@ export const normalAgentPrompt
 export const updatedAgentPrompt
   = 'You are a Dify Agent E2E test assistant. Every response must start with E2E_AGENT_UPDATED.'
 
+export const concurrentFirstAgentPrompt
+  = 'You are a Dify Agent E2E concurrent edit assistant. Always include E2E_CONCURRENT_FIRST in saved instructions.'
+
+export const concurrentSecondAgentPrompt
+  = 'You are a Dify Agent E2E concurrent edit assistant. Always include E2E_CONCURRENT_SECOND in saved instructions.'
+
 export const normalAgentSoulConfig: AgentSoulConfig = {
   prompt: {
     system_prompt: normalAgentPrompt,

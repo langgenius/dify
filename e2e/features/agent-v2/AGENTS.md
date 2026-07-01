@@ -61,6 +61,7 @@ Use the existing namespace shape:
 - `world.agentBuilder.accessPoint.webAppURL`
 - `world.agentBuilder.accessPoint.workflowReferencePage`
 - `world.agentBuilder.accessPoint.composerDraftSnapshot`
+- `world.agentBuilder.configure.concurrentPage`
 - `world.agentBuilder.workflow.outputVariables`
 
 Use `features/agent-v2/support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, Agent drive file cleanup, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
