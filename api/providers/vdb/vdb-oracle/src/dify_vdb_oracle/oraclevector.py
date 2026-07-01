@@ -717,6 +717,7 @@ class OracleVector(BaseVector):
             with conn.cursor() as cur:
                 cur.execute(f"DROP TABLE IF EXISTS {self.table_name} cascade constraints")
             conn.commit()
+        redis_client.delete(collection_cache_key(self._collection_name, self.config))
 
     @staticmethod
     def _validate_world_lexer(cur: Any) -> None:

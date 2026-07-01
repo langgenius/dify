@@ -579,9 +579,13 @@ def test_text_exists_and_get_by_ids(oracle_module):
     assert vector.get_by_ids([]) == []
 
 
-def test_delete_methods(oracle_module):
+def test_delete_methods(oracle_module, monkeypatch: pytest.MonkeyPatch):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector._collection_name = "collection_1"
     vector.table_name = "embedding_collection_1"
+    vector.config = _config(oracle_module)
+    delete_cache = MagicMock()
+    monkeypatch.setattr(oracle_module.redis_client, "delete", delete_cache)
 
     cursor = MagicMock()
     vector._get_connection = MagicMock(return_value=_connection_with_cursor(cursor))
@@ -600,6 +604,7 @@ def test_delete_methods(oracle_module):
     assert any("DELETE FROM embedding_collection_1 WHERE id IN" in sql for sql in executed_sql)
     assert any("JSON_VALUE(meta" in sql for sql in executed_sql)
     assert any("DROP TABLE IF EXISTS embedding_collection_1" in sql for sql in executed_sql)
+    delete_cache.assert_called_once_with(oracle_module.collection_cache_key("collection_1", vector.config))
 
 
 def test_delete_by_ids_batches_large_id_lists(oracle_module):
