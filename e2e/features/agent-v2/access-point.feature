@@ -71,11 +71,26 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Web app settings dialog
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access @published-web-app @stable-model
-  Scenario: Web app access can be disabled and restored
+  @core @web-app-access @published-web-app
+  Scenario: Web app access can be disabled and restored from Access Point
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
+    And the Agent v2 draft has been published via API
+    And Agent v2 Web app access has been enabled via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
+    And I disable Agent v2 Web app access
+    Then Agent v2 Web app access should be out of service
+    When I enable Agent v2 Web app access
+    Then Agent v2 Web app access should be in service
+    When I refresh the current page
+    Then Agent v2 Web app access should be in service
+
+  @web-app-access @published-web-app @feature-gated
+  Scenario: Disabled Web app public URL shows an unavailable state
+    Given I am signed in as the default E2E admin
+    And Agent v2 disabled Web app public unavailable state is available
+    And a basic configured Agent v2 test agent has been created via API
     And the Agent v2 draft has been published via API
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
@@ -84,12 +99,6 @@ Feature: Agent v2 Access Point
     Then Agent v2 Web app access should be out of service
     When I open the disabled Agent v2 Web app URL
     Then the disabled Agent v2 Web app should show an unavailable state
-    When I enable Agent v2 Web app access
-    Then Agent v2 Web app access should be in service
-    When I open the restored Agent v2 Web app URL
-    Then the restored Agent v2 Web app should not show an unavailable state
-    When I refresh the current page
-    Then Agent v2 Web app access should be in service
 
   @core @workflow-reference
   Scenario: Workflow access shows the referencing workflow

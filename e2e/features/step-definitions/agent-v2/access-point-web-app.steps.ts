@@ -1,9 +1,10 @@
 import type { DifyWorld } from '../../support/world'
-import { Then, When } from '@cucumber/cucumber'
+import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { setAgentSiteAccessAndGetURL } from '../../agent-v2/support/access-point'
 import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
+import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
 import {
   getCurrentAgentId,
   getDialog,
@@ -207,6 +208,20 @@ Then('Agent v2 Web app access should be out of service', async function (this: D
   await expect(webAppCard.getByText('Out of service')).toBeVisible()
   await expect(webAppCard.getByRole('button', { name: 'Launch' })).toBeDisabled()
 })
+
+Given(
+  'Agent v2 disabled Web app public unavailable state is available',
+  async function (this: DifyWorld) {
+    return skipBlockedPrecondition(
+      this,
+      'Disabled Agent v2 Web app public URL does not expose a stable user-visible unavailable state; the current route redirects to Web app sign-in.',
+      {
+        owner: 'product',
+        remediation: 'Define and implement the disabled public Web app UX before enabling this scenario.',
+      },
+    )
+  },
+)
 
 When('I open the disabled Agent v2 Web app URL', async function (this: DifyWorld) {
   const webAppURL = this.agentBuilder.accessPoint.webAppURL
