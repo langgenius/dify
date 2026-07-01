@@ -51,16 +51,18 @@ class DatabaseFileAccessController(FileAccessControllerProtocol):
         if not resolved_scope.requires_user_ownership:
             return scoped_stmt
 
+        account_owned_filter = UploadFile.created_by_role == CreatorUserRole.ACCOUNT
         user_owned_filter = and_(
             UploadFile.created_by_role == CreatorUserRole.END_USER,
             UploadFile.created_by == resolved_scope.user_id,
         )
         if not resolved_scope.granted_upload_file_ids:
-            return scoped_stmt.where(user_owned_filter)
+            return scoped_stmt.where(or_(user_owned_filter, account_owned_filter))
 
         return scoped_stmt.where(
             or_(
                 user_owned_filter,
+                account_owned_filter,
                 UploadFile.id.in_(resolved_scope.granted_upload_file_ids),
             )
         )
