@@ -655,27 +655,6 @@ export const zSyncDraftWorkflowResponse = z.object({
 })
 
 /**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayload = z.object({
-  conversation_variables: z.array(z.record(z.string(), z.unknown())),
-})
-
-/**
- * EnvironmentVariableUpdatePayload
- */
-export const zEnvironmentVariableUpdatePayload = z.object({
-  environment_variables: z.array(z.record(z.string(), z.unknown())),
-})
-
-/**
- * WorkflowFeaturesPayload
- */
-export const zWorkflowFeaturesPayload = z.object({
-  features: z.record(z.string(), z.unknown()),
-})
-
-/**
  * HumanInputDeliveryTestPayload
  */
 export const zHumanInputDeliveryTestPayload = z.object({
@@ -1737,6 +1716,7 @@ export const zSandboxUploadResponse = z.object({
  */
 export const zAccountWithRole = z.object({
   avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
@@ -1967,6 +1947,24 @@ export const zWorkflowPaginationResponse = z.object({
 })
 
 /**
+ * ConversationVariableItemPayload
+ */
+export const zConversationVariableItemPayload = z.object({
+  description: z.string().nullish(),
+  id: z.string().nullish(),
+  name: z.string().nullish(),
+  value: z.unknown().nullish(),
+  value_type: z.string().nullish(),
+})
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayload = z.object({
+  conversation_variables: z.array(zConversationVariableItemPayload),
+})
+
+/**
  * EnvironmentVariableItemResponse
  */
 export const zEnvironmentVariableItemResponse = z.object({
@@ -1987,6 +1985,24 @@ export const zEnvironmentVariableItemResponse = z.object({
  */
 export const zEnvironmentVariableListResponse = z.object({
   items: z.array(zEnvironmentVariableItemResponse),
+})
+
+/**
+ * EnvironmentVariableItemPayload
+ */
+export const zEnvironmentVariableItemPayload = z.object({
+  description: z.string().nullish(),
+  id: z.string().nullish(),
+  name: z.string().nullish(),
+  value: z.unknown().nullish(),
+  value_type: z.string().nullish(),
+})
+
+/**
+ * EnvironmentVariableUpdatePayload
+ */
+export const zEnvironmentVariableUpdatePayload = z.object({
+  environment_variables: z.array(zEnvironmentVariableItemPayload),
 })
 
 /**
@@ -2669,6 +2685,41 @@ export const zWorkflowArchivedLogPaginationResponse = z.object({
 })
 
 /**
+ * WorkflowFeatureTogglePayload
+ */
+export const zWorkflowFeatureTogglePayload = z.object({
+  enabled: z.boolean().nullish(),
+})
+
+/**
+ * WorkflowSensitiveWordAvoidancePayload
+ */
+export const zWorkflowSensitiveWordAvoidancePayload = z.object({
+  config: z.record(z.string(), z.unknown()).nullish(),
+  enabled: z.boolean().nullish(),
+  type: z.string().nullish(),
+})
+
+/**
+ * WorkflowSuggestedQuestionsAfterAnswerPayload
+ */
+export const zWorkflowSuggestedQuestionsAfterAnswerPayload = z.object({
+  enabled: z.boolean().nullish(),
+  model: z.record(z.string(), z.unknown()).nullish(),
+  prompt: z.string().nullish(),
+})
+
+/**
+ * WorkflowTextToSpeechPayload
+ */
+export const zWorkflowTextToSpeechPayload = z.object({
+  autoPlay: z.string().nullish(),
+  enabled: z.boolean().nullish(),
+  language: z.string().nullish(),
+  voice: z.string().nullish(),
+})
+
+/**
  * AgentScope
  *
  * Visibility and lifecycle scope of an Agent record.
@@ -2935,6 +2986,72 @@ export const zHumanInputFormSubmissionData = z.object({
   node_title: z.string(),
   rendered_content: z.string(),
   submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+})
+
+/**
+ * WorkflowFileUploadTransferPayload
+ */
+export const zWorkflowFileUploadTransferPayload = z.object({
+  enabled: z.boolean().nullish(),
+  number_limits: z.int().nullish(),
+  transfer_methods: z.array(z.string()).nullish(),
+})
+
+/**
+ * WorkflowFileUploadImagePayload
+ */
+export const zWorkflowFileUploadImagePayload = z.object({
+  detail: z.string().nullish(),
+  enabled: z.boolean().nullish(),
+  number_limits: z.int().nullish(),
+  transfer_methods: z.array(z.string()).nullish(),
+})
+
+/**
+ * WorkflowFileUploadPreviewConfigPayload
+ */
+export const zWorkflowFileUploadPreviewConfigPayload = z.object({
+  file_type_list: z.array(z.string()).nullish(),
+  mode: z.string().nullish(),
+})
+
+/**
+ * WorkflowFileUploadPayload
+ */
+export const zWorkflowFileUploadPayload = z.object({
+  allowed_file_extensions: z.array(z.string()).nullish(),
+  allowed_file_types: z.array(z.string()).nullish(),
+  allowed_file_upload_methods: z.array(z.string()).nullish(),
+  audio: zWorkflowFileUploadTransferPayload.nullish(),
+  custom: zWorkflowFileUploadTransferPayload.nullish(),
+  document: zWorkflowFileUploadTransferPayload.nullish(),
+  enabled: z.boolean().nullish(),
+  fileUploadConfig: z.record(z.string(), z.unknown()).nullish(),
+  image: zWorkflowFileUploadImagePayload.nullish(),
+  number_limits: z.int().nullish(),
+  preview_config: zWorkflowFileUploadPreviewConfigPayload.nullish(),
+  video: zWorkflowFileUploadTransferPayload.nullish(),
+})
+
+/**
+ * WorkflowFeaturesConfigPayload
+ */
+export const zWorkflowFeaturesConfigPayload = z.object({
+  file_upload: zWorkflowFileUploadPayload.nullish(),
+  opening_statement: z.string().nullish(),
+  retriever_resource: zWorkflowFeatureTogglePayload.nullish(),
+  sensitive_word_avoidance: zWorkflowSensitiveWordAvoidancePayload.nullish(),
+  speech_to_text: zWorkflowFeatureTogglePayload.nullish(),
+  suggested_questions: z.array(z.string()).nullish(),
+  suggested_questions_after_answer: zWorkflowSuggestedQuestionsAfterAnswerPayload.nullish(),
+  text_to_speech: zWorkflowTextToSpeechPayload.nullish(),
+})
+
+/**
+ * WorkflowFeaturesPayload
+ */
+export const zWorkflowFeaturesPayload = z.object({
+  features: zWorkflowFeaturesConfigPayload,
 })
 
 /**
@@ -4015,6 +4132,29 @@ export const zAppDetailWithSiteWritable = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+})
+
+/**
+ * AccountWithRole
+ */
+export const zAccountWithRoleWritable = z.object({
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  last_active_at: z.int().nullish(),
+  last_login_at: z.int().nullish(),
+  name: z.string(),
+  role: z.string(),
+  roles: z.array(z.record(z.string(), z.string())).optional(),
+  status: z.string(),
+})
+
+/**
+ * WorkflowCommentMentionUsersPayload
+ */
+export const zWorkflowCommentMentionUsersPayloadWritable = z.object({
+  users: z.array(zAccountWithRoleWritable),
 })
 
 /**

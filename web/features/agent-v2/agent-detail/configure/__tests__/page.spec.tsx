@@ -430,6 +430,28 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
     })
+
+    it('should expose a single configure workspace region after loading', () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getAllByRole('region', { name: 'agentV2.agentDetail.sections.configure' })).toHaveLength(1)
+      expect(screen.getByRole('region', { name: 'agentV2.agentDetail.sections.configure' })).toBeVisible()
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toBeInTheDocument()
+    })
   })
 
   describe('Right panel mode', () => {
