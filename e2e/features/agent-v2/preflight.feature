@@ -25,6 +25,13 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded tool "Tavily / Tavily Search" is available
 
+  @skill-fixture
+  Scenario: Summary Skill package fixture uploads to Agent drive
+    Given I am signed in as the default E2E admin
+    And an Agent v2 test agent has been created via API
+    And the e2e-summary-skill Skill is available to the Agent v2 test agent
+    Then the Agent v2 test agent should include drive skill "e2e-summary-skill"
+
   Scenario: Agent knowledge base is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready

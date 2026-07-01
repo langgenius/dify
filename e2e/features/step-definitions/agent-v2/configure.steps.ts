@@ -10,6 +10,7 @@ import {
   createTestAgent,
   getAgentComposerDraft,
   getAgentConfigurePath,
+  getAgentDriveSkills,
   getTestAgent,
   normalAgentPrompt,
   normalAgentSoulConfig,
@@ -205,6 +206,12 @@ Given('the e2e-summary-skill Skill is available to the Agent v2 test agent', asy
     fileName: agentBuilderTestMaterials.summarySkill,
     filePath: getAgentBuilderTestMaterialPath('summarySkill'),
   })
+})
+
+Then('the Agent v2 test agent should include drive skill {string}', async function (this: DifyWorld, skillName: string) {
+  const skills = await getAgentDriveSkills(getCurrentAgentId(this))
+
+  expect(skills.map(skill => skill.name)).toContain(skillName)
 })
 
 Given('an Agent v2 Build draft uses the updated E2E prompt', async function (this: DifyWorld) {

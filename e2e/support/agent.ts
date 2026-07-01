@@ -80,6 +80,16 @@ export type AgentDriveSkillUpload = {
   }
 }
 
+export type AgentDriveSkill = {
+  description?: string | null
+  name: string
+  path: string
+}
+
+export type AgentDriveSkillListResponse = {
+  items: AgentDriveSkill[]
+}
+
 export type CreateTestAgentOptions = {
   description?: string
   name?: string
@@ -360,6 +370,19 @@ export async function uploadAgentDriveSkill({
     })
     await expectApiResponseOK(response, `Upload Agent v2 drive skill ${fileName} for ${agentId}`)
     return (await response.json()) as AgentDriveSkillUpload
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSkill[]> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agentId}/drive/skills`)
+    await expectApiResponseOK(response, `Get Agent v2 drive skills for ${agentId}`)
+    const body = (await response.json()) as AgentDriveSkillListResponse
+    return body.items
   }
   finally {
     await ctx.dispose()
