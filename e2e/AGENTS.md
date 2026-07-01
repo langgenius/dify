@@ -296,37 +296,13 @@ Use `support/naming.ts` for generated test resource names. New app, Agent, datas
 
 Use `fixtures/test-materials/` for checked-in files that scenarios upload, preview, index, or retrieve. Keep these fixtures small and deterministic, and use `support/test-materials.ts` to resolve their absolute paths.
 
-Use `support/preflight.ts` for scenarios that require optional external resources such as a stable model provider, plugin/tool credential, or knowledge base seed. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks. Keep `support/preflight.ts` as the public barrel and put resource checks in the matching module under `support/preflight/`: `models.ts`, `agents.ts`, `datasets.ts`, `tools.ts`, or `access.ts`.
+Use `support/preflight.ts` for scenarios that require optional external resources such as a model provider, plugin/tool credential, knowledge base seed, or fixed app. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
 
-Keep Agent Builder step definitions grouped by user capability, not by DOM component or Cucumber keyword. `configure.steps.ts` owns common configure navigation, refresh, and draft assertions; `build-draft.steps.ts` owns Build mode checkout, apply, discard, and Build draft isolation; `files.steps.ts` owns Files upload and file-list assertions; `advanced-settings.steps.ts` owns Env and advanced settings behavior; `agent-edit.steps.ts` owns saved Agent detail display assertions; `publish.steps.ts` owns publish state; `access-point.steps.ts` owns Access Point behavior; `preflight.steps.ts` should remain the explicit `Given` entrypoint for preflight resources.
+Keep `support/preflight.ts` as the public barrel when feature-specific checks need implementation modules underneath it. The step wording should stay explicit in the feature area, while support code owns API checks, readiness polling, and blocked-precondition messages.
 
-Use `the Agent Builder stable chat model is available` before scenarios that must run an Agent with a real model. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` define the single usable model for the E2E environment. The step defaults the type to `llm`, verifies the model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`. Any Agent Builder scenario that needs a usable model should explicitly apply this stored model during its own setup instead of hard-coding provider or model names in feature files or hooks.
+Use typed cleanup fields on `DifyWorld` for resource types created by scenarios, and use `DifyWorld.registerCleanup(...)` when a scenario creates any resource type that is not covered by typed cleanup fields. Cleanup callbacks run after typed cleanup queues, even when the scenario fails.
 
-Use `the Agent Builder broken chat model is available` before model-recovery scenarios that intentionally start from an invalid model. The step requires `E2E_BROKEN_MODEL_PROVIDER`, defaults `E2E_BROKEN_MODEL_NAME` to `e2e-broken-model`, defaults `E2E_BROKEN_MODEL_TYPE` to `llm`, and only verifies that the model entry exists. The scenario must still assert the user-visible failure and recovery behavior.
-
-Use `the Agent Builder preseeded Agent "{name}" is available`, `the Agent Builder preseeded workflow "{name}" is available`, `the Agent Builder preseeded dataset "{name}" is available`, and `the Agent Builder preseeded tool "{provider} / {tool}" is available` when a scenario depends on a fixed environment resource. These steps verify the resource through Console APIs, store the result in `DifyWorld.agentBuilder.preflight.preseededResources`, and return `skipped` with a blocked-precondition attachment when the resource is missing. The tool step checks built-in tool availability only; credential-validity scenarios still need explicit credential-state setup or assertions.
-
-Use `the Agent Builder preseeded dataset "{name}" is indexed and ready` for knowledge retrieval scenarios that require a completed knowledge base. It verifies that the dataset exists, has documents, all listed documents are available, and every document indexing status is `completed`. Use `the Agent Builder preseeded dataset "{name}" is indexing` for failure-recovery scenarios that require an indexing or queued knowledge base; it verifies at least one document is in `waiting`, `parsing`, `cleaning`, `splitting`, or `indexing`. Fixed-content assertions such as `AGENT_KNOWLEDGE_PASS` belong in the dependent runtime scenario, where the user-visible Agent reply can prove retrieval actually hit the expected content.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes drive skill "{skill}"` to verify that a fixed Agent has a drive-backed Skill attached. Use `the Agent Builder preseeded Agent "{agent}" has Backend service API access with an API key` to verify that a fixed Agent has Backend service API enabled and at least one key. The API key step does not validate a human-readable key name because the Console API key response does not expose one.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the core fixture configuration` for the fixed Full Config Agent prerequisite. It composes the stable model, Summary Skill, JSON Replace tool, and indexed knowledge-base preflights, then reads `/console/api/agent/{agent_id}/composer` to verify the Agent Soul contains the selected model, prompt success token, required file fixtures, JSON Replace tool entry, and knowledge dataset reference. Do not use this step for Agent node output variables; those live in workflow node-job `declared_outputs`, not the roster Agent App composer response.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the tool state fixture configuration` for the fixed Tool States Agent prerequisite. It composes the Summary Skill, JSON Replace tool, and Tavily Search tool preflights, then reads `/console/api/agent/{agent_id}/composer` to verify the Agent Soul includes JSON Replace, Tavily Search, and a Tavily credential reference. This proves the seed is configured to exercise tool status UI; keep actual invalid-credential errors in dependent user-visible configuration or runtime scenarios.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the dual retrieval fixture configuration` for the fixed Dual Retrieval Agent prerequisite. It composes the indexed knowledge-base preflight, then reads `/console/api/agent/{agent_id}/composer` to verify `agent_soul.knowledge.sets` includes both an Agent-decide generated query set and a custom user-query set using the fixed custom query. This proves the seed is configured to exercise the Knowledge Retrieval display; keep retrieval hit results, labels, expand/collapse behavior, and runtime assertions in dependent user-visible scenarios.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the file tree fixture files` for file-tree display prerequisites. It verifies the Agent drive contains every file from `agentBuilderFileTreeFixtureFiles` through `/console/api/agent/{agent_id}/drive/files?prefix=files/`. This proves the committed drive file set is ready; keep visual tree expansion, nesting, and preview assertions in dependent user-visible scenarios.
-
-Use `the Agent Builder preseeded Agent "{agent}" includes the current flat file fixture configuration` for the current Agent Edit Files section. Agent config files are still a flat `config_files` list and reject path separators, so this preflight verifies the fixture file basenames are present in the Agent Soul. Treat this as partial coverage for tree-display requirements until the product supports hierarchical config files in the visible Files section.
-
-Use `the Agent Builder preseeded Agent "{agent}" has published Web app access` to verify that a fixed Agent is published, Web app access is enabled, and the Agent detail response includes the site token and base URL needed to open the Web app. Keep Web app launch and runtime assertions in dependent user-visible scenarios.
-
-Use `the Agent Builder preseeded Agent "{agent}" is referenced by workflow "{workflow}"` to verify Workflow access prerequisites. It checks both fixed resources exist, then uses `/console/api/agent/{agent_id}/referencing-workflows`, the same Console API used by the Access Point Workflow references table, to verify the workflow references the Agent through at least one published Agent node.
-
-Run `pnpm -C e2e e2e -- --tags @agent-v2-preflight` against a seeded environment to verify Agent Builder preseeded resource readiness before running dependent scenarios. Keep each resource as a separate preflight scenario so a missing resource marks only its dependent precondition as blocked instead of hiding the rest of the readiness report.
-
-Use `DifyWorld.createdDatasetIds` for datasets created by a scenario, `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario, and `DifyWorld.createdBuiltinToolCredentials` for built-in tool credentials created during a scenario. The shared `After` hook deletes Agent drive files first so file cleanup also works for scenarios that upload into a preseeded Agent, then deletes created Agents and Apps before deleting dependent datasets and tool credentials. Use `DifyWorld.registerCleanup(...)` when a scenario creates any other resource type that is not covered by the typed cleanup fields. Cleanup callbacks run after the typed cleanup queues, even when the scenario fails.
+Feature-specific seed contracts, resource readiness rules, tags, and scenario ownership can be documented in one scoped `AGENTS.md` at the feature root when a module becomes large enough to need it. Do not add deeper `AGENTS.md` files unless the nested module becomes independently owned.
 
 ## Reusing existing steps
 
@@ -336,19 +312,3 @@ Or browse the step definition files directly:
 
 - `features/step-definitions/common/` — auth guards and navigation assertions shared by all features
 - `features/step-definitions/<capability>/` — domain-specific steps scoped to a single feature area
-
-## Agent v2 scenarios
-
-Agent v2 scenarios live under `features/agent-v2/` and use the `@agent-v2` capability tag.
-
-The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/roster` routes are guarded by that feature flag.
-
-Use `support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, Agent drive file cleanup, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
-
-Keep Agent v2 step definitions under `features/step-definitions/agent-v2/`. Prefer API setup for prerequisite state, then use Playwright only for user-observable navigation, editing, and assertions.
-
-Use `a basic configured Agent v2 test agent has been created via API` when a scenario only needs a created Agent with a composer draft. Do not use that basic shell for runtime, model, tool, skill, knowledge, environment variable, moderation, or output-variable coverage until those resources have explicit seed helpers and readiness checks.
-
-Use `a runnable Agent v2 test agent has been created via API` after `the Agent Builder stable chat model is available` when a scenario needs a real model-backed Agent. The step writes the preflight model into the Agent Soul model config through `support/agent.ts` with deterministic E2E model settings; do not duplicate provider/model payload construction in individual steps.
-
-Use `the Agent v2 configuration should be saved automatically` after UI edits that rely on Configure autosave. It waits for the user-visible publish bar saved state; do not replace it with network-idle waits or internal store checks.
