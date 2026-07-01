@@ -242,12 +242,8 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert _nullable_schema_ref(workflow_feature_properties["sensitive_word_avoidance"]) == (
         "#/components/schemas/WorkflowSensitiveWordAvoidancePayload"
     )
-    assert {"enabled", "model", "prompt"} <= set(
-        schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"]
-    )
-    assert {"enabled", "language", "voice", "autoPlay"} <= set(
-        schemas["WorkflowTextToSpeechPayload"]["properties"]
-    )
+    assert {"enabled", "model", "prompt"} <= set(schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"])
+    assert {"enabled", "language", "voice", "autoPlay"} <= set(schemas["WorkflowTextToSpeechPayload"]["properties"])
     assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
     file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
     assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)
