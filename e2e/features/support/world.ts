@@ -5,6 +5,8 @@ import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
 import { baseURL, defaultLocale } from '../../test-env'
 
+export type ScenarioCleanup = () => Promise<void> | void
+
 export class DifyWorld extends World {
   context: BrowserContext | undefined
   page: Page | undefined
@@ -20,6 +22,7 @@ export class DifyWorld extends World {
   lastAgentApiReferencePage: Page | undefined
   createdAppIds: string[] = []
   createdAgentIds: string[] = []
+  scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
 
@@ -39,6 +42,7 @@ export class DifyWorld extends World {
     this.lastAgentApiReferencePage = undefined
     this.createdAppIds = []
     this.createdAgentIds = []
+    this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined
   }
@@ -84,6 +88,26 @@ export class DifyWorld extends World {
   async getAuthSession() {
     this.session ??= await readAuthSessionMetadata()
     return this.session
+  }
+
+  registerCleanup(cleanup: ScenarioCleanup) {
+    this.scenarioCleanups.push(cleanup)
+  }
+
+  async runRegisteredCleanups() {
+    const errors: string[] = []
+
+    for (const cleanup of this.scenarioCleanups.toReversed()) {
+      try {
+        await cleanup()
+      }
+      catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error))
+      }
+    }
+
+    if (errors.length > 0)
+      this.attach(`Cleanup errors:\n${errors.join('\n')}`, 'text/plain')
   }
 
   async closeSession() {

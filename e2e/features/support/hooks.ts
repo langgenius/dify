@@ -93,6 +93,7 @@ After(async function (this: DifyWorld, { pickle, result }) {
 
   for (const id of this.createdAgentIds) await deleteTestAgent(id).catch(() => {})
   for (const id of this.createdAppIds) await deleteTestApp(id).catch(() => {})
+  await this.runRegisteredCleanups()
 
   await this.closeSession()
 })
