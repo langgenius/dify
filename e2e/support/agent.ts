@@ -107,6 +107,10 @@ export function createAgentSoulConfigWithModel(
       plugin_id: getAgentModelPluginId(model.provider),
       model_provider: model.provider,
       model: model.name,
+      model_settings: {
+        temperature: 0,
+        max_tokens: 512,
+      },
     },
   }
 }

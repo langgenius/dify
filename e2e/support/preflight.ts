@@ -8,6 +8,7 @@ const stableChatModelTypeEnv = 'E2E_STABLE_MODEL_TYPE'
 const brokenChatModelProviderEnv = 'E2E_BROKEN_MODEL_PROVIDER'
 const brokenChatModelNameEnv = 'E2E_BROKEN_MODEL_NAME'
 const brokenChatModelTypeEnv = 'E2E_BROKEN_MODEL_TYPE'
+const activeModelStatus = 'active'
 const defaultStableChatModelType = 'llm'
 const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
 
@@ -405,6 +406,11 @@ export function readAgentBuilderBrokenChatModelConfig(): ModelPreflightConfig {
 async function skipMissingAgentBuilderModel(
   world: DifyWorld,
   config: ModelPreflightConfig,
+  {
+    requireActive,
+  }: {
+    requireActive: boolean
+  },
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
   if (!config.ok)
     return skipBlockedPrecondition(world, config.reason)
@@ -431,6 +437,13 @@ async function skipMissingAgentBuilderModel(
       )
     }
 
+    if (requireActive && model.status !== activeModelStatus) {
+      return skipBlockedPrecondition(
+        world,
+        `${config.resourceName} is ${model.status ?? 'missing status'} instead of ${activeModelStatus}.`,
+      )
+    }
+
     return {
       name: model.model,
       provider: provider.provider,
@@ -445,11 +458,15 @@ async function skipMissingAgentBuilderModel(
 export async function skipMissingAgentBuilderStableChatModel(
   world: DifyWorld,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
-  return skipMissingAgentBuilderModel(world, readAgentBuilderStableChatModelConfig())
+  return skipMissingAgentBuilderModel(world, readAgentBuilderStableChatModelConfig(), {
+    requireActive: true,
+  })
 }
 
 export async function skipMissingAgentBuilderBrokenChatModel(
   world: DifyWorld,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
-  return skipMissingAgentBuilderModel(world, readAgentBuilderBrokenChatModelConfig())
+  return skipMissingAgentBuilderModel(world, readAgentBuilderBrokenChatModelConfig(), {
+    requireActive: false,
+  })
 }

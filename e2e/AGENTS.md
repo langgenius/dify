@@ -294,7 +294,7 @@ Use `fixtures/test-materials/` for checked-in files that scenarios upload, previ
 
 Use `support/preflight.ts` for scenarios that require optional external resources such as a stable model provider, plugin/tool credential, or knowledge base seed. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
 
-Use `the Agent Builder stable chat model is available` before scenarios that must run an Agent with a real model. The step requires `E2E_STABLE_MODEL_PROVIDER` and `E2E_STABLE_MODEL_NAME`, defaults `E2E_STABLE_MODEL_TYPE` to `llm`, and verifies the model through `/console/api/workspaces/current/models/model-types/{type}` before storing it on `DifyWorld.agentBuilderStableChatModel`. Any Agent Builder scenario that needs a usable model should explicitly apply this stored model during its own setup instead of hard-coding provider or model names in feature files or hooks.
+Use `the Agent Builder stable chat model is available` before scenarios that must run an Agent with a real model. The step requires `E2E_STABLE_MODEL_PROVIDER` and `E2E_STABLE_MODEL_NAME`, defaults `E2E_STABLE_MODEL_TYPE` to `llm`, and verifies the model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}` before storing it on `DifyWorld.agentBuilderStableChatModel`. Any Agent Builder scenario that needs a usable model should explicitly apply this stored model during its own setup instead of hard-coding provider or model names in feature files or hooks.
 
 Use `the Agent Builder broken chat model is available` before model-recovery scenarios that intentionally start from an invalid model. The step requires `E2E_BROKEN_MODEL_PROVIDER`, defaults `E2E_BROKEN_MODEL_NAME` to `e2e-broken-model`, defaults `E2E_BROKEN_MODEL_TYPE` to `llm`, and only verifies that the model entry exists. The scenario must still assert the user-visible failure and recovery behavior.
 
@@ -325,6 +325,6 @@ Keep Agent v2 step definitions under `features/step-definitions/agent-v2/`. Pref
 
 Use `a basic configured Agent v2 test agent has been created via API` when a scenario only needs a created Agent with a composer draft. Do not use that basic shell for runtime, model, tool, skill, knowledge, environment variable, moderation, or output-variable coverage until those resources have explicit seed helpers and readiness checks.
 
-Use `a runnable Agent v2 test agent has been created via API` after `the Agent Builder stable chat model is available` when a scenario needs a real model-backed Agent. The step writes the preflight model into the Agent Soul model config through `support/agent.ts`; do not duplicate provider/model payload construction in individual steps.
+Use `a runnable Agent v2 test agent has been created via API` after `the Agent Builder stable chat model is available` when a scenario needs a real model-backed Agent. The step writes the preflight model into the Agent Soul model config through `support/agent.ts` with deterministic E2E model settings; do not duplicate provider/model payload construction in individual steps.
 
 Use `the Agent v2 configuration should be saved automatically` after UI edits that rely on Configure autosave. It waits for the user-visible publish bar saved state; do not replace it with network-idle waits or internal store checks.
