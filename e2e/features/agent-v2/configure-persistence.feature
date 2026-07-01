@@ -18,8 +18,7 @@ Feature: Agent v2 configure persistence
   @configure-persistence
   Scenario: Leaving Configure before autosave completes preserves prompt changes
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I fill the Agent v2 prompt editor with the updated E2E prompt
     And I leave the Agent v2 configure page before autosave completes
