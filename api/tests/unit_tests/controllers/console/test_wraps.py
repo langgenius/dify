@@ -13,7 +13,7 @@ from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
-    _extract_resource_id,
+    _is_setup_completed,
     account_initialization_required,
     cloud_edition_billing_enabled,
     cloud_edition_billing_rate_limit_check,
