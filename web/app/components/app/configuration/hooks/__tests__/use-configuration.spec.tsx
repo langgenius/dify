@@ -90,7 +90,7 @@ vi.mock('@/app/components/app/store', () => ({
   }),
 }))
 
-vi.mock('@/app/components/main-nav/storage', () => ({
+vi.mock('@/app/components/detail-sidebar/storage', () => ({
   useSetDetailSidebarMode: () => mockSetDetailSidebarMode,
 }))
 

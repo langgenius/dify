@@ -3,9 +3,11 @@
 import * as z from 'zod'
 
 /**
- * BillingResponse
+ * BillingInvoiceResponse
  */
-export const zBillingResponse = z.record(z.string(), z.unknown())
+export const zBillingInvoiceResponse = z.object({
+  url: z.string(),
+})
 
 /**
  * PartnerTenantsPayload
@@ -15,9 +17,14 @@ export const zPartnerTenantsPayload = z.object({
 })
 
 /**
+ * BillingResponse
+ */
+export const zBillingResponse = z.record(z.string(), z.unknown())
+
+/**
  * Success
  */
-export const zGetBillingInvoicesResponse = zBillingResponse
+export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
 
 export const zPutBillingPartnersByPartnerKeyTenantsBody = zPartnerTenantsPayload
 
