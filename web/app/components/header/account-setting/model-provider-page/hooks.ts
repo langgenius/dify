@@ -262,7 +262,7 @@ export const useRefreshModel = () => {
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
     refreshModelList?: boolean,
   ) => {
-    const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+    const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
       input: {
         params: {
           provider: provider.provider,

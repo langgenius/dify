@@ -1,7 +1,7 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, renderHook } from '@testing-library/react'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
@@ -353,6 +353,74 @@ describe('useChat', () => {
       expect(result.current.chatList[1]!.id).toBe('m-1')
     })
 
+    it('should process inputs with the per-send input form override', () => {
+      vi.mocked(ssePost).mockImplementation(async () => undefined)
+      const { result } = renderHook(() => useChat(undefined, {
+        inputs: {},
+        inputsForm: [{
+          type: InputVarType.textInput,
+          label: 'City',
+          variable: 'city',
+          required: true,
+          hide: false,
+        }],
+      }))
+
+      act(() => {
+        result.current.handleSend('test-url', {
+          query: 'hello',
+          inputs: {
+            enabled: undefined,
+          },
+          overrideInputsForm: [{
+            type: InputVarType.checkbox,
+            label: 'Enabled',
+            variable: 'enabled',
+            required: true,
+            hide: false,
+          }],
+        }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            inputs: {
+              enabled: false,
+            },
+          }),
+        }),
+        expect.any(Object),
+      )
+    })
+
+    it('should settle a send once when the SSE stream errors', () => {
+      let callbacks: HookCallbacks
+      const onSendSettled = vi.fn()
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hello' }, {
+          onSendSettled,
+        })
+      })
+
+      act(() => {
+        callbacks.onError()
+        callbacks.onCompleted(true)
+      })
+
+      expect(result.current.isResponding).toBe(false)
+      expect(onSendSettled).toHaveBeenCalledTimes(1)
+      expect(onSendSettled).toHaveBeenCalledWith(true)
+    })
+
     it('should handle onThought and different workflow events', async () => {
       let callbacks: HookCallbacks
 
@@ -511,6 +579,7 @@ describe('useChat', () => {
           answer_tokens: 10,
           message_tokens: 5,
           provider_response_latency: 0.5,
+          workflow_run_id: 'workflow-run-from-history',
           inputs: {},
           query: 'hi',
         }],
@@ -545,7 +614,7 @@ describe('useChat', () => {
 
       expect(onGetConversationMessages).toHaveBeenCalled()
       expect(onGetSuggestedQuestions).toHaveBeenCalled()
-      expect(onConversationComplete).toHaveBeenCalledWith('c-1')
+      expect(onConversationComplete).toHaveBeenCalledWith('c-1', 'workflow-run-from-history')
 
       const updatedResponse = result.current.chatList[1]
       expect(updatedResponse!.content).toBe('Updated answer from history') // Fetched from mock
@@ -1179,6 +1248,44 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(false)
     })
 
+    it('should settle a resume once when the event stream errors', () => {
+      let callbacks: HookCallbacks
+      const onSendSettled = vi.fn()
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-resume-error',
+          content: 'initial',
+          isAnswer: true,
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleResume('m-resume-error', 'wr-error', {
+          isPublicAPI: true,
+          onSendSettled,
+        })
+      })
+
+      act(() => {
+        callbacks.onError()
+        callbacks.onCompleted(true)
+      })
+
+      expect(onSendSettled).toHaveBeenCalledTimes(1)
+      expect(onSendSettled).toHaveBeenCalledWith(true)
+      expect(result.current.isResponding).toBe(false)
+    })
+
     it('should abort previous workflow event stream when resuming again', () => {
       const callbacksList: HookCallbacks[] = []
       vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
@@ -1288,7 +1395,7 @@ describe('useChat', () => {
         await callbacks.onCompleted()
       })
 
-      expect(onConversationComplete).toHaveBeenCalledWith('c-resume')
+      expect(onConversationComplete).toHaveBeenCalledWith('c-resume', 'wr-1')
       expect(onGetSuggestedQuestions).toHaveBeenCalled()
       expect(result.current.suggestedQuestions).toEqual([])
     })
@@ -1561,6 +1668,45 @@ describe('useChat', () => {
       renderHook(() => useChat(undefined, undefined, undefined, undefined, true, clearChatListCallback))
 
       expect(clearChatListCallback).toHaveBeenCalledWith(false)
+    })
+
+    it('should keep the first send after a reset acknowledgement', () => {
+      let clearChatList = true
+      const clearChatListCallback = vi.fn((nextClearChatList: boolean) => {
+        clearChatList = nextClearChatList
+      })
+      const { rerender, result } = renderHook(() => useChat(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        clearChatList,
+        clearChatListCallback,
+      ))
+
+      expect(clearChatListCallback).toHaveBeenCalledWith(false)
+
+      rerender()
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'first after reset' }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            query: 'first after reset',
+          }),
+        }),
+        expect.any(Object),
+      )
+      expect(result.current.chatList).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          content: 'first after reset',
+          isAnswer: false,
+        }),
+      ]))
     })
   })
 

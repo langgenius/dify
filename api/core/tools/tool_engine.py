@@ -111,7 +111,7 @@ class ToolEngine:
                 tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
             )
 
-            plain_text = ToolEngine._convert_tool_response_to_str(message_list)
+            plain_text = ToolEngine.tool_response_to_str(message_list)
 
             meta = invocation_meta_dict["meta"]
 
@@ -234,10 +234,8 @@ class ToolEngine:
             yield meta
 
     @staticmethod
-    def _convert_tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
-        """
-        Handle tool response
-        """
+    def tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
+        """Convert tool invoke messages into the plain-text observation shown to the model/user."""
         parts: list[str] = []
         json_parts: list[str] = []
 

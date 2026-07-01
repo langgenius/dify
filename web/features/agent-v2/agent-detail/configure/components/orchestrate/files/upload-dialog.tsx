@@ -1,8 +1,9 @@
 'use client'
 
+import type { AgentConfigFileItemResponse, AgentConfigFileUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { ChangeEvent, DragEvent } from 'react'
-import type { AgentDriveApiContext } from '../drive-context'
+import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -17,22 +18,16 @@ import { consoleQuery } from '@/service/client'
 import { formatFileSize } from '@/utils/format'
 import { getFileIconType } from './file-icon'
 
-type AgentDriveFileCommit = {
-  file: {
-    drive_key: string
-    file_id: string
-    mime_type?: string | null
-    name: string
-  }
-}
-
-function toAgentFileNode(committedFile: AgentDriveFileCommit['file']): AgentFileNode {
+function toAgentFileNode(committedFile: AgentConfigFileItemResponse): AgentFileNode {
   return {
-    id: committedFile.file_id,
+    id: committedFile.name,
     name: committedFile.name,
     icon: getFileIconType(committedFile.name, committedFile.mime_type),
-    fileId: committedFile.file_id,
-    driveKey: committedFile.drive_key,
+    fileId: committedFile.file_id ?? undefined,
+    configName: committedFile.name,
+    size: committedFile.size ?? undefined,
+    hash: committedFile.hash ?? undefined,
+    mimeType: committedFile.mime_type ?? undefined,
   }
 }
 
@@ -178,7 +173,7 @@ export function AgentFileUploadDialog({
   onOpenChange,
   onUploaded,
 }: {
-  apiContext: AgentDriveApiContext
+  apiContext: AgentConfigApiContext
   open: boolean
   onOpenChange: (open: boolean) => void
   onUploaded: (file: AgentFileNode) => void
@@ -187,14 +182,14 @@ export function AgentFileUploadDialog({
   const { t: tCommon } = useTranslation('common')
   const [file, setFile] = useState<File>()
   const uploadFileMutation = useMutation(consoleQuery.files.upload.post.mutationOptions())
-  const commitAgentFileMutation = useMutation(consoleQuery.agent.byAgentId.files.post.mutationOptions())
-  const commitWorkflowAgentFileMutation = useMutation(consoleQuery.apps.byAppId.agent.files.post.mutationOptions())
+  const commitAgentFileMutation = useMutation(consoleQuery.agent.byAgentId.config.files.post.mutationOptions())
+  const commitWorkflowAgentFileMutation = useMutation(consoleQuery.apps.byAppId.agent.config.files.post.mutationOptions())
   const isUploading = uploadFileMutation.isPending
     || commitAgentFileMutation.isPending
     || commitWorkflowAgentFileMutation.isPending
 
   const commitUploadedFile = (uploadedFile: FileResponse, options: {
-    onSuccess: (committedFile: AgentDriveFileCommit) => void
+    onSuccess: (committedFile: AgentConfigFileUploadResponse) => void
     onError: () => void
   }) => {
     const body = {
@@ -208,6 +203,8 @@ export function AgentFileUploadDialog({
         },
         query: {
           node_id: apiContext.workflow.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
         body,
       }, options)
@@ -217,6 +214,10 @@ export function AgentFileUploadDialog({
     commitAgentFileMutation.mutate({
       params: {
         agent_id: apiContext.agentId,
+      },
+      query: {
+        draft_type: apiContext.draftType,
+        version_id: apiContext.versionId,
       },
       body,
     }, options)
