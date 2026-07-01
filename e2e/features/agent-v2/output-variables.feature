@@ -34,3 +34,21 @@ Feature: Agent v2 output variables
     When I refresh the current page
     And I open the Agent v2 workflow node panel
     Then I should see the Agent v2 workflow node nested object output variable
+
+  @output-retry-strategy @feature-gated
+  Scenario: Workflow Agent v2 output retry strategy can be saved after refresh
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a workflow app with an Agent v2 node has been created via API
+    When I open the app from the app list
+    And I open the Agent v2 workflow node panel
+    Then Agent v2 workflow output retry strategy should be available
+
+  @output-retry-validation @feature-gated
+  Scenario: Workflow Agent v2 output retry count validation is enforced
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a workflow app with an Agent v2 node has been created via API
+    When I open the app from the app list
+    And I open the Agent v2 workflow node panel
+    Then Agent v2 workflow output retry count validation should be available

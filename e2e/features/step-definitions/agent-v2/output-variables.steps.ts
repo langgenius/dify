@@ -17,3 +17,37 @@ Then('Agent v2 standalone Output Variables should be available', async function 
     },
   )
 })
+
+Then('Agent v2 workflow output retry strategy should be available', async function (this: DifyWorld) {
+  const page = this.getPage()
+
+  await expect(page.getByRole('button', { name: 'Output Variables' })).toBeVisible({
+    timeout: 30_000,
+  })
+
+  return skipBlockedPrecondition(
+    this,
+    'Agent v2 workflow Output Variables retry strategy is not available in the current editor UI.',
+    {
+      owner: 'product',
+      remediation: 'Expose user-visible retry strategy controls before enabling this scenario.',
+    },
+  )
+})
+
+Then('Agent v2 workflow output retry count validation should be available', async function (this: DifyWorld) {
+  const page = this.getPage()
+
+  await expect(page.getByRole('button', { name: 'Output Variables' })).toBeVisible({
+    timeout: 30_000,
+  })
+
+  return skipBlockedPrecondition(
+    this,
+    'Agent v2 workflow Output Variables retry count validation is not reachable because retry strategy controls are not available in the current editor UI.',
+    {
+      owner: 'product',
+      remediation: 'Expose retry count controls and validation states before enabling this scenario.',
+    },
+  )
+})
