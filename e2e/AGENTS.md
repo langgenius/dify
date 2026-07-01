@@ -294,6 +294,8 @@ Use `fixtures/test-materials/` for checked-in files that scenarios upload, previ
 
 Use `support/preflight.ts` for scenarios that require optional external resources such as a stable model provider, plugin/tool credential, or knowledge base seed. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
 
+Use `the Agent Builder stable chat model is available` before scenarios that must run an Agent with a real model. The step requires `E2E_STABLE_MODEL_PROVIDER` and `E2E_STABLE_MODEL_NAME`, defaults `E2E_STABLE_MODEL_TYPE` to `llm`, and verifies the model through `/console/api/workspaces/current/models/model-types/{type}` before storing it on `DifyWorld.agentBuilderStableChatModel`.
+
 Use `DifyWorld.createdDatasetIds` for datasets created by a scenario and `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario. The shared `After` hook deletes Agent drive files before deleting created Agents so file cleanup also works for scenarios that upload into a preseeded Agent. Use `DifyWorld.registerCleanup(...)` when a scenario creates any other resource type that is not covered by the typed cleanup fields. Cleanup callbacks run after the typed cleanup queues, even when the scenario fails.
 
 ## Reusing existing steps

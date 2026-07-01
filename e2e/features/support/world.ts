@@ -10,6 +10,11 @@ export type CreatedAgentDriveFile = {
   agentId: string
   key: string
 }
+export type AgentBuilderStableChatModel = {
+  name: string
+  provider: string
+  type: string
+}
 
 export class DifyWorld extends World {
   context: BrowserContext | undefined
@@ -28,6 +33,7 @@ export class DifyWorld extends World {
   createdAgentIds: string[] = []
   createdDatasetIds: string[] = []
   createdAgentDriveFiles: CreatedAgentDriveFile[] = []
+  agentBuilderStableChatModel: AgentBuilderStableChatModel | undefined
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
@@ -50,6 +56,7 @@ export class DifyWorld extends World {
     this.createdAgentIds = []
     this.createdDatasetIds = []
     this.createdAgentDriveFiles = []
+    this.agentBuilderStableChatModel = undefined
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined
