@@ -370,3 +370,7 @@ export const snippetsRouterContract = {
   runDraftWorkflow: runSnippetDraftWorkflowContract,
   stopWorkflowTask: stopSnippetWorkflowTaskContract,
 }
+
+export const snippetsConsoleRouterContract = {
+  snippets: snippetsRouterContract,
+}
