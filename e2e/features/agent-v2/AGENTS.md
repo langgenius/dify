@@ -48,7 +48,9 @@ Keep Agent v2 step definitions grouped by user capability, not by DOM component 
 - `files.steps.ts` — Files upload, display, and fixture-list assertions.
 - `knowledge.steps.ts` — Knowledge Retrieval configuration persistence and reference cleanup.
 - `tools.steps.ts` — Tools selector, search, and configuration-boundary behavior.
-- `advanced-settings.steps.ts` — Env Editor, Content Moderation, and Advanced Settings behavior.
+- `advanced-settings.steps.ts` — common Advanced Settings shell and supported-entry assertions.
+- `env-editor.steps.ts` — Env Editor add, import, delete, persistence, and restored-display behavior.
+- `content-moderation.steps.ts` — Content Moderation availability, keyword settings, and feature-gated assertions.
 - `agent-edit.steps.ts` — saved Agent detail display assertions.
 - `publish.steps.ts` — publish and publish-bar assertions.
 - `access-point.steps.ts` — common Access Point navigation and overview.
