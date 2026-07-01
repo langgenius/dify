@@ -8,6 +8,19 @@ Feature: Agent v2 Agent Edit page
     When I open the preseeded Agent v2 configure page for "E2E New Agent Builder Full Config" from the Agent Roster
     Then I should see the Agent v2 full-config fixture sections
 
+  Scenario: Duplicated Agent inherits configuration without changing the original Agent
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" is available
+    And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" includes the core fixture configuration
+    When I duplicate the preseeded Agent v2 "E2E New Agent Builder Full Config" from the Agent Roster
+    Then the duplicated Agent v2 should inherit the full-config fixture from "E2E New Agent Builder Full Config"
+    When I open the Agent v2 configure page
+    And I fill the Agent v2 prompt editor with the updated E2E prompt
+    Then the Agent v2 configuration should be saved automatically
+    And the normal Agent v2 draft should use the updated E2E prompt
+    And the preseeded Agent v2 "E2E New Agent Builder Full Config" should still use the normal E2E prompt
+
   Scenario: Tool states are visible on the Agent Edit page
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" is available
