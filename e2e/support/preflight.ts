@@ -1,7 +1,10 @@
 import type { DifyWorld } from '../features/support/world'
-import { agentBuilderPreseededResources } from './agent-builder-resources'
+import {
+  agentBuilderExpectedTokens,
+  agentBuilderPreseededResources,
+} from './agent-builder-resources'
 import { createApiContext, expectApiResponseOK } from './api'
-import { agentBuilderFileTreeFixtureFiles } from './test-materials'
+import { agentBuilderFileTreeFixtureFiles, agentBuilderTestMaterials } from './test-materials'
 
 const stableChatModelProviderEnv = 'E2E_STABLE_MODEL_PROVIDER'
 const stableChatModelNameEnv = 'E2E_STABLE_MODEL_NAME'
@@ -148,6 +151,10 @@ type AgentDriveFileListResponse = {
   }>
 }
 
+type AgentComposerResponse = {
+  agent_soul?: Record<string, unknown>
+}
+
 type AgentApiAccessResponse = {
   api_key_count: number
   enabled: boolean
@@ -202,6 +209,69 @@ const buildQuery = (params: Record<string, string>) => new URLSearchParams(param
 
 const matchesNameOrLabel = (value: string, name: string, label?: LocalizedLabel) =>
   value === name || value === label?.en_US || value === label?.zh_Hans
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const asRecord = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {})
+
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
+
+const asString = (value: unknown) => (typeof value === 'string' ? value : '')
+
+const hasNamedOrKeyedEntry = (items: unknown[], expectedName: string) =>
+  items.some((item) => {
+    const record = asRecord(item)
+    const values = [record.name, record.drive_key, record.reference, record.file_id, record.id].map(
+      asString,
+    )
+
+    return values.some((value) => value === expectedName || value.endsWith(`/${expectedName}`))
+  })
+
+const hasToolEntry = (
+  items: unknown[],
+  {
+    providerDisplayName,
+    providerName,
+    toolDisplayName,
+    toolName,
+  }: {
+    providerDisplayName: string
+    providerName: string
+    toolDisplayName: string
+    toolName: string
+  },
+) =>
+  items.some((item) => {
+    const record = asRecord(item)
+    const providerValues = [record.provider_id, record.provider, record.plugin_id, record.name].map(
+      asString,
+    )
+    const toolValues = [record.tool_name, record.name].map(asString)
+
+    return (
+      providerValues.some((value) => value === providerName || value === providerDisplayName) &&
+      toolValues.some((value) => value === toolName || value === toolDisplayName)
+    )
+  })
+
+const hasKnowledgeDataset = (
+  soul: Record<string, unknown>,
+  dataset: NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>,
+) => {
+  const knowledge = asRecord(soul.knowledge)
+  const sets = asArray(knowledge.sets)
+
+  return sets.some((set) => {
+    const datasets = asArray(asRecord(set).datasets)
+
+    return datasets.some((item) => {
+      const record = asRecord(item)
+      return record.id === dataset.id || record.name === dataset.name
+    })
+  })
+}
 
 const getPreseededDataset = async (resourceName: string) => {
   const query = buildQuery({ keyword: resourceName, limit: '20', page: '1' })
@@ -432,6 +502,89 @@ export async function skipMissingPreseededAgentDriveSkill(
       kind: 'skill',
       name: skill.name,
     }
+  } finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
+  world: DifyWorld,
+  agentName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const stableModel = await skipMissingAgentBuilderStableChatModel(world)
+  if (stableModel === 'skipped') return stableModel
+
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped') return agent
+
+  const summarySkill = await skipMissingPreseededAgentDriveSkill(
+    world,
+    agentName,
+    agentBuilderPreseededResources.summarySkill,
+  )
+  if (summarySkill === 'skipped') return summarySkill
+
+  const jsonTool = await skipMissingPreseededTool(
+    world,
+    agentBuilderPreseededResources.jsonReplaceTool,
+  )
+  if (jsonTool === 'skipped') return jsonTool
+
+  const knowledgeBase = await skipMissingReadyPreseededDataset(
+    world,
+    agentBuilderPreseededResources.agentKnowledgeBase,
+  )
+  if (knowledgeBase === 'skipped') return knowledgeBase
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
+    await expectApiResponseOK(response, `Check preseeded Agent core configuration ${agentName}`)
+    const body = (await response.json()) as AgentComposerResponse
+    const soul = body.agent_soul ?? {}
+    const missing: string[] = []
+
+    const model = asRecord(soul.model)
+    if (model.model_provider !== stableModel.provider || model.model !== stableModel.name)
+      missing.push(`${agentBuilderPreseededResources.stableChatModel} model config`)
+
+    const prompt = asString(asRecord(soul.prompt).system_prompt)
+    if (!prompt.includes(agentBuilderExpectedTokens.agentReply))
+      missing.push(`Prompt token ${agentBuilderExpectedTokens.agentReply}`)
+
+    const files = asArray(asRecord(soul.files).files)
+    for (const fileName of [
+      agentBuilderTestMaterials.smallFile,
+      agentBuilderTestMaterials.specialFilename,
+    ]) {
+      if (!hasNamedOrKeyedEntry(files, fileName)) missing.push(`file ${fileName}`)
+    }
+
+    const [providerName = '', toolName = ''] = jsonTool.id.split('/')
+    const parsedTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
+    if (
+      parsedTool.ok &&
+      !hasToolEntry(asArray(asRecord(soul.tools).dify_tools), {
+        providerDisplayName: parsedTool.providerName,
+        providerName,
+        toolDisplayName: parsedTool.toolName,
+        toolName,
+      })
+    ) {
+      missing.push(agentBuilderPreseededResources.jsonReplaceTool)
+    }
+
+    if (!hasKnowledgeDataset(soul, knowledgeBase))
+      missing.push(agentBuilderPreseededResources.agentKnowledgeBase)
+
+    if (missing.length > 0) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" is missing core fixture configuration: ${missing.join(', ')}.`,
+      )
+    }
+
+    return agent
   } finally {
     await ctx.dispose()
   }

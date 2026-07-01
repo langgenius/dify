@@ -11,6 +11,7 @@ import {
   skipMissingPreseededAgentPublishedWebApp,
   skipMissingPreseededAgentWorkflowReference,
   skipMissingPreseededDataset,
+  skipMissingPreseededFullConfigAgentCoreConfiguration,
   skipMissingPreseededTool,
   skipMissingPreseededWorkflow,
   skipMissingReadyPreseededDataset,
@@ -97,6 +98,16 @@ Given(
     if (resource === 'skipped') return resource
 
     this.agentBuilderPreseededResources[`${agentName} / ${skillName}`] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} includes the core fixture configuration',
+  async function (this: DifyWorld, agentName: string) {
+    const resource = await skipMissingPreseededFullConfigAgentCoreConfiguration(this, agentName)
+    if (resource === 'skipped') return resource
+
+    this.agentBuilderPreseededResources[`${agentName} / core fixture configuration`] = resource
   },
 )
 

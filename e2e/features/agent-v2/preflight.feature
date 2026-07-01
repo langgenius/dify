@@ -32,6 +32,10 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" includes drive skill "E2E Summary Skill"
 
+  Scenario: Full config Agent includes core fixture configuration
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" includes the core fixture configuration
+
   Scenario: Tool states Agent is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" is available
