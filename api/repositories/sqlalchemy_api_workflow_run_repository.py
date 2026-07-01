@@ -1028,11 +1028,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                             node_id=reason.node_id,
                         )
                     case HumanInputRequired():
-                        # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
                         pause_reason_model = WorkflowPauseReason(
                             pause_id=pause_model.id,
-                            type_=PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED,
+                            type_=PauseReasonType.HITL_REQUIRED,
                             form_id=reason.form_id,
+                            node_id=reason.node_id,
                         )
                     case SchedulingPause():
                         pause_reason_model = WorkflowPauseReason(

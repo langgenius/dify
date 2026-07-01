@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.workflow.human_input_adapter import DeliveryMethodType
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowExecution
-from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
+from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -347,7 +348,7 @@ class TestCreateWorkflowPause:
         assert workflow_run.status == WorkflowExecutionStatus.PAUSED
         assert pause_entity.id == pause_model.id
         assert pause_entity.workflow_execution_id == workflow_run.id
-        assert pause_entity.get_pause_reasons() == []
+        assert pause_entity.get_pause_reasons() == ()
         assert pause_entity.get_state() == state.encode()
 
     def test_create_workflow_pause_not_found(
@@ -386,6 +387,232 @@ class TestCreateWorkflowPause:
                 state='{"test": "state"}',
                 pause_reasons=[],
             )
+
+    def test_create_workflow_pause_writes_hitl_type_for_dify_human_input_reason(
+        self,
+        repository: DifyAPISQLAlchemyWorkflowRunRepository,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """Persist Dify human-input reasons using graphon HITL rows while preserving enriched reads."""
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        expiration_time = naive_utc_now()
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="name")],
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
+            rendered_content="rendered",
+            expiration_time=expiration_time,
+            default_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+        form_model = HumanInputForm(
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            workflow_run_id=workflow_run.id,
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=expiration_time,
+        )
+        db_session_with_containers.add(form_model)
+        db_session_with_containers.commit()
+
+        pause_entity = repository.create_workflow_pause(
+            workflow_run_id=workflow_run.id,
+            state_owner_user_id=test_scope.user_id,
+            state='{"test": "state"}',
+            pause_reasons=[
+                HumanInputRequired(
+                    form_id=form_model.id,
+                    form_content="ignored-at-persistence-boundary",
+                    inputs=[],
+                    actions=[],
+                    node_id="node-1",
+                    node_title="Ask Name",
+                )
+            ],
+        )
+
+        pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
+        assert pause_model is not None
+        test_scope.state_keys.add(pause_model.state_object_key)
+
+        reason_models = db_session_with_containers.scalars(
+            select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_model.id)
+        ).all()
+
+        assert len(reason_models) == 1
+        assert reason_models[0].type_ == PauseReasonType.HITL_REQUIRED
+        assert reason_models[0].form_id == form_model.id
+        assert reason_models[0].node_id == "node-1"
+
+        pause_reasons = pause_entity.get_pause_reasons()
+
+        assert len(pause_reasons) == 1
+        reason = pause_reasons[0]
+        assert isinstance(reason, HumanInputRequired)
+        assert reason.form_id == form_model.id
+        assert reason.node_id == "node-1"
+        assert reason.node_title == "Ask Name"
+        assert reason.form_content == "rendered"
+        assert reason.resolved_default_values == {"name": "Alice"}
+
+        reloaded_pause = repository.get_workflow_pause(workflow_run.id)
+
+        assert reloaded_pause is not None
+        reloaded_reasons = reloaded_pause.get_pause_reasons()
+        assert len(reloaded_reasons) == 1
+        reloaded_reason = reloaded_reasons[0]
+        assert isinstance(reloaded_reason, HumanInputRequired)
+        assert reloaded_reason.form_id == form_model.id
+        assert reloaded_reason.node_id == "node-1"
+        assert reloaded_reason.node_title == "Ask Name"
+
+    def test_create_workflow_pause_round_trips_graphon_hitl_reason(
+        self,
+        repository: DifyAPISQLAlchemyWorkflowRunRepository,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """Persist graphon HITL rows while keeping repository reads Dify-enriched."""
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.RUNNING,
+        )
+        expiration_time = naive_utc_now()
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="name")],
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
+            rendered_content="rendered",
+            expiration_time=expiration_time,
+            default_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+        form_model = HumanInputForm(
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            workflow_run_id=workflow_run.id,
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=expiration_time,
+        )
+        db_session_with_containers.add(form_model)
+        db_session_with_containers.commit()
+
+        pause_entity = repository.create_workflow_pause(
+            workflow_run_id=workflow_run.id,
+            state_owner_user_id=test_scope.user_id,
+            state='{"test": "state"}',
+            pause_reasons=[
+                HitlRequired(
+                    session_id=form_model.id,
+                    node_id="node-1",
+                    node_title="Ask Name",
+                )
+            ],
+        )
+
+        pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
+        assert pause_model is not None
+        test_scope.state_keys.add(pause_model.state_object_key)
+
+        reason_models = db_session_with_containers.scalars(
+            select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_model.id)
+        ).all()
+
+        assert len(reason_models) == 1
+        assert reason_models[0].type_ == PauseReasonType.HITL_REQUIRED
+        raw_reason = reason_models[0].to_entity()
+        assert isinstance(raw_reason, HitlRequired)
+        assert raw_reason.TYPE == PauseReasonType.HITL_REQUIRED
+        assert raw_reason.session_id == form_model.id
+        assert raw_reason.node_id == "node-1"
+
+        pause_reasons = pause_entity.get_pause_reasons()
+        assert len(pause_reasons) == 1
+        reason = pause_reasons[0]
+        assert isinstance(reason, HumanInputRequired)
+        assert reason.form_id == form_model.id
+        assert reason.node_id == "node-1"
+        assert reason.node_title == "Ask Name"
+
+    def test_get_workflow_pause_reads_legacy_human_input_reason(
+        self,
+        repository: DifyAPISQLAlchemyWorkflowRunRepository,
+        db_session_with_containers: Session,
+        test_scope: _TestScope,
+    ) -> None:
+        """Hydrate old legacy HITL rows into the unchanged Dify-facing payload."""
+
+        workflow_run = _create_workflow_run(
+            db_session_with_containers,
+            test_scope,
+            status=WorkflowExecutionStatus.PAUSED,
+        )
+        expiration_time = naive_utc_now()
+        form_definition = FormDefinition(
+            form_content="content",
+            inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="name")],
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
+            rendered_content="rendered",
+            expiration_time=expiration_time,
+            default_values={"name": "Alice"},
+            node_title="Ask Name",
+            display_in_ui=True,
+        )
+        form_model = HumanInputForm(
+            tenant_id=test_scope.tenant_id,
+            app_id=test_scope.app_id,
+            workflow_run_id=workflow_run.id,
+            node_id="node-1",
+            form_definition=form_definition.model_dump_json(),
+            rendered_content="rendered",
+            status=HumanInputFormStatus.WAITING,
+            expiration_time=expiration_time,
+        )
+        pause_model = WorkflowPause(
+            workflow_id=test_scope.workflow_id,
+            workflow_run_id=workflow_run.id,
+            state_object_key=f"workflow-state-{uuid4()}.json",
+        )
+        db_session_with_containers.add_all([form_model, pause_model])
+        db_session_with_containers.flush()
+        reason_model = WorkflowPauseReason(
+            pause_id=pause_model.id,
+            type_=PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED,
+            form_id=form_model.id,
+            node_id="node-1",
+        )
+        db_session_with_containers.add(reason_model)
+        db_session_with_containers.commit()
+        test_scope.state_keys.add(pause_model.state_object_key)
+
+        pause_entity = repository.get_workflow_pause(workflow_run.id)
+
+        assert pause_entity is not None
+        pause_reasons = pause_entity.get_pause_reasons()
+        assert len(pause_reasons) == 1
+        reason = pause_reasons[0]
+        assert isinstance(reason, HumanInputRequired)
+        assert reason.form_id == form_model.id
+        assert reason.node_id == "node-1"
+        assert reason.node_title == "Ask Name"
+        assert reason.form_content == "rendered"
+        assert reason.resolved_default_values == {"name": "Alice"}
 
 
 class TestResumeWorkflowPause:
@@ -715,7 +942,7 @@ class TestBuildHumanInputRequiredReason:
 
         reason_model = WorkflowPauseReason(
             pause_id=pause.id,
-            type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+            type_=PauseReasonType.HITL_REQUIRED,
             form_id=form_model.id,
             node_id="node-1",
             message="",
@@ -738,7 +965,7 @@ class TestBuildHumanInputRequiredReason:
 
         assert isinstance(reason, HumanInputRequired)
         assert reason.node_title == "Ask Name"
-        assert reason.form_content == "content"
+        assert reason.form_content == "rendered"
         assert reason.inputs[0].output_variable_name == "name"
         assert reason.actions[0].id == "approve"
         assert reason.resolved_default_values == {"name": "Alice"}
@@ -819,7 +1046,7 @@ class TestBuildHumanInputRequiredReason:
 
         reason_model = WorkflowPauseReason(
             pause_id=pause.id,
-            type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+            type_=PauseReasonType.HITL_REQUIRED,
             form_id=form_model.id,
             node_id="node-1",
             message="",

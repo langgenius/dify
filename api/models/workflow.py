@@ -31,6 +31,7 @@ from core.workflow.nodes.human_input.pause_reason import (
 from core.workflow.nodes.human_input.pause_reason import (
     PauseReason as DifyPauseReason,
 )
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
@@ -38,7 +39,7 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
+from graphon.entities.pause_reason import HitlRequired, PauseReason as GraphonPauseReason
 from graphon.entities.pause_reason import PauseReasonType, SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -2158,10 +2159,17 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
         pause_reason: GraphonPauseReason | DifyPauseReason,
     ) -> "WorkflowPauseReason":
         match pause_reason:
+            case HitlRequired():
+                return cls(
+                    pause_id=pause_id,
+                    type_=PauseReasonType.HITL_REQUIRED,
+                    form_id=default_session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id),
+                    node_id=pause_reason.node_id,
+                )
             case HumanInputRequired():
                 return cls(
                     pause_id=pause_id,
-                    type_=PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED,
+                    type_=PauseReasonType.HITL_REQUIRED,
                     form_id=pause_reason.form_id,
                     node_id=pause_reason.node_id,
                 )
@@ -2170,11 +2178,17 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             case _:
                 raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
-    def to_entity(self) -> DifyPauseReason:
-        if self.type_ in {PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED, PauseReasonType.HITL_REQUIRED}:
+    def to_entity(self) -> DifyPauseReason | GraphonPauseReason:
+        if self.type_ == PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED:
             return HumanInputRequired(
                 form_id=self.form_id,
                 form_content="",
+                node_id=self.node_id,
+                node_title="",
+            )
+        elif self.type_ == PauseReasonType.HITL_REQUIRED:
+            return HitlRequired(
+                session_id=default_session_binding.issue_session_id_for_form(form_id=self.form_id),
                 node_id=self.node_id,
                 node_title="",
             )

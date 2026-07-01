@@ -5,7 +5,10 @@ from types import SimpleNamespace
 
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from models.human_input import RecipientType
+from models.workflow import WorkflowPauseReason
 from repositories.sqlalchemy_api_workflow_run_repository import _build_human_input_required_reason
 
 
@@ -64,3 +67,37 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
     assert reason.node_id == "node-1"
     assert reason.actions[0].id == "approve"
     assert not hasattr(reason, "form_token")
+
+
+def test_workflow_pause_reason_from_entity_persists_hitl_type_for_dify_human_input() -> None:
+    reason_model = WorkflowPauseReason.from_entity(
+        pause_id="pause-1",
+        pause_reason=HumanInputRequired(
+            form_id="form-1",
+            form_content="content",
+            inputs=[],
+            actions=[],
+            node_id="node-1",
+            node_title="Ask Name",
+        ),
+    )
+
+    assert reason_model.type_ == PauseReasonType.HITL_REQUIRED
+    assert reason_model.form_id == "form-1"
+    assert reason_model.node_id == "node-1"
+
+
+def test_workflow_pause_reason_to_entity_restores_graphon_hitl_reason() -> None:
+    reason_model = WorkflowPauseReason(
+        pause_id="pause-1",
+        type_=PauseReasonType.HITL_REQUIRED,
+        form_id="form-1",
+        node_id="node-1",
+    )
+
+    reason = reason_model.to_entity()
+
+    assert isinstance(reason, HitlRequired)
+    assert reason.TYPE == PauseReasonType.HITL_REQUIRED
+    assert reason.session_id == "form-1"
+    assert reason.node_id == "node-1"
