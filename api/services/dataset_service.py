@@ -9,7 +9,6 @@ from collections import Counter
 from collections.abc import Sequence
 from typing import Annotated, Any, Literal, TypedDict, cast
 
-import pydantic
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
