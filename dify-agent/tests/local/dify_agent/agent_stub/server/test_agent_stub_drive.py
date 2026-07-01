@@ -100,6 +100,7 @@ def test_dify_api_agent_stub_drive_handler_injects_execution_context_for_commit(
                     "key": "skills/example/SKILL.md",
                     "file_ref": {"kind": "tool_file", "id": "tool-file-1"},
                     "value_owned_by_drive": True,
+                    "is_skill": False,
                 }
             ],
         }

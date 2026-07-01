@@ -181,6 +181,28 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
   })
 
+  it('should ignore non-JSON sync errors without throwing an unhandled rejection', async () => {
+    const error = {
+      json: vi.fn().mockRejectedValue(new SyntaxError('Unexpected token U')),
+      bodyUsed: false,
+    }
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+    mockSyncWorkflowDraft.mockRejectedValue(error)
+
+    const { result } = renderUseNodesSyncDraft()
+    await act(async () => {
+      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeUndefined()
+    })
+
+    expect(error.json).toHaveBeenCalled()
+    expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
   it('should not include source_workflow_id in draft sync payloads', async () => {
     const { result } = renderUseNodesSyncDraft()
 
