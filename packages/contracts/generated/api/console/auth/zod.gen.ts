@@ -121,7 +121,15 @@ export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'
 /**
  * Type
  */
-export const zType = z.enum(['github', 'marketplace', 'package'])
+export const zCoreEntitiesProviderEntitiesBasicProviderConfigType = z.enum([
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'model-selector',
+  'secret-input',
+  'select',
+  'text-input',
+])
 
 /**
  * ProviderConfig
@@ -138,7 +146,7 @@ export const zProviderConfig = z.object({
   placeholder: zI18nObject.nullish(),
   required: z.boolean().optional().default(false),
   scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
-  type: zType,
+  type: zCoreEntitiesProviderEntitiesBasicProviderConfigType,
   url: z.string().nullish(),
 })
 
