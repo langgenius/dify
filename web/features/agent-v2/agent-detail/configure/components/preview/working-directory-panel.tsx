@@ -356,7 +356,6 @@ export function AgentWorkingDirectoryPanel({
                 <h3 id="agent-skill-detail-files-heading" className="system-xl-semibold text-text-primary">
                   {t('agentDetail.configure.workingDirectory.fileSystem')}
                 </h3>
-                <span aria-hidden className="i-ri-question-line size-3.5 shrink-0 text-text-quaternary" />
               </div>
               <AgentWorkingDirectoryBreadcrumb
                 path={rootPath}
@@ -365,6 +364,8 @@ export function AgentWorkingDirectoryPanel({
             </div>
           ),
           fileListPanelClassName: 'w-[360px]',
+          fileListTreeClassName: 'px-0',
+          fileListTreeListClassName: 'px-1',
           fileListTitle: t('agentDetail.configure.workingDirectory.title'),
           files: workingDirectoryFiles,
           filePreview: {

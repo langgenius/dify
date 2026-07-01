@@ -82,7 +82,7 @@ describe('FileTree', () => {
     await expect.element(screen.getByText('README.md')).toHaveAttribute('data-label', 'README.md')
     await expect.element(screen.getByText('README.md')).toHaveClass('after:content-[attr(data-label)]')
     expect(screen.container.querySelector('.before\\:bottom-\\[-1px\\]')).toBeInTheDocument()
-    expect(screen.container.querySelector('.i-ri-folder-open-line')).toBeInTheDocument()
+    expect(screen.container.querySelector('.i-ri-folder-open-line')).toHaveClass('text-text-secondary')
   })
 
   it('uses Remix fill icons for each non-folder file type', async () => {

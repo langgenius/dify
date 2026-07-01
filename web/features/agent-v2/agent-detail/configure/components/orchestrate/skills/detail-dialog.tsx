@@ -29,6 +29,8 @@ export type AgentSkillDetail = {
   fileCount?: number
   fileListHeader?: ReactNode
   fileListPanelClassName?: string
+  fileListTreeClassName?: string
+  fileListTreeListClassName?: string
   fileListTitle?: string
   files: AgentSkillFileNode[]
   folderOpenState?: (context: { file: AgentSkillFileNode, depth: number }) => boolean
@@ -54,6 +56,8 @@ const keepSkillFoldersClosed = () => false
 
 function AgentSkillFileList({
   fileListHeader,
+  fileListTreeClassName,
+  fileListTreeListClassName,
   fileListTitle,
   files,
   folderOpenState,
@@ -63,6 +67,8 @@ function AgentSkillFileList({
   selectedFileId,
 }: {
   fileListHeader?: ReactNode
+  fileListTreeClassName?: string
+  fileListTreeListClassName?: string
   fileListTitle?: string
   files: AgentSkillFileNode[]
   folderOpenState?: AgentSkillDetail['folderOpenState']
@@ -78,7 +84,8 @@ function AgentSkillFileList({
       files={files}
       selectedFileId={selectedFileId}
       labelledBy="agent-skill-detail-files-heading"
-      className="h-full bg-background-section p-1"
+      className={cn('h-full bg-background-section p-1', fileListTreeClassName)}
+      listClassName={fileListTreeListClassName}
       scrollAreaClassName="flex-1"
       folderOpenStrategy={keepSkillFoldersClosed}
       folderOpenState={folderOpenState}
@@ -254,6 +261,8 @@ export function AgentSkillDetailDialog({
         <div className="min-h-0 w-full">
           <AgentSkillFileList
             fileListHeader={detail.fileListHeader}
+            fileListTreeClassName={detail.fileListTreeClassName}
+            fileListTreeListClassName={detail.fileListTreeListClassName}
             fileListTitle={detail.fileListTitle}
             files={detail.files}
             folderOpenState={detail.folderOpenState}
