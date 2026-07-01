@@ -34,6 +34,7 @@ import {
 } from '@/app/components/app/configuration/debug/hooks'
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useSetDetailSidebarMode } from '@/app/components/detail-sidebar/storage'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -41,7 +42,6 @@ import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
-import { useSetDetailSidebarMode } from '@/app/components/main-nav/storage'
 import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'

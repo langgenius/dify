@@ -112,6 +112,7 @@ export function AgentOutputVariables({
 }: AgentOutputVariablesProps) {
   const { t } = useTranslation()
   const [editingState, setEditingState] = useState<EditingState | null>(null)
+  const [collapsed, setCollapsed] = useState(true)
   function handleNewOutput() {
     setEditingState({ draft: createDraft() })
   }
@@ -213,7 +214,7 @@ export function AgentOutputVariables({
     )
   }
   return (
-    <OutputVars>
+    <OutputVars collapsed={collapsed} onCollapse={setCollapsed}>
       <div className="pb-2">
         <div className="flex flex-col">
           {outputs.map((output, index) => {

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -79,15 +79,33 @@ class WorkflowDraftVariableUpdatePayload(BaseModel):
     value: Any | None = Field(default=None, description="Variable value")
 
 
+class WorkflowVariableItemPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str | None = None
+    name: str | None = None
+    value_type: str | None = None
+    value: Any | None = None
+    description: str | None = None
+
+
+class ConversationVariableItemPayload(WorkflowVariableItemPayload):
+    pass
+
+
+class EnvironmentVariableItemPayload(WorkflowVariableItemPayload):
+    pass
+
+
 class ConversationVariableUpdatePayload(BaseModel):
-    conversation_variables: list[dict[str, Any]] = Field(
+    conversation_variables: list[ConversationVariableItemPayload] = Field(
         ...,
         description="Conversation variables for the draft workflow",
     )
 
 
 class EnvironmentVariableUpdatePayload(BaseModel):
-    environment_variables: list[dict[str, Any]] = Field(
+    environment_variables: list[EnvironmentVariableItemPayload] = Field(
         ...,
         description="Environment variables for the draft workflow",
     )
@@ -114,7 +132,9 @@ register_schema_models(
     console_ns,
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
+    ConversationVariableItemPayload,
     ConversationVariableUpdatePayload,
+    EnvironmentVariableItemPayload,
     EnvironmentVariableUpdatePayload,
 )
 register_response_schema_models(console_ns, SimpleResultResponse, EnvironmentVariableListResponse)
@@ -615,7 +635,9 @@ class ConversationVariableCollectionApi(Resource):
 
         workflow_service = WorkflowService()
 
-        conversation_variables_list = payload.conversation_variables
+        conversation_variables_list = [
+            variable.model_dump(mode="json", exclude_unset=True) for variable in payload.conversation_variables
+        ]
         conversation_variables = [
             variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
         ]
@@ -707,7 +729,9 @@ class EnvironmentVariableCollectionApi(Resource):
 
         workflow_service = WorkflowService()
 
-        environment_variables_list = payload.environment_variables
+        environment_variables_list = [
+            variable.model_dump(mode="json", exclude_unset=True) for variable in payload.environment_variables
+        ]
         environment_variables = [
             variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
         ]

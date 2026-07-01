@@ -98,7 +98,7 @@ const EducationApplyAgeContent = () => {
     setIsOpeningBillingPortal(true)
     try {
       await openAsyncWindow(async () => {
-        const res = await consoleClient.billing.invoices()
+        const res = await consoleClient.billing.invoices.get()
         if (res.url)
           return res.url
 
