@@ -73,10 +73,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         invoke app
         """
         app = cls._get_app(app_id, tenant_id)
-        if not user_id:
-            user = EndUserService.get_or_create_end_user(app)
-        else:
-            user = cls._get_user(user_id, app)
+        user = cls._get_or_create_app_user(user_id, app)
 
         conversation_id = conversation_id or ""
 
@@ -95,6 +92,22 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 return cls.invoke_completion_app(app, user, stream, inputs, files)
             case _:
                 raise ValueError("unexpected app type")
+
+    @classmethod
+    def _get_or_create_app_user(cls, user_id: str | None, app: App) -> EndUser | Account:
+        """
+        Resolve the user for a plugin app invocation.
+
+        Some callers pass an existing database user id, while plugin daemons usually pass an app-scoped session id.
+        Preserve the id lookup for compatibility, then create or reuse the app-scoped service user for session ids.
+        """
+        if not user_id:
+            return EndUserService.get_or_create_end_user(app)
+
+        try:
+            return cls._get_user(user_id, app)
+        except ValueError:
+            return EndUserService.get_or_create_end_user(app, user_id)
 
     @classmethod
     def invoke_chat_app(
