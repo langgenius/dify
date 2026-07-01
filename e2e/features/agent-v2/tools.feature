@@ -15,9 +15,9 @@ Feature: Agent v2 tools
   @service-api-runtime @stable-model @tool-fixture
   Scenario: JSON Replace tool runtime returns the replacement marker
     Given I am signed in as the default E2E admin
+    And Agent v2 JSON Replace runtime verification is available
     And the Agent Builder stable chat model is available
     And the Agent Builder preseeded tool "JSON Process / JSON Replace" is available
-    And Agent v2 JSON Replace runtime verification is available
     And a runnable Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     Then Agent v2 JSON Replace runtime verification should be available
