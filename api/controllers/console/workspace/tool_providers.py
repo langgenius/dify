@@ -1225,6 +1225,17 @@ class ToolMCPAuthApi(Resource):
                 timeout=provider_entity.timeout,
                 sse_read_timeout=provider_entity.sse_read_timeout,
             ):
+                # Some OAuth-protected MCP servers may return 200 OK on initialize even without tokens.
+                # In that case, we still need to kick off OAuth instead of marking the provider as authed.
+                if (
+                    provider_entity.retrieve_tokens() is None
+                    and "client_information" in provider_entity.decrypt_credentials()
+                ):
+                    auth_result = auth(provider_entity)
+                    with sessionmaker(db.engine).begin() as session:
+                        service = MCPToolManageService(session=session)
+                        response = service.execute_auth_actions(auth_result)
+                        return response
                 # Update credentials in new transaction
                 with sessionmaker(db.engine).begin() as session:
                     service = MCPToolManageService(session=session)
