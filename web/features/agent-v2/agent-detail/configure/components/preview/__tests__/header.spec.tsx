@@ -73,7 +73,10 @@ describe('AgentPreviewHeader', () => {
     const onOpenWorkingDirectory = vi.fn()
     renderHeader({ mode: 'build', onOpenWorkingDirectory })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' }))
+    const fileSystemButton = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' })
+    expect(fileSystemButton).toHaveTextContent('agentV2.agentDetail.configure.workingDirectory.fileSystem')
+
+    await user.click(fileSystemButton)
 
     expect(onOpenWorkingDirectory).toHaveBeenCalledTimes(1)
   })
