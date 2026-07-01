@@ -2,11 +2,12 @@
 
 ENG-636. When an Agent backend run ends with a deferred ``dify.ask_human`` tool
 call, the workflow Agent node pauses the *outer* workflow through the very same
-``HumanInputRequired`` form mechanism the Human Input node uses — reusing the
-form repository, delivery channels, and submission endpoints unchanged. This
-module is a pure translation layer: model-facing ask_human tool args become
-graphon form entities (``HumanInputNodeData`` / ``FormInputConfig`` /
-``UserActionConfig``) plus Dify delivery configs. It adds no new HITL behavior.
+HITL form path the Human Input node uses — reusing the form repository,
+delivery channels, and submission endpoints unchanged. This module is a pure
+translation layer: model-facing ask_human tool args become graphon form
+entities (``HumanInputNodeData`` / ``FormInputConfig`` / ``UserActionConfig``)
+plus Dify delivery configs and the enriched Dify-side pause reason payload.
+The Graphon ``HitlRequired`` conversion stays at the node boundary.
 
 The agent-side ``dify.ask_human`` contract is richer than the workflow form
 schema in two places, handled here without widening the form vocabulary:

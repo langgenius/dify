@@ -1,9 +1,9 @@
 import pytest
 
 from core.workflow.human_input_policy import FormDisposition, enrich_human_input_pause_reasons
-from graphon.entities.pause_reason import PauseReasonType
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 
-_HUMAN_INPUT_REASON = {"TYPE": PauseReasonType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
+_HUMAN_INPUT_REASON = {"TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
 
 
 @pytest.mark.parametrize(

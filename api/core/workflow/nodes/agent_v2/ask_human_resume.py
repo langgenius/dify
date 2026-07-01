@@ -9,7 +9,7 @@ that carries the human's answer:
 * submitted  -> AskHumanToolResult(status="submitted", action, values)
 * timeout / expired -> AskHumanToolResult(status="timeout")
 * still waiting (defensive: the host resumed us early) -> re-emit the same
-  HumanInputRequired pause rebuilt from the stored form definition.
+  Dify-side ``HumanInputRequired`` pause rebuilt from the stored form definition.
 
 It only *reads* existing HITL form state — it never mutates the form or the HITL
 submission flow. The DB read (``resolve_ask_human_form``) is kept thin so the

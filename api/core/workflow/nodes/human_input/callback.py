@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -11,6 +11,8 @@ from core.repositories.human_input_repository import FormCreateParams, HumanInpu
 from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
+from graphon.runtime import VariablePool
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.factory import build_segment
 from graphon.variables.segments import Segment
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
@@ -28,20 +30,36 @@ from .session_binding import default_session_binding
 
 logger = logging.getLogger(__name__)
 
-RenderedContentProvider = str | Callable[[HITLContext], str]
-ResolvedDefaultsProvider = Mapping[str, Any] | Callable[[HITLContext], Mapping[str, Any]]
+
+def _require_template_variable_pool(pool: ReadOnlyVariablePool) -> VariablePool:
+    """Return the concrete graphon pool required for template expansion."""
+    if isinstance(pool, VariablePool):
+        return pool
+
+    msg = "human input rendering requires graphon.runtime.VariablePool for template expansion"
+    raise TypeError(msg)
 
 
-def render_form_content_before_submission(node_data: HumanInputNodeData, *, ctx: HITLContext) -> str:
+def render_form_content_before_submission(
+    node_data: HumanInputNodeData,
+    *,
+    variable_pool: ReadOnlyVariablePool,
+) -> str:
     """Process form content by substituting runtime variables before pause."""
-    rendered_form_content = ctx.variable_pool.convert_template(node_data.form_content)
+    # NOTE(QuantumGhost): This is not ideal, we should expose
+    # VariablePool method in Graphon.
+    rendered_form_content = _require_template_variable_pool(variable_pool).convert_template(node_data.form_content)
     return rendered_form_content.markdown
 
 
-def resolve_default_values(node_data: HumanInputNodeData, *, ctx: HITLContext) -> Mapping[str, Any]:
+def resolve_default_values(
+    node_data: HumanInputNodeData,
+    *,
+    variable_pool: ReadOnlyVariablePool,
+) -> Mapping[str, Any]:
     resolved_defaults: dict[str, Any] = {}
     for form_input in node_data.inputs:
-        resolved_default = form_input.resolve_default_value(ctx.variable_pool)
+        resolved_default = form_input.resolve_default_value(variable_pool)
         if resolved_default is None:
             continue
         resolved_defaults[form_input.output_variable_name] = resolved_default.to_object()
@@ -57,8 +75,6 @@ class DifyHITLCallback:
     """
 
     pause_requested_type = PauseRequested
-    completed_type = Completed
-    expired_type = Expired
 
     _OUTPUT_FIELD_ACTION_ID = "__action_id"
     _OUTPUT_FIELD_ACTION_VALUE = "__action_value"
@@ -70,8 +86,6 @@ class DifyHITLCallback:
         *,
         form_repository: HumanInputFormRepository,
         node_data: HumanInputNodeData,
-        rendered_content: RenderedContentProvider,
-        resolved_default_values: ResolvedDefaultsProvider,
         workflow_execution_id: str | None = None,
         conversation_id: str | None = None,
         delivery_methods: Sequence[DeliveryChannelConfig] = (),
@@ -81,8 +95,6 @@ class DifyHITLCallback:
         self._form_repository = form_repository
         self._session_binding = default_session_binding
         self._node_data = node_data
-        self._rendered_content = rendered_content
-        self._resolved_default_values = resolved_default_values
         self._workflow_execution_id = workflow_execution_id
         self._conversation_id = conversation_id
         self._delivery_methods = tuple(delivery_methods)
@@ -157,22 +169,20 @@ class DifyHITLCallback:
             conversation_id=self._conversation_id,
             node_id=ctx.node_id,
             form_config=self._node_data,
-            rendered_content=self._resolve_rendered_content(ctx),
+            rendered_content=render_form_content_before_submission(
+                self._node_data,
+                variable_pool=ctx.variable_pool,
+            ),
             delivery_methods=self._delivery_methods,
             display_in_ui=self._display_in_ui,
-            resolved_default_values=dict(self._resolve_default_values(ctx)),
+            resolved_default_values=dict(
+                resolve_default_values(
+                    self._node_data,
+                    variable_pool=ctx.variable_pool,
+                )
+            ),
         )
         return self._form_repository.create_form(params)
-
-    def _resolve_rendered_content(self, ctx: HITLContext) -> str:
-        if callable(self._rendered_content):
-            return self._rendered_content(ctx)
-        return self._rendered_content
-
-    def _resolve_default_values(self, ctx: HITLContext) -> Mapping[str, Any]:
-        if callable(self._resolved_default_values):
-            return self._resolved_default_values(ctx)
-        return self._resolved_default_values
 
     @staticmethod
     def _normalize_status(status: HumanInputFormStatus | str) -> str:

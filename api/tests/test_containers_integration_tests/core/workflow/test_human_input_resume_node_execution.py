@@ -15,8 +15,6 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
-    render_form_content_before_submission,
-    resolve_default_values,
 )
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
@@ -122,8 +120,6 @@ def _build_graph(
     hitl_callback = DifyHITLCallback(
         form_repository=form_repository,
         node_data=human_data,
-        rendered_content=lambda ctx: render_form_content_before_submission(human_data, ctx=ctx),
-        resolved_default_values=lambda ctx: resolve_default_values(human_data, ctx=ctx),
     )
     human_node = HumanInputNode(
         node_id="human",

@@ -9,7 +9,7 @@ import abc
 import re
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Annotated, Any, Literal, Self, assert_never
+from typing import Annotated, Any, Literal, Self, assert_never, override
 
 from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
 
@@ -97,6 +97,7 @@ class ParagraphInputConfig(BaseInputConfig):
     type: Literal[FormInputType.PARAGRAPH] = FormInputType.PARAGRAPH
     default: StringSource | None = None
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
         default = self.default
         if default is None:
@@ -105,6 +106,7 @@ class ParagraphInputConfig(BaseInputConfig):
             return []
         return [default.selector]
 
+    @override
     def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
         default = self.default
         if default is None:
@@ -120,11 +122,13 @@ class SelectInputConfig(BaseInputConfig):
     type: Literal[FormInputType.SELECT] = FormInputType.SELECT
     option_source: StringListSource
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[NodeType]]:
         if self.option_source.type == ValueSourceType.CONSTANT:
             return []
         return [self.option_source.selector]
 
+    @override
     def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
         _ = pool
         return None
@@ -166,9 +170,11 @@ class _FileInputCommonConfig(BaseModel):
 class FileInputConfig(_FileInputCommonConfig, BaseInputConfig):
     type: Literal[FormInputType.FILE] = FormInputType.FILE
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[NodeType]]:
         return []
 
+    @override
     def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
         _ = pool
         return None
@@ -178,9 +184,11 @@ class FileListInputConfig(_FileInputCommonConfig, BaseInputConfig):
     type: Literal[FormInputType.FILE_LIST] = FormInputType.FILE_LIST
     number_limits: NonNegativeInt = 0
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[NodeType]]:
         return []
 
+    @override
     def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
         _ = pool
         return None

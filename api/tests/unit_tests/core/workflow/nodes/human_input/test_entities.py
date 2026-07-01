@@ -33,8 +33,6 @@ from core.workflow.human_input_adapter import (
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
-    render_form_content_before_submission,
-    resolve_default_values,
 )
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
@@ -185,8 +183,6 @@ def _build_human_input_node(
     callback = DifyHITLCallback(
         form_repository=runtime.build_form_repository(),
         node_data=typed_node_data,
-        rendered_content=lambda ctx: render_form_content_before_submission(typed_node_data, ctx=ctx),
-        resolved_default_values=lambda ctx: resolve_default_values(typed_node_data, ctx=ctx),
         delivery_methods=runtime._resolve_delivery_methods(node_data=typed_node_data),
         display_in_ui=runtime._display_in_ui(node_data=typed_node_data),
         file_reference_factory=_TestFileReferenceFactory(),

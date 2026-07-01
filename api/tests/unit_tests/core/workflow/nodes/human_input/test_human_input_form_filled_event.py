@@ -6,8 +6,6 @@ from typing import Any
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
-    render_form_content_before_submission,
-    resolve_default_values,
 )
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
@@ -73,8 +71,6 @@ def _create_human_input_node(
     callback = DifyHITLCallback(
         form_repository=repo,
         node_data=node_data,
-        rendered_content=lambda ctx: render_form_content_before_submission(node_data, ctx=ctx),
-        resolved_default_values=lambda ctx: resolve_default_values(node_data, ctx=ctx),
         file_reference_factory=_TestFileReferenceFactory(),
     )
     return HumanInputNode(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from collections.abc import Generator, Iterable, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from typing import IO, Any, Literal, cast, overload, override
 
 from pydantic import ValidationError
@@ -285,6 +285,7 @@ class PluginModelRuntime(ModelRuntime):
         tools: list[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: Literal[False],
+        request_metadata: Mapping[str, object] | None = None,
     ) -> LLMResult: ...
 
     @overload
@@ -299,6 +300,7 @@ class PluginModelRuntime(ModelRuntime):
         tools: list[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: Literal[True],
+        request_metadata: Mapping[str, object] | None = None,
     ) -> Generator[LLMResultChunk, None, None]: ...
 
     @override
@@ -313,7 +315,9 @@ class PluginModelRuntime(ModelRuntime):
         tools: list[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: bool,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+        del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
         result = self.client.invoke_llm(
             tenant_id=self.tenant_id,
@@ -489,7 +493,9 @@ class PluginModelRuntime(ModelRuntime):
         credentials: dict[str, Any],
         texts: list[str],
         input_type: EmbeddingInputType,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
+        del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
         return self.client.invoke_text_embedding(
             tenant_id=self.tenant_id,
@@ -511,7 +517,9 @@ class PluginModelRuntime(ModelRuntime):
         credentials: dict[str, Any],
         documents: list[dict[str, Any]],
         input_type: EmbeddingInputType,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> EmbeddingResult:
+        del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
         return self.client.invoke_multimodal_embedding(
             tenant_id=self.tenant_id,
@@ -555,7 +563,9 @@ class PluginModelRuntime(ModelRuntime):
         docs: list[str],
         score_threshold: float | None,
         top_n: int | None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
+        del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
         return self.client.invoke_rerank(
             tenant_id=self.tenant_id,
@@ -581,7 +591,9 @@ class PluginModelRuntime(ModelRuntime):
         docs: list[MultimodalRerankInput],
         score_threshold: float | None,
         top_n: int | None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> RerankResult:
+        del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
         return self.client.invoke_multimodal_rerank(
             tenant_id=self.tenant_id,
@@ -605,7 +617,9 @@ class PluginModelRuntime(ModelRuntime):
         credentials: dict[str, Any],
         content_text: str,
         voice: str,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> Iterable[bytes]:
+        del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
         return self.client.invoke_tts(
             tenant_id=self.tenant_id,
@@ -646,7 +660,9 @@ class PluginModelRuntime(ModelRuntime):
         model: str,
         credentials: dict[str, Any],
         file: IO[bytes],
+        request_metadata: Mapping[str, object] | None = None,
     ) -> str:
+        del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
         return self.client.invoke_speech_to_text(
             tenant_id=self.tenant_id,
@@ -666,7 +682,9 @@ class PluginModelRuntime(ModelRuntime):
         model: str,
         credentials: dict[str, Any],
         text: str,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> bool:
+        del request_metadata
         plugin_id, provider_name = self._split_provider(provider)
         return self.client.invoke_moderation(
             tenant_id=self.tenant_id,

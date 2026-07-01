@@ -12,8 +12,6 @@ from core.repositories.human_input_repository import (
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
-    render_form_content_before_submission,
-    resolve_default_values,
 )
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
@@ -201,8 +199,6 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_a_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        rendered_content=lambda ctx: render_form_content_before_submission(human_data, ctx=ctx),
-        resolved_default_values=lambda ctx: resolve_default_values(human_data, ctx=ctx),
         file_reference_factory=_TestFileReferenceFactory(),
     )
     human_a = HumanInputNode(
@@ -219,8 +215,6 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_b_callback = DifyHITLCallback(
         form_repository=repo,
         node_data=human_data,
-        rendered_content=lambda ctx: render_form_content_before_submission(human_data, ctx=ctx),
-        resolved_default_values=lambda ctx: resolve_default_values(human_data, ctx=ctx),
         file_reference_factory=_TestFileReferenceFactory(),
     )
     human_b = HumanInputNode(

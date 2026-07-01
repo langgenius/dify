@@ -1055,10 +1055,15 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
+            # NOTE(QuantumGhost): repository callers on the Dify side should only
+            # observe enriched Dify pause reasons. The Graphon-native reason is an
+            # input-only boundary concern while persisting the pause.
+            hydrated_pause_reasons = self._hydrate_pause_reasons(session, pause_reason_models)
+
             return _PrivateWorkflowPauseEntity(
                 pause_model=pause_model,
                 reason_models=pause_reason_models,
-                pause_reasons=pause_reasons,
+                pause_reasons=hydrated_pause_reasons,
             )
 
     def _get_reasons_by_pause_id(self, session: Session, pause_id: str):
@@ -1070,7 +1075,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         session: Session,
         pause_reason_models: Sequence[WorkflowPauseReason],
-    ) -> list[GraphonPauseReason | DifyPauseReason]:
+    ) -> list[DifyPauseReason]:
         form_ids = [
             reason.form_id for reason in pause_reason_models if reason.type_ in _HITL_REASON_TYPES and reason.form_id
         ]
@@ -1085,7 +1090,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             for recipient in session.scalars(recipient_stmt).all():
                 recipients_by_form_id.setdefault(recipient.form_id, []).append(recipient)
 
-        pause_reasons: list[GraphonPauseReason | DifyPauseReason] = []
+        pause_reasons: list[DifyPauseReason] = []
         for reason in pause_reason_models:
             if reason.type_ in _HITL_REASON_TYPES:
                 form_model = form_models.get(reason.form_id)
@@ -1563,7 +1568,7 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         *,
         pause_model: WorkflowPause,
         reason_models: Sequence[WorkflowPauseReason],
-        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason] | None = None,
+        pause_reasons: Sequence[DifyPauseReason] | None = None,
         human_input_form: Sequence = (),
     ) -> None:
         self._pause_model = pause_model
@@ -1609,10 +1614,10 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         return self._pause_model.resumed_at
 
     @override
-    def get_pause_reasons(self) -> Sequence[GraphonPauseReason | DifyPauseReason]:
+    def get_pause_reasons(self) -> Sequence[DifyPauseReason]:
         if self._pause_reasons is not None:
-            return list(self._pause_reasons)  # type: ignore
-        return [reason.to_entity() for reason in self._reason_models]  # type: ignore
+            return tuple(self._pause_reasons)
+        return tuple(reason.to_entity() for reason in self._reason_models)
 
     @property
     @override

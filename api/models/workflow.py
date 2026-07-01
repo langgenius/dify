@@ -2170,7 +2170,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             case _:
                 raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
-    def to_entity(self) -> GraphonPauseReason | DifyPauseReason:
+    def to_entity(self) -> DifyPauseReason:
         if self.type_ in {PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED, PauseReasonType.HITL_REQUIRED}:
             return HumanInputRequired(
                 form_id=self.form_id,

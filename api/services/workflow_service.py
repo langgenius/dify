@@ -95,13 +95,13 @@ class _DebugHumanInputNode:
     def render_form_content_before_submission(self) -> str:
         return render_form_content_before_submission(
             self.node_data,
-            ctx=self,
+            variable_pool=self.variable_pool,
         )
 
     def resolve_default_values(self) -> Mapping[str, Any]:
         return resolve_default_values(
             self.node_data,
-            ctx=self,
+            variable_pool=self.variable_pool,
         )
 
     def render_form_content_with_outputs(
@@ -121,6 +121,10 @@ class _DebugHumanInputNode:
     @property
     def workflow_execution_id(self) -> str:
         return "debug-human-input"
+
+    @property
+    def node_title(self) -> str:
+        return self.title
 
 
 HumanInputNode = _DebugHumanInputNode

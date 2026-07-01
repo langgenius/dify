@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -12,6 +12,7 @@ from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.session_binding import SessionBinding
+from graphon.runtime import VariablePool
 from graphon.variables.factory import build_segment
 from libs.datetime_utils import naive_utc_now
 
@@ -21,6 +22,7 @@ class _Context:
     workflow_execution_id: str
     node_id: str
     node_title: str = "Human Input"
+    variable_pool: VariablePool = field(default_factory=VariablePool)
 
 
 def _ctx(workflow_execution_id: str, node_id: str, node_title: str = "Human Input") -> _Context:
@@ -46,8 +48,6 @@ def test_dify_hitl_callback_creates_pause_requested_for_new_form() -> None:
             inputs=[ParagraphInputConfig(output_variable_name="answer")],
             user_actions=[UserActionConfig(id="approve", title="Approve")],
         ),
-        rendered_content="<p>Please approve</p>",
-        resolved_default_values={},
         workflow_execution_id="run-1",
     )
 
@@ -78,8 +78,6 @@ def test_dify_hitl_callback_returns_completed_for_submitted_form() -> None:
             inputs=[ParagraphInputConfig(output_variable_name="answer")],
             user_actions=[UserActionConfig(id="approve", title="Approve")],
         ),
-        rendered_content="<p>Please approve</p>",
-        resolved_default_values={},
     )
 
     decision = callback(_ctx("run-1", "node-1"))
@@ -109,8 +107,6 @@ def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form() -> None:
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
-        rendered_content="<p>Please approve</p>",
-        resolved_default_values={},
     )
 
     decision = callback(_ctx("run-1", "node-1"))
@@ -138,8 +134,6 @@ def test_dify_hitl_callback_returns_timeout_for_waiting_form_past_node_deadline(
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
-        rendered_content="<p>Please approve</p>",
-        resolved_default_values={},
     )
 
     decision = callback(_ctx("run-1", "node-1"))
@@ -167,8 +161,6 @@ def test_dify_hitl_callback_rejects_expired_form_as_invalid_resume_state() -> No
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
-        rendered_content="<p>Please approve</p>",
-        resolved_default_values={},
     )
 
     with pytest.raises(AssertionError, match="globally expired human input form"):
@@ -190,8 +182,6 @@ def test_dify_hitl_callback_rejects_waiting_form_past_global_deadline_as_invalid
     callback = DifyHITLCallback(
         form_repository=repository,
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
-        rendered_content="<p>Please approve</p>",
-        resolved_default_values={},
     )
 
     with pytest.raises(AssertionError, match="global timeout"):

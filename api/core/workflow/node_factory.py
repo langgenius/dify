@@ -43,11 +43,7 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-    render_form_content_before_submission,
-    resolve_default_values,
-)
+from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
@@ -529,8 +525,6 @@ class DifyNodeFactory(NodeFactory):
         return DifyHITLCallback(
             form_repository=self._human_input_runtime.build_form_repository(),
             node_data=node_data,
-            rendered_content=lambda ctx: render_form_content_before_submission(node_data, ctx=ctx),
-            resolved_default_values=lambda ctx: resolve_default_values(node_data, ctx=ctx),
             conversation_id=self._conversation_id(),
             delivery_methods=self._human_input_runtime._resolve_delivery_methods(node_data=node_data),
             display_in_ui=self._human_input_runtime._display_in_ui(node_data=node_data),

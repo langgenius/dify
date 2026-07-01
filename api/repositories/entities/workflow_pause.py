@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
-from core.workflow.nodes.human_input.pause_reason import PauseReason
+from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
 
 
 class WorkflowPauseEntity(Protocol):
@@ -65,7 +65,7 @@ class WorkflowPauseEntity(Protocol):
         """`paused_at` returns the creation time of the pause."""
         ...
 
-    def get_pause_reasons(self) -> Sequence[PauseReason]:
+    def get_pause_reasons(self) -> Sequence[DifyPauseReason]:
         """
         Retrieve detailed reasons for this pause.
 

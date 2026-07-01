@@ -29,6 +29,7 @@ from core.workflow.nodes.human_input.entities import (
     SelectInputConfig,
 )
 from core.workflow.nodes.human_input.enums import ButtonStyle, TimeoutUnit
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from models.agent_config_entities import AgentHumanContactConfig
 
 
@@ -229,7 +230,7 @@ def test_pause_reason_requires_workflow_run_id() -> None:
         )
 
 
-def test_pause_reason_builds_form_and_returns_human_input_required() -> None:
+def test_pause_reason_builds_form_and_returns_dify_pause_reason() -> None:
     repo = _fake_repository(form_id="form-xyz")
     contacts = [AgentHumanContactConfig(email="a@x.com")]
 
@@ -251,6 +252,7 @@ def test_pause_reason_builds_form_and_returns_human_input_required() -> None:
 
     assert result is not None
     assert result.form_id == "form-xyz"
+    assert isinstance(result, HumanInputRequired)
     assert result.node_id == "node-1"
     assert result.node_title == "Approve?"  # args.title wins over default
     assert [i.output_variable_name for i in result.inputs] == ["note"]
@@ -321,6 +323,7 @@ def test_pause_reason_select_default_flows_into_resolved_defaults() -> None:
         repository=repo,
     )
     assert result is not None
+    params: FormCreateParams = repo.create_form.call_args.args[0]
     assert result.resolved_default_values == {"tier": "t1"}
 
 

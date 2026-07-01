@@ -12,7 +12,7 @@ from core.workflow.nodes.agent_v2.ask_human_resume import (
 )
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
-from graphon.entities.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 
 
 def _form_definition_json() -> str:
