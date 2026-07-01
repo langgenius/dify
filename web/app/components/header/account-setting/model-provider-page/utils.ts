@@ -174,7 +174,7 @@ const normalizeModelProperties = (
   return normalized
 }
 
-export const normalizeModelProviderModel = (model: ModelWithProviderEntityResponse): ModelItem => ({
+const normalizeModelProviderModel = (model: ModelWithProviderEntityResponse): ModelItem => ({
   model: model.model,
   label: normalizeModelLabel(model.label),
   model_type: modelTypeMap[model.model_type],
