@@ -54,6 +54,12 @@ def _request_schema(operation, content_type="application/json"):
     return operation["requestBody"]["content"][content_type]["schema"]
 
 
+def _nullable_schema_ref(schema):
+    if "$ref" in schema:
+        return schema["$ref"]
+    return next(item["$ref"] for item in schema["anyOf"] if "$ref" in item)
+
+
 def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
     module = _load_generate_swagger_specs_module()
 
@@ -226,6 +232,27 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert conversation_variables["items"]["$ref"] == "#/components/schemas/ConversationVariableItemPayload"
     workflow_features = schemas["WorkflowFeaturesPayload"]["properties"]["features"]
     assert workflow_features["$ref"] == "#/components/schemas/WorkflowFeaturesConfigPayload"
+    workflow_feature_properties = schemas["WorkflowFeaturesConfigPayload"]["properties"]
+    assert _nullable_schema_ref(workflow_feature_properties["suggested_questions_after_answer"]) == (
+        "#/components/schemas/WorkflowSuggestedQuestionsAfterAnswerPayload"
+    )
+    assert _nullable_schema_ref(workflow_feature_properties["text_to_speech"]) == (
+        "#/components/schemas/WorkflowTextToSpeechPayload"
+    )
+    assert _nullable_schema_ref(workflow_feature_properties["sensitive_word_avoidance"]) == (
+        "#/components/schemas/WorkflowSensitiveWordAvoidancePayload"
+    )
+    assert {"enabled", "model", "prompt"} <= set(
+        schemas["WorkflowSuggestedQuestionsAfterAnswerPayload"]["properties"]
+    )
+    assert {"enabled", "language", "voice", "autoPlay"} <= set(
+        schemas["WorkflowTextToSpeechPayload"]["properties"]
+    )
+    assert {"enabled", "type", "config"} <= set(schemas["WorkflowSensitiveWordAvoidancePayload"]["properties"])
+    file_upload = schemas["WorkflowFileUploadPayload"]["properties"]
+    assert {"document", "audio", "video", "custom", "preview_config"} <= set(file_upload)
+    assert "detail" in schemas["WorkflowFileUploadImagePayload"]["properties"]
+    assert {"mode", "file_type_list"} <= set(schemas["WorkflowFileUploadPreviewConfigPayload"]["properties"])
     assert schemas["AccountWithRole"]["properties"]["avatar_url"]["readOnly"] is True
 
 

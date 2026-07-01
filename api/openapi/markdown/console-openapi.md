@@ -21520,11 +21520,11 @@ How a workflow node is bound to an Agent.
 | file_upload | [WorkflowFileUploadPayload](#workflowfileuploadpayload) |  | No |
 | opening_statement | string |  | No |
 | retriever_resource | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
-| sensitive_word_avoidance | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
+| sensitive_word_avoidance | [WorkflowSensitiveWordAvoidancePayload](#workflowsensitivewordavoidancepayload) |  | No |
 | speech_to_text | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
 | suggested_questions | [ string ] |  | No |
-| suggested_questions_after_answer | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
-| text_to_speech | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
+| suggested_questions_after_answer | [WorkflowSuggestedQuestionsAfterAnswerPayload](#workflowsuggestedquestionsafteranswerpayload) |  | No |
+| text_to_speech | [WorkflowTextToSpeechPayload](#workflowtexttospeechpayload) |  | No |
 
 #### WorkflowFeaturesPayload
 
@@ -21536,6 +21536,7 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| detail | string |  | No |
 | enabled | boolean |  | No |
 | number_limits | integer |  | No |
 | transfer_methods | [ string ] |  | No |
@@ -21547,9 +21548,30 @@ How a workflow node is bound to an Agent.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ string ] |  | No |
 | allowed_file_upload_methods | [ string ] |  | No |
+| audio | [WorkflowFileUploadTransferPayload](#workflowfileuploadtransferpayload) |  | No |
+| custom | [WorkflowFileUploadTransferPayload](#workflowfileuploadtransferpayload) |  | No |
+| document | [WorkflowFileUploadTransferPayload](#workflowfileuploadtransferpayload) |  | No |
 | enabled | boolean |  | No |
+| fileUploadConfig | object |  | No |
 | image | [WorkflowFileUploadImagePayload](#workflowfileuploadimagepayload) |  | No |
 | number_limits | integer |  | No |
+| preview_config | [WorkflowFileUploadPreviewConfigPayload](#workflowfileuploadpreviewconfigpayload) |  | No |
+| video | [WorkflowFileUploadTransferPayload](#workflowfileuploadtransferpayload) |  | No |
+
+#### WorkflowFileUploadPreviewConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_type_list | [ string ] |  | No |
+| mode | string |  | No |
+
+#### WorkflowFileUploadTransferPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ string ] |  | No |
 
 #### WorkflowGeneratePayload
 
@@ -21873,12 +21895,37 @@ Query parameters for workflow runs.
 | workflow_run_id | string |  | Yes |
 | workflow_run_status | [WorkflowExecutionStatus](#workflowexecutionstatus) |  | Yes |
 
+#### WorkflowSensitiveWordAvoidancePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| enabled | boolean |  | No |
+| type | string |  | No |
+
 #### WorkflowStatisticQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | end | string | End date and time (YYYY-MM-DD HH:MM) | No |
 | start | string | Start date and time (YYYY-MM-DD HH:MM) | No |
+
+#### WorkflowSuggestedQuestionsAfterAnswerPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| model | object |  | No |
+| prompt | string |  | No |
+
+#### WorkflowTextToSpeechPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| autoPlay | string |  | No |
+| enabled | boolean |  | No |
+| language | string |  | No |
+| voice | string |  | No |
 
 #### WorkflowToolCreatePayload
 

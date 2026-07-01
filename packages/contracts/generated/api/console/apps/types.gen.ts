@@ -1805,11 +1805,11 @@ export type WorkflowFeaturesConfigPayload = {
   file_upload?: WorkflowFileUploadPayload | null
   opening_statement?: string | null
   retriever_resource?: WorkflowFeatureTogglePayload | null
-  sensitive_word_avoidance?: WorkflowFeatureTogglePayload | null
+  sensitive_word_avoidance?: WorkflowSensitiveWordAvoidancePayload | null
   speech_to_text?: WorkflowFeatureTogglePayload | null
   suggested_questions?: Array<string> | null
-  suggested_questions_after_answer?: WorkflowFeatureTogglePayload | null
-  text_to_speech?: WorkflowFeatureTogglePayload | null
+  suggested_questions_after_answer?: WorkflowSuggestedQuestionsAfterAnswerPayload | null
+  text_to_speech?: WorkflowTextToSpeechPayload | null
   [key: string]: unknown
 }
 
@@ -2157,14 +2157,48 @@ export type WorkflowFileUploadPayload = {
   allowed_file_extensions?: Array<string> | null
   allowed_file_types?: Array<string> | null
   allowed_file_upload_methods?: Array<string> | null
+  audio?: WorkflowFileUploadTransferPayload | null
+  custom?: WorkflowFileUploadTransferPayload | null
+  document?: WorkflowFileUploadTransferPayload | null
   enabled?: boolean | null
+  fileUploadConfig?: {
+    [key: string]: unknown
+  } | null
   image?: WorkflowFileUploadImagePayload | null
   number_limits?: number | null
+  preview_config?: WorkflowFileUploadPreviewConfigPayload | null
+  video?: WorkflowFileUploadTransferPayload | null
   [key: string]: unknown
 }
 
 export type WorkflowFeatureTogglePayload = {
   enabled?: boolean | null
+  [key: string]: unknown
+}
+
+export type WorkflowSensitiveWordAvoidancePayload = {
+  config?: {
+    [key: string]: unknown
+  } | null
+  enabled?: boolean | null
+  type?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowSuggestedQuestionsAfterAnswerPayload = {
+  enabled?: boolean | null
+  model?: {
+    [key: string]: unknown
+  } | null
+  prompt?: string | null
+  [key: string]: unknown
+}
+
+export type WorkflowTextToSpeechPayload = {
+  autoPlay?: string | null
+  enabled?: boolean | null
+  language?: string | null
+  voice?: string | null
   [key: string]: unknown
 }
 
@@ -2395,11 +2429,24 @@ export type FormInputConfig
 
 export type JsonValue2 = unknown
 
-export type WorkflowFileUploadImagePayload = {
+export type WorkflowFileUploadTransferPayload = {
   enabled?: boolean | null
   number_limits?: number | null
   transfer_methods?: Array<string> | null
   [key: string]: unknown
+}
+
+export type WorkflowFileUploadImagePayload = {
+  detail?: string | null
+  enabled?: boolean | null
+  number_limits?: number | null
+  transfer_methods?: Array<string> | null
+  [key: string]: unknown
+}
+
+export type WorkflowFileUploadPreviewConfigPayload = {
+  file_type_list?: Array<string> | null
+  mode?: string | null
 }
 
 export type AgentFeatureToggleConfig = {

@@ -165,9 +165,34 @@ class WorkflowFeatureTogglePayload(BaseModel):
     enabled: bool | None = None
 
 
-class WorkflowFileUploadImagePayload(WorkflowFeatureTogglePayload):
+class WorkflowSuggestedQuestionsAfterAnswerPayload(WorkflowFeatureTogglePayload):
+    model: dict[str, Any] | None = None
+    prompt: str | None = None
+
+
+class WorkflowTextToSpeechPayload(WorkflowFeatureTogglePayload):
+    language: str | None = None
+    voice: str | None = None
+    autoPlay: str | None = None
+
+
+class WorkflowSensitiveWordAvoidancePayload(WorkflowFeatureTogglePayload):
+    type: str | None = None
+    config: dict[str, Any] | None = None
+
+
+class WorkflowFileUploadTransferPayload(WorkflowFeatureTogglePayload):
     number_limits: int | None = None
     transfer_methods: list[str] | None = None
+
+
+class WorkflowFileUploadImagePayload(WorkflowFileUploadTransferPayload):
+    detail: str | None = None
+
+
+class WorkflowFileUploadPreviewConfigPayload(BaseModel):
+    mode: str | None = None
+    file_type_list: list[str] | None = None
 
 
 class WorkflowFileUploadPayload(WorkflowFeatureTogglePayload):
@@ -176,6 +201,12 @@ class WorkflowFileUploadPayload(WorkflowFeatureTogglePayload):
     allowed_file_upload_methods: list[str] | None = None
     number_limits: int | None = None
     image: WorkflowFileUploadImagePayload | None = None
+    document: WorkflowFileUploadTransferPayload | None = None
+    audio: WorkflowFileUploadTransferPayload | None = None
+    video: WorkflowFileUploadTransferPayload | None = None
+    custom: WorkflowFileUploadTransferPayload | None = None
+    preview_config: WorkflowFileUploadPreviewConfigPayload | None = None
+    fileUploadConfig: dict[str, Any] | None = None
 
 
 class WorkflowFeaturesConfigPayload(BaseModel):
@@ -183,11 +214,11 @@ class WorkflowFeaturesConfigPayload(BaseModel):
 
     opening_statement: str | None = None
     suggested_questions: list[str] | None = None
-    suggested_questions_after_answer: WorkflowFeatureTogglePayload | None = None
-    text_to_speech: WorkflowFeatureTogglePayload | None = None
+    suggested_questions_after_answer: WorkflowSuggestedQuestionsAfterAnswerPayload | None = None
+    text_to_speech: WorkflowTextToSpeechPayload | None = None
     speech_to_text: WorkflowFeatureTogglePayload | None = None
     retriever_resource: WorkflowFeatureTogglePayload | None = None
-    sensitive_word_avoidance: WorkflowFeatureTogglePayload | None = None
+    sensitive_word_avoidance: WorkflowSensitiveWordAvoidancePayload | None = None
     file_upload: WorkflowFileUploadPayload | None = None
 
 
@@ -377,7 +408,12 @@ register_schema_models(
     WorkflowListQuery,
     WorkflowUpdatePayload,
     WorkflowFeatureTogglePayload,
+    WorkflowSuggestedQuestionsAfterAnswerPayload,
+    WorkflowTextToSpeechPayload,
+    WorkflowSensitiveWordAvoidancePayload,
+    WorkflowFileUploadTransferPayload,
     WorkflowFileUploadImagePayload,
+    WorkflowFileUploadPreviewConfigPayload,
     WorkflowFileUploadPayload,
     WorkflowFeaturesConfigPayload,
     WorkflowFeaturesPayload,

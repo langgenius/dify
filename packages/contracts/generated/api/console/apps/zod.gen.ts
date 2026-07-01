@@ -2515,6 +2515,34 @@ export const zWorkflowFeatureTogglePayload = z.object({
 })
 
 /**
+ * WorkflowSensitiveWordAvoidancePayload
+ */
+export const zWorkflowSensitiveWordAvoidancePayload = z.object({
+  config: z.record(z.string(), z.unknown()).nullish(),
+  enabled: z.boolean().nullish(),
+  type: z.string().nullish(),
+})
+
+/**
+ * WorkflowSuggestedQuestionsAfterAnswerPayload
+ */
+export const zWorkflowSuggestedQuestionsAfterAnswerPayload = z.object({
+  enabled: z.boolean().nullish(),
+  model: z.record(z.string(), z.unknown()).nullish(),
+  prompt: z.string().nullish(),
+})
+
+/**
+ * WorkflowTextToSpeechPayload
+ */
+export const zWorkflowTextToSpeechPayload = z.object({
+  autoPlay: z.string().nullish(),
+  enabled: z.boolean().nullish(),
+  language: z.string().nullish(),
+  voice: z.string().nullish(),
+})
+
+/**
  * AgentScope
  *
  * Visibility and lifecycle scope of an Agent record.
@@ -2755,12 +2783,30 @@ export const zHumanInputFormSubmissionData = z.object({
 })
 
 /**
- * WorkflowFileUploadImagePayload
+ * WorkflowFileUploadTransferPayload
  */
-export const zWorkflowFileUploadImagePayload = z.object({
+export const zWorkflowFileUploadTransferPayload = z.object({
   enabled: z.boolean().nullish(),
   number_limits: z.int().nullish(),
   transfer_methods: z.array(z.string()).nullish(),
+})
+
+/**
+ * WorkflowFileUploadImagePayload
+ */
+export const zWorkflowFileUploadImagePayload = z.object({
+  detail: z.string().nullish(),
+  enabled: z.boolean().nullish(),
+  number_limits: z.int().nullish(),
+  transfer_methods: z.array(z.string()).nullish(),
+})
+
+/**
+ * WorkflowFileUploadPreviewConfigPayload
+ */
+export const zWorkflowFileUploadPreviewConfigPayload = z.object({
+  file_type_list: z.array(z.string()).nullish(),
+  mode: z.string().nullish(),
 })
 
 /**
@@ -2770,9 +2816,15 @@ export const zWorkflowFileUploadPayload = z.object({
   allowed_file_extensions: z.array(z.string()).nullish(),
   allowed_file_types: z.array(z.string()).nullish(),
   allowed_file_upload_methods: z.array(z.string()).nullish(),
+  audio: zWorkflowFileUploadTransferPayload.nullish(),
+  custom: zWorkflowFileUploadTransferPayload.nullish(),
+  document: zWorkflowFileUploadTransferPayload.nullish(),
   enabled: z.boolean().nullish(),
+  fileUploadConfig: z.record(z.string(), z.unknown()).nullish(),
   image: zWorkflowFileUploadImagePayload.nullish(),
   number_limits: z.int().nullish(),
+  preview_config: zWorkflowFileUploadPreviewConfigPayload.nullish(),
+  video: zWorkflowFileUploadTransferPayload.nullish(),
 })
 
 /**
@@ -2782,11 +2834,11 @@ export const zWorkflowFeaturesConfigPayload = z.object({
   file_upload: zWorkflowFileUploadPayload.nullish(),
   opening_statement: z.string().nullish(),
   retriever_resource: zWorkflowFeatureTogglePayload.nullish(),
-  sensitive_word_avoidance: zWorkflowFeatureTogglePayload.nullish(),
+  sensitive_word_avoidance: zWorkflowSensitiveWordAvoidancePayload.nullish(),
   speech_to_text: zWorkflowFeatureTogglePayload.nullish(),
   suggested_questions: z.array(z.string()).nullish(),
-  suggested_questions_after_answer: zWorkflowFeatureTogglePayload.nullish(),
-  text_to_speech: zWorkflowFeatureTogglePayload.nullish(),
+  suggested_questions_after_answer: zWorkflowSuggestedQuestionsAfterAnswerPayload.nullish(),
+  text_to_speech: zWorkflowTextToSpeechPayload.nullish(),
 })
 
 /**
