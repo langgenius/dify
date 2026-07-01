@@ -31,7 +31,7 @@ pnpm -C e2e check
 
 `pnpm install` is resolved through the repository workspace and uses the shared root lockfile plus `pnpm-workspace.yaml`.
 
-Use `pnpm -C e2e check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs formatting, linting, and type checks for this package.
+Use `pnpm -C e2e check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs ESLint autofix, linting, and type checks for this package.
 
 Common commands:
 
