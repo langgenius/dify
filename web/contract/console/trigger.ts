@@ -117,3 +117,21 @@ export const triggerOAuthInitiateContract = base
   .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize', method: 'GET' })
   .input(type<{ params: { provider: string } }>())
   .output(type<{ authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }>())
+
+export const triggersRouterContract = {
+  list: triggersContract,
+  providerInfo: triggerProviderInfoContract,
+  subscriptions: triggerSubscriptionsContract,
+  subscriptionBuilderCreate: triggerSubscriptionBuilderCreateContract,
+  subscriptionBuilderUpdate: triggerSubscriptionBuilderUpdateContract,
+  subscriptionBuilderVerifyUpdate: triggerSubscriptionBuilderVerifyUpdateContract,
+  subscriptionVerify: triggerSubscriptionVerifyContract,
+  subscriptionBuild: triggerSubscriptionBuildContract,
+  subscriptionDelete: triggerSubscriptionDeleteContract,
+  subscriptionUpdate: triggerSubscriptionUpdateContract,
+  subscriptionBuilderLogs: triggerSubscriptionBuilderLogsContract,
+  oauthConfig: triggerOAuthConfigContract,
+  oauthConfigure: triggerOAuthConfigureContract,
+  oauthDelete: triggerOAuthDeleteContract,
+  oauthInitiate: triggerOAuthInitiateContract,
+}

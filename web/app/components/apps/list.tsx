@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppListQuery, AppListSortBy } from '@/contract/console/apps'
+import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -13,6 +13,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { CheckModal } from '@/hooks/use-pay'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { hasPermission } from '@/utils/permission'
 import { AppCard } from './app-card'
@@ -30,6 +31,9 @@ import { StarredAppList } from './starred-app-list'
 import { StudioListHeader } from './studio-list-header'
 
 const STARRED_APP_LIMIT = 100
+
+type AppListQuery = NonNullable<GetAppsData['query']>
+type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 
 type Props = Readonly<{
   controlRefreshList?: number
@@ -109,7 +113,7 @@ function List({
     error,
     refetch,
   } = useInfiniteQuery({
-    ...consoleQuery.apps.list.infiniteOptions({
+    ...consoleQuery.apps.get.infiniteOptions({
       input: pageParam => ({
         query: {
           ...appListQuery,
@@ -119,6 +123,10 @@ function List({
       getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
       initialPageParam: 1,
       placeholderData: keepPreviousData,
+    }),
+    select: data => ({
+      ...data,
+      pages: data.pages.map(normalizeAppPagination),
     }),
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
@@ -133,10 +141,11 @@ function List({
     data: starredAppList,
     refetch: refetchStarredAppList,
   } = useQuery({
-    ...consoleQuery.apps.starredList.queryOptions({
+    ...consoleQuery.apps.starred.get.queryOptions({
       input: {
         query: starredAppListQuery,
       },
+      select: normalizeAppPagination,
     }),
   })
 

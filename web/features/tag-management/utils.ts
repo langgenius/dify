@@ -1,4 +1,4 @@
-import type { TagType } from '@/contract/console/tags'
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { PermissionKey } from '@/models/access-control'
 import { SnippetPermission } from '@/app/components/snippets/utils/permission'
 
