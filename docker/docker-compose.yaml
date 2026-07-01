@@ -53,6 +53,8 @@ x-shared-api-worker-config: &shared-api-worker-config
       required: false
     - path: ./envs/vectorstores/milvus.env
       required: false
+    - path: ./envs/vectorstores/valkey.env
+      required: false
     - path: ./envs/infrastructure/nginx.env
       required: false
     - path: ./envs/infrastructure/certbot.env
@@ -119,6 +121,8 @@ x-shared-worker-config: &shared-worker-config
       required: false
     - path: ./envs/vectorstores/milvus.env
       required: false
+    - path: ./envs/vectorstores/valkey.env
+      required: false
     - path: ./envs/infrastructure/nginx.env
       required: false
     - path: ./envs/infrastructure/certbot.env
@@ -184,6 +188,8 @@ x-shared-worker-beat-config: &shared-worker-beat-config
     - path: ./envs/vectorstores/opensearch.env
       required: false
     - path: ./envs/vectorstores/milvus.env
+      required: false
+    - path: ./envs/vectorstores/valkey.env
       required: false
     - path: ./envs/infrastructure/nginx.env
       required: false
@@ -796,6 +802,16 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+
+  # Valkey vector store (with valkey-search module for vector similarity search).
+  # (if used, you need to set VECTOR_STORE to valkey in the api & worker service.)
+  valkey:
+    image: valkey/valkey-bundle:latest
+    profiles:
+      - valkey
+    restart: always
+    volumes:
+      - ./volumes/valkey:/data
 
   # The Couchbase vector store.
   couchbase-server:
