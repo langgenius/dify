@@ -17,7 +17,7 @@ Use API setup for prerequisite state, then use Playwright only for user-observab
 ## Tags
 
 - `@agent-v2` — required capability tag for all Agent v2 scenarios.
-- `@core` — stable scenario expected to run in the regular Agent v2 suite when its explicit preconditions are met.
+- `@core` — stable build-mode scenario expected to run in the regular Agent v2 suite when its explicit preconditions are met. Do not apply `@core` to Preview/Test Run or Web app runtime scenarios in the current slice.
 - `@infra` — infrastructure or readiness checks.
 - `@build` — Build mode and Build draft behavior.
 - `@files` — Files section upload, display, and fixture behavior.
@@ -27,6 +27,7 @@ Use API setup for prerequisite state, then use Playwright only for user-observab
 - `@agent-edit` — saved Agent detail/configuration display surfaces.
 - `@publish` — publish and publish-bar state.
 - `@access-point` — Web app, Backend service API, and Workflow access surfaces.
+- `@web-app-runtime` — published public Web app runtime behavior. Keep this outside `@core` until runtime coverage is explicitly in scope.
 - `@feature-gated` — product capability is optional. This tag alone does not skip execution; the scenario must include an explicit step that returns `skipped` with a blocked-precondition reason when the feature is unavailable.
 
 ## Step Organization

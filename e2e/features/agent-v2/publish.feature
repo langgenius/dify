@@ -1,5 +1,6 @@
-@agent-v2 @authenticated @publish @core
+@agent-v2 @authenticated @publish
 Feature: Agent v2 publish
+  @core
   Scenario: Publish a configured Agent v2 draft
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -8,6 +9,7 @@ Feature: Agent v2 publish
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
 
+  @core
   Scenario: Publish action follows unpublished changes
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -21,6 +23,7 @@ Feature: Agent v2 publish
     Then the Agent v2 configuration should be saved automatically
     And the Agent v2 publish action should be available for unpublished changes
 
+  @core
   Scenario: Published Agent v2 version remains isolated from draft edits
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -33,6 +36,7 @@ Feature: Agent v2 publish
     And the normal Agent v2 draft should use the updated E2E prompt
     And the active published Agent v2 version should still use the normal E2E prompt
 
+  @core
   Scenario: Restoring a published Agent v2 version shows the restored configuration in Builder
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
