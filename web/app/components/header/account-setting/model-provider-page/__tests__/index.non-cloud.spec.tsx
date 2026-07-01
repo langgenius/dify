@@ -114,13 +114,7 @@ vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
-  const originalWorkspaces = actual.consoleQuery.workspaces as unknown as {
-    current?: {
-      plugin?: {
-        list?: Record<string, unknown>
-      }
-    }
-  }
+  const originalWorkspaces = actual.consoleQuery.workspaces
   return {
     ...actual,
     consoleQuery: new Proxy(actual.consoleQuery, {
@@ -131,9 +125,9 @@ vi.mock('@/service/client', async (importOriginal) => {
             current: {
               ...originalWorkspaces.current,
               plugin: {
-                ...originalWorkspaces.current?.plugin,
+                ...originalWorkspaces.current.plugin,
                 list: {
-                  ...originalWorkspaces.current?.plugin?.list,
+                  ...originalWorkspaces.current.plugin.list,
                   installations: {
                     ids: {
                       post: {

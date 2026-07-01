@@ -1,4 +1,5 @@
-import type { MutateOptions, QueryClient, QueryOptions, UseQueryResult } from '@tanstack/react-query'
+import type { PluginInstallationItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
   ModelProvider,
@@ -14,6 +15,7 @@ import type {
   InstalledPluginListWithTotalResponse,
   InstallPackageResponse,
   InstallStatusResponse,
+  MetaData,
   PackageDependency,
   Permissions,
   Plugin,
@@ -39,7 +41,7 @@ import { cloneDeep } from 'es-toolkit/object'
 import { useCallback, useEffect, useRef } from 'react'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
-import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { useAppContext } from '@/context/app-context'
 import { fetchModelProviderModelList } from '@/service/common'
 import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
@@ -57,8 +59,163 @@ type PluginTaskListResponse = {
   tasks: PluginTask[]
 }
 
-type PluginInstallationsResponse = {
-  plugins: PluginDetail[]
+const getString = (value: unknown) => {
+  return typeof value === 'string' ? value : ''
+}
+
+const getI18nValue = (value: object | null | undefined, key: string) => {
+  return value ? getString(Object.entries(value).find(([itemKey]) => itemKey === key)?.[1]) : ''
+}
+
+const normalizeI18nObject = (value: object | null | undefined, fallback = ''): PluginDeclaration['label'] => {
+  const en = getI18nValue(value, 'en_US') || getI18nValue(value, 'en-US') || fallback
+  const zhHans = getI18nValue(value, 'zh_Hans') || getI18nValue(value, 'zh-Hans') || en
+  const ja = getI18nValue(value, 'ja_JP') || getI18nValue(value, 'ja-JP') || en
+  const ptBr = getI18nValue(value, 'pt_BR') || getI18nValue(value, 'pt-BR') || en
+
+  return {
+    'en-US': en,
+    'zh-Hans': zhHans,
+    'zh-Hant': en,
+    'pt-BR': ptBr,
+    'es-ES': en,
+    'fr-FR': en,
+    'de-DE': en,
+    'ja-JP': ja,
+    'ko-KR': en,
+    'ru-RU': en,
+    'it-IT': en,
+    'th-TH': en,
+    'uk-UA': en,
+    'vi-VN': en,
+    'ro-RO': en,
+    'pl-PL': en,
+    'hi-IN': en,
+    'tr-TR': en,
+    'fa-IR': en,
+    'sl-SI': en,
+    'id-ID': en,
+    'nl-NL': en,
+    'ar-TN': en,
+    'en_US': en,
+    'zh_Hans': zhHans,
+    'ja_JP': ja,
+  }
+}
+
+const normalizePluginCategory = (category: PluginInstallationItemResponse['declaration']['category']): PluginCategoryEnum => {
+  switch (category) {
+    case PluginCategoryEnum.tool:
+      return PluginCategoryEnum.tool
+    case PluginCategoryEnum.model:
+      return PluginCategoryEnum.model
+    case PluginCategoryEnum.datasource:
+      return PluginCategoryEnum.datasource
+    case PluginCategoryEnum.trigger:
+      return PluginCategoryEnum.trigger
+    case PluginCategoryEnum.agent:
+      return PluginCategoryEnum.agent
+    case PluginCategoryEnum.extension:
+      return PluginCategoryEnum.extension
+  }
+  return PluginCategoryEnum.extension
+}
+
+const normalizePluginSource = (source: PluginInstallationItemResponse['source']): PluginSource => {
+  switch (source) {
+    case PluginSource.github:
+      return PluginSource.github
+    case PluginSource.marketplace:
+      return PluginSource.marketplace
+    case PluginSource.local:
+      return PluginSource.local
+    case PluginSource.debugging:
+      return PluginSource.debugging
+  }
+  return PluginSource.marketplace
+}
+
+const normalizePluginMeta = (meta: Record<string, unknown>): MetaData => {
+  return {
+    repo: getString(meta.repo),
+    version: getString(meta.version),
+    package: getString(meta.package),
+  }
+}
+
+const createEmptyTrigger = (name: string): PluginDeclaration['trigger'] => ({
+  events: [],
+  identity: {
+    author: '',
+    name,
+    label: normalizeI18nObject(undefined, name),
+    description: normalizeI18nObject(undefined),
+    icon: '',
+    tags: [],
+  },
+  subscription_constructor: {
+    credentials_schema: [],
+    oauth_schema: {
+      client_schema: [],
+      credentials_schema: [],
+    },
+    parameters: [],
+  },
+  subscription_schema: [],
+})
+
+const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): PluginDeclaration => {
+  const { declaration } = plugin
+  return {
+    plugin_unique_identifier: plugin.plugin_unique_identifier,
+    version: declaration.version,
+    author: declaration.author ?? '',
+    icon: declaration.icon,
+    icon_dark: declaration.icon_dark ?? undefined,
+    name: declaration.name,
+    category: normalizePluginCategory(declaration.category),
+    label: normalizeI18nObject(declaration.label, declaration.name),
+    description: normalizeI18nObject(declaration.description, declaration.name),
+    created_at: declaration.created_at,
+    resource: declaration.resource,
+    plugins: declaration.plugins,
+    verified: declaration.verified ?? false,
+    endpoint: undefined,
+    tool: undefined,
+    datasource: undefined,
+    model: declaration.model,
+    tags: declaration.tags ?? [],
+    agent_strategy: declaration.agent_strategy,
+    meta: {
+      version: getString(declaration.meta.version) || declaration.version,
+      minimum_dify_version: getString(declaration.meta.minimum_dify_version) || undefined,
+    },
+    trigger: createEmptyTrigger(declaration.name),
+  }
+}
+
+const normalizeInstalledPluginDetail = (plugin: PluginInstallationItemResponse): PluginDetail => {
+  return {
+    id: plugin.id,
+    created_at: plugin.created_at,
+    updated_at: plugin.updated_at,
+    name: plugin.name,
+    plugin_id: plugin.plugin_id,
+    plugin_unique_identifier: plugin.plugin_unique_identifier,
+    declaration: normalizePluginDeclaration(plugin),
+    installation_id: plugin.installation_id,
+    tenant_id: plugin.tenant_id,
+    endpoints_setups: plugin.endpoints_setups,
+    endpoints_active: plugin.endpoints_active,
+    version: plugin.version,
+    latest_version: plugin.latest_version,
+    latest_unique_identifier: plugin.latest_unique_identifier,
+    source: normalizePluginSource(plugin.source),
+    meta: normalizePluginMeta(plugin.meta),
+    status: plugin.status,
+    deprecated_reason: plugin.deprecated_reason,
+    alternative_plugin_id: plugin.alternative_plugin_id,
+  }
 }
 
 const isUnfinishedPluginTask = (task: PluginTask) => task.status === TaskStatus.pending || task.status === TaskStatus.running
@@ -123,7 +280,10 @@ export const useCheckInstalled = ({
     input: { body: { plugin_ids: pluginIds } },
     enabled,
     staleTime: 0,
-  })) as unknown as UseQueryResult<PluginInstallationsResponse>
+    select: response => ({
+      plugins: response.plugins.map(normalizeInstalledPluginDetail),
+    }),
+  }))
 }
 
 export const useInvalidateCheckInstalled = () => {

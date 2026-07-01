@@ -1132,21 +1132,26 @@ export type PluginAutoUpgradeSettingsResponseModel = {
 }
 
 export type PluginInstallationItemResponse = {
+  alternative_plugin_id: string
   checksum: string
   created_at: string
-  declaration: {
-    [key: string]: unknown
-  }
+  declaration: PluginDeclarationResponse
+  deprecated_reason: string
   endpoints_active: number
   endpoints_setups: number
   id: string
+  installation_id: string
+  latest_unique_identifier: string
+  latest_version: string
   meta: {
     [key: string]: unknown
   }
+  name: string
   plugin_id: string
   plugin_unique_identifier: string
   runtime_type: string
   source: PluginInstallationSource
+  status: 'active' | 'deleted'
   tenant_id: string
   updated_at: string
   version: string
@@ -1156,7 +1161,7 @@ export type LatestPluginCache = {
   alternative_plugin_id: string
   deprecated_reason: string
   plugin_id: string
-  status: string
+  status: 'active' | 'deleted'
   unique_identifier: string
   version: string
 }
@@ -1479,39 +1484,6 @@ export type StrategySetting = 'disabled' | 'fix_only' | 'latest'
 
 export type UpgradeMode = 'all' | 'exclude' | 'partial'
 
-export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
-
-export type CoreToolsEntitiesCommonEntitiesI18nObject = {
-  en_US: string
-  ja_JP?: string | null
-  pt_BR?: string | null
-  zh_Hans?: string | null
-}
-
-export type PluginCategoryBuiltinToolResponse = {
-  author: string
-  description: CoreToolsEntitiesCommonEntitiesI18nObject
-  label: CoreToolsEntitiesCommonEntitiesI18nObject
-  labels: Array<string>
-  name: string
-  output_schema: {
-    [key: string]: unknown
-  }
-  parameters?: Array<{
-    [key: string]: unknown
-  }> | null
-  [key: string]: unknown
-}
-
-export type ToolProviderType
-  = | 'api'
-    | 'app'
-    | 'builtin'
-    | 'dataset-retrieval'
-    | 'mcp'
-    | 'plugin'
-    | 'workflow'
-
 export type PluginDeclarationResponse = {
   agent_strategy?: {
     [key: string]: unknown
@@ -1551,6 +1523,39 @@ export type PluginDeclarationResponse = {
   verified?: boolean
   version: string
 }
+
+export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
+
+export type CoreToolsEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type PluginCategoryBuiltinToolResponse = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  labels: Array<string>
+  name: string
+  output_schema: {
+    [key: string]: unknown
+  }
+  parameters?: Array<{
+    [key: string]: unknown
+  }> | null
+  [key: string]: unknown
+}
+
+export type ToolProviderType
+  = | 'api'
+    | 'app'
+    | 'builtin'
+    | 'dataset-retrieval'
+    | 'mcp'
+    | 'plugin'
+    | 'workflow'
 
 export type RbacRoleAccount = {
   account_id: string
