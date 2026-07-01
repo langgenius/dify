@@ -9141,6 +9141,38 @@ Generate a Dify workflow graph from natural language
 | 400 | Invalid request parameters |  |
 | 402 | Provider quota exceeded |  |
 
+### [POST] /workflow-generate/stream
+Stream a Dify workflow graph (plan then result) via SSE
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowGeneratePayload](#workflowgeneratepayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Server-Sent Events stream of plan/result events |
+| 400 | Invalid request parameters |
+
+### [POST] /workflow-generate/suggestions
+Suggest example workflow-generator instructions for the tenant
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowInstructionSuggestionsPayload](#workflowinstructionsuggestionspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Suggestions generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
+| 400 | Invalid request parameters |  |
+
 ### [GET] /workflow/{workflow_run_id}/events
 **Get workflow execution events stream after resume**
 
@@ -21586,8 +21618,22 @@ can reuse its existing handler.
 | current_graph | object | Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch | No |
 | ideal_output | string | Optional sample output for grounding | No |
 | instruction | string | Natural-language workflow description | Yes |
-| mode | string, <br>**Available values:** "advanced-chat", "workflow" | Target app mode for the generated graph<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |
+| mode | string, <br>**Available values:** "advanced-chat", "auto", "workflow" | Target app mode for the generated graph; 'auto' lets the backend classify the instruction<br>*Enum:* `"advanced-chat"`, `"auto"`, `"workflow"` | Yes |
 | model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
+
+#### WorkflowInstructionSuggestionsPayload
+
+Payload for the workflow-generator instruction-suggestions endpoint.
+
+Runs before the user picks a model, so the suggestions come from the
+tenant's default model. The underlying generator never raises — an empty
+``suggestions`` list is a valid 200 (soft-fail).
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer, <br>**Default:** 4 | Number of suggestions to return (1-6) | No |
+| language | string | Optional language to write the suggestions in | No |
+| mode | string, <br>**Available values:** "advanced-chat", "workflow" | Target app mode for the suggestions<br>*Enum:* `"advanced-chat"`, `"workflow"` | Yes |
 
 #### WorkflowListQuery
 

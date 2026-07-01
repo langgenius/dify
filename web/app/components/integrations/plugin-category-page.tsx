@@ -5,6 +5,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useState } from 'react'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
+import InstallFromMarketplaceQuery from '@/app/components/plugins/install-plugin/install-from-marketplace-query'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import { PluginPageContextProvider } from '@/app/components/plugins/plugin-page/context-provider'
 import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
@@ -16,6 +17,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 type PluginCategoryPageProps = {
   canInstall?: boolean
   canDeletePlugin?: boolean
+  isInstallPermissionLoading?: boolean
   canUpdatePlugin?: boolean
   category: PluginCategoryEnum
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
@@ -28,6 +30,7 @@ const supportedLocalPackageExtensions = SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS.sp
 const PluginCategoryPageContent = ({
   canInstall = true,
   canDeletePlugin = true,
+  isInstallPermissionLoading = false,
   canUpdatePlugin = true,
   category,
   layout,
@@ -93,6 +96,11 @@ const PluginCategoryPageContent = ({
           onSuccess={noop}
         />
       )}
+      <InstallFromMarketplaceQuery
+        canInstallPlugin={canInstall}
+        isPermissionLoading={isInstallPermissionLoading}
+        installContextCategory={category}
+      />
       <input
         ref={fileUploader}
         className="hidden"
@@ -108,6 +116,7 @@ const PluginCategoryPageContent = ({
 const PluginCategoryPage = ({
   canInstall = true,
   canDeletePlugin = true,
+  isInstallPermissionLoading = false,
   canUpdatePlugin = true,
   category,
   layout,
@@ -125,6 +134,7 @@ const PluginCategoryPage = ({
       <PluginCategoryPageContent
         canInstall={canInstall}
         canDeletePlugin={canDeletePlugin}
+        isInstallPermissionLoading={isInstallPermissionLoading}
         canUpdatePlugin={canUpdatePlugin}
         category={category}
         layout={layout}
