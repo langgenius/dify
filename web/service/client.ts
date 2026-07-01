@@ -1,5 +1,6 @@
 import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type {
   GetReleaseResponse,
   ListReleasesResponse,
@@ -10,7 +11,6 @@ import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
-import type { Tag } from '@/contract/console/tags'
 import type { consoleRouterContract } from '@/contract/router'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
@@ -119,6 +119,10 @@ type AppDeployInvalidationOptions = {
 }
 
 type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>>>
+
+function isTagType(type: string | null | undefined): type is TagType {
+  return type === 'app' || type === 'knowledge' || type === 'snippet'
+}
 
 const defaultAppDeployInvalidationOptions = {
   appInstances: true,
@@ -668,11 +672,14 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
       },
     },
     tags: {
-      create: {
+      post: {
         mutationOptions: {
           onSuccess: (tag, _variables, _onMutateResult, context) => {
+            if (!isTagType(tag.type))
+              return
+
             context.client.setQueryData(
-              consoleQuery.tags.list.queryKey({
+              consoleQuery.tags.get.queryKey({
                 input: {
                   query: {
                     type: tag.type,
@@ -684,29 +691,31 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
       },
-      update: {
-        mutationOptions: {
-          onSuccess: (updatedTag, variables, _onMutateResult, context) => {
-            context.client.setQueriesData(
-              {
-                queryKey: consoleQuery.tags.list.key({ type: 'query' }),
-              },
-              (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tagId
-                ? updatedTag
-                : tag),
-            )
+      byTagId: {
+        patch: {
+          mutationOptions: {
+            onSuccess: (updatedTag, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                },
+                (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tag_id
+                  ? updatedTag
+                  : tag),
+              )
+            },
           },
         },
-      },
-      delete: {
-        mutationOptions: {
-          onSuccess: (_data, variables, _onMutateResult, context) => {
-            context.client.setQueriesData(
-              {
-                queryKey: consoleQuery.tags.list.key({ type: 'query' }),
-              },
-              (oldTags: Tag[] | undefined) => oldTags?.filter(tag => tag.id !== variables.params.tagId),
-            )
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                },
+                (oldTags: Tag[] | undefined) => oldTags?.filter(tag => tag.id !== variables.params.tag_id),
+              )
+            },
           },
         },
       },

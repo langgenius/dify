@@ -52,7 +52,7 @@ describe('useDatasetCardState', () => {
     word_count: 1000,
     created_at: 1609459200,
     updated_at: 1609545600,
-    tags: [{ id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: 0 }],
+    tags: [{ id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: '' }],
     embedding_model: 'text-embedding-ada-002',
     embedding_model_provider: 'openai',
     created_by: 'user-1',
