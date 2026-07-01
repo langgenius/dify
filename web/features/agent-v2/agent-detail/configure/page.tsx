@@ -1,10 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import { AgentConfigureComposerScope } from './components/composer-session'
 import { AgentConfigurePageLoading } from './components/page-loading'
 import { useAgentConfigureData } from './hooks'
+import {
+  agentConfigureComposerRebaseRevisionAtom,
+  agentConfigureScopedAtoms,
+  agentConfigureSelectedVersionIdAtom,
+  agentConfigureSelectVersionAtom,
+  rebaseAgentConfigureComposerAtom,
+} from './state'
 
 type AgentConfigurePageProps = {
   agentId: string
@@ -14,7 +22,13 @@ export function AgentConfigurePage({
   agentId,
 }: AgentConfigurePageProps) {
   return (
-    <AgentConfigurePageContent agentId={agentId} />
+    <ScopeProvider
+      key={agentId}
+      atoms={agentConfigureScopedAtoms}
+      name="AgentConfigure"
+    >
+      <AgentConfigurePageContent agentId={agentId} />
+    </ScopeProvider>
   )
 }
 
@@ -22,14 +36,13 @@ function AgentConfigurePageContent({
   agentId,
 }: AgentConfigurePageProps) {
   const { t } = useTranslation('agentV2')
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
-  const [composerRebaseRevision, setComposerRebaseRevision] = useState(0)
+  const selectedVersionId = useAtomValue(agentConfigureSelectedVersionIdAtom)
+  const composerRebaseRevision = useAtomValue(agentConfigureComposerRebaseRevisionAtom)
+  const rebaseComposer = useSetAtom(rebaseAgentConfigureComposerAtom)
+  const selectVersion = useSetAtom(agentConfigureSelectVersionAtom)
   const configureData = useAgentConfigureData(agentId, selectedVersionId)
-  const isConfigureDataPending = configureData.agentQuery.isPending
-    || configureData.composerQuery.isPending
-    || (configureData.shouldLoadVersion && configureData.versionQuery.isPending)
 
-  if (isConfigureDataPending) {
+  if (configureData.isPending) {
     return (
       <AgentConfigurePageLoading label={t('agentDetail.sections.configure')} />
     )
@@ -40,8 +53,8 @@ function AgentConfigurePageContent({
       agentId={agentId}
       composerRebaseRevision={composerRebaseRevision}
       configureData={configureData}
-      onComposerRebase={() => setComposerRebaseRevision(revision => revision + 1)}
-      onSelectVersion={setSelectedVersionId}
+      onComposerRebase={rebaseComposer}
+      onSelectVersion={selectVersion}
     />
   )
 }

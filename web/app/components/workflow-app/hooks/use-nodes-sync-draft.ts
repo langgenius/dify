@@ -179,10 +179,14 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     catch (error: unknown) {
       const responseError = error as { bodyUsed?: boolean, json?: () => Promise<{ code?: string }> }
       if (responseError.json && !responseError.bodyUsed) {
-        responseError.json().then((err) => {
+        try {
+          const err = await responseError.json()
           if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
             handleRefreshWorkflowDraft(true)
-        })
+        }
+        catch {
+          // Non-JSON upstream errors should not surface as unhandled promise rejections.
+        }
       }
       callback?.onError?.()
     }
