@@ -754,6 +754,17 @@ Then('Agent v2 Build chat Dify Tool writeback should be available', async functi
   )
 })
 
+Then('Agent v2 standalone Output Variables should be available', async function (this: DifyWorld) {
+  const page = this.getPage()
+
+  await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+
+  return skipBlockedPrecondition(
+    this,
+    'Standalone Agent Output Variables are not available: output variables currently belong to Workflow Agent v2 nodes.',
+  )
+})
+
 Then(
   'I should see the Agent v2 environment variables from the valid import in Advanced Settings',
   async function (this: DifyWorld) {

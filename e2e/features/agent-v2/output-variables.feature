@@ -1,5 +1,12 @@
 @agent-v2 @authenticated @output-variables @core
 Feature: Agent v2 output variables
+  @standalone-output-variables @feature-gated
+  Scenario: Standalone Agent configure exposes Output Variables
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    Then Agent v2 standalone Output Variables should be available
+
   Scenario: Workflow Agent v2 output variables persist after refresh
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
