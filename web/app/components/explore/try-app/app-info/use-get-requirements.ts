@@ -70,6 +70,13 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const getGraphNodes = (graph: unknown): unknown[] => {
+  if (!isRecord(graph) || !Array.isArray(graph.nodes))
+    return []
+
+  return graph.nodes
+}
+
 const isAgentTool = (value: unknown): value is AgentTool => {
   if (!isRecord(value))
     return false
@@ -116,10 +123,10 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
       iconUrl: getIconUrl(tool.provider_id, 'tool'),
     })))
   }
-  if (isAdvanced && flowData && flowData?.graph?.nodes?.length > 0) {
-    const nodes = flowData.graph.nodes
+  const nodes = getGraphNodes(flowData?.graph)
+  if (isAdvanced && nodes.length > 0) {
     requirements.push(...nodes.flatMap((node) => {
-      const data = isRecord(node.data) ? node.data : null
+      const data = isRecord(node) && isRecord(node.data) ? node.data : null
       if (data?.type !== BlockEnum.LLM || !hasLLMRequirementData(data))
         return []
 
@@ -130,7 +137,7 @@ const useGetRequirements = ({ appDetail, appId }: Params) => {
     }))
 
     requirements.push(...nodes.flatMap((node) => {
-      const data = isRecord(node.data) ? node.data : null
+      const data = isRecord(node) && isRecord(node.data) ? node.data : null
       if (data?.type !== BlockEnum.Tool || !hasToolRequirementData(data))
         return []
 

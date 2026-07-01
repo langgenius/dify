@@ -417,7 +417,7 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
-  deleted_tools?: Array<{ id: string, tool_name: string }>
+  deleted_tools?: Array<{ type: string, provider_id: string, tool_name: string }>
   /** access control */
   access_mode: AccessMode
   max_active_requests?: number | null

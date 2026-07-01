@@ -16,6 +16,7 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { CollectionType } from '@/app/components/tools/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
@@ -23,7 +24,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
 import { useAllToolProviders } from '@/service/use-tools'
 import { useGetTryAppDataSets, useGetTryAppInfo } from '@/service/use-try-app'
-import { ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { AgentStrategy, ModelModeType, Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { correctModelProvider, correctToolProvider } from '@/utils'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { basePath } from '@/utils/var'
@@ -33,7 +34,17 @@ type Props = {
   readonly appId: string
 }
 
-const defaultModelConfig = {
+type AgentToolItem = Extract<ModelConfig['agentConfig']['tools'][number], { tool_name: string }>
+
+const DEFAULT_SYSTEM_PARAMETERS: ModelConfig['system_parameters'] = {
+  audio_file_size_limit: 0,
+  file_size_limit: 0,
+  image_file_size_limit: 0,
+  video_file_size_limit: 0,
+  workflow_file_upload_limit: 0,
+}
+
+const defaultModelConfig: ModelConfig = {
   provider: 'langgenius/openai/openai',
   model_id: 'gpt-3.5-turbo',
   mode: ModelModeType.unset,
@@ -51,6 +62,7 @@ const defaultModelConfig = {
   suggested_questions_after_answer: null,
   retriever_resource: null,
   annotation_reply: null,
+  system_parameters: DEFAULT_SYSTEM_PARAMETERS,
   dataSets: [],
   agentConfig: DEFAULT_AGENT_SETTING,
 }
@@ -65,6 +77,159 @@ const getString = (value: unknown) => {
 
 const getBoolean = (value: unknown) => {
   return typeof value === 'boolean' ? value : false
+}
+
+const getNumber = (value: unknown, fallback: number) => {
+  return typeof value === 'number' ? value : fallback
+}
+
+const getOptionalString = (value: unknown) => {
+  return typeof value === 'string' ? value : undefined
+}
+
+const getStringArray = (value: unknown) => {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : undefined
+}
+
+const getTransferMethods = (value: unknown) => {
+  if (!Array.isArray(value))
+    return undefined
+
+  const transferMethods = new Set<string>(Object.values(TransferMethod))
+  return value.filter((item): item is TransferMethod => typeof item === 'string' && transferMethods.has(item))
+}
+
+const getResolution = (value: unknown) => {
+  return value === Resolution.low ? Resolution.low : Resolution.high
+}
+
+const normalizeEnabledConfig = (value: unknown): { enabled: boolean } | null => {
+  if (!isRecord(value))
+    return null
+
+  return {
+    ...value,
+    enabled: getBoolean(value.enabled),
+  } as { enabled: boolean }
+}
+
+const normalizeTextToSpeech = (value: unknown): ModelConfig['text_to_speech'] => {
+  if (!isRecord(value))
+    return null
+
+  const autoPlayValue = getString(value.autoPlay)
+  const autoPlay = autoPlayValue === TtsAutoPlay.enabled || autoPlayValue === TtsAutoPlay.disabled
+    ? autoPlayValue
+    : undefined
+
+  return {
+    ...value,
+    enabled: getBoolean(value.enabled),
+    voice: getOptionalString(value.voice),
+    language: getOptionalString(value.language),
+    ...(autoPlay ? { autoPlay } : {}),
+  } as ModelConfig['text_to_speech']
+}
+
+const normalizeAnnotationReply = (value: unknown): ModelConfig['annotation_reply'] => {
+  if (!isRecord(value))
+    return null
+
+  const embeddingModel = isRecord(value.embedding_model) ? value.embedding_model : {}
+  return {
+    ...value,
+    id: getString(value.id),
+    enabled: getBoolean(value.enabled),
+    score_threshold: getNumber(value.score_threshold, ANNOTATION_DEFAULT.score_threshold),
+    embedding_model: {
+      embedding_provider_name: getString(embeddingModel.embedding_provider_name),
+      embedding_model_name: getString(embeddingModel.embedding_model_name),
+    },
+  } as ModelConfig['annotation_reply']
+}
+
+const normalizeModeration = (value: unknown): ModelConfig['sensitive_word_avoidance'] => {
+  if (!isRecord(value))
+    return null
+
+  return {
+    ...value,
+    enabled: getBoolean(value.enabled),
+    type: getOptionalString(value.type),
+    config: isRecord(value.config) ? value.config : undefined,
+  } as ModelConfig['sensitive_word_avoidance']
+}
+
+const normalizeSuggestedQuestionsAfterAnswer = (value: unknown): ModelConfig['suggested_questions_after_answer'] => {
+  if (!isRecord(value))
+    return null
+
+  return {
+    ...value,
+    enabled: getBoolean(value.enabled),
+    prompt: getOptionalString(value.prompt),
+  } as ModelConfig['suggested_questions_after_answer']
+}
+
+const normalizeFileUploadSection = (value: unknown, includeDetail = false) => {
+  if (!isRecord(value))
+    return undefined
+
+  return {
+    ...value,
+    enabled: getBoolean(value.enabled),
+    number_limits: getNumber(value.number_limits, 0),
+    transfer_methods: getTransferMethods(value.transfer_methods),
+    ...(includeDetail ? { detail: getResolution(value.detail) } : {}),
+  }
+}
+
+const normalizeFileUpload = (value: unknown): ModelConfig['file_upload'] => {
+  if (!isRecord(value))
+    return null
+
+  return {
+    ...value,
+    enabled: getBoolean(value.enabled),
+    image: normalizeFileUploadSection(value.image, true),
+    document: normalizeFileUploadSection(value.document),
+    audio: normalizeFileUploadSection(value.audio),
+    video: normalizeFileUploadSection(value.video),
+    custom: normalizeFileUploadSection(value.custom),
+    allowed_file_types: getStringArray(value.allowed_file_types),
+    allowed_file_extensions: getStringArray(value.allowed_file_extensions),
+    allowed_file_upload_methods: getTransferMethods(value.allowed_file_upload_methods),
+    number_limits: getNumber(value.number_limits, 0),
+  } as ModelConfig['file_upload']
+}
+
+const normalizeExternalDataTools = (items?: Record<string, unknown>[]): NonNullable<ModelConfig['external_data_tools']> => {
+  return items?.map(item => ({
+    ...item,
+    type: getOptionalString(item.type),
+    label: getOptionalString(item.label),
+    icon: getOptionalString(item.icon),
+    icon_background: getOptionalString(item.icon_background),
+    variable: getOptionalString(item.variable),
+    enabled: getBoolean(item.enabled),
+    config: isRecord(item.config)
+      ? {
+          ...item.config,
+          api_based_extension_id: getOptionalString(item.config.api_based_extension_id),
+        }
+      : undefined,
+  } as NonNullable<ModelConfig['external_data_tools']>[number])) ?? []
+}
+
+const normalizeCollectionType = (value: unknown): AgentToolItem['provider_type'] => {
+  const type = getString(value)
+  const collectionTypes = new Set<string>(Object.values(CollectionType))
+  return collectionTypes.has(type) ? type as AgentToolItem['provider_type'] : CollectionType.builtIn
+}
+
+const normalizeAgentStrategy = (value: unknown): AgentStrategy => {
+  const strategy = getString(value)
+  return strategy === AgentStrategy.react || strategy === AgentStrategy.functionCall ? strategy : DEFAULT_AGENT_SETTING.strategy
 }
 
 const getAgentTools = (agentMode: unknown) => {
@@ -110,6 +275,36 @@ const normalizeExternalDataToolFormItem = (item: Record<string, unknown>) => {
   }
 }
 
+const normalizeAgentTool = (
+  tool: Record<string, unknown>,
+  deletedTools: TryAppInfo['deleted_tools'] | undefined,
+  collectionList: ReturnType<typeof useAllToolProviders>['data'] | undefined,
+): AgentToolItem => {
+  const providerId = getString(tool.provider_id)
+  const providerName = getString(tool.provider_name)
+  const providerType = normalizeCollectionType(tool.provider_type)
+  const toolName = getString(tool.tool_name)
+  const toolInCollectionList = collectionList?.find(c => providerId === c.id)
+
+  return {
+    ...tool,
+    provider_id: providerType === CollectionType.builtIn
+      ? correctToolProvider(providerName, !!toolInCollectionList)
+      : providerId,
+    provider_name: providerType === CollectionType.builtIn
+      ? correctToolProvider(providerName, !!toolInCollectionList)
+      : providerName,
+    provider_type: providerType,
+    tool_name: toolName,
+    tool_label: getString(tool.tool_label) || toolName,
+    tool_parameters: isRecord(tool.tool_parameters) ? tool.tool_parameters : {},
+    enabled: getBoolean(tool.enabled),
+    isDeleted: deletedTools?.some(deletedTool => deletedTool.provider_id === providerId && deletedTool.tool_name === toolName),
+    notAuthor: toolInCollectionList?.is_team_authorization === false,
+    credential_id: getOptionalString(tool.credential_id),
+  } as AgentToolItem
+}
+
 const BasicAppPreview: FC<Props> = ({
   appId,
 }) => {
@@ -151,7 +346,8 @@ const BasicAppPreview: FC<Props> = ({
     const model = modelConfig.model
     const mode = model.mode === ModelModeType.chat || model.mode === ModelModeType.completion ? model.mode : ModelModeType.unset
 
-    const newModelConfig = {
+    const agentMode = isRecord(modelConfig.agent_mode) ? modelConfig.agent_mode : {}
+    const newModelConfig: ModelConfig = {
       provider: correctModelProvider(model.provider),
       model_id: model.name,
       mode,
@@ -169,48 +365,32 @@ const BasicAppPreview: FC<Props> = ({
           modelConfig.dataset_query_variable ?? undefined,
         ),
       },
-      more_like_this: modelConfig.more_like_this,
-      opening_statement: modelConfig.opening_statement,
-      suggested_questions: modelConfig.suggested_questions,
-      sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
-      speech_to_text: modelConfig.speech_to_text,
-      text_to_speech: modelConfig.text_to_speech,
-      file_upload: modelConfig.file_upload,
-      suggested_questions_after_answer: modelConfig.suggested_questions_after_answer,
-      retriever_resource: modelConfig.retriever_resource,
-      annotation_reply: modelConfig.annotation_reply,
-      external_data_tools: modelConfig.external_data_tools,
+      more_like_this: normalizeEnabledConfig(modelConfig.more_like_this),
+      opening_statement: modelConfig.opening_statement ?? '',
+      suggested_questions: modelConfig.suggested_questions ?? [],
+      sensitive_word_avoidance: normalizeModeration(modelConfig.sensitive_word_avoidance),
+      speech_to_text: normalizeEnabledConfig(modelConfig.speech_to_text),
+      text_to_speech: normalizeTextToSpeech(modelConfig.text_to_speech),
+      file_upload: normalizeFileUpload(modelConfig.file_upload),
+      suggested_questions_after_answer: normalizeSuggestedQuestionsAfterAnswer(modelConfig.suggested_questions_after_answer),
+      retriever_resource: normalizeEnabledConfig(modelConfig.retriever_resource),
+      annotation_reply: normalizeAnnotationReply(modelConfig.annotation_reply),
+      external_data_tools: normalizeExternalDataTools(modelConfig.external_data_tools),
+      system_parameters: DEFAULT_SYSTEM_PARAMETERS,
       dataSets,
       agentConfig: appDetail?.mode === 'agent-chat'
         // eslint-disable-next-line style/multiline-ternary
         ? ({
             max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
-            ...(isRecord(modelConfig.agent_mode) ? modelConfig.agent_mode : {}),
             // remove dataset
             enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
+            strategy: normalizeAgentStrategy(agentMode.strategy),
             tools: getAgentTools(modelConfig.agent_mode).filter((tool) => {
               return !tool.dataset
-            }).map((tool) => {
-              const providerId = getString(tool.provider_id)
-              const providerName = getString(tool.provider_name)
-              const providerType = getString(tool.provider_type)
-              const toolName = getString(tool.tool_name)
-              const toolInCollectionList = collectionList?.find(c => providerId === c.id)
-              return {
-                ...tool,
-                isDeleted: appDetail?.deleted_tools?.some(deletedTool => deletedTool.provider_id === providerId && deletedTool.tool_name === toolName),
-                notAuthor: toolInCollectionList?.is_team_authorization === false,
-                ...(providerType === 'builtin'
-                  ? {
-                      provider_id: correctToolProvider(providerName, !!toolInCollectionList),
-                      provider_name: correctToolProvider(providerName, !!toolInCollectionList),
-                    }
-                  : {}),
-              }
-            }),
+            }).map(tool => normalizeAgentTool(tool, appDetail?.deleted_tools, collectionList)),
           }) : DEFAULT_AGENT_SETTING,
     }
-    return (newModelConfig as any)
+    return newModelConfig
   })(appDetail?.model_config)
   const mode = appDetail?.mode
   // const isChatApp = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
