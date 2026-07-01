@@ -100,19 +100,34 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert guard_step is not None
 
     pre_guard_text = job_text[: guard_step.start()]
-    fetch_step = re.search(
-        r"(?ms)^      - name: .*\n(?P<step>.*?git fetch .*origin.*main.*(?:refs/remotes/origin/main|origin/main).*)(?=^      - name: |\Z)",
-        pre_guard_text,
+    step_pattern = r"(?ms)^      - name: .*\n(?P<step>.*?)(?=^      - name: |\Z)"
+    fetch_step_text = next(
+        (
+            match.group("step")
+            for match in re.finditer(step_pattern, pre_guard_text)
+            if any(
+                re.search(pattern, line)
+                for line in match.group("step").splitlines()
+                for pattern in (
+                    r"git fetch .*refs/heads/main:refs/remotes/origin/main",
+                    r"git fetch .*main:refs/remotes/origin/main",
+                    r"git fetch .*refs/remotes/origin/main",
+                )
+            )
+        ),
+        "",
     )
-    assert fetch_step is not None
-    fetch_step_text = fetch_step.group("step")
+    assert fetch_step_text
     assert "git fetch" in fetch_step_text
     assert "origin" in fetch_step_text
-    assert "main" in fetch_step_text
-    assert (
-        "refs/heads/main:refs/remotes/origin/main" in fetch_step_text
-        or "origin main" in fetch_step_text
-        or "origin/main" in fetch_step_text
+    assert any(
+        re.search(pattern, line)
+        for line in fetch_step_text.splitlines()
+        for pattern in (
+            r"git fetch .*refs/heads/main:refs/remotes/origin/main",
+            r"git fetch .*main:refs/remotes/origin/main",
+            r"git fetch .*refs/remotes/origin/main",
+        )
     )
 
     bind_step = re.search(
@@ -121,7 +136,15 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     )
     assert bind_step is not None
     bind_step_text = bind_step.group("step")
-    assert "git branch main origin/main" in bind_step_text
+    assert any(
+        command in bind_step_text
+        for command in (
+            "git branch main origin/main",
+            "git checkout -B main origin/main",
+            "git switch -C main origin/main",
+            "git update-ref refs/heads/main refs/remotes/origin/main",
+        )
+    )
 
 
 def test_ci_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
