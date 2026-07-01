@@ -6,9 +6,11 @@ import inspect
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, PropertyMock, patch
+from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.console.datasets import data_source
@@ -22,6 +24,8 @@ from controllers.console.datasets.data_source import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models import Account, DataSourceOauthBinding
+from models.dataset import Document
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 
 
 @pytest.fixture
@@ -277,9 +281,13 @@ class TestDataSourceNotionListApi:
 
         assert status == 200
 
-    def test_get_success_with_dataset_id(self, app: Flask, current_user: Account, mock_engine: None) -> None:
+    def test_get_success_with_dataset_id(
+        self, app: Flask, current_user: Account, mock_engine: None, db_session_with_containers: Session
+    ) -> None:
         api = DataSourceNotionListApi()
         method = inspect.unwrap(api.get)
+        tenant_id = str(uuid4())
+        dataset_id = str(uuid4())
 
         page = MagicMock(
             page_id="p1",
@@ -301,10 +309,24 @@ class TestDataSourceNotionListApi:
         )
 
         dataset = MagicMock(data_source_type="notion_import")
-        document = MagicMock(data_source_info='{"notion_page_id": "p1"}')
+        document = Document(
+            tenant_id=tenant_id,
+            dataset_id=dataset_id,
+            position=1,
+            data_source_type=DataSourceType.NOTION_IMPORT,
+            data_source_info='{"notion_page_id": "p1"}',
+            batch=f"batch-{uuid4()}",
+            name="Notion Page",
+            created_from=DocumentCreatedFrom.WEB,
+            created_by=str(uuid4()),
+            indexing_status=IndexingStatus.COMPLETED,
+            enabled=True,
+        )
+        db_session_with_containers.add(document)
+        db_session_with_containers.commit()
 
         with (
-            app.test_request_context("/?credential_id=c1&dataset_id=ds1"),
+            app.test_request_context(f"/?credential_id=c1&dataset_id={dataset_id}"),
             patch(
                 "controllers.console.datasets.data_source.DatasourceProviderService.get_datasource_credentials",
                 return_value={"token": "t"},
@@ -313,7 +335,6 @@ class TestDataSourceNotionListApi:
                 "controllers.console.datasets.data_source.DatasetService.get_dataset",
                 return_value=dataset,
             ),
-            patch("controllers.console.datasets.data_source.sessionmaker") as mock_session_class,
             patch(
                 "core.datasource.datasource_manager.DatasourceManager.get_datasource_runtime",
                 return_value=MagicMock(
@@ -322,11 +343,7 @@ class TestDataSourceNotionListApi:
                 ),
             ),
         ):
-            mock_session = MagicMock()
-            mock_session_class.return_value.begin.return_value.__enter__.return_value = mock_session
-            mock_session.scalars.return_value.all.return_value = [document]
-
-            response, status = method(api, "tenant-1", current_user)
+            response, status = method(api, tenant_id, current_user)
 
         assert status == 200
 

@@ -117,7 +117,8 @@ def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str) -> None:
     if not dify_config.RBAC_ENABLED:
         return
 
-    tag_type = db.session.scalar(select(Tag.type).where(Tag.id == tag_id).limit(1))
+    _, current_tenant_id = current_account_with_tenant()
+    tag_type = db.session.scalar(select(Tag.type).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id).limit(1))
     _enforce_snippet_tag_rbac_if_needed(tag_type)
 
 

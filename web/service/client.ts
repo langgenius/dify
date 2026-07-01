@@ -5,11 +5,13 @@ import type {
   ListReleasesResponse,
   PrecheckReleaseRequest,
 } from '@dify/contracts/enterprise/types.gen'
-import type { ContractRouterClient } from '@orpc/contract'
+import type { ClientLink } from '@orpc/client'
+import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { Tag } from '@/contract/console/tags'
+import type { consoleRouterContract } from '@/contract/router'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
@@ -19,13 +21,11 @@ import {
   IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
-import {
-  consoleRouterContract,
-  marketplaceRouterContract,
-} from '@/contract/router'
+import { marketplaceRouterContract } from '@/contract/marketplace'
 import { isClient } from '@/utils/client'
 // eslint-disable-next-line no-restricted-imports
 import { request } from './base'
+import { createConsoleDynamicLink } from './console-link'
 
 function getMarketplaceHeaders() {
   return new Headers({
@@ -56,6 +56,30 @@ export function getBaseURL(path: string) {
   }
 
   return url
+}
+
+type ConsoleClientContext = Record<never, never>
+type ConsoleClientLink = ClientLink<ConsoleClientContext>
+
+function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLink {
+  return new OpenAPILink<ConsoleClientContext>(contract, {
+    url: getBaseURL(API_PREFIX),
+    fetch: (input, init) => {
+      return request(
+        input.url,
+        init,
+        {
+          fetchCompat: true,
+          request: input,
+        },
+      )
+    },
+    interceptors: [
+      onError((error) => {
+        console.error(error)
+      }),
+    ],
+  })
 }
 
 const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
@@ -323,24 +347,7 @@ async function invalidateReleaseMutationQueries(
   ])
 }
 
-const consoleLink = new OpenAPILink(consoleRouterContract, {
-  url: getBaseURL(API_PREFIX),
-  fetch: (input, init) => {
-    return request(
-      input.url,
-      init,
-      {
-        fetchCompat: true,
-        request: input,
-      },
-    )
-  },
-  interceptors: [
-    onError((error) => {
-      console.error(error)
-    }),
-  ],
-})
+const consoleLink = createConsoleDynamicLink<ConsoleClientContext>(createConsoleOpenAPILink)
 
 export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>> = createORPCClient(consoleLink)
 
