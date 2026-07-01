@@ -122,8 +122,21 @@ describe('Tracing overview panel permissions', () => {
     })
   })
 
-  it('allows tracing config when app ACL includes monitor permission', async () => {
+  it('marks tracing config as read-only with app monitor permission only', async () => {
     testState.appPermissionKeys = [AppACLPermission.Monitor]
+
+    await renderPanel()
+
+    await waitFor(() => {
+      expect(testState.configButtonProps[0]).toMatchObject({
+        readOnly: true,
+        hasConfigured: false,
+      })
+    })
+  })
+
+  it('allows tracing config when app ACL includes tracing config permission', async () => {
+    testState.appPermissionKeys = [AppACLPermission.TracingConfig]
 
     await renderPanel()
 

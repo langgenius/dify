@@ -1,7 +1,7 @@
 import type { AppContextValue } from '@/context/app-context'
 import type { Role } from '@/models/access-control'
 import type { ICurrentWorkspace, Member } from '@/models/common'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
@@ -22,6 +22,10 @@ vi.mock('@/service/use-common')
 
 const renderMembersPage = () => renderWithSystemFeatures(<MembersPage />, {
   systemFeatures: { is_email_setup: true },
+})
+
+const getMemberDetailsButton = (memberId: string) => within(screen.getByTestId(`member-row-${memberId}`)).getByRole('button', {
+  name: /members\.memberDetails\.openAria/i,
 })
 
 const createRole = (overrides: Partial<Role>): Role => ({
@@ -220,8 +224,20 @@ describe('MembersPage', () => {
 
     expect(screen.getByText('common.members.name', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('w-65', 'shrink-0')
     expect(screen.getByText('common.members.role', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('min-w-0', 'grow')
-    expect(screen.getByTestId('member-row-1').children[0])!.toHaveClass('w-65', 'shrink-0')
-    expect(screen.getByTestId('member-row-1').children[2])!.toHaveClass('min-w-0', 'grow')
+    expect(getMemberDetailsButton('1').children[0])!.toHaveClass('w-65', 'shrink-0')
+    expect(getMemberDetailsButton('1').children[2])!.toHaveClass('min-w-0', 'grow')
+  })
+
+  it('should render plural roles column header when RBAC is enabled', () => {
+    renderWithSystemFeatures(<MembersPage />, {
+      systemFeatures: {
+        is_email_setup: true,
+        rbac_enabled: true,
+      },
+    })
+
+    expect(screen.getByText('common.members.roles', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('min-w-0', 'grow')
+    expect(screen.queryByText('common.members.role', { selector: '.system-xs-medium-uppercase' })).not.toBeInTheDocument()
   })
 
   it('should open and close invite modal', async () => {
@@ -483,12 +499,26 @@ describe('MembersPage', () => {
     expect(screen.getByText('Admin'))!.toBeInTheDocument()
   })
 
+  it('should expose member details as a native row button without nesting member actions', () => {
+    renderMembersPage()
+
+    const row = screen.getByTestId('member-row-2')
+    const detailsButton = getMemberDetailsButton('2')
+    const memberMenu = within(row).getByTestId('member-menu')
+
+    expect(row).not.toHaveAttribute('role', 'button')
+    expect(row).not.toHaveClass('hover:bg-state-base-hover')
+    expect(detailsButton).toHaveAttribute('type', 'button')
+    expect(detailsButton).toHaveClass('hover:bg-state-base-hover', 'focus-visible:bg-state-base-hover')
+    expect(detailsButton).not.toContainElement(memberMenu)
+  })
+
   it('should open member details modal when a member row is clicked', async () => {
     const user = userEvent.setup()
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(getMemberDetailsButton('2'))
 
     expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
     expect(screen.getByTestId('details-member-name'))!.toHaveTextContent('Admin User')
@@ -502,8 +532,8 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    const row = screen.getByTestId('member-row-2')
-    row.focus()
+    const detailsButton = getMemberDetailsButton('2')
+    detailsButton.focus()
     await user.keyboard('{Enter}')
 
     expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
@@ -514,7 +544,7 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('member-row-1'))
+    await user.click(getMemberDetailsButton('1'))
 
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
   })
@@ -531,7 +561,7 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(getMemberDetailsButton('2'))
 
     expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
   })
@@ -541,7 +571,7 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
     expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
@@ -563,7 +593,7 @@ describe('MembersPage', () => {
       },
     })
 
-    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(getMemberDetailsButton('2'))
     await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
 
     expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({

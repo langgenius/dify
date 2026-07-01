@@ -3,7 +3,7 @@ import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
-import SnippetSidebar from '../snippet-sidebar'
+import { SnippetSidebarContent } from '../snippet-sidebar'
 
 let capturedVarListProps: {
   list: InputVar[]
@@ -53,20 +53,6 @@ vi.mock('@/app/components/app/configuration/config-var/config-modal', () => ({
   },
 }))
 
-vi.mock('@/next/link', () => ({
-  default: ({
-    children,
-    href,
-    className,
-  }: {
-    children: React.ReactNode
-    href: string
-    className?: string
-  }) => (
-    <a href={href} className={className}>{children}</a>
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/start/components/var-list', () => ({
   default: (props: {
     list: InputVar[]
@@ -96,7 +82,7 @@ const fields: SnippetInputField[] = [
   },
 ]
 
-describe('SnippetSidebar', () => {
+describe('SnippetSidebarContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedVarListProps = undefined
@@ -106,7 +92,7 @@ describe('SnippetSidebar', () => {
   it('should ignore unchanged VarList updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -122,7 +108,7 @@ describe('SnippetSidebar', () => {
   it('should forward changed VarList updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -147,7 +133,7 @@ describe('SnippetSidebar', () => {
 
   it('should hide input field operations when readonly', () => {
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly
@@ -155,7 +141,11 @@ describe('SnippetSidebar', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: /snippet\.management/i })).toHaveAttribute('href', '/snippets')
+    expect(screen.queryByRole('link', { name: /snippet\.management/i })).not.toBeInTheDocument()
+    expect(screen.getByText(snippet.name)).toHaveAttribute('title', snippet.name)
+    expect(screen.getByText(snippet.name)).toHaveClass('truncate')
+    expect(screen.getByText(snippet.description)).toHaveAttribute('title', snippet.description)
+    expect(screen.getByText(snippet.description)).toHaveClass('truncate')
     expect(screen.queryByRole('button', { name: /common\.operation\.add/i })).not.toBeInTheDocument()
     expect(capturedVarListProps?.readonly).toBe(true)
   })
@@ -163,7 +153,7 @@ describe('SnippetSidebar', () => {
   it('should add a new input field from the config variable modal', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -192,7 +182,7 @@ describe('SnippetSidebar', () => {
   it('should reject duplicate variable and label updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}

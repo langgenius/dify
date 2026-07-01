@@ -13,6 +13,14 @@ class RBACResourceScope(StrEnum):
     WORKSPACE = "workspace"
 
 
+class RBACResourceWhitelistScope(StrEnum):
+    """Whitelist scopes accepted by RBAC app and dataset access config APIs."""
+
+    ALL = "all"
+    SPECIFIC = "specific"
+    ONLY_ME = "only_me"
+
+
 class RBACPermission(StrEnum):
     """Permission points (RBAC scenes) checked by ``rbac_permission_required``.
 
@@ -28,6 +36,8 @@ class RBACPermission(StrEnum):
     APP_IMPORT_EXPORT_DSL = "app_import_export_dsl"
     APP_EDIT = "app_edit"
     APP_MONITOR = "app_monitor"
+    APP_TRACING_CONFIG = "app_tracing_config"
+    APP_LOG_AND_ANNOTATION = "app_log_and_annotation"
     APP_DELETE = "app_delete"
     APP_ACCESS_CONFIG = "app_access_config"
 
@@ -57,7 +67,9 @@ class RBACPermission(StrEnum):
 
     PLUGIN_INSTALL = "plugin_install"
     PLUGIN_PREFERENCES = "plugin_preferences"
+    PLUGIN_MODEL_CONFIG = "plugin_model_config"
     PLUGIN_MANAGE = "plugin_manage"
+    PLUGIN_DELETE = "plugin_delete"
     PLUGIN_DEBUG = "plugin_debug"
 
     CREDENTIAL_USE = "credential_use"

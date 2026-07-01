@@ -23,21 +23,25 @@ describe('useWorkspacePluginInstallPermission', () => {
 
     expect(result.current.canInstallPlugin).toBe(true)
     expect(result.current.canUpdatePlugin).toBe(true)
-    expect(result.current.canViewInstalledPlugins).toBe(true)
-    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(false)
   })
 
-  it('should grant update, view, and manage capabilities but not install with plugin.manage', () => {
-    mockWorkspacePermissionKeys = ['plugin.manage']
+  it('should not expose installed plugin list viewing as a permission capability', () => {
+    const { result } = renderHook(() => useWorkspacePluginInstallPermission())
+
+    expect('canViewInstalledPlugins' in result.current).toBe(false)
+  })
+
+  it('should grant delete capability but not install or update with plugin.delete', () => {
+    mockWorkspacePermissionKeys = ['plugin.delete']
 
     const { result } = renderHook(() => useWorkspacePluginInstallPermission())
 
     expect(result.current.canInstallPlugin).toBe(false)
-    expect(result.current.canUpdatePlugin).toBe(true)
-    expect(result.current.canViewInstalledPlugins).toBe(true)
-    expect(result.current.canManagePlugin).toBe(true)
+    expect(result.current.canUpdatePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(true)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(false)
   })
@@ -49,8 +53,7 @@ describe('useWorkspacePluginInstallPermission', () => {
 
     expect(result.current.canInstallPlugin).toBe(false)
     expect(result.current.canUpdatePlugin).toBe(false)
-    expect(result.current.canViewInstalledPlugins).toBe(false)
-    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(true)
     expect(result.current.canSetPluginPreferences).toBe(false)
   })
@@ -62,8 +65,7 @@ describe('useWorkspacePluginInstallPermission', () => {
 
     expect(result.current.canInstallPlugin).toBe(false)
     expect(result.current.canUpdatePlugin).toBe(false)
-    expect(result.current.canViewInstalledPlugins).toBe(false)
-    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(true)
   })
@@ -73,8 +75,7 @@ describe('useWorkspacePluginInstallPermission', () => {
 
     expect(result.current.canInstallPlugin).toBe(false)
     expect(result.current.canUpdatePlugin).toBe(false)
-    expect(result.current.canViewInstalledPlugins).toBe(false)
-    expect(result.current.canManagePlugin).toBe(false)
+    expect(result.current.canDeletePlugin).toBe(false)
     expect(result.current.canDebugPlugin).toBe(false)
     expect(result.current.canSetPluginPreferences).toBe(false)
   })

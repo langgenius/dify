@@ -7,8 +7,7 @@ import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
 import { hasPermission } from '@/utils/permission'
-
-const pluginReadAndUpdatePermissionKeys = ['plugin.install', 'plugin.manage']
+import { hasLegacyPluginPermissionAccess } from '../plugin-permissions'
 
 const useCanSetPluginSettings = () => {
   const { workspacePermissionKeys } = useAppContext()
@@ -26,7 +25,11 @@ const useCanSetPluginSettings = () => {
 
 export const usePluginSettingsAccess = () => {
   const { t } = useTranslation()
-  const { workspacePermissionKeys, langGeniusVersionInfo } = useAppContext()
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, workspacePermissionKeys, langGeniusVersionInfo } = useAppContext()
+  const { data: rbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.rbac_enabled,
+  })
   const { canSetPermissions, canSetPluginPreferences } = useCanSetPluginSettings()
   const permissionQuery = usePluginPermissionSettings()
   const { data: permissions } = permissionQuery
@@ -35,19 +38,30 @@ export const usePluginSettingsAccess = () => {
       toast.success(t('api.actionSuccess', { ns: 'common' }))
     },
   })
-  const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install')
-  const canUpdatePlugin = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys)
-  const canViewInstalledPlugins = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys)
-  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
-  const canDebugPlugin = hasPermission(workspacePermissionKeys, 'plugin.debug')
+  const isAdminOrOwner = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
+  const legacyCanInstallPlugin = hasLegacyPluginPermissionAccess({
+    isAdminOrOwner,
+    permission: permissions?.install_permission,
+    rbacEnabled,
+  })
+  const legacyCanDebugPlugin = hasLegacyPluginPermissionAccess({
+    isAdminOrOwner,
+    permission: permissions?.debug_permission,
+    rbacEnabled,
+  })
+  const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
+  const canUpdatePlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
+  const canDeletePlugin = hasPermission(workspacePermissionKeys, 'plugin.delete') && legacyCanInstallPlugin
+  const canDebugPlugin = rbacEnabled
+    ? hasPermission(workspacePermissionKeys, 'plugin.debug')
+    : legacyCanDebugPlugin
 
   return {
     permission: permissions,
     setPluginPermissionSettings,
     canInstallPlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
-    canManagePlugin,
+    canDeletePlugin,
     canDebugPlugin,
     canSetPluginPreferences,
     canManagement: canInstallPlugin,
@@ -87,8 +101,7 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
     canDebugger: permissionAccess.canDebugger,
     canInstallPlugin: permissionAccess.canInstallPlugin,
     canUpdatePlugin: permissionAccess.canUpdatePlugin,
-    canViewInstalledPlugins: permissionAccess.canViewInstalledPlugins,
-    canManagePlugin: permissionAccess.canManagePlugin,
+    canDeletePlugin: permissionAccess.canDeletePlugin,
     canDebugPlugin: permissionAccess.canDebugPlugin,
     canSetPermissions: permissionAccess.canSetPermissions,
     canSetPluginPreferences: permissionAccess.canSetPluginPreferences,
@@ -102,12 +115,18 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
 }
 
 export const useCanInstallPluginFromMarketplace = () => {
-  const { data: marketplaceAccess } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: s => s.enable_marketplace,
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const marketplaceAccess = systemFeatures.enable_marketplace
+  const rbacEnabled = systemFeatures.rbac_enabled
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
+  const permissionQuery = usePluginPermissionSettings()
+  const { data: permissions } = permissionQuery
+  const legacyCanInstallPlugin = hasLegacyPluginPermissionAccess({
+    isAdminOrOwner: isCurrentWorkspaceManager || isCurrentWorkspaceOwner,
+    permission: permissions?.install_permission,
+    rbacEnabled,
   })
-  const { workspacePermissionKeys } = useAppContext()
-  const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install')
+  const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
 
   const canInstallPluginFromMarketplace = useMemo(() => {
     return Boolean(marketplaceAccess && canInstallPlugin)

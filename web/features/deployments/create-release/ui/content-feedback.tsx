@@ -2,7 +2,7 @@
 
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { UnsupportedDslNodesAlert } from '../../components/unsupported-dsl-nodes-alert'
+import { UnsupportedDslNodesAlert } from '../../shared/components/unsupported-dsl-nodes-alert'
 import {
   createReleaseContentCheckFailedAtom,
   createReleaseMatchedReleaseAtom,

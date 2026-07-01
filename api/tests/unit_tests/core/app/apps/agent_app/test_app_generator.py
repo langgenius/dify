@@ -69,7 +69,7 @@ class TestGenerateSuccess:
     def test_runtime_session_snapshot_id_is_stable_for_debugger_only(self):
         assert (
             AgentAppGenerator._runtime_session_snapshot_id(invoke_from=InvokeFrom.DEBUGGER, snapshot_id="snap-1")
-            is None
+            == "snap-1"
         )
         assert (
             AgentAppGenerator._runtime_session_snapshot_id(invoke_from=InvokeFrom.WEB_APP, snapshot_id="snap-1")
@@ -111,7 +111,12 @@ class TestGenerateSuccess:
 
         assert result == {"result": "ok"}
         thread_obj.start.assert_called_once()
-        generator._resolve_agent.assert_called_once_with(app_model)
+        generator._resolve_agent.assert_called_once_with(
+            app_model,
+            invoke_from=InvokeFrom.WEB_APP,
+            draft_type=None,
+            user=user,
+        )
 
     def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
