@@ -30,6 +30,8 @@ pnpm -C e2e e2e:install
 
 `pnpm install` is resolved through the repository workspace and uses the shared root lockfile plus `pnpm-workspace.yaml`.
 
+Run only one `pnpm -C e2e e2e*` process against a local workspace at a time. Separate runner processes share the frontend port, backend port, auth bootstrap state, and log paths; running them in parallel can create startup or authorization failures that are not scenario failures.
+
 Use root lint plus the package type check as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue:
 
 ```bash
