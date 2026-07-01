@@ -40,7 +40,12 @@ def clean_messages():
             service = MessagesCleanService.from_days(
                 policy=policy,
                 days=dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS,
-                batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE,
+                batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_CANDIDATE_BATCH_SIZE,
+                max_candidate_batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_CANDIDATE_BATCH_MAX_SIZE,
+                delete_batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_DELETE_BATCH_SIZE,
+                per_app_batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_PER_APP_BATCH_SIZE,
+                app_page_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_APP_PAGE_SIZE,
+                scan_strategy=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_SCAN_STRATEGY,
             )
             stats = service.run()
 

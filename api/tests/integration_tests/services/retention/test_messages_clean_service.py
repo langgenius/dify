@@ -1,11 +1,14 @@
 import datetime
 import math
 import uuid
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
+from enums.cloud_plan import CloudPlan
 from models import Tenant
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import (
@@ -15,7 +18,7 @@ from models.model import (
     MessageAnnotation,
     MessageFeedback,
 )
-from services.retention.conversation.messages_clean_policy import BillingDisabledPolicy
+from services.retention.conversation.messages_clean_policy import BillingDisabledPolicy, BillingSandboxPolicy
 from services.retention.conversation.messages_clean_service import MessagesCleanService
 
 _NOW = datetime.datetime(2026, 1, 15, 12, 0, 0, tzinfo=datetime.UTC)
@@ -89,6 +92,35 @@ def _make_message(app_id: str, conversation_id: str, created_at: datetime.dateti
         _inputs={},
         created_at=created_at,
     )
+
+
+def _create_tenant_app_conversation(session: Session, name_suffix: str) -> tuple[str, str, str]:
+    tenant = Tenant(name=f"retention_it_tenant_{name_suffix}")
+    session.add(tenant)
+    session.flush()
+
+    app = App(
+        tenant_id=tenant.id,
+        name=f"Retention IT App {name_suffix}",
+        mode="chat",
+        enable_site=True,
+        enable_api=True,
+    )
+    session.add(app)
+    session.flush()
+
+    conv = Conversation(
+        app_id=app.id,
+        mode="chat",
+        name=f"test_conv_{name_suffix}",
+        status="normal",
+        from_source="console",
+        _inputs={},
+    )
+    session.add(conv)
+    session.flush()
+
+    return tenant.id, app.id, conv.id
 
 
 class TestMessagesCleanServiceIntegration:
@@ -284,6 +316,118 @@ class TestMessagesCleanServiceIntegration:
         with session_factory.create_session() as session:
             remaining = session.scalar(select(func.count()).select_from(Message).where(Message.id.in_(msg_ids)))
         assert remaining == 0
+
+    def test_candidate_cursor_advances_when_first_batch_has_no_eligible_messages(self, flask_req_ctx):
+        """A paid-only candidate batch must not prevent later sandbox messages from being cleaned."""
+        del flask_req_ctx
+        with session_factory.create_session() as session:
+            paid_tenant_id, paid_app_id, paid_conv_id = _create_tenant_app_conversation(session, "paid")
+            free_tenant_id, free_app_id, free_conv_id = _create_tenant_app_conversation(session, "free")
+
+            paid_msg_1 = _make_message(paid_app_id, paid_conv_id, _OLD)
+            paid_msg_2 = _make_message(paid_app_id, paid_conv_id, _OLD + datetime.timedelta(seconds=1))
+            free_msg = _make_message(free_app_id, free_conv_id, _OLD + datetime.timedelta(seconds=2))
+            session.add_all([paid_msg_1, paid_msg_2, free_msg])
+            session.commit()
+
+            paid_message_ids = [paid_msg_1.id, paid_msg_2.id]
+            free_message_id = free_msg.id
+            app_ids = [paid_app_id, free_app_id]
+            conversation_ids = [paid_conv_id, free_conv_id]
+            tenant_ids = [paid_tenant_id, free_tenant_id]
+
+        plan_map = {
+            paid_tenant_id: {"plan": CloudPlan.PROFESSIONAL, "expiration_date": -1},
+            free_tenant_id: {"plan": CloudPlan.SANDBOX, "expiration_date": -1},
+        }
+        plan_provider = MagicMock(
+            side_effect=lambda tenant_ids: {tenant_id: plan_map[tenant_id] for tenant_id in tenant_ids}
+        )
+        policy = BillingSandboxPolicy(plan_provider=plan_provider, graceful_period_days=21)
+
+        try:
+            with patch("services.retention.conversation.messages_clean_service.time.sleep"):
+                svc = MessagesCleanService.from_time_range(
+                    policy=policy,
+                    start_from=_OLD - datetime.timedelta(seconds=1),
+                    end_before=_OLD + datetime.timedelta(seconds=3),
+                    batch_size=2,
+                    max_candidate_batch_size=2,
+                    delete_batch_size=1,
+                    scan_strategy="global",
+                )
+                stats = svc.run()
+
+            assert stats["total_messages"] == 3
+            assert stats["filtered_messages"] == 1
+            assert stats["total_deleted"] == 1
+            assert plan_provider.call_count == 2
+            assert set(plan_provider.call_args_list[0].args[0]) == {paid_tenant_id}
+            assert set(plan_provider.call_args_list[1].args[0]) == {free_tenant_id}
+
+            with session_factory.create_session() as session:
+                remaining_paid = session.scalar(
+                    select(func.count()).select_from(Message).where(Message.id.in_(paid_message_ids))
+                )
+                remaining_free = session.scalar(
+                    select(func.count()).select_from(Message).where(Message.id == free_message_id)
+                )
+
+            assert remaining_paid == 2
+            assert remaining_free == 0
+        finally:
+            with session_factory.create_session() as session:
+                session.execute(delete(Message).where(Message.id.in_([*paid_message_ids, free_message_id])))
+                session.execute(delete(Conversation).where(Conversation.id.in_(conversation_ids)))
+                session.execute(delete(App).where(App.id.in_(app_ids)))
+                session.execute(delete(Tenant).where(Tenant.id.in_(tenant_ids)))
+                session.commit()
+
+    def test_delete_batch_size_chunks_eligible_message_deletes(self, tenant_and_app):
+        """Candidate scans can be larger than the delete transaction chunk size."""
+        data = tenant_and_app
+        app_id = data["app_id"]
+        conv_id = data["conversation_id"]
+        msg_ids: list[str] = []
+
+        with session_factory.create_session() as session:
+            for index in range(5):
+                msg = _make_message(app_id, conv_id, _OLD + datetime.timedelta(seconds=index))
+                session.add(msg)
+                session.flush()
+                msg_ids.append(msg.id)
+            session.commit()
+
+        try:
+            with (
+                patch.object(
+                    MessagesCleanService,
+                    "_batch_delete_message_relations",
+                    wraps=MessagesCleanService._batch_delete_message_relations,
+                ) as delete_relations,
+                patch("services.retention.conversation.messages_clean_service.time.sleep"),
+            ):
+                svc = MessagesCleanService.from_time_range(
+                    policy=BillingDisabledPolicy(),
+                    start_from=_OLD - datetime.timedelta(seconds=1),
+                    end_before=_OLD + datetime.timedelta(seconds=6),
+                    batch_size=5,
+                    max_candidate_batch_size=5,
+                    delete_batch_size=2,
+                )
+                stats = svc.run()
+
+            assert stats["total_deleted"] == 5
+            assert delete_relations.call_count == 3
+
+            with session_factory.create_session() as session:
+                remaining = session.scalar(select(func.count()).select_from(Message).where(Message.id.in_(msg_ids)))
+
+            assert remaining == 0
+        finally:
+            with session_factory.create_session() as session:
+                session.execute(delete(Message).where(Message.id.in_(msg_ids)))
+                session.commit()
 
     def test_no_messages_in_range_returns_empty_stats(self, seed_messages):
         """A window entirely in the future must yield zero matches."""

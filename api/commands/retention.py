@@ -10,7 +10,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.retention.conversation.messages_clean_policy import create_message_clean_policy
-from services.retention.conversation.messages_clean_service import MessagesCleanService
+from services.retention.conversation.messages_clean_service import MessagesCleanScanStrategy, MessagesCleanService
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
@@ -1140,7 +1140,44 @@ def cleanup_orphaned_draft_variables(
     default=None,
     help="Relative upper bound in days ago (exclusive). Required for relative mode.",
 )
-@click.option("--batch-size", default=1000, show_default=True, help="Batch size for selecting messages.")
+@click.option("--batch-size", default=1000, show_default=True, help="Backward-compatible default batch size.")
+@click.option(
+    "--candidate-batch-size",
+    default=None,
+    type=int,
+    help="Initial number of global candidate messages to scan per batch. Defaults to --batch-size.",
+)
+@click.option(
+    "--max-candidate-batch-size",
+    default=None,
+    type=int,
+    help="Maximum number of global candidate messages to scan per batch.",
+)
+@click.option(
+    "--delete-batch-size",
+    default=None,
+    type=int,
+    help="Maximum number of messages to delete per transaction. Defaults to --batch-size.",
+)
+@click.option(
+    "--per-app-batch-size",
+    default=None,
+    type=int,
+    help="Maximum number of messages to scan per eligible app turn. Defaults to --batch-size.",
+)
+@click.option(
+    "--app-page-size",
+    default=500,
+    show_default=True,
+    help="Number of apps to inspect per eligible-app discovery query.",
+)
+@click.option(
+    "--scan-strategy",
+    type=click.Choice(["auto", "global", "eligible_apps"]),
+    default="auto",
+    show_default=True,
+    help="Message cleanup scan strategy.",
+)
 @click.option(
     "--graceful-period",
     default=21,
@@ -1150,6 +1187,12 @@ def cleanup_orphaned_draft_variables(
 @click.option("--dry-run", is_flag=True, default=False, help="Show messages logs would be cleaned without deleting")
 def clean_expired_messages(
     batch_size: int,
+    candidate_batch_size: int | None,
+    max_candidate_batch_size: int | None,
+    delete_batch_size: int | None,
+    per_app_batch_size: int | None,
+    app_page_size: int,
+    scan_strategy: MessagesCleanScanStrategy,
     graceful_period: int,
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
@@ -1208,6 +1251,10 @@ def clean_expired_messages(
         else:
             task_label = "custom"
 
+        effective_candidate_batch_size = candidate_batch_size if candidate_batch_size is not None else batch_size
+        effective_delete_batch_size = delete_batch_size if delete_batch_size is not None else batch_size
+        effective_per_app_batch_size = per_app_batch_size if per_app_batch_size is not None else batch_size
+
         # Create and run the cleanup service
         if abs_mode:
             assert start_from is not None
@@ -1216,7 +1263,12 @@ def clean_expired_messages(
                 policy=policy,
                 start_from=start_from,
                 end_before=end_before,
-                batch_size=batch_size,
+                batch_size=effective_candidate_batch_size,
+                max_candidate_batch_size=max_candidate_batch_size,
+                delete_batch_size=effective_delete_batch_size,
+                per_app_batch_size=effective_per_app_batch_size,
+                app_page_size=app_page_size,
+                scan_strategy=scan_strategy,
                 dry_run=dry_run,
                 task_label=task_label,
             )
@@ -1225,7 +1277,12 @@ def clean_expired_messages(
             service = MessagesCleanService.from_days(
                 policy=policy,
                 days=before_days,
-                batch_size=batch_size,
+                batch_size=effective_candidate_batch_size,
+                max_candidate_batch_size=max_candidate_batch_size,
+                delete_batch_size=effective_delete_batch_size,
+                per_app_batch_size=effective_per_app_batch_size,
+                app_page_size=app_page_size,
+                scan_strategy=scan_strategy,
                 dry_run=dry_run,
                 task_label=task_label,
             )
@@ -1237,7 +1294,12 @@ def clean_expired_messages(
                 policy=policy,
                 start_from=now - datetime.timedelta(days=from_days_ago),
                 end_before=now - datetime.timedelta(days=before_days),
-                batch_size=batch_size,
+                batch_size=effective_candidate_batch_size,
+                max_candidate_batch_size=max_candidate_batch_size,
+                delete_batch_size=effective_delete_batch_size,
+                per_app_batch_size=effective_per_app_batch_size,
+                app_page_size=app_page_size,
+                scan_strategy=scan_strategy,
                 dry_run=dry_run,
                 task_label=task_label,
             )
