@@ -26,6 +26,7 @@ const diagnosticArtifactStatuses = new Set([
   Status.AMBIGUOUS,
   Status.PENDING,
   Status.UNDEFINED,
+  Status.UNKNOWN,
 ])
 
 const sanitizeForPath = (value: string) =>

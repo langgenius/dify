@@ -284,13 +284,15 @@ When('I fill in the app name in the dialog', async function (this: DifyWorld) {
 
 ### Failure diagnostics
 
-The `After` hook automatically captures on failure:
+The `After` hook automatically captures diagnostics for failed, ambiguous, pending, undefined, or unknown scenarios:
 
 - Full-page screenshot (PNG)
 - Page HTML dump
 - Console errors and page errors
 
 Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
+
+Skipped preflight scenarios should attach the blocked-precondition reason to the skipped step and should not create screenshot or HTML artifacts.
 
 ### Seed resources and preflight checks
 
