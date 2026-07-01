@@ -5,6 +5,7 @@ import {
   createAgentSoulConfigWithModel,
   createConfiguredTestAgent,
   createTestAgent,
+  getAgentComposerDraft,
   getAgentConfigurePath,
   getTestAgent,
   normalAgentPrompt,
@@ -15,10 +16,12 @@ import {
   updatedAgentSoulConfig,
 } from '../../../support/agent'
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
+import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from '../../../support/test-materials'
 
 const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)
-  if (!agentId) throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
+  if (!agentId)
+    throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
 
   return agentId
 }
@@ -77,7 +80,8 @@ When('I open the Agent v2 configure page from the Agent Roster', async function 
   const page = this.getPage()
   const agentId = getCurrentAgentId(this)
   const agentName = this.lastCreatedAgentName
-  if (!agentName) throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
+  if (!agentName)
+    throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
 
   await page.goto('/roster')
   await page.getByRole('link', { name: agentName }).click()
@@ -95,6 +99,38 @@ When('I publish the Agent v2 draft', async function (this: DifyWorld) {
 
   await expect(publishButton).toBeEnabled({ timeout: 30_000 })
   await publishButton.click()
+})
+
+When('I upload the small Agent v2 file from the Files section', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const agentId = getCurrentAgentId(this)
+  const fileName = agentBuilderTestMaterials.smallFile
+  const filePath = getAgentBuilderTestMaterialPath('smallFile')
+
+  await page.getByRole('button', { name: 'Add file' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Upload file' })
+  await expect(dialog).toBeVisible()
+
+  const fileChooserPromise = page.waitForEvent('filechooser')
+  await dialog.getByRole('button', { name: 'browse' }).click()
+  await (await fileChooserPromise).setFiles(filePath)
+  await expect(dialog.getByText(fileName)).toBeVisible()
+
+  const commitResponsePromise = page.waitForResponse(response => (
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/config/files`)
+  ))
+  await dialog.getByRole('button', { name: 'Upload' }).click()
+  const commitResponse = await commitResponsePromise
+  expect(commitResponse.status()).toBe(201)
+  const committed = await commitResponse.json() as { file?: { name?: string } }
+  await expect(dialog).not.toBeVisible({ timeout: 30_000 })
+
+  const committedName = committed.file?.name
+  if (!committedName)
+    throw new Error('Agent config file upload response did not include a file name.')
+
+  this.createdAgentConfigFiles.push({ agentId, name: committedName })
 })
 
 Then('I should be on the Agent v2 configure page', async function (this: DifyWorld) {
@@ -140,6 +176,29 @@ Then(
 
     await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
     await expect(page.getByRole('button', { name: /^Preview$/i })).toBeDisabled()
+  },
+)
+
+Then('I should see the small Agent v2 file in the Files section', async function (this: DifyWorld) {
+  const fileName = agentBuilderTestMaterials.smallFile
+  await expect(
+    this.getPage().getByRole('button', { exact: true, name: fileName }),
+  ).toBeVisible({ timeout: 30_000 })
+})
+
+Then(
+  'the small Agent v2 file should be saved in the Agent v2 draft',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+    const fileName = agentBuilderTestMaterials.smallFile
+
+    await expect
+      .poll(async () => (
+        await getAgentComposerDraft(agentId)
+      ).agent_soul?.config_files?.map(file => file.name) ?? [], {
+        timeout: 30_000,
+      })
+      .toContain(fileName)
   },
 )
 

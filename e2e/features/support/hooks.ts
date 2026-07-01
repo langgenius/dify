@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
-import { deleteAgentDriveFile, deleteTestAgent } from '../../support/agent'
+import { deleteAgentConfigFile, deleteAgentDriveFile, deleteTestAgent } from '../../support/agent'
 import { deleteTestApp } from '../../support/api'
 import { deleteTestDataset } from '../../support/datasets'
 import { deleteBuiltinToolCredential } from '../../support/tools'
@@ -50,16 +50,18 @@ BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
 })
 
 Before(async function (this: DifyWorld, { pickle }) {
-  if (!browser) throw new Error('Shared Playwright browser is not available.')
+  if (!browser)
+    throw new Error('Shared Playwright browser is not available.')
 
-  const isUnauthenticatedScenario = pickle.tags.some((tag) => tag.name === '@unauthenticated')
+  const isUnauthenticatedScenario = pickle.tags.some(tag => tag.name === '@unauthenticated')
 
-  if (isUnauthenticatedScenario) await this.startUnauthenticatedSession(browser)
+  if (isUnauthenticatedScenario)
+    await this.startUnauthenticatedSession(browser)
   else await this.startAuthenticatedSession(browser)
 
   this.scenarioStartedAt = Date.now()
 
-  const tags = pickle.tags.map((tag) => tag.name).join(' ')
+  const tags = pickle.tags.map(tag => tag.name).join(' ')
   console.warn(`[e2e] start ${pickle.name}${tags ? ` ${tags}` : ''}`)
 })
 
@@ -91,6 +93,8 @@ After(async function (this: DifyWorld, { pickle, result }) {
     `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
   )
 
+  for (const file of this.createdAgentConfigFiles.toReversed())
+    await deleteAgentConfigFile(file.agentId, file.name).catch(() => {})
   for (const file of this.createdAgentDriveFiles.toReversed())
     await deleteAgentDriveFile(file.agentId, file.key).catch(() => {})
   for (const id of this.createdAgentIds) await deleteTestAgent(id).catch(() => {})
