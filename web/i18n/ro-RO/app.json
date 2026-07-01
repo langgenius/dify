@@ -55,6 +55,8 @@
   "firstEmpty.title": "Încă nu există aplicații",
   "gotoAnything.actions.accountDesc": "Navigați la pagina de cont",
   "gotoAnything.actions.communityDesc": "Deschide comunitatea Discord",
+  "gotoAnything.actions.createAuto": "Automat",
+  "gotoAnything.actions.createAutoDesc": "Lasă AI să aleagă Workflow sau Chatflow pe baza descrierii tale",
   "gotoAnything.actions.createCategoryDesc": "Creați un flux de lucru sau un flux de chat generat de AI",
   "gotoAnything.actions.createChatflow": "Flux de chat",
   "gotoAnything.actions.createChatflowDesc": "Generați o aplicație chatflow (chat avansat) dintr-o descriere",
