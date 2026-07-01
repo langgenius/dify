@@ -10,6 +10,7 @@ import {
 import {
   genModelNameFormSchema,
   genModelTypeFormSchema,
+  isNullOrUndefined,
   modelTypeFormat,
   normalizeModelProviderModelsResponse,
   providerToPluginId,
@@ -19,6 +20,14 @@ import {
 describe('utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  describe('isNullOrUndefined', () => {
+    it('should identify nullish values only', () => {
+      expect(isNullOrUndefined(null)).toBe(true)
+      expect(isNullOrUndefined(undefined)).toBe(true)
+      expect(isNullOrUndefined('')).toBe(false)
+    })
   })
 
   describe('sizeFormat', () => {
