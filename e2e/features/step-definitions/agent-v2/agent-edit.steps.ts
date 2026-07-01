@@ -29,6 +29,7 @@ const getComposerInheritanceSnapshot = async (agentId: string) => {
   const model = asRecord(soul.model)
   const prompt = asRecord(soul.prompt)
   const files = asArray(soul.config_files)
+  const skills = asArray(soul.config_skills)
   const tools = asArray(asRecord(soul.tools).dify_tools)
   const knowledgeSets = asArray(asRecord(soul.knowledge).sets)
 
@@ -44,6 +45,7 @@ const getComposerInheritanceSnapshot = async (agentId: string) => {
       provider: asString(model.model_provider),
     },
     prompt: asString(prompt.system_prompt),
+    skillNames: skills.map(skill => asString(asRecord(skill).name)).filter(Boolean).sort(),
     toolSignatures: tools
       .map((tool) => {
         const record = asRecord(tool)
@@ -181,6 +183,10 @@ Then(
       agentBuilderTestMaterials.smallFile,
       agentBuilderTestMaterials.specialFilename,
     ]))
+    expect(duplicatedSnapshot.skillNames).toEqual(expect.arrayContaining([
+      agentBuilderPreseededResources.summarySkill,
+    ]))
+    expect(duplicatedSnapshot.skillNames).toEqual(sourceSnapshot.skillNames)
     expect(duplicatedSnapshot.toolSignatures).toEqual(sourceSnapshot.toolSignatures)
     expect(duplicatedSnapshot.knowledgeDatasetNames).toEqual(expect.arrayContaining([
       agentBuilderPreseededResources.agentKnowledgeBase,

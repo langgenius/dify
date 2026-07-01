@@ -219,6 +219,10 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
         missing.push(`file ${fileName}`)
     }
 
+    const skills = asArray(soul.config_skills)
+    if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
+      missing.push(agentBuilderPreseededResources.summarySkill)
+
     const [providerName = '', toolName = ''] = jsonTool.id.split('/')
     const parsedTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
     if (
@@ -288,6 +292,10 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     const soul = body.agent_soul ?? {}
     const toolItems = asArray(asRecord(soul.tools).dify_tools)
     const missing: string[] = []
+
+    const skills = asArray(soul.config_skills)
+    if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
+      missing.push(agentBuilderPreseededResources.summarySkill)
 
     const [jsonProviderName = '', jsonToolName = ''] = jsonTool.id.split('/')
     const parsedJsonTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
