@@ -50,7 +50,6 @@ import { exploreRouterContract } from './console/explore'
 import { modelProvidersRouterContract } from './console/model-providers'
 import { pluginsRouterContract } from './console/plugins'
 import { snippetsRouterContract } from './console/snippets'
-import { triggersRouterContract } from './console/trigger'
 import { trialAppsRouterContract } from './console/try-app'
 
 const communityContract = {
@@ -110,6 +109,5 @@ export const consoleRouterContract = {
   plugins: pluginsRouterContract,
   rbacAccessConfig: rbacAccessConfigContract,
   snippets: snippetsRouterContract,
-  triggers: triggersRouterContract,
   trialApps: trialAppsRouterContract,
 }

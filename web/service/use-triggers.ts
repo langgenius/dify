@@ -66,9 +66,9 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
 
 export const useAllTriggerPlugins = (enabled = true) => {
   return useQuery<TriggerWithProvider[]>({
-    queryKey: consoleQuery.triggers.list.queryKey({ input: {} }),
+    queryKey: consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }),
     queryFn: async () => {
-      const response = await consoleClient.triggers.list({})
+      const response = await consoleClient.workspaces.current.triggers.get({}) as TriggerProviderApiEntity[]
       return response.map(convertToTriggerWithProvider)
     },
     enabled,
@@ -76,46 +76,46 @@ export const useAllTriggerPlugins = (enabled = true) => {
 }
 
 export const useInvalidateAllTriggerPlugins = () => {
-  return useInvalid(consoleQuery.triggers.list.queryKey({ input: {} }))
+  return useInvalid(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }))
 }
 
 // ===== Trigger Subscriptions Management =====
 
 export const useTriggerProviderInfo = (provider: string, enabled = true) => {
   return useQuery<TriggerProviderApiEntity>({
-    queryKey: consoleQuery.triggers.providerInfo.queryKey({ input: { params: { provider } } }),
-    queryFn: () => consoleClient.triggers.providerInfo({ params: { provider } }),
+    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.info.get.queryKey({ input: { params: { provider } } }),
+    queryFn: () => consoleClient.workspaces.current.triggerProvider.byProvider.info.get({ params: { provider } }) as Promise<TriggerProviderApiEntity>,
     enabled: enabled && !!provider,
   })
 }
 
 export const useTriggerSubscriptions = (provider: string, enabled = true) => {
   return useQuery<TriggerSubscription[]>({
-    queryKey: consoleQuery.triggers.subscriptions.queryKey({ input: { params: { provider } } }),
-    queryFn: () => consoleClient.triggers.subscriptions({ params: { provider } }),
+    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.list.get.queryKey({ input: { params: { provider } } }),
+    queryFn: () => consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.list.get({ params: { provider } }) as Promise<TriggerSubscription[]>,
     enabled: enabled && !!provider,
   })
 }
 
 export const useCreateTriggerSubscriptionBuilder = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.subscriptionBuilderCreate.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create.post.mutationKey(),
     mutationFn: (payload: {
       provider: string
       credential_type?: string
     }) => {
       const { provider, ...body } = payload
-      return consoleClient.triggers.subscriptionBuilderCreate({
+      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.create.post({
         params: { provider },
         body,
-      })
+      }) as Promise<{ subscription_builder: TriggerSubscriptionBuilder }>
     },
   })
 }
 
 export const useUpdateTriggerSubscriptionBuilder = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.subscriptionBuilderUpdate.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
@@ -125,17 +125,17 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
       credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
-      return consoleClient.triggers.subscriptionBuilderUpdate({
-        params: { provider, subscriptionBuilderId },
+      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.update.bySubscriptionBuilderId.post({
+        params: { provider, subscription_builder_id: subscriptionBuilderId },
         body,
-      })
+      }) as Promise<TriggerSubscriptionBuilder>
     },
   })
 }
 
 export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.subscriptionBuilderVerifyUpdate.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
@@ -153,7 +153,7 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
 
 export const useVerifyTriggerSubscription = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.subscriptionVerify.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post.mutationKey(),
     mutationFn: (payload: {
       provider: string
       subscriptionId: string
@@ -178,11 +178,11 @@ export type BuildTriggerSubscriptionPayload = {
 
 export const useBuildTriggerSubscription = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.subscriptionBuild.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post.mutationKey(),
     mutationFn: (payload: BuildTriggerSubscriptionPayload) => {
       const { provider, subscriptionBuilderId, ...body } = payload
-      return consoleClient.triggers.subscriptionBuild({
-        params: { provider, subscriptionBuilderId },
+      return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.build.bySubscriptionBuilderId.post({
+        params: { provider, subscription_builder_id: subscriptionBuilderId },
         body,
       })
     },
@@ -191,10 +191,10 @@ export const useBuildTriggerSubscription = () => {
 
 export const useDeleteTriggerSubscription = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.subscriptionDelete.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post.mutationKey(),
     mutationFn: (subscriptionId: string) => {
-      return consoleClient.triggers.subscriptionDelete({
-        params: { subscriptionId },
+      return consoleClient.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.delete.post({
+        params: { subscription_id: subscriptionId },
       })
     },
   })
@@ -210,11 +210,11 @@ type UpdateTriggerSubscriptionPayload = {
 
 export const useUpdateTriggerSubscription = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.subscriptionUpdate.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post.mutationKey(),
     mutationFn: (payload: UpdateTriggerSubscriptionPayload) => {
       const { subscriptionId, ...body } = payload
-      return consoleClient.triggers.subscriptionUpdate({
-        params: { subscriptionId },
+      return consoleClient.workspaces.current.triggerProvider.bySubscriptionId.subscriptions.update.post({
+        params: { subscription_id: subscriptionId },
         body,
       })
     },
@@ -232,8 +232,12 @@ export const useTriggerSubscriptionBuilderLogs = (
   const { enabled = true, refetchInterval = false } = options
 
   return useQuery<{ logs: TriggerLogEntity[] }>({
-    queryKey: consoleQuery.triggers.subscriptionBuilderLogs.queryKey({ input: { params: { provider, subscriptionBuilderId } } }),
-    queryFn: () => consoleClient.triggers.subscriptionBuilderLogs({ params: { provider, subscriptionBuilderId } }),
+    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get.queryKey({
+      input: { params: { provider, subscription_builder_id: subscriptionBuilderId } },
+    }),
+    queryFn: () => consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.logs.bySubscriptionBuilderId.get({
+      params: { provider, subscription_builder_id: subscriptionBuilderId },
+    }) as Promise<{ logs: TriggerLogEntity[] }>,
     enabled: enabled && !!provider && !!subscriptionBuilderId,
     refetchInterval,
   })
@@ -242,8 +246,8 @@ export const useTriggerSubscriptionBuilderLogs = (
 // ===== OAuth Management =====
 export const useTriggerOAuthConfig = (provider: string, enabled = true) => {
   return useQuery<TriggerOAuthConfig>({
-    queryKey: consoleQuery.triggers.oauthConfig.queryKey({ input: { params: { provider } } }),
-    queryFn: () => consoleClient.triggers.oauthConfig({ params: { provider } }),
+    queryKey: consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.get.queryKey({ input: { params: { provider } } }),
+    queryFn: () => consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.get({ params: { provider } }) as Promise<TriggerOAuthConfig>,
     enabled: enabled && !!provider,
   })
 }
@@ -256,10 +260,10 @@ export type ConfigureTriggerOAuthPayload = {
 
 export const useConfigureTriggerOAuth = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.oauthConfigure.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.post.mutationKey(),
     mutationFn: (payload: ConfigureTriggerOAuthPayload) => {
       const { provider, ...body } = payload
-      return consoleClient.triggers.oauthConfigure({
+      return consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.post({
         params: { provider },
         body,
       })
@@ -269,9 +273,9 @@ export const useConfigureTriggerOAuth = () => {
 
 export const useDeleteTriggerOAuth = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.oauthDelete.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.oauth.client.delete.mutationKey(),
     mutationFn: (provider: string) => {
-      return consoleClient.triggers.oauthDelete({
+      return consoleClient.workspaces.current.triggerProvider.byProvider.oauth.client.delete({
         params: { provider },
       })
     },
@@ -280,7 +284,7 @@ export const useDeleteTriggerOAuth = () => {
 
 export const useInitiateTriggerOAuth = () => {
   return useMutation({
-    mutationKey: consoleQuery.triggers.oauthInitiate.mutationKey(),
+    mutationKey: consoleQuery.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get.mutationKey(),
     mutationFn: (provider: string) => {
       return get<{ authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/oauth/authorize`,
