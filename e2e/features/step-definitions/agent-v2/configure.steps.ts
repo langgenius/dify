@@ -2,6 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import {
+  createAgentSoulConfigWithModel,
   createConfiguredTestAgent,
   createTestAgent,
   getAgentConfigurePath,
@@ -34,6 +35,24 @@ Given(
   'a basic configured Agent v2 test agent has been created via API',
   async function (this: DifyWorld) {
     const agent = await createConfiguredTestAgent()
+    this.createdAgentIds.push(agent.id)
+    this.lastCreatedAgentName = agent.name
+    this.lastCreatedAgentRole = agent.role
+  },
+)
+
+Given(
+  'a runnable Agent v2 test agent has been created via API',
+  async function (this: DifyWorld) {
+    if (!this.agentBuilderStableChatModel)
+      throw new Error('Create a runnable Agent v2 test agent after stable model preflight.')
+
+    const agent = await createConfiguredTestAgent({
+      agentSoul: createAgentSoulConfigWithModel(
+        normalAgentSoulConfig,
+        this.agentBuilderStableChatModel,
+      ),
+    })
     this.createdAgentIds.push(agent.id)
     this.lastCreatedAgentName = agent.name
     this.lastCreatedAgentRole = agent.role

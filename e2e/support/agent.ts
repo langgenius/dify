@@ -18,6 +18,10 @@ export type AgentSeed = {
 }
 
 export type AgentSoulConfig = Record<string, unknown>
+export type AgentModelSelection = {
+  name: string
+  provider: string
+}
 
 export type AgentComposerResponse = {
   agent_soul?: AgentSoulConfig
@@ -73,6 +77,39 @@ export const updatedAgentSoulConfig: AgentSoulConfig = {
 
 export const getAgentConfigurePath = (agentId: string) => `/roster/agent/${agentId}/configure`
 export const getAgentAccessPath = (agentId: string) => `/roster/agent/${agentId}/access`
+
+const getAgentModelPluginId = (provider: string) => {
+  const [organization, pluginName] = provider.split('/').filter(Boolean)
+
+  if (organization && pluginName)
+    return `${organization}/${pluginName}`
+
+  return provider ? `langgenius/${provider}` : ''
+}
+
+const getExistingModelConfig = (agentSoul: AgentSoulConfig) => {
+  const model = agentSoul.model
+
+  if (model && typeof model === 'object' && !Array.isArray(model))
+    return model as Record<string, unknown>
+
+  return {}
+}
+
+export function createAgentSoulConfigWithModel(
+  agentSoul: AgentSoulConfig,
+  model: AgentModelSelection,
+): AgentSoulConfig {
+  return {
+    ...agentSoul,
+    model: {
+      ...getExistingModelConfig(agentSoul),
+      plugin_id: getAgentModelPluginId(model.provider),
+      model_provider: model.provider,
+      model: model.name,
+    },
+  }
+}
 
 export async function createTestAgent({
   description = 'Created by Dify E2E.',
