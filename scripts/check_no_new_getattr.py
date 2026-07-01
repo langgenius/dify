@@ -200,9 +200,15 @@ def is_suppressed(source_line: str) -> bool:
     return reason is not None and bool(reason.strip())
 
 
-def collect_hunk_violations(path: str, old_matches: list[Match], new_matches: list[Match], hunk: Hunk) -> list[Violation]:
-    old_in_hunk = [match for match in old_matches if hunk.contains_old(match.line_number) and not is_suppressed(match.source_line)]
-    new_in_hunk = [match for match in new_matches if hunk.contains_new(match.line_number) and not is_suppressed(match.source_line)]
+def collect_hunk_violations(
+    path: str, old_matches: list[Match], new_matches: list[Match], hunk: Hunk
+) -> list[Violation]:
+    old_in_hunk = [
+        match for match in old_matches if hunk.contains_old(match.line_number) and not is_suppressed(match.source_line)
+    ]
+    new_in_hunk = [
+        match for match in new_matches if hunk.contains_new(match.line_number) and not is_suppressed(match.source_line)
+    ]
     surplus = len(new_in_hunk) - len(old_in_hunk)
     if surplus <= 0:
         return []

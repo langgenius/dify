@@ -7,7 +7,6 @@ import subprocess
 import textwrap
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "check_no_new_getattr.py"
 
@@ -555,9 +554,9 @@ def test_inline_noqa_suppression_with_explanatory_text_skips_added_getattr(tmp_p
 
     result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
 
-    assert "no-new-getattr needed for plugin-defined attributes" in (
-        tmp_path / "pkg/existing.py"
-    ).read_text(encoding="utf-8")
+    assert "no-new-getattr needed for plugin-defined attributes" in (tmp_path / "pkg/existing.py").read_text(
+        encoding="utf-8"
+    )
     assert result.returncode == 0, stderr_lines(result)
 
 
