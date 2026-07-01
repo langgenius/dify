@@ -11,7 +11,7 @@ import {
   getWebAppCard,
 } from './access-point-helpers'
 
-When(
+Given(
   'Agent v2 Web app access has been enabled via API',
   async function (this: DifyWorld) {
     this.agentBuilder.accessPoint.webAppURL = await setAgentSiteAccessAndGetURL(
