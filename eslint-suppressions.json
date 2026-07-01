@@ -7274,11 +7274,6 @@
       "count": 1
     }
   },
-  "web/service/try-app.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 2
-    }
-  },
   "web/service/use-apps.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -7398,11 +7393,6 @@
       "count": 1
     }
   },
-  "web/types/app.ts": {
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/types/assets.d.ts": {
     "ts/no-explicit-any": {
       "count": 5
@@ -7477,11 +7467,6 @@
   "web/utils/model-config.spec.ts": {
     "ts/no-explicit-any": {
       "count": 13
-    }
-  },
-  "web/utils/model-config.ts": {
-    "ts/no-explicit-any": {
-      "count": 6
     }
   },
   "web/utils/tool-call.spec.ts": {

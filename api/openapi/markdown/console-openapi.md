@@ -9385,7 +9385,7 @@ Bedrock retrieval test (internal use only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialAppDetailWithSite](#trialappdetailwithsite)<br> |
+| 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
@@ -9452,7 +9452,7 @@ Bedrock retrieval test (internal use only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialDatasetList](#trialdatasetlist)<br> |
+| 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/messages/{message_id}/suggested-questions
 #### Parameters
@@ -9532,7 +9532,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialWorkflow](#trialworkflow)<br> |
+| 200 | Success | **application/json**: [TrialWorkflowResponse](#trialworkflowresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/run
 **Run workflow**
@@ -18048,6 +18048,12 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | JSONValueType |  |  |  |
 
+#### JsonObject
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JsonObject | object |  |  |
+
 #### JsonValue
 
 | Name | Type | Description | Required |
@@ -21277,6 +21283,43 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | tracing_provider | string | Tracing provider name | Yes |
 
+#### TrialAppAgentMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| strategy | string |  | No |
+| tools | [ [JsonObject](#jsonobject) ] |  | No |
+
+#### TrialAppDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| api_base_url | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| deleted_tools | [ [TrialDeletedToolResponse](#trialdeletedtoolresponse) ] |  | No |
+| description | string |  | No |
+| enable_api | boolean |  | Yes |
+| enable_site | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [TrialIconType](#trialicontype) |  | No |
+| icon_url | string |  | No |
+| id | string |  | Yes |
+| max_active_requests | integer |  | No |
+| mode | [TrialAppMode](#trialappmode) |  | Yes |
+| model_config | [TrialAppModelConfigResponse](#trialappmodelconfigresponse) |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| site | [TrialSiteResponse](#trialsiteresponse) |  | Yes |
+| tags | [ [TrialTagResponse](#trialtagresponse) ] |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [TrialWorkflowPartialResponse](#trialworkflowpartialresponse) |  | No |
+
 #### TrialAppDetailWithSite
 
 | Name | Type | Description | Required |
@@ -21306,6 +21349,21 @@ Enum class for tool provider
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [TrialWorkflowPartial](#trialworkflowpartial) |  | No |
 
+#### TrialAppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TrialAppMode | string |  |  |
+
+#### TrialAppModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | [JsonObject](#jsonobject) |  | No |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+
 #### TrialAppModelConfig
 
 | Name | Type | Description | Required |
@@ -21334,6 +21392,35 @@ Enum class for tool provider
 | updated_at | long |  | No |
 | updated_by | string |  | No |
 | user_input_form | [ object ] |  | No |
+
+#### TrialAppModelConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode | [TrialAppAgentMode](#trialappagentmode) |  | No |
+| annotation_reply | [JsonObject](#jsonobject) |  | No |
+| chat_prompt_config | [JsonObject](#jsonobject) |  | No |
+| completion_prompt_config | [JsonObject](#jsonobject) |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| dataset_configs | [JsonObject](#jsonobject) |  | No |
+| dataset_query_variable | string |  | No |
+| external_data_tools | [ [JsonObject](#jsonobject) ] |  | No |
+| file_upload | [JsonObject](#jsonobject) |  | No |
+| model | [TrialAppModel](#trialappmodel) |  | No |
+| more_like_this | [JsonObject](#jsonobject) |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| prompt_type | string |  | No |
+| retriever_resource | [JsonObject](#jsonobject) |  | No |
+| sensitive_word_avoidance | [JsonObject](#jsonobject) |  | No |
+| speech_to_text | [JsonObject](#jsonobject) |  | No |
+| suggested_questions | [ string ] |  | No |
+| suggested_questions_after_answer | [JsonObject](#jsonobject) |  | No |
+| text_to_speech | [JsonObject](#jsonobject) |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| user_input_form | [ [JsonObject](#jsonobject) ] |  | No |
 
 #### TrialConversationVariable
 
@@ -21377,6 +21464,30 @@ Enum class for tool provider
 | limit | integer, <br>**Default:** 20 | Number of items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 
+#### TrialDatasetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [TrialDatasetResponse](#trialdatasetresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### TrialDatasetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| data_source_type | string |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| indexing_technique | string |  | No |
+| name | string |  | Yes |
+| permission | string |  | No |
+| permission_keys | [ string ] |  | No |
+
 #### TrialDeletedTool
 
 | Name | Type | Description | Required |
@@ -21384,6 +21495,20 @@ Enum class for tool provider
 | provider_id | string |  | No |
 | tool_name | string |  | No |
 | type | string |  | No |
+
+#### TrialDeletedToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| provider_id | string |  | Yes |
+| tool_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### TrialIconType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TrialIconType | string |  |  |
 
 #### TrialModelsResponse
 
@@ -21447,6 +21572,36 @@ Enum class for tool provider
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
+#### TrialSiteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | No |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| code | string |  | No |
+| copyright | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| custom_disclaimer | string |  | No |
+| customize_domain | string |  | No |
+| customize_token_strategy | string |  | No |
+| default_language | string |  | Yes |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [TrialIconType](#trialicontype) |  | No |
+| icon_url | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| prompt_public | boolean |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
 #### TrialTag
 
 | Name | Type | Description | Required |
@@ -21454,6 +21609,14 @@ Enum class for tool provider
 | id | string |  | No |
 | name | string |  | No |
 | type | string |  | No |
+
+#### TrialTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### TrialWorkflow
 
@@ -21475,6 +21638,22 @@ Enum class for tool provider
 | updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | version | string |  | No |
 
+#### TrialWorkflowAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | Yes |
+| name | string |  | No |
+
+#### TrialWorkflowGraph
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| edges | [ [JsonObject](#jsonobject) ] |  | Yes |
+| nodes | [ [JsonObject](#jsonobject) ] |  | Yes |
+| viewport | [TrialWorkflowViewport](#trialworkflowviewport) |  | Yes |
+
 #### TrialWorkflowPartial
 
 | Name | Type | Description | Required |
@@ -21484,6 +21663,44 @@ Enum class for tool provider
 | id | string |  | No |
 | updated_at | long |  | No |
 | updated_by | string |  | No |
+
+#### TrialWorkflowPartialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| id | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+
+#### TrialWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| created_at | integer |  | No |
+| created_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
+| environment_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| features | [JsonObject](#jsonobject) |  | No |
+| graph | [TrialWorkflowGraph](#trialworkflowgraph) |  | Yes |
+| hash | string |  | No |
+| id | string |  | Yes |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+| rag_pipeline_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| tool_published | boolean |  | No |
+| updated_at | integer |  | No |
+| updated_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
+| version | string |  | No |
+
+#### TrialWorkflowViewport
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| x | number |  | Yes |
+| y | number |  | Yes |
+| zoom | number |  | Yes |
 
 #### TriggerCreationMethod
 
