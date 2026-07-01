@@ -34,13 +34,6 @@ Given(
   },
 )
 
-When(
-  'I enable Agent v2 Backend service API access with a key via API',
-  async function (this: DifyWorld) {
-    await enableAgentApiAccessWithKey(this)
-  },
-)
-
 Then('I should see the Agent v2 Backend service API endpoint', async function (this: DifyWorld) {
   const serviceApiCard = getServiceApiCard(this)
 
