@@ -105,6 +105,13 @@ const expectAgentConfigFileSaved = async (
     .toContain(fileName)
 }
 
+const expectNormalAgentPromptDraft = async (world: DifyWorld) => {
+  await expect.poll(
+    async () => (await getAgentComposerDraft(getCurrentAgentId(world))).agent_soul?.prompt,
+    { timeout: 30_000 },
+  ).toEqual({ system_prompt: normalAgentPrompt })
+}
+
 Given('an Agent v2 test agent has been created via API', async function (this: DifyWorld) {
   const agent = await createTestAgent()
   this.createdAgentIds.push(agent.id)
@@ -179,6 +186,14 @@ When('I open the Agent v2 configure page from the Agent Roster', async function 
   await page.getByRole('link', { name: agentName }).click()
   await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+})
+
+When('I fill the Agent v2 prompt editor with the normal E2E prompt', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const promptSection = page.getByRole('region', { name: 'Prompt' })
+
+  await expect(promptSection).toBeVisible({ timeout: 30_000 })
+  await promptSection.getByRole('textbox', { name: 'Prompt' }).fill(normalAgentPrompt)
 })
 
 When('I discard the Agent v2 Build draft', async function (this: DifyWorld) {
@@ -637,10 +652,14 @@ Then('I should see the Agent v2 Build draft pending changes', async function (th
 Then(
   'the normal Agent v2 draft should still use the normal E2E prompt',
   async function (this: DifyWorld) {
-    await expect.poll(
-      async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt,
-      { timeout: 30_000 },
-    ).toEqual({ system_prompt: normalAgentPrompt })
+    await expectNormalAgentPromptDraft(this)
+  },
+)
+
+Then(
+  'the normal Agent v2 draft should use the normal E2E prompt',
+  async function (this: DifyWorld) {
+    await expectNormalAgentPromptDraft(this)
   },
 )
 
