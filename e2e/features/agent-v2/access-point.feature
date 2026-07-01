@@ -21,11 +21,10 @@ Feature: Agent v2 Access Point
     Then the Agent v2 Web app access URL should show it was copied
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access @published-web-app @stable-model
+  @core @web-app-access @published-web-app
   Scenario: Published Web app can be launched from Access Point
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     And the Agent v2 draft has been published via API
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
