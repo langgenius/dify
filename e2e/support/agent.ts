@@ -28,6 +28,15 @@ export type AgentComposerConfigFile = {
   name: string
   size?: number | null
 }
+export type AgentComposerConfigSkill = {
+  description?: string | null
+  file_id?: string | null
+  file_kind?: string | null
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
 export type AgentComposerEnvVariable = {
   id?: string | null
   key?: string | null
@@ -38,6 +47,7 @@ export type AgentComposerEnvVariable = {
 
 export type AgentSoulConfig = Record<string, unknown> & {
   config_files?: AgentComposerConfigFile[]
+  config_skills?: AgentComposerConfigSkill[]
   env?: {
     secret_refs?: unknown[]
     variables?: AgentComposerEnvVariable[]
@@ -91,6 +101,21 @@ export type AgentDriveSkillUpload = {
     path: string
     skill_md_key: string
   }
+}
+
+export type AgentConfigSkillUpload = {
+  skill: AgentComposerConfigSkill
+}
+
+export type UploadedConsoleFile = {
+  id: string
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigFileUpload = {
+  file: AgentComposerConfigFile
 }
 
 export type AgentDriveSkill = {
@@ -383,6 +408,83 @@ export async function uploadAgentDriveSkill({
     })
     await expectApiResponseOK(response, `Upload Agent v2 drive skill ${fileName} for ${agentId}`)
     return (await response.json()) as AgentDriveSkillUpload
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function uploadAgentConfigFileToDraft({
+  agentId,
+  fileName,
+  filePath,
+}: {
+  agentId: string
+  fileName: string
+  filePath: string
+}): Promise<AgentComposerConfigFile> {
+  const ctx = await createApiContext()
+  try {
+    const uploadResponse = await ctx.post('/console/api/files/upload', {
+      multipart: {
+        file: {
+          buffer: await readFile(filePath),
+          mimeType: 'text/plain',
+          name: fileName,
+        },
+      },
+    })
+    await expectApiResponseOK(uploadResponse, `Upload Agent v2 config source file ${fileName}`)
+    const uploadedFile = (await uploadResponse.json()) as UploadedConsoleFile
+
+    const commitResponse = await ctx.post(`/console/api/agent/${agentId}/config/files`, {
+      data: {
+        upload_file_id: uploadedFile.id,
+      },
+    })
+    await expectApiResponseOK(commitResponse, `Commit Agent v2 config file ${fileName} for ${agentId}`)
+    const body = (await commitResponse.json()) as AgentConfigFileUpload
+    const { id: _id, ...file } = body.file as AgentComposerConfigFile & { id?: string }
+
+    return {
+      ...file,
+      file_kind: file.file_kind ?? 'upload_file',
+    }
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function uploadAgentConfigSkillToDraft({
+  agentId,
+  fileName,
+  filePath,
+}: {
+  agentId: string
+  fileName: string
+  filePath: string
+}): Promise<AgentComposerConfigSkill> {
+  const ctx = await createApiContext()
+  try {
+    const upload = await toSkillArchiveUpload({ fileName, filePath })
+    const response = await ctx.post(`/console/api/agent/${agentId}/config/skills/upload`, {
+      multipart: {
+        file: {
+          buffer: upload.buffer,
+          mimeType: 'application/zip',
+          name: upload.name,
+        },
+      },
+    })
+    await expectApiResponseOK(response, `Upload Agent v2 config skill ${fileName} for ${agentId}`)
+    const body = (await response.json()) as AgentConfigSkillUpload
+    const { id: _id, ...skill } = body.skill as AgentComposerConfigSkill & { id?: string }
+
+    return {
+      ...skill,
+      file_kind: skill.file_kind ?? 'tool_file',
+    }
   }
   finally {
     await ctx.dispose()

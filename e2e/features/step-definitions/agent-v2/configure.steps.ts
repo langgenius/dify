@@ -18,6 +18,8 @@ import {
   saveAgentComposerDraft,
   updatedAgentPrompt,
   updatedAgentSoulConfig,
+  uploadAgentConfigFileToDraft,
+  uploadAgentConfigSkillToDraft,
   uploadAgentDriveSkill,
 } from '../../../support/agent'
 import {
@@ -133,6 +135,45 @@ const expectAgentConfigFileSaved = async (
     .toContain(fileName)
 }
 
+const openAgentAdvancedSettings = async (page: ReturnType<DifyWorld['getPage']>) => {
+  const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+  const envEditorHeading = advancedSettings.getByRole('heading', { name: 'Env Editor' })
+
+  if (!await envEditorHeading.isVisible().catch(() => false))
+    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
+
+  await expect(envEditorHeading).toBeVisible()
+
+  return advancedSettings
+}
+
+const expectAgentEnvVariableVisible = async (
+  world: DifyWorld,
+  key: string,
+  value: string,
+) => {
+  const advancedSettings = await openAgentAdvancedSettings(world.getPage())
+
+  await expect.poll(
+    async () => {
+      const text = await advancedSettings.textContent()
+      const inputValues = await advancedSettings.getByRole('textbox').evaluateAll(inputs =>
+        inputs.map(input => (input as HTMLInputElement).value),
+      )
+
+      return {
+        hasKey: inputValues.includes(key) || !!text?.includes(key),
+        hasValue: inputValues.includes(value) || !!text?.includes(value),
+      }
+    },
+    { timeout: 30_000 },
+  ).toEqual({
+    hasKey: true,
+    hasValue: true,
+  })
+  await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
+}
+
 const expectNormalAgentPromptDraft = async (world: DifyWorld) => {
   await expect.poll(
     async () => (await getAgentComposerDraft(getCurrentAgentId(world))).agent_soul?.prompt,
@@ -214,6 +255,55 @@ Then('the Agent v2 test agent should include drive skill {string}', async functi
 
   expect(skills.map(skill => skill.name)).toContain(skillName)
 })
+
+Given(
+  'an Agent v2 Build draft adds the supported E2E files, skills, and env',
+  async function (this: DifyWorld) {
+    const agentId = getCurrentAgentId(this)
+    const configFile = await uploadAgentConfigFileToDraft({
+      agentId,
+      fileName: agentBuilderTestMaterials.smallFile,
+      filePath: getAgentBuilderTestMaterialPath('smallFile'),
+    })
+    const skill = await uploadAgentConfigSkillToDraft({
+      agentId,
+      fileName: agentBuilderTestMaterials.summarySkill,
+      filePath: getAgentBuilderTestMaterialPath('summarySkill'),
+    })
+
+    if (!configFile.file_id)
+      throw new Error('Agent v2 build draft config file fixture did not return a file_id.')
+    if (!skill.file_id)
+      throw new Error('Agent v2 build draft Skill fixture did not return a file_id.')
+
+    const normalConfig = this.agentBuilderStableChatModel
+      ? createAgentSoulConfigWithModel(normalAgentSoulConfig, this.agentBuilderStableChatModel)
+      : normalAgentSoulConfig
+    const updatedConfig = this.agentBuilderStableChatModel
+      ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilderStableChatModel)
+      : updatedAgentSoulConfig
+
+    await saveAgentComposerDraft(agentId, normalConfig)
+    await saveAgentBuildDraft(agentId, {
+      ...updatedConfig,
+      config_files: [configFile],
+      config_skills: [{
+        ...skill,
+        file_kind: skill.file_kind ?? 'tool_file',
+      }],
+      env: {
+        secret_refs: [],
+        variables: [{
+          id: agentBuilderFixedInputs.envPlainKey,
+          key: agentBuilderFixedInputs.envPlainKey,
+          name: agentBuilderFixedInputs.envPlainKey,
+          value: agentBuilderFixedInputs.envPlainValue,
+          variable: agentBuilderFixedInputs.envPlainKey,
+        }],
+      },
+    })
+  },
+)
 
 Given('an Agent v2 Build draft uses the updated E2E prompt', async function (this: DifyWorld) {
   await saveAgentBuildDraft(getCurrentAgentId(this), updatedAgentSoulConfig)
@@ -553,6 +643,15 @@ Then('I should see the special-name Agent v2 file in the Files section', async f
   await expectAgentConfigFileVisible(this, 'specialFilename')
 })
 
+Then('I should see the e2e-summary-skill Skill in the Skills section', async function (this: DifyWorld) {
+  const skillsSection = this.getPage().getByRole('region', { name: 'Skills' })
+
+  await expect(skillsSection.getByRole('button', {
+    exact: true,
+    name: agentBuilderPreseededResources.summarySkill,
+  })).toBeVisible({ timeout: 30_000 })
+})
+
 Then(
   'the small Agent v2 file should be saved in the Agent v2 draft',
   async function (this: DifyWorld) {
@@ -819,16 +918,25 @@ Then(
   'I should see the plain Agent v2 environment variable in Advanced Settings',
   async function (this: DifyWorld) {
     const page = this.getPage()
-    const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+    const advancedSettings = await openAgentAdvancedSettings(page)
 
-    await page.getByRole('button', { name: 'Advanced Settings' }).first().click()
-    await expect(advancedSettings.getByRole('heading', { name: 'Env Editor' })).toBeVisible()
     await expect(advancedSettings.getByRole('textbox', { name: 'Key' }))
       .toHaveValue(agentBuilderFixedInputs.envPlainKey)
     await expect(advancedSettings.getByRole('textbox', { name: 'Value' }))
       .toHaveValue(agentBuilderFixedInputs.envPlainValue)
     await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Build$/i })).toBeVisible()
+  },
+)
+
+Then(
+  'I should see the supported E2E environment variable in Advanced Settings',
+  async function (this: DifyWorld) {
+    await expectAgentEnvVariableVisible(
+      this,
+      agentBuilderFixedInputs.envPlainKey,
+      agentBuilderFixedInputs.envPlainValue,
+    )
   },
 )
 
@@ -893,6 +1001,31 @@ Then(
       async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt,
       { timeout: 30_000 },
     ).toEqual({ system_prompt: updatedAgentPrompt })
+  },
+)
+
+Then(
+  'the Agent v2 draft should include the supported Build draft config',
+  async function (this: DifyWorld) {
+    await expect.poll(
+      async () => {
+        const agentSoul = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
+        const variables = agentSoul?.env?.variables ?? []
+
+        return {
+          envValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envPlainKey),
+          fileNames: agentSoul?.config_files?.map(file => file.name) ?? [],
+          prompt: agentSoul?.prompt,
+          skillNames: agentSoul?.config_skills?.map(skill => skill.name) ?? [],
+        }
+      },
+      { timeout: 30_000 },
+    ).toEqual({
+      envValue: agentBuilderFixedInputs.envPlainValue,
+      fileNames: expect.arrayContaining([agentBuilderTestMaterials.smallFile]),
+      prompt: { system_prompt: updatedAgentPrompt },
+      skillNames: expect.arrayContaining([agentBuilderPreseededResources.summarySkill]),
+    })
   },
 )
 
