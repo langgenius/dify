@@ -7362,11 +7362,6 @@
       "count": 1
     }
   },
-  "web/service/use-triggers.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-workflow.ts": {
     "@tanstack/query/exhaustive-deps": {
       "count": 1

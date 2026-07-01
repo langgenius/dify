@@ -90,6 +90,11 @@ const ACCESS_MODE_LABEL_KEYS = {
   [AccessMode.EXTERNAL_MEMBERS]: 'accessItemsDescription.external',
 } as const
 
+const APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE = new Set<AppModeEnum>([
+  AppModeEnum.ADVANCED_CHAT,
+  AppModeEnum.WORKFLOW,
+])
+
 type AppCardProps = {
   app: App
   onlineUsers?: WorkflowOnlineUser[]
@@ -102,6 +107,10 @@ type AppAccessModeIconProps = {
 }
 
 const getAppResourceMaintainer = (app: App) => app.maintainer
+
+function requiresPublishedWorkflowInExplore(app: App) {
+  return APP_MODES_REQUIRING_PUBLISHED_WORKFLOW_IN_EXPLORE.has(app.mode)
+}
 
 function AppAccessModeIcon({ accessMode }: AppAccessModeIconProps) {
   const { t } = useTranslation()
@@ -182,12 +191,17 @@ function AppCardOperationsMenu({
   async function handleOpenInstalledApp(e: MouseEvent<HTMLElement>) {
     e.stopPropagation()
     e.preventDefault()
+    if (requiresPublishedWorkflowInExplore(app) && !app.workflow?.id) {
+      toast.error(t('notPublishedYet', { ns: 'app' }))
+      return
+    }
+
     try {
       await openAsyncWindow(async () => {
         const { installed_apps } = await fetchInstalledAppList(app.id)
         if (installed_apps?.length > 0)
           return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
-        throw new Error('No app found in Explore')
+        throw new Error(t('notPublishedYet', { ns: 'app' }))
       }, {
         onError: (err) => {
           toast.error(`${err.message || err}`)
@@ -272,10 +286,12 @@ function AppCardOperationsMenuContent(props: AppCardOperationsMenuContentProps) 
     appId: props.app.id,
     enabled: systemFeatures.webapp_auth.enabled,
   })
+  const needsPublishBeforeExplore = requiresPublishedWorkflowInExplore(props.app) && !props.app.workflow?.id
 
   const shouldShowOpenInExploreOption = !props.app.has_draft_trigger
     && (
-      !systemFeatures.webapp_auth.enabled
+      needsPublishBeforeExplore
+      || !systemFeatures.webapp_auth.enabled
       || (!isGettingUserCanAccessApp && Boolean(userCanAccessApp?.result))
     )
 
