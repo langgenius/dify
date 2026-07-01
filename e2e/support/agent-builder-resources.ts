@@ -30,6 +30,7 @@ export const agentBuilderFixedInputs = {
   envModeValue: 'plain',
   envAfterInvalidImportKey: 'E2E_AGENT_AFTER_INVALID',
   envAfterInvalidImportValue: 'still-valid',
+  moderationKeyword: 'E2E_BLOCKED_KEYWORD',
   inputModerationReply: 'E2E_INPUT_BLOCKED_REPLY',
   outputModerationReply: 'E2E_OUTPUT_BLOCKED_REPLY',
   previewSuccessQuery: '请回复测试成功',

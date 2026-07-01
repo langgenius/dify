@@ -53,3 +53,17 @@ Feature: Agent v2 advanced settings
     And the Agent v2 configuration should be saved automatically
     When I refresh the current page
     Then I should see the Agent v2 environment variables from the invalid import in Advanced Settings
+
+  @content-moderation @feature-gated
+  Scenario: Content Moderation keyword preset replies are saved and restored
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    And I expand Agent v2 Advanced Settings
+    Then Agent v2 Content Moderation Settings should be available
+    When I configure Agent v2 Content Moderation keyword preset replies
+    Then Agent v2 Content Moderation keyword preset replies should be saved in the Agent v2 draft
+    And the Agent v2 configuration should be saved automatically
+    When I refresh the current page
+    And I expand Agent v2 Advanced Settings
+    Then I should see the Agent v2 Content Moderation keyword preset replies in Advanced Settings
