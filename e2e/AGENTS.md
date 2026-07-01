@@ -294,3 +294,13 @@ Or browse the step definition files directly:
 
 - `features/step-definitions/common/` — auth guards and navigation assertions shared by all features
 - `features/step-definitions/<capability>/` — domain-specific steps scoped to a single feature area
+
+## Agent v2 scenarios
+
+Agent v2 scenarios live under `features/agent-v2/` and use the `@agent-v2` capability tag.
+
+The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/roster` routes are guarded by that feature flag.
+
+Use `support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
+
+Keep Agent v2 step definitions under `features/step-definitions/agent-v2/`. Prefer API setup for prerequisite state, then use Playwright only for user-observable navigation, editing, and assertions.

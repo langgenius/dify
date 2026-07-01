@@ -21,7 +21,6 @@ export function IntegrationSectionLayout({
       slotClassNames={{
         viewport: 'overscroll-contain',
         content: 'min-h-full',
-        scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
       }}
     >
       <div className={bodyClassName}>

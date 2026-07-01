@@ -12,6 +12,7 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 | Question | Default | Promote or extract only when |
 | --- | --- | --- |
 | Where should code live? | Keep it local to the feature workflow, route, or owner. | Multiple verticals need the same stable primitive. |
+| How should route/tab folders be named? | Match the current route segment, tab name, or user-visible surface. | Keep a historical or broader parent only when it still owns multiple surfaces. |
 | Who owns state, data, and handlers? | The lowest component that uses them. | A parent coordinates shared loading, errors, empty UI, selection, submission, navigation, or one consistent snapshot. |
 | Should this become Jotai state? | Keep synchronous UI/form state in component or DOM state. | Siblings need one source of truth, the value drives atoms, or scoped workflow state must survive hidden/unmounted steps. |
 | Should URL state enter Jotai? | Let Next.js route params and `nuqs` own URL state and updates. | Query atoms or shared derived atoms need a read-only bridge hydrated at the route/surface boundary. |
@@ -23,7 +24,9 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 
 - Search before adding UI, hooks, helpers, query utilities, or styling patterns. Reuse existing base components, feature components, hooks, utilities, and design styles when they fit.
 - Follow Dify's CSS-first Tailwind v4 contract from `packages/dify-ui/README.md` and `packages/dify-ui/AGENTS.md`. Prefer design-system tokens, utilities, and radius mappings over generic Tailwind choices.
-- Group feature code by workflow, route, or ownership area: components, hooks, local types, query helpers, atoms, constants, and small utilities should live near the code that changes with them.
+- Group feature code by workflow, route, or ownership area with route-aligned names: components, hooks, local types, query helpers, atoms, constants, tests, and small utilities should live near the code that changes with them.
+- For each feature module, keep a module-local `README.md` as a boundary note. Start with the module name, a brief one-sentence description, then split dependencies into `Internal Modules` and `External Modules` sections; keep both sections and write `None.` when one category is empty. `Internal Modules` lists modules inside the same overall feature using paths from that feature root, such as `shared/domain/runtime-status`; `External Modules` lists project modules outside the feature using paths from the web root without a `web/` prefix, such as `app/components/base/skeleton`. Omit npm packages, workspace package dependencies, and whitelisted plumbing modules. Do not copy caller-relative import paths into the README.
+- Module README whitelist: `@/service/client`, `@/next/*`.
 - Keep source/default selection, validation, dirty checks, and payload shaping close to the workflow that owns submit behavior. Do not hide flow-specific priority order, fallback behavior, or submit semantics in generic utilities.
 - Prefer direct conditionals for small branch-specific decisions, especially form source selection and request payload assembly.
 - Loading states for page sections, cards, lists, tables, forms, and drawers should be skeletons scoped to the content being loaded. Use spinners only for small inline busy indicators.
@@ -32,6 +35,8 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 
 - State-heavy wizards, drawers, modals, and secondary workflows can be a small feature surface: an entry file, one feature-local state file when Jotai is actually needed, and shallow `ui/` owners that match real visual regions.
 - The entry file handles route integration, provider wiring, close behavior, and surface mounting. The composition owner handles high-level workflow branching. The closest visual owner handles section branching.
+- When a page or tab maps to a route segment, name its feature folder after that route/tab surface instead of a stale parent grouping. Remove misleading intermediate folders when only one surface remains.
+- When a tab folder grows into several independent sections or action areas, split the first level by product/visual owners. Keep the root for the entry component and cross-owner state, colocate tests with the owner folder, and put truly shared local UI under a specifically named `components/` file.
 - Repeated TanStack query calls in sibling components are acceptable when each component independently consumes the data; TanStack Query deduplicates and shares cache.
 - Pass stable domain identity across boundaries. Do not forward derived presentation state when the receiver can derive it from its own data source.
 - A component that owns a visual surface should also own data access, loading, empty, and error states for content rendered inside it unless a parent truly coordinates that state.
@@ -46,6 +51,7 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 - Use uncontrolled `@langgenius/dify-ui/form` and `@langgenius/dify-ui/field` controls for edit/create forms whose fields are read only at submit time. Initialize query-backed defaults with `defaultValue` and keyed remounts.
 - Promote form state to atoms only when another component must react to in-progress values, a draft must survive unmount/remount in the scoped workflow, or multiple steps share the same editable draft before submit.
 - Treat `useParams`, route args, and `nuqs` query state as framework-owned state. When atom logic needs those values, hydrate primitive atoms at the route or surface boundary, such as with `useHydrateAtoms(..., { dangerouslyForceHydrate: true })`; keep URL updates in the route/query-state APIs instead of write atoms.
+- Within a route-owned feature, choose one source for route identity. If route params are bridged into feature atoms, use that bridge consistently for route-derived queries and actions instead of also threading the same route id through page, tab, and section props.
 - For async work tied to atom state, use `atomWithQuery` or `atomWithMutation`; write atoms should update only the inputs that drive those atoms. This applies to pure frontend async work as well as network requests, so do not hand-roll loading/error/in-flight state with `useState` or `useRef` for atom-orchestrated async behavior. For component-owned remote work, use `useQuery` or `useMutation` directly.
 - Row-local async state belongs to the row owner unless it participates in a shared Jotai workflow or needs atom-scoped reset semantics.
 - Leave query and mutation atoms unscoped so they keep shared QueryClient cache and invalidation behavior. Scope resettable primitives and explicit hydration tuples; scope a derived atom only when every dependency should be private to that surface.
@@ -60,8 +66,10 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 - Type component signatures directly; do not use `FC` or `React.FC`.
 - Prefer `function` for top-level components and module helpers. Use arrow functions for local callbacks, handlers, and lambda-style APIs.
 - Prefer named exports. Use default exports only where the framework requires them, such as Next.js route files.
+- Avoid barrel files that only re-export secondary owners. `index.tsx` is acceptable for a route/tab entry component; import header controls, switches, sections, and row owners from their concrete owner files.
 - Type simple one-off props inline. Use a named `Props` type only when reused, exported, complex, or clearer.
 - Use API-generated or API-returned types at component boundaries. Keep small UI conversion helpers and one-off UI extensions beside the component that needs them.
+- Avoid `common.tsx` buckets for shared UI. Use a feature-local `components/` folder with concrete filenames that describe the shared role.
 - Do not create type aliases that only rename another type. Use aliases only for real UI concepts, refinements, or reusable local contracts.
 - Name values by their domain role and backend API contract, especially persistent IDs and route params. Normalize framework or route params at the boundary.
 - Put fallback and invariant checks in the lowest component that already handles that state. Do not extract helpers whose only behavior is hiding missing display data.
@@ -83,11 +91,13 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 
 - Keep `web/contract/*` as the API shape source of truth and follow the `{ params, query?, body? }` input shape.
 - Consume generated queries with `useQuery(consoleQuery.xxx.queryOptions(...))` or `useQuery(marketplaceQuery.xxx.queryOptions(...))`.
+- If a generated query input comes from an atom, including a route-identity bridge atom, keep the query in `atomWithQuery`; do not unwrap the atom in a component just to call `useQuery`.
 - Consume owner-local mutations with `useMutation(consoleQuery.xxx.mutationOptions(...))` or `useMutation(marketplaceQuery.xxx.mutationOptions(...))` when pending/error state is not consumed by feature atoms.
 - In `atomWithQuery`, `atomWithInfiniteQuery`, and `atomWithMutation`, return generated `queryOptions()`, `infiniteOptions()`, or `mutationOptions()` directly. Pass `enabled`, `retry`, `placeholderData`, `select`, and pagination options into the generated call instead of spreading options into a hand-built object.
 - For generated oRPC options with missing required input, branch the whole input with `input: condition ? validInput : skipToken` and `enabled: Boolean(condition)`. Never place `skipToken` inside a nested placeholder payload or coerce required IDs to `''`.
 - When prefetch and render use the same request, extract local query options or a query-options atom so `prefetchQuery` and `useQuery`/`atomWithQuery` share the exact options.
 - For custom query or mutation functions, wrap options with TanStack `queryOptions(...)` or `mutationOptions(...)`.
+- Do not extract generated `queryOptions(...)` into a helper solely to share input construction; extract only when prefetch/render must share exact options or the helper owns real domain behavior.
 - Avoid pass-through hooks and thin `web/service/use-*` wrappers that only rename generated options. Keep feature hooks for real orchestration, workflow state, or shared domain behavior.
 - Put shared cache behavior in `createTanstackQueryUtils(...experimental_defaults...)`. Component or atom callbacks may handle local toasts, closing dialogs, and navigation, but should not replace shared invalidation or patch shared server state locally.
 - For overlays that may open heavier secondary content, prefetch from the trigger/menu open event with `queryClient.prefetchQuery(queryOptions)` when `onOpenChange` is available. Do not mount hidden subscribers just to warm cache.
@@ -96,7 +106,7 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 
 ## Boundaries And Overlays
 
-- Use the first level below a page or tab to organize independent page sections when it adds structure. This layer is layout/semantic first, not automatically the data owner.
+- Use the first level below a page or tab to organize independent page sections when it adds structure or the root folder becomes noisy. This layer is layout/semantic first, not automatically the data owner.
 - Treat component names, semantic roles, and user- or design-marked visual regions as boundary constraints. Keep adjacent UI as a sibling owner or introduce a correctly named broader owner.
 - Keep cohesive forms, menu bodies, and one-off helpers local unless they need their own state, reuse, or semantic boundary.
 - Separate hidden secondary surfaces from the trigger's main flow. For dialogs, dropdowns, popovers, and similar branches, extract a small local component when hidden content would obscure the parent.

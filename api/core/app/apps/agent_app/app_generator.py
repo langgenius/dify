@@ -16,7 +16,7 @@ from collections.abc import Generator, Mapping
 from typing import Any
 
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from clients.agent_backend import AgentBackendRunEventAdapter
 from clients.agent_backend.factory import create_agent_backend_run_client
@@ -42,7 +42,15 @@ from core.app.llm.model_access import build_dify_model_access
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from models import Account, App, EndUser, Message
-from models.agent import Agent, AgentConfigSnapshot, AgentScope, AgentSource, AgentStatus
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+)
 from models.agent_config_entities import AgentSoulConfig
 from services.conversation_service import ConversationService
 
@@ -73,10 +81,15 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         inputs = args["inputs"]
 
         # Resolve the bound roster Agent + its current Agent Soul snapshot.
-        agent, snapshot, agent_soul = self._resolve_agent(app_model)
+        agent, agent_config_id, agent_soul = self._resolve_agent(
+            app_model,
+            invoke_from=invoke_from,
+            draft_type=args.get("draft_type"),
+            user=user,
+        )
         runtime_session_snapshot_id = self._runtime_session_snapshot_id(
             invoke_from=invoke_from,
-            snapshot_id=snapshot.id,
+            snapshot_id=agent_config_id,
         )
 
         conversation = None
@@ -123,7 +136,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             call_depth=0,
             trace_manager=trace_manager,
             agent_id=agent.id,
-            agent_config_snapshot_id=snapshot.id,
+            agent_config_snapshot_id=agent_config_id,
             agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
         )
 
@@ -179,7 +192,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         persisted to the conversation. Live streaming to a reconnected client is
         out of scope here — the message is persisted and can be re-fetched.
         """
-        agent, snapshot, agent_soul = self._resolve_agent(app_model)
+        agent, agent_config_id, agent_soul = self._resolve_agent(
+            app_model,
+            invoke_from=invoke_from,
+            draft_type="draft",
+            user=user,
+        )
         conversation = ConversationService.get_conversation(
             app_model=app_model, conversation_id=conversation_id, user=user
         )
@@ -226,7 +244,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             call_depth=0,
             trace_manager=trace_manager,
             agent_id=agent.id,
-            agent_config_snapshot_id=snapshot.id,
+            agent_config_snapshot_id=agent_config_id,
         )
 
         conversation, message = self._init_generate_records(application_generate_entity, conversation)
@@ -421,50 +439,135 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
         return False, query
 
-    def _resolve_agent(self, app_model: App) -> tuple[Agent, AgentConfigSnapshot, AgentSoulConfig]:
+    def _resolve_agent(
+        self,
+        app_model: App,
+        *,
+        invoke_from: InvokeFrom,
+        draft_type: Any,
+        user: Account | EndUser,
+    ) -> tuple[Agent, str, AgentSoulConfig]:
         agent = db.session.scalar(
-            select(Agent).where(
-                Agent.app_id == app_model.id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+            select(Agent)
+            .where(
+                Agent.tenant_id == app_model.tenant_id,
                 Agent.status == AgentStatus.ACTIVE,
+                or_(
+                    and_(
+                        Agent.app_id == app_model.id,
+                        Agent.scope == AgentScope.ROSTER,
+                        Agent.source == AgentSource.AGENT_APP,
+                    ),
+                    Agent.backing_app_id == app_model.id,
+                ),
             )
+            .order_by(Agent.created_at.desc())
+            .limit(1)
         )
         if agent is None:
             raise AgentAppGeneratorError("Agent App has no bound Agent")
-        return self._resolve_agent_by_id(
-            tenant_id=app_model.tenant_id, agent_id=agent.id, snapshot_id=agent.active_config_snapshot_id
+        if invoke_from == InvokeFrom.DEBUGGER:
+            draft = self._resolve_debug_draft(
+                tenant_id=app_model.tenant_id,
+                agent=agent,
+                draft_type=draft_type,
+                account_id=user.id if isinstance(user, Account) else None,
+            )
+            agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+            return agent, draft.id, agent_soul
+        _, snapshot, agent_soul = self._resolve_agent_by_id(
+            tenant_id=app_model.tenant_id,
+            agent_id=agent.id,
+            snapshot_id=agent.active_config_snapshot_id,
         )
+        return agent, snapshot.id, agent_soul
 
     @staticmethod
     def _runtime_session_snapshot_id(*, invoke_from: InvokeFrom, snapshot_id: str) -> str | None:
         """Return the session scope snapshot id for Agent App runtime state.
 
-        Console preview/debug chat is an editing workspace: saving Agent Soul
-        creates replacement snapshots, but the user expects the same preview
-        conversation to keep context while trying prompt changes. Use a stable
-        NULL snapshot scope for debugger runs so each turn can use the latest
-        Agent Soul while reusing the conversation history. Published/web/API
-        runs keep snapshot-scoped sessions for reproducible runtime state.
+        Console preview/debug chat uses a stable Agent draft row id; build mode
+        uses the current user's build-draft row id. Published/web/API runs use
+        immutable published snapshot ids. This keeps runtime session continuity
+        inside one editable surface without mixing draft/build/published state.
         """
-        if invoke_from == InvokeFrom.DEBUGGER:
-            return None
         return snapshot_id
+
+    @staticmethod
+    def _resolve_debug_draft(
+        *, tenant_id: str, agent: Agent, draft_type: Any, account_id: str | None
+    ) -> AgentConfigDraft:
+        effective_draft_type = (
+            AgentConfigDraftType.DEBUG_BUILD
+            if draft_type == AgentConfigDraftType.DEBUG_BUILD.value
+            else AgentConfigDraftType.DRAFT
+        )
+        stmt = select(AgentConfigDraft).where(
+            AgentConfigDraft.tenant_id == tenant_id,
+            AgentConfigDraft.agent_id == agent.id,
+            AgentConfigDraft.draft_type == effective_draft_type,
+        )
+        if effective_draft_type == AgentConfigDraftType.DEBUG_BUILD:
+            if not account_id:
+                raise AgentAppGeneratorError("Build draft requires an account user")
+            stmt = stmt.where(AgentConfigDraft.account_id == account_id)
+        else:
+            stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
+        draft = db.session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
+        if draft is not None:
+            return draft
+        if effective_draft_type == AgentConfigDraftType.DEBUG_BUILD:
+            raise AgentAppGeneratorError("Agent build draft not found")
+        _, snapshot, agent_soul = AgentAppGenerator._resolve_agent_by_id(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=agent.active_config_snapshot_id,
+        )
+        draft = AgentConfigDraft(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            draft_owner_key="",
+            base_snapshot_id=snapshot.id,
+            config_snapshot=agent_soul,
+            created_by=agent.created_by,
+            updated_by=agent.updated_by,
+        )
+        db.session.add(draft)
+        db.session.flush()
+        return draft
 
     @staticmethod
     def _resolve_agent_by_id(
         *, tenant_id: str, agent_id: str, snapshot_id: str | None
-    ) -> tuple[Agent, AgentConfigSnapshot, AgentSoulConfig]:
+    ) -> tuple[Agent, AgentConfigSnapshot | AgentConfigDraft, AgentSoulConfig]:
         agent = db.session.scalar(select(Agent).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
         if agent is None:
             raise AgentAppGeneratorError("Agent not found")
         if not snapshot_id:
             raise AgentAppGeneratorError("Agent has no published version")
-        snapshot = db.session.scalar(select(AgentConfigSnapshot).where(AgentConfigSnapshot.id == snapshot_id))
-        if snapshot is None:
+        snapshot = db.session.scalar(
+            select(AgentConfigSnapshot).where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id == snapshot_id,
+            )
+        )
+        if snapshot is not None:
+            agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+            return agent, snapshot, agent_soul
+        draft = db.session.scalar(
+            select(AgentConfigDraft).where(
+                AgentConfigDraft.tenant_id == tenant_id,
+                AgentConfigDraft.agent_id == agent_id,
+                AgentConfigDraft.id == snapshot_id,
+            )
+        )
+        if draft is None:
             raise AgentAppGeneratorError("Agent published version not found")
-        agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
-        return agent, snapshot, agent_soul
+        agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        return agent, draft, agent_soul
 
 
 __all__ = ["AgentAppGenerator", "AgentAppGeneratorError"]
