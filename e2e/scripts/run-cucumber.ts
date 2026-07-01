@@ -179,7 +179,7 @@ const main = async () => {
     }
 
     if (startMiddlewareForRun && !hasCustomTags(forwardArgs))
-      cucumberEnv.E2E_CUCUMBER_TAGS = 'not @skip'
+      cucumberEnv.E2E_CUCUMBER_TAGS = 'not @skip and not @preview'
 
     const result = await runCommand({
       command: 'npx',
