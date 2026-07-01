@@ -1,6 +1,5 @@
 import type { SnippetDetailPayload } from '@/models/snippet'
 import { render, screen } from '@testing-library/react'
-import { MAIN_CONTENT_ID } from '@/app/components/main-nav/skip-nav'
 import SnippetPage from '..'
 
 const mockUseSnippetInit = vi.fn()
@@ -37,10 +36,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
-}))
-
-vi.mock('@/app/components/detail-sidebar', () => ({
-  DetailSidebarFrame: () => <aside data-testid="detail-sidebar-frame" />,
 }))
 
 vi.mock('@/app/components/workflow', () => ({
@@ -160,12 +155,13 @@ describe('SnippetPage', () => {
     })
   })
 
-  it('should render the orchestrate route shell with independent main content', () => {
+  it('should render the orchestrate route shell without owning the main landmark', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
     expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
     expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1')
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
   it('should initialize workflow context with published graph data when the published workflow exists', () => {
@@ -217,10 +213,7 @@ describe('SnippetPage', () => {
 
     render(<SnippetPage snippetId="snippet-1" />)
 
-    const main = screen.getByRole('main')
-    expect(screen.getAllByRole('main')).toHaveLength(1)
-    expect(main).toHaveAttribute('id', MAIN_CONTENT_ID)
-    expect(main).toContainElement(screen.getByRole('status'))
-    expect(screen.getByTestId('detail-sidebar-frame')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 })

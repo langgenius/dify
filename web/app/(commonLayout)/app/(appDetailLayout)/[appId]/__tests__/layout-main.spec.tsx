@@ -39,10 +39,6 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/app/components/detail-sidebar', () => ({
-  DetailSidebarFrame: () => <aside data-testid="detail-sidebar-frame" />,
-}))
-
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
@@ -91,7 +87,6 @@ describe('AppDetailLayout', () => {
       </AppDetailLayout>,
     )
     await waitForAppContent()
-    expect(screen.getByTestId('detail-sidebar-frame')).toBeInTheDocument()
     expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
 
     mockPathname = '/app/app-1/logs'
@@ -117,7 +112,7 @@ describe('AppDetailLayout', () => {
     expect(useStore.getState().appDetail?.id).toBe('app-1')
   })
 
-  it('should keep detail sidebar outside the main skip navigation target', async () => {
+  it('should render app detail content without owning the main skip target', async () => {
     render(
       <AppDetailLayout appId="app-1">
         <div>App page content</div>
@@ -126,12 +121,7 @@ describe('AppDetailLayout', () => {
 
     await waitForAppContent()
 
-    const main = screen.getByRole('main')
-    const detailSidebar = screen.getByTestId('detail-sidebar-frame')
-
-    expect(main).toHaveAttribute('id', 'main-content')
-    expect(main).toHaveTextContent('App page content')
-    expect(main).not.toContainElement(detailSidebar)
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
   it('should redirect restricted app pages before exposing app detail content', async () => {

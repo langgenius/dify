@@ -8,10 +8,6 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: (title: string) => mockUseDocumentTitle(title),
 }))
 
-vi.mock('@/app/components/detail-sidebar', () => ({
-  DetailSidebarFrame: () => <aside data-testid="detail-sidebar-frame" />,
-}))
-
 const createSnippet = (overrides: Partial<SnippetDetail> = {}): SnippetDetail => ({
   id: 'snippet-1',
   name: 'Snippet Title',
@@ -46,7 +42,7 @@ describe('SnippetLayout', () => {
   })
 
   describe('Layout', () => {
-    it('should render the detail content without the app detail sidebar navigation', () => {
+    it('should render the detail content without owning sidebar navigation', () => {
       render(
         <SnippetLayout
           snippetId="snippet-1"
@@ -58,7 +54,6 @@ describe('SnippetLayout', () => {
       )
 
       expect(screen.getByText('content')).toBeInTheDocument()
-      expect(screen.getByTestId('detail-sidebar-frame')).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'snippet.sectionOrchestrate' })).not.toBeInTheDocument()
     })
   })

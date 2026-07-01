@@ -16,6 +16,7 @@ import { MainContent, SkipNav } from './skip-nav'
 
 type MainNavLayoutProps = {
   children: ReactNode
+  detailSidebar?: ReactNode
 }
 
 function AppDetailStoreCleanup() {
@@ -37,6 +38,7 @@ function AppDetailStoreCleanup() {
 
 const MainNavLayout = ({
   children,
+  detailSidebar,
 }: MainNavLayoutProps) => {
   const { t } = useTranslation('common')
   const pathname = usePathname()
@@ -52,10 +54,8 @@ const MainNavLayout = ({
     <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
       <SkipNav>{t('navigation.skipToMain')}</SkipNav>
       <AppDetailStoreCleanup />
-      {!shouldHideMainNav && <MainNav />}
-      {shouldHideMainNav
-        ? children
-        : <MainContent>{children}</MainContent>}
+      {shouldHideMainNav ? detailSidebar : <MainNav />}
+      <MainContent>{children}</MainContent>
     </div>
   )
 }

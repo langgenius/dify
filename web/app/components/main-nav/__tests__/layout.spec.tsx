@@ -7,7 +7,6 @@ import { useAppContext } from '@/context/app-context'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { usePathname } from '@/next/navigation'
 import MainNavLayout from '../layout'
-import { MAIN_CONTENT_ID } from '../skip-nav'
 
 vi.mock('@/app/components/header', () => ({
   default: () => <div data-testid="desktop-header">Header</div>,
@@ -118,20 +117,23 @@ describe('MainNavLayout', () => {
     expect(main).toHaveFocus()
   })
 
-  it('lets detail routes own their sidebar instead of rendering the global main nav', () => {
+  it('renders the detail sidebar slot outside the single skip navigation target', () => {
     ;(usePathname as Mock).mockReturnValue('/datasets/dataset-1/documents')
 
     render(
-      <MainNavLayout>
-        <main id={MAIN_CONTENT_ID} tabIndex={-1}>
-          dataset detail
-        </main>
+      <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
+        <div>dataset detail</div>
       </MainNavLayout>,
     )
 
+    const main = screen.getByRole('main')
+    const detailSidebar = screen.getByRole('complementary', { name: 'Detail sidebar' })
+
     expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
     expect(screen.getAllByRole('main')).toHaveLength(1)
-    expect(screen.getByRole('main')).toHaveTextContent('dataset detail')
+    expect(main).toHaveAttribute('id', 'main-content')
+    expect(main).toHaveTextContent('dataset detail')
+    expect(main).not.toContainElement(detailSidebar)
   })
 
   it.each([
@@ -141,9 +143,14 @@ describe('MainNavLayout', () => {
   ])('keeps the global main nav on collection and creation route %s', (pathname) => {
     ;(usePathname as Mock).mockReturnValue(pathname)
 
-    render(<MainNavLayout><div>content</div></MainNavLayout>)
+    render(
+      <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
+        <div>content</div>
+      </MainNavLayout>,
+    )
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
   })
 
   it.each([
@@ -187,9 +194,14 @@ describe('MainNavLayout', () => {
       data: systemFeatures,
     })
 
-    render(<MainNavLayout><div>detail route content</div></MainNavLayout>)
+    render(
+      <MainNavLayout detailSidebar={<aside aria-label="Detail sidebar">Detail sidebar</aside>}>
+        <div>detail route content</div>
+      </MainNavLayout>,
+    )
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('main')).toHaveLength(1)
     expect(screen.getByRole('main')).toHaveTextContent('detail route content')
   })

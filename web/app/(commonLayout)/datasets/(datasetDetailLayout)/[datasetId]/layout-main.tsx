@@ -6,12 +6,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-section'
-import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import Loading from '@/app/components/base/loading'
-import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
-import { isDatasetDetailPathname } from '@/app/components/main-nav/routes'
-import { MainContent } from '@/app/components/main-nav/skip-nav'
 import { useAppContext } from '@/context/app-context'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -109,7 +104,6 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const isPipelinePage = pathname.endsWith('/pipeline') || pathname.includes('/create-from-pipeline')
   const shouldShowLoading = (!datasetRes && !error) || shouldRedirect || isCheckingRouteAccess || shouldRedirectUnauthorizedRoute
-  const shouldShowDetailSidebar = isDatasetDetailPathname(pathname)
   const content = shouldShowLoading
     ? <Loading type="app" />
     : (
@@ -138,20 +132,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background-body">
-      {shouldShowDetailSidebar && (
-        <DetailSidebarFrame
-          renderTop={({ expand, onToggle }) => (
-            <DatasetDetailTop
-              expand={expand}
-              onToggle={onToggle}
-            />
-          )}
-          renderSection={({ expand }) => <DatasetDetailSection expand={expand} />}
-        />
-      )}
-      {shouldShowDetailSidebar
-        ? <MainContent>{content}</MainContent>
-        : content}
+      {content}
     </div>
   )
 }

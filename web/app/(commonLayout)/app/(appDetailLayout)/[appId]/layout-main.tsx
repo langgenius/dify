@@ -7,12 +7,8 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
-import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
-import { MainContent } from '@/app/components/main-nav/skip-nav'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -43,7 +39,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const router = useRouter()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, currentWorkspace, userProfile, workspacePermissionKeys, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { appDetail, setAppDetail } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -138,7 +134,6 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, isRbacEnabled, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
 
   const isWorkflowPage = pathname.endsWith('/workflow')
-  const shouldShowDetailSidebar = !isCurrentWorkspaceDatasetOperator
   const content = !appDetail
     ? (
         <div className="flex min-w-0 grow items-center justify-center bg-background-body">
@@ -163,20 +158,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background-body">
-      {shouldShowDetailSidebar && (
-        <DetailSidebarFrame
-          renderTop={({ expand, onToggle }) => (
-            <AppDetailTop
-              expand={expand}
-              onToggle={onToggle}
-            />
-          )}
-          renderSection={({ expand }) => <AppDetailSection expand={expand} />}
-        />
-      )}
-      {shouldShowDetailSidebar
-        ? <MainContent>{content}</MainContent>
-        : content}
+      {content}
     </div>
   )
 }

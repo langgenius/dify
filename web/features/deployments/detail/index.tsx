@@ -1,19 +1,13 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
-import { MainContent } from '@/app/components/main-nav/skip-nav'
-import { useAppContext } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { CreateReleaseControl } from '../create-release'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
 import { DeveloperApiHeaderSwitch } from './api-tokens/developer-api-header-switch'
-import { DeploymentDetailSection, DeploymentDetailTop } from './deployment-sidebar'
 import { NewDeploymentHeaderAction } from './instances/header-actions/new-deployment-button'
 import { deploymentDetailActiveTabAtom } from './state'
 import { INSTANCE_DETAIL_TAB_KEYS } from './tabs'
@@ -56,16 +50,13 @@ export function InstanceDetail({ children }: {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const activeTab = useAtomValue(deploymentDetailActiveTabAtom)
-  const { isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const shouldShowDetailSidebar = !isCurrentWorkspaceDatasetOperator && isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
 
   useDocumentTitle(t('documentTitle.detail'))
 
   if (!appInstanceId)
     return null
 
-  const content = (
+  return (
     <div className="relative m-1 ml-0 flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg shadow-xs">
       <div className="min-w-0 grow overflow-hidden bg-components-panel-bg">
         <div className="h-full min-w-0 overflow-y-auto">
@@ -97,25 +88,6 @@ export function InstanceDetail({ children }: {
           </div>
         </div>
       </div>
-    </div>
-  )
-
-  return (
-    <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background-body">
-      {shouldShowDetailSidebar && (
-        <DetailSidebarFrame
-          renderTop={({ expand, onToggle }) => (
-            <DeploymentDetailTop
-              expand={expand}
-              onToggle={onToggle}
-            />
-          )}
-          renderSection={({ expand }) => <DeploymentDetailSection expand={expand} />}
-        />
-      )}
-      {shouldShowDetailSidebar
-        ? <MainContent>{content}</MainContent>
-        : content}
     </div>
   )
 }

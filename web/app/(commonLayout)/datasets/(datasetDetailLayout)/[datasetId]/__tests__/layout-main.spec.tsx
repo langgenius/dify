@@ -39,10 +39,6 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/detail-sidebar', () => ({
-  DetailSidebarFrame: () => <aside data-testid="detail-sidebar-frame" />,
-}))
-
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
@@ -135,7 +131,6 @@ describe('DatasetDetailLayout', () => {
       )
 
       // Assert
-      expect(screen.getByTestId('detail-sidebar-frame')).toBeInTheDocument()
       expect(screen.getByText('Pipeline content')).toBeInTheDocument()
       expect(mockReplace).not.toHaveBeenCalled()
     })
@@ -217,7 +212,7 @@ describe('DatasetDetailLayout', () => {
       expect(screen.getByText('Create from pipeline content').parentElement).not.toHaveClass('rounded-lg')
     })
 
-    it('should not render detail sidebar on document creation routes owned by global navigation', () => {
+    it('should render document creation route content without owning the main skip target', () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create')
       mockUseDatasetDetail.mockReturnValue({
@@ -241,7 +236,7 @@ describe('DatasetDetailLayout', () => {
 
       // Assert
       expect(screen.getByText('Create document content')).toBeInTheDocument()
-      expect(screen.queryByTestId('detail-sidebar-frame')).not.toBeInTheDocument()
+      expect(screen.queryByRole('main')).not.toBeInTheDocument()
     })
   })
 
