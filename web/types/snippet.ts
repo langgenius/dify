@@ -103,68 +103,12 @@ export type SnippetDraftSyncResponse = {
   updated_at: number
 }
 
-export type SnippetDraftConfig = {
-  parallel_depth_limit: number
-}
-
 export type PublishSnippetWorkflowResponse = {
   result: string
   created_at: number
 }
 
-export type WorkflowRunDetail = {
-  id: string
-  version: string
-  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
-  elapsed_time: number
-  total_tokens: number
-  total_steps: number
-  created_at: number
-  finished_at: number
-  exceptions_count: number
-}
-
-export type WorkflowRunPagination = {
-  limit: number
-  has_more: boolean
-  data: WorkflowRunDetail[]
-}
-
-export type WorkflowNodeExecution = {
-  id: string
-  index: number
-  node_id: string
-  node_type: string
-  title: string
-  inputs: Record<string, unknown>
-  process_data: Record<string, unknown>
-  outputs: Record<string, unknown>
-  status: string
-  error: string
-  elapsed_time: number
-  created_at: number
-  finished_at: number
-}
-
-export type WorkflowNodeExecutionListResponse = {
-  data: WorkflowNodeExecution[]
-}
-
-export type SnippetDraftNodeRunPayload = {
-  inputs?: Record<string, unknown>
-  query?: string
-  files?: Record<string, unknown>[]
-}
-
 export type SnippetDraftRunPayload = {
   inputs?: Record<string, unknown>
   files?: Record<string, unknown>[]
-}
-
-export type SnippetIterationNodeRunPayload = {
-  inputs?: Record<string, unknown>
-}
-
-export type SnippetLoopNodeRunPayload = {
-  inputs?: Record<string, unknown>
 }
