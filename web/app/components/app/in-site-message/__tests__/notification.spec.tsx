@@ -29,18 +29,22 @@ vi.mock(import('@/config'), async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     notification: {
-      queryOptions: (options?: Record<string, unknown>) => ({
-        queryKey: ['console', 'notification'],
-        queryFn: (...args: unknown[]) => mockNotification(...args),
-        ...options,
-      }),
-    },
-    notificationDismiss: {
-      mutationOptions: (options?: Record<string, unknown>) => ({
-        mutationKey: ['console', 'notificationDismiss'],
-        mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
-        ...options,
-      }),
+      get: {
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'notification', 'get'],
+          queryFn: (...args: unknown[]) => mockNotification(...args),
+          ...options,
+        }),
+      },
+      dismiss: {
+        post: {
+          mutationOptions: (options?: Record<string, unknown>) => ({
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
+            mutationFn: (...args: unknown[]) => mockNotificationDismiss(...args),
+            ...options,
+          }),
+        },
+      },
     },
   },
 }))
@@ -149,7 +153,7 @@ describe('InSiteMessageNotification', () => {
             },
           },
           expect.objectContaining({
-            mutationKey: ['console', 'notificationDismiss'],
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
           }),
         )
       })
@@ -187,7 +191,7 @@ describe('InSiteMessageNotification', () => {
             },
           },
           expect.objectContaining({
-            mutationKey: ['console', 'notificationDismiss'],
+            mutationKey: ['console', 'notification', 'dismiss', 'post'],
           }),
         )
       })
