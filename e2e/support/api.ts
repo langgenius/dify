@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { request } from '@playwright/test'
 import { authStatePath } from '../fixtures/auth'
 import { apiURL } from '../test-env'
-import { createE2EResourceName } from './naming'
+import { assertE2EResourceName, createE2EResourceName } from './naming'
 
 type StorageState = {
   cookies: Array<{ name: string, value: string }>
@@ -37,6 +37,7 @@ export async function createTestApp(
   name = createE2EResourceName('App'),
   mode = 'workflow',
 ): Promise<AppSeed> {
+  assertE2EResourceName(name, 'App')
   const ctx = await createApiContext()
   try {
     const response = await ctx.post('/console/api/apps', {
@@ -48,6 +49,7 @@ export async function createTestApp(
         icon_background: '#FFEAD5',
       },
     })
+    await expectApiResponseOK(response, `Create ${mode} app ${name}`)
     const body = (await response.json()) as AppSeed
     return body
   }

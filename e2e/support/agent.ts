@@ -1,5 +1,5 @@
 import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from './api'
-import { createE2EResourceName } from './naming'
+import { assertE2EResourceName, createE2EResourceName } from './naming'
 
 export type AgentSeed = {
   active_config_is_published?: boolean
@@ -142,6 +142,7 @@ export async function createTestAgent({
   name = createE2EResourceName('Agent'),
   role = 'E2E test assistant',
 }: CreateTestAgentOptions = {}): Promise<AgentSeed> {
+  assertE2EResourceName(name, 'Agent')
   const ctx = await createApiContext()
   try {
     const response = await ctx.post('/console/api/agent', {
