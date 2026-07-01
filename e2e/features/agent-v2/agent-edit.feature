@@ -22,3 +22,10 @@ Feature: Agent v2 Agent Edit page
     And the Agent Builder preseeded Agent "E2E Agent With File Tree" includes the current flat file fixture configuration
     When I open the preseeded Agent v2 configure page for "E2E Agent With File Tree" from the Agent Roster
     Then I should see the Agent v2 file fixture entries in the current flat Files list
+
+  Scenario: Dual Knowledge Retrieval settings are visible on the Agent Edit page
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E Agent With Dual Retrieval" is available
+    And the Agent Builder preseeded Agent "E2E Agent With Dual Retrieval" includes the dual retrieval fixture configuration
+    When I open the preseeded Agent v2 configure page for "E2E Agent With Dual Retrieval" from the Agent Roster
+    Then I should see the Agent v2 dual retrieval fixture settings

@@ -248,6 +248,21 @@ const expectProviderToolActionVisible = async (
   return { action, tool }
 }
 
+const openAgentKnowledgeRetrievalDialog = async (knowledgeSection: Locator, name: string) => {
+  await knowledgeSection.getByText(name, { exact: true }).hover()
+  await knowledgeSection.getByRole('button', {
+    exact: true,
+    name: `Edit ${name}`,
+  }).click()
+
+  const dialog = knowledgeSection.page().getByRole('dialog', {
+    name: 'Knowledge Retrieval · Agent decide',
+  })
+  await expect(dialog).toBeVisible()
+
+  return dialog
+}
+
 Given('an Agent v2 test agent has been created via API', async function (this: DifyWorld) {
   const agent = await createTestAgent()
   this.createdAgentIds.push(agent.id)
@@ -707,6 +722,39 @@ Then(
     await expect(filesList.getByRole('button', { exact: true, name: 'web-game' })).toHaveCount(0)
   },
 )
+
+Then('I should see the Agent v2 dual retrieval fixture settings', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const knowledgeSection = page.getByRole('region', { name: 'Knowledge Retrieval' })
+
+  await expect(knowledgeSection).toBeVisible({ timeout: 30_000 })
+  await expect(knowledgeSection.getByText('Retrieval 1', { exact: true })).toBeVisible()
+  await expect(knowledgeSection.getByText('Retrieval 2', { exact: true })).toBeVisible()
+
+  const agentDecideDialog = await openAgentKnowledgeRetrievalDialog(knowledgeSection, 'Retrieval 1')
+  await expect(agentDecideDialog.getByText(agentBuilderPreseededResources.agentKnowledgeBase, {
+    exact: true,
+  })).toBeVisible()
+  await expect(agentDecideDialog.getByRole('radio', {
+    exact: true,
+    name: 'Agent decide',
+  })).toBeChecked()
+  await agentDecideDialog.getByRole('button', { name: 'Close' }).click()
+  await expect(agentDecideDialog).not.toBeVisible()
+
+  const customQueryDialog = await openAgentKnowledgeRetrievalDialog(knowledgeSection, 'Retrieval 2')
+  await expect(customQueryDialog.getByText(agentBuilderPreseededResources.agentKnowledgeBase, {
+    exact: true,
+  })).toBeVisible()
+  await expect(customQueryDialog.getByRole('radio', {
+    exact: true,
+    name: 'Custom query',
+  })).toBeChecked()
+  await expect(customQueryDialog.getByRole('textbox', {
+    exact: true,
+    name: 'Custom query text',
+  })).toHaveValue(agentBuilderFixedInputs.customKnowledgeQuery)
+})
 
 Then(
   'I should see the normal E2E prompt in the Agent v2 prompt editor',
