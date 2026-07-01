@@ -51,5 +51,9 @@ export function skipMissingAgentBuilderPreseed(
   resourceName: string,
   envName: string,
 ): 'skipped' | string {
-  return skipMissingEnvResource(world, envName, `Preseeded Agent Builder resource "${resourceName}"`)
+  return skipMissingEnvResource(
+    world,
+    envName,
+    `Preseeded Agent Builder resource "${resourceName}"`,
+  )
 }

@@ -29,9 +29,8 @@ export const agentBuilderTestMaterials = {
   countTotalExtra1: 'count_total_extra_1_valid_file',
 } as const
 
-export const getAgentBuilderTestMaterialPath = (
-  material: keyof typeof agentBuilderTestMaterials,
-) => getTestMaterialPath(agentBuilderTestMaterials[material])
+export const getAgentBuilderTestMaterialPath = (material: keyof typeof agentBuilderTestMaterials) =>
+  getTestMaterialPath(agentBuilderTestMaterials[material])
 
 export async function getGeneratedTextMaterialPath({
   fileName,
