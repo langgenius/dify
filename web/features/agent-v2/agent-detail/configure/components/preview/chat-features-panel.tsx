@@ -80,12 +80,15 @@ function AgentChatFeaturesPanelContent({
   const featuresStore = useFeaturesStore()
   const setAppFeatures = useSetAppFeatures()
   const handleChange = useCallback(() => {
+    if (disabled)
+      return
+
     const features = featuresStore?.getState().features
     if (!features)
       return
 
     setAppFeatures(currentAppFeatures => toAppFeatures(features, currentAppFeatures ?? appFeatures))
-  }, [appFeatures, featuresStore, setAppFeatures])
+  }, [appFeatures, disabled, featuresStore, setAppFeatures])
 
   return (
     <NewFeaturePanel

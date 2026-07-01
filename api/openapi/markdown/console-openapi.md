@@ -465,6 +465,23 @@ Check if activation token is valid
 | ---- | ----------- |
 | 204 | Agent service API key deleted |
 
+### [POST] /agent/{agent_id}/build-chat/finalize
+Run a build-draft Agent App turn that asks the agent to push config updates
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 404 | Agent, build draft, or conversation not found |  |
+
 ### [DELETE] /agent/{agent_id}/build-draft
 #### Parameters
 
@@ -657,6 +674,237 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config files | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
+
+### [POST] /agent/{agent_id}/config/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentConfigFileUploadPayload](#agentconfigfileuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Uploaded config file | **application/json**: [AgentConfigFileUploadResponse](#agentconfigfileuploadresponse)<br> |
+
+### [DELETE] /agent/{agent_id}/config/files/{name}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| name | path | Config file name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config file deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/files/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| name | path | Config file name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/files/{name}/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| name | path | Config file name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/manifest
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent config manifest | **application/json**: [AgentConfigManifestResponse](#agentconfigmanifestresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skills | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
+
+### [POST] /agent/{agent_id}/config/skills/upload
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Uploaded config skill | **application/json**: [AgentConfigSkillUploadResponse](#agentconfigskilluploadresponse)<br> |
+
+### [DELETE] /agent/{agent_id}/config/skills/{name}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/skills/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/skills/{name}/files/content
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /agent/{agent_id}/config/skills/{name}/files/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| path | query | Normalized zip member path inside the skill package | Yes | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/skills/{name}/files/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| path | query | Normalized zip member path inside the skill package | Yes | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill file preview | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
+
+### [GET] /agent/{agent_id}/config/skills/{name}/inspect
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill inspect view | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
 
 ### [POST] /agent/{agent_id}/copy
 #### Parameters
@@ -1632,6 +1880,250 @@ Run draft workflow for advanced chat application
 | 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Permission denied |  |
+
+### [GET] /apps/{app_id}/agent/config/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config files | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
+
+### [POST] /apps/{app_id}/agent/config/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentConfigFileUploadPayload](#agentconfigfileuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Uploaded config file | **application/json**: [AgentConfigFileUploadResponse](#agentconfigfileuploadresponse)<br> |
+
+### [DELETE] /apps/{app_id}/agent/config/files/{name}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| name | path | Config file name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config file deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/config/files/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| name | path | Config file name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/config/files/{name}/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| name | path | Config file name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Preview | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/config/manifest
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent config manifest | **application/json**: [AgentConfigManifestResponse](#agentconfigmanifestresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/config/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skills | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
+
+### [POST] /apps/{app_id}/agent/config/skills/upload
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Uploaded config skill | **application/json**: [AgentConfigSkillUploadResponse](#agentconfigskilluploadresponse)<br> |
+
+### [DELETE] /apps/{app_id}/agent/config/skills/{name}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/config/skills/{name}/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/config/skills/{name}/files/content
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| name | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [GET] /apps/{app_id}/agent/config/skills/{name}/files/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| path | query | Normalized zip member path inside the skill package | Yes | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/config/skills/{name}/files/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| path | query | Normalized zip member path inside the skill package | Yes | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill file preview | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/config/skills/{name}/inspect
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| name | path | Config skill name | Yes | string |
+| draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Config skill inspect view | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/drive/files
 List agent drive entries (read-only inspector; one endpoint for both tabs)
@@ -12440,7 +12932,9 @@ Default namespace
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| debug_conversation_has_messages | boolean |  | No |
 | debug_conversation_id | string |  | No |
+| debug_conversation_message_count | integer |  | No |
 | deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
 | description | string |  | No |
 | enable_api | boolean |  | Yes |
@@ -12768,6 +13262,19 @@ Risk marker for CLI tool bootstrap commands.
 | result | string |  | Yes |
 | warnings | [ [ComposerValidationWarningResponse](#composervalidationwarningresponse) ] |  | No |
 
+#### AgentConfigDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| removed_names | [ string ] |  | No |
+| result | string |  | Yes |
+
+#### AgentConfigDownloadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string |  | Yes |
+
 #### AgentConfigDraftSummaryResponse
 
 | Name | Type | Description | Required |
@@ -12790,6 +13297,78 @@ Editable Agent Soul draft workspace type.
 | ---- | ---- | ----------- | -------- |
 | AgentConfigDraftType | string | Editable Agent Soul draft workspace type. |  |
 
+#### AgentConfigFileItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_id | string |  | No |
+| hash | string |  | No |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+
+#### AgentConfigFileItemsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [AgentConfigFileItemResponse](#agentconfigfileitemresponse) ] |  | No |
+
+#### AgentConfigFileListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+| config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
+| items | [ [AgentConfigFileItemResponse](#agentconfigfileitemresponse) ] |  | No |
+
+#### AgentConfigFilePreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
+
+#### AgentConfigFileRefConfig
+
+Stable Agent Soul reference to one config file payload.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_id | string |  | Yes |
+| file_kind | string, <br>**Available values:** "tool_file", "upload_file" | *Enum:* `"tool_file"`, `"upload_file"` | Yes |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+
+#### AgentConfigFileUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| upload_file_id | string | UploadFile UUID from POST /console/api/files/upload | Yes |
+
+#### AgentConfigFileUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
+| file | [AgentConfigFileItemResponse](#agentconfigfileitemresponse) |  | Yes |
+
+#### AgentConfigManifestResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+| config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
+| env_keys | [ string ] |  | No |
+| files | [AgentConfigFileItemsResponse](#agentconfigfileitemsresponse) |  | No |
+| note | string |  | No |
+| skills | [AgentConfigSkillItemsResponse](#agentconfigskillitemsresponse) |  | No |
+
 #### AgentConfigRevisionOperation
 
 Audit operation recorded for Agent Soul version/revision changes.
@@ -12811,6 +13390,99 @@ Audit operation recorded for Agent Soul version/revision changes.
 | revision | integer |  | Yes |
 | summary | string |  | No |
 | version_note | string |  | No |
+
+#### AgentConfigSkillFilePreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
+
+#### AgentConfigSkillFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| downloadable | boolean |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| previewable | boolean |  | Yes |
+| type | string, <br>**Available values:** "directory", "file" | *Enum:* `"directory"`, `"file"` | Yes |
+
+#### AgentConfigSkillInspectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| file_tree | [ object ] |  | No |
+| files | [ [AgentConfigSkillFileResponse](#agentconfigskillfileresponse) ] |  | No |
+| hash | string |  | No |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+| skill_md | [AgentConfigSkillMarkdownResponse](#agentconfigskillmarkdownresponse) |  | Yes |
+| source | string |  | Yes |
+| warnings | [ string ] |  | No |
+
+#### AgentConfigSkillItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| file_id | string |  | No |
+| hash | string |  | No |
+| id | string |  | Yes |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+
+#### AgentConfigSkillItemsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [AgentConfigSkillItemResponse](#agentconfigskillitemresponse) ] |  | No |
+
+#### AgentConfigSkillListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+| config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
+| items | [ [AgentConfigSkillItemResponse](#agentconfigskillitemresponse) ] |  | No |
+
+#### AgentConfigSkillMarkdownResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | Yes |
+| truncated | boolean |  | Yes |
+
+#### AgentConfigSkillRefConfig
+
+Stable Agent Soul reference to one normalized skill archive.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| file_id | string |  | Yes |
+| file_kind | string, <br>**Default:** tool_file |  | No |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+
+#### AgentConfigSkillUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config_version | [AgentConfigVersionResponse](#agentconfigversionresponse) |  | Yes |
+| skill | [AgentConfigSkillItemResponse](#agentconfigskillitemresponse) |  | Yes |
 
 #### AgentConfigSnapshotDetailResponse
 
@@ -12857,6 +13529,14 @@ Audit operation recorded for Agent Soul version/revision changes.
 | version | integer |  | Yes |
 | version_note | string |  | No |
 
+#### AgentConfigVersionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| kind | string, <br>**Available values:** "build_draft", "draft", "snapshot" | *Enum:* `"build_draft"`, `"draft"`, `"snapshot"` | Yes |
+| writable | boolean |  | Yes |
+
 #### AgentDailyConversationStatisticResponse
 
 | Name | Type | Description | Required |
@@ -12882,7 +13562,9 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| debug_conversation_has_messages | boolean |  | No |
 | debug_conversation_id | string |  | Yes |
+| debug_conversation_message_count | integer |  | No |
 
 #### AgentDriveDeleteFileByAgentQuery
 
@@ -13653,6 +14335,9 @@ Visibility and lifecycle scope of an Agent record.
 | ---- | ---- | ----------- | -------- |
 | app_features | [AgentSoulAppFeaturesConfig](#agentsoulappfeaturesconfig) |  | No |
 | app_variables | [ [AppVariableConfig](#appvariableconfig) ] |  | No |
+| config_files | [ [AgentConfigFileRefConfig](#agentconfigfilerefconfig) ] |  | No |
+| config_note | string |  | No |
+| config_skills | [ [AgentConfigSkillRefConfig](#agentconfigskillrefconfig) ] |  | No |
 | env | [AgentSoulEnvConfig](#agentsoulenvconfig) |  | No |
 | files | [AgentSoulFilesConfig](#agentsoulfilesconfig) |  | No |
 | human | [AgentSoulHumanConfig](#agentsoulhumanconfig) |  | No |
@@ -13667,12 +14352,15 @@ Visibility and lifecycle scope of an Agent record.
 
 #### AgentSoulDifyToolConfig
 
-One Dify Plugin Tool configured on Agent Soul.
+One Dify tool configured on Agent Soul.
 
 The API backend prepares this persisted product shape into
-``DifyPluginToolConfig`` before sending a run request to Agent backend.
-``provider_id`` keeps compatibility with existing Agent tool config payloads;
-new callers should send ``plugin_id`` + ``provider`` when available.
+either ``DifyPluginToolConfig`` or ``DifyCoreToolConfig`` before sending a
+run request to Agent backend. ``plugin`` providers keep the direct
+``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
+``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
+keeps compatibility with existing Agent tool config payloads; new callers
+should send ``plugin_id`` + ``provider`` when available.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21154,6 +21842,9 @@ How a workflow node is bound to an Agent.
 | backing_app_id | string |  | No |
 | binding | [AgentComposerBindingResponse](#agentcomposerbindingresponse) |  | No |
 | chat_endpoint | string |  | No |
+| debug_conversation_has_messages | boolean |  | No |
+| debug_conversation_id | string |  | No |
+| debug_conversation_message_count | integer |  | No |
 | effective_declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
 | hidden_app_backed | boolean |  | No |
 | impact_summary | [AgentComposerImpactResponse](#agentcomposerimpactresponse) |  | No |

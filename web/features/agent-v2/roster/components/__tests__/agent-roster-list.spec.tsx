@@ -209,6 +209,8 @@ describe('AgentRosterList', () => {
 
     const workflowLink = screen.getByRole('menuitem', { name: /RFP Review Flow/ })
     expect(workflowLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
+    expect(workflowLink).toHaveAttribute('target', '_blank')
+    expect(workflowLink).toHaveAttribute('rel', 'noopener noreferrer')
     expect(screen.getByText(/agentV2\.roster\.references\.label/)).toBeInTheDocument()
   })
 

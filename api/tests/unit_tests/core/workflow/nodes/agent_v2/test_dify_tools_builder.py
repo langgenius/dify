@@ -16,11 +16,12 @@ from core.tools.entities.tool_entities import (
     ToolIdentity,
     ToolInvokeMessage,
     ToolParameter,
+    ToolProviderType,
 )
 from core.tools.tool_manager import ToolManager
-from core.workflow.nodes.agent_v2.plugin_tools_builder import (
-    WorkflowAgentPluginToolsBuilder,
-    WorkflowAgentPluginToolsBuildError,
+from core.workflow.nodes.agent_v2.dify_tools_builder import (
+    WorkflowAgentDifyToolsBuilder,
+    WorkflowAgentDifyToolsBuildError,
 )
 from models.agent_config_entities import AgentSoulToolsConfig
 
@@ -29,8 +30,9 @@ class FakeRuntimeProvider:
     def __init__(self, tool: Tool | Exception) -> None:
         # Either a Tool to hand back, or an exception to raise on lookup. The
         # latter lets tests exercise the error-mapping branches in
-        # ``WorkflowAgentPluginToolsBuilder._fetch_tool_runtime``.
+        # ``WorkflowAgentDifyToolsBuilder._fetch_tool_runtime``.
         self.tool = tool
+        self.call_count = 0
         self.last_agent_tool: AgentToolEntity | None = None
         self.last_invoke_from: InvokeFrom | None = None
         self.last_allow_file_parameters: bool | None = None
@@ -47,6 +49,7 @@ class FakeRuntimeProvider:
         allow_file_parameters: bool = False,
         use_default_for_missing_form_parameters: bool = False,
     ) -> Tool:
+        self.call_count += 1
         self.last_agent_tool = agent_tool
         self.last_invoke_from = invoke_from
         self.last_allow_file_parameters = allow_file_parameters
@@ -182,25 +185,26 @@ def _tts_tool() -> FakeTool:
 
 
 def _build(
-    builder: WorkflowAgentPluginToolsBuilder,
+    builder: WorkflowAgentDifyToolsBuilder,
     tools: AgentSoulToolsConfig,
     *,
     invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
 ):
-    """Shorthand for ``builder.build(...)`` with the standard tenant/app/user
-    triple, so each test only highlights what's actually unique to it."""
-    return builder.build(
+    """Shorthand for tests that expect ``build_layers(...)`` to return only plugin tools."""
+    layers = builder.build_layers(
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
         tools=tools,
         invoke_from=invoke_from,
     )
+    assert layers.core_tools is None
+    return layers.plugin_tools
 
 
 def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
     runtime_provider = FakeRuntimeProvider(_tool())
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
@@ -235,9 +239,9 @@ def test_builds_dify_plugin_tools_layer_from_existing_tool_runtime():
     assert runtime_provider.last_agent_tool.provider_type.value == "plugin"
 
 
-def test_builds_dify_plugin_tool_with_file_llm_parameter():
+def test_builds_core_tool_with_file_llm_parameter():
     runtime_provider = FakeRuntimeProvider(_file_tool())
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
@@ -251,24 +255,192 @@ def test_builds_dify_plugin_tool_with_file_llm_parameter():
         }
     )
 
-    result = _build(builder, tools)
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
 
-    assert result is not None
-    prepared = result.tools[0]
+    assert result.core_tools is not None
+    prepared = result.core_tools.tools[0]
     assert prepared.tool_name == "asr"
     assert prepared.runtime_parameters == {}
     assert prepared.parameters[0].name == "audio_file"
     assert prepared.parameters[0].type == "file"
-    # The public Agent backend DTO carries non-scalar tool inputs in
-    # ``parameters``; legacy JSON schema generation omits file fields.
     assert prepared.parameters_json_schema == {"type": "object", "properties": {}, "required": []}
     assert runtime_provider.last_allow_file_parameters is True
     assert runtime_provider.last_use_default_for_missing_form_parameters is True
 
 
-def test_builds_dify_plugin_tool_with_missing_required_select_default():
+def test_build_layers_routes_plugin_direct_and_builtin_via_core() -> None:
+    runtime_provider = FakeRuntimeProvider(_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "langgenius/search/search",
+                    "provider_type": "plugin",
+                    "tool_name": "search",
+                    "credential_type": "api-key",
+                    "credential_id": "credential-1",
+                    "runtime_parameters": {"region": "us"},
+                },
+                {
+                    "provider_id": "audio",
+                    "provider_type": "builtin",
+                    "tool_name": "transcribe",
+                    "credential_type": "unauthorized",
+                },
+            ]
+        }
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    assert result.plugin_tools is not None
+    assert [tool.tool_name for tool in result.plugin_tools.tools] == ["search"]
+    assert result.core_tools is not None
+    assert [tool.provider_type for tool in result.core_tools.tools] == ["builtin"]
+    assert [tool.tool_name for tool in result.core_tools.tools] == ["transcribe"]
+
+
+@pytest.mark.parametrize(
+    ("provider_type", "provider_id"),
+    [
+        ("api", "search-api"),
+        ("workflow", "workflow-provider-1"),
+    ],
+)
+def test_build_layers_routes_api_and_workflow_via_core(provider_type: str, provider_id: str) -> None:
+    runtime_provider = FakeRuntimeProvider(_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": provider_id,
+                    "provider_type": provider_type,
+                    "tool_name": "search",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    assert result.plugin_tools is None
+    assert result.core_tools is not None
+    assert [tool.provider_type for tool in result.core_tools.tools] == [provider_type]
+    assert [tool.provider_id for tool in result.core_tools.tools] == [provider_id]
+    assert [tool.tool_name for tool in result.core_tools.tools] == ["search"]
+
+
+def test_build_layers_normalizes_mcp_provider_ids_to_server_identifier() -> None:
+    runtime_provider = FakeRuntimeProvider(_tool())
+    builder = WorkflowAgentDifyToolsBuilder(
+        tool_runtime_provider=runtime_provider,
+        mcp_provider_id_resolver=lambda *, tenant_id, provider_id: "mcp-server-1",
+    )
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "db-row-id",
+                    "provider_type": "mcp",
+                    "tool_name": "search",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    assert result.core_tools is not None
+    assert result.core_tools.tools[0].provider_id == "mcp-server-1"
+
+
+def test_build_layers_rejects_app_provider_type() -> None:
+    runtime_provider = FakeRuntimeProvider(_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "app-provider",
+                    "provider_type": "app",
+                    "tool_name": "search",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    with pytest.raises(WorkflowAgentDifyToolsBuildError, match="not supported"):
+        builder.build_layers(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            user_id="user-1",
+            tools=tools,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+    assert runtime_provider.last_agent_tool is None
+
+
+def test_build_layers_rejects_dataset_retrieval_provider_type() -> None:
+    runtime_provider = FakeRuntimeProvider(_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "dataset-provider",
+                    "provider_type": "dataset-retrieval",
+                    "tool_name": "search",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
+        builder.build_layers(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            user_id="user-1",
+            tools=tools,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+
+    assert exc_info.value.error_code == "agent_tool_provider_not_supported"
+    assert runtime_provider.last_agent_tool is None
+
+
+def test_builds_core_tool_with_missing_required_select_default():
     runtime_provider = FakeRuntimeProvider(_tts_tool())
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
@@ -282,17 +454,24 @@ def test_builds_dify_plugin_tool_with_missing_required_select_default():
         }
     )
 
-    result = _build(builder, tools)
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
 
-    assert result is not None
-    prepared = result.tools[0]
+    assert result.core_tools is not None
+    prepared = result.core_tools.tools[0]
     assert prepared.tool_name == "tts"
     assert prepared.runtime_parameters == {"model": "provider-a#model-a"}
     assert runtime_provider.last_use_default_for_missing_form_parameters is True
 
 
 def test_rejects_duplicate_exposed_tool_names():
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(_tool()))
+    runtime_provider = FakeRuntimeProvider(_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
@@ -314,14 +493,15 @@ def test_rejects_duplicate_exposed_tool_names():
         }
     )
 
-    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, tools)
 
     assert exc_info.value.error_code == "agent_tool_name_duplicated"
+    assert runtime_provider.call_count == 1
 
 
 def test_rejects_missing_required_runtime_parameter():
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(_tool(runtime_parameters={})))
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(_tool(runtime_parameters={})))
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
@@ -335,7 +515,7 @@ def test_rejects_missing_required_runtime_parameter():
         }
     )
 
-    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, tools)
 
     assert exc_info.value.error_code == "agent_tool_runtime_parameter_missing"
@@ -355,7 +535,7 @@ def test_invoke_from_is_forwarded_to_tool_runtime_provider():
     representative invoke_from values."""
     for invoke_from in (InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP):
         runtime_provider = FakeRuntimeProvider(_tool())
-        builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+        builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
         tools = AgentSoulToolsConfig.model_validate(
             {
                 "dify_tools": [
@@ -382,7 +562,7 @@ def test_invoke_from_is_forwarded_to_tool_runtime_provider():
 
 def test_disabled_tools_are_skipped():
     runtime_provider = FakeRuntimeProvider(_tool())
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
@@ -408,7 +588,7 @@ def test_plugin_id_plus_provider_fallback_when_provider_id_missing():
     """Frontend may send ``plugin_id`` + ``provider`` instead of the
     concatenated ``provider_id``; the builder must accept both shapes."""
     runtime_provider = FakeRuntimeProvider(_tool())
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
@@ -444,7 +624,7 @@ def test_unauthorized_tool_without_credentials():
         return tool
 
     runtime_provider = FakeRuntimeProvider(_no_credentials_tool())
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider)
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
     tools = AgentSoulToolsConfig.model_validate(
         {
             "dify_tools": [
@@ -488,10 +668,10 @@ def _standard_tools_payload() -> AgentSoulToolsConfig:
 def test_tool_provider_not_found_maps_to_declaration_not_found():
     from core.tools.errors import ToolProviderNotFoundError
 
-    builder = WorkflowAgentPluginToolsBuilder(
+    builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(ToolProviderNotFoundError("provider gone"))
     )
-    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
     assert exc_info.value.error_code == "agent_tool_declaration_not_found"
 
@@ -499,10 +679,10 @@ def test_tool_provider_not_found_maps_to_declaration_not_found():
 def test_credential_validation_error_maps_to_credential_invalid():
     from core.tools.errors import ToolProviderCredentialValidationError
 
-    builder = WorkflowAgentPluginToolsBuilder(
+    builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(ToolProviderCredentialValidationError("creds expired"))
     )
-    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
     assert exc_info.value.error_code == "agent_tool_credential_invalid"
 
@@ -512,8 +692,8 @@ def test_generic_value_error_maps_to_config_invalid():
     ``agent_tool_config_invalid`` — distinct from
     ``agent_tool_declaration_not_found`` so callers can render a different
     hint."""
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(ValueError("runtime missing")))
-    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(ValueError("runtime missing")))
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
     assert exc_info.value.error_code == "agent_tool_config_invalid"
 
@@ -536,8 +716,8 @@ def test_rejects_non_scalar_credential_value():
         tool.runtime.credentials = {"oauth": {"access_token": "secret", "expires_in": 3600}}
         return tool
 
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(_dict_credential_tool()))
-    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=FakeRuntimeProvider(_dict_credential_tool()))
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, _standard_tools_payload())
     assert exc_info.value.error_code == "agent_tool_credential_shape_invalid"
 
@@ -578,13 +758,13 @@ def test_legacy_provider_name_and_tool_parameters_normalized():
 
 def test_provider_level_entry_expands_to_all_tools():
     runtime_provider = FakeRuntimeProvider(_tool())
-    listed: list[tuple[str, str]] = []
+    listed: list[tuple[str, str, ToolProviderType]] = []
 
-    def lister(*, tenant_id: str, provider_id: str) -> list[str]:
-        listed.append((tenant_id, provider_id))
+    def lister(*, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> list[str]:
+        listed.append((tenant_id, provider_id, provider_type))
         return ["search", "image_search"]
 
-    builder = WorkflowAgentPluginToolsBuilder(tool_runtime_provider=runtime_provider, provider_tools_lister=lister)
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider, provider_tools_lister=lister)
     tools = AgentSoulToolsConfig.model_validate(
         {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
     )
@@ -593,13 +773,13 @@ def test_provider_level_entry_expands_to_all_tools():
 
     assert result is not None
     assert [tool.tool_name for tool in result.tools] == ["search", "image_search"]
-    assert listed == [("tenant-1", "langgenius/search/search")]
+    assert listed == [("tenant-1", "langgenius/search/search", ToolProviderType.PLUGIN)]
 
 
 def test_explicit_tool_entry_wins_over_provider_expansion():
-    builder = WorkflowAgentPluginToolsBuilder(
+    builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(_tool()),
-        provider_tools_lister=lambda *, tenant_id, provider_id: ["search", "image_search"],
+        provider_tools_lister=lambda *, tenant_id, provider_type, provider_id: ["search", "image_search"],
     )
     tools = AgentSoulToolsConfig.model_validate(
         {
@@ -623,15 +803,15 @@ def test_explicit_tool_entry_wins_over_provider_expansion():
 
 
 def test_provider_level_entry_with_no_tools_maps_to_declaration_not_found():
-    builder = WorkflowAgentPluginToolsBuilder(
+    builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(_tool()),
-        provider_tools_lister=lambda *, tenant_id, provider_id: [],
+        provider_tools_lister=lambda *, tenant_id, provider_type, provider_id: [],
     )
     tools = AgentSoulToolsConfig.model_validate(
         {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
     )
 
-    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, tools)
     assert exc_info.value.error_code == "agent_tool_declaration_not_found"
 
@@ -639,17 +819,17 @@ def test_provider_level_entry_with_no_tools_maps_to_declaration_not_found():
 def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
     from core.tools.errors import ToolProviderNotFoundError
 
-    def lister(*, tenant_id: str, provider_id: str) -> list[str]:
+    def lister(*, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> list[str]:
         raise ToolProviderNotFoundError("provider gone")
 
-    builder = WorkflowAgentPluginToolsBuilder(
+    builder = WorkflowAgentDifyToolsBuilder(
         tool_runtime_provider=FakeRuntimeProvider(_tool()), provider_tools_lister=lister
     )
     tools = AgentSoulToolsConfig.model_validate(
         {"dify_tools": [{"provider_id": "langgenius/search/search", "credential_type": "unauthorized"}]}
     )
 
-    with pytest.raises(WorkflowAgentPluginToolsBuildError) as exc_info:
+    with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, tools)
     assert exc_info.value.error_code == "agent_tool_declaration_not_found"
 
@@ -659,7 +839,7 @@ def test_list_provider_tool_names_reads_builtin_provider(monkeypatch):
     to the plain name list the expansion step consumes."""
     from types import SimpleNamespace
 
-    from core.workflow.nodes.agent_v2 import plugin_tools_builder as module
+    from core.workflow.nodes.agent_v2 import dify_tools_builder as module
 
     provider = SimpleNamespace(
         get_tools=lambda: [
@@ -676,7 +856,11 @@ def test_list_provider_tool_names_reads_builtin_provider(monkeypatch):
 
     monkeypatch.setattr(module.ToolManager, "get_builtin_provider", staticmethod(fake_get_builtin_provider))
 
-    names = module._list_provider_tool_names(tenant_id="tenant-1", provider_id="langgenius/duckduckgo/duckduckgo")
+    names = module._list_provider_tool_names(
+        tenant_id="tenant-1",
+        provider_type=module.ToolProviderType.BUILT_IN,
+        provider_id="langgenius/duckduckgo/duckduckgo",
+    )
 
     assert names == ["ddg_search", "ddg_news"]
     assert captured == {"provider_id": "langgenius/duckduckgo/duckduckgo", "tenant_id": "tenant-1"}
