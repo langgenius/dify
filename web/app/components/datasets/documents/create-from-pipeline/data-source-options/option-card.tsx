@@ -24,7 +24,7 @@ const OptionCard = ({
       className={cn(
         'flex cursor-pointer items-center gap-2 rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 shadow-shadow-shadow-3',
         selected
-          ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs ring-[0.5px] ring-components-option-card-option-selected-border ring-inset'
+          ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs inset-ring-[0.5px] inset-ring-components-option-card-option-selected-border'
           : 'hover:bg-components-option-card-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs',
       )}
       onClick={onClick}

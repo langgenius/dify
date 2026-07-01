@@ -4,8 +4,8 @@ The sandbox file APIs must rebuild only the minimum runtime needed to re-enter a
 prior shell session: ``dify.execution_context`` for Dify-owned identity and
 ``dify.shell`` for the sandbox workspace itself. ``SandboxLocator`` therefore
 contains a safe composition subset plus the matching filtered session snapshot.
-Credential-bearing plugin layers are intentionally excluded from persisted
-runtime specs and from sandbox locators.
+Credential-bearing or runtime-only tool layers are intentionally excluded from
+persisted runtime specs and from sandbox locators.
 """
 
 from __future__ import annotations
@@ -14,12 +14,19 @@ from typing import ClassVar, Literal, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
+from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID
 from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LLM_LAYER_TYPE_ID, DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from .schemas import CreateRunRequest, RunComposition, RunLayerSpec
 
-_SENSITIVE_LAYER_TYPES = frozenset({DIFY_PLUGIN_LLM_LAYER_TYPE_ID, DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID})
+_SENSITIVE_LAYER_TYPES = frozenset(
+    {
+        DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
+        DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
+        DIFY_CORE_TOOLS_LAYER_TYPE_ID,
+    }
+)
 
 
 class RuntimeLayerSpec(BaseModel):
