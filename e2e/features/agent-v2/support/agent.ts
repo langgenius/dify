@@ -37,8 +37,6 @@ export type AgentSeed = Pick<
   active_config_snapshot_id?: string | null
 }
 
-export type { AgentSoulConfig }
-
 export type AgentComposerEnvVariable = NonNullable<
   NonNullable<AgentSoulConfig['env']>['variables']
 >[number]
