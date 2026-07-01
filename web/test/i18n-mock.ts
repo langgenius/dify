@@ -3,6 +3,20 @@ import { vi } from 'vitest'
 
 type TranslationMap = Record<string, string | string[]>
 
+function interpolateTranslation(
+  value: string | string[],
+  options?: Record<string, unknown>,
+) {
+  if (typeof value !== 'string')
+    return value
+
+  return value.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, paramName: string) => {
+    const paramValue = options?.[paramName]
+
+    return paramValue === undefined ? match : String(paramValue)
+  })
+}
+
 /**
  * Create a t function with optional custom translations
  * Checks translations[key] first, then translations[ns.key], then returns ns.key as fallback
@@ -11,14 +25,14 @@ function createTFunction(translations: TranslationMap, defaultNs?: string) {
   return (key: string, options?: Record<string, unknown>) => {
     // Check custom translations first (without namespace)
     if (translations[key] !== undefined)
-      return translations[key]
+      return interpolateTranslation(translations[key], options)
 
     const ns = (options?.ns as string | undefined) ?? defaultNs
     const fullKey = ns ? `${ns}.${key}` : key
 
     // Check custom translations with namespace
     if (translations[fullKey] !== undefined)
-      return translations[fullKey]
+      return interpolateTranslation(translations[fullKey], options)
 
     // Serialize params (excluding ns) for test assertions
     const params = { ...options }

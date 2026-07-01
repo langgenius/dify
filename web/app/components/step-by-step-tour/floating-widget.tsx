@@ -3,6 +3,7 @@
 import type { StepByStepTourTaskId, StepByStepTourTaskView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useEffect, useRef } from 'react'
 
 export type FloatingChecklistProps = {
   className?: string
@@ -10,13 +11,23 @@ export type FloatingChecklistProps = {
   duration: string
   minimized: boolean
   progress: {
+    ariaValueText: string
     completed: number
     total: number
+  }
+  completionPrompt?: {
+    description: string
+    dismissLabel: string
+    label: string
+    onDismiss: () => void
+    title: string
   }
   tasks: StepByStepTourTaskView[]
   skipLabel: string
   minimizeLabel: string
   restoreLabel: string
+  getTaskCompleteLabel: (taskTitle: string) => string
+  getTaskIncompleteLabel: (taskTitle: string) => string
   onMinimize: () => void
   onRestore: () => void
   onSkip: () => void
@@ -31,10 +42,13 @@ export function FloatingChecklist({
   duration,
   minimized,
   progress,
+  completionPrompt,
   tasks,
   skipLabel,
   minimizeLabel,
   restoreLabel,
+  getTaskCompleteLabel,
+  getTaskIncompleteLabel,
   onMinimize,
   onRestore,
   onSkip,
@@ -42,7 +56,7 @@ export function FloatingChecklist({
   onStartTask,
   onUncompleteTask,
 }: FloatingChecklistProps) {
-  if (minimized) {
+  if (minimized && !completionPrompt) {
     return (
       <MinimizedTourPill
         title={title}
@@ -68,20 +82,24 @@ export function FloatingChecklist({
             <h2 className="system-xl-semibold text-text-secondary">{title}</h2>
             <p className="system-xs-regular text-text-tertiary">{duration}</p>
           </div>
-          <Button variant="ghost" size="small" className="h-6 px-1.5 text-text-tertiary" onClick={onSkip}>
-            {skipLabel}
-          </Button>
-          <Button
-            variant="ghost"
-            size="small"
-            className="size-6 px-0 text-text-tertiary hover:text-text-secondary"
-            aria-label={minimizeLabel}
-            onClick={onMinimize}
-          >
-            <span aria-hidden className="i-ri-collapse-diagonal-2-line size-3.5" />
-          </Button>
+          {!completionPrompt && (
+            <>
+              <Button variant="ghost" size="small" className="h-6 px-1.5 text-text-tertiary" onClick={onSkip}>
+                {skipLabel}
+              </Button>
+              <Button
+                variant="ghost"
+                size="small"
+                className="size-6 px-0 text-text-tertiary hover:text-text-secondary"
+                aria-label={minimizeLabel}
+                onClick={onMinimize}
+              >
+                <span aria-hidden className="i-ri-collapse-diagonal-2-line size-3.5" />
+              </Button>
+            </>
+          )}
         </div>
-        <TourProgress completed={progress.completed} total={progress.total} />
+        <TourProgress ariaValueText={progress.ariaValueText} completed={progress.completed} total={progress.total} />
       </div>
       <div className="flex w-full shrink-0 flex-col gap-1 p-2">
         {tasks.map(task => (
@@ -89,11 +107,48 @@ export function FloatingChecklist({
             key={task.id}
             task={task}
             onCompleteTask={onCompleteTask}
+            getTaskCompleteLabel={getTaskCompleteLabel}
+            getTaskIncompleteLabel={getTaskIncompleteLabel}
             onStartTask={onStartTask}
             onUncompleteTask={onUncompleteTask}
           />
         ))}
+        {completionPrompt && <TourCompletionPrompt {...completionPrompt} />}
       </div>
+    </section>
+  )
+}
+
+function TourCompletionPrompt({
+  description,
+  dismissLabel,
+  label,
+  onDismiss,
+  title,
+}: NonNullable<FloatingChecklistProps['completionPrompt']>) {
+  const dismissRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    dismissRef.current?.focus({ preventScroll: true })
+  }, [])
+
+  return (
+    <section
+      aria-label={label}
+      aria-live="polite"
+      className="mt-1 flex w-full flex-col items-center rounded-xl bg-background-section px-6 py-5 text-center"
+    >
+      <span
+        aria-hidden
+        className="mb-3 flex size-5 items-center justify-center rounded-full border-2 border-saas-dify-blue-inverted text-saas-dify-blue-inverted"
+      >
+        <span className="i-ri-check-line size-3.5" />
+      </span>
+      <h3 className="system-md-semibold text-text-primary">{title}</h3>
+      <p className="mt-1 system-sm-regular text-text-tertiary">{description}</p>
+      <Button ref={dismissRef} variant="secondary" size="medium" className="mt-4 min-w-20" onClick={onDismiss}>
+        {dismissLabel}
+      </Button>
     </section>
   )
 }
@@ -131,9 +186,11 @@ function MinimizedTourPill({
 }
 
 function TourProgress({
+  ariaValueText,
   completed,
   total,
 }: {
+  ariaValueText: string
   completed: number
   total: number
 }) {
@@ -145,7 +202,7 @@ function TourProgress({
         aria-valuemin={0}
         aria-valuemax={total}
         aria-valuenow={completed}
-        aria-valuetext={`${completed} of ${total} steps completed`}
+        aria-valuetext={ariaValueText}
       />
       <div className="flex w-full items-center gap-1 py-0.5" aria-hidden="true">
         {Array.from({ length: total }, (_, index) => {
@@ -169,11 +226,15 @@ function TourProgress({
 function TourTaskRow({
   task,
   onCompleteTask,
+  getTaskCompleteLabel,
+  getTaskIncompleteLabel,
   onStartTask,
   onUncompleteTask,
 }: {
   task: StepByStepTourTaskView
   onCompleteTask: (taskId: StepByStepTourTaskId) => void
+  getTaskCompleteLabel: (taskTitle: string) => string
+  getTaskIncompleteLabel: (taskTitle: string) => string
   onStartTask: (taskId: StepByStepTourTaskId) => void
   onUncompleteTask: (taskId: StepByStepTourTaskId) => void
 }) {
@@ -241,8 +302,8 @@ function TourTaskRow({
       <TaskStatusIndicator
         completed={completed}
         disabled={statusIndicatorDisabled}
-        completeLabel={`Mark ${task.title} complete`}
-        incompleteLabel={`Mark ${task.title} incomplete`}
+        completeLabel={getTaskCompleteLabel(task.title)}
+        incompleteLabel={getTaskIncompleteLabel(task.title)}
         onComplete={() => onCompleteTask(task.id)}
         onUncomplete={() => onUncompleteTask(task.id)}
       />

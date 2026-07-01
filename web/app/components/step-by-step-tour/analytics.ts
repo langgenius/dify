@@ -179,7 +179,7 @@ export type StepByStepTourTaskUncompletedProperties = StepByStepTourWorkspacePro
 
 export type StepByStepTourPermissionFallbackViewedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
   fallback_behavior: StepByStepTourPermissionFallbackBehavior
-  guide_group: Extract<StepByStepTourGuideGroup, 'integrationNoPermission'> | null
+  guide_group: Extract<StepByStepTourGuideGroup, 'integrationLimitedAccess'> | null
   restriction: StepByStepTourPermissionRestriction
   role: StepByStepTourRole
 }

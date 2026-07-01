@@ -15,6 +15,9 @@ export const STEP_BY_STEP_TOUR_TARGETS = {
   studioWithAppsCreateMenu: 'step-by-step-tour-studio-with-apps-create-menu',
   studioWithAppsFirstAppCard: 'step-by-step-tour-studio-with-apps-first-app-card',
   studioWithAppsFirstAppCardActionsMenu: 'step-by-step-tour-studio-with-apps-first-app-card-actions-menu',
+  studioNoCreateEmpty: 'step-by-step-tour-studio-no-create-empty',
+  studioNoCreateFirstAppCard: 'step-by-step-tour-studio-no-create-first-app-card',
+  studioNoCreateFirstAppRowCard: 'step-by-step-tour-studio-no-create-first-app-row-card',
   knowledge: 'step-by-step-tour-knowledge',
   knowledgeEmptyCreate: 'step-by-step-tour-knowledge-empty-create',
   knowledgeEmptyPipeline: 'step-by-step-tour-knowledge-empty-pipeline',
@@ -24,6 +27,12 @@ export const STEP_BY_STEP_TOUR_TARGETS = {
   knowledgeWithDatasetsFirstCard: 'step-by-step-tour-knowledge-with-datasets-first-card',
   knowledgeWithDatasetsFirstCardActionsMenu: 'step-by-step-tour-knowledge-with-datasets-first-card-actions-menu',
   integration: 'step-by-step-tour-integration',
+  integrationModelProviderNav: 'step-by-step-tour-integration-model-provider-nav',
+  integrationToolPluginNav: 'step-by-step-tour-integration-tool-plugin-nav',
+  integrationMcpNav: 'step-by-step-tour-integration-mcp-nav',
+  integrationDataSourceNav: 'step-by-step-tour-integration-data-source-nav',
+  integrationTriggerNav: 'step-by-step-tour-integration-trigger-nav',
+  integrationUpdateSettings: 'step-by-step-tour-integration-update-settings',
   integrationModelProviderCredits: 'step-by-step-tour-integration-model-provider-credits',
   integrationModelProviderProduction: 'step-by-step-tour-integration-model-provider-production',
   integrationModelProviderInstall: 'step-by-step-tour-integration-model-provider-install',
@@ -81,7 +90,7 @@ export function getStepByStepTourGuideInteractionPolicy(
   return 'blocked'
 }
 
-export const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuideGroup, 'studioEmpty' | 'studioWithApps'>, StepByStepTourGuide[]> = {
+export const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuideGroup, 'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'>, StepByStepTourGuide[]> = {
   studioEmpty: [
     {
       taskId: 'studio',
@@ -140,6 +149,29 @@ export const STEP_BY_STEP_TOUR_STUDIO_GUIDES: Record<Extract<StepByStepTourGuide
         getStepByStepTourHighlightPartSelector(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu),
       ],
       optional: true,
+    },
+  ],
+  studioNoCreateEmpty: [
+    {
+      taskId: 'studio',
+      target: STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty,
+      title: 'stepByStepTour.guides.studio.noCreate.empty.title',
+      description: 'stepByStepTour.guides.studio.noCreate.empty.description',
+      learnMoreLabel: 'stepByStepTour.learnMore',
+      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+    },
+  ],
+  studioNoCreateWithApps: [
+    {
+      taskId: 'studio',
+      target: STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard,
+      title: 'stepByStepTour.guides.studio.noCreate.withApps.title',
+      description: 'stepByStepTour.guides.studio.noCreate.withApps.description',
+      learnMoreLabel: 'stepByStepTour.learnMore',
+      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+      highlightPartSelectors: [
+        getStepByStepTourHighlightPartSelector(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard),
+      ],
     },
   ],
 }
@@ -226,171 +258,132 @@ export const STEP_BY_STEP_TOUR_GUIDES: Partial<Record<StepByStepTourTaskId, Step
   integration: [
     {
       taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderCredits,
-      title: 'stepByStepTour.guides.integration.modelProvider.credits.title',
-      description: 'stepByStepTour.guides.integration.modelProvider.credits.description',
+      target: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
+      title: 'stepByStepTour.guides.integration.modelProvider.title',
+      description: 'stepByStepTour.guides.integration.modelProvider.description',
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       integrationSection: 'provider',
     },
     {
       taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderProduction,
-      title: 'stepByStepTour.guides.integration.modelProvider.production.title',
-      description: 'stepByStepTour.guides.integration.modelProvider.production.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'provider',
-    },
-    {
-      taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderInstall,
-      title: 'stepByStepTour.guides.integration.modelProvider.install.title',
-      description: 'stepByStepTour.guides.integration.modelProvider.install.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'provider',
-      optional: true,
-    },
-    {
-      taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginAutoUpdate,
-      title: 'stepByStepTour.guides.integration.toolPlugin.autoUpdate.title',
-      description: 'stepByStepTour.guides.integration.toolPlugin.autoUpdate.description',
+      target: STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
+      title: 'stepByStepTour.guides.integration.toolPlugin.title',
+      description: 'stepByStepTour.guides.integration.toolPlugin.description',
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       integrationSection: 'builtin',
     },
     {
       taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginFirstCard,
-      title: 'stepByStepTour.guides.integration.toolPlugin.card.title',
-      description: 'stepByStepTour.guides.integration.toolPlugin.card.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'builtin',
-    },
-    {
-      taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd,
-      title: 'stepByStepTour.guides.integration.mcp.add.title',
-      description: 'stepByStepTour.guides.integration.mcp.add.description',
+      target: STEP_BY_STEP_TOUR_TARGETS.integrationMcpNav,
+      title: 'stepByStepTour.guides.integration.mcp.title',
+      description: 'stepByStepTour.guides.integration.mcp.description',
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       integrationSection: 'mcp',
     },
     {
       taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationMcpFirstCard,
-      title: 'stepByStepTour.guides.integration.mcp.card.title',
-      description: 'stepByStepTour.guides.integration.mcp.card.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'mcp',
-      optional: true,
-    },
-    {
-      taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid,
-      title: 'stepByStepTour.guides.integration.workflowTool.title',
-      description: 'stepByStepTour.guides.integration.workflowTool.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'workflow-tool',
-      learnMoreDocPath: '/use-dify/workspace/tools#workflow-tool',
-    },
-    {
-      taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid,
-      title: 'stepByStepTour.guides.integration.swaggerTool.title',
-      description: 'stepByStepTour.guides.integration.swaggerTool.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'custom-tool',
-      learnMoreDocPath: '/use-dify/workspace/tools#custom-tool',
-    },
-    {
-      taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceFirstCard,
+      target: STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
       title: 'stepByStepTour.guides.integration.dataSource.title',
       description: 'stepByStepTour.guides.integration.dataSource.description',
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       integrationSection: 'data-source',
-      learnMoreDocPath: '/develop-plugin/dev-guides-and-walkthroughs/datasource-plugin#data-source-plugin-types',
     },
     {
       taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid,
+      target: STEP_BY_STEP_TOUR_TARGETS.integrationTriggerNav,
       title: 'stepByStepTour.guides.integration.trigger.title',
       description: 'stepByStepTour.guides.integration.trigger.description',
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       integrationSection: 'trigger',
-      learnMoreDocPath: '/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin',
     },
     {
       taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty,
-      title: 'stepByStepTour.guides.integration.agentStrategy.title',
-      description: 'stepByStepTour.guides.integration.agentStrategy.description',
+      target: STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings,
+      title: 'stepByStepTour.guides.integration.updateSettings.title',
+      description: 'stepByStepTour.guides.integration.updateSettings.description',
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'agent-strategy',
-      learnMoreDocPath: '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
-    },
-    {
-      taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid,
-      title: 'stepByStepTour.guides.integration.extension.title',
-      description: 'stepByStepTour.guides.integration.extension.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'extension',
-      learnMoreDocPath: '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
-    },
-    {
-      taskId: 'integration',
-      target: STEP_BY_STEP_TOUR_TARGETS.integrationCustomEndpointEmpty,
-      title: 'stepByStepTour.guides.integration.customEndpoint.title',
-      description: 'stepByStepTour.guides.integration.customEndpoint.description',
-      learnMoreLabel: 'stepByStepTour.learnMore',
-      primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
-      integrationSection: 'custom-endpoint',
-      learnMoreDocPath: '/use-dify/workspace/api-extension/api-extension',
+      integrationSection: 'builtin',
     },
   ],
 }
 
-const STEP_BY_STEP_TOUR_INTEGRATION_NO_PERMISSION_GUIDES: StepByStepTourGuide[] = [
+const STEP_BY_STEP_TOUR_HOME_NO_CREATE_GUIDES: StepByStepTourGuide[] = [
+  {
+    taskId: 'home',
+    target: STEP_BY_STEP_TOUR_TARGETS.home,
+    title: 'stepByStepTour.guides.home.noCreate.title',
+    description: 'stepByStepTour.guides.home.noCreate.description',
+    learnMoreLabel: 'stepByStepTour.learnMore',
+    primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+  },
+]
+
+const STEP_BY_STEP_TOUR_INTEGRATION_LIMITED_ACCESS_GUIDES: StepByStepTourGuide[] = [
   {
     taskId: 'integration',
-    target: STEP_BY_STEP_TOUR_TARGETS.integration,
-    title: 'stepByStepTour.guides.integration.noPermission.title',
-    description: 'stepByStepTour.guides.integration.noPermission.description',
+    target: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
+    title: 'stepByStepTour.guides.integration.modelProvider.title',
+    description: 'stepByStepTour.guides.integration.limitedAccess.modelProvider.description',
     learnMoreLabel: 'stepByStepTour.learnMore',
     primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
     integrationSection: 'provider',
   },
+  {
+    taskId: 'integration',
+    target: STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
+    title: 'stepByStepTour.guides.integration.toolPlugin.title',
+    description: 'stepByStepTour.guides.integration.limitedAccess.toolPlugin.description',
+    learnMoreLabel: 'stepByStepTour.learnMore',
+    primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+    integrationSection: 'builtin',
+  },
+  {
+    taskId: 'integration',
+    target: STEP_BY_STEP_TOUR_TARGETS.integrationMcpNav,
+    title: 'stepByStepTour.guides.integration.mcp.title',
+    description: 'stepByStepTour.guides.integration.limitedAccess.mcp.description',
+    learnMoreLabel: 'stepByStepTour.learnMore',
+    primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+    integrationSection: 'mcp',
+  },
+  {
+    taskId: 'integration',
+    target: STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
+    title: 'stepByStepTour.guides.integration.dataSource.title',
+    description: 'stepByStepTour.guides.integration.limitedAccess.dataSource.description',
+    learnMoreLabel: 'stepByStepTour.learnMore',
+    primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+    integrationSection: 'data-source',
+  },
+  {
+    taskId: 'integration',
+    target: STEP_BY_STEP_TOUR_TARGETS.integrationTriggerNav,
+    title: 'stepByStepTour.guides.integration.trigger.title',
+    description: 'stepByStepTour.guides.integration.limitedAccess.trigger.description',
+    learnMoreLabel: 'stepByStepTour.learnMore',
+    primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
+    integrationSection: 'trigger',
+  },
 ]
 
-const STEP_BY_STEP_TOUR_INTEGRATION_EDITOR_TARGETS = new Set<string>([
-  STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginFirstCard,
-  STEP_BY_STEP_TOUR_TARGETS.integrationWorkflowToolGrid,
-  STEP_BY_STEP_TOUR_TARGETS.integrationSwaggerToolGrid,
-  STEP_BY_STEP_TOUR_TARGETS.integrationTriggerGrid,
-  STEP_BY_STEP_TOUR_TARGETS.integrationAgentStrategyEmpty,
-  STEP_BY_STEP_TOUR_TARGETS.integrationExtensionGrid,
-  STEP_BY_STEP_TOUR_TARGETS.integrationCustomEndpointEmpty,
-])
-
-const STEP_BY_STEP_TOUR_INTEGRATION_EDITOR_GUIDES: StepByStepTourGuide[] = STEP_BY_STEP_TOUR_GUIDES.integration
-  ?.filter(guide => STEP_BY_STEP_TOUR_INTEGRATION_EDITOR_TARGETS.has(guide.target)) ?? []
+const isStepByStepTourHomeGuideGroup = (
+  guideGroup?: StepByStepTourGuideGroup,
+): guideGroup is Extract<StepByStepTourGuideGroup, 'homeNoCreate'> =>
+  guideGroup === 'homeNoCreate'
 
 const isStepByStepTourStudioGuideGroup = (
   guideGroup?: StepByStepTourGuideGroup,
-): guideGroup is Extract<StepByStepTourGuideGroup, 'studioEmpty' | 'studioWithApps'> =>
-  guideGroup === 'studioEmpty' || guideGroup === 'studioWithApps'
+): guideGroup is Extract<StepByStepTourGuideGroup, 'studioEmpty' | 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'> =>
+  guideGroup === 'studioEmpty'
+  || guideGroup === 'studioWithApps'
+  || guideGroup === 'studioNoCreateEmpty'
+  || guideGroup === 'studioNoCreateWithApps'
 
 const isStepByStepTourKnowledgeGuideGroup = (
   guideGroup?: StepByStepTourGuideGroup,
@@ -399,24 +392,24 @@ const isStepByStepTourKnowledgeGuideGroup = (
 
 const isStepByStepTourIntegrationGuideGroup = (
   guideGroup?: StepByStepTourGuideGroup,
-): guideGroup is Extract<StepByStepTourGuideGroup, 'integrationEditor' | 'integrationNoPermission'> =>
-  guideGroup === 'integrationEditor' || guideGroup === 'integrationNoPermission'
+): guideGroup is Extract<StepByStepTourGuideGroup, 'integrationLimitedAccess'> =>
+  guideGroup === 'integrationLimitedAccess'
 
 export const getStepByStepTourGuides = (
   taskId: StepByStepTourTaskId,
   guideGroup?: StepByStepTourGuideGroup,
 ) => {
+  if (taskId === 'home' && isStepByStepTourHomeGuideGroup(guideGroup))
+    return STEP_BY_STEP_TOUR_HOME_NO_CREATE_GUIDES
+
   if (taskId === 'studio')
     return isStepByStepTourStudioGuideGroup(guideGroup) ? STEP_BY_STEP_TOUR_STUDIO_GUIDES[guideGroup] : []
 
   if (taskId === 'knowledge')
     return isStepByStepTourKnowledgeGuideGroup(guideGroup) ? STEP_BY_STEP_TOUR_KNOWLEDGE_GUIDES[guideGroup] : []
 
-  if (taskId === 'integration' && isStepByStepTourIntegrationGuideGroup(guideGroup)) {
-    return guideGroup === 'integrationEditor'
-      ? STEP_BY_STEP_TOUR_INTEGRATION_EDITOR_GUIDES
-      : STEP_BY_STEP_TOUR_INTEGRATION_NO_PERMISSION_GUIDES
-  }
+  if (taskId === 'integration' && isStepByStepTourIntegrationGuideGroup(guideGroup))
+    return STEP_BY_STEP_TOUR_INTEGRATION_LIMITED_ACCESS_GUIDES
 
   return STEP_BY_STEP_TOUR_GUIDES[taskId] ?? []
 }

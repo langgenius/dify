@@ -13,25 +13,25 @@
 @keyframes step-by-step-tour-help-pulse {
   0% {
     background-color: var(--color-components-card-bg);
-    box-shadow: 0 0 0 0 rgb(0 51 255 / 32%);
+    box-shadow: 0 0 0 0 var(--color-state-accent-hover-alt);
     color: var(--color-text-tertiary);
   }
 
   18% {
     background-color: var(--color-state-accent-hover);
-    box-shadow: 0 0 0 6px rgb(0 51 255 / 18%);
+    box-shadow: 0 0 0 6px var(--color-state-accent-active-alt);
     color: var(--color-saas-dify-blue-inverted);
   }
 
   56% {
     background-color: var(--color-state-accent-hover);
-    box-shadow: 0 0 0 12px rgb(0 51 255 / 0%);
+    box-shadow: 0 0 0 12px transparent;
     color: var(--color-saas-dify-blue-inverted);
   }
 
   100% {
     background-color: var(--color-components-card-bg);
-    box-shadow: 0 0 0 0 rgb(0 51 255 / 0%);
+    box-shadow: 0 0 0 0 transparent;
     color: var(--color-text-tertiary);
   }
 }

@@ -7,12 +7,14 @@ export type StepByStepTourTaskId = typeof STEP_BY_STEP_TOUR_TASK_IDS[number]
 export type StepByStepTourTaskStatus = 'completed' | 'current' | 'pending' | 'disabled'
 
 export type StepByStepTourGuideGroup
-  = 'studioEmpty'
+  = 'homeNoCreate'
+    | 'studioEmpty'
     | 'studioWithApps'
+    | 'studioNoCreateEmpty'
+    | 'studioNoCreateWithApps'
     | 'knowledgeEmpty'
     | 'knowledgeWithDatasets'
-    | 'integrationEditor'
-    | 'integrationNoPermission'
+    | 'integrationLimitedAccess'
 
 export type StepByStepTourAccountState = {
   firstWorkspaceId?: string

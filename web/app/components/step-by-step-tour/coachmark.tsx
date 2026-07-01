@@ -12,6 +12,25 @@ import { useStepByStepTourCoachmarkPosition } from './use-coachmark-position'
 import { useStepByStepTourTargetRect } from './use-target-rect'
 
 const HIGHLIGHT_PADDING = 4
+const VERTICAL_ARROW_LENGTH = 28
+const VERTICAL_ARROW_DOT_SIZE = 12
+const VERTICAL_ARROW_DOT_OVERHANG = 3
+const VERTICAL_ARROW_OPTICAL_OFFSET = 1
+const VERTICAL_ARROW_EDGE_OFFSET = VERTICAL_ARROW_LENGTH - VERTICAL_ARROW_DOT_SIZE / 2 - HIGHLIGHT_PADDING + VERTICAL_ARROW_OPTICAL_OFFSET
+
+const VERTICAL_ARROW_DOT_STYLE: CSSProperties = {
+  top: -VERTICAL_ARROW_DOT_OVERHANG,
+}
+
+const getStepByStepTourVerticalArrowStyle = (
+  placement: StepByStepTourCoachmarkPlacement,
+  arrowStyle: CSSProperties,
+): CSSProperties => ({
+  ...arrowStyle,
+  ...(placement === 'top'
+    ? { bottom: -VERTICAL_ARROW_EDGE_OFFSET }
+    : { top: -VERTICAL_ARROW_EDGE_OFFSET }),
+})
 
 type StepByStepTourCoachmarkGuide = Omit<StepByStepTourGuide, 'description' | 'learnMoreLabel' | 'primaryActionLabel' | 'title'> & {
   description: string
@@ -154,7 +173,7 @@ export function StepByStepTourCoachmark({
               ? (
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -left-1.5 size-3 rotate-45 border-b-[0.5px] border-l-[0.5px] border-state-base-hover-alt bg-[#e9f0ff]"
+                    className="pointer-events-none absolute -left-1.5 size-3 rotate-45 border-b-[0.5px] border-l-[0.5px] border-state-accent-hover-alt bg-state-accent-hover"
                     style={stableOverlay.coachmarkPosition.arrowStyle}
                   />
                 )
@@ -162,18 +181,19 @@ export function StepByStepTourCoachmark({
                   <div
                     className={cn(
                       'pointer-events-none absolute h-7 w-0.5',
-                      stableOverlay.placement === 'top' ? '-bottom-6 rotate-180' : '-top-6',
+                      stableOverlay.placement === 'top' && 'rotate-180',
                     )}
-                    style={stableOverlay.coachmarkPosition.arrowStyle}
+                    style={getStepByStepTourVerticalArrowStyle(stableOverlay.placement, stableOverlay.coachmarkPosition.arrowStyle)}
                     aria-hidden="true"
                   >
-                    <span className="absolute -top-[7.5px] -left-[25px] i-custom-public-step-by-step-tour-coachmark-arrow h-[75.5px] w-[52px]" />
+                    <span className="absolute top-0 left-1/2 h-7 w-0.5 -translate-x-1/2 bg-state-accent-hover-alt shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)]" />
+                    <span style={VERTICAL_ARROW_DOT_STYLE} className="absolute left-1/2 size-3 -translate-x-1/2 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs" />
                   </div>
                 )}
             <section
               aria-label={isActionGuide ? stableOverlay.guide.description : stableOverlay.guide.title}
               className={cn(
-                'relative flex w-full flex-col rounded-2xl border-[0.5px] border-state-base-hover-alt bg-[#e9f0ff] p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
+                'relative flex w-full flex-col rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
                 !isActionGuide && 'min-h-[158px]',
               )}
             >

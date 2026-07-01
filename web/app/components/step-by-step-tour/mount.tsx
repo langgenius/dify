@@ -48,6 +48,9 @@ const removeCompletedTask = (
 const removeWorkspaceId = (workspaceIds: string[], workspaceId: string) =>
   workspaceIds.filter(id => id !== workspaceId)
 
+const hasCompletedAllStepByStepTourTasks = (completedTaskIds: StepByStepTourTaskId[]) =>
+  STEP_BY_STEP_TOUR_TASKS.every(task => completedTaskIds.includes(task.id))
+
 const getEnabledForCurrentWorkspace = (
   accountState: StepByStepTourAccountState,
   currentWorkspaceId: string,
@@ -109,12 +112,15 @@ export default function StepByStepTourMount({
   const [checklistExiting, setChecklistExiting] = useState(false)
   const currentWorkspaceId = currentWorkspace.id
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
+  const homeGuideGroup: Extract<StepByStepTourGuideGroup, 'homeNoCreate'> | undefined = canCreateApp
+    ? undefined
+    : 'homeNoCreate'
   const hasKnowledgeWalkthroughPermissions = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
     && hasPermission(workspacePermissionKeys, 'dataset.external.connect')
-  const integrationGuideGroup: Extract<StepByStepTourGuideGroup, 'integrationEditor' | 'integrationNoPermission'> | undefined = isCurrentWorkspaceManager
+  const integrationGuideGroup: Extract<StepByStepTourGuideGroup, 'integrationLimitedAccess'> | undefined = isCurrentWorkspaceManager
     ? undefined
-    : currentWorkspace.role === 'editor' ? 'integrationEditor' : 'integrationNoPermission'
-  const hasIntegrationWalkthroughPermissions = integrationGuideGroup !== 'integrationNoPermission'
+    : 'integrationLimitedAccess'
+  const hasIntegrationWalkthroughPermissions = !integrationGuideGroup
 
   useEffect(() => () => {
     if (skipTimeoutRef.current)
@@ -133,43 +139,40 @@ export default function StepByStepTourMount({
 
   const enabledForCurrentWorkspace = getEnabledForCurrentWorkspace(accountState, currentWorkspaceId)
   const completedTaskIds = accountState.completedTaskIds
+  const allTasksCompleted = hasCompletedAllStepByStepTourTasks(completedTaskIds)
   const currentTask = STEP_BY_STEP_TOUR_TASKS.find(task => !completedTaskIds.includes(task.id))
   const activeTask = accountState.activeTaskId
     ? STEP_BY_STEP_TOUR_TASKS.find(task => task.id === accountState.activeTaskId)
     : undefined
-  const activeGuideGroup: StepByStepTourGuideGroup | undefined = activeTask?.id === 'integration'
-    ? integrationGuideGroup
-    : accountState.activeGuideGroup
+  const activeGuideGroup: StepByStepTourGuideGroup | undefined = activeTask?.id === 'home'
+    ? homeGuideGroup
+    : activeTask?.id === 'integration'
+      ? integrationGuideGroup
+      : accountState.activeGuideGroup
   const activeGuides = activeTask ? getStepByStepTourGuides(activeTask.id, activeGuideGroup) : []
   const activeGuideIndex = accountState.activeGuideIndex ?? 0
   const activeGuide = activeGuides[activeGuideIndex]
   const hasActiveGuide = Boolean(activeTask && activeGuide)
   const minimized = Boolean(activeTask) || accountState.minimized
-  const expanded = !minimized
-  const activeTaskIndex = activeTask
-    ? STEP_BY_STEP_TOUR_TASKS.findIndex(task => task.id === activeTask.id)
-    : -1
-  const usesGuideStepCount = activeGuides.length > 1
-    || activeGuideGroup === 'integrationNoPermission'
-  const usesGuideIndexPlan = activeTask?.id === 'integration' && usesGuideStepCount
-  const activeGuideIndexes = usesGuideIndexPlan
+  const activeGuideIndexes = activeGuides.length > 0
     ? getActiveGuideIndexes(activeGuides, accountState.activeGuideIndexes)
+        .filter(index => isOptionalGuideTargetAvailable(activeGuides[index]!))
     : []
   const activeGuidePlanIndex = activeGuideIndexes.findIndex(index => index === activeGuideIndex)
-  const fallbackActiveStepTotal = activeTask?.id === 'integration'
-    ? activeGuides.length
-    : activeGuides.filter(guide => isOptionalGuideTargetAvailable(guide)).length
-  const activeStepIndex = usesGuideIndexPlan
+  const activeStepIndex = activeGuideIndexes.length > 0
     ? activeGuidePlanIndex === -1
       ? activeGuideIndexes.filter(index => index < activeGuideIndex).length
       : activeGuidePlanIndex
-    : usesGuideStepCount ? activeGuideIndex : activeTaskIndex
-  const activeStepTotal = usesGuideStepCount
-    ? usesGuideIndexPlan ? activeGuideIndexes.length : fallbackActiveStepTotal
-    : STEP_BY_STEP_TOUR_TASKS.length
+    : activeGuideIndex
+  const activeStepTotal = activeGuideIndexes.length || activeGuides.length
   const visible = IS_CLOUD_EDITION
     && enabledForCurrentWorkspace
     && (hasActiveGuide || !shouldHideOnPathname(pathname))
+  const completionPromptVisible = visible
+    && allTasksCompleted
+    && !activeTask
+  const checklistMinimized = completionPromptVisible ? false : minimized
+  const expanded = !checklistMinimized
   const activeTargetElement = useStepByStepTourTarget(activeGuide?.target)
   const activeGuidePlacement = activeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify
     ? 'top'
@@ -204,11 +207,10 @@ export default function StepByStepTourMount({
   if (!visible && !skipRecoveryVisible)
     return null
   const title = t('stepByStepTour.title')
-  const learnMoreLabel = t('stepByStepTour.learnMore')
   const taskCopy: Record<StepByStepTourTaskId, Pick<StepByStepTourTaskView, 'title' | 'description' | 'primaryActionLabel'>> = {
     home: {
-      title: t('stepByStepTour.tasks.home.title'),
-      description: t('stepByStepTour.tasks.home.description'),
+      title: canCreateApp ? t('stepByStepTour.tasks.home.title') : t('stepByStepTour.tasks.home.noCreate.title'),
+      description: canCreateApp ? t('stepByStepTour.tasks.home.description') : t('stepByStepTour.tasks.home.noCreate.description'),
       primaryActionLabel: t('stepByStepTour.tasks.home.primaryActionLabel'),
     },
     studio: {
@@ -222,7 +224,7 @@ export default function StepByStepTourMount({
       primaryActionLabel: hasKnowledgeWalkthroughPermissions ? t('stepByStepTour.tasks.knowledge.primaryActionLabel') : t('stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel'),
     },
     integration: {
-      title: t('stepByStepTour.tasks.integration.title'),
+      title: hasIntegrationWalkthroughPermissions ? t('stepByStepTour.tasks.integration.title') : t('stepByStepTour.tasks.integration.noPermission.title'),
       description: hasIntegrationWalkthroughPermissions ? t('stepByStepTour.tasks.integration.description') : t('stepByStepTour.tasks.integration.noPermission.description'),
       primaryActionLabel: t('stepByStepTour.tasks.integration.primaryActionLabel'),
     },
@@ -239,8 +241,6 @@ export default function StepByStepTourMount({
         ? 'completed'
         : task.id === currentTask?.id ? 'current' : 'pending',
       canToggleCompletion: false,
-      learnMoreLabel,
-      learnMoreHref: task.learnMoreDocPath ? docLink(task.learnMoreDocPath) : undefined,
     }
   })
 
@@ -277,7 +277,7 @@ export default function StepByStepTourMount({
   }
 
   const getNextVisibleActiveGuideIndex = (startIndex: number) => {
-    if (usesGuideIndexPlan) {
+    if (activeGuideIndexes.length > 0) {
       let nextGuideIndexes = activeGuideIndexes
       let nextGuideIndex = nextGuideIndexes.find(index => index >= startIndex)
 
@@ -311,13 +311,15 @@ export default function StepByStepTourMount({
       const nextActiveGuide = getNextVisibleActiveGuideIndex(activeGuideIndex + 1)
 
       if (nextActiveGuide.activeGuideIndex === -1) {
+        const nextCompletedTaskIds = addCompletedTask(accountState.completedTaskIds, activeTask.id)
+
         updateAccountState({
           ...accountState,
           activeTaskId: undefined,
           activeGuideIndex: undefined,
           activeGuideGroup: undefined,
           activeGuideIndexes: undefined,
-          completedTaskIds: addCompletedTask(accountState.completedTaskIds, activeTask.id),
+          completedTaskIds: nextCompletedTaskIds,
           minimized: false,
         })
         return
@@ -332,13 +334,28 @@ export default function StepByStepTourMount({
       return
     }
 
+    const nextCompletedTaskIds = addCompletedTask(accountState.completedTaskIds, activeTask.id)
+
     updateAccountState({
       ...accountState,
       activeTaskId: undefined,
       activeGuideIndex: undefined,
       activeGuideGroup: undefined,
       activeGuideIndexes: undefined,
-      completedTaskIds: addCompletedTask(accountState.completedTaskIds, activeTask.id),
+      completedTaskIds: nextCompletedTaskIds,
+      minimized: false,
+    })
+  }
+
+  const dismissCompletedTour = () => {
+    updateAccountState({
+      ...accountState,
+      activeTaskId: undefined,
+      activeGuideIndex: undefined,
+      activeGuideGroup: undefined,
+      activeGuideIndexes: undefined,
+      skipped: true,
+      manuallyEnabledWorkspaceIds: removeWorkspaceId(accountState.manuallyEnabledWorkspaceIds, currentWorkspaceId),
       minimized: false,
     })
   }
@@ -347,15 +364,30 @@ export default function StepByStepTourMount({
     <FloatingChecklist
       title={title}
       duration={t('stepByStepTour.duration')}
-      minimized={minimized}
+      minimized={checklistMinimized}
       progress={{
+        ariaValueText: t('stepByStepTour.progressAriaValueText', {
+          completed: completedTaskIds.length,
+          total: STEP_BY_STEP_TOUR_TASKS.length,
+        }),
         completed: completedTaskIds.length,
         total: STEP_BY_STEP_TOUR_TASKS.length,
       }}
+      completionPrompt={completionPromptVisible
+        ? {
+            label: t('stepByStepTour.completion.label'),
+            title: t('stepByStepTour.completion.title'),
+            description: t('stepByStepTour.completion.description'),
+            dismissLabel: t('stepByStepTour.completion.dismiss'),
+            onDismiss: dismissCompletedTour,
+          }
+        : undefined}
       tasks={tasks}
       skipLabel={t('stepByStepTour.skip')}
       minimizeLabel={t('stepByStepTour.minimize')}
       restoreLabel={t('stepByStepTour.restore')}
+      getTaskCompleteLabel={taskTitle => t('stepByStepTour.markTaskComplete', { title: taskTitle })}
+      getTaskIncompleteLabel={taskTitle => t('stepByStepTour.markTaskIncomplete', { title: taskTitle })}
       onMinimize={() => updateAccountState({ ...accountState, minimized: true })}
       onRestore={() => updateAccountState({ ...accountState, minimized: false })}
       onSkip={skipTour}
@@ -377,43 +409,32 @@ export default function StepByStepTourMount({
           return
 
         if (taskId === 'knowledge' && !hasKnowledgeWalkthroughPermissions) {
+          const nextCompletedTaskIds = addCompletedTask(accountState.completedTaskIds, taskId)
+
           updateAccountState({
             ...accountState,
             activeTaskId: undefined,
             activeGuideIndex: undefined,
             activeGuideGroup: undefined,
             activeGuideIndexes: undefined,
-            completedTaskIds: addCompletedTask(accountState.completedTaskIds, taskId),
+            completedTaskIds: nextCompletedTaskIds,
             minimized: false,
           })
           return
         }
 
-        if (taskId === 'studio' && !canCreateApp) {
-          updateAccountState({
-            ...accountState,
-            activeTaskId: undefined,
-            activeGuideIndex: undefined,
-            activeGuideGroup: undefined,
-            activeGuideIndexes: undefined,
-            completedTaskIds: addCompletedTask(accountState.completedTaskIds, taskId),
-            minimized: false,
-          })
-          router.push(task.route)
-          return
-        }
-
-        const guideGroup = taskId === 'integration' ? integrationGuideGroup : undefined
+        const guideGroup = taskId === 'home'
+          ? homeGuideGroup
+          : taskId === 'integration'
+            ? integrationGuideGroup
+            : undefined
         const guides = getStepByStepTourGuides(taskId, guideGroup)
-        const usesTaskGuideStepCount = taskId === 'integration'
-          && (guides.length > 1 || guideGroup === 'integrationNoPermission')
-
         updateAccountState({
           ...accountState,
           activeTaskId: taskId,
           activeGuideIndex: 0,
           activeGuideGroup: guideGroup,
-          activeGuideIndexes: usesTaskGuideStepCount ? createGuideIndexes(guides) : undefined,
+          activeGuideIndexes: guides.length > 0 ? createGuideIndexes(guides) : undefined,
           minimized: true,
         })
         router.push(task.route)
@@ -433,7 +454,7 @@ export default function StepByStepTourMount({
 
   return (
     <div className={className}>
-      {visible && activeTask && activeGuide && activeTargetElement && (
+      {visible && !allTasksCompleted && activeTask && activeGuide && activeTargetElement && (
         <StepByStepTourCoachmark
           guide={{
             ...activeGuide,
@@ -445,14 +466,17 @@ export default function StepByStepTourMount({
           }}
           targetElement={activeTargetElement}
           placement={activeGuidePlacement}
-          stepLabel={`${activeStepIndex + 1} of ${activeStepTotal}`}
+          stepLabel={t('stepByStepTour.stepLabel', {
+            current: activeStepIndex + 1,
+            total: activeStepTotal,
+          })}
           skipLabel={t('stepByStepTour.skip')}
           interactionPolicy={getStepByStepTourGuideInteractionPolicy(activeGuide, activeTask.canClickThrough)}
           onSkip={skipActiveGuide}
           onComplete={completeActiveGuide}
         />
       )}
-      {visible && (
+      {visible && (!allTasksCompleted || completionPromptVisible) && (
         <Popover open={expanded}>
           <div ref={anchorRef} aria-hidden="true" className="h-0 w-0" />
           {minimized && floatingChecklist}
@@ -506,10 +530,7 @@ function SkipRecoveryPrompt({
   return (
     <section
       aria-label={label}
-      className="fixed bottom-[52px] left-1.5 z-50 flex w-[260px] max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-base-hover-alt p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
-      style={{
-        background: 'linear-gradient(rgb(255 255 255 / 90%), rgb(255 255 255 / 90%)), #e9f0ff',
-      }}
+      className="fixed bottom-[52px] left-1.5 z-50 flex w-[260px] max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
     >
       <p className="system-sm-regular text-text-secondary">{message}</p>
       <div className="flex h-12 items-end justify-end pt-4">
@@ -517,7 +538,7 @@ function SkipRecoveryPrompt({
           {dismissLabel}
         </Button>
       </div>
-      <span aria-hidden className="absolute top-[140px] left-[214px] h-7 w-0.5 bg-state-base-hover-alt" />
+      <span aria-hidden className="absolute top-[140px] left-[214px] h-7 w-0.5 bg-state-accent-hover-alt" />
     </section>
   )
 }
