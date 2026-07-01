@@ -135,6 +135,22 @@ const expectAgentConfigFileSaved = async (
     .toContain(fileName)
 }
 
+const uploadSummaryConfigSkillForBuildDraft = async (world: DifyWorld) => {
+  const agentId = getCurrentAgentId(world)
+  const skill = await uploadAgentConfigSkillToDraft({
+    agentId,
+    fileName: agentBuilderTestMaterials.summarySkill,
+    filePath: getAgentBuilderTestMaterialPath('summarySkill'),
+  })
+
+  if (!skill.file_id)
+    throw new Error('Agent v2 build draft Skill fixture did not return a file_id.')
+
+  world.createdAgentConfigSkills.push({ agentId, name: skill.name })
+
+  return skill
+}
+
 const openAgentAdvancedSettings = async (page: ReturnType<DifyWorld['getPage']>) => {
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
   const envEditorHeading = advancedSettings.getByRole('heading', { name: 'Env Editor' })
@@ -265,18 +281,11 @@ Given(
       fileName: agentBuilderTestMaterials.smallFile,
       filePath: getAgentBuilderTestMaterialPath('smallFile'),
     })
-    const skill = await uploadAgentConfigSkillToDraft({
-      agentId,
-      fileName: agentBuilderTestMaterials.summarySkill,
-      filePath: getAgentBuilderTestMaterialPath('summarySkill'),
-    })
+    const skill = await uploadSummaryConfigSkillForBuildDraft(this)
 
     if (!configFile.file_id)
       throw new Error('Agent v2 build draft config file fixture did not return a file_id.')
-    if (!skill.file_id)
-      throw new Error('Agent v2 build draft Skill fixture did not return a file_id.')
     this.createdAgentConfigFiles.push({ agentId, name: configFile.name })
-    this.createdAgentConfigSkills.push({ agentId, name: skill.name })
 
     const normalConfig = this.agentBuilderStableChatModel
       ? createAgentSoulConfigWithModel(normalAgentSoulConfig, this.agentBuilderStableChatModel)
@@ -303,6 +312,32 @@ Given(
           variable: agentBuilderFixedInputs.envPlainKey,
         }],
       },
+    })
+  },
+)
+
+Given(
+  'an Agent v2 Build draft includes the existing e2e-summary-skill Skill',
+  async function (this: DifyWorld) {
+    const skill = await uploadSummaryConfigSkillForBuildDraft(this)
+    const normalConfig = this.agentBuilderStableChatModel
+      ? createAgentSoulConfigWithModel(normalAgentSoulConfig, this.agentBuilderStableChatModel)
+      : normalAgentSoulConfig
+    const updatedConfig = this.agentBuilderStableChatModel
+      ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilderStableChatModel)
+      : updatedAgentSoulConfig
+    const configSkills = [{
+      ...skill,
+      file_kind: skill.file_kind ?? 'tool_file',
+    }]
+
+    await saveAgentComposerDraft(getCurrentAgentId(this), {
+      ...normalConfig,
+      config_skills: configSkills,
+    })
+    await saveAgentBuildDraft(getCurrentAgentId(this), {
+      ...updatedConfig,
+      config_skills: configSkills,
     })
   },
 )
@@ -652,6 +687,15 @@ Then('I should see the e2e-summary-skill Skill in the Skills section', async fun
     exact: true,
     name: agentBuilderPreseededResources.summarySkill,
   })).toBeVisible({ timeout: 30_000 })
+})
+
+Then('I should see one e2e-summary-skill Skill in the Skills section', async function (this: DifyWorld) {
+  const skillsSection = this.getPage().getByRole('region', { name: 'Skills' })
+
+  await expect(skillsSection.getByRole('button', {
+    exact: true,
+    name: agentBuilderPreseededResources.summarySkill,
+  })).toHaveCount(1)
 })
 
 Then(
@@ -1028,6 +1072,21 @@ Then(
       prompt: { system_prompt: updatedAgentPrompt },
       skillNames: expect.arrayContaining([agentBuilderPreseededResources.summarySkill]),
     })
+  },
+)
+
+Then(
+  'the Agent v2 draft should include one e2e-summary-skill Skill',
+  async function (this: DifyWorld) {
+    await expect.poll(
+      async () => {
+        const agentSoul = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
+        return agentSoul?.config_skills?.filter(
+          skill => skill.name === agentBuilderPreseededResources.summarySkill,
+        ).length ?? 0
+      },
+      { timeout: 30_000 },
+    ).toBe(1)
   },
 )
 
