@@ -168,7 +168,7 @@ def expand_prompt_mentions(prompt: str, resolver: MentionResolver) -> str:
         resolved = resolver(mention)
         if resolved is None or not resolved.strip():
             return fallback
-        return resolved[:MAX_MENTION_LABEL_LENGTH]
+        return resolved
 
     return scrub_mention_markers(MENTION_PATTERN.sub(_replace, prompt))
 

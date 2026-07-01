@@ -973,8 +973,12 @@ def test_empty_declared_outputs_injects_prd_defaults_text_files_json():
     assert properties["text"]["type"] == "string"
     assert properties["files"]["type"] == "array"
     # `files` defaults to array<file> → items is a file ref object.
-    assert len(properties["files"]["items"]["oneOf"]) == 4
-    assert all(branch["additionalProperties"] is False for branch in properties["files"]["items"]["oneOf"])
+    file_item_branches = properties["files"]["items"]["anyOf"]
+    assert [branch["properties"]["transfer_method"]["enum"] for branch in file_item_branches] == [
+        ["tool_file"],
+        ["remote_url"],
+    ]
+    assert all(branch["additionalProperties"] is False for branch in file_item_branches)
     assert properties["json"]["type"] == "object"
     # Defaults are all required=False so no `required:` key on the schema.
     assert "required" not in output_layer["json_schema"]
