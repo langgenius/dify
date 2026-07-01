@@ -26,6 +26,7 @@ import {
   agentBuilderPreseededResources,
 } from '../../../support/agent-builder-resources'
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
+import { skipBlockedPrecondition } from '../../../support/preflight'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,
@@ -726,6 +727,21 @@ Then(
     await expect(envEditor.getByText('Scope', { exact: true })).toBeVisible()
   },
 )
+
+Then('Agent v2 Content Moderation Settings should be available', async function (this: DifyWorld) {
+  const advancedSettings = this.getPage().getByRole('region', { name: 'Advanced Settings' })
+  const contentModeration = advancedSettings.getByRole('region', { name: 'Content moderation' })
+
+  try {
+    await expect(contentModeration).toBeVisible({ timeout: 3_000 })
+  }
+  catch {
+    return skipBlockedPrecondition(
+      this,
+      'Feature not enabled: Agent v2 Content Moderation Settings is not available in this build.',
+    )
+  }
+})
 
 Then(
   'I should see the Agent v2 environment variables from the valid import in Advanced Settings',

@@ -52,6 +52,14 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" includes the core fixture configuration
 
+  @content-moderation @feature-gated
+  Scenario: Content Moderation Settings is enabled
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    And I expand Agent v2 Advanced Settings
+    Then Agent v2 Content Moderation Settings should be available
+
   Scenario: Tool states Agent is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" is available
