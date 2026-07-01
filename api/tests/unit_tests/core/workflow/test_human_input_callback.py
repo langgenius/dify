@@ -5,6 +5,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
 from graphon.variables.factory import build_segment
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
@@ -93,7 +94,7 @@ def test_dify_hitl_callback_returns_completed_for_submitted_form() -> None:
     }
 
 
-def test_dify_hitl_callback_returns_expired_for_expired_form() -> None:
+def test_dify_hitl_callback_returns_timeout_for_timeout_form() -> None:
     repository = MagicMock(spec=HumanInputFormRepository)
     repository.get_form.return_value = SimpleNamespace(
         id="form-1",
@@ -119,3 +120,47 @@ def test_dify_hitl_callback_returns_expired_for_expired_form() -> None:
         "__action_value": build_segment(""),
         "__rendered_content": build_segment("<p>Please approve</p>"),
     }
+
+
+def test_dify_hitl_callback_rejects_expired_form_as_invalid_resume_state() -> None:
+    repository = MagicMock(spec=HumanInputFormRepository)
+    repository.get_form.return_value = SimpleNamespace(
+        id="form-1",
+        rendered_content="<p>Please approve</p>",
+        selected_action_id=None,
+        submitted_data=None,
+        submitted=False,
+        status=HumanInputFormStatus.EXPIRED,
+        expiration_time=naive_utc_now() + timedelta(hours=1),
+    )
+    callback = DifyHITLCallback(
+        form_repository=repository,
+        node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
+        rendered_content="<p>Please approve</p>",
+        resolved_default_values={},
+    )
+
+    with pytest.raises(AssertionError, match="globally expired human input form"):
+        callback(_ctx("run-1", "node-1"))
+
+
+def test_dify_hitl_callback_rejects_waiting_form_past_deadline_as_invalid_resume_state() -> None:
+    repository = MagicMock(spec=HumanInputFormRepository)
+    repository.get_form.return_value = SimpleNamespace(
+        id="form-1",
+        rendered_content="<p>Please approve</p>",
+        selected_action_id=None,
+        submitted_data=None,
+        submitted=False,
+        status=HumanInputFormStatus.WAITING,
+        expiration_time=naive_utc_now() - timedelta(minutes=1),
+    )
+    callback = DifyHITLCallback(
+        form_repository=repository,
+        node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
+        rendered_content="<p>Please approve</p>",
+        resolved_default_values={},
+    )
+
+    with pytest.raises(AssertionError, match="global timeout"):
+        callback(_ctx("run-1", "node-1"))

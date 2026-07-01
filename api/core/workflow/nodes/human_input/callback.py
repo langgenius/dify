@@ -49,6 +49,13 @@ def resolve_default_values(node_data: HumanInputNodeData, *, ctx: HITLContext) -
 
 
 class DifyHITLCallback:
+    """Bridge Dify human-input semantics onto graphon HITL decisions.
+
+    The boundary preserves Dify's split between node timeout and global
+    expiration: only explicit node timeout resumes along the timeout handle,
+    while global expiration is treated as an invalid resume state.
+    """
+
     pause_requested_type = PauseRequested
     completed_type = Completed
     expired_type = Expired
@@ -88,7 +95,8 @@ class DifyHITLCallback:
             created = self._create_form(ctx)
             return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=created.id))
 
-        if self._is_expired(form):
+        status = self._normalize_status(form.status)
+        if status == HumanInputFormStatus.TIMEOUT.value:
             return Expired(
                 selected_handle=self._TIMEOUT_HANDLE,
                 outputs=self._build_special_outputs(
@@ -98,7 +106,14 @@ class DifyHITLCallback:
                 ),
             )
 
+        if status == HumanInputFormStatus.EXPIRED.value:
+            msg = f"cannot resume globally expired human input form, form_id={form.id}"
+            raise AssertionError(msg)
+
         if not form.submitted:
+            if status == HumanInputFormStatus.WAITING.value and self._is_past_deadline(form.expiration_time):
+                msg = f"cannot resume waiting human input form after global timeout, form_id={form.id}"
+                raise AssertionError(msg)
             return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=form.id))
 
         selected_action_id = form.selected_action_id
@@ -156,12 +171,8 @@ class DifyHITLCallback:
             return status.value
         return status
 
-    def _is_expired(self, form: HumanInputFormEntity) -> bool:
-        status = self._normalize_status(form.status)
-        if status in {HumanInputFormStatus.TIMEOUT.value, HumanInputFormStatus.EXPIRED.value}:
-            return True
-
-        expiration_time = form.expiration_time
+    @staticmethod
+    def _is_past_deadline(expiration_time: datetime) -> bool:
         if expiration_time.tzinfo is not None:
             expiration_time = expiration_time.astimezone(UTC).replace(tzinfo=None)
         return expiration_time <= naive_utc_now()
