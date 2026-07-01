@@ -206,7 +206,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/?fetch=true"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -236,7 +236,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/?keyword=test&status=enabled&sort=created_at"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -262,7 +262,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -340,7 +340,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/?fetch=maybe"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -362,7 +362,7 @@ class TestDatasetDocumentListApi:
         with (
             app.test_request_context("/?sort=hit_count"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -1536,7 +1536,7 @@ class TestDocumentListAdvancedCases:
         with (
             app.test_request_context("/?sort=updated_at"),
             patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
+                "controllers.console.datasets.datasets_document.paginate_query",
                 return_value=pagination,
             ),
             patch(

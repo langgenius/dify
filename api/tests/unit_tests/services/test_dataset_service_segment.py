@@ -225,9 +225,10 @@ class TestSegmentServiceQueries:
 
         with (
             patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.helper.escape_like_pattern", return_value="escaped") as escape_like,
         ):
-            mock_db.paginate.return_value = paginated
+            mock_paginate.return_value = paginated
 
             result = SegmentService.get_child_chunks(
                 segment_id="segment-1",
@@ -240,7 +241,7 @@ class TestSegmentServiceQueries:
 
         assert result is paginated
         escape_like.assert_called_once_with("needle")
-        mock_db.paginate.assert_called_once()
+        mock_paginate.assert_called_once()
 
     def test_get_child_chunk_by_id_returns_only_child_chunk_instances(self):
         child_chunk = _make_child_chunk()
@@ -262,9 +263,10 @@ class TestSegmentServiceQueries:
 
         with (
             patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.helper.escape_like_pattern", return_value="escaped") as escape_like,
         ):
-            mock_db.paginate.return_value = paginated
+            mock_paginate.return_value = paginated
 
             items, total = SegmentService.get_segments(
                 document_id="doc-1",
@@ -278,7 +280,7 @@ class TestSegmentServiceQueries:
         assert items == ["segment"]
         assert total == 1
         escape_like.assert_called_once_with("needle")
-        mock_db.paginate.assert_called_once()
+        mock_paginate.assert_called_once()
 
     def test_get_segment_by_id_returns_only_document_segment_instances(self):
         segment = DocumentSegment(

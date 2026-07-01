@@ -152,7 +152,7 @@ class TestDatasetDocumentSegmentListApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.paginate",
+                "controllers.console.datasets.datasets_segments.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -1005,7 +1005,7 @@ class TestSegmentListAdvancedCases:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.paginate",
+                "controllers.console.datasets.datasets_segments.paginate_query",
                 return_value=pagination,
             ),
             patch(
@@ -1053,7 +1053,7 @@ class TestSegmentListAdvancedCases:
                 SimpleNamespace(SQLALCHEMY_DATABASE_URI_SCHEME="postgresql"),
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.paginate",
+                "controllers.console.datasets.datasets_segments.paginate_query",
                 return_value=pagination,
             ) as paginate_mock,
         ):
@@ -1065,7 +1065,7 @@ class TestSegmentListAdvancedCases:
                 "33333333-3333-3333-3333-333333333333",
             )
 
-        query = paginate_mock.call_args.kwargs["select"]
+        query = paginate_mock.call_args.args[0]
         sql = str(query.compile(compile_kwargs={"literal_binds": True}))
         assert "jsonb_array_elements_text(CASE" in sql
         assert "ELSE CAST('[]' AS JSONB)" in sql

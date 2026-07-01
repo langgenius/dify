@@ -850,9 +850,10 @@ class TestDocumentApiDelete:
 class TestDocumentListApi:
     """Test suite for DocumentListApi endpoint."""
 
+    @patch("controllers.service_api.dataset.document.paginate_query")
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")
-    def test_list_documents_success(self, mock_db, mock_doc_svc, app: Flask, mock_tenant, mock_dataset):
+    def test_list_documents_success(self, mock_db, mock_doc_svc, mock_paginate, app: Flask, mock_tenant, mock_dataset):
         """Test successful document list retrieval."""
         # Arrange
         mock_db.session.scalar.return_value = mock_dataset
@@ -867,7 +868,7 @@ class TestDocumentListApi:
             make_serializable_document(id="doc-2", name="Document 2"),
         ]
         mock_pagination.total = 2
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         mock_doc_svc.enrich_documents_with_summary_index_status.return_value = None
 

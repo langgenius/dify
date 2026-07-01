@@ -376,10 +376,11 @@ class TestAppAnnotationServiceListAndExport:
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.paginate_query") as mock_paginate,
             patch("libs.helper.escape_like_pattern", return_value="safe"),
         ):
             mock_db.session.scalar.return_value = app
-            mock_db.paginate.return_value = pagination
+            mock_paginate.return_value = pagination
 
             # Act
             items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "keyword")
@@ -398,9 +399,10 @@ class TestAppAnnotationServiceListAndExport:
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.paginate_query") as mock_paginate,
         ):
             mock_db.session.scalar.return_value = app
-            mock_db.paginate.return_value = pagination
+            mock_paginate.return_value = pagination
 
             # Act
             items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "")
@@ -1120,10 +1122,11 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
         with (
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.paginate_query") as mock_paginate,
         ):
             mock_db.session.scalar.return_value = app
             mock_db.session.get.return_value = annotation
-            mock_db.paginate.return_value = pagination
+            mock_paginate.return_value = pagination
 
             # Act
             items, total = AppAnnotationService.get_annotation_hit_histories(app.id, annotation.id, 1, 10)
