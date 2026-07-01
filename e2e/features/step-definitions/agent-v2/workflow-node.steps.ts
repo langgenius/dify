@@ -139,8 +139,11 @@ Then(
     const page = this.getPage()
     const agentName = this.lastCreatedAgentName
     const agentRole = this.lastCreatedAgentRole
+    const stableModel = this.agentBuilder.preflight.stableModel
     if (!agentName)
       throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
+    if (!stableModel)
+      throw new Error('Stable chat model preflight must run before asserting workflow Agent details.')
 
     const detailsDialog = page.getByRole('dialog', { name: `${agentName} details` })
 
@@ -148,6 +151,8 @@ Then(
     await expect(detailsDialog.getByText(agentName, { exact: true })).toBeVisible()
     if (agentRole)
       await expect(detailsDialog.getByText(agentRole, { exact: true })).toBeVisible()
+    await expect(detailsDialog.getByText(stableModel.name, { exact: true })).toBeVisible()
+    await expect(detailsDialog.getByText(normalAgentPrompt)).toBeVisible()
     await expect(detailsDialog.getByRole('link', { name: 'Edit in Agent Console' })).toHaveAttribute(
       'href',
       `/roster/agent/${this.createdAgentIds.at(-1)}/configure`,
