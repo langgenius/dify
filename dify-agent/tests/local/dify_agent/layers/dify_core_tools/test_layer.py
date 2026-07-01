@@ -51,10 +51,10 @@ def _install_graphon_stubs() -> None:
 
 _install_graphon_stubs()
 
-from dify_agent.layers.dify_core_tools.configs import DifyCoreToolConfig, DifyCoreToolsLayerConfig
-from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
+from dify_agent.layers.dify_core_tools.configs import DifyCoreToolConfig, DifyCoreToolsLayerConfig  # noqa: E402
+from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer  # noqa: E402
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig  # noqa: E402
+from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer  # noqa: E402
 
 
 def _execution_context_provider() -> LayerProvider[DifyExecutionContextLayer]:
@@ -250,7 +250,9 @@ def test_core_tools_layer_reports_missing_execution_context_without_parameter_va
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("response", [httpx.Response(429, json={"code": "knowledge_rate_limited"}), httpx.Response(502)])
+@pytest.mark.parametrize(
+    "response", [httpx.Response(429, json={"code": "knowledge_rate_limited"}), httpx.Response(502)]
+)
 def test_core_tools_layer_converts_retryable_failures_to_temporary_unavailable_observation(
     response: httpx.Response,
 ) -> None:
