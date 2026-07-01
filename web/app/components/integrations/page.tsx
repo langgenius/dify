@@ -119,6 +119,7 @@ export default function IntegrationsPage({
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
   const showInstallAction = canInstallPlugin
+  const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
   const {
     activeItem,
@@ -148,7 +149,7 @@ export default function IntegrationsPage({
   const pluginSettingCategory = getPluginCategoryBySection(section)
   const pluginSettingAction = showPluginCategorySetting && pluginSettingCategory
     ? (
-        <div data-step-by-step-tour-target={section === 'builtin' ? STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginAutoUpdate : undefined}>
+        <div data-step-by-step-tour-target={section === 'builtin' ? STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings : undefined}>
           <UpdateSettingDialog
             category={pluginSettingCategory}
           />
@@ -222,7 +223,7 @@ export default function IntegrationsPage({
           <div
             className={cn(
               'flex shrink-0 items-start pr-0 pl-2.5',
-              showInstallAction ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
+              reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
             )}
           >
             <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
@@ -238,7 +239,8 @@ export default function IntegrationsPage({
               onSwitchToMarketplace={handleSwitchToMarketplace}
             />
           )}
-          <nav className={cn('shrink-0 space-y-px', showInstallAction ? 'mt-6' : 'py-4')}>
+          {!showInstallAction && reserveInstallActionSlot && <div aria-hidden="true" className="h-8 w-full shrink-0" />}
+          <nav className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}>
             <IntegrationSidebarNavItem item={providerItem} onSelect={onSectionChange} section={section} />
             <div>
               <button

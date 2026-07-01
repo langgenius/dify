@@ -3,6 +3,7 @@ import type { IntegrationSidebarNavItemData } from '@/app/components/integration
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 
 export type IntegrationHeader = {
   description: string
@@ -26,12 +27,14 @@ export function useIntegrationNav(section: IntegrationSection) {
     section: 'provider',
     label: t('settings.provider', { ns: 'common' }),
     icon: 'i-ri-brain-2-line',
+    stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
   }), [t])
   const dataSourceItem = useMemo<IntegrationSidebarNavItemData>(() => ({
     section: 'data-source',
     label: t('settings.dataSource', { ns: 'common' }),
     icon: 'i-ri-database-2-line',
     iconClassName: 'size-4',
+    stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
   }), [t])
   const customEndpointItem = useMemo<IntegrationSidebarNavItemData>(() => ({
     section: 'custom-endpoint',
@@ -47,6 +50,7 @@ export function useIntegrationNav(section: IntegrationSection) {
         icon: 'i-custom-vender-integrations-tools',
         iconClassName: 'h-[14px] w-[12.5px]',
         className: 'pl-8',
+        stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
       },
     ]
 
@@ -57,6 +61,7 @@ export function useIntegrationNav(section: IntegrationSection) {
         icon: 'i-custom-vender-integrations-mcp',
         iconClassName: 'h-[14.5px] w-[13.5px]',
         className: 'pl-8',
+        stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationMcpNav,
       },
       {
         section: 'workflow-tool',
@@ -82,6 +87,7 @@ export function useIntegrationNav(section: IntegrationSection) {
       label: t('categorySingle.trigger', { ns: 'plugin' }),
       icon: 'i-custom-vender-integrations-trigger',
       iconClassName: 'h-[13.5px] w-[13.5px]',
+      stepByStepTourTarget: STEP_BY_STEP_TOUR_TARGETS.integrationTriggerNav,
     },
     {
       section: 'agent-strategy',
