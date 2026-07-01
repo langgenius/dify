@@ -1,7 +1,7 @@
 'use client'
 
 import type { SandboxFileEntryResponse, SandboxListResponse, SandboxReadResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentWorkingDirectoryRootPath } from './working-directory-breadcrumb'
+import type { AgentWorkingDirectoryPath } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { skipToken, useQueries, useQuery } from '@tanstack/react-query'
@@ -44,7 +44,7 @@ const joinSandboxPath = (basePath: string, name: string) => {
   return normalizedBasePath ? `${normalizedBasePath}/${name}` : name
 }
 
-function getSandboxEntryPathSegments(entryName: string, basePath: string) {
+function getSandboxEntryRelativePathSegments(entryName: string, basePath: string) {
   const normalizedBasePath = normalizeSandboxPath(basePath)
   const normalizedEntryName = normalizeSandboxPath(entryName)
 
@@ -54,22 +54,26 @@ function getSandboxEntryPathSegments(entryName: string, basePath: string) {
   if (!normalizedBasePath)
     return normalizedEntryName.split('/').filter(Boolean)
 
-  if (normalizedEntryName === normalizedBasePath || normalizedEntryName.startsWith(`${normalizedBasePath}/`))
-    return normalizedEntryName.split('/').filter(Boolean)
+  if (normalizedEntryName === normalizedBasePath)
+    return []
 
-  return [...normalizedBasePath.split('/').filter(Boolean), ...normalizedEntryName.split('/').filter(Boolean)]
+  if (normalizedEntryName.startsWith(`${normalizedBasePath}/`))
+    return normalizedEntryName.slice(normalizedBasePath.length + 1).split('/').filter(Boolean)
+
+  return normalizedEntryName.split('/').filter(Boolean)
 }
 
 function buildSandboxFileTree(entries: SandboxFileEntryResponse[] = [], basePath = '.'): AgentFileNode[] {
   const rootFiles: AgentFileNode[] = []
+  const normalizedBasePath = normalizeSandboxPath(basePath)
 
   for (const entry of entries) {
-    const pathSegments = getSandboxEntryPathSegments(entry.name, basePath)
+    const pathSegments = getSandboxEntryRelativePathSegments(entry.name, basePath)
     if (!pathSegments.length)
       continue
 
     let currentFiles = rootFiles
-    let currentPath = ''
+    let currentPath = normalizedBasePath
 
     pathSegments.forEach((segment, index) => {
       const isLeaf = index === pathSegments.length - 1
@@ -178,7 +182,7 @@ export function AgentWorkingDirectoryPanel({
 }: AgentWorkingDirectoryPanelProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [rootPath, setRootPath] = useState<AgentWorkingDirectoryRootPath>('.')
+  const [directoryPath, setDirectoryPath] = useState<AgentWorkingDirectoryPath>('.')
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const [loadedFolderPaths, setLoadedFolderPaths] = useState<string[]>([])
   const [openFolderPaths, setOpenFolderPaths] = useState<string[]>([])
@@ -223,14 +227,14 @@ export function AgentWorkingDirectoryPanel({
           silent: true,
         },
       })
-  const handleRootPathChange = (path: AgentWorkingDirectoryRootPath) => {
-    setRootPath(path)
+  const handleDirectoryPathChange = (path: AgentWorkingDirectoryPath) => {
+    setDirectoryPath(path)
     setSelectedFileId(undefined)
     setLoadedFolderPaths([])
     setOpenFolderPaths([])
     setPendingOpenFolderPaths([])
   }
-  const fileListQueryOptions = getFileListQueryOptions(rootPath)
+  const fileListQueryOptions = getFileListQueryOptions(directoryPath)
   const fileListQuery = useQuery({
     ...fileListQueryOptions,
     queryFn: async (context): Promise<SandboxListResponse> => {
@@ -358,8 +362,8 @@ export function AgentWorkingDirectoryPanel({
                 </h3>
               </div>
               <AgentWorkingDirectoryBreadcrumb
-                path={rootPath}
-                onPathChange={handleRootPathChange}
+                path={directoryPath}
+                onPathChange={handleDirectoryPathChange}
               />
             </div>
           ),
@@ -397,6 +401,7 @@ export function AgentWorkingDirectoryPanel({
               ? (paths.includes(file.id) ? paths : [...paths, file.id])
               : paths.filter(path => path !== file.id))
           },
+          onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(file.id),
           onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) => loadingFolderPaths.has(file.id)
             ? (

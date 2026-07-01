@@ -42,6 +42,44 @@ describe('AgentWorkingDirectoryBreadcrumb', () => {
         name: 'agentV2.agentDetail.configure.workingDirectory.workingDirectory',
       })).not.toBeInTheDocument()
     })
+
+    it('should render the selected folder as the final breadcrumb layer', () => {
+      render(
+        <AgentWorkingDirectoryBreadcrumb
+          path="web-game"
+          onPathChange={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.home',
+      })).toBeInTheDocument()
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.workingDirectory',
+      })).toBeInTheDocument()
+      expect(screen.getByRole('button', {
+        name: 'web-game',
+      })).toHaveAttribute('aria-current', 'page')
+    })
+
+    it('should collapse middle breadcrumb layers when path is deeper than three layers', () => {
+      render(
+        <AgentWorkingDirectoryBreadcrumb
+          path="web-game/src"
+          onPathChange={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.home',
+      })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '...' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.workingDirectory',
+      })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'web-game' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'src' })).toHaveAttribute('aria-current', 'page')
+    })
   })
 
   describe('User Interactions', () => {
@@ -73,6 +111,24 @@ describe('AgentWorkingDirectoryBreadcrumb', () => {
       )
 
       await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.workingDirectory',
+      }))
+
+      expect(handlePathChange).toHaveBeenCalledWith('.')
+    })
+
+    it('should request a hidden breadcrumb path from the ellipsis menu', async () => {
+      const user = userEvent.setup()
+      const handlePathChange = vi.fn()
+      render(
+        <AgentWorkingDirectoryBreadcrumb
+          path="web-game/src"
+          onPathChange={handlePathChange}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: '...' }))
+      await user.click(screen.getByRole('menuitem', {
         name: 'agentV2.agentDetail.configure.workingDirectory.workingDirectory',
       }))
 

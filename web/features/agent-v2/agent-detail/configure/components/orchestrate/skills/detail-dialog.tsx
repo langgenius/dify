@@ -46,6 +46,7 @@ export type AgentSkillDetail = {
     isLoading?: boolean
   }
   onFolderOpenChange?: (context: { file: AgentSkillFileNode, depth: number, open: boolean }) => void
+  onFolderDoubleClick?: (context: { file: AgentSkillFileNode, depth: number }) => void
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: (context: { file: AgentSkillFileNode, depth: number }) => ReactNode
   selectedFileId?: string
@@ -62,6 +63,7 @@ function AgentSkillFileList({
   files,
   folderOpenState,
   onFolderOpenChange,
+  onFolderDoubleClick,
   onSelectFile,
   renderFolderSuffix,
   selectedFileId,
@@ -73,6 +75,7 @@ function AgentSkillFileList({
   files: AgentSkillFileNode[]
   folderOpenState?: AgentSkillDetail['folderOpenState']
   onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
+  onFolderDoubleClick?: AgentSkillDetail['onFolderDoubleClick']
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
@@ -90,6 +93,7 @@ function AgentSkillFileList({
       folderOpenStrategy={keepSkillFoldersClosed}
       folderOpenState={folderOpenState}
       onFolderOpenChange={onFolderOpenChange}
+      onFolderDoubleClick={onFolderDoubleClick}
       renderFile={onSelectFile
         ? ({ file, selected, children }) => (
             <FileTreeFile selected={selected} onClick={() => onSelectFile(file)}>
@@ -267,6 +271,7 @@ export function AgentSkillDetailDialog({
             files={detail.files}
             folderOpenState={detail.folderOpenState}
             onFolderOpenChange={detail.onFolderOpenChange}
+            onFolderDoubleClick={detail.onFolderDoubleClick}
             selectedFileId={detail.selectedFileId}
             onSelectFile={detail.onSelectFile}
             renderFolderSuffix={detail.renderFolderSuffix}
