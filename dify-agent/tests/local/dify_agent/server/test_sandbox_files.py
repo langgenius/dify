@@ -3,6 +3,10 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Literal
@@ -32,10 +36,13 @@ from dify_agent.protocol import (
     build_sandbox_locator_from_run_request,
 )
 from dify_agent.server.sandbox_files import (
+    _LIST_SCRIPT,
     SandboxFileError,
     SandboxFileService,
     _OUTPUT_BEGIN,
     _OUTPUT_END,
+    _READ_SCRIPT,
+    _UPLOAD_SCRIPT,
     _decode_sandbox_payload,
     _shell_result_details,
 )
@@ -123,6 +130,28 @@ def _complete_result(
         offset=len(output),
         output_path="/tmp/sandbox-job.out",
     )
+
+
+def _run_embedded_script(
+    script_source: str,
+    *,
+    args: list[str],
+    cwd: Path,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, object]:
+    merged_env = dict(os.environ)
+    if env is not None:
+        merged_env.update(env)
+    completed = subprocess.run(
+        [sys.executable, "-", *args],
+        input=script_source,
+        text=True,
+        capture_output=True,
+        cwd=cwd,
+        env=merged_env,
+        check=False,
+    )
+    return _decode_sandbox_payload(_complete_result(output=completed.stdout, exit_code=completed.returncode))
 
 
 def _execution_context() -> DifyExecutionContextLayerConfig:
@@ -221,6 +250,76 @@ def test_list_files_runs_fixed_script_and_parses_response() -> None:
     assert client.delete_calls == ["sandbox-job"]
 
 
+def test_list_files_allows_parent_relative_paths() -> None:
+    service, client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap({"path": "../shared", "entries": [], "truncated": False}),
+        )
+    )
+
+    result = asyncio.run(service.list_files(SandboxListRequest(locator=_locator(), path="../shared")))
+
+    assert result.path == "../shared"
+    assert "python3 - ../shared 1000 <<'PY'" in client.run_calls[0].script
+
+
+def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
+    workspace_dir = tmp_path / "workspace"
+    cwd = workspace_dir / "run"
+    shared_dir = workspace_dir / "shared"
+    cwd.mkdir(parents=True)
+    shared_dir.mkdir()
+    notes_path = shared_dir / "notes.txt"
+    notes_path.write_text("hello", encoding="utf-8")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_dify_agent = bin_dir / "dify-agent"
+    fake_dify_agent.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env python3",
+                "import json",
+                "import sys",
+                'if sys.argv[1:] != ["file", "upload", "../shared/notes.txt"]:',
+                '    raise SystemExit(f\"unexpected args: {sys.argv[1:]!r}\")',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    fake_dify_agent.chmod(0o755)
+
+    list_payload = _run_embedded_script(_LIST_SCRIPT, args=["../shared", "1000"], cwd=cwd)
+    read_payload = _run_embedded_script(_READ_SCRIPT, args=["../shared/notes.txt", "8"], cwd=cwd)
+    upload_payload = _run_embedded_script(
+        _UPLOAD_SCRIPT,
+        args=["../shared/notes.txt"],
+        cwd=cwd,
+        env={"PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', os.defpath)}"},
+    )
+
+    assert list_payload["path"] == "../shared"
+    assert any(
+        isinstance(entry, dict) and entry.get("name") == "notes.txt"
+        for entry in list_payload.get("entries", [])
+        if isinstance(list_payload.get("entries"), list)
+    )
+    assert read_payload == {
+        "path": "../shared/notes.txt",
+        "size": 5,
+        "truncated": False,
+        "binary": False,
+        "text": "hello",
+    }
+    assert upload_payload == {
+        "path": "../shared/notes.txt",
+        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+    }
+
+
 @pytest.mark.parametrize("bad_path", ["/etc/passwd", "~/secret-dir", "bad\x00path"])
 def test_list_files_rejects_invalid_paths_before_shell_execution(bad_path: str) -> None:
     service, client = _service(lambda script, cwd, env, timeout: _Job(job_id="sandbox-job", output="unused"))
@@ -292,3 +391,34 @@ def test_read_file_uses_complete_mode_and_parses_response() -> None:
 
     assert result.text == "hello"
     assert "python3 - notes.txt 8 <<'PY'" in client.run_calls[0].script
+
+
+@pytest.mark.parametrize(
+    ("sandbox_request", "expected_command"),
+    [
+        (SandboxReadRequest(locator=_locator(), path="../notes.txt", max_bytes=8), "python3 - ../notes.txt 8 <<'PY'"),
+        (SandboxUploadRequest(locator=_locator(), path="../report.txt"), "python3 - ../report.txt <<'PY'"),
+    ],
+)
+def test_read_and_upload_allow_parent_relative_paths(
+    sandbox_request: SandboxReadRequest | SandboxUploadRequest, expected_command: str
+) -> None:
+    service, client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap(
+                {"path": "../notes.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
+                if isinstance(sandbox_request, SandboxReadRequest)
+                else {"path": "../report.txt", "file": {"transfer_method": "tool_file", "reference": "file-ref"}}
+            ),
+        )
+    )
+
+    if isinstance(sandbox_request, SandboxReadRequest):
+        result = asyncio.run(service.read_file(sandbox_request))
+        assert result.path == "../notes.txt"
+    else:
+        result = asyncio.run(service.upload_file(sandbox_request))
+        assert result.path == "../report.txt"
+
+    assert expected_command in client.run_calls[0].script
