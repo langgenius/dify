@@ -1,5 +1,6 @@
-@agent-v2 @authenticated @advanced-settings @core
+@agent-v2 @authenticated @advanced-settings
 Feature: Agent v2 advanced settings
+  @core
   Scenario: Advanced Settings exposes supported configuration entries
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -8,6 +9,7 @@ Feature: Agent v2 advanced settings
     When I expand Agent v2 Advanced Settings
     Then I should see the supported Agent v2 Advanced Settings entries
 
+  @core
   Scenario: Plain environment variables are saved and restored
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -18,6 +20,7 @@ Feature: Agent v2 advanced settings
     When I refresh the current page
     Then I should see the plain Agent v2 environment variable in Advanced Settings
 
+  @core
   Scenario: Valid environment imports are saved and restored
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -28,6 +31,7 @@ Feature: Agent v2 advanced settings
     When I refresh the current page
     Then I should see the Agent v2 environment variables from the valid import in Advanced Settings
 
+  @core
   Scenario: Deleted environment variables are removed after refresh
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -41,6 +45,7 @@ Feature: Agent v2 advanced settings
     When I refresh the current page
     Then I should not see the deleted Agent v2 environment variable in Advanced Settings
 
+  @core
   Scenario: Invalid environment imports report skipped lines and keep existing variables
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API

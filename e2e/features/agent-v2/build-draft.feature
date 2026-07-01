@@ -1,5 +1,6 @@
-@agent-v2 @authenticated @build @core
+@agent-v2 @authenticated @build
 Feature: Agent v2 build draft
+  @core
   Scenario: Generating a Build draft leaves the normal Agent configuration unchanged
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -12,6 +13,7 @@ Feature: Agent v2 build draft
     And I should see the Agent v2 Build mode confirmation state
     And the normal Agent v2 draft should still use the normal E2E prompt
 
+  @core
   Scenario: Discarding a Build draft keeps the original Agent configuration
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
@@ -28,6 +30,7 @@ Feature: Agent v2 build draft
     Then I should see the normal E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
+  @core
   Scenario: Discarding a Build draft does not apply supported configuration changes
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -53,6 +56,7 @@ Feature: Agent v2 build draft
     And the Agent v2 draft should not include the supported Build draft config
     And the Agent v2 Build draft should no longer be active
 
+  @core
   Scenario: Applying a pending Build draft updates the normal Agent configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -70,6 +74,7 @@ Feature: Agent v2 build draft
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
+  @core
   Scenario: Applying a Build draft updates supported configuration sections
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -96,6 +101,7 @@ Feature: Agent v2 build draft
     And I should see the supported E2E environment variable in Advanced Settings
     And the Agent v2 Build draft should no longer be active
 
+  @core
   Scenario: Applying a Build draft with an existing Skill keeps a single Skill entry
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -113,6 +119,7 @@ Feature: Agent v2 build draft
     Then I should see one e2e-summary-skill Skill in the Skills section
     And the Agent v2 draft should include one e2e-summary-skill Skill
 
+  @core
   Scenario: Pending Build draft remains protected after leaving Configure
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API

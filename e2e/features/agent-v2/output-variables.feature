@@ -1,4 +1,4 @@
-@agent-v2 @authenticated @output-variables @core
+@agent-v2 @authenticated @output-variables
 Feature: Agent v2 output variables
   @standalone-output-variables @feature-gated
   Scenario: Standalone Agent configure exposes Output Variables
@@ -7,6 +7,7 @@ Feature: Agent v2 output variables
     When I open the Agent v2 configure page
     Then Agent v2 standalone Output Variables should be available
 
+  @core
   Scenario: Workflow Agent v2 output variables persist after refresh
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -23,6 +24,7 @@ Feature: Agent v2 output variables
     And I open the Agent v2 workflow node panel
     Then I should see the Agent v2 workflow node output variables
 
+  @core
   Scenario: Workflow Agent v2 nested object output variables persist after refresh
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -35,6 +37,7 @@ Feature: Agent v2 output variables
     And I open the Agent v2 workflow node panel
     Then I should see the Agent v2 workflow node nested object output variable
 
+  @core
   Scenario: Workflow Agent v2 prompt output reference stays synced when renamed
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
