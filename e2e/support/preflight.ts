@@ -229,7 +229,7 @@ const hasNamedOrKeyedEntry = (items: unknown[], expectedName: string) =>
     return values.some((value) => value === expectedName || value.endsWith(`/${expectedName}`))
   })
 
-const hasToolEntry = (
+const findToolEntry = (
   items: unknown[],
   {
     providerDisplayName,
@@ -243,7 +243,7 @@ const hasToolEntry = (
     toolName: string
   },
 ) =>
-  items.some((item) => {
+  items.find((item) => {
     const record = asRecord(item)
     const providerValues = [record.provider_id, record.provider, record.plugin_id, record.name].map(
       asString,
@@ -255,6 +255,27 @@ const hasToolEntry = (
       toolValues.some((value) => value === toolName || value === toolDisplayName)
     )
   })
+
+const hasToolEntry = (
+  items: unknown[],
+  tool: {
+    providerDisplayName: string
+    providerName: string
+    toolDisplayName: string
+    toolName: string
+  },
+) => Boolean(findToolEntry(items, tool))
+
+const hasToolCredentialReference = (item: unknown) => {
+  const record = asRecord(item)
+  const credentialRef = asRecord(record.credential_ref)
+  const credentialType = asString(record.credential_type)
+
+  return (
+    (credentialType === 'api-key' || credentialType === 'oauth2') &&
+    (Boolean(asString(credentialRef.id)) || Boolean(asString(record.credential_id)))
+  )
+}
 
 const hasKnowledgeDataset = (
   soul: Record<string, unknown>,
@@ -581,6 +602,85 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
       return skipBlockedPrecondition(
         world,
         `Preseeded Agent "${agentName}" is missing core fixture configuration: ${missing.join(', ')}.`,
+      )
+    }
+
+    return agent
+  } finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededToolStatesAgentConfiguration(
+  world: DifyWorld,
+  agentName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped') return agent
+
+  const summarySkill = await skipMissingPreseededAgentDriveSkill(
+    world,
+    agentName,
+    agentBuilderPreseededResources.summarySkill,
+  )
+  if (summarySkill === 'skipped') return summarySkill
+
+  const jsonTool = await skipMissingPreseededTool(
+    world,
+    agentBuilderPreseededResources.jsonReplaceTool,
+  )
+  if (jsonTool === 'skipped') return jsonTool
+
+  const tavilyTool = await skipMissingPreseededTool(
+    world,
+    agentBuilderPreseededResources.tavilySearchTool,
+  )
+  if (tavilyTool === 'skipped') return tavilyTool
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
+    await expectApiResponseOK(response, `Check preseeded Agent tool states ${agentName}`)
+    const body = (await response.json()) as AgentComposerResponse
+    const soul = body.agent_soul ?? {}
+    const toolItems = asArray(asRecord(soul.tools).dify_tools)
+    const missing: string[] = []
+
+    const [jsonProviderName = '', jsonToolName = ''] = jsonTool.id.split('/')
+    const parsedJsonTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
+    if (
+      parsedJsonTool.ok &&
+      !findToolEntry(toolItems, {
+        providerDisplayName: parsedJsonTool.providerName,
+        providerName: jsonProviderName,
+        toolDisplayName: parsedJsonTool.toolName,
+        toolName: jsonToolName,
+      })
+    ) {
+      missing.push(agentBuilderPreseededResources.jsonReplaceTool)
+    }
+
+    const [tavilyProviderName = '', tavilyToolName = ''] = tavilyTool.id.split('/')
+    const parsedTavilyTool = splitToolDisplayName(agentBuilderPreseededResources.tavilySearchTool)
+    const tavilyEntry = parsedTavilyTool.ok
+      ? findToolEntry(toolItems, {
+          providerDisplayName: parsedTavilyTool.providerName,
+          providerName: tavilyProviderName,
+          toolDisplayName: parsedTavilyTool.toolName,
+          toolName: tavilyToolName,
+        })
+      : undefined
+
+    if (!tavilyEntry) {
+      missing.push(agentBuilderPreseededResources.tavilySearchTool)
+    } else if (!hasToolCredentialReference(tavilyEntry)) {
+      missing.push(`${agentBuilderPreseededResources.tavilySearchTool} credential reference`)
+    }
+
+    if (missing.length > 0) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" is missing tool state fixture configuration: ${missing.join(', ')}.`,
       )
     }
 

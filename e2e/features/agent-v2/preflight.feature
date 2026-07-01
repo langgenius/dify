@@ -40,6 +40,10 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" is available
 
+  Scenario: Tool states Agent includes tool state fixture configuration
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" includes the tool state fixture configuration
+
   Scenario: File tree Agent includes fixture files
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With File Tree" includes the file tree fixture files
