@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
-import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
@@ -17,6 +16,7 @@ import {
   useLanguage,
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { consoleQuery } from '@/service/client'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'
@@ -87,7 +87,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
       input: { params: { provider: embeddingModelProvider || '' } },
       enabled: indexingTechnique === IndexMethodEnum.QUALIFIED && !!embeddingModelProvider,
       refetchOnWindowFocus: false,
-      select: response => response.data as ModelItem[],
+      select: normalizeModelProviderModelsResponse,
     }),
   )
 

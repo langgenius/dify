@@ -31,6 +31,7 @@ import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
@@ -189,7 +190,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         input: { params: { provider } },
         enabled: !!provider,
         refetchOnWindowFocus: false,
-        select: response => response.data as ModelItem[],
+        select: normalizeModelProviderModelsResponse,
       }),
     ),
     combine: (results) => {
@@ -473,7 +474,7 @@ export const useChecklistBeforePublish = () => {
           )
 
           if (modelList.data)
-            modelMap[provider] = modelList.data as ModelItem[]
+            modelMap[provider] = normalizeModelProviderModelsResponse(modelList)
         }
         catch {
         }

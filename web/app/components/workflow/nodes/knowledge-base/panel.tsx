@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
-import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -13,6 +12,7 @@ import SummaryIndexSetting from '@/app/components/datasets/settings/summary-inde
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroup,
@@ -59,7 +59,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
       input: { params: { provider: embeddingModelProvider || '' } },
       enabled: indexingTechnique === IndexMethodEnum.QUALIFIED && !!embeddingModelProvider,
       refetchOnWindowFocus: false,
-      select: response => response.data as ModelItem[],
+      select: normalizeModelProviderModelsResponse,
     }),
   )
 

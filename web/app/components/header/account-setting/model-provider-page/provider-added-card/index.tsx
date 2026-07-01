@@ -3,7 +3,6 @@ import type {
   ModelProvider,
 } from '../declarations'
 import type { ModelProviderQuotaGetPaid } from '../utils'
-import type { ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
 
 import { cn } from '@langgenius/dify-ui/cn'
@@ -29,6 +28,7 @@ import ProviderIcon from '../provider-icon'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelTypeFormat,
+  normalizeModelProviderModelsResponse,
 } from '../utils'
 import CredentialPanel from './credential-panel'
 import ModelList from './model-list'
@@ -64,7 +64,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     input: { params: { provider: currentProviderName } },
     enabled: expanded,
     refetchOnWindowFocus: false,
-    select: response => response.data as ModelItem[],
+    select: normalizeModelProviderModelsResponse,
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
   const showCollapsedSection = !expanded || !hasFetchedModelList
