@@ -27,6 +27,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import Iterator
 from typing import Any, ClassVar, cast
 
 import json_repair
@@ -185,6 +186,48 @@ def _result_with_errors(
     return base
 
 
+def _with_mode(result: WorkflowGenerateResultDict, mode: WorkflowGenerationMode) -> WorkflowGenerateResultDict:
+    """Stamp the resolved concrete ``mode`` onto a result envelope.
+
+    ``mode="auto"`` requests are resolved to a concrete mode before planning;
+    echoing it back lets the frontend pick the right app type to create. It's
+    present for explicit modes too so the response shape stays uniform.
+    """
+    result["mode"] = mode
+    return result
+
+
+def _build_plan_event(
+    *,
+    plan: PlannerResultDict,
+    plan_nodes: list[dict[str, Any]],
+    start_inputs: list[dict[str, Any]],
+    mode: WorkflowGenerationMode,
+) -> dict[str, Any]:
+    """Shape the ``plan`` event emitted before the (slower) builder runs.
+
+    Node fields are pulled defensively: the planner schema only guarantees
+    ``node_type`` is present, so ``label`` / ``purpose`` may be missing on a
+    terse plan and default to empty strings.
+    """
+    return {
+        "title": str(plan.get("title") or ""),
+        "description": str(plan.get("description") or ""),
+        "app_name": str(plan.get("app_name") or "").strip(),
+        "icon": str(plan.get("icon") or "").strip(),
+        "mode": mode,
+        "nodes": [
+            {
+                "label": str(node.get("label") or ""),
+                "node_type": str(node.get("node_type") or ""),
+                "purpose": str(node.get("purpose") or ""),
+            }
+            for node in plan_nodes
+        ],
+        "start_inputs": start_inputs,
+    }
+
+
 def _stage_error_to_envelope_code(exc: Exception) -> str:
     """Map a stage-typed exception to the result envelope's error code."""
     if isinstance(exc, _StageJSONError):
@@ -250,6 +293,100 @@ class WorkflowGenerator:
         ``errors`` and keep the previous version visible.
         """
 
+        # Consume the shared event generator and keep only the final result
+        # envelope — ``generate_workflow_graph_stream`` shares the exact same
+        # pipeline so the two stay behaviourally identical. The plan event is
+        # ignored here.
+        result: WorkflowGenerateResultDict | None = None
+        for event_name, payload in cls._iter_generation_events(
+            model_instance=model_instance,
+            model_parameters=model_parameters,
+            provider=provider,
+            model_name=model_name,
+            model_mode=model_mode,
+            mode=mode,
+            instruction=instruction,
+            ideal_output=ideal_output,
+            tool_catalogue_text=tool_catalogue_text,
+            installed_tools=installed_tools,
+            current_graph=current_graph,
+        ):
+            if event_name == "result":
+                result = cast(WorkflowGenerateResultDict, payload)
+        # The event generator always emits exactly one result envelope; this
+        # fallback only guards against a future refactor that forgets to.
+        if result is None:
+            result = _with_mode(_empty_result(), mode)
+        return result
+
+    @classmethod
+    def generate_workflow_graph_stream(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        mode: WorkflowGenerationMode,
+        instruction: str,
+        ideal_output: str = "",
+        tool_catalogue_text: str = "",
+        installed_tools: set[tuple[str, str]] | None = None,
+        current_graph: dict[str, Any] | None = None,
+    ) -> Iterator[tuple[str, dict[str, Any]]]:
+        """
+        Streaming sibling of ``generate_workflow_graph``.
+
+        Yields a ``plan`` event (title / description / app_name / icon / mode /
+        high-level nodes / start_inputs) as soon as the planner returns, then a
+        final ``result`` event carrying the SAME envelope dict the non-streaming
+        method returns (graph / message / app_name / icon / error / errors /
+        mode, plus structural errors when any). On a planner / empty-plan /
+        builder failure only the ``result`` event is emitted — no ``plan``.
+        """
+        yield from cls._iter_generation_events(
+            model_instance=model_instance,
+            model_parameters=model_parameters,
+            provider=provider,
+            model_name=model_name,
+            model_mode=model_mode,
+            mode=mode,
+            instruction=instruction,
+            ideal_output=ideal_output,
+            tool_catalogue_text=tool_catalogue_text,
+            installed_tools=installed_tools,
+            current_graph=current_graph,
+        )
+
+    @classmethod
+    def _iter_generation_events(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        mode: WorkflowGenerationMode,
+        instruction: str,
+        ideal_output: str = "",
+        tool_catalogue_text: str = "",
+        installed_tools: set[tuple[str, str]] | None = None,
+        current_graph: dict[str, Any] | None = None,
+    ) -> Iterator[tuple[str, dict[str, Any]]]:
+        """
+        Drive planner → builder → postprocess and yield generation events.
+
+        Shared core for both ``generate_workflow_graph`` (keeps only the final
+        ``result``) and ``generate_workflow_graph_stream`` (streams every
+        event). Emits at most one ``plan`` event — only once the planner
+        produced a non-empty plan — followed by exactly one ``result`` event.
+        On a planner / empty-plan / builder failure it emits only the
+        ``result`` event carrying the error envelope. Every result envelope is
+        stamped with the resolved concrete ``mode``.
+        """
+
         # ── 1. PLANNER ────────────────────────────────────────────────────
         plan, plan_err = cls._run_stage(
             stage="Planner",
@@ -265,16 +402,22 @@ class WorkflowGenerator:
             ),
         )
         if plan_err is not None:
-            return _result_with_errors(_empty_result(), [plan_err])
+            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [plan_err]), mode))
+            return
 
         # The lambda return is non-None when no error fired — narrow it for type-checkers.
         plan = cast(PlannerResultDict, plan)
         plan_nodes: list[dict[str, Any]] = cast(list[dict[str, Any]], plan.get("nodes", []))
         if not plan_nodes:
-            return _result_with_errors(
-                _empty_result(),
-                [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
+            empty_plan = _with_mode(
+                _result_with_errors(
+                    _empty_result(),
+                    [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
+                ),
+                mode,
             )
+            yield "result", cast(dict[str, Any], empty_plan)
+            return
 
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
@@ -285,6 +428,10 @@ class WorkflowGenerator:
             for item in (plan.get("start_inputs") or [])
             if isinstance(item, dict) and (item.get("variable") or "").strip()
         ]
+
+        # First event the stream sees: the high-level plan, before the slower
+        # builder call. Non-streaming callers ignore it.
+        yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=mode)
 
         # ── 2. BUILDER ────────────────────────────────────────────────────
         graph, build_err = cls._run_stage(
@@ -306,7 +453,8 @@ class WorkflowGenerator:
             ),
         )
         if build_err is not None:
-            return _result_with_errors(_empty_result(), [build_err])
+            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), mode))
+            return
         graph = cast(GraphDict, graph)
 
         # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
@@ -322,6 +470,7 @@ class WorkflowGenerator:
             "error": "",
             "errors": [],
         }
+        _with_mode(result, mode)
 
         # Final structural sanity check — fail closed if start/end shape is
         # wrong, container topology is broken, a tool was hallucinated, or a
@@ -330,8 +479,9 @@ class WorkflowGenerator:
         structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
         if structural_errors:
             logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
-            return _result_with_errors(result, structural_errors)
-        return result
+            yield "result", cast(dict[str, Any], _result_with_errors(result, structural_errors))
+            return
+        yield "result", cast(dict[str, Any], result)
 
     @classmethod
     def _run_stage(
