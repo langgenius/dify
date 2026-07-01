@@ -245,6 +245,27 @@ export const zTrialWorkflowAccount = z.object({
 })
 
 /**
+ * TrialWorkflowResponse
+ */
+export const zTrialWorkflowResponse = z.object({
+  conversation_variables: z.array(zJsonObject2).optional(),
+  created_at: z.int().nullish(),
+  created_by: zTrialWorkflowAccount.nullish(),
+  environment_variables: z.array(zJsonObject2).optional(),
+  features: zJsonObject2.optional(),
+  graph: zJsonObject2,
+  hash: z.string().nullish(),
+  id: z.string(),
+  marked_comment: z.string().nullish(),
+  marked_name: z.string().nullish(),
+  rag_pipeline_variables: z.array(zJsonObject2).optional(),
+  tool_published: z.boolean().nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: zTrialWorkflowAccount.nullish(),
+  version: z.string().nullish(),
+})
+
+/**
  * TrialAppAgentMode
  */
 export const zTrialAppAgentMode = z.object({
@@ -321,27 +342,6 @@ export const zTrialAppDetailResponse = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zTrialWorkflowPartialResponse.nullish(),
-})
-
-/**
- * TrialWorkflowResponse
- */
-export const zTrialWorkflowResponse = z.object({
-  conversation_variables: z.array(zJsonObject2).optional(),
-  created_at: z.int().nullish(),
-  created_by: zTrialWorkflowAccount.nullish(),
-  environment_variables: z.array(zJsonObject2).optional(),
-  features: zJsonObject2.optional(),
-  graph: zJsonObject2,
-  hash: z.string().nullish(),
-  id: z.string(),
-  marked_comment: z.string().nullish(),
-  marked_name: z.string().nullish(),
-  rag_pipeline_variables: z.array(zJsonObject2).optional(),
-  tool_published: z.boolean().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: zTrialWorkflowAccount.nullish(),
-  version: z.string().nullish(),
 })
 
 /**
