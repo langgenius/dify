@@ -1,4 +1,5 @@
 import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from './api'
+import { createE2EResourceName } from './naming'
 
 export type AgentSeed = {
   active_config_is_published?: boolean
@@ -40,6 +41,12 @@ export type AgentApiKey = {
   token?: string
 }
 
+export type CreateTestAgentOptions = {
+  description?: string
+  name?: string
+  role?: string
+}
+
 export const defaultAgentSoulConfig: AgentSoulConfig = {
   prompt: {
     system_prompt: 'You are a Dify Agent E2E test assistant.',
@@ -69,13 +76,9 @@ export const getAgentAccessPath = (agentId: string) => `/roster/agent/${agentId}
 
 export async function createTestAgent({
   description = 'Created by Dify E2E.',
-  name = `E2E Agent ${Date.now()}`,
+  name = createE2EResourceName('Agent'),
   role = 'E2E test assistant',
-}: {
-  description?: string
-  name?: string
-  role?: string
-} = {}): Promise<AgentSeed> {
+}: CreateTestAgentOptions = {}): Promise<AgentSeed> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.post('/console/api/agent', {
