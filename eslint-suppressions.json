@@ -7464,11 +7464,6 @@
       "count": 1
     }
   },
-  "web/utils/model-config.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 13
-    }
-  },
   "web/utils/tool-call.spec.ts": {
     "ts/no-explicit-any": {
       "count": 1
