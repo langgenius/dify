@@ -588,10 +588,7 @@ class PluginListInstallationsFromIdsApi(Resource):
         except PluginDaemonClientSideError as e:
             return {"code": "plugin_error", "message": e.description}, 400
 
-        return dump_response(
-            PluginInstallationsResponse,
-            {"plugins": jsonable_encoder(plugins)},
-        )
+        return jsonable_encoder({"plugins": plugins})
 
 
 @console_ns.route("/workspaces/current/plugin/icon")
