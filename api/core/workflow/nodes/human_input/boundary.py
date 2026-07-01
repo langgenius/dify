@@ -14,7 +14,7 @@ from .session_binding import default_session_binding
 
 def enrich_graph_pause_reasons(
     *,
-    reasons: Sequence[object],
+    reasons: Sequence[HitlRequired | PauseReason],
     form_repository: HumanInputFormSubmissionRepository,
     variable_pool: ReadOnlyVariablePool | None,
 ) -> list[PauseReason]:

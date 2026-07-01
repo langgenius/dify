@@ -11,6 +11,7 @@ from graphon.variables.factory import build_segment
 from graphon.variables.segments import Segment
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
+from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from libs.datetime_utils import naive_utc_now
 
@@ -66,7 +67,7 @@ class DifyHITLCallback:
         resolved_default_values: ResolvedDefaultsProvider,
         workflow_execution_id: str | None = None,
         conversation_id: str | None = None,
-        delivery_methods: Sequence[object] = (),
+        delivery_methods: Sequence[DeliveryChannelConfig] = (),
         display_in_ui: bool = False,
         file_reference_factory: DifyFileReferenceFactory | None = None,
     ) -> None:
