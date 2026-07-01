@@ -1,6 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given } from '@cucumber/cucumber'
 import {
+  skipMissingAgentBuilderBrokenChatModel,
   skipMissingAgentBuilderStableChatModel,
   skipMissingPreseededAgent,
   skipMissingPreseededDataset,
@@ -14,6 +15,14 @@ Given('the Agent Builder stable chat model is available', async function (this: 
     return stableModel
 
   this.agentBuilderStableChatModel = stableModel
+})
+
+Given('the Agent Builder broken chat model is available', async function (this: DifyWorld) {
+  const brokenModel = await skipMissingAgentBuilderBrokenChatModel(this)
+  if (brokenModel === 'skipped')
+    return brokenModel
+
+  this.agentBuilderBrokenChatModel = brokenModel
 })
 
 Given(

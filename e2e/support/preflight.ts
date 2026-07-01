@@ -5,7 +5,11 @@ import { createApiContext, expectApiResponseOK } from './api'
 const stableChatModelProviderEnv = 'E2E_STABLE_MODEL_PROVIDER'
 const stableChatModelNameEnv = 'E2E_STABLE_MODEL_NAME'
 const stableChatModelTypeEnv = 'E2E_STABLE_MODEL_TYPE'
+const brokenChatModelProviderEnv = 'E2E_BROKEN_MODEL_PROVIDER'
+const brokenChatModelNameEnv = 'E2E_BROKEN_MODEL_NAME'
+const brokenChatModelTypeEnv = 'E2E_BROKEN_MODEL_TYPE'
 const defaultStableChatModelType = 'llm'
+const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
 
 export type E2EResourcePrecondition
   = | {
@@ -243,10 +247,11 @@ export async function skipMissingPreseededTool(
   }
 }
 
-type StableChatModelConfig
+type ModelPreflightConfig
   = | {
     ok: true
     provider: string
+    resourceName: string
     type: string
     value: string
   }
@@ -255,7 +260,7 @@ type StableChatModelConfig
     reason: string
   }
 
-export function readAgentBuilderStableChatModelConfig(): StableChatModelConfig {
+export function readAgentBuilderStableChatModelConfig(): ModelPreflightConfig {
   const provider = process.env[stableChatModelProviderEnv]?.trim()
   const name = process.env[stableChatModelNameEnv]?.trim()
   const type = process.env[stableChatModelTypeEnv]?.trim() || defaultStableChatModelType
@@ -273,13 +278,40 @@ export function readAgentBuilderStableChatModelConfig(): StableChatModelConfig {
     }
   }
 
-  return { ok: true, provider, type, value: name }
+  return {
+    ok: true,
+    provider,
+    resourceName: agentBuilderPreseededResources.stableChatModel,
+    type,
+    value: name,
+  }
 }
 
-export async function skipMissingAgentBuilderStableChatModel(
+export function readAgentBuilderBrokenChatModelConfig(): ModelPreflightConfig {
+  const provider = process.env[brokenChatModelProviderEnv]?.trim()
+  const name = process.env[brokenChatModelNameEnv]?.trim() || defaultBrokenChatModelName
+  const type = process.env[brokenChatModelTypeEnv]?.trim() || defaultStableChatModelType
+
+  if (!provider) {
+    return {
+      ok: false,
+      reason: `${agentBuilderPreseededResources.brokenModelProvider} requires ${brokenChatModelProviderEnv}.`,
+    }
+  }
+
+  return {
+    ok: true,
+    provider,
+    resourceName: agentBuilderPreseededResources.brokenModelProvider,
+    type,
+    value: name,
+  }
+}
+
+async function skipMissingAgentBuilderModel(
   world: DifyWorld,
+  config: ModelPreflightConfig,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
-  const config = readAgentBuilderStableChatModelConfig()
   if (!config.ok)
     return skipBlockedPrecondition(world, config.reason)
 
@@ -288,7 +320,7 @@ export async function skipMissingAgentBuilderStableChatModel(
     const response = await ctx.get(
       `/console/api/workspaces/current/models/model-types/${config.type}`,
     )
-    await expectApiResponseOK(response, `Check ${agentBuilderPreseededResources.stableChatModel}`)
+    await expectApiResponseOK(response, `Check ${config.resourceName}`)
     const body = (await response.json()) as ModelTypeListResponse
     const provider = body.data.find(item => item.provider === config.provider)
     const model = provider?.models.find(
@@ -301,7 +333,7 @@ export async function skipMissingAgentBuilderStableChatModel(
     if (!provider || !model) {
       return skipBlockedPrecondition(
         world,
-        `${agentBuilderPreseededResources.stableChatModel} was not found as ${config.provider}/${config.value} (${config.type}).`,
+        `${config.resourceName} was not found as ${config.provider}/${config.value} (${config.type}).`,
       )
     }
 
@@ -314,4 +346,16 @@ export async function skipMissingAgentBuilderStableChatModel(
   finally {
     await ctx.dispose()
   }
+}
+
+export async function skipMissingAgentBuilderStableChatModel(
+  world: DifyWorld,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
+  return skipMissingAgentBuilderModel(world, readAgentBuilderStableChatModelConfig())
+}
+
+export async function skipMissingAgentBuilderBrokenChatModel(
+  world: DifyWorld,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
+  return skipMissingAgentBuilderModel(world, readAgentBuilderBrokenChatModelConfig())
 }

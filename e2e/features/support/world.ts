@@ -38,6 +38,7 @@ export class DifyWorld extends World {
   createdAgentIds: string[] = []
   createdDatasetIds: string[] = []
   createdAgentDriveFiles: CreatedAgentDriveFile[] = []
+  agentBuilderBrokenChatModel: AgentBuilderStableChatModel | undefined
   agentBuilderStableChatModel: AgentBuilderStableChatModel | undefined
   agentBuilderPreseededResources: Record<string, AgentBuilderPreseededResource> = {}
   scenarioCleanups: ScenarioCleanup[] = []
@@ -62,6 +63,7 @@ export class DifyWorld extends World {
     this.createdAgentIds = []
     this.createdDatasetIds = []
     this.createdAgentDriveFiles = []
+    this.agentBuilderBrokenChatModel = undefined
     this.agentBuilderStableChatModel = undefined
     this.agentBuilderPreseededResources = {}
     this.scenarioCleanups = []
