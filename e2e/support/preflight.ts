@@ -148,6 +148,14 @@ type AgentApiKeyListResponse = {
   }>
 }
 
+type AgentReferencingWorkflowsResponse = {
+  data: Array<{
+    app_id: string
+    app_name: string
+    node_ids?: string[]
+  }>
+}
+
 type PreseededAgentDetailResponse = {
   active_config_is_published?: boolean
   enable_site?: boolean
@@ -512,6 +520,53 @@ export async function skipMissingPreseededAgentPublishedWebApp(
       id: agent.id,
       kind: 'agent',
       name: agent.name,
+    }
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededAgentWorkflowReference(
+  world: DifyWorld,
+  agentName: string,
+  workflowName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped')
+    return agent
+
+  const workflow = await skipMissingPreseededWorkflow(world, workflowName)
+  if (workflow === 'skipped')
+    return workflow
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agent.id}/referencing-workflows`)
+    await expectApiResponseOK(response, `Check preseeded Agent workflow reference ${agentName}`)
+    const references = (await response.json()) as AgentReferencingWorkflowsResponse
+    const reference = references.data.find(item =>
+      item.app_id === workflow.id || item.app_name === workflow.name,
+    )
+
+    if (!reference) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" is not referenced by workflow "${workflowName}".`,
+      )
+    }
+
+    if (!reference.node_ids || reference.node_ids.length < 1) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded workflow "${workflowName}" does not expose Agent reference nodes for "${agentName}".`,
+      )
+    }
+
+    return {
+      id: workflow.id,
+      kind: 'workflow',
+      name: workflow.name,
     }
   }
   finally {

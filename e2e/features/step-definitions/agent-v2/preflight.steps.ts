@@ -8,6 +8,7 @@ import {
   skipMissingPreseededAgentBackendApiKey,
   skipMissingPreseededAgentDriveSkill,
   skipMissingPreseededAgentPublishedWebApp,
+  skipMissingPreseededAgentWorkflowReference,
   skipMissingPreseededDataset,
   skipMissingPreseededTool,
   skipMissingPreseededWorkflow,
@@ -126,5 +127,20 @@ Given(
       return resource
 
     this.agentBuilderPreseededResources[`${agentName} / Web app`] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} is referenced by workflow {string}',
+  async function (this: DifyWorld, agentName: string, workflowName: string) {
+    const resource = await skipMissingPreseededAgentWorkflowReference(
+      this,
+      agentName,
+      workflowName,
+    )
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilderPreseededResources[`${agentName} / ${workflowName}`] = resource
   },
 )

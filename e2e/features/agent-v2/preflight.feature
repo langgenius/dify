@@ -63,3 +63,7 @@ Feature: Agent Builder preseeded environment
   Scenario: Reference workflow is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded workflow "E2E Agent Reference Workflow" is available
+
+  Scenario: Workflow reference Agent is used by the reference workflow
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E Agent With Workflow Reference" is referenced by workflow "E2E Agent Reference Workflow"
