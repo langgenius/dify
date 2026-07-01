@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react'
+import type { Mock } from 'vitest'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAppContext } from '@/context/app-context'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { usePathname } from '@/next/navigation'
 import MainNavLayout from '../layout'
 
 vi.mock('@/app/components/header', () => ({
@@ -16,13 +22,50 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: vi.fn(),
+  }
+})
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: vi.fn(),
+}))
+
+vi.mock('@/features/agent-v2/feature-flag', () => ({
+  isAgentV2Enabled: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/next/navigation')>()
+  return {
+    ...actual,
+    usePathname: vi.fn(),
+  }
+})
+
 vi.mock('../index', () => ({
   MainNav: ({ className }: { className?: string }) => <aside className={className} data-testid="main-nav">MainNav</aside>,
 }))
 
 describe('MainNavLayout', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     localStorage.clear()
+    useAppStore.getState().setAppDetail()
+    ;(usePathname as Mock).mockReturnValue('/apps')
+    ;(useAppContext as Mock).mockReturnValue({
+      isCurrentWorkspaceDatasetOperator: false,
+      isCurrentWorkspaceEditor: true,
+    })
+    ;(useSuspenseQuery as Mock).mockReturnValue({
+      data: {
+        enable_app_deploy: true,
+      },
+    })
+    ;(isAgentV2Enabled as Mock).mockReturnValue(true)
   })
 
   it('renders desktop main nav instead of the desktop header', () => {
@@ -72,5 +115,35 @@ describe('MainNavLayout', () => {
     fireEvent.click(skipLink)
 
     expect(main).toHaveFocus()
+  })
+
+  it('lets detail routes own their sidebar instead of rendering the global main nav', () => {
+    ;(usePathname as Mock).mockReturnValue('/datasets/dataset-1/documents')
+
+    render(<MainNavLayout><div>dataset detail</div></MainNavLayout>)
+
+    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('dataset detail')
+  })
+
+  it.each([
+    '/datasets/create',
+    '/datasets/dataset-1/documents/create',
+    '/deployments/create',
+  ])('keeps the global main nav on collection and creation route %s', (pathname) => {
+    ;(usePathname as Mock).mockReturnValue(pathname)
+
+    render(<MainNavLayout><div>content</div></MainNavLayout>)
+
+    expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+  })
+
+  it('clears app detail state after leaving app routes', () => {
+    useAppStore.getState().setAppDetail({ id: 'app-1' } as ReturnType<typeof useAppStore.getState>['appDetail'])
+    ;(usePathname as Mock).mockReturnValue('/datasets')
+
+    render(<MainNavLayout><div>content</div></MainNavLayout>)
+
+    expect(useAppStore.getState().appDetail).toBeUndefined()
   })
 })

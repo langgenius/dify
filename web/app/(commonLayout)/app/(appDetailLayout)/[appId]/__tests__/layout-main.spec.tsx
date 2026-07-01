@@ -31,11 +31,16 @@ vi.mock('@/service/apps', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     currentWorkspace: { id: 'workspace-1' },
+    isCurrentWorkspaceDatasetOperator: false,
     isLoadingCurrentWorkspace: false,
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
   }),
+}))
+
+vi.mock('@/app/components/detail-sidebar', () => ({
+  DetailSidebarFrame: () => <aside data-testid="detail-sidebar-frame" />,
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
@@ -86,6 +91,7 @@ describe('AppDetailLayout', () => {
       </AppDetailLayout>,
     )
     await waitForAppContent()
+    expect(screen.getByTestId('detail-sidebar-frame')).toBeInTheDocument()
     expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
 
     mockPathname = '/app/app-1/logs'

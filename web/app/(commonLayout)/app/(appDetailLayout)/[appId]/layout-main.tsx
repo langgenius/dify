@@ -7,8 +7,11 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
+import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
+import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
+import { DetailSidebarFrame } from '@/app/components/detail-sidebar'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -39,7 +42,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const router = useRouter()
   const pathname = usePathname()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
+  const { isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, currentWorkspace, userProfile, workspacePermissionKeys, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const isRbacEnabled = systemFeatures.rbac_enabled
   const { appDetail, setAppDetail } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -133,29 +136,42 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setAppDetail({ ...appDetailRes, enable_sso: false })
   }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, isRbacEnabled, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
 
-  if (!appDetail) {
-    return (
-      <div className="flex h-full items-center justify-center bg-background-body">
-        <Loading />
-      </div>
-    )
-  }
-
   const isWorkflowPage = pathname.endsWith('/workflow')
 
   return (
-    <div className={cn(
-      'relative flex h-0 grow overflow-hidden',
-      !isWorkflowPage && 'pt-1 pr-1 pb-1',
-    )}
-    >
-      <div className={cn(
-        'grow overflow-hidden bg-components-panel-bg',
-        !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+    <div className="flex h-0 grow overflow-hidden bg-background-body">
+      {!isCurrentWorkspaceDatasetOperator && (
+        <DetailSidebarFrame
+          renderTop={({ expand, onToggle }) => (
+            <AppDetailTop
+              expand={expand}
+              onToggle={onToggle}
+            />
+          )}
+          renderSection={({ expand }) => <AppDetailSection expand={expand} />}
+        />
       )}
-      >
-        {children}
-      </div>
+      {!appDetail
+        ? (
+            <div className="flex min-w-0 grow items-center justify-center bg-background-body">
+              <Loading />
+            </div>
+          )
+        : (
+            <div className={cn(
+              'relative flex h-0 grow overflow-hidden',
+              !isWorkflowPage && 'pt-1 pr-1 pb-1',
+            )}
+            >
+              <div className={cn(
+                'grow overflow-hidden bg-components-panel-bg',
+                !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+              )}
+              >
+                {children}
+              </div>
+            </div>
+          )}
     </div>
   )
 }

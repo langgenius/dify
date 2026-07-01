@@ -39,6 +39,10 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
+vi.mock('@/app/components/detail-sidebar', () => ({
+  DetailSidebarFrame: () => <aside data-testid="detail-sidebar-frame" />,
+}))
+
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
@@ -131,6 +135,7 @@ describe('DatasetDetailLayout', () => {
       )
 
       // Assert
+      expect(screen.getByTestId('detail-sidebar-frame')).toBeInTheDocument()
       expect(screen.getByText('Pipeline content')).toBeInTheDocument()
       expect(mockReplace).not.toHaveBeenCalled()
     })
