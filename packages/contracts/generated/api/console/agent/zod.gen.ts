@@ -48,6 +48,13 @@ export const zApiKeyList = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * AgentSimpleResultResponse
  */
 export const zAgentSimpleResultResponse = z.object({
@@ -83,13 +90,6 @@ export const zAgentBuildDraftCheckoutPayload = z.object({
  */
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
-})
-
-/**
- * SimpleResultResponse
- */
-export const zSimpleResultResponse = z.object({
-  result: z.string(),
 })
 
 /**
@@ -335,11 +335,6 @@ export const zJsonValue = z
     z.array(z.unknown()),
   ])
   .nullable()
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
 
 /**
  * WorkflowPartial
@@ -2021,12 +2016,15 @@ export const zAgentSoulDifyToolCredentialRef = z.object({
 /**
  * AgentSoulDifyToolConfig
  *
- * One Dify Plugin Tool configured on Agent Soul.
+ * One Dify tool configured on Agent Soul.
  *
  * The API backend prepares this persisted product shape into
- * ``DifyPluginToolConfig`` before sending a run request to Agent backend.
- * ``provider_id`` keeps compatibility with existing Agent tool config payloads;
- * new callers should send ``plugin_id`` + ``provider`` when available.
+ * either ``DifyPluginToolConfig`` or ``DifyCoreToolConfig`` before sending a
+ * run request to Agent backend. ``plugin`` providers keep the direct
+ * ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
+ * ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
+ * keeps compatibility with existing Agent tool config payloads; new callers
+ * should send ``plugin_id`` + ``provider`` when available.
  */
 export const zAgentSoulDifyToolConfig = z.object({
   credential_ref: zAgentSoulDifyToolCredentialRef.nullish(),
@@ -2563,11 +2561,6 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponseWritable = zJsonValue
-
-/**
  * AgentAppPartial
  */
 export const zAgentAppPartialWritable = z.object({
@@ -2818,9 +2811,9 @@ export const zPostAgentByAgentIdBuildChatFinalizePath = z.object({
 })
 
 /**
- * Build chat finalization started
+ * Success
  */
-export const zPostAgentByAgentIdBuildChatFinalizeResponse = zGeneratedAppResponse
+export const zPostAgentByAgentIdBuildChatFinalizeResponse = zSimpleResultResponse
 
 export const zDeleteAgentByAgentIdBuildDraftPath = z.object({
   agent_id: z.uuid(),

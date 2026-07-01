@@ -478,7 +478,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Build chat finalization started | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid request parameters |  |
 | 404 | Agent, build draft, or conversation not found |  |
 
@@ -14287,12 +14287,15 @@ Visibility and lifecycle scope of an Agent record.
 
 #### AgentSoulDifyToolConfig
 
-One Dify Plugin Tool configured on Agent Soul.
+One Dify tool configured on Agent Soul.
 
 The API backend prepares this persisted product shape into
-``DifyPluginToolConfig`` before sending a run request to Agent backend.
-``provider_id`` keeps compatibility with existing Agent tool config payloads;
-new callers should send ``plugin_id`` + ``provider`` when available.
+either ``DifyPluginToolConfig`` or ``DifyCoreToolConfig`` before sending a
+run request to Agent backend. ``plugin`` providers keep the direct
+``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
+``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
+keeps compatibility with existing Agent tool config payloads; new callers
+should send ``plugin_id`` + ``provider`` when available.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |

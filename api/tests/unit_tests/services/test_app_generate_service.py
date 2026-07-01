@@ -635,9 +635,7 @@ class TestGenerateBilling:
         quota_charge.refund.assert_called_once()
         assert exit_calls == ["dummy-request-id"]
 
-    def test_blocking_failure_exits_rate_limit_once(
-        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_blocking_failure_exits_rate_limit_once(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
         mocker.patch(
@@ -668,9 +666,7 @@ class TestGenerateBilling:
         quota_charge.refund.assert_called_once()
         assert exit_calls == ["dummy-request-id"]
 
-    def test_streaming_failure_exits_rate_limit_once(
-        self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_streaming_failure_exits_rate_limit_once(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
         quota_charge = MagicMock()
         mocker.patch(

@@ -244,9 +244,7 @@ class TestGenerateSuccess:
                 invoke_from=InvokeFrom.DEBUGGER,
             )
 
-    def test_stateless_run_uses_agent_app_runner(
-        self, generator: AgentAppGenerator, mocker: MockerFixture
-    ):
+    def test_stateless_run_uses_agent_app_runner(self, generator: AgentAppGenerator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", app_model_config=mocker.MagicMock())
         user = DummyAccount("user")
         agent = mocker.MagicMock(id="agent1")
