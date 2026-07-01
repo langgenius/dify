@@ -44,8 +44,17 @@ export const readRequiredEnvResource = (
   }
 }
 
-export function skipBlockedPrecondition(world: DifyWorld, reason: string): 'skipped' {
-  const message = `Blocked precondition: ${reason}`
+export function skipBlockedPrecondition(
+  world: DifyWorld,
+  reason: string,
+  options: {
+    owner?: string
+    remediation?: string
+  } = {},
+): 'skipped' {
+  const owner = options.owner ?? 'seed/product'
+  const remediation = options.remediation ?? 'Seed the required resource or align the product capability before running this scenario.'
+  const message = `Blocked precondition: ${reason} Owner: ${owner}. Remediation: ${remediation}`
   console.warn(`[e2e] ${message}`)
   world.attach(message, 'text/plain')
   return 'skipped'

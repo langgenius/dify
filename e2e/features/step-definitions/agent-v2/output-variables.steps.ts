@@ -11,5 +11,9 @@ Then('Agent v2 standalone Output Variables should be available', async function 
   return skipBlockedPrecondition(
     this,
     'Standalone Agent Output Variables are not available: output variables currently belong to Workflow Agent v2 nodes.',
+    {
+      owner: 'product',
+      remediation: 'Expose standalone Agent Output Variables or keep this scenario excluded until the product path exists.',
+    },
   )
 })

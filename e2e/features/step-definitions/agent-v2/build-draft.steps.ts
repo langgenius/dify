@@ -161,6 +161,10 @@ Then('Agent v2 Build chat Dify Tool writeback should be available', async functi
   return skipBlockedPrecondition(
     this,
     'Build draft Dify Tool writeback is not available: Build draft currently supports files, skills, and env only.',
+    {
+      owner: 'product',
+      remediation: 'Define and implement Build draft Tool writeback before enabling this scenario.',
+    },
   )
 })
 
