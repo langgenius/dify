@@ -5,7 +5,11 @@ import {
   agentBuilderPreseededResources,
 } from './agent-builder-resources'
 import { createApiContext, expectApiResponseOK } from './api'
-import { agentBuilderFileTreeFixtureFiles, agentBuilderTestMaterials } from './test-materials'
+import {
+  agentBuilderFileTreeFixtureFileNames,
+  agentBuilderFileTreeFixtureFiles,
+  agentBuilderTestMaterials,
+} from './test-materials'
 
 const stableChatModelProviderEnv = 'E2E_STABLE_MODEL_PROVIDER'
 const stableChatModelNameEnv = 'E2E_STABLE_MODEL_NAME'
@@ -812,6 +816,45 @@ export async function skipMissingPreseededAgentFileTreeFixture(
       return skipBlockedPrecondition(
         world,
         `Preseeded Agent "${agentName}" is missing file tree fixture files: ${missingFiles.join(', ')}.`,
+      )
+    }
+
+    return {
+      id: agent.id,
+      kind: 'agent',
+      name: agent.name,
+    }
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededAgentFlatFileFixtureConfiguration(
+  world: DifyWorld,
+  agentName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped')
+    return agent
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
+    await expectApiResponseOK(response, `Check preseeded Agent flat file fixture ${agentName}`)
+    const body = (await response.json()) as AgentComposerResponse
+    const configFiles = Array.isArray(body.agent_soul?.config_files)
+      ? body.agent_soul.config_files
+      : []
+    const fileNames = configFiles
+      .map(file => (typeof file === 'object' && file !== null && 'name' in file ? file.name : undefined))
+      .filter((name): name is string => typeof name === 'string')
+    const missingFiles = agentBuilderFileTreeFixtureFileNames.filter(fileName => !fileNames.includes(fileName))
+
+    if (missingFiles.length > 0) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" is missing current flat Files fixture configuration: ${missingFiles.join(', ')}. Hierarchical Files display remains blocked until Agent config files support tree paths.`,
       )
     }
 

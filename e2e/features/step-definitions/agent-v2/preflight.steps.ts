@@ -8,6 +8,7 @@ import {
   skipMissingPreseededAgentBackendApiKey,
   skipMissingPreseededAgentDriveSkill,
   skipMissingPreseededAgentFileTreeFixture,
+  skipMissingPreseededAgentFlatFileFixtureConfiguration,
   skipMissingPreseededAgentPublishedWebApp,
   skipMissingPreseededAgentWorkflowReference,
   skipMissingPreseededDataset,
@@ -155,6 +156,18 @@ Given(
       return resource
 
     this.agentBuilder.preflight.preseededResources[`${agentName} / file tree fixture`] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} includes the current flat file fixture configuration',
+  async function (this: DifyWorld, agentName: string) {
+    const resource = await skipMissingPreseededAgentFlatFileFixtureConfiguration(this, agentName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilder.preflight.preseededResources[`${agentName} / flat file fixture configuration`]
+      = resource
   },
 )
 

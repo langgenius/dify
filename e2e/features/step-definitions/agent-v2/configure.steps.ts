@@ -30,6 +30,7 @@ import {
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
 import { skipBlockedPrecondition } from '../../../support/preflight'
 import {
+  agentBuilderFileTreeFixtureFileNames,
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,
 } from '../../../support/test-materials'
@@ -681,6 +682,31 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
     agentBuilderPreseededResources.tavilySearchTool,
   )
 })
+
+Then(
+  'I should see the Agent v2 file fixture entries in the current flat Files list',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const filesSection = page.getByRole('region', { name: 'Files' })
+    const filesList = filesSection.getByLabel('Agent files')
+
+    await expect(filesSection).toBeVisible({ timeout: 30_000 })
+    await expect(filesList).toBeVisible()
+
+    for (const fileName of agentBuilderFileTreeFixtureFileNames) {
+      await expect(filesList.getByRole('button', {
+        exact: true,
+        name: fileName,
+      })).toBeVisible()
+    }
+
+    await expect(filesList.getByRole('button', { exact: true, name: 'assets' })).toHaveCount(0)
+    await expect(filesList.getByRole('button', { exact: true, name: 'docs' })).toHaveCount(0)
+    await expect(filesList.getByRole('button', { exact: true, name: 'public' })).toHaveCount(0)
+    await expect(filesList.getByRole('button', { exact: true, name: 'src' })).toHaveCount(0)
+    await expect(filesList.getByRole('button', { exact: true, name: 'web-game' })).toHaveCount(0)
+  },
+)
 
 Then(
   'I should see the normal E2E prompt in the Agent v2 prompt editor',

@@ -316,6 +316,8 @@ Use `the Agent Builder preseeded Agent "{agent}" includes the dual retrieval fix
 
 Use `the Agent Builder preseeded Agent "{agent}" includes the file tree fixture files` for file-tree display prerequisites. It verifies the Agent drive contains every file from `agentBuilderFileTreeFixtureFiles` through `/console/api/agent/{agent_id}/drive/files?prefix=files/`. This proves the committed drive file set is ready; keep visual tree expansion, nesting, and preview assertions in dependent user-visible scenarios.
 
+Use `the Agent Builder preseeded Agent "{agent}" includes the current flat file fixture configuration` for the current Agent Edit Files section. Agent config files are still a flat `config_files` list and reject path separators, so this preflight verifies the fixture file basenames are present in the Agent Soul. Treat this as partial coverage for tree-display requirements until the product supports hierarchical config files in the visible Files section.
+
 Use `the Agent Builder preseeded Agent "{agent}" has published Web app access` to verify that a fixed Agent is published, Web app access is enabled, and the Agent detail response includes the site token and base URL needed to open the Web app. Keep Web app launch and runtime assertions in dependent user-visible scenarios.
 
 Use `the Agent Builder preseeded Agent "{agent}" is referenced by workflow "{workflow}"` to verify Workflow access prerequisites. It checks both fixed resources exist, then uses `/console/api/agent/{agent_id}/referencing-workflows`, the same Console API used by the Access Point Workflow references table, to verify the workflow references the Agent through at least one published Agent node.

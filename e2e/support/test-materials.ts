@@ -42,6 +42,9 @@ export const agentBuilderFileTreeFixtureFiles = [
   'web-game/README.md',
 ] as const
 
+export const agentBuilderFileTreeFixtureFileNames = agentBuilderFileTreeFixtureFiles
+  .map(filePath => path.basename(filePath))
+
 export const getAgentBuilderTestMaterialPath = (material: keyof typeof agentBuilderTestMaterials) =>
   getTestMaterialPath(agentBuilderTestMaterials[material])
 
