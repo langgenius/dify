@@ -152,7 +152,7 @@ When('I switch to the Agent v2 Configure section', async function (this: DifyWor
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
 })
 
-When('I leave the Agent v2 configure page before autosave completes', async function (this: DifyWorld) {
+When('I leave the Agent v2 configure page immediately after editing', async function (this: DifyWorld) {
   const page = this.getPage()
 
   await page.goto('/roster')

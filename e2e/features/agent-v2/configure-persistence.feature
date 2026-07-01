@@ -32,12 +32,12 @@ Feature: Agent v2 configure persistence
     And the Agent v2 draft should use the stable E2E model
 
   @configure-persistence
-  Scenario: Leaving Configure before autosave completes preserves prompt changes
+  Scenario: Leaving Configure immediately after editing preserves prompt changes
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
     And I fill the Agent v2 prompt editor with the updated E2E prompt
-    And I leave the Agent v2 configure page before autosave completes
+    And I leave the Agent v2 configure page immediately after editing
     When I open the Agent v2 configure page from the Agent Roster
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the normal Agent v2 draft should use the updated E2E prompt
