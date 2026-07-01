@@ -77,7 +77,7 @@ vi.mock('@/service/client', () => ({
       },
     },
     apps: {
-      list: {
+      get: {
         queryOptions: (options: {
           input?: { query?: { limit?: number } }
           select?: (response: {
@@ -91,7 +91,7 @@ vi.mock('@/service/client', () => ({
           const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
           if (mockWorkspaceAppsLoading) {
             return {
-              queryKey: ['console', 'apps', 'list', options],
+              queryKey: ['console', 'apps', 'get', options],
               queryFn: () => new Promise(() => {}),
               select: options.select,
             }
@@ -104,7 +104,7 @@ vi.mock('@/service/client', () => ({
             total: mockWorkspaceApps.length,
           }
           return {
-            queryKey: ['console', 'apps', 'list', options],
+            queryKey: ['console', 'apps', 'get', options],
             queryFn: () => Promise.resolve(response),
             initialData: response,
             select: options.select,

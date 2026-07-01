@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -53,32 +53,34 @@ vi.mock('@/context/app-context', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     tags: {
-      list: {
+      get: {
         queryOptions: () => ({}),
       },
-      create: {
+      post: {
         mutationOptions: () => ({
-          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' } }) => createTag(body.name, body.type),
+          mutationFn: ({ body }: { body: { name: string, type: 'app' | 'knowledge' | 'snippet' } }) => createTag(body.name, body.type),
         }),
       },
-      update: {
-        mutationOptions: () => ({
-          mutationFn: () => Promise.resolve(undefined),
-        }),
-      },
-      delete: {
-        mutationOptions: () => ({
-          mutationFn: () => Promise.resolve(undefined),
-        }),
+      byTagId: {
+        patch: {
+          mutationOptions: () => ({
+            mutationFn: () => Promise.resolve(undefined),
+          }),
+        },
+        delete: {
+          mutationOptions: () => ({
+            mutationFn: () => Promise.resolve(undefined),
+          }),
+        },
       },
     },
   },
 }))
 
 const mockTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
-  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: 2 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
+  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: '' },
 ]
 
 const defaultProps = {
@@ -100,7 +102,7 @@ describe('TagManagementModal', () => {
     vi.clearAllMocks()
     mockUseQueryData.current = mockTags
     mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify']
-    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
+    vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: '' })
   })
 
   describe('Rendering', () => {
@@ -277,7 +279,7 @@ describe('TagManagementModal', () => {
 
     it('should handle tag creation with knowledge type', async () => {
       const user = userEvent.setup()
-      vi.mocked(createTag).mockResolvedValue({ id: 'new-k', name: 'KnowledgeTag', type: 'knowledge', binding_count: 0 })
+      vi.mocked(createTag).mockResolvedValue({ id: 'new-k', name: 'KnowledgeTag', type: 'knowledge', binding_count: '' })
 
       render(<TagManagementModal {...defaultProps} type="knowledge" />)
 
