@@ -115,7 +115,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     : (
         <div
           className={cn(
-            'relative flex h-0 min-w-0 grow overflow-hidden',
+            'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
             !isPipelinePage && 'pt-1 pr-1 pb-1',
           )}
         >
@@ -137,7 +137,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       )
 
   return (
-    <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
+    <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
       {shouldShowDetailSidebar && (
         <DetailSidebarFrame
           renderTop={({ expand, onToggle }) => (

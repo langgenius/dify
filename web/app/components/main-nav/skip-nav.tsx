@@ -17,7 +17,7 @@ export function MainContent({
       id={MAIN_CONTENT_ID}
       tabIndex={-1}
       className={cn(
-        'flex min-w-0 grow flex-col overflow-hidden outline-hidden focus:outline-hidden focus-visible:outline-hidden',
+        'flex min-h-0 min-w-0 grow flex-col overflow-hidden outline-hidden focus:outline-hidden focus-visible:outline-hidden',
         className,
       )}
       {...props}

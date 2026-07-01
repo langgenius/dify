@@ -49,7 +49,7 @@ const MainNavLayout = ({
   })
 
   return (
-    <div className="flex h-0 min-h-0 grow overflow-hidden bg-background-body">
+    <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
       <SkipNav>{t('navigation.skipToMain')}</SkipNav>
       <AppDetailStoreCleanup />
       {!shouldHideMainNav && <MainNav />}

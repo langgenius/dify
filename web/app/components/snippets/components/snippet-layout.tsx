@@ -25,7 +25,7 @@ const SnippetLayout = ({
   useDocumentTitle(snippet.name || t('typeLabel'))
 
   return (
-    <div className="relative flex h-full min-w-0 overflow-hidden bg-background-body">
+    <div className="relative flex h-full min-h-0 min-w-0 overflow-hidden bg-background-body">
       <DetailSidebarFrame
         renderTop={({ expand, onToggle }) => (
           <SnippetDetailTop

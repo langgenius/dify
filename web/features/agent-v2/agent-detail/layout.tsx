@@ -33,7 +33,7 @@ export function AgentDetailLayout({
   useDocumentTitle(agentQuery.data?.name ?? t('agentDetail.documentTitle'))
 
   const content = (
-    <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">
         {children}
       </div>
@@ -41,7 +41,7 @@ export function AgentDetailLayout({
   )
 
   return (
-    <div className="flex h-0 min-w-0 grow overflow-hidden bg-background-body">
+    <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
       {shouldShowDetailSidebar && (
         <DetailSidebarFrame
           renderTop={({ expand, onToggle }) => (
