@@ -348,6 +348,16 @@ Then('I should see the Agent v2 Build draft pending changes', async function (th
   await expect(page.getByRole('button', { name: 'Discard' })).toBeVisible()
 })
 
+Then(
+  'the normal Agent v2 draft should still use the normal E2E prompt',
+  async function (this: DifyWorld) {
+    await expect.poll(
+      async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt,
+      { timeout: 30_000 },
+    ).toEqual({ system_prompt: normalAgentPrompt })
+  },
+)
+
 Then('the Agent v2 Build draft should no longer be active', async function (this: DifyWorld) {
   const page = this.getPage()
 

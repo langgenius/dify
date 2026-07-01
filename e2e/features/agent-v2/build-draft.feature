@@ -8,6 +8,7 @@ Feature: Agent v2 build draft
     When I open the Agent v2 configure page
     Then I should see the Agent v2 Build draft pending changes
     And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should still use the normal E2E prompt
     When I discard the Agent v2 Build draft
     Then I should see the normal E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
