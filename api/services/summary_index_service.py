@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import TypedDict, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from core.db.session_factory import session_factory
 from core.model_manager import ModelManager
@@ -1407,6 +1407,7 @@ class SummaryIndexService:
     def get_document_summary_status_detail(
         document_id: str,
         dataset_id: str,
+        session: Session | scoped_session,
     ) -> DocumentSummaryStatusDetailDict:
         """
         Get detailed summary status for a document.
@@ -1414,6 +1415,7 @@ class SummaryIndexService:
         Args:
             document_id: Document ID
             dataset_id: Dataset ID
+            session: SQLAlchemy session used for segment lookup
 
         Returns:
             Dictionary containing:
@@ -1431,6 +1433,7 @@ class SummaryIndexService:
         segments = SegmentService.get_segments_by_document_and_dataset(
             document_id=document_id,
             dataset_id=dataset_id,
+            session=session,
             status="completed",
             enabled=True,
         )

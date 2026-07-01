@@ -35,6 +35,7 @@ const config: KnipConfig = {
   ignoreFiles: [
     'features/agent-v2/agent-detail/configure/components/orchestrate/memory.tsx',
     'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
+    'i18n-config/locale-resources/*.ts',
   ],
   ignoreBinaries: [
     'only-allow',

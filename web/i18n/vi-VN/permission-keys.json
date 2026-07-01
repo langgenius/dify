@@ -50,5 +50,5 @@
   "snippets.management": "Quản lý đoạn mã",
   "tool.manage": "Quản lý công cụ",
   "workspace.member.manage": "Quản lý thành viên",
-  "workspace.role.manage": "Quản lý quyền vai trò và quy tắc truy cập tài nguyên"
+  "workspace.role.manage": "Quản lý vai trò và bộ quyền"
 }

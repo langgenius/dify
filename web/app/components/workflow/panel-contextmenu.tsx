@@ -9,6 +9,7 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { FlowType } from '@/types/common'
 import { TEST_RUN_MENU_HOTKEY } from './header/shortcuts'
 import {
   useDSL,
@@ -18,6 +19,7 @@ import {
   useWorkflowStartRun,
 } from './hooks'
 import { useHooksStore } from './hooks-store'
+import { isSnippetCanvas } from './nodes/_base/hooks/snippet-input-field-vars'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
@@ -48,6 +50,7 @@ export function PanelContextmenu({
   const { isCommentModeAvailable } = useWorkflowMoveMode()
   const { exportCheck } = useDSL()
   const accessControl = useHooksStore(s => s.accessControl)
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
   const isChatMode = useIsChatMode()
   const workflowOperationReadOnly = !!(
     workflowRunningData?.result.status === WorkflowRunningStatus.Running
@@ -57,6 +60,7 @@ export function PanelContextmenu({
   )
   const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
   const canCommentWorkflow = accessControl.canComment && !workflowOperationReadOnly
+  const shouldHideImportApp = flowType === FlowType.snippet || isSnippetCanvas()
 
   const renderAddBlockTrigger = useCallback(() => {
     return (
@@ -97,6 +101,7 @@ export function PanelContextmenu({
             renderTrigger={renderAddBlockTrigger}
             renderTriggerAsButtonRoot
             onClose={onClose}
+            isolateKeyboardEvents
             offset={{
               mainAxis: -36,
               crossAxis: -4,
@@ -177,12 +182,14 @@ export function PanelContextmenu({
             >
               {t('export', { ns: 'app' })}
             </ContextMenuItem>
-            <ContextMenuItem
-              className="justify-between gap-4 px-3 text-text-secondary"
-              onClick={() => setShowImportDSLModal(true)}
-            >
-              {t('importApp', { ns: 'app' })}
-            </ContextMenuItem>
+            {!shouldHideImportApp && (
+              <ContextMenuItem
+                className="justify-between gap-4 px-3 text-text-secondary"
+                onClick={() => setShowImportDSLModal(true)}
+              >
+                {t('importApp', { ns: 'app' })}
+              </ContextMenuItem>
+            )}
           </ContextMenuGroup>
         </>
       )}

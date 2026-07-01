@@ -38,15 +38,16 @@ from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
-from dify_agent.layers.drive import DifyDriveLayerConfig
 from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
+from dify_agent.adapters.shell.config import ShellAdapterSettings
+from dify_agent.adapters.shell.factory import create_shell_provisioner
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
-from dify_agent.layers.shell.layer import DifyShellLayer, create_shellctl_client_factory
+from dify_agent.layers.shell.layer import DifyShellLayer
 
 type DifyAgentLayerProvider = LayerProvider[Any]
 
@@ -64,13 +65,11 @@ def create_default_layer_providers(
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers.
 
-    ``shellctl_auth_token`` defaults to no token. Passing an explicit empty string
-    to ``create_shellctl_client_factory`` prevents ``ShellctlClient`` from falling
-    back to the Dify Agent process's ``SHELLCTL_AUTH_TOKEN`` environment variable;
-    deployments that enable shellctl bearer auth must set the Dify Agent server
-    setting explicitly.
+    ``shellctl_auth_token`` defaults to no token. An explicit empty string
+    prevents ``ShellctlClient`` from falling back to the Dify Agent process's
+    ``SHELLCTL_AUTH_TOKEN`` environment variable; deployments that enable
+    shellctl bearer auth must set the Dify Agent server setting explicitly.
     """
-    shellctl_token = shellctl_auth_token or ""
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     if agent_stub_token_codec is not None:
 
@@ -90,14 +89,7 @@ def create_default_layer_providers(
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_layer_type(DifyAskHumanLayer),
-        LayerProvider.from_factory(
-            layer_type=DifyDriveLayer,
-            create=lambda config: DifyDriveLayer.from_config_with_settings(
-                DifyDriveLayerConfig.model_validate(config),
-                inner_api_url=inner_api_url,
-                inner_api_key=inner_api_key,
-            ),
-        ),
+        LayerProvider.from_layer_type(DifyDriveLayer),
         LayerProvider.from_factory(
             layer_type=DifyExecutionContextLayer,
             create=lambda config: DifyExecutionContextLayer.from_config_with_settings(
@@ -110,8 +102,15 @@ def create_default_layer_providers(
             layer_type=DifyShellLayer,
             create=lambda config: DifyShellLayer.from_config_with_settings(
                 DifyShellLayerConfig.model_validate(config),
-                shellctl_entrypoint=shellctl_entrypoint,
-                shellctl_client_factory=create_shellctl_client_factory(token=shellctl_token),
+                shell_provisioner=create_shell_provisioner(
+                    ShellAdapterSettings(
+                        shell_provider="shellctl",
+                        shellctl_entrypoint=shellctl_entrypoint,
+                        shellctl_auth_token=shellctl_auth_token,
+                    )
+                )
+                if shellctl_entrypoint
+                else None,
                 agent_stub_api_base_url=agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
             ),

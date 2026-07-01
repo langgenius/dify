@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "مهمة الوكيل",
   "nodes.agent.task.mention": "إشارة",
   "nodes.agent.task.placeholder": "صف ما يجب على هذا الوكيل القيام به...",
-  "nodes.agent.task.tooltip": "حدّد تعليمات المهمة التي يجب على هذا الوكيل اتباعها في سير العمل هذا.",
+  "nodes.agent.task.tooltip": "موجّه إضافي لمساعدة الوكيل على معالجة هذه العقدة بالتحديد. استخدم / للإشارة صراحةً إلى المتغيرات.\nإذا تم تكوينه بشكل صحيح، فقد تتمكن من الوثوق بالوكيل ليكتشف الأمور بنفسه.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} غير مخول",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} غير مثبت",
   "nodes.agent.toolbox": "صندوق الأدوات",
