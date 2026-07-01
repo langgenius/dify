@@ -1,10 +1,7 @@
 import type { ClientContext, ClientLink } from '@orpc/client'
 import type { AnyContractRouter } from '@orpc/contract'
-import type { consoleRouterContract } from '@/contract/router'
 import { DynamicLink } from '@orpc/client'
 import { loadConsoleContractForSegment } from './console-router-loader'
-
-export type ConsoleRouterContract = typeof consoleRouterContract
 
 export function createConsoleDynamicLink<TContext extends ClientContext>(
   createLink: (contract: AnyContractRouter) => ClientLink<TContext>,

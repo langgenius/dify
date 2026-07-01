@@ -8,6 +8,7 @@ import { appDslVersion } from '@dify/contracts/api/console/app-dsl-version/orpc.
 import { app } from '@dify/contracts/api/console/app/orpc.gen'
 import { apps } from '@dify/contracts/api/console/apps/orpc.gen'
 import { auth } from '@dify/contracts/api/console/auth/orpc.gen'
+import { billing } from '@dify/contracts/api/console/billing/orpc.gen'
 import { codeBasedExtension } from '@dify/contracts/api/console/code-based-extension/orpc.gen'
 import { compliance } from '@dify/contracts/api/console/compliance/orpc.gen'
 import { dataSource } from '@dify/contracts/api/console/data-source/orpc.gen'
@@ -15,6 +16,7 @@ import { datasets } from '@dify/contracts/api/console/datasets/orpc.gen'
 import { emailCodeLogin } from '@dify/contracts/api/console/email-code-login/orpc.gen'
 import { emailRegister } from '@dify/contracts/api/console/email-register/orpc.gen'
 import { features } from '@dify/contracts/api/console/features/orpc.gen'
+import { files } from '@dify/contracts/api/console/files/orpc.gen'
 import { forgotPassword } from '@dify/contracts/api/console/forgot-password/orpc.gen'
 import { form } from '@dify/contracts/api/console/form/orpc.gen'
 import { info } from '@dify/contracts/api/console/info/orpc.gen'
@@ -43,17 +45,10 @@ import { workflowGenerate } from '@dify/contracts/api/console/workflow-generate/
 import { workflow } from '@dify/contracts/api/console/workflow/orpc.gen'
 import { workspaces } from '@dify/contracts/api/console/workspaces/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
-import { rbacAccessConfigContract } from './console/access-control'
-import { billingRouterContract } from './console/billing'
 import { exploreRouterContract } from './console/explore'
-import { filesRouterContract } from './console/files'
-import { modelProvidersRouterContract } from './console/model-providers'
 import { pluginsRouterContract } from './console/plugins'
 import { snippetsRouterContract } from './console/snippets'
-import { triggersRouterContract } from './console/trigger'
 import { trialAppsRouterContract } from './console/try-app'
-import { workflowDraftRouterContract } from './console/workflow'
-import { workflowCommentContracts } from './console/workflow-comment'
 
 const communityContract = {
   account,
@@ -66,6 +61,7 @@ const communityContract = {
   appDslVersion,
   apps,
   auth,
+  billing,
   codeBasedExtension,
   compliance,
   dataSource,
@@ -73,6 +69,7 @@ const communityContract = {
   emailCodeLogin,
   emailRegister,
   features,
+  files,
   forgotPassword,
   form,
   info,
@@ -105,15 +102,8 @@ const communityContract = {
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
   ...communityContract,
-  billing: billingRouterContract,
   explore: exploreRouterContract,
-  files: filesRouterContract,
-  modelProviders: modelProvidersRouterContract,
   plugins: pluginsRouterContract,
-  rbacAccessConfig: rbacAccessConfigContract,
   snippets: snippetsRouterContract,
-  triggers: triggersRouterContract,
   trialApps: trialAppsRouterContract,
-  workflowComments: workflowCommentContracts,
-  workflowDraft: workflowDraftRouterContract,
 }

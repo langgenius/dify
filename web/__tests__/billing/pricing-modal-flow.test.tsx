@@ -41,7 +41,9 @@ vi.mock('@/service/billing', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     billing: {
-      invoices: vi.fn().mockResolvedValue({ url: 'https://invoice.example.com' }),
+      invoices: {
+        get: vi.fn().mockResolvedValue({ url: 'https://invoice.example.com' }),
+      },
     },
   },
 }))

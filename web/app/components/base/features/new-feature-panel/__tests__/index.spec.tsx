@@ -22,6 +22,31 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
+  ConfigurationMethodEnum: {
+    predefinedModel: 'predefined-model',
+    customizableModel: 'customizable-model',
+    fetchFromRemote: 'fetch-from-remote',
+  },
+  ModelFeatureEnum: {
+    toolCall: 'tool-call',
+    multiToolCall: 'multi-tool-call',
+    agentThought: 'agent-thought',
+    streamToolCall: 'stream-tool-call',
+    vision: 'vision',
+    video: 'video',
+    document: 'document',
+    audio: 'audio',
+    polling: 'polling',
+    StructuredOutput: 'structured-output',
+  },
+  ModelStatusEnum: {
+    active: 'active',
+    noConfigure: 'no-configure',
+    quotaExceeded: 'quota-exceeded',
+    noPermission: 'no-permission',
+    disabled: 'disabled',
+    credentialRemoved: 'credential-removed',
+  },
   ModelTypeEnum: {
     speech2text: 'speech2text',
     tts: 'tts',

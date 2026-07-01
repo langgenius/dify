@@ -11,7 +11,6 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { CheckModal } from '@/hooks/use-pay'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
@@ -46,9 +45,6 @@ function List({
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { workspacePermissionKeys } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
-  const searchParams = useSearchParams()
-  const pathname = usePathname()
-  const { replace } = useRouter()
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
@@ -82,16 +78,6 @@ function List({
     containerRef,
     enabled: canCreateApp,
   })
-
-  useEffect(() => {
-    if (!searchParams.has('tagIDs'))
-      return
-
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete('tagIDs')
-    const query = params.toString()
-    replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
-  }, [pathname, replace, searchParams])
 
   const appListQuery = useMemo<AppListQuery>(() => ({
     page: 1,

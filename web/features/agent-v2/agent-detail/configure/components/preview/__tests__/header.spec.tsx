@@ -9,6 +9,7 @@ function renderHeader({
   onToggleChatFeatures = vi.fn(),
   onOpenWorkingDirectory = vi.fn(),
   onRefresh = vi.fn(),
+  refreshDisabled = false,
 }: {
   mode?: 'build' | 'preview'
   previewEnabled?: boolean
@@ -16,6 +17,7 @@ function renderHeader({
   onToggleChatFeatures?: () => void
   onOpenWorkingDirectory?: () => void
   onRefresh?: () => void
+  refreshDisabled?: boolean
 } = {}) {
   render(
     <AgentPreviewHeader
@@ -26,6 +28,7 @@ function renderHeader({
       onToggleChatFeatures={onToggleChatFeatures}
       onOpenWorkingDirectory={onOpenWorkingDirectory}
       onRefresh={onRefresh}
+      refreshDisabled={refreshDisabled}
     />,
   )
 }
@@ -43,6 +46,16 @@ describe('AgentPreviewHeader', () => {
     await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }))
 
     expect(onRefresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not emit refresh when the restart button is disabled', async () => {
+    const user = userEvent.setup()
+    const onRefresh = vi.fn()
+    renderHeader({ mode: 'build', onRefresh, refreshDisabled: true })
+
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }))
+
+    expect(onRefresh).not.toHaveBeenCalled()
   })
 
   it('should show chat features in build mode', async () => {
