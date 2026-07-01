@@ -41,28 +41,36 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   const mockedModelProviders = {
-    models: {
-      queryKey: ({ input }: { input: { params: { provider: string } } }) => ['console', 'modelProviders', 'models', input.params.provider],
-    },
-    changePreferredProviderType: {
-      mutationOptions: (opts: Record<string, unknown>) => ({
-        mutationFn: (...args: unknown[]) => {
-          mockChangePriorityFn(...args)
-          return Promise.resolve({ result: 'success' })
+    byProvider: {
+      models: {
+        get: {
+          queryKey: ({ input }: { input: { params: { provider: string } } }) => ['console', 'modelProviders', 'models', input.params.provider],
         },
-        ...opts,
-      }),
+      },
+      preferredProviderType: {
+        post: {
+          mutationOptions: (opts: Record<string, unknown>) => ({
+            mutationFn: (...args: unknown[]) => {
+              mockChangePriorityFn(...args)
+              return Promise.resolve({ result: 'success' })
+            },
+            ...opts,
+          }),
+        },
+      },
     },
   }
   return {
     ...actual,
-    consoleQuery: new Proxy(actual.consoleQuery, {
-      get(target, prop) {
-        if (prop === 'modelProviders')
-          return mockedModelProviders
-        return Reflect.get(target, prop)
+    consoleQuery: {
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      trialModels: actual.consoleQuery.trialModels,
+      workspaces: {
+        current: {
+          modelProviders: mockedModelProviders,
+        },
       },
-    }),
+    },
   }
 })
 

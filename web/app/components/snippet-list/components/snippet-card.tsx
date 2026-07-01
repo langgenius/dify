@@ -181,7 +181,7 @@ const SnippetCard = ({
               <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
                 <DropdownMenuTrigger
                   aria-label={tCommon('operation.more', { ns: 'common' })}
-                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
+                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()

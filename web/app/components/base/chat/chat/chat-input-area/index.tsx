@@ -24,6 +24,8 @@ type AudioRecorderWithPermission = typeof Recorder & {
   getPermission: () => Promise<void>
 }
 
+type SendAcceptance = void | boolean | Promise<void | boolean>
+
 type ChatInputAreaProps = {
   readonly?: boolean
   botName?: string
@@ -62,10 +64,19 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+  const queryRef = useRef('')
   const handleQueryChange = useCallback((value: string) => {
+    queryRef.current = value
     setQuery(value)
     setTimeout(handleTextareaResize, 0)
   }, [handleTextareaResize])
+  const resetAcceptedMessage = useCallback((acceptedQuery: string, acceptedFiles: ReturnType<typeof filesStore.getState>['files']) => {
+    const { files, setFiles } = filesStore.getState()
+    if (queryRef.current === acceptedQuery)
+      handleQueryChange('')
+    if (files === acceptedFiles)
+      setFiles([])
+  }, [filesStore, handleQueryChange])
   const handleSend = () => {
     if (!canSend)
       return
@@ -75,15 +86,23 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
       return
     }
     if (onSend) {
-      const { files, setFiles } = filesStore.getState()
+      const { files } = filesStore.getState()
       if (files.some(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
         toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
-        onSend(query, files)
-        handleQueryChange('')
-        setFiles([])
+        const sendResult = onSend(query, files) as SendAcceptance
+        if (sendResult instanceof Promise) {
+          sendResult.then((accepted) => {
+            if (accepted !== false)
+              resetAcceptedMessage(query, files)
+          }).catch(noop)
+          return
+        }
+
+        if (sendResult !== false)
+          resetAcceptedMessage(query, files)
       }
     }
   }

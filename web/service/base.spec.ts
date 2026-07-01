@@ -1,6 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from '@langgenius/dify-ui/toast'
+import { waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // eslint-disable-next-line no-restricted-imports
-import { del, get, handleStream, patch, post, put } from './base'
+import { del, get, handleStream, patch, post, put, sseGet, ssePost } from './base'
+
+const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}))
+
+vi.mock('./refresh-token', () => ({
+  refreshAccessTokenOrReLogin: refreshAccessTokenOrReLoginMock,
+}))
 
 describe('handleStream', () => {
   beforeEach(() => {
@@ -9,11 +23,9 @@ describe('handleStream', () => {
 
   describe('Invalid response data handling', () => {
     it('should handle null bufferObj from JSON.parse gracefully', async () => {
-      // Arrange
       const onData = vi.fn()
       const onCompleted = vi.fn()
 
-      // Create a mock response that returns 'data: null'
       const mockReader = {
         read: vi.fn()
           .mockResolvedValueOnce({
@@ -33,13 +45,10 @@ describe('handleStream', () => {
         },
       } as unknown as Response
 
-      // Act
       handleStream(mockResponse, onData, onCompleted)
 
-      // Wait for the stream to be processed
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      // Assert
       expect(onData).toHaveBeenCalledWith('', true, {
         conversationId: undefined,
         messageId: '',
@@ -50,11 +59,9 @@ describe('handleStream', () => {
     })
 
     it('should handle non-object bufferObj from JSON.parse gracefully', async () => {
-      // Arrange
       const onData = vi.fn()
       const onCompleted = vi.fn()
 
-      // Create a mock response that returns a primitive value
       const mockReader = {
         read: vi.fn()
           .mockResolvedValueOnce({
@@ -74,13 +81,10 @@ describe('handleStream', () => {
         },
       } as unknown as Response
 
-      // Act
       handleStream(mockResponse, onData, onCompleted)
 
-      // Wait for the stream to be processed
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      // Assert
       expect(onData).toHaveBeenCalledWith('', true, {
         conversationId: undefined,
         messageId: '',
@@ -91,7 +95,6 @@ describe('handleStream', () => {
     })
 
     it('should handle valid message event correctly', async () => {
-      // Arrange
       const onData = vi.fn()
       const onCompleted = vi.fn()
 
@@ -122,13 +125,10 @@ describe('handleStream', () => {
         },
       } as unknown as Response
 
-      // Act
       handleStream(mockResponse, onData, onCompleted)
 
-      // Wait for the stream to be processed
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      // Assert
       expect(onData).toHaveBeenCalledWith('Hello world', true, {
         conversationId: 'conv-123',
         taskId: 'task-456',
@@ -138,7 +138,6 @@ describe('handleStream', () => {
     })
 
     it('should handle error status 400 correctly', async () => {
-      // Arrange
       const onData = vi.fn()
       const onCompleted = vi.fn()
 
@@ -167,13 +166,10 @@ describe('handleStream', () => {
         },
       } as unknown as Response
 
-      // Act
       handleStream(mockResponse, onData, onCompleted)
 
-      // Wait for the stream to be processed
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      // Assert
       expect(onData).toHaveBeenCalledWith('', false, {
         conversationId: undefined,
         messageId: '',
@@ -184,7 +180,6 @@ describe('handleStream', () => {
     })
 
     it('should handle malformed JSON gracefully', async () => {
-      // Arrange
       const onData = vi.fn()
       const onCompleted = vi.fn()
 
@@ -207,19 +202,15 @@ describe('handleStream', () => {
         },
       } as unknown as Response
 
-      // Act
       handleStream(mockResponse, onData, onCompleted)
 
-      // Wait for the stream to be processed
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      // Assert - malformed JSON triggers the catch block which calls onData and returns
       expect(onData).toHaveBeenCalled()
       expect(onCompleted).toHaveBeenCalled()
     })
 
     it('should dispatch reasoning_chunk events to onReasoning', async () => {
-      // Arrange
       const onData = vi.fn()
       const onCompleted = vi.fn()
       const onReasoning = vi.fn()
@@ -249,10 +240,8 @@ describe('handleStream', () => {
         },
       } as unknown as Response
 
-      // onReasoning is the last positional handler; fill the unused intervening slots.
       const interveningNoops = Array.from({ length: 29 }, () => undefined)
 
-      // Act
       ;(handleStream as (...args: unknown[]) => void)(
         mockResponse,
         onData,
@@ -261,24 +250,137 @@ describe('handleStream', () => {
         onReasoning,
       )
 
-      // Wait for the stream to be processed
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      // Assert - the full event object is forwarded to onReasoning, answer stays untouched
       expect(onReasoning).toHaveBeenCalledWith(reasoningEvent)
       expect(onData).not.toHaveBeenCalled()
     })
 
+    it('should complete with error when the stream reader rejects', async () => {
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+
+      const mockReader = {
+        read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
+      }
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      } as unknown as Response
+
+      handleStream(mockResponse, onData, onCompleted)
+
+      await waitFor(() => {
+        expect(onData).toHaveBeenCalledWith('', false, {
+          conversationId: undefined,
+          messageId: '',
+          errorMessage: 'Error: stream lost',
+          errorCode: 'stream_read_error',
+        })
+      })
+      expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
+    })
+
     it('should throw error when response is not ok', () => {
-      // Arrange
       const onData = vi.fn()
       const mockResponse = {
         ok: false,
       } as unknown as Response
 
-      // Act & Assert
       expect(() => handleStream(mockResponse, onData)).toThrow('Network response was not ok')
     })
+  })
+})
+
+describe('ssePost and sseGet', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
+  })
+
+  it('should report fetch failures through onError without throwing from the catch handler', async () => {
+    const onError = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('Network failed'))
+
+    await ssePost('/chat-messages', {
+      body: {
+        query: 'hello',
+      },
+    }, {
+      onError,
+    })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('TypeError: Network failed')
+    })
+    expect(toast.error).toHaveBeenCalledWith('TypeError: Network failed')
+  })
+
+  it('should report token refresh failures through onError', async () => {
+    const onError = vi.fn()
+    refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('refresh failed'))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    await ssePost('/chat-messages', {
+      body: {
+        query: 'hello',
+      },
+    }, {
+      onError,
+    })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Error: refresh failed')
+    })
+  })
+
+  it('should report event stream token refresh failures through onError', async () => {
+    const onError = vi.fn()
+    refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('resume refresh failed'))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    await sseGet('/workflow/workflow-run-1/events', {}, {
+      onError,
+    })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Error: resume refresh failed')
+    })
+  })
+
+  it('should report stream reader failures through onError and onCompleted', async () => {
+    const onError = vi.fn()
+    const onCompleted = vi.fn()
+    const mockReader = {
+      read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
+    }
+    const response = {
+      status: 200,
+      ok: true,
+      body: {
+        getReader: () => mockReader,
+      },
+    } as unknown as Response
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response)
+
+    await ssePost('/chat-messages', {
+      body: {
+        query: 'hello',
+      },
+    }, {
+      onError,
+      onCompleted,
+    })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
+    })
+    expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
+    expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
   })
 })
 

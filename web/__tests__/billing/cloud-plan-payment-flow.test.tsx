@@ -40,7 +40,9 @@ vi.mock('@/service/billing', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     billing: {
-      invoices: () => mockInvoices(),
+      invoices: {
+        get: () => mockInvoices(),
+      },
     },
   },
 }))
