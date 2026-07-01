@@ -1193,6 +1193,8 @@
   "panel.goTo": "转到",
   "panel.goToFix": "前往修复",
   "panel.helpLink": "查看帮助文档",
+  "panel.locateNodeNotFound": "未找到节点：{{nodeId}}",
+  "panel.locateNodeSuccess": "已定位到节点：{{title}}",
   "panel.nextStep": "下一步",
   "panel.openWorkflow": "打开工作流",
   "panel.optional": "（选填）",

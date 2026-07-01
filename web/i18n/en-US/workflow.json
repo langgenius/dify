@@ -1193,6 +1193,8 @@
   "panel.goTo": "Go to",
   "panel.goToFix": "Go to fix",
   "panel.helpLink": "View Docs",
+  "panel.locateNodeNotFound": "Node not found: {{nodeId}}",
+  "panel.locateNodeSuccess": "Located node: {{title}}",
   "panel.nextStep": "Next Step",
   "panel.openWorkflow": "Open Workflow",
   "panel.optional": "(optional)",
