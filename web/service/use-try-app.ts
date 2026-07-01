@@ -5,7 +5,7 @@ import { fetchTryAppDatasets, fetchTryAppFlowPreview, fetchTryAppInfo, fetchTryA
 
 export const useGetTryAppInfo = (appId: string) => {
   return useQuery({
-    queryKey: consoleQuery.trialApps.info.queryKey({ input: { params: { appId } } }),
+    queryKey: consoleQuery.trialApps.byAppId.get.queryKey({ input: { params: { app_id: appId } } }),
     queryFn: () => {
       return fetchTryAppInfo(appId)
     },
@@ -15,7 +15,7 @@ export const useGetTryAppInfo = (appId: string) => {
 
 export const useGetTryAppParams = (appId: string) => {
   return useQuery({
-    queryKey: consoleQuery.trialApps.parameters.queryKey({ input: { params: { appId } } }),
+    queryKey: consoleQuery.trialApps.byAppId.parameters.get.queryKey({ input: { params: { app_id: appId } } }),
     queryFn: () => {
       return fetchTryAppParams(appId)
     },
@@ -25,7 +25,7 @@ export const useGetTryAppParams = (appId: string) => {
 
 export const useGetTryAppDataSets = (appId: string, ids: string[]) => {
   return useQuery<DataSetListResponse>({
-    queryKey: consoleQuery.trialApps.datasets.queryKey({ input: { params: { appId }, query: { ids } } }),
+    queryKey: consoleQuery.trialApps.byAppId.datasets.get.queryKey({ input: { params: { app_id: appId }, query: { ids } } }),
     queryFn: () => {
       return fetchTryAppDatasets(appId, ids)
     },
@@ -35,7 +35,7 @@ export const useGetTryAppDataSets = (appId: string, ids: string[]) => {
 
 export const useGetTryAppFlowPreview = (appId: string, disabled?: boolean) => {
   return useQuery({
-    queryKey: consoleQuery.trialApps.workflows.queryKey({ input: { params: { appId } } }),
+    queryKey: consoleQuery.trialApps.byAppId.workflows.get.queryKey({ input: { params: { app_id: appId } } }),
     enabled: !disabled,
     queryFn: () => {
       return fetchTryAppFlowPreview(appId)

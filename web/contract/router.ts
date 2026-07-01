@@ -39,6 +39,7 @@ import { systemFeatures } from '@dify/contracts/api/console/system-features/orpc
 import { tagBindings } from '@dify/contracts/api/console/tag-bindings/orpc.gen'
 import { tags } from '@dify/contracts/api/console/tags/orpc.gen'
 import { test } from '@dify/contracts/api/console/test/orpc.gen'
+import { trialApps } from '@dify/contracts/api/console/trial-apps/orpc.gen'
 import { trialModels } from '@dify/contracts/api/console/trial-models/orpc.gen'
 import { website } from '@dify/contracts/api/console/website/orpc.gen'
 import { workflowGenerate } from '@dify/contracts/api/console/workflow-generate/orpc.gen'
@@ -51,7 +52,6 @@ import { modelProvidersRouterContract } from './console/model-providers'
 import { pluginsRouterContract } from './console/plugins'
 import { snippetsRouterContract } from './console/snippets'
 import { triggersRouterContract } from './console/trigger'
-import { trialAppsRouterContract } from './console/try-app'
 
 const communityContract = {
   account,
@@ -95,6 +95,7 @@ const communityContract = {
   tagBindings,
   tags,
   test,
+  trialApps,
   trialModels,
   website,
   workflow,
@@ -111,5 +112,4 @@ export const consoleRouterContract = {
   rbacAccessConfig: rbacAccessConfigContract,
   snippets: snippetsRouterContract,
   triggers: triggersRouterContract,
-  trialApps: trialAppsRouterContract,
 }
