@@ -4,12 +4,16 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type BillingResponse = {
-  [key: string]: unknown
+export type BillingInvoiceResponse = {
+  url: string
 }
 
 export type PartnerTenantsPayload = {
   click_id: string
+}
+
+export type BillingResponse = {
+  [key: string]: unknown
 }
 
 export type GetBillingInvoicesData = {
@@ -20,7 +24,7 @@ export type GetBillingInvoicesData = {
 }
 
 export type GetBillingInvoicesResponses = {
-  200: BillingResponse
+  200: BillingInvoiceResponse
 }
 
 export type GetBillingInvoicesResponse
