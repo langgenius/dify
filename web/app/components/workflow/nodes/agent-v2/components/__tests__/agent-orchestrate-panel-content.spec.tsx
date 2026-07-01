@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   deleteBuildDraft: vi.fn(),
   loadBuildDraft: vi.fn(),
   applyBuildDraft: vi.fn(),
+  finalizeBuildChat: vi.fn(),
   refreshDebugConversation: vi.fn(),
   saveBuildDraft: vi.fn(),
   saveAgentSoulConfig: vi.fn(),
@@ -133,23 +134,6 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   }),
 }))
 
-vi.mock('@/features/agent-v2/agent-detail/configure/build-draft-query', () => ({
-  agentConfigureConsoleQuery: {
-    agent: {
-      byAgentId: {
-        buildDraft: {
-          get: {
-            queryOptions: () => ({
-              queryKey: ['build-draft'],
-              queryFn: mocks.loadBuildDraft,
-            }),
-          },
-        },
-      },
-    },
-  },
-}))
-
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
@@ -199,6 +183,13 @@ vi.mock('@/service/client', () => ({
           checkout: {
             post: {
               mutationOptions: () => ({ mutationFn: mocks.checkoutBuildDraft }),
+            },
+          },
+        },
+        buildChat: {
+          finalize: {
+            post: {
+              mutationOptions: () => ({ mutationFn: mocks.finalizeBuildChat }),
             },
           },
         },
@@ -351,6 +342,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       draft: {},
       variant: 'agent_app',
     })
+    mocks.finalizeBuildChat.mockResolvedValue({ result: 'success' })
     mocks.refreshDebugConversation.mockResolvedValue({
       debug_conversation_has_messages: false,
       debug_conversation_id: 'build-conversation-refreshed',
@@ -424,7 +416,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(await screen.findByRole('dialog', {
         name: 'agentV2.agentDetail.configure.workingDirectory.title',
       })).toBeInTheDocument()
-      expect(await screen.findByText('result.txt')).toBeInTheDocument()
+      expect(await screen.findAllByText('result.txt')).not.toHaveLength(0)
     })
   })
 

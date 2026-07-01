@@ -3583,11 +3583,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-provider-page-body.tsx": {
-    "jsx-a11y/anchor-has-content": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -7146,11 +7141,6 @@
     },
     "ts/no-explicit-any": {
       "count": 7
-    }
-  },
-  "web/service/base.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/base.ts": {

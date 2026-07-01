@@ -83,6 +83,7 @@ def make_dataset(**overrides):
         "tenant_id": "tenant-1",
         "name": "Dataset",
         "indexing_technique": "economy",
+        "chunk_structure": IndexStructureType.PARAGRAPH_INDEX,
         "created_by": "u1",
         "summary_index_setting": {"enable": True},
     }

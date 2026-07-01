@@ -1,5 +1,7 @@
 """Unit tests for SegmentService behaviors in dataset_service."""
 
+from services.dataset_ref_service import DatasetRef, DatasetRefService
+
 from .dataset_service_test_helpers import (
     Account,
     ChildChunk,
@@ -22,6 +24,41 @@ from .dataset_service_test_helpers import (
     patch,
     pytest,
 )
+
+
+def _make_segment_ref(segment_id: str = "segment-1"):
+    dataset = _make_dataset()
+    document = _make_document(dataset_id=dataset.id, tenant_id=dataset.tenant_id)
+    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    document_ref = DatasetRefService.create_document_ref(dataset_ref, document)
+    assert document_ref is not None
+    return DatasetRefService.create_segment_ref(document_ref, segment_id)
+
+
+class TestDatasetRefService:
+    """Unit tests for typed dataset resource refs."""
+
+    def test_dataset_ref_is_plain_named_tuple(self):
+        dataset_ref = DatasetRef("tenant-1", "dataset-1")
+
+        assert dataset_ref.tenant_id == "tenant-1"
+        assert dataset_ref.dataset_id == "dataset-1"
+        assert tuple(dataset_ref) == ("tenant-1", "dataset-1")
+
+    def test_create_document_ref_rejects_document_outside_dataset(self):
+        dataset = _make_dataset(dataset_id="dataset-1", tenant_id="tenant-1")
+        document = _make_document(document_id="doc-1", dataset_id="other-dataset", tenant_id="tenant-1")
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+
+        assert DatasetRefService.create_document_ref(dataset_ref, document) is None
+
+    def test_create_segment_ref_carries_full_parent_chain(self):
+        segment_ref = _make_segment_ref()
+
+        assert segment_ref.tenant_id == "tenant-1"
+        assert segment_ref.dataset_id == "dataset-1"
+        assert segment_ref.document_id == "doc-1"
+        assert segment_ref.segment_id == "segment-1"
 
 
 class TestSegmentServiceChildChunks:
@@ -265,6 +302,23 @@ class TestSegmentServiceQueries:
 
         assert result is None
 
+    def test_get_child_chunk_by_segment_ref_uses_full_ownership_chain(self):
+        child_chunk = _make_child_chunk()
+        segment_ref = _make_segment_ref()
+
+        with patch("services.dataset_service.db") as mock_db:
+            mock_db.session.scalar.return_value = child_chunk
+            result = SegmentService.get_child_chunk_by_segment_ref("child-a", segment_ref)
+
+        assert result is child_chunk
+        stmt = mock_db.session.scalar.call_args.args[0]
+        sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "child_chunks.id = 'child-a'" in sql
+        assert "child_chunks.tenant_id = 'tenant-1'" in sql
+        assert "child_chunks.dataset_id = 'dataset-1'" in sql
+        assert "child_chunks.document_id = 'doc-1'" in sql
+        assert "child_chunks.segment_id = 'segment-1'" in sql
+
     def test_get_segments_uses_status_and_keyword_filters(self):
         paginated = SimpleNamespace(items=["segment"], total=1)
 
@@ -311,6 +365,32 @@ class TestSegmentServiceQueries:
             result = SegmentService.get_segment_by_id("segment-1", "tenant-1", mock_db.session)
 
         assert result is None
+
+    def test_get_segment_by_ref_uses_full_ownership_chain(self):
+        segment = DocumentSegment(
+            tenant_id="tenant-1",
+            dataset_id="dataset-1",
+            document_id="doc-1",
+            position=1,
+            content="segment",
+            word_count=7,
+            tokens=2,
+            created_by="user-1",
+        )
+        segment.id = "segment-1"
+        segment_ref = _make_segment_ref()
+
+        with patch("services.dataset_service.db") as mock_db:
+            mock_db.session.scalar.return_value = segment
+            result = SegmentService.get_segment_by_ref(segment_ref)
+
+        assert result is segment
+        stmt = mock_db.session.scalar.call_args.args[0]
+        sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+        assert "document_segments.id = 'segment-1'" in sql
+        assert "document_segments.tenant_id = 'tenant-1'" in sql
+        assert "document_segments.dataset_id = 'dataset-1'" in sql
+        assert "document_segments.document_id = 'doc-1'" in sql
 
     def test_get_segments_by_document_and_dataset_returns_scalars_result(self):
         segment = DocumentSegment(

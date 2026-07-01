@@ -1,10 +1,11 @@
+import type { InferContractRouterInputs } from '@orpc/contract'
 import type { CollectionsAndPluginsSearchParams, MarketplaceCollection, PluginsSearchParams } from '@/app/components/plugins/marketplace/types'
 import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 import type { MarketplaceTemplate } from '@/types/marketplace-template'
 import { type } from '@orpc/contract'
 import { base } from './base'
 
-export const collectionsContract = base
+const collectionsContract = base
   .route({
     path: '/collections',
     method: 'GET',
@@ -22,7 +23,7 @@ export const collectionsContract = base
     }>(),
   )
 
-export const collectionPluginsContract = base
+const collectionPluginsContract = base
   .route({
     path: '/collections/{collectionId}/plugins',
     method: 'POST',
@@ -43,7 +44,7 @@ export const collectionPluginsContract = base
     }>(),
   )
 
-export const searchAdvancedContract = base
+const searchAdvancedContract = base
   .route({
     path: '/{kind}/search/advanced',
     method: 'POST',
@@ -56,7 +57,7 @@ export const searchAdvancedContract = base
   }>())
   .output(type<{ data: PluginsFromMarketplaceResponse }>())
 
-export const templateDetailContract = base
+const templateDetailContract = base
   .route({
     path: '/templates/{templateId}',
     method: 'GET',
@@ -68,7 +69,7 @@ export const templateDetailContract = base
   }>())
   .output(type<{ data: MarketplaceTemplate }>())
 
-export const downloadPluginContract = base
+const downloadPluginContract = base
   .route({
     path: '/plugins/{organization}/{pluginName}/{version}/download',
     method: 'GET',
@@ -81,3 +82,13 @@ export const downloadPluginContract = base
     }
   }>())
   .output(type<Blob>())
+
+export const marketplaceRouterContract = {
+  collections: collectionsContract,
+  collectionPlugins: collectionPluginsContract,
+  searchAdvanced: searchAdvancedContract,
+  templateDetail: templateDetailContract,
+  downloadPlugin: downloadPluginContract,
+}
+
+export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>

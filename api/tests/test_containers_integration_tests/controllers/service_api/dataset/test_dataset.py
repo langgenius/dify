@@ -1188,7 +1188,7 @@ class TestDatasetTagsApiDelete:
             result = api.delete(_=None)
 
         assert result == ("", 204)
-        mock_tag_svc.delete_tag.assert_called_once_with("tag-1", ANY)
+        mock_tag_svc.delete_tag.assert_called_once_with("tag-1", ANY, tag_type=TagType.KNOWLEDGE)
 
     @patch("libs.login.current_user")
     def test_delete_tag_forbidden(self, mock_current_user, app: Flask):

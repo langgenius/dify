@@ -44,6 +44,7 @@ export type PopupProps = {
   modelPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
+  onOpenMarketplace?: () => void
   onHide: () => void
 }
 function Popup({
@@ -56,6 +57,7 @@ function Popup({
   modelPredicate,
   onConfigureEmptyState,
   onInputValueChange,
+  onOpenMarketplace,
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
@@ -248,6 +250,7 @@ function Popup({
               theme={theme}
               onMarketplaceCollapsedChange={setMarketplaceCollapsed}
               onInstallPlugin={handleInstallPlugin}
+              onOpenMarketplace={onOpenMarketplace}
             />
           )}
         </div>

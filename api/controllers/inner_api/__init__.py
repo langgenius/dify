@@ -16,8 +16,8 @@ api = ExternalApi(
 inner_api_ns = Namespace("inner_api", description="Internal API operations", path="/")
 
 from . import mail as _mail
-from .agent import tools as _agent_tools
 from . import runtime_credentials as _runtime_credentials
+from .agent import tools as _agent_tools
 from .app import dsl as _app_dsl
 from .knowledge import retrieval as _knowledge_retrieval
 from .plugin import agent_config as _agent_config
@@ -30,10 +30,10 @@ api.add_namespace(inner_api_ns)
 __all__ = [
     "_agent_config",
     "_agent_drive",
+    "_agent_tools",
     "_app_dsl",
     "_knowledge_retrieval",
     "_mail",
-    "_agent_tools",
     "_plugin",
     "_runtime_credentials",
     "_workspace",

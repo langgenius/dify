@@ -495,7 +495,7 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
   })
 
-  it('aligns the global navigation spacing with the main sidebar design', () => {
+  it('aligns the global navigation spacing with the main sidebar design', async () => {
     mockInstalledApps = [createInstalledApp()]
 
     renderMainNav()
@@ -508,7 +508,7 @@ describe('MainNav', () => {
     expect(homeLink.closest('nav')).toHaveClass('isolate', 'flex', 'flex-col', 'gap-px', 'p-2')
     expect(homeLink).toHaveClass('h-8', 'w-full', 'rounded-[10px]', 'px-2', 'py-1.5')
 
-    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    const webAppsButton = await screen.findByRole('button', { name: 'explore.sidebar.webApps' })
     expect(webAppsButton.parentElement).toHaveClass('py-1', 'pr-2', 'pl-2')
 
     const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
@@ -551,7 +551,7 @@ describe('MainNav', () => {
     expect(container.querySelector('.relative.z-30')).not.toBeInTheDocument()
   })
 
-  it('hides the environment tag when app detail navigation is collapsed', () => {
+  it('hides the environment tag when app detail navigation is collapsed', async () => {
     mockPathname = '/app/app-1/overview'
     ;(useAppContext as Mock).mockReturnValue({
       ...appContextValue,
@@ -562,7 +562,7 @@ describe('MainNav', () => {
     })
 
     const { container } = renderMainNav()
-    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('app-detail-toggle'))
 
     expect(screen.queryByText('common.environment.testing')).not.toBeInTheDocument()
     expect(container.querySelector('.relative.z-30')).not.toBeInTheDocument()
@@ -659,7 +659,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
 
-  it('replaces global navigation with snippet detail navigation on snippet routes', () => {
+  it('replaces global navigation with snippet detail navigation on snippet routes', async () => {
     mockPathname = '/snippets/snippet-1/orchestrate'
     snippetDraftState.inputFields = snippetFields
     snippetNavigationState.onFieldsChange = mockSnippetFieldsChange
@@ -671,8 +671,8 @@ describe('MainNav', () => {
     expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
-    expect(screen.getByTestId('snippet-detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('snippet-sidebar-content')).toHaveAttribute('data-readonly', 'false')
+    expect(await screen.findByTestId('snippet-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(await screen.findByTestId('snippet-sidebar-content')).toHaveAttribute('data-readonly', 'false')
     expect(screen.getByText(snippet.name)).toBeInTheDocument()
     expect(screen.getByText('query')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'change snippet fields' }))
@@ -686,14 +686,14 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })).toBeInTheDocument()
   })
 
-  it('collapses snippet detail navigation from the top-right toggle', () => {
+  it('collapses snippet detail navigation from the top-right toggle', async () => {
     mockPathname = '/snippets/snippet-1/orchestrate'
     snippetDraftState.inputFields = snippetFields
     snippetNavigationState.onFieldsChange = mockSnippetFieldsChange
     snippetNavigationState.snippet = snippet
 
     renderMainNav()
-    fireEvent.click(screen.getByTestId('snippet-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('snippet-detail-toggle'))
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
@@ -704,13 +704,13 @@ describe('MainNav', () => {
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
-  it('replaces global navigation with app detail navigation on app routes', () => {
+  it('replaces global navigation with app detail navigation on app routes', async () => {
     mockPathname = '/app/app-1/overview'
 
     renderMainNav()
 
-    expect(screen.getByTestId('app-detail-top')).toBeInTheDocument()
-    expect(screen.getByTestId('app-detail-section')).toBeInTheDocument()
+    expect(await screen.findByTestId('app-detail-top')).toBeInTheDocument()
+    expect(await screen.findByTestId('app-detail-section')).toBeInTheDocument()
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByRole('complementary')).toHaveClass('w-62')
@@ -742,56 +742,56 @@ describe('MainNav', () => {
     })
   })
 
-  it('collapses app detail navigation from the top-right toggle', () => {
+  it('collapses app detail navigation from the top-right toggle', async () => {
     mockPathname = '/app/app-1/overview'
 
     renderMainNav()
-    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('app-detail-toggle'))
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16')
     expect(screen.getByRole('complementary')).not.toHaveClass('transition-none')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'false')
-    expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(await screen.findByTestId('app-detail-section')).toHaveAttribute('data-expand', 'false')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
-  it('shows app detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+  it('shows app detail navigation as a floating preview when hovering the collapsed top toggle', async () => {
     mockPathname = '/app/app-1/overview'
 
     renderMainNav()
-    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('app-detail-toggle'))
     fireEvent.mouseEnter(screen.getByTestId('app-detail-top').parentElement!)
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
     expect(screen.getAllByTestId('app-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(await screen.findByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
   })
 
-  it('persists expanded app detail navigation without width animation when clicking the hovered toggle', () => {
+  it('persists expanded app detail navigation without width animation when clicking the hovered toggle', async () => {
     mockPathname = '/app/app-1/overview'
 
     renderMainNav()
-    fireEvent.click(screen.getByTestId('app-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('app-detail-toggle'))
     fireEvent.mouseEnter(screen.getByTestId('app-detail-top').parentElement!)
     fireEvent.click(screen.getByTestId('app-detail-toggle'))
 
     expect(screen.getByRole('complementary')).toHaveClass('w-62', 'transition-none')
     expect(screen.getByRole('complementary')).not.toHaveClass('overflow-visible')
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(await screen.findByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('expand')
   })
 
-  it('replaces global navigation with dataset detail navigation on dataset routes', () => {
+  it('replaces global navigation with dataset detail navigation on dataset routes', async () => {
     mockPathname = '/datasets/dataset-1/documents'
 
     renderMainNav()
 
-    expect(screen.getByTestId('dataset-detail-top')).toBeInTheDocument()
-    expect(screen.getByTestId('dataset-detail-section')).toBeInTheDocument()
+    expect(await screen.findByTestId('dataset-detail-top')).toBeInTheDocument()
+    expect(await screen.findByTestId('dataset-detail-section')).toBeInTheDocument()
     expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByRole('complementary')).toHaveClass('w-62')
@@ -802,42 +802,44 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.menus.datasets/ })).not.toBeInTheDocument()
   })
 
-  it('collapses dataset detail navigation from the top-right toggle', () => {
+  it('collapses dataset detail navigation from the top-right toggle', async () => {
     mockPathname = '/datasets/dataset-1/documents'
 
     renderMainNav()
-    fireEvent.click(screen.getByTestId('dataset-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('dataset-detail-toggle'))
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'false')
-    expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(await screen.findByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'false')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
-  it('shows dataset detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+  it('shows dataset detail navigation as a floating preview when hovering the collapsed top toggle', async () => {
     mockPathname = '/datasets/dataset-1/documents'
 
     renderMainNav()
-    fireEvent.click(screen.getByTestId('dataset-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('dataset-detail-toggle'))
     fireEvent.mouseEnter(screen.getByTestId('dataset-detail-top').parentElement!)
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
     expect(screen.getAllByTestId('dataset-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(await screen.findByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
   })
 
-  it('replaces global navigation with agent detail navigation on roster detail routes', () => {
+  it('replaces global navigation with agent detail navigation on roster detail routes', async () => {
     mockPathname = '/roster/agent/agent-1/configure'
 
     renderMainNav()
 
-    expect(screen.getByTestId('agent-detail-top')).toBeInTheDocument()
-    expect(screen.getByTestId('agent-detail-section')).toBeInTheDocument()
+    expect(await screen.findByTestId('agent-detail-top')).toBeInTheDocument()
+    const agentDetailNavigation = await screen.findByRole('navigation', { name: 'agentV2.agentDetail.navigationLabel' })
+    expect(agentDetailNavigation).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /agentV2.agentDetail.sections.configure/ })).toHaveAttribute('href', '/roster/agent/agent-1/configure')
     expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(agentDetailNavigation).toHaveClass('px-1')
     expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
@@ -873,16 +875,16 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
   })
 
-  it('collapses agent detail navigation from the top-right toggle', () => {
+  it('collapses agent detail navigation from the top-right toggle', async () => {
     mockPathname = '/roster/agent/agent-1/configure'
 
     renderMainNav()
-    fireEvent.click(screen.getByTestId('agent-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('agent-detail-toggle'))
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'false')
-    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'false')
+    expect(await screen.findByRole('navigation', { name: 'agentV2.agentDetail.navigationLabel' })).toHaveClass('px-3')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
@@ -923,18 +925,18 @@ describe('MainNav', () => {
     )
   })
 
-  it('shows agent detail navigation as a floating preview when hovering the collapsed top toggle', () => {
+  it('shows agent detail navigation as a floating preview when hovering the collapsed top toggle', async () => {
     mockPathname = '/roster/agent/agent-1/configure'
 
     renderMainNav()
-    fireEvent.click(screen.getByTestId('agent-detail-toggle'))
+    fireEvent.click(await screen.findByTestId('agent-detail-toggle'))
     fireEvent.mouseEnter(screen.getByTestId('agent-detail-top').parentElement!)
 
     expect(screen.getByRole('complementary')).toHaveClass('w-16', 'overflow-visible')
     expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
     expect(screen.getAllByTestId('agent-detail-top')).toHaveLength(1)
     expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')
+    expect(await screen.findByRole('navigation', { name: 'agentV2.agentDetail.navigationLabel' })).toHaveClass('px-1')
   })
 
   it.each([
@@ -1258,12 +1260,12 @@ describe('MainNav', () => {
     }
   })
 
-  it('collapses and expands installed web apps from the section arrow', () => {
+  it('collapses and expands installed web apps from the section arrow', async () => {
     mockInstalledApps = [createInstalledApp()]
 
     renderMainNav()
 
-    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    const webAppsButton = await screen.findByRole('button', { name: 'explore.sidebar.webApps' })
     expect(webAppsButton).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText('Alpha App')).toBeInTheDocument()
 

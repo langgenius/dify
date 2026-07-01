@@ -369,6 +369,35 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
     })
+
+    it('should keep permission state loading while workspace permission keys are loading', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isLoadingWorkspacePermissionKeys: true,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: [] as string[],
+      } as ReturnType<typeof useAppContext>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.isPermissionLoading).toBe(true)
+      expect(result.current.canInstallPlugin).toBe(false)
+    })
+
+    it('should keep permission state loading while current workspace is loading', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isLoadingCurrentWorkspace: true,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install'],
+      } as ReturnType<typeof useAppContext>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.isPermissionLoading).toBe(true)
+    })
   })
 
   describe('RBAC permissions', () => {
