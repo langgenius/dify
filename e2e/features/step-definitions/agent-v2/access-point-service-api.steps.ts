@@ -6,7 +6,6 @@ import {
   sendAgentServiceApiChatMessage,
   setAgentApiAccess,
 } from '../../agent-v2/support/access-point'
-import { publishAgent } from '../../agent-v2/support/agent'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
 import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
 
@@ -18,10 +17,6 @@ Given(
     this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
   },
 )
-
-Given('the Agent v2 draft has been published via API', async function (this: DifyWorld) {
-  await publishAgent(getCurrentAgentId(this))
-})
 
 Given(
   'Agent v2 Backend service API access has been enabled with a key via API',

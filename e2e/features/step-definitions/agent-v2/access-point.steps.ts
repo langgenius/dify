@@ -1,12 +1,16 @@
 import type { DifyWorld } from '../../support/world'
-import { Then, When } from '@cucumber/cucumber'
+import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentAccessPath } from '../../agent-v2/support/agent'
+import { getAgentAccessPath, publishAgent } from '../../agent-v2/support/agent'
 import {
   getAccessRegion,
   getCurrentAgentId,
   getPreseededResource,
 } from './access-point-helpers'
+
+Given('the Agent v2 draft has been published via API', async function (this: DifyWorld) {
+  await publishAgent(getCurrentAgentId(this))
+})
 
 When('I open the Agent v2 Access Point page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentAccessPath(getCurrentAgentId(this)))
