@@ -21,6 +21,7 @@ Use API setup for prerequisite state, then use Playwright only for user-observab
 - `@infra` — infrastructure or readiness checks.
 - `@build` — Build mode and Build draft behavior.
 - `@files` — Files section upload, display, and fixture behavior.
+- `@files-limits` — feature-gated file format, size, count, and in-progress upload limit behavior.
 - `@knowledge` — Knowledge Retrieval configuration display, persistence, and reference cleanup.
 - `@advanced-settings` — Env Editor, Content Moderation, and related Advanced Settings behavior.
 - `@agent-edit` — saved Agent detail/configuration display surfaces.
@@ -159,5 +160,7 @@ Blocked precondition: <resource> missing <capability>. Owner: seed/product. Reme
 ```
 
 Use partial coverage only when current product behavior is intentionally narrower than the written requirement and the test still asserts a real user-visible behavior. Example: Files are currently flat in Agent config files, so the flat Files list can be asserted while tree display remains blocked until product support exists.
+
+File format, size, count, and in-progress upload limit cases are feature-gated until the product exposes stable Agent config file restrictions and user-visible recovery/error states. Do not convert `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
 
 Do not mark a scenario as complete if it only proves setup state and does not assert the user-visible behavior or persisted product contract required by the case.
