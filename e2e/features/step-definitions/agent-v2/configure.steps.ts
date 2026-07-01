@@ -743,6 +743,17 @@ Then('Agent v2 Content Moderation Settings should be available', async function 
   }
 })
 
+Then('Agent v2 Build chat Dify Tool writeback should be available', async function (this: DifyWorld) {
+  const toolsSection = this.getPage().getByRole('region', { name: 'Tools' })
+
+  await expect(toolsSection).toBeVisible({ timeout: 30_000 })
+
+  return skipBlockedPrecondition(
+    this,
+    'Build draft Dify Tool writeback is not available: Build draft currently supports files, skills, and env only.',
+  )
+})
+
 Then(
   'I should see the Agent v2 environment variables from the valid import in Advanced Settings',
   async function (this: DifyWorld) {

@@ -44,3 +44,10 @@ Feature: Agent v2 build draft
     When I refresh the current page
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
+
+  @build-tool-writeback @feature-gated
+  Scenario: Applying a Build draft can add Dify Tools to the Agent configuration
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    Then Agent v2 Build chat Dify Tool writeback should be available
