@@ -1,7 +1,7 @@
 'use client'
 
+import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppListCategory } from './app-type-filter-shared'
-import type { AppListSortBy } from '@/contract/console/apps'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
@@ -12,6 +12,9 @@ import Link from '@/next/link'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
+
+type AppListQuery = NonNullable<GetAppsData['query']>
+type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 
 type AppListHeaderFiltersProps = {
   category: AppListCategory
