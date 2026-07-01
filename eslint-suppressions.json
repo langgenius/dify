@@ -4270,11 +4270,6 @@
       "count": 1
     }
   },
-  "web/app/components/share/text-generation/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/share/text-generation/no-data/index.tsx": {
     "ts/no-empty-object-type": {
       "count": 1

@@ -6,7 +6,7 @@ import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -52,10 +52,14 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     notify,
     t,
   })
-  useEffect(() => {
+  // Reset run control when switching into batch mode during render instead of in an effect.
+  // Tracking the previous value keeps the reset firing only when isCallBatchAPI changes.
+  const [prevIsCallBatchAPI, setPrevIsCallBatchAPI] = useState(isCallBatchAPI)
+  if (isCallBatchAPI !== prevIsCallBatchAPI) {
+    setPrevIsCallBatchAPI(isCallBatchAPI)
     if (isCallBatchAPI)
       setRunControl(null)
-  }, [isCallBatchAPI])
+  }
   const showResultPanel = useCallback(() => {
     setTimeout(() => {
       showResultPanelState()
