@@ -48,7 +48,6 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
     InteractiveSurfaceDeliveryMethod,
 )
-from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -61,6 +60,7 @@ from core.workflow.nodes.human_input.entities import (
     UserActionConfig,
 )
 from core.workflow.nodes.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from models.agent_config_entities import AgentHumanContactConfig
 
 # Default ask_human tool name (see ``DifyAskHumanLayerConfig.tool_name``). The

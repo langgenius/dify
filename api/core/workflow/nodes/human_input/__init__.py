@@ -20,11 +20,12 @@ from .enums import (
     TimeoutUnit,
     ValueSourceType,
 )
-from .pause_reason import HUMAN_INPUT_REQUIRED_REASON_TYPE, HumanInputRequired, PauseReason
+from .pause_reason import DifyHITLEventType, HumanInputRequired, PauseReason
 from .session_binding import SessionBinding, default_session_binding
 
 __all__ = [
     "ButtonStyle",
+    "DifyHITLEventType",
     "FileInputConfig",
     "FileListInputConfig",
     "FormDefinition",
@@ -35,16 +36,15 @@ __all__ = [
     "HumanInputNodeData",
     "HumanInputRequired",
     "HumanInputSubmissionValidationError",
-    "HUMAN_INPUT_REQUIRED_REASON_TYPE",
     "ParagraphInputConfig",
     "PauseReason",
     "SelectInputConfig",
     "SessionBinding",
-    "default_session_binding",
     "StringListSource",
     "StringSource",
     "TimeoutUnit",
     "UserActionConfig",
     "ValueSourceType",
+    "default_session_binding",
     "validate_human_input_submission",
 ]

@@ -7,13 +7,12 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from configs import dify_config
-from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
-from graphon.variables.factory import build_segment
-from graphon.variables.segments import Segment
-
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.node_runtime import DifyFileReferenceFactory
+from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
+from graphon.variables.factory import build_segment
+from graphon.variables.segments import Segment
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 
 from .entities import (
@@ -212,10 +211,7 @@ class DifyHITLCallback:
         """
         inputs_by_name: dict[str, FormInputConfig] = {}
         if form_inputs is not None:
-            inputs_by_name = {
-                form_input.output_variable_name: form_input
-                for form_input in form_inputs
-            }
+            inputs_by_name = {form_input.output_variable_name: form_input for form_input in form_inputs}
 
         rendered_content = form_content
         for field_name in field_names:
@@ -263,10 +259,7 @@ class DifyHITLCallback:
     ) -> dict[str, Segment]:
         """Reconstruct graphon runtime values from validated submission payloads."""
         restored_data: dict[str, Segment] = {}
-        inputs_by_name = {
-            form_input.output_variable_name: form_input
-            for form_input in self._node_data.inputs
-        }
+        inputs_by_name = {form_input.output_variable_name: form_input for form_input in self._node_data.inputs}
 
         for name, value in submitted_data.items():
             form_input = inputs_by_name.get(name)

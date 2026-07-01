@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -7,16 +8,21 @@ from graphon.entities.pause_reason import PauseReasonType, SchedulingPause
 
 from .entities import FormInputConfig, UserActionConfig
 
-try:
-    _LEGACY_HUMAN_INPUT_REQUIRED = PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED
-except AttributeError:
-    _LEGACY_HUMAN_INPUT_REQUIRED = PauseReasonType.HUMAN_INPUT_REQUIRED
 
-HUMAN_INPUT_REQUIRED_REASON_TYPE = _LEGACY_HUMAN_INPUT_REQUIRED
+class DifyHITLEventType(StrEnum):
+    """Dify HITL event type.
+    only used for discriminated union tag.
+
+    """
+
+    # Ideally this should be a string constaint. However, we cannot put
+    # string constant into Literal type cosntructor. We have to warp it as a
+    # string enumeration.
+    HUMAN_INPUT_REQUIRED = PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED.value
 
 
 class HumanInputRequired(BaseModel):
-    TYPE: Literal[HUMAN_INPUT_REQUIRED_REASON_TYPE] = HUMAN_INPUT_REQUIRED_REASON_TYPE
+    TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
     form_id: str
     form_content: str
     inputs: list[FormInputConfig] = Field(default_factory=list[FormInputConfig])

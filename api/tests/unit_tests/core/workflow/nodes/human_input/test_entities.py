@@ -30,17 +30,12 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
     resolve_default_values,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.system_variables import build_system_variables
-from graphon.entities import GraphInitParams
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import PauseRequestedEvent
-from graphon.node_events.node import StreamCompletedEvent
 from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
@@ -58,6 +53,11 @@ from core.workflow.nodes.human_input.enums import (
     TimeoutUnit,
     ValueSourceType,
 )
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import GraphInitParams
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.node_events import PauseRequestedEvent
+from graphon.node_events.node import StreamCompletedEvent
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool

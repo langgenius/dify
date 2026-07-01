@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
 from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
@@ -24,22 +23,22 @@ from core.workflow.human_input_adapter import (
     adapt_human_input_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
+from core.workflow.node_factory import (
+    LATEST_VERSION,
+    get_node_type_classes_mapping,
+    is_start_node_type,
+)
+from core.workflow.node_runtime import (
+    apply_dify_debug_email_recipient,
+)
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
     resolve_default_values,
 )
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from core.workflow.node_factory import (
-    LATEST_VERSION,
-    DifyGraphInitContext,
-    get_node_type_classes_mapping,
-    is_start_node_type,
-)
-from core.workflow.node_runtime import (
-    DifyFileReferenceFactory,
-    apply_dify_debug_email_recipient,
-)
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -64,10 +63,8 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
-from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from graphon.nodes.start.entities import StartNodeData
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import VariablePool
 from graphon.variable_loader import load_into_variable_pool
 from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
@@ -1358,7 +1355,9 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             user_id=user_id,
         )
-        human_input_node_data = HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_config["data"]))
+        human_input_node_data = HumanInputNodeData.model_validate(
+            adapt_human_input_node_data_for_graph(node_config["data"])
+        )
         variable_mapping = human_input_node_data.extract_variable_selector_to_variable_mapping(node_config["id"])
         normalized_user_inputs: dict[str, Any] = dict(manual_inputs)
 

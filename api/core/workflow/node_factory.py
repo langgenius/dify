@@ -33,12 +33,6 @@ from core.workflow.node_runtime import (
     DifyToolNodeRuntime,
     build_dify_llm_file_saver,
 )
-from core.workflow.nodes.human_input.callback import (
-    DifyHITLCallback,
-    render_form_content_before_submission,
-    resolve_default_values,
-)
-from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyPresentationProvider,
@@ -49,6 +43,12 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
+from core.workflow.nodes.human_input.callback import (
+    DifyHITLCallback,
+    render_form_content_before_submission,
+    resolve_default_values,
+)
+from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData

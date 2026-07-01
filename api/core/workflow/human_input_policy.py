@@ -7,7 +7,7 @@ from typing import Any, NamedTuple
 from core.workflow.nodes.human_input.entities import FormInputConfig, SelectInputConfig
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import (
-    HUMAN_INPUT_REQUIRED_REASON_TYPE,
+    DifyHITLEventType,
     HumanInputRequired,
     PauseReason,
 )
@@ -101,7 +101,7 @@ def enrich_human_input_pause_reasons(
     enriched: list[dict[str, Any]] = []
     for reason in reasons:
         updated = dict(reason)
-        if updated.get("TYPE") == HUMAN_INPUT_REQUIRED_REASON_TYPE:
+        if updated.get("TYPE") == DifyHITLEventType.HUMAN_INPUT_REQUIRED:
             form_id = updated.get("form_id")
             if isinstance(form_id, str):
                 disposition = dispositions_by_form_id.get(form_id)

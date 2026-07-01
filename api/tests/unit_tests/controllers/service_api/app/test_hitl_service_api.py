@@ -30,13 +30,12 @@ from core.app.entities.task_entities import (
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
-from core.workflow.nodes.human_input.pause_reason import HUMAN_INPUT_REQUIRED_REASON_TYPE, HumanInputRequired
-from core.workflow.system_variables import build_system_variables
-from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import PauseReasonType
-from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.enums import CreatorUserRole
@@ -113,14 +112,14 @@ def _build_advanced_chat_paused_blocking_response() -> AdvancedChatPausedBlockin
         answer="partial",
         metadata={"usage": {"total_tokens": 1}},
         created_at=1,
-            paused_nodes=["node-1"],
-            reasons=[
-                {
-                    "type": HUMAN_INPUT_REQUIRED_REASON_TYPE,
-                    "form_id": "form-1",
-                    "expiration_time": 100,
-                }
-            ],
+        paused_nodes=["node-1"],
+        reasons=[
+            {
+                "type": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
+                "form_id": "form-1",
+                "expiration_time": 100,
+            }
+        ],
         status=WorkflowExecutionStatus.PAUSED,
         elapsed_time=0.1,
         total_tokens=0,
@@ -384,7 +383,7 @@ class TestHitlServiceApi:
         assert response["event"] == "workflow_paused"
         assert response["workflow_run_id"] == "run-1"
         assert response["answer"] == "partial"
-        assert response["data"]["reasons"][0]["type"] == HUMAN_INPUT_REQUIRED_REASON_TYPE
+        assert response["data"]["reasons"][0]["type"] == DifyHITLEventType.HUMAN_INPUT_REQUIRED
         assert response["data"]["reasons"][0]["expiration_time"] == 100
         assert "human_input_forms" not in response["data"]
 
@@ -476,7 +475,7 @@ class TestHitlServiceApi:
                     outputs={},
                     reasons=[
                         {
-                            "type": HUMAN_INPUT_REQUIRED_REASON_TYPE,
+                            "type": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
                             "form_id": "form-1",
                             "node_id": "node-1",
                             "expiration_time": 123,
