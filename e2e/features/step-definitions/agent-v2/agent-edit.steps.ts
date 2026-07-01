@@ -2,6 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import { Then } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { agentBuilderExpectedTokens, agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
+import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
 import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
 import { expectProviderToolActionVisible, openAgentKnowledgeRetrievalDialog } from './configure-helpers'
 
@@ -80,6 +81,20 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
   await expectProviderToolActionVisible(
     toolsSection,
     agentBuilderPreseededResources.tavilySearchTool,
+  )
+})
+
+Then('Agent v2 Tool credential error state should be available', async function (this: DifyWorld) {
+  const toolsSection = this.getPage().getByRole('region', { name: 'Tools' })
+
+  await expect(toolsSection).toBeVisible({ timeout: 30_000 })
+  return skipBlockedPrecondition(
+    this,
+    'Agent v2 Tool credential error state is not covered: the current fixture only proves usable and not-authorized tool states.',
+    {
+      owner: 'seed/product',
+      remediation: 'Define a stable invalid credential fixture and the expected user-visible error label before enabling this scenario.',
+    },
   )
 })
 

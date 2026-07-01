@@ -8,7 +8,10 @@ import {
   setAgentApiAccess,
   setAgentSiteAccessAndGetURL,
 } from '../../agent-v2/support/agent'
-import { agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
+import {
+  agentBuilderExpectedTokens,
+  agentBuilderPreseededResources,
+} from '../../agent-v2/support/agent-builder-resources'
 
 const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)
@@ -62,6 +65,16 @@ Given(
     this.registerCleanup(async () => {
       await setAgentSiteAccessAndGetURL(agent.id, true)
     })
+  },
+)
+
+When(
+  'Agent v2 Web app access has been enabled via API',
+  async function (this: DifyWorld) {
+    this.agentBuilder.accessPoint.webAppURL = await setAgentSiteAccessAndGetURL(
+      getCurrentAgentId(this),
+      true,
+    )
   },
 )
 
@@ -167,6 +180,30 @@ When('I launch the Agent v2 Web app', async function (this: DifyWorld) {
   this.agentBuilder.accessPoint.webAppPage = webAppPage
 })
 
+When('I open the Agent v2 Web app URL', async function (this: DifyWorld) {
+  const webAppURL = this.agentBuilder.accessPoint.webAppURL
+  if (!webAppURL)
+    throw new Error('No Agent v2 Web app URL was recorded.')
+  if (!this.context)
+    throw new Error('Playwright browser context has not been initialized.')
+
+  const webAppPage = await this.context.newPage()
+  await webAppPage.goto(webAppURL)
+
+  this.agentBuilder.accessPoint.webAppPage = webAppPage
+})
+
+When('I send an E2E message in the Agent v2 Web app', async function (this: DifyWorld) {
+  const webAppPage = this.agentBuilder.accessPoint.webAppPage
+  if (!webAppPage)
+    throw new Error('No Agent v2 Web app page was opened.')
+
+  const messageInput = webAppPage.getByRole('textbox').last()
+  await expect(messageInput).toBeEditable({ timeout: 30_000 })
+  await messageInput.fill('Please reply with the test success marker.')
+  await messageInput.press('Enter')
+})
+
 Then('the Agent v2 Web app should open in a new tab', async function (this: DifyWorld) {
   const webAppPage = this.agentBuilder.accessPoint.webAppPage
   const webAppURL = this.agentBuilder.accessPoint.webAppURL
@@ -178,6 +215,20 @@ Then('the Agent v2 Web app should open in a new tab', async function (this: Dify
   this.agentBuilder.accessPoint.webAppPage = undefined
   this.agentBuilder.accessPoint.webAppURL = undefined
 })
+
+Then(
+  'the Agent v2 Web app response should include the updated E2E marker',
+  async function (this: DifyWorld) {
+    const webAppPage = this.agentBuilder.accessPoint.webAppPage
+    if (!webAppPage)
+      throw new Error('No Agent v2 Web app page was opened.')
+
+    await expect(webAppPage.getByText(agentBuilderExpectedTokens.updatedAgentReply))
+      .toBeVisible({ timeout: 120_000 })
+    await webAppPage.close()
+    this.agentBuilder.accessPoint.webAppPage = undefined
+  },
+)
 
 When('I open Agent v2 Embedded configuration', async function (this: DifyWorld) {
   await getWebAppCard(this).getByRole('button', { name: 'Embedded' }).click()
