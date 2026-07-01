@@ -92,6 +92,7 @@ Then('the Agent v2 Web app should open in a new tab', async function (this: Dify
     throw new Error('No Agent v2 Web app page was opened.')
 
   await expect(webAppPage).toHaveURL(webAppURL)
+  await expect(webAppPage.getByRole('textbox').last()).toBeEditable({ timeout: 30_000 })
   await webAppPage.close()
   this.agentBuilder.accessPoint.webAppPage = undefined
   this.agentBuilder.accessPoint.webAppURL = undefined
