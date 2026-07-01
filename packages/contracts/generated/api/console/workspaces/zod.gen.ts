@@ -2002,19 +2002,6 @@ export const zProviderConfig = z.object({
 })
 
 /**
- * TriggerOAuthClientResponse
- */
-export const zTriggerOAuthClientResponse = z.object({
-  configured: z.boolean(),
-  custom_configured: z.boolean(),
-  custom_enabled: z.boolean(),
-  oauth_client_schema: z.array(zProviderConfig),
-  params: z.record(z.string(), z.unknown()),
-  redirect_uri: z.string(),
-  system_configured: z.boolean(),
-})
-
-/**
  * OAuthSchema
  *
  * OAuth schema
@@ -2022,6 +2009,52 @@ export const zTriggerOAuthClientResponse = z.object({
 export const zOAuthSchema = z.object({
   client_schema: z.array(zProviderConfig).optional(),
   credentials_schema: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * TriggerProviderConfigOptionResponse
+ */
+export const zTriggerProviderConfigOptionResponse = z.object({
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * TriggerProviderConfigResponse
+ */
+export const zTriggerProviderConfigResponse = z.object({
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zI18nObject.nullish(),
+  label: zI18nObject.nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zTriggerProviderConfigOptionResponse).nullish(),
+  placeholder: zI18nObject.nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
+  type: z.enum([
+    'app-selector',
+    'array[tools]',
+    'boolean',
+    'model-selector',
+    'secret-input',
+    'select',
+    'text-input',
+  ]),
+  url: z.string().nullish(),
+})
+
+/**
+ * TriggerOAuthClientResponse
+ */
+export const zTriggerOAuthClientResponse = z.object({
+  configured: z.boolean(),
+  custom_configured: z.boolean(),
+  custom_enabled: z.boolean(),
+  oauth_client_schema: z.array(zTriggerProviderConfigResponse),
+  params: z.record(z.string(), z.unknown()),
+  redirect_uri: z.string(),
+  system_configured: z.boolean(),
 })
 
 /**

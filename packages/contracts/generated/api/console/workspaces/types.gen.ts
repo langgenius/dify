@@ -824,7 +824,7 @@ export type TriggerOAuthClientResponse = {
   configured: boolean
   custom_configured: boolean
   custom_enabled: boolean
-  oauth_client_schema: Array<ProviderConfig>
+  oauth_client_schema: Array<TriggerProviderConfigResponse>
   params: {
     [key: string]: unknown
   }
@@ -1342,6 +1342,27 @@ export type ProviderConfig = {
 
 export type TriggerCreationMethod = 'APIKEY' | 'MANUAL' | 'OAUTH'
 
+export type TriggerProviderConfigResponse = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<TriggerProviderConfigOptionResponse> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type:
+    | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
+  url?: string | null
+}
+
 export type RequestLog = {
   created_at: string
   endpoint: string
@@ -1627,6 +1648,11 @@ export type CoreEntitiesProviderEntitiesBasicProviderConfigType
     | 'secret-input'
     | 'select'
     | 'text-input'
+
+export type TriggerProviderConfigOptionResponse = {
+  label: I18nObject
+  value: string
+}
 
 export type AiModelEntityResponse = {
   deprecated?: boolean

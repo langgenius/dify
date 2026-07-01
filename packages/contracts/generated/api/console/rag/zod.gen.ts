@@ -547,15 +547,7 @@ export const zDatasetRerankingModelResponse = z.object({
 /**
  * Type
  */
-export const zType = z.enum([
-  'app-selector',
-  'array[tools]',
-  'boolean',
-  'model-selector',
-  'secret-input',
-  'select',
-  'text-input',
-])
+export const zType = z.enum(['github', 'marketplace', 'package'])
 
 /**
  * Github
