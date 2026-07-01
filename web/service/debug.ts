@@ -3,7 +3,7 @@ import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
-import { get, post, ssePost } from './base'
+import { get, post, sseGeneratorPost, ssePost } from './base'
 
 type BasicAppFirstRes = {
   prompt: string
@@ -122,6 +122,12 @@ export type GenerateWorkflowResponse = {
    * the planner omits it; the caller supplies a 🤖 fallback.
    */
   icon?: string
+  /**
+   * Resolved app mode. Echoes the request mode, except when the request used
+   * ``mode: 'auto'`` — then this is the concrete mode the planner picked, which
+   * the caller uses to decide which app type to create.
+   */
+  mode?: 'workflow' | 'advanced-chat'
   /** Human-readable concatenation of ``errors[].detail``. "" on success. */
   error?: string
   /** Structured errors with stable codes for FE-localised mapping. [] on success. */
@@ -129,7 +135,8 @@ export type GenerateWorkflowResponse = {
 }
 
 export type GenerateWorkflowBody = {
-  mode: 'workflow' | 'advanced-chat'
+  /** ``'auto'`` lets the planner pick Workflow vs Chatflow; the resolved mode comes back on the response. */
+  mode: 'workflow' | 'advanced-chat' | 'auto'
   instruction: string
   ideal_output?: string
   model_config: { provider: string, name: string, mode: string, completion_params?: Record<string, unknown> }
@@ -165,6 +172,93 @@ export const generateWorkflow = (body: GenerateWorkflowBody, options?: GenerateW
     })
   }
   return post<GenerateWorkflowResponse>('/workflow-generate', { body })
+}
+
+// ─── Plan-first streaming (cmd+k generator) ──────────────────────────────────
+
+/** One node in the planner's high-level plan, shown before the graph builds. */
+type WorkflowGenPlanNode = {
+  label: string
+  node_type: string
+  purpose?: string
+}
+
+/** A start-node input the generated app will ask the end-user for. */
+type WorkflowGenPlanInput = {
+  variable: string
+  label?: string
+  type?: string
+}
+
+/** The planner result, streamed ahead of the built graph as the ``plan`` event. */
+export type WorkflowGenPlan = {
+  title?: string
+  description?: string
+  app_name?: string
+  icon?: string
+  /** Resolved mode — concrete even when the request used ``mode: 'auto'``. */
+  mode?: 'workflow' | 'advanced-chat'
+  nodes: WorkflowGenPlanNode[]
+  start_inputs?: WorkflowGenPlanInput[]
+}
+
+export type GenerateWorkflowStreamCallbacks = {
+  onPlan?: (plan: WorkflowGenPlan) => void
+  onResult?: (result: GenerateWorkflowResponse) => void
+  onError?: (message: string) => void
+  onCompleted?: () => void
+  getAbortController?: (controller: AbortController) => void
+}
+
+/**
+ * Plan-first streaming variant of ``generateWorkflow``. The backend emits the
+ * planner result (``onPlan``) as soon as it's ready — typically a few seconds
+ * in — then the built graph (``onResult``) once the builder + validation
+ * finish. Lets the modal show real progress (an outline of the plan) instead
+ * of a guessed phase timer, and surfaces the graph the moment it lands.
+ */
+export const generateWorkflowStream = (
+  body: GenerateWorkflowBody,
+  callbacks: GenerateWorkflowStreamCallbacks,
+) => {
+  return sseGeneratorPost('/workflow-generate/stream', body, {
+    onPlan: data => callbacks.onPlan?.(data as unknown as WorkflowGenPlan),
+    onResult: data => callbacks.onResult?.(data as unknown as GenerateWorkflowResponse),
+    onError: callbacks.onError,
+    onCompleted: callbacks.onCompleted,
+    getAbortController: callbacks.getAbortController,
+  })
+}
+
+// ─── AI-generated instruction suggestions (generator "ideas" chips) ───────────
+
+export type WorkflowInstructionSuggestionsBody = {
+  mode: 'workflow' | 'advanced-chat'
+  /** UI language so suggestions come back localized, e.g. 'zh-Hans'. */
+  language?: string
+  count?: number
+}
+
+export type WorkflowInstructionSuggestionsResponse = {
+  suggestions: string[]
+}
+
+/**
+ * Fetch a handful of short, workspace-grounded example instructions for the
+ * generator's "ideas" chips. Backed by the tenant default model; the backend
+ * soft-fails to ``{ suggestions: [] }`` (no toast), so the caller falls back to
+ * its static curated list on an empty result.
+ */
+export const fetchWorkflowInstructionSuggestions = (
+  body: WorkflowInstructionSuggestionsBody,
+  options?: GenerateWorkflowOptions,
+) => {
+  if (options?.getAbortController) {
+    return post<WorkflowInstructionSuggestionsResponse>('/workflow-generate/suggestions', { body }, {
+      getAbortController: options.getAbortController,
+    })
+  }
+  return post<WorkflowInstructionSuggestionsResponse>('/workflow-generate/suggestions', { body })
 }
 
 export const fetchPromptTemplate = ({
