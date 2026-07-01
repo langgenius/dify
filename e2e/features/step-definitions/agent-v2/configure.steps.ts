@@ -119,6 +119,18 @@ const expectAgentConfigFileVisible = async (
   ).toBeVisible({ timeout: 30_000 })
 }
 
+const expectAgentConfigFileHidden = async (
+  world: DifyWorld,
+  material: keyof typeof agentBuilderTestMaterials,
+) => {
+  await expect(
+    world.getPage().getByRole('button', {
+      exact: true,
+      name: agentBuilderTestMaterials[material],
+    }),
+  ).not.toBeVisible()
+}
+
 const expectAgentConfigFileSaved = async (
   world: DifyWorld,
   material: keyof typeof agentBuilderTestMaterials,
@@ -188,6 +200,25 @@ const expectAgentEnvVariableVisible = async (
     hasValue: true,
   })
   await expect(advancedSettings.getByText('Plain', { exact: true })).toBeVisible()
+}
+
+const expectAgentEnvVariableHidden = async (
+  world: DifyWorld,
+  key: string,
+) => {
+  const advancedSettings = await openAgentAdvancedSettings(world.getPage())
+
+  await expect.poll(
+    async () => {
+      const text = await advancedSettings.textContent()
+      const inputValues = await advancedSettings.getByRole('textbox').evaluateAll(inputs =>
+        inputs.map(input => (input as HTMLInputElement).value),
+      )
+
+      return inputValues.includes(key) || !!text?.includes(key)
+    },
+    { timeout: 30_000 },
+  ).toBe(false)
 }
 
 const expectNormalAgentPromptDraft = async (world: DifyWorld) => {
@@ -685,6 +716,10 @@ Then('I should see the small Agent v2 file in the Files section', async function
   await expectAgentConfigFileVisible(this, 'smallFile')
 })
 
+Then('I should not see the small Agent v2 file in the Files section', async function (this: DifyWorld) {
+  await expectAgentConfigFileHidden(this, 'smallFile')
+})
+
 Then('I should see the special-name Agent v2 file in the Files section', async function (this: DifyWorld) {
   await expectAgentConfigFileVisible(this, 'specialFilename')
 })
@@ -696,6 +731,15 @@ Then('I should see the e2e-summary-skill Skill in the Skills section', async fun
     exact: true,
     name: agentBuilderPreseededResources.summarySkill,
   })).toBeVisible({ timeout: 30_000 })
+})
+
+Then('I should not see the e2e-summary-skill Skill in the Skills section', async function (this: DifyWorld) {
+  const skillsSection = this.getPage().getByRole('region', { name: 'Skills' })
+
+  await expect(skillsSection.getByRole('button', {
+    exact: true,
+    name: agentBuilderPreseededResources.summarySkill,
+  })).not.toBeVisible()
 })
 
 Then('I should see one e2e-summary-skill Skill in the Skills section', async function (this: DifyWorld) {
@@ -996,6 +1040,13 @@ Then(
 )
 
 Then(
+  'I should not see the supported E2E environment variable in Advanced Settings',
+  async function (this: DifyWorld) {
+    await expectAgentEnvVariableHidden(this, agentBuilderFixedInputs.envPlainKey)
+  },
+)
+
+Then(
   'I should see the Agent v2 environment variables from the invalid import in Advanced Settings',
   async function (this: DifyWorld) {
     const page = this.getPage()
@@ -1080,6 +1131,31 @@ Then(
       fileNames: expect.arrayContaining([agentBuilderTestMaterials.smallFile]),
       prompt: { system_prompt: updatedAgentPrompt },
       skillNames: expect.arrayContaining([agentBuilderPreseededResources.summarySkill]),
+    })
+  },
+)
+
+Then(
+  'the Agent v2 draft should not include the supported Build draft config',
+  async function (this: DifyWorld) {
+    await expect.poll(
+      async () => {
+        const agentSoul = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
+        const variables = agentSoul?.env?.variables ?? []
+
+        return {
+          envValue: getAgentEnvVariableValue(variables, agentBuilderFixedInputs.envPlainKey),
+          fileNames: agentSoul?.config_files?.map(file => file.name) ?? [],
+          prompt: agentSoul?.prompt,
+          skillNames: agentSoul?.config_skills?.map(skill => skill.name) ?? [],
+        }
+      },
+      { timeout: 30_000 },
+    ).toEqual({
+      envValue: undefined,
+      fileNames: expect.not.arrayContaining([agentBuilderTestMaterials.smallFile]),
+      prompt: { system_prompt: normalAgentPrompt },
+      skillNames: expect.not.arrayContaining([agentBuilderPreseededResources.summarySkill]),
     })
   },
 )

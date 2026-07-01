@@ -28,6 +28,32 @@ Feature: Agent v2 build draft
     Then I should see the normal E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
+  Scenario: Discarding a Build draft does not apply supported configuration changes
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    And an Agent v2 Build draft adds the supported E2E files, skills, and env
+    When I open the Agent v2 configure page
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the small Agent v2 file in the Files section
+    And I should see the e2e-summary-skill Skill in the Skills section
+    And I should see the supported E2E environment variable in Advanced Settings
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    When I discard the Agent v2 Build draft
+    Then I should see the normal E2E prompt in the Agent v2 prompt editor
+    And I should not see the small Agent v2 file in the Files section
+    And I should not see the e2e-summary-skill Skill in the Skills section
+    And I should not see the supported E2E environment variable in Advanced Settings
+    And the Agent v2 draft should not include the supported Build draft config
+    And the Agent v2 Build draft should no longer be active
+    When I refresh the current page
+    Then I should see the normal E2E prompt in the Agent v2 prompt editor
+    And I should not see the small Agent v2 file in the Files section
+    And I should not see the e2e-summary-skill Skill in the Skills section
+    And I should not see the supported E2E environment variable in Advanced Settings
+    And the Agent v2 draft should not include the supported Build draft config
+    And the Agent v2 Build draft should no longer be active
+
   Scenario: Applying a pending Build draft updates the normal Agent configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
