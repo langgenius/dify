@@ -1390,6 +1390,17 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+
 export type AgentConfigVersionResponse = {
   id: string
   kind: 'build_draft' | 'draft' | 'snapshot'

@@ -940,6 +940,35 @@ export const zImport = z.object({
 })
 
 /**
+ * AppImportResponse
+ */
+export const zAppImportResponse = z.object({
+  app_id: z.string().nullish(),
+  app_mode: z.string().nullish(),
+  current_dsl_version: z.string(),
+  error: z.string().optional().default(''),
+  id: z.string(),
+  imported_dsl_version: z.string().optional().default(''),
+  status: zImportStatus,
+})
+
+export const zJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
+
+/**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponse = zJsonValue
+
+/**
  * AgentConfigVersionResponse
  */
 export const zAgentConfigVersionResponse = z.object({
