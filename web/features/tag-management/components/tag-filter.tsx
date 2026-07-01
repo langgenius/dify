@@ -1,5 +1,5 @@
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
-import type { Tag, TagType } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { useQuery } from '@tanstack/react-query'
@@ -31,7 +31,7 @@ export const TagFilter = ({
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.get.queryOptions({
     input: {
       query: {
         type,

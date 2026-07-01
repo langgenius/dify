@@ -34,8 +34,8 @@ const workspaceMenuAlignOffset = -28
 const workspaceCardSkeletonClassName = 'animate-pulse rounded bg-text-quaternary opacity-20 motion-reduce:animate-none'
 const workspacePlans = new Set<string>(Object.values(Plan))
 
-function isWorkspacePlan(plan: string): plan is Plan {
-  return workspacePlans.has(plan)
+function isWorkspacePlan(plan: string | null | undefined): plan is Plan {
+  return !!plan && workspacePlans.has(plan)
 }
 
 function WorkspaceCardSkeleton({
