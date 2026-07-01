@@ -31,15 +31,16 @@ const MembersPage = () => {
   const language = getAccessControlTemplateLanguage(locale)
 
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, workspacePermissionKeys } = useAppContext()
-  const { data, refetch } = useMembers(language)
+  const { data, refetch } = useMembers(language, { includePendingInvites: true })
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
+  const joinedAccounts = accounts.filter(account => account.membership_status !== 'invited')
   const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
   const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
-  const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
+  const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && joinedAccounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
@@ -124,19 +125,19 @@ const MembersPage = () => {
                     <div className="flex space-x-1">
                       <div>
                         {t('plansCommon.member', { ns: 'billing' })}
-                        {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+                        {locale !== LanguagesSupported[1] && joinedAccounts.length > 1 && 's'}
                       </div>
-                      <div className="">{accounts.length}</div>
+                      <div className="">{joinedAccounts.length}</div>
                       <div>/</div>
                       <div>{plan.total.teamMembers === NUM_INFINITE ? t('plansCommon.unlimited', { ns: 'billing' }) : plan.total.teamMembers}</div>
                     </div>
                   )
                 : (
                     <div className="flex space-x-1">
-                      <div>{accounts.length}</div>
+                      <div>{joinedAccounts.length}</div>
                       <div>
                         {t('plansCommon.memberAfter', { ns: 'billing' })}
-                        {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+                        {locale !== LanguagesSupported[1] && joinedAccounts.length > 1 && 's'}
                       </div>
                     </div>
                   )}

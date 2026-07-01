@@ -123,12 +123,17 @@ type MemberResponse = {
   accounts: Member[] | null
 }
 
-export const useMembers = (language?: AccessControlTemplateLanguage) => {
+export const useMembers = (
+  language?: AccessControlTemplateLanguage,
+  options?: { includePendingInvites?: boolean },
+) => {
+  const includePendingInvites = options?.includePendingInvites === true
   return useQuery<MemberResponse>({
-    queryKey: [...commonQueryKeys.members, language],
+    queryKey: [...commonQueryKeys.members, language, includePendingInvites],
     queryFn: () => get<MemberResponse>('/workspaces/current/members', {
       params: {
         language,
+        ...includePendingInvites && { include_pending_invites: 'true' },
       },
     }),
   })

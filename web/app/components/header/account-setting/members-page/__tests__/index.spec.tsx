@@ -342,6 +342,33 @@ describe('MembersPage', () => {
     expect(screen.getByText(/members\.you/i))!.toBeInTheDocument() // Current user is owner@example.com
   })
 
+  it('should render invited accounts without member actions', async () => {
+    const user = userEvent.setup()
+    const invitedAccount: Member = {
+      ...mockAccounts[1]!,
+      id: 'invited-1',
+      email: 'invited@example.com',
+      name: 'Invited User',
+      membership_status: 'invited',
+      role: 'normal',
+      roles: [createRole({ id: 'normal', name: 'Normal' })],
+    }
+    vi.mocked(useMembers).mockReturnValue({
+      data: { accounts: [mockAccounts[0], invitedAccount] },
+      refetch: mockRefetch,
+    } as unknown as ReturnType<typeof useMembers>)
+
+    renderMembersPage()
+
+    expect(screen.getByText('Invited User'))!.toBeInTheDocument()
+    expect(screen.getByText(/members\.pending/i))!.toBeInTheDocument()
+    expect(screen.queryByText('Member Operation normal')).not.toBeInTheDocument()
+
+    await user.click(within(screen.getByTestId('member-row-invited-1')).getByRole('button'))
+
+    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
+  })
+
   it('should show billing information for limited plan', () => {
     vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
       enableBilling: true,
