@@ -64,9 +64,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def resolve_ast_grep_command() -> list[str]:
-    for candidate in ("ast-grep", "sg"):
-        if shutil.which(candidate):
-            return [candidate]
+    if shutil.which("ast-grep"):
+        return ["ast-grep"]
     if shutil.which("uvx"):
         return ["uvx", "--from", "ast-grep-cli", "ast-grep"]
     raise RuntimeError("ast-grep executable not found")
