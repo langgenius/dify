@@ -1,3 +1,4 @@
+import type { Response } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
 import { readFile } from 'node:fs/promises'
 import { Given, Then, When } from '@cucumber/cucumber'
@@ -132,6 +133,22 @@ When('I generate an Agent v2 Build draft from the fixed instruction', async func
   await expect(page.getByRole('button', { name: 'Discard' })).toBeEnabled()
 })
 
+const expectPageResponseOK = async (response: Response, action: string) => {
+  if (response.ok())
+    return
+
+  let body = ''
+  try {
+    body = await response.text()
+  }
+  catch {
+    body = '<response body unavailable>'
+  }
+
+  const trimmedBody = body.length > 1000 ? `${body.slice(0, 1000)}...` : body
+  throw new Error(`${action} failed with ${response.status()} ${response.statusText()} at ${response.url()}: ${trimmedBody}`)
+}
+
 When('I discard the Agent v2 Build draft', async function (this: DifyWorld) {
   await this.getPage().getByRole('button', { name: 'Discard' }).click()
 })
@@ -152,8 +169,8 @@ When('I apply the Agent v2 Build draft', async function (this: DifyWorld) {
   ), { timeout: 120_000 })
 
   await applyButton.click()
-  expect((await finalizeResponsePromise).ok()).toBe(true)
-  expect((await applyResponsePromise).ok()).toBe(true)
+  await expectPageResponseOK(await finalizeResponsePromise, 'Finalize Agent v2 Build draft')
+  await expectPageResponseOK(await applyResponsePromise, 'Apply Agent v2 Build draft')
   await expect(page.getByText('Action succeeded')).toBeVisible()
 })
 
