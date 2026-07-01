@@ -3,12 +3,14 @@ import { Given } from '@cucumber/cucumber'
 import {
   skipMissingAgentBuilderBrokenChatModel,
   skipMissingAgentBuilderStableChatModel,
+  skipMissingIndexingPreseededDataset,
   skipMissingPreseededAgent,
   skipMissingPreseededAgentBackendApiKey,
   skipMissingPreseededAgentDriveSkill,
   skipMissingPreseededDataset,
   skipMissingPreseededTool,
   skipMissingPreseededWorkflow,
+  skipMissingReadyPreseededDataset,
 } from '../../../support/preflight'
 
 Given('the Agent Builder stable chat model is available', async function (this: DifyWorld) {
@@ -53,6 +55,28 @@ Given(
   'the Agent Builder preseeded dataset {string} is available',
   async function (this: DifyWorld, resourceName: string) {
     const resource = await skipMissingPreseededDataset(this, resourceName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilderPreseededResources[resourceName] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded dataset {string} is indexed and ready',
+  async function (this: DifyWorld, resourceName: string) {
+    const resource = await skipMissingReadyPreseededDataset(this, resourceName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilderPreseededResources[resourceName] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded dataset {string} is indexing',
+  async function (this: DifyWorld, resourceName: string) {
+    const resource = await skipMissingIndexingPreseededDataset(this, resourceName)
     if (resource === 'skipped')
       return resource
 

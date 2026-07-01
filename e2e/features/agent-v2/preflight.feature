@@ -18,11 +18,11 @@ Feature: Agent Builder preseeded environment
 
   Scenario: Agent knowledge base is available
     Given I am signed in as the default E2E admin
-    And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is available
+    And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
 
   Scenario: Indexing knowledge base is available
     Given I am signed in as the default E2E admin
-    And the Agent Builder preseeded dataset "E2E Agent Knowledge Base Indexing" is available
+    And the Agent Builder preseeded dataset "E2E Agent Knowledge Base Indexing" is indexing
 
   Scenario: Full config Agent is available
     Given I am signed in as the default E2E admin
