@@ -66,10 +66,10 @@ def test_handle_logs_unexpected_indexing_errors(
         patch.object(handler_module, "session_factory", mock_session_factory),
         patch.object(handler_module, "IndexingRunner", return_value=mock_indexing_runner),
     ):
-        with caplog.at_level(logging.ERROR, logger=handler_module.logger.name):
+        with caplog.at_level(logging.WARNING, logger=handler_module.logger.name):
             handler_module.handle("dataset-1", document_ids=["doc-1"])
 
-    assert any(record.levelno >= logging.ERROR for record in caplog.records)
+    assert any(record.levelno >= logging.WARNING for record in caplog.records)
     assert "Document index event handler failed" in caplog.text
 
 

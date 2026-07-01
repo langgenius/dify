@@ -49,4 +49,4 @@ def handle(sender, **kwargs):
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
     except Exception:
-        logger.exception("Document index event handler failed, dataset_id: %s", dataset_id)
+        logger.warning("Document index event handler failed, dataset_id: %s", dataset_id)
