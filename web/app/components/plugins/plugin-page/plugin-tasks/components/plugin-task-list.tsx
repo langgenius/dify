@@ -41,7 +41,7 @@ function PluginTaskList({
         label={t('task.installing', { ns: 'plugin' })}
         slotClassNames={{
           viewport: 'max-h-[420px] overscroll-contain',
-          content: 'w-full! max-w-full! min-w-0! overflow-x-hidden!',
+          content: 'w-full! max-w-full! min-w-0! overflow-x-hidden! pr-3',
         }}
       >
         {runningPlugins.length > 0 && (

@@ -639,8 +639,8 @@ def test_update_multimodel_vector_adds_bindings_and_vectors_and_skips_missing_up
     assert len(bindings) == 1
     assert bindings[0]["attachment_id"] == "file-1"
 
-    vector_instance.add_texts.assert_called_once()
-    documents = vector_instance.add_texts.call_args.args[0]
+    vector_instance.create_multimodal.assert_called_once()
+    documents = vector_instance.create_multimodal.call_args.args[0]
     assert len(documents) == 1
     assert documents[0].page_content == "img.png"
     assert documents[0].metadata["doc_id"] == "file-1"

@@ -208,6 +208,11 @@ export type WorkflowPublishResponse = {
   result: string
 }
 
+export type WorkflowUpdatePayload = {
+  marked_comment?: string | null
+  marked_name?: string | null
+}
+
 export type WorkflowRunForListResponse = {
   created_at?: number | null
   created_by_account?: SimpleAccount | null
@@ -822,6 +827,28 @@ export type PostSnippetsBySnippetIdWorkflowsPublishResponses = {
 
 export type PostSnippetsBySnippetIdWorkflowsPublishResponse
   = PostSnippetsBySnippetIdWorkflowsPublishResponses[keyof PostSnippetsBySnippetIdWorkflowsPublishResponses]
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
+  body: WorkflowUpdatePayload
+  path: {
+    snippet_id: string
+    workflow_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/{workflow_id}'
+}
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses = {
+  200: SnippetWorkflowResponse
+}
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse
+  = PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses[keyof PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreData = {
   body?: never

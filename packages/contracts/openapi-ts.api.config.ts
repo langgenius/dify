@@ -63,15 +63,6 @@ const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 
-const opaqueJsonContent = (): Record<string, OpenApiMediaType> => ({
-  'application/json': {
-    schema: {
-      additionalProperties: true,
-      type: 'object',
-    },
-  },
-})
-
 const apiSpecs: ApiSpec[] = [
   { filename: 'console-openapi.json', name: 'console' },
   { filename: 'web-openapi.json', name: 'web' },
@@ -201,42 +192,49 @@ const addOperationIds = (document: SwaggerDocument) => {
   }
 }
 
-const isOpaqueContractResponse = (response: OpenApiResponse) => {
-  const content = response.content
-  if (!isObject(content))
-    return false
-
-  return Object.entries(content).some(([mediaType, media]) => {
-    if (!isObject(media))
-      return false
-
-    return (mediaType === 'application/json' || mediaType === 'text/event-stream') && !('schema' in media)
-  })
-}
-
-const hasOpaqueContractSuccessResponse = (operation: SwaggerOperation) => {
-  return Object.entries(operation.responses ?? {}).some(([status, response]) => {
-    return /^2\d\d$/.test(status) && isObject(response) && isOpaqueContractResponse(response)
-  })
-}
-
 const normalizeOpaqueContractResponses = (document: SwaggerDocument) => {
-  // Some backend endpoints has no schema (e.g. external) and will trap heyapi here
-  // So we forge an opaque schema here
+  // This runs before contract filtering. Flask-RESTX often emits plain success responses
+  // without a body schema; give those routes an opaque output so they stay in oRPC.
   for (const pathItem of Object.values(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!operationMethods.has(method) || !isObject(operation))
         continue
 
       const swaggerOperation = operation as SwaggerOperation
-      if (!hasOpaqueContractSuccessResponse(swaggerOperation))
-        continue
+      for (const [status, response] of Object.entries(swaggerOperation.responses ?? {})) {
+        // Ignore non-2xx or 204 or those w/o a response field
+        if (!/^2\d\d$/.test(status) || status === '204' || !isObject(response))
+          continue
 
-      Object.values(swaggerOperation.responses ?? {})
-        .filter(response => isObject(response) && isOpaqueContractResponse(response))
-        .forEach((response) => {
-          response.content = opaqueJsonContent()
-        })
+        const content = response.content
+        if (!isObject(content) || Object.keys(content).length === 0) {
+          // No response specification, fill a dummy opaque resp
+          response.content = {
+            'application/json': {
+              schema: {
+                additionalProperties: true,
+                type: 'object',
+              },
+            },
+          }
+          continue
+        }
+
+        for (const [mediaType, media] of Object.entries(content)) {
+          if (mediaType !== 'application/json' && mediaType !== 'text/event-stream')
+            continue
+          if (!isObject(media) || isObject(media.schema))
+            continue
+
+          // JSON/SSE media without a schema traps heyapi. Patch only that media entry so
+          // sibling binary media keeps heyapi's Blob | File inference.
+          // Still a dummy opaque resp
+          media.schema = {
+            additionalProperties: true,
+            type: 'object',
+          }
+        }
+      }
     }
   }
 }
