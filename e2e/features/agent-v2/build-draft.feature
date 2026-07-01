@@ -88,6 +88,21 @@ Feature: Agent v2 build draft
     Then I should see one e2e-summary-skill Skill in the Skills section
     And the Agent v2 draft should include one e2e-summary-skill Skill
 
+  Scenario: Pending Build draft remains protected after leaving Configure
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    And an Agent v2 Build draft uses the updated E2E prompt with the stable E2E model
+    When I open the Agent v2 configure page
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    When I switch to the Agent v2 Access Point section
+    And I switch to the Agent v2 Configure section
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should still use the normal E2E prompt
+
   @build-tool-writeback @feature-gated
   Scenario: Applying a Build draft can add Dify Tools to the Agent configuration
     Given I am signed in as the default E2E admin

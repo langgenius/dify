@@ -363,6 +363,15 @@ When('I open the Agent v2 configure page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentConfigurePath(getCurrentAgentId(this)))
 })
 
+When('I switch to the Agent v2 Configure section', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const agentId = getCurrentAgentId(this)
+
+  await page.getByRole('link', { name: 'Configure' }).click()
+  await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
+  await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+})
+
 When('I generate an Agent v2 Build draft from the fixed instruction', async function (this: DifyWorld) {
   const page = this.getPage()
   const agentId = getCurrentAgentId(this)
