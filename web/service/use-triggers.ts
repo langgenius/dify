@@ -254,7 +254,7 @@ const normalizeEventParameter = (parameter: GeneratedEventParameter): TriggerEve
     scope: parameter.scope ?? undefined,
     required: parameter.required ?? false,
     multiple: parameter.multiple ?? false,
-    default: parameter.default || '',
+    default: parameter.default ?? '',
     min: parameter.min ?? undefined,
     max: parameter.max ?? undefined,
     precision: parameter.precision ?? undefined,
@@ -306,7 +306,7 @@ const normalizeSubscriptionConstructor = (
   }
 }
 
-const normalizeTriggerProvider = (provider: GeneratedTriggerProvider): TriggerProviderApiEntity => {
+export const normalizeTriggerProvider = (provider: GeneratedTriggerProvider): TriggerProviderApiEntity => {
   return {
     author: provider.author,
     name: provider.name,
@@ -471,7 +471,7 @@ const normalizeTriggerLog = (log: GeneratedRequestLog): TriggerLogEntity => {
   }
 }
 
-const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): TriggerWithProvider => {
+export const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): TriggerWithProvider => {
   return {
     id: provider.plugin_id || provider.name,
     name: provider.name,
@@ -500,7 +500,7 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
         form: param.type,
         llm_description: JSON.stringify(param.description || {}),
         required: param.required || false,
-        default: param.default || '',
+        default: param.default ?? '',
         options: param.options?.map(option => ({
           label: option.label,
           value: option.value,
