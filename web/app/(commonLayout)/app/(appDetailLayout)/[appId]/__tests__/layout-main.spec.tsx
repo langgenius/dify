@@ -124,6 +124,22 @@ describe('AppDetailLayout', () => {
     expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
+  it('should preserve the column flex context for full-height workflow content', async () => {
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    const contentSurface = screen.getByText('App page content').parentElement
+    const appDetailContent = contentSurface?.parentElement
+    const appDetailRoot = appDetailContent?.parentElement
+
+    expect(appDetailRoot).toHaveClass('flex-col')
+  })
+
   it('should redirect restricted app pages before exposing app detail content', async () => {
     mockPathname = '/app/app-1/logs'
     mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [AppACLPermission.ViewLayout] }))

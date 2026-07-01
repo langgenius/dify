@@ -186,6 +186,36 @@ describe('DatasetDetailLayout', () => {
       expect(screen.getByText('Pipeline content').parentElement).not.toHaveClass('rounded-lg')
     })
 
+    it('should preserve the column flex context for full-height pipeline content', () => {
+      // Arrange
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/pipeline')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'rag_pipeline',
+          is_published: false,
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Pipeline content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      const contentSurface = screen.getByText('Pipeline content').parentElement
+      const datasetDetailContent = contentSurface?.parentElement
+      const datasetDetailRoot = datasetDetailContent?.parentElement
+
+      expect(datasetDetailRoot).toHaveClass('flex-col')
+    })
+
     it('should keep create-from-pipeline pages unframed', () => {
       // Arrange
       mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create-from-pipeline')

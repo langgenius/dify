@@ -121,7 +121,7 @@ function isAppDetailPathname(pathname: string) {
   return pathname.startsWith('/app/')
 }
 
-export function isDatasetDetailPathname(pathname: string) {
+function isDatasetDetailPathname(pathname: string) {
   const [section, datasetId, subSection, action] = pathname.split('/').filter(Boolean)
 
   if (section !== 'datasets' || !datasetId)
