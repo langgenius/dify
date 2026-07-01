@@ -132,4 +132,15 @@ describe('InstallFromMarketplace', () => {
     render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
     expect(screen.getByText('plugin.marketplace.difyMarketplace')).toHaveAttribute('href', 'https://marketplace.test/plugins/model?theme=light')
   })
+
+  it('should use the marketplace callback action when provided', () => {
+    const onOpenMarketplace = vi.fn()
+
+    render(<InstallFromMarketplace providers={mockProviders} searchText="" onOpenMarketplace={onOpenMarketplace} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.difyMarketplace' }))
+
+    expect(onOpenMarketplace).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('link', { name: 'plugin.marketplace.difyMarketplace' })).not.toBeInTheDocument()
+  })
 })
