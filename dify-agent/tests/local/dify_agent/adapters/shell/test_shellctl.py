@@ -7,13 +7,14 @@ import base64
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+import httpx
 import pytest
 
 from dify_agent.adapters.shell import shellctl
 from dify_agent.adapters.shell.config import ShellAdapterSettings
 from dify_agent.adapters.shell.factory import create_shell_provider
-from dify_agent.adapters.shell.protocols import ShellCommandResult
-from dify_agent.adapters.shell.shellctl import ShellFileTransferError, ShellProviderError, ShellctlProvider
+from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellProviderError
+from dify_agent.adapters.shell.shellctl import ShellFileTransferError, ShellctlProvider
 
 
 @dataclass(slots=True)
@@ -225,6 +226,82 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
     ]
     assert client.input_calls == [("run-job", "ls\n", 6, 5.0)]
     assert client.terminate_calls == [("run-job", 1.5)]
+    assert client.delete_calls == [("run-job", True, 2.0)]
+
+
+def test_commands_map_http_timeout_to_shell_provider_error() -> None:
+    request = httpx.Request("POST", "http://shellctl.example/v1/jobs")
+    client = FakeShellctlClient(
+        run_handler=lambda script, cwd, env, timeout: (_ for _ in ()).throw(
+            httpx.ReadTimeout("timed out", request=request)
+        )
+    )
+
+    async def scenario() -> None:
+        resource = await _provider(client).create()
+        with pytest.raises(ShellProviderError, match="timed out") as exc_info:
+            await resource.commands.run("pwd", timeout=2.5)
+        assert exc_info.value.code == "timeout"
+
+    asyncio.run(scenario())
+
+
+def test_commands_map_http_request_error_to_shell_provider_error() -> None:
+    request = httpx.Request("POST", "http://shellctl.example/v1/jobs/run")
+    client = FakeShellctlClient(
+        wait_handler=lambda job_id, offset, timeout: (_ for _ in ()).throw(
+            httpx.ConnectError("connection failed", request=request)
+        )
+    )
+
+    async def scenario() -> None:
+        resource = await _provider(client).create()
+        with pytest.raises(ShellProviderError, match="connection failed") as exc_info:
+            await resource.commands.wait("run-job", offset=3, timeout=4.0)
+        assert exc_info.value.code == "request_error"
+
+    asyncio.run(scenario())
+
+
+def test_delete_maps_http_timeout_to_shell_provider_error() -> None:
+    request = httpx.Request("DELETE", "http://shellctl.example/v1/jobs/run-job")
+
+    @dataclass(slots=True)
+    class DeleteTimeoutClient(FakeShellctlClient):
+        async def delete(self, job_id, *, force=False, grace_seconds=None):
+            self.delete_calls.append((job_id, force, grace_seconds))
+            raise httpx.ReadTimeout("delete timed out", request=request)
+
+    client = DeleteTimeoutClient()
+
+    async def scenario() -> None:
+        resource = await _provider(client).create()
+        with pytest.raises(ShellProviderError, match="delete timed out") as exc_info:
+            await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
+        assert exc_info.value.code == "timeout"
+
+    asyncio.run(scenario())
+    assert client.delete_calls == [("run-job", True, 2.0)]
+
+
+def test_delete_maps_http_request_error_to_shell_provider_error() -> None:
+    request = httpx.Request("DELETE", "http://shellctl.example/v1/jobs/run-job")
+
+    @dataclass(slots=True)
+    class DeleteRequestErrorClient(FakeShellctlClient):
+        async def delete(self, job_id, *, force=False, grace_seconds=None):
+            self.delete_calls.append((job_id, force, grace_seconds))
+            raise httpx.ConnectError("delete connection failed", request=request)
+
+    client = DeleteRequestErrorClient()
+
+    async def scenario() -> None:
+        resource = await _provider(client).create()
+        with pytest.raises(ShellProviderError, match="delete connection failed") as exc_info:
+            await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
+        assert exc_info.value.code == "request_error"
+
+    asyncio.run(scenario())
     assert client.delete_calls == [("run-job", True, 2.0)]
 
 

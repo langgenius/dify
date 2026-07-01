@@ -20,6 +20,7 @@ from dify_agent.adapters.shell.protocols import (
     ShellCommandResult,
     ShellCommandStatus,
     ShellFileTransferProtocol,
+    ShellProviderError,
     ShellProviderProtocol,
     ShellResourceProtocol,
 )
@@ -83,6 +84,17 @@ def _assert_error_observation(result: object, *, job_id: str | None = None, incl
         assert includes in result["error"]
 
 
+def _capture_logged_exceptions(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, tuple[object, ...]]]:
+    logged: list[tuple[str, tuple[object, ...]]] = []
+
+    def fake_exception(message: str, *args: object, **kwargs: object) -> None:
+        del kwargs
+        logged.append((message, args))
+
+    monkeypatch.setattr(shell_layer_module.logger, "exception", fake_exception)
+    return logged
+
+
 @dataclass(slots=True)
 class RunCall:
     script: str
@@ -122,6 +134,10 @@ class DeleteCall:
     job_id: str
     force: bool
     grace_seconds: float | None
+
+
+class _UnexpectedToolError(Exception):
+    pass
 
 
 class FakeFiles(ShellFileTransferProtocol):
@@ -223,7 +239,9 @@ class _ExecutionContextStub:
 
 
 def _bind_execution_context(layer: DifyShellLayer, *, agent_id: str | None = "agent-1") -> None:
-    layer.deps.execution_context = cast(object, _ExecutionContextStub(config=_execution_context_config(agent_id=agent_id)))
+    layer.deps.execution_context = cast(
+        object, _ExecutionContextStub(config=_execution_context_config(agent_id=agent_id))
+    )
 
 
 def _execution_context_config(*, agent_id: str | None = None) -> DifyExecutionContextLayerConfig:
@@ -622,6 +640,262 @@ def test_shell_interrupt_succeeds_when_tail_lookup_fails() -> None:
                 "exit_code": 130,
             }
             assert output == "Job was interrupted."
+
+    asyncio.run(scenario())
+
+
+def test_shell_run_returns_provider_timeout_error_observation_without_unexpected_logging(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: (_ for _ in ()).throw(
+            ShellProviderError("provider timed out", code="timeout")
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    _bind_execution_context(layer)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state()
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_run"].function_schema.call({"script": "pwd"}, None)  # pyright: ignore[reportArgumentType]
+            _assert_error_observation(result, includes="timeout")
+
+    asyncio.run(scenario())
+    assert logged == []
+
+
+def test_shell_wait_returns_provider_request_error_observation_with_job_id_and_no_unexpected_logging(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        wait_handler=lambda job_id, offset, timeout: (_ for _ in ()).throw(
+            ShellProviderError("provider unavailable", code="request_error")
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state(job_ids=["user-job"], job_offsets={"user-job": 3})
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_wait"].function_schema.call(
+                {"job_id": "user-job", "timeout": 4.0},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            _assert_error_observation(result, job_id="user-job", includes="request_error")
+
+    asyncio.run(scenario())
+    assert logged == []
+
+
+def test_shell_input_returns_provider_timeout_error_observation_with_job_id_and_no_unexpected_logging(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        input_handler=lambda job_id, text, offset, timeout: (_ for _ in ()).throw(
+            ShellProviderError("provider timed out", code="timeout")
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state(job_ids=["user-job"], job_offsets={"user-job": 6})
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_input"].function_schema.call(
+                {"job_id": "user-job", "text": "ls\n", "timeout": 5.0},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            _assert_error_observation(result, job_id="user-job", includes="timeout")
+
+    asyncio.run(scenario())
+    assert logged == []
+
+
+def test_shell_interrupt_returns_provider_request_error_observation_with_job_id_and_no_unexpected_logging(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        interrupt_handler=lambda job_id, grace_seconds: (_ for _ in ()).throw(
+            ShellProviderError("provider unavailable", code="request_error")
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state(job_ids=["user-job"], job_offsets={"user-job": 22})
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_interrupt"].function_schema.call(
+                {"job_id": "user-job", "grace_seconds": 1.5},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            _assert_error_observation(result, job_id="user-job", includes="request_error")
+
+    asyncio.run(scenario())
+    assert logged == []
+
+
+def test_shell_run_returns_error_observation_and_logs_unexpected_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: (_ for _ in ()).throw(_UnexpectedToolError("boom"))
+    )
+    layer, _provider = _layer(commands=commands)
+    _bind_execution_context(layer)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state()
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_run"].function_schema.call({"script": "pwd"}, None)  # pyright: ignore[reportArgumentType]
+            _assert_error_observation(result, includes="boom")
+
+    asyncio.run(scenario())
+    assert logged == [
+        ("Unexpected shell tool failure: tool=%s session_id=%s job_id=%s", ("shell_run", "abc12ff", None))
+    ]
+
+
+def test_shell_wait_returns_error_observation_and_logs_unexpected_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        wait_handler=lambda job_id, offset, timeout: (_ for _ in ()).throw(_UnexpectedToolError("wait exploded"))
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state(job_ids=["user-job"], job_offsets={"user-job": 3})
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_wait"].function_schema.call(
+                {"job_id": "user-job", "timeout": 4.0},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            _assert_error_observation(result, job_id="user-job", includes="wait exploded")
+
+    asyncio.run(scenario())
+    assert logged == [
+        ("Unexpected shell tool failure: tool=%s session_id=%s job_id=%s", ("shell_wait", "abc12ff", "user-job"))
+    ]
+
+
+def test_shell_input_returns_error_observation_and_logs_unexpected_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        input_handler=lambda job_id, text, offset, timeout: (_ for _ in ()).throw(
+            _UnexpectedToolError("stdin exploded")
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state(job_ids=["user-job"], job_offsets={"user-job": 6})
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_input"].function_schema.call(
+                {"job_id": "user-job", "text": "ls\n", "timeout": 5.0},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            _assert_error_observation(result, job_id="user-job", includes="stdin exploded")
+
+    asyncio.run(scenario())
+    assert logged == [
+        (
+            "Unexpected shell tool failure: tool=%s session_id=%s job_id=%s",
+            ("shell_input", "abc12ff", "user-job"),
+        )
+    ]
+
+
+def test_shell_interrupt_returns_error_observation_and_logs_unexpected_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        interrupt_handler=lambda job_id, grace_seconds: (_ for _ in ()).throw(
+            _UnexpectedToolError("interrupt exploded")
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state(job_ids=["user-job"], job_offsets={"user-job": 22})
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_interrupt"].function_schema.call(
+                {"job_id": "user-job", "grace_seconds": 1.5},
+                None,  # pyright: ignore[reportArgumentType]
+            )
+            _assert_error_observation(result, job_id="user-job", includes="interrupt exploded")
+
+    asyncio.run(scenario())
+    assert logged == [
+        (
+            "Unexpected shell tool failure: tool=%s session_id=%s job_id=%s",
+            ("shell_interrupt", "abc12ff", "user-job"),
+        )
+    ]
+
+
+def test_shell_interrupt_logs_unexpected_tail_failure_but_still_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    logged = _capture_logged_exceptions(monkeypatch)
+    commands = FakeCommands(
+        interrupt_handler=lambda job_id, grace_seconds: _command_status(job_id, offset=22),
+        tail_handler=lambda job_id: (_ for _ in ()).throw(_UnexpectedToolError("tail exploded")),
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state(job_ids=["user-job"], job_offsets={"user-job": 22})
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_interrupt"].function_schema.call({"job_id": "user-job"}, None)  # pyright: ignore[reportArgumentType]
+            metadata, output = _parse_tagged_observation(result)
+            assert metadata == {
+                "job_id": "user-job",
+                "status": "terminated",
+                "done": True,
+                "exit_code": 130,
+            }
+            assert output == "Job was interrupted."
+
+    asyncio.run(scenario())
+    assert logged == [
+        (
+            "Failed to fetch output path for interrupted shell job %s in session %s",
+            ("user-job", "abc12ff"),
+        )
+    ]
+
+
+def test_shell_run_propagates_cancelled_error() -> None:
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: (_ for _ in ()).throw(asyncio.CancelledError())
+    )
+    layer, _provider = _layer(commands=commands)
+    _bind_execution_context(layer)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = _runtime_state()
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            with pytest.raises(asyncio.CancelledError):
+                await tools["shell_run"].function_schema.call({"script": "pwd"}, None)  # pyright: ignore[reportArgumentType]
 
     asyncio.run(scenario())
 
