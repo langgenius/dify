@@ -4,9 +4,11 @@ import secrets
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
+from controllers.console.app.wraps import with_session
 from controllers.console.auth.error import (
     EmailCodeError,
     EmailPasswordResetLimitError,
@@ -17,7 +19,6 @@ from controllers.console.auth.error import (
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
-from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password
 from services.account_service import AccountService, TenantService
@@ -157,7 +158,8 @@ class ForgotPasswordResetApi(Resource):
     @console_ns.response(400, "Invalid token or password mismatch")
     @setup_required
     @email_password_login_enabled
-    def post(self):
+    @with_session(write=True)
+    def post(self, session: Session):
         args = ForgotPasswordResetPayload.model_validate(console_ns.payload)
 
         # Validate passwords match
@@ -183,9 +185,9 @@ class ForgotPasswordResetApi(Resource):
         account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
 
         if account:
-            account = db.session.merge(account)
+            account = session.merge(account)
             self._update_existing_account(account, password_hashed, salt)
-            db.session.commit()
+            session.commit()
         else:
             raise AccountNotFound()
 

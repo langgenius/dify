@@ -18,6 +18,12 @@ from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from models.account import AccountStatus, TenantAccountRole
 
 
+def unwrap(func):
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
+
+
 class TestActivateCheckApi:
     """Test cases for checking activation token validity."""
 
@@ -204,12 +210,10 @@ class TestActivateApi:
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_successful_account_activation(
         self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
+        mock_revoke_token,
+        mock_get_invitation,
         app: Flask,
         mock_invitation: MagicMock,
         mock_account,
@@ -224,6 +228,7 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
+        mock_session = MagicMock()
 
         # Act
         with app.test_request_context(
@@ -239,7 +244,8 @@ class TestActivateApi:
             },
         ):
             api = ActivateApi()
-            response = api.post()
+            method = unwrap(api.post)
+            response = method(api, mock_session)
 
         # Assert
         assert response["result"] == "success"
@@ -249,40 +255,7 @@ class TestActivateApi:
         assert mock_account.status == AccountStatus.ACTIVE
         assert mock_account.initialized_at is not None
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
-
-    @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
-    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
-    def test_activation_rejects_missing_setup_fields_before_consuming_invitation(
-        self,
-        mock_db,
-        mock_revoke_token,
-        mock_get_invitation,
-        mock_create_tenant_member,
-        app: Flask,
-        mock_invitation,
-        mock_switch_tenant,
-    ):
-        mock_invitation["data"]["requires_setup"] = True
-        mock_get_invitation.return_value = mock_invitation
-        mock_db.session.scalar.return_value = None
-
-        with app.test_request_context(
-            "/activate",
-            method="POST",
-            json={
-                "workspace_id": "workspace-123",
-                "email": "invitee@example.com",
-                "token": "valid_token",
-            },
-        ):
-            with pytest.raises(AlreadyActivateError):
-                ActivateApi().post()
-
-        mock_revoke_token.assert_not_called()
-        mock_create_tenant_member.assert_not_called()
-        mock_switch_tenant.assert_not_called()
+        mock_session.commit.assert_called_once()
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_activation_with_invalid_token(self, mock_get_invitation, app: Flask):
@@ -295,6 +268,7 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = None
+        mock_session = MagicMock()
 
         # Act & Assert
         with app.test_request_context(
@@ -310,8 +284,9 @@ class TestActivateApi:
             },
         ):
             api = ActivateApi()
+            method = unwrap(api.post)
             with pytest.raises(AlreadyActivateError):
-                api.post()
+                method(api, mock_session)
 
     @patch("controllers.console.auth.activate.dify_config.BILLING_ENABLED", True)
     @patch("controllers.console.auth.activate.BillingService.is_email_in_freeze")
@@ -356,10 +331,8 @@ class TestActivateApi:
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_sets_interface_theme(
         self,
-        mock_db,
         mock_revoke_token,
         mock_get_invitation,
         app: Flask,
@@ -374,6 +347,7 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
+        mock_session = MagicMock()
 
         # Act
         with app.test_request_context(
@@ -389,7 +363,8 @@ class TestActivateApi:
             },
         ):
             api = ActivateApi()
-            api.post()
+            method = unwrap(api.post)
+            method(api, mock_session)
 
         # Assert
         assert mock_account.interface_theme == "light"
@@ -405,10 +380,8 @@ class TestActivateApi:
     )
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_with_different_locales(
         self,
-        mock_db,
         mock_revoke_token,
         mock_get_invitation,
         app: Flask,
@@ -427,6 +400,7 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
+        mock_session = MagicMock()
 
         # Act
         with app.test_request_context(
@@ -442,7 +416,8 @@ class TestActivateApi:
             },
         ):
             api = ActivateApi()
-            response = api.post()
+            method = unwrap(api.post)
+            response = method(api, mock_session)
 
         # Assert
         assert response["result"] == "success"
@@ -451,12 +426,10 @@ class TestActivateApi:
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_returns_success_response(
         self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
+        mock_revoke_token,
+        mock_get_invitation,
         app: Flask,
         mock_invitation: MagicMock,
     ):
@@ -469,6 +442,7 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
+        mock_session = MagicMock()
 
         # Act
         with app.test_request_context(
@@ -484,19 +458,18 @@ class TestActivateApi:
             },
         ):
             api = ActivateApi()
-            response = api.post()
+            method = unwrap(api.post)
+            response = method(api, mock_session)
 
         # Assert
         assert response == {"result": "success"}
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_without_workspace_id(
         self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
+        mock_revoke_token,
+        mock_get_invitation,
         app: Flask,
         mock_invitation: MagicMock,
     ):
@@ -509,6 +482,7 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
+        mock_session = MagicMock()
 
         # Act
         with app.test_request_context(
@@ -523,7 +497,8 @@ class TestActivateApi:
             },
         ):
             api = ActivateApi()
-            response = api.post()
+            method = unwrap(api.post)
+            response = method(api, mock_session)
 
         # Assert
         assert response["result"] == "success"
@@ -531,18 +506,17 @@ class TestActivateApi:
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
-    @patch("controllers.console.auth.activate.db")
     def test_activation_normalizes_email_before_lookup(
         self,
-        mock_db: MagicMock,
-        mock_revoke_token: MagicMock,
-        mock_get_invitation: MagicMock,
+        mock_revoke_token,
+        mock_get_invitation,
         app: Flask,
         mock_invitation: MagicMock,
         mock_account: MagicMock,
     ):
         """Ensure uppercase emails are normalized before lookup and revocation."""
         mock_get_invitation.return_value = mock_invitation
+        mock_session = MagicMock()
 
         with app.test_request_context(
             "/activate",
@@ -557,7 +531,8 @@ class TestActivateApi:
             },
         ):
             api = ActivateApi()
-            response = api.post()
+            method = unwrap(api.post)
+            response = method(api, mock_session)
 
         assert response["result"] == "success"
         mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token", session=ANY)

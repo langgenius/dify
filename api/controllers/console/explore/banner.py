@@ -4,11 +4,12 @@ from flask import request
 from flask_restx import Namespace, Resource
 from pydantic import BaseModel, Field, RootModel
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models
 from controllers.console import api
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.wraps import explore_banner_enabled
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from models.enums import BannerStatus
 from models.model import ExporleBanner
@@ -40,7 +41,8 @@ class BannerApi(Resource):
     @api.doc(params=query_params_from_model(BannerListQuery))
     @api.response(200, "Success", api.models[BannerListResponse.__name__])
     @explore_banner_enabled
-    def get(self):
+    @with_session(write=False)
+    def get(self, session: Session):
         """Get banner list."""
         language = request.args.get("language", "en-US")
 
@@ -48,13 +50,13 @@ class BannerApi(Resource):
         base_query = select(ExporleBanner).where(ExporleBanner.status == BannerStatus.ENABLED)
 
         # Try to get banners in the requested language
-        banners = db.session.scalars(
+        banners = session.scalars(
             base_query.where(ExporleBanner.language == language).order_by(ExporleBanner.sort)
         ).all()
 
         # Fallback to en-US if no banners found and language is not en-US
         if not banners and language != "en-US":
-            banners = db.session.scalars(
+            banners = session.scalars(
                 base_query.where(ExporleBanner.language == "en-US").order_by(ExporleBanner.sort)
             ).all()
         # Convert banners to serializable format
