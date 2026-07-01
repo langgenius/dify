@@ -9,32 +9,61 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Access Point overview
 
   @core @web-app-access
-  Scenario: Web app access actions open their public surfaces
+  Scenario: Web app access URL can be copied and launched
     Given I am signed in as the default E2E admin
-    And the Agent Builder preseeded Agent "E2E Agent Published Web App" is available
-    And the Agent Builder preseeded Agent "E2E Agent Published Web App" has published Web app access
-    When I open the preseeded Agent v2 Access Point page for "E2E Agent Published Web App" from the Agent Roster
+    And a basic configured Agent v2 test agent has been created via API
+    And Agent v2 Web app access has been enabled via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Web app access URL
-    And I record the Agent v2 orchestration draft for "E2E Agent Published Web App"
+    And I record the current Agent v2 orchestration draft
     When I copy the Agent v2 Web app access URL
     Then the Agent v2 Web app access URL should show it was copied
     When I launch the Agent v2 Web app
     Then the Agent v2 Web app should open in a new tab
-    When I open Agent v2 Embedded configuration
+    And the current Agent v2 orchestration draft should be unchanged
+
+  @core @web-app-access
+  Scenario: Web app Embedded configuration opens from Access Point
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    And Agent v2 Web app access has been enabled via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
+    And I open Agent v2 Embedded configuration
     Then I should see the Agent v2 Embedded configuration dialog
-    When I open Agent v2 Web app customization
+
+  @core @web-app-access
+  Scenario: Web app customization opens from Access Point
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    And Agent v2 Web app access has been enabled via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
+    And I open Agent v2 Web app customization
     Then I should see the Agent v2 Web app customization dialog
-    When I open Agent v2 Web app settings
+
+  @core @web-app-access
+  Scenario: Web app settings open from Access Point without changing orchestration
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    And Agent v2 Web app access has been enabled via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
+    And I record the current Agent v2 orchestration draft
+    And I open Agent v2 Web app settings
     Then I should see the Agent v2 Web app settings dialog
-    And the Agent v2 orchestration draft for "E2E Agent Published Web App" should be unchanged
+    And the current Agent v2 orchestration draft should be unchanged
 
   @core @web-app-access
   Scenario: Web app access can be disabled and restored
     Given I am signed in as the default E2E admin
-    And the Agent Builder preseeded Agent "E2E Agent Published Web App" is available
-    And the Agent Builder preseeded Agent "E2E Agent Published Web App" has published Web app access
-    And Agent v2 Web app access will be restored for "E2E Agent Published Web App"
-    When I open the preseeded Agent v2 Access Point page for "E2E Agent Published Web App" from the Agent Roster
+    And the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    And the Agent v2 draft has been published via API
+    And Agent v2 Web app access has been enabled via API
+    When I open the Agent v2 configure page from the Agent Roster
+    And I switch to the Agent v2 Access Point section
     And I disable Agent v2 Web app access
     Then Agent v2 Web app access should be out of service
     When I open the disabled Agent v2 Web app URL

@@ -1,5 +1,5 @@
 import type { DifyWorld } from '../../support/world'
-import { Given, Then, When } from '@cucumber/cucumber'
+import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { setAgentSiteAccessAndGetURL } from '../../agent-v2/support/access-point'
 import { getAgentComposerDraft } from '../../agent-v2/support/agent'
@@ -7,27 +7,8 @@ import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder
 import {
   getCurrentAgentId,
   getDialog,
-  getPreseededResource,
   getWebAppCard,
 } from './access-point-helpers'
-
-const closeDialog = async (world: DifyWorld, name: string | RegExp) => {
-  const dialog = getDialog(world, name)
-
-  await dialog.getByLabel('Close').click()
-  await expect(dialog).not.toBeVisible()
-}
-
-Given(
-  'Agent v2 Web app access will be restored for {string}',
-  async function (this: DifyWorld, agentName: string) {
-    const agent = getPreseededResource(this, agentName, 'agent')
-
-    this.registerCleanup(async () => {
-      await setAgentSiteAccessAndGetURL(agent.id, true)
-    })
-  },
-)
 
 When(
   'Agent v2 Web app access has been enabled via API',
@@ -49,10 +30,9 @@ Then('I should see the Agent v2 Web app access URL', async function (this: DifyW
 })
 
 Then(
-  'I record the Agent v2 orchestration draft for {string}',
-  async function (this: DifyWorld, agentName: string) {
-    const agent = getPreseededResource(this, agentName, 'agent')
-    const draft = await getAgentComposerDraft(agent.id)
+  'I record the current Agent v2 orchestration draft',
+  async function (this: DifyWorld) {
+    const draft = await getAgentComposerDraft(getCurrentAgentId(this))
 
     this.agentBuilder.accessPoint.composerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
   },
@@ -168,7 +148,6 @@ Then('I should see the Agent v2 Embedded configuration dialog', async function (
   await expect(dialog).toBeVisible()
   await expect(dialog.getByText('Embed on website')).toBeVisible()
   await expect(dialog.getByText(/iframe|script/i)).toBeVisible()
-  await closeDialog(this, 'Embed on website')
 })
 
 When('I open Agent v2 Web app customization', async function (this: DifyWorld) {
@@ -181,7 +160,6 @@ Then('I should see the Agent v2 Web app customization dialog', async function (t
   await expect(dialog).toBeVisible()
   await expect(dialog.getByText('Customize AI web app')).toBeVisible()
   await expect(dialog.getByText(/NEXT_PUBLIC_APP_ID|NEXT_PUBLIC_API_URL/)).toBeVisible()
-  await closeDialog(this, 'Customize AI web app')
 })
 
 When('I open Agent v2 Web app settings', async function (this: DifyWorld) {
@@ -192,21 +170,19 @@ Then('I should see the Agent v2 Web app settings dialog', async function (this: 
   const dialog = getDialog(this, 'Web App Settings')
 
   await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('Web App Settings')).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Web App Settings' })).toBeVisible()
   await expect(dialog.getByText('web app Name')).toBeVisible()
   await expect(dialog.getByText('web app Description')).toBeVisible()
-  await closeDialog(this, 'Web App Settings')
 })
 
 Then(
-  'the Agent v2 orchestration draft for {string} should be unchanged',
-  async function (this: DifyWorld, agentName: string) {
+  'the current Agent v2 orchestration draft should be unchanged',
+  async function (this: DifyWorld) {
     const snapshot = this.agentBuilder.accessPoint.composerDraftSnapshot
     if (!snapshot)
       throw new Error('No Agent v2 orchestration draft snapshot was recorded.')
 
-    const agent = getPreseededResource(this, agentName, 'agent')
-    const draft = await getAgentComposerDraft(agent.id)
+    const draft = await getAgentComposerDraft(getCurrentAgentId(this))
 
     expect(JSON.stringify(draft.agent_soul ?? {})).toBe(snapshot)
   },
