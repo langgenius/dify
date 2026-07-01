@@ -104,11 +104,15 @@ Given('the Agent v2 composer draft uses the normal E2E prompt', async function (
 })
 
 Given('the e2e-summary-skill Skill is available to the Agent v2 test agent', async function (this: DifyWorld) {
-  await uploadAgentDriveSkill({
-    agentId: getCurrentAgentId(this),
+  const agentId = getCurrentAgentId(this)
+  const upload = await uploadAgentDriveSkill({
+    agentId,
     fileName: agentBuilderTestMaterials.summarySkill,
     filePath: getAgentBuilderTestMaterialPath('summarySkill'),
   })
+  this.createdAgentDriveFiles.push({ agentId, key: upload.skill.skill_md_key })
+  if (upload.skill.archive_key)
+    this.createdAgentDriveFiles.push({ agentId, key: upload.skill.archive_key })
 })
 
 Then('the Agent v2 test agent should include drive skill {string}', async function (this: DifyWorld, skillName: string) {
