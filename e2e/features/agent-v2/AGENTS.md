@@ -21,6 +21,7 @@ Use API setup for prerequisite state, then use Playwright only for user-observab
 - `@infra` — infrastructure or readiness checks.
 - `@build` — Build mode and Build draft behavior.
 - `@files` — Files section upload, display, and fixture behavior.
+- `@knowledge` — Knowledge Retrieval configuration display, persistence, and reference cleanup.
 - `@advanced-settings` — Env Editor, Content Moderation, and related Advanced Settings behavior.
 - `@agent-edit` — saved Agent detail/configuration display surfaces.
 - `@publish` — publish and publish-bar state.
@@ -34,6 +35,7 @@ Keep Agent v2 step definitions grouped by user capability, not by DOM component 
 - `configure.steps.ts` — common configure navigation, refresh, autosave, and normal draft assertions.
 - `build-draft.steps.ts` — Build mode checkout, apply, discard, supported writeback, and Build draft isolation.
 - `files.steps.ts` — Files upload, display, and fixture-list assertions.
+- `knowledge.steps.ts` — Knowledge Retrieval configuration persistence and reference cleanup.
 - `tools.steps.ts` — Tools selector, search, and configuration-boundary behavior.
 - `advanced-settings.steps.ts` — Env Editor, Content Moderation, and Advanced Settings behavior.
 - `agent-edit.steps.ts` — saved Agent detail display assertions.

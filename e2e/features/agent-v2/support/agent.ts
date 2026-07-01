@@ -10,6 +10,7 @@ import type {
   AgentConfigSnapshotDetailResponse,
   AgentDriveSkillItemResponse,
   AgentDriveSkillListResponse,
+  AgentKnowledgeDatasetConfig,
   AgentReferencingWorkflowResponse,
   AgentReferencingWorkflowsResponse,
   AgentSkillUploadResponse,
@@ -240,6 +241,31 @@ export function createAgentSoulConfigWithModel(
         temperature: 0,
         max_tokens: 512,
       },
+    },
+  }
+}
+
+export function createAgentSoulConfigWithKnowledgeDataset(
+  agentSoul: AgentSoulConfig,
+  dataset: AgentKnowledgeDatasetConfig,
+): AgentSoulConfig {
+  return {
+    ...agentSoul,
+    knowledge: {
+      sets: [
+        {
+          datasets: [dataset],
+          id: 'e2e-knowledge-retrieval',
+          name: 'Retrieval 1',
+          query: {
+            mode: 'generated_query',
+          },
+          retrieval: {
+            mode: 'multiple',
+            top_k: 4,
+          },
+        },
+      ],
     },
   }
 }
