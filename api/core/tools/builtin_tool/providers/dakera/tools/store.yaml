@@ -1,0 +1,80 @@
+identity:
+  name: store
+  author: Dakera
+  label:
+    en_US: Store Memory
+    zh_Hans: 存储记忆
+    pt_BR: Armazenar Memória
+description:
+  human:
+    en_US: >-
+      Persist a memory in Dakera for future recall. Use this when you learn something
+      important that should be remembered across future sessions — user preferences,
+      decisions, key facts, or context.
+    zh_Hans: >-
+      在 Dakera 中持久化记忆以便将来召回。当您了解到应该在未来会话中记住的重要信息时使用此工具
+      ——用户偏好、决策、关键事实或上下文。
+    pt_BR: >-
+      Persiste uma memória no Dakera para recuperação futura. Use quando aprender algo
+      importante que deve ser lembrado em sessões futuras.
+  llm: >-
+    Store a memory for future recall across sessions. Write the memory as a concise,
+    self-contained fact. Avoid vague summaries — be specific. Returns the ID of the
+    stored memory.
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Content
+      zh_Hans: 内容
+      pt_BR: Conteúdo
+    human_description:
+      en_US: The memory to store. Be specific and self-contained.
+      zh_Hans: 要存储的记忆。请具体且独立表述。
+      pt_BR: A memória a armazenar. Seja específico e independente.
+    llm_description: >-
+      The memory to persist. Write a concise, factual, self-contained statement.
+      Good: "Alice prefers Rust over Python for backend services."
+      Bad: "User has preferences."
+    form: llm
+  - name: agent_id
+    type: string
+    required: false
+    default: "dify-agent"
+    label:
+      en_US: Agent ID
+      zh_Hans: 代理 ID
+      pt_BR: ID do Agente
+    human_description:
+      en_US: Namespace for this memory. Use the same agent ID in recall to retrieve it.
+      zh_Hans: 此记忆的命名空间。在召回时使用相同的代理 ID 来检索它。
+      pt_BR: Namespace para esta memória. Use o mesmo ID de agente na recuperação.
+    llm_description: Agent namespace. Must match the agent_id used in the recall tool.
+    form: form
+  - name: session_id
+    type: string
+    required: false
+    label:
+      en_US: Session ID
+      zh_Hans: 会话 ID
+      pt_BR: ID da Sessão
+    human_description:
+      en_US: Tag this memory with a session ID for session-scoped recall.
+      zh_Hans: 用会话 ID 标记此记忆，以便进行会话范围的召回。
+      pt_BR: Marque esta memória com um ID de sessão para recuperação com escopo de sessão.
+    llm_description: Optional session tag. Provide the conversation ID to enable session-scoped recall.
+    form: llm
+  - name: tags
+    type: string
+    required: false
+    label:
+      en_US: Tags
+      zh_Hans: 标签
+      pt_BR: Tags
+    human_description:
+      en_US: Comma-separated tags for categorising this memory (e.g. "preference,ui,dark-mode").
+      zh_Hans: 用逗号分隔的标签，用于对此记忆进行分类（例如：preference,ui,dark-mode）。
+      pt_BR: Tags separadas por vírgula para categorizar esta memória.
+    llm_description: Optional comma-separated tags to categorize the memory, e.g. "preference,decision".
+    form: llm

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Brain/memory icon representing Dakera persistent memory -->
+  <rect width="48" height="48" rx="12" fill="#0F172A"/>
+  <!-- Stylised brain outline -->
+  <path d="M24 10C18.5 10 14 14.5 14 20C14 22.5 14.9 24.8 16.4 26.5C15.5 27.5 15 28.8 15 30.2C15 33.4 17.6 36 20.8 36H27.2C30.4 36 33 33.4 33 30.2C33 28.8 32.5 27.5 31.6 26.5C33.1 24.8 34 22.5 34 20C34 14.5 29.5 10 24 10Z" fill="#6366F1"/>
+  <!-- Horizontal connecting lines (memory synapses) -->
+  <line x1="19" y1="20" x2="29" y2="20" stroke="#E0E7FF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="18" y1="24" x2="30" y2="24" stroke="#E0E7FF" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="20" y1="28" x2="28" y2="28" stroke="#E0E7FF" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

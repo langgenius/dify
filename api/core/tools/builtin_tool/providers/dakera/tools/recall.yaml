@@ -1,0 +1,78 @@
+identity:
+  name: recall
+  author: Dakera
+  label:
+    en_US: Recall Memory
+    zh_Hans: 召回记忆
+    pt_BR: Recuperar Memória
+description:
+  human:
+    en_US: >-
+      Retrieve semantically relevant memories from Dakera. Use this when you need
+      context from prior conversations, stored knowledge, or user preferences.
+    zh_Hans: >-
+      从 Dakera 中检索语义相关的记忆。当您需要来自之前对话、存储的知识或用户偏好的上下文时使用此工具。
+    pt_BR: >-
+      Recupera memórias semanticamente relevantes do Dakera. Use quando precisar de
+      contexto de conversas anteriores, conhecimento armazenado ou preferências do usuário.
+  llm: >-
+    Recall semantically relevant memories from persistent storage. Provide a natural-language
+    query describing what you want to remember. Returns a ranked list of relevant memories
+    with scores, most relevant first.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+      pt_BR: Consulta
+    human_description:
+      en_US: Natural-language description of what you want to recall.
+      zh_Hans: 您想要召回的内容的自然语言描述。
+      pt_BR: Descrição em linguagem natural do que você deseja recuperar.
+    llm_description: Semantic search query — describe what you want to remember in plain language.
+    form: llm
+  - name: agent_id
+    type: string
+    required: false
+    default: "dify-agent"
+    label:
+      en_US: Agent ID
+      zh_Hans: 代理 ID
+      pt_BR: ID do Agente
+    human_description:
+      en_US: >-
+        Namespace for memories. Use different agent IDs to isolate memories between
+        different agents or users.
+      zh_Hans: 记忆的命名空间。使用不同的代理 ID 来隔离不同代理或用户之间的记忆。
+      pt_BR: Namespace para memórias. Use diferentes IDs de agente para isolar memórias.
+    llm_description: Agent namespace — use the same value as in the store tool to retrieve the right memories.
+    form: form
+  - name: session_id
+    type: string
+    required: false
+    label:
+      en_US: Session ID
+      zh_Hans: 会话 ID
+      pt_BR: ID da Sessão
+    human_description:
+      en_US: Restrict recall to a specific session. Leave empty to search across all sessions.
+      zh_Hans: 将召回限制在特定会话中。留空则搜索所有会话。
+      pt_BR: Restringe a recuperação a uma sessão específica. Deixe vazio para pesquisar em todas.
+    llm_description: Optional session scope. Omit to search across all sessions for this agent.
+    form: llm
+  - name: top_k
+    type: number
+    required: false
+    default: 5
+    label:
+      en_US: Top K
+      zh_Hans: 召回数量
+      pt_BR: Top K
+    human_description:
+      en_US: Maximum number of memories to retrieve (1–20).
+      zh_Hans: 要检索的最大记忆数量（1–20）。
+      pt_BR: Número máximo de memórias a recuperar (1–20).
+    llm_description: Number of memories to return. Default 5.
+    form: form
