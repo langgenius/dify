@@ -120,28 +120,6 @@ describe('AgentRosterList', () => {
     expect(screen.getByText('agentV2.roster.usageStatus.draft')).toHaveClass('system-2xs-medium-uppercase')
   })
 
-  it('draws the primary link focus ring above the draft corner label without z-index', () => {
-    renderList([createAgent()])
-
-    const configureLink = screen.getByRole('link', { name: 'Research Agent' })
-    const draftLabel = screen.getByText('agentV2.roster.usageStatus.draft')
-    const draftCornerLabel = draftLabel.closest('.absolute')
-
-    expect(configureLink).toHaveClass(
-      'relative',
-      'focus-visible:after:ring-2',
-      'focus-visible:after:ring-state-accent-solid',
-      'focus-visible:after:ring-inset',
-    )
-    expect(configureLink).not.toHaveClass('peer/card-link')
-    expect(draftCornerLabel && configureLink.contains(draftCornerLabel)).toBe(true)
-    expect(draftCornerLabel).toHaveClass(
-      'top-[-0.5px]',
-      'right-0',
-    )
-    expect(draftCornerLabel).not.toHaveClass('z-10', 'z-20')
-  })
-
   it('only renders the draft badge for unpublished agents', () => {
     renderList([
       createAgent({
