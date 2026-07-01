@@ -46,6 +46,7 @@ export class DifyWorld extends World {
   lastAgentServiceApiBaseURL: string | undefined
   lastGeneratedAgentApiKey: string | undefined
   lastAgentApiReferencePage: Page | undefined
+  lastAgentWorkflowReferencePage: Page | undefined
   createdAppIds: string[] = []
   createdAgentIds: string[] = []
   createdDatasetIds: string[] = []
@@ -74,6 +75,7 @@ export class DifyWorld extends World {
     this.lastAgentServiceApiBaseURL = undefined
     this.lastGeneratedAgentApiKey = undefined
     this.lastAgentApiReferencePage = undefined
+    this.lastAgentWorkflowReferencePage = undefined
     this.createdAppIds = []
     this.createdAgentIds = []
     this.createdDatasetIds = []

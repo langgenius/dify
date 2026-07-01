@@ -6,6 +6,17 @@ Feature: Agent v2 Access Point
     When I open the Agent v2 Access Point page
     Then I should see the Agent v2 Access Point overview
 
+  @workflow-reference
+  Scenario: Workflow access shows the referencing workflow
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E Agent With Workflow Reference" is available
+    And the Agent Builder preseeded workflow "E2E Agent Reference Workflow" is available
+    And the Agent Builder preseeded Agent "E2E Agent With Workflow Reference" is referenced by workflow "E2E Agent Reference Workflow"
+    When I open the preseeded Agent v2 Access Point page for "E2E Agent With Workflow Reference" from the Agent Roster
+    Then I should see the Agent v2 Workflow access reference for "E2E Agent Reference Workflow"
+    When I open the Agent v2 Workflow access reference for "E2E Agent Reference Workflow"
+    Then the Agent v2 Workflow access reference for "E2E Agent Reference Workflow" should open in Studio
+
   Scenario: Backend service API supports endpoint copy, key creation, and API reference navigation
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API

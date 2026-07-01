@@ -70,6 +70,19 @@ export type AgentApiKey = {
   token?: string
 }
 
+export type AgentReferencingWorkflow = {
+  app_id: string
+  app_name: string
+  app_updated_at?: number | null
+  node_ids?: string[]
+  workflow_id: string
+  workflow_version: string
+}
+
+export type AgentReferencingWorkflowsResponse = {
+  data: AgentReferencingWorkflow[]
+}
+
 export type AgentDriveSkillUpload = {
   skill: {
     archive_key?: string | null
@@ -383,6 +396,19 @@ export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSk
     await expectApiResponseOK(response, `Get Agent v2 drive skills for ${agentId}`)
     const body = (await response.json()) as AgentDriveSkillListResponse
     return body.items
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function getAgentReferencingWorkflows(agentId: string): Promise<AgentReferencingWorkflow[]> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agentId}/referencing-workflows`)
+    await expectApiResponseOK(response, `Get Agent v2 referencing workflows for ${agentId}`)
+    const body = (await response.json()) as AgentReferencingWorkflowsResponse
+    return body.data
   }
   finally {
     await ctx.dispose()
