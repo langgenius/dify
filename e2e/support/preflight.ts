@@ -1,6 +1,7 @@
 import type { DifyWorld } from '../features/support/world'
 import { agentBuilderPreseededResources } from './agent-builder-resources'
 import { createApiContext, expectApiResponseOK } from './api'
+import { agentBuilderFileTreeFixtureFiles } from './test-materials'
 
 const stableChatModelProviderEnv = 'E2E_STABLE_MODEL_PROVIDER'
 const stableChatModelNameEnv = 'E2E_STABLE_MODEL_NAME'
@@ -134,6 +135,12 @@ type AgentDriveSkillListResponse = {
   items: Array<{
     name: string
     path: string
+  }>
+}
+
+type AgentDriveFileListResponse = {
+  items?: Array<{
+    key: string
   }>
 }
 
@@ -432,6 +439,43 @@ export async function skipMissingPreseededAgentDriveSkill(
       id: skill.path,
       kind: 'skill',
       name: skill.name,
+    }
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededAgentFileTreeFixture(
+  world: DifyWorld,
+  agentName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped')
+    return agent
+
+  const ctx = await createApiContext()
+  try {
+    const query = buildQuery({ prefix: 'files/' })
+    const response = await ctx.get(`/console/api/agent/${agent.id}/drive/files?${query}`)
+    await expectApiResponseOK(response, `Check preseeded Agent file tree ${agentName}`)
+    const body = (await response.json()) as AgentDriveFileListResponse
+    const keys = (body.items ?? []).map(item => item.key)
+    const missingFiles = agentBuilderFileTreeFixtureFiles.filter(filePath =>
+      !keys.some(key => key === `files/${filePath}` || key.endsWith(`/${filePath}`)),
+    )
+
+    if (missingFiles.length > 0) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" is missing file tree fixture files: ${missingFiles.join(', ')}.`,
+      )
+    }
+
+    return {
+      id: agent.id,
+      kind: 'agent',
+      name: agent.name,
     }
   }
   finally {

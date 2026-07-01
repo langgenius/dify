@@ -34,6 +34,14 @@ export const agentBuilderGeneratedTestMaterials = {
   tooLargeFile: 'agent-too-large-file.txt',
 } as const
 
+export const agentBuilderFileTreeFixtureFiles = [
+  'assets/sample.csv',
+  'docs/中文说明.md',
+  'public/index.html',
+  'src/main.txt',
+  'web-game/README.md',
+] as const
+
 export const getAgentBuilderTestMaterialPath = (material: keyof typeof agentBuilderTestMaterials) =>
   getTestMaterialPath(agentBuilderTestMaterials[material])
 

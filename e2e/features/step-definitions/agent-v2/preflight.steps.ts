@@ -7,6 +7,7 @@ import {
   skipMissingPreseededAgent,
   skipMissingPreseededAgentBackendApiKey,
   skipMissingPreseededAgentDriveSkill,
+  skipMissingPreseededAgentFileTreeFixture,
   skipMissingPreseededAgentPublishedWebApp,
   skipMissingPreseededAgentWorkflowReference,
   skipMissingPreseededDataset,
@@ -105,6 +106,17 @@ Given(
       return resource
 
     this.agentBuilderPreseededResources[`${agentName} / ${skillName}`] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} includes the file tree fixture files',
+  async function (this: DifyWorld, agentName: string) {
+    const resource = await skipMissingPreseededAgentFileTreeFixture(this, agentName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilderPreseededResources[`${agentName} / file tree fixture`] = resource
   },
 )
 

@@ -36,9 +36,9 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" is available
 
-  Scenario: File tree Agent is available
+  Scenario: File tree Agent includes fixture files
     Given I am signed in as the default E2E admin
-    And the Agent Builder preseeded Agent "E2E Agent With File Tree" is available
+    And the Agent Builder preseeded Agent "E2E Agent With File Tree" includes the file tree fixture files
 
   Scenario: Dual retrieval Agent is available
     Given I am signed in as the default E2E admin
