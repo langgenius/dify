@@ -7,26 +7,21 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
-import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
-import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-section'
-import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { useAppContext } from '@/context/app-context'
-import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { DeploymentDetailSection, DeploymentDetailTop } from '@/features/deployments/detail/deployment-sidebar'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
-import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 import { useDetailSidebarMode } from './storage'
@@ -35,6 +30,16 @@ const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'co
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
 const DEPLOYMENT_COLLECTION_ROUTES = new Set(['create'])
 const secondarySidebarHelpTriggerIcon = <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
+
+const AppDetailSection = dynamic(() => import('@/app/components/app-sidebar/app-detail-section'), { ssr: false })
+const AppDetailTop = dynamic(() => import('@/app/components/app-sidebar/app-detail-top'), { ssr: false })
+const DatasetDetailSection = dynamic(() => import('@/app/components/app-sidebar/dataset-detail-section'), { ssr: false })
+const DatasetDetailTop = dynamic(() => import('@/app/components/app-sidebar/dataset-detail-top'), { ssr: false })
+const AgentDetailSection = dynamic(() => import('@/features/agent-v2/agent-detail/navigation').then(mod => mod.AgentDetailSection), { ssr: false })
+const AgentDetailTop = dynamic(() => import('@/features/agent-v2/agent-detail/navigation').then(mod => mod.AgentDetailTop), { ssr: false })
+const SnippetDetailTop = dynamic(() => import('./components/snippet-detail-top'), { ssr: false })
+const SnippetDetailSection = dynamic(() => import('./components/snippet-detail-section').then(mod => mod.SnippetDetailSection), { ssr: false })
+const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
 
 function SecondarySidebarHelpMenu({
   triggerClassName,
@@ -96,8 +101,8 @@ export function MainNav({
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
   const showAgentDetailNavigation = agentV2Enabled && !isCurrentWorkspaceDatasetOperator && isAgentDetailPathname(pathname)
   const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
-  const showSnippetDetailBottomNavigation = isSnippetDetailPathname(pathname)
-  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation
+  const showSnippetDetailNavigation = isSnippetDetailPathname(pathname)
+  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation || showSnippetDetailNavigation
   const { hasAppDetail, setAppDetail } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -112,9 +117,7 @@ export function MainNav({
   const detailNavigationTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDetailNavigationHoverPreviewOpen = isCollapsedDetailNavigation && detailNavigationHoverPreviewOpen
   const detailNavigationVisibleExpanded = detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
-  const bottomNavigationExpanded = showSnippetDetailBottomNavigation
-    ? false
-    : !showDetailNavigation || detailNavigationVisibleExpanded
+  const bottomNavigationExpanded = !showDetailNavigation || detailNavigationVisibleExpanded
   const handleToggleDetailNavigation = useCallback(() => {
     if (isDetailNavigationHoverPreviewOpen) {
       if (detailNavigationTransitionTimerRef.current)
@@ -224,9 +227,7 @@ export function MainNav({
           ? detailNavigationExpanded
             ? 'w-62 bg-background-body p-1'
             : 'w-16 bg-background-body p-1'
-          : showSnippetDetailBottomNavigation
-            ? 'w-16 bg-background-body p-1'
-            : 'w-60 flex-col',
+          : 'w-60 flex-col',
         'bg-background-body',
         className,
       )}
@@ -267,25 +268,30 @@ export function MainNav({
                         onToggle={handleToggleDetailNavigation}
                       />
                     )
-                  : (
-                      <DeploymentDetailTop
-                        expand={detailNavigationVisibleExpanded}
-                        onToggle={handleToggleDetailNavigation}
-                      />
-                    )
-            : showSnippetDetailBottomNavigation
-              ? null
-              : (
-                  <>
-                    <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
-                      {renderLogo()}
-                      <MainNavSearchButton />
-                    </div>
-                    <div className="p-2">
-                      <WorkspaceCard />
-                    </div>
-                  </>
-                )}
+                  : showDeploymentDetailNavigation
+                    ? (
+                        <DeploymentDetailTop
+                          expand={detailNavigationVisibleExpanded}
+                          onToggle={handleToggleDetailNavigation}
+                        />
+                      )
+                    : (
+                        <SnippetDetailTop
+                          expand={detailNavigationVisibleExpanded}
+                          onToggle={handleToggleDetailNavigation}
+                        />
+                      )
+            : (
+                <>
+                  <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
+                    {renderLogo()}
+                    <MainNavSearchButton />
+                  </div>
+                  <div className="p-2">
+                    <WorkspaceCard />
+                  </div>
+                </>
+              )}
           {showDetailNavigation
             ? showAppDetailNavigation
               ? <AppDetailSection expand={detailNavigationVisibleExpanded} />
@@ -293,29 +299,29 @@ export function MainNav({
                 ? <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
                 : showAgentDetailNavigation
                   ? <AgentDetailSection expand={detailNavigationVisibleExpanded} />
-                  : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
-            : showSnippetDetailBottomNavigation
-              ? null
-              : (
-                  <>
-                    <nav className="isolate flex flex-col gap-px p-2">
-                      {navItems.map(item => (
-                        <MainNavLink key={item.href} item={item} pathname={pathname}>
-                          {item.href === '/roster' && (
-                            <Badge
-                              size="xs"
-                              variant="dimm"
-                              text={t('menus.status', { ns: 'common' })}
-                              className="ml-auto shrink-0"
-                            />
-                          )}
-                        </MainNavLink>
-                      ))}
-                    </nav>
-                    {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
-                  </>
-                )}
-          {showEnvTag && !showSnippetDetailBottomNavigation && detailNavigationVisibleExpanded && (
+                  : showDeploymentDetailNavigation
+                    ? <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
+                    : <SnippetDetailSection expand={detailNavigationVisibleExpanded} />
+            : (
+                <>
+                  <nav className="isolate flex flex-col gap-px p-2">
+                    {navItems.map(item => (
+                      <MainNavLink key={item.href} item={item} pathname={pathname}>
+                        {item.href === '/roster' && (
+                          <Badge
+                            size="xs"
+                            variant="dimm"
+                            text={t('menus.status', { ns: 'common' })}
+                            className="ml-auto shrink-0"
+                          />
+                        )}
+                      </MainNavLink>
+                    ))}
+                  </nav>
+                  {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+                </>
+              )}
+          {showEnvTag && detailNavigationVisibleExpanded && (
             <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
               <EnvNav />
             </div>
