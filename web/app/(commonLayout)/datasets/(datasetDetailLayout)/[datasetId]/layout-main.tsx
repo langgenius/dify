@@ -137,7 +137,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       )
 
   return (
-    <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
+    <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden bg-background-body">
       {shouldShowDetailSidebar && (
         <DetailSidebarFrame
           renderTop={({ expand, onToggle }) => (

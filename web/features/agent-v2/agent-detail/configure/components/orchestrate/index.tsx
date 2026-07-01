@@ -114,7 +114,6 @@ export function AgentOrchestratePanel({
           <ScrollArea
             className="min-h-0 flex-1 overflow-hidden"
             label={showHeader ? undefined : orchestrateLabel}
-            labelledBy={showHeader ? orchestrateHeadingId : undefined}
             slotClassNames={{
               viewport: 'overscroll-contain',
               content: cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20'),
