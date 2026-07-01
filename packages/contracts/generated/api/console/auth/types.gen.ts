@@ -86,7 +86,7 @@ export type ProviderConfig = {
   placeholder?: I18nObject | null
   required?: boolean
   scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
-  type: Type
+  type: CoreEntitiesProviderEntitiesBasicProviderConfigType
   url?: string | null
 }
 
@@ -126,7 +126,14 @@ export type ModelSelectorScope
 
 export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
 
-export type Type = 'github' | 'marketplace' | 'package'
+export type CoreEntitiesProviderEntitiesBasicProviderConfigType
+  = | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
 
 export type GetAuthPluginDatasourceDefaultListData = {
   body?: never
