@@ -2164,14 +2164,7 @@ export type ModelConfigPartial = {
 
 export type LlmMode = 'chat' | 'completion'
 
-export type Type
-  = | 'app-selector'
-    | 'array[tools]'
-    | 'boolean'
-    | 'model-selector'
-    | 'secret-input'
-    | 'select'
-    | 'text-input'
+export type Type = 'github' | 'marketplace' | 'package'
 
 export type Github = {
   github_plugin_unique_identifier: string
