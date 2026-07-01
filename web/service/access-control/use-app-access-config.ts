@@ -1,13 +1,12 @@
 import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
-  GetAppAccessPolicyByAppIdResponse,
-  GetAppUserAccessSettingsResponse,
   RemoveAppAccessPolicyMemberBindingsRequest,
   ResourceOpenScope,
   UpdateAppUserAccessSettingsRequest,
 } from '@/models/access-control'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { normalizeAppAccessMatrix, normalizeAppUserAccessPolicies } from './normalizers'
 
 const NAME_SPACE = 'app-access-config'
 const appRbacContract = consoleQuery.workspaces.current.rbac.apps.byAppId
@@ -25,7 +24,7 @@ export const useAppAccessRules = (appId: string, language: AccessControlTemplate
         },
       },
     }),
-    select: response => response as unknown as GetAppAccessPolicyByAppIdResponse,
+    select: normalizeAppAccessMatrix,
   })
 }
 
@@ -41,7 +40,7 @@ export const useAppUserAccessSettings = (appId: string, language: AccessControlT
         },
       },
     }),
-    select: response => response as GetAppUserAccessSettingsResponse,
+    select: normalizeAppUserAccessPolicies,
   })
 }
 

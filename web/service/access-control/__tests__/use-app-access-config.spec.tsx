@@ -1,6 +1,7 @@
+import type { AppAccessMatrix, ResourceUserAccessPoliciesResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import {
   useAppAccessRules,
   useAppUserAccessSettings,
@@ -9,22 +10,88 @@ import {
   useUpdateAppUserAccessSettings,
 } from '../use-app-access-config'
 
-const mocks = vi.hoisted(() => ({
-  accessRulesQueryOptions: vi.fn(() => ({
-    queryKey: ['rbac-access-config', 'apps', 'access-rules'],
-    queryFn: vi.fn().mockResolvedValue({ app_id: 'app-1', items: [] }),
-  })),
-  accessRulesKey: vi.fn(() => ['rbac-access-config', 'apps', 'access-rules']),
-  userAccessSettingsQueryOptions: vi.fn(() => ({
-    queryKey: ['rbac-access-config', 'apps', 'user-access-settings'],
-    queryFn: vi.fn().mockResolvedValue({ data: [], scope: 'specific' }),
-  })),
-  userAccessSettingsKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings']),
-  userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings', 'app-1']),
-  updateOpenScope: vi.fn().mockResolvedValue({}),
-  updateUserAccessSettings: vi.fn().mockResolvedValue({}),
-  removeMemberBindings: vi.fn().mockResolvedValue({}),
-}))
+const mocks = vi.hoisted(() => {
+  const accessRulesResponse = {
+    app_id: 'app-1',
+    items: [
+      {
+        policy: {
+          id: 'policy-1',
+          resource_type: 'app',
+          name: 'Custom policy',
+          created_at: 100,
+          updated_at: 200,
+        },
+        roles: [
+          {
+            role_id: 'role-1',
+            role_name: 'Owner',
+            binding_id: 'binding-role-1',
+            role_tag: 'owner',
+          },
+        ],
+        accounts: [
+          {
+            account_id: 'account-1',
+            account_name: 'Alice',
+            binding_id: 'binding-account-1',
+          },
+        ],
+      },
+      {
+        policy: null,
+      },
+    ],
+  } satisfies AppAccessMatrix
+  const userAccessSettingsResponse = {
+    data: [
+      {
+        account: {
+          account_id: 'account-1',
+        },
+        roles: [
+          {
+            id: 'role-1',
+            type: 'workspace',
+            category: 'global_system_default',
+            name: 'Owner',
+            permission_keys: ['app:read'],
+            role_tag: 'owner',
+          },
+        ],
+        access_policies: [
+          {
+            id: 'policy-1',
+            resource_type: 'app',
+            name: 'Custom policy',
+            category: 'global_custom',
+            permission_keys: ['app:read'],
+          },
+        ],
+      },
+    ],
+    scope: 'only_me',
+  } satisfies ResourceUserAccessPoliciesResponse
+
+  return {
+    accessRulesResponse,
+    userAccessSettingsResponse,
+    accessRulesQueryOptions: vi.fn(() => ({
+      queryKey: ['rbac-access-config', 'apps', 'access-rules'],
+      queryFn: vi.fn().mockResolvedValue(accessRulesResponse),
+    })),
+    accessRulesKey: vi.fn(() => ['rbac-access-config', 'apps', 'access-rules']),
+    userAccessSettingsQueryOptions: vi.fn(() => ({
+      queryKey: ['rbac-access-config', 'apps', 'user-access-settings'],
+      queryFn: vi.fn().mockResolvedValue(userAccessSettingsResponse),
+    })),
+    userAccessSettingsKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings']),
+    userAccessSettingsQueryKey: vi.fn(() => ['rbac-access-config', 'apps', 'user-access-settings', 'app-1']),
+    updateOpenScope: vi.fn().mockResolvedValue({}),
+    updateUserAccessSettings: vi.fn().mockResolvedValue({}),
+    removeMemberBindings: vi.fn().mockResolvedValue({}),
+  }
+})
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
@@ -103,8 +170,8 @@ describe('use-app-access-config', () => {
 
   // Queries load app-specific access policies from the RBAC app route.
   describe('Queries', () => {
-    it('should fetch access rules for an app id', () => {
-      renderHook(() => useAppAccessRules('app-1', 'zh'), { wrapper: createWrapper() })
+    it('should fetch and normalize access rules for an app id', async () => {
+      const { result } = renderHook(() => useAppAccessRules('app-1', 'zh'), { wrapper: createWrapper() })
 
       expect(mocks.accessRulesQueryOptions).toHaveBeenCalledWith({
         input: {
@@ -116,13 +183,53 @@ describe('use-app-access-config', () => {
           },
         },
       })
+      await waitFor(() => {
+        expect(result.current.data).toEqual({
+          app_id: 'app-1',
+          items: [
+            {
+              policy: {
+                id: 'policy-1',
+                tenant_id: '',
+                resource_type: 'app',
+                policy_key: '',
+                name: 'Custom policy',
+                description: '',
+                permission_keys: [],
+                is_builtin: false,
+                category: 'global_custom',
+                created_at: '100',
+                updated_at: '200',
+              },
+              roles: [
+                {
+                  role_id: 'role-1',
+                  role_name: 'Owner',
+                  binding_id: 'binding-role-1',
+                  is_locked: false,
+                  role_tag: 'owner',
+                },
+              ],
+              accounts: [
+                {
+                  account_id: 'account-1',
+                  account_name: 'Alice',
+                  binding_id: 'binding-account-1',
+                  is_locked: false,
+                  avatar: '',
+                },
+              ],
+            },
+          ],
+        })
+      })
     })
   })
 
   // User access settings configure which access policies apply to app users.
   describe('User Access Settings', () => {
-    it('should fetch user access settings for an app id', () => {
-      renderHook(() => useAppUserAccessSettings('app-1', 'en'), { wrapper: createWrapper() })
+    it('should fetch and normalize user access settings for an app id', async () => {
+      const { result } = renderHook(() => useAppUserAccessSettings('app-1', 'en'), { wrapper: createWrapper() })
 
       expect(mocks.userAccessSettingsQueryOptions).toHaveBeenCalledWith({
         input: {
@@ -133,6 +240,46 @@ describe('use-app-access-config', () => {
             language: 'en',
           },
         },
+      })
+      await waitFor(() => {
+        expect(result.current.data).toEqual({
+          data: [
+            {
+              account: {
+                account_id: 'account-1',
+                account_name: '',
+                email: '',
+                avatar: '',
+              },
+              roles: [
+                {
+                  id: 'role-1',
+                  type: 'workspace',
+                  category: 'global_system_default',
+                  name: 'Owner',
+                  is_builtin: false,
+                  permission_keys: ['app:read'],
+                },
+              ],
+              access_policies: [
+                {
+                  id: 'policy-1',
+                  tenant_id: '',
+                  resource_type: 'app',
+                  policy_key: '',
+                  name: 'Custom policy',
+                  description: '',
+                  permission_keys: ['app:read'],
+                  is_builtin: false,
+                  category: 'global_custom',
+                  created_at: '0',
+                  updated_at: '0',
+                },
+              ],
+            },
+          ],
+          scope: 'specific',
+        })
       })
     })
 

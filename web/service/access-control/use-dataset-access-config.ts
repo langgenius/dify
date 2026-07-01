@@ -1,13 +1,12 @@
 import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
-  GetDatasetAccessPolicyByDatasetIdResponse,
-  GetDatasetUserAccessSettingsResponse,
   RemoveDatasetAccessPolicyMemberBindingsRequest,
   ResourceOpenScope,
   UpdateDatasetUserAccessSettingsRequest,
 } from '@/models/access-control'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { normalizeDatasetAccessMatrix, normalizeDatasetUserAccessPolicies } from './normalizers'
 
 const NAME_SPACE = 'dataset-access-config'
 const datasetRbacContract = consoleQuery.workspaces.current.rbac.datasets.byDatasetId
@@ -30,7 +29,7 @@ export const useDatasetAccessRules = (datasetId: string, language: AccessControl
       },
     }),
     enabled: options?.enabled ?? true,
-    select: response => response as unknown as GetDatasetAccessPolicyByDatasetIdResponse,
+    select: normalizeDatasetAccessMatrix,
   })
 }
 
@@ -47,7 +46,7 @@ export const useDatasetUserAccessSettings = (datasetId: string, language: Access
       },
     }),
     enabled: options?.enabled ?? true,
-    select: response => response as GetDatasetUserAccessSettingsResponse,
+    select: normalizeDatasetUserAccessPolicies,
   })
 }
 
