@@ -27,6 +27,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import Iterator
 from typing import Any, ClassVar, cast
 
 import json_repair
@@ -70,9 +71,28 @@ logger = logging.getLogger(__name__)
 _NODE_X_OFFSET = 80
 _NODE_X_STEP = 320
 _NODE_Y = 280
+# Vertical gap between lanes when two branches share the same topological
+# depth (e.g. the two arms of an if-else). Default node height is 100, so
+# 160 leaves clear air between stacked nodes.
+_NODE_Y_STEP = 160
 _DEFAULT_VIEWPORT: GraphViewportDict = {"x": 0.0, "y": 0.0, "zoom": 0.7}
 _DEFAULT_NODE_WIDTH = 244
 _DEFAULT_NODE_HEIGHT = 100
+
+# Start-node input variable types that carry file uploads. Mirrors
+# ``graphon.variables.input_entities.VariableEntityType.FILE / FILE_LIST``.
+_FILE_VARIABLE_TYPES = frozenset({"file", "file-list"})
+
+# Backstop defaults for a file / file-list start variable when the builder
+# omits the required upload config. ``allowed_file_types`` is a REQUIRED field
+# (Studio rejects the draft with "supported file types is required" when it's
+# empty — see ``config-var/config-modal/utils.ts``); we default to every
+# standard type so no valid upload is rejected. ``custom`` is intentionally
+# excluded because it would in turn require a non-empty
+# ``allowed_file_extensions``. The real fix is the builder now documenting and
+# emitting these fields; this is the safety net that guarantees a loadable draft.
+_DEFAULT_ALLOWED_FILE_TYPES = ("document", "image", "audio", "video")
+_DEFAULT_FILE_UPLOAD_METHODS = ("local_file", "remote_url")
 
 # Token ceiling for the planner call when the caller didn't pin one. The plan
 # is a short JSON node list (a handful of nodes with labels/purposes), so this
@@ -166,6 +186,48 @@ def _result_with_errors(
     return base
 
 
+def _with_mode(result: WorkflowGenerateResultDict, mode: WorkflowGenerationMode) -> WorkflowGenerateResultDict:
+    """Stamp the resolved concrete ``mode`` onto a result envelope.
+
+    ``mode="auto"`` requests are resolved to a concrete mode before planning;
+    echoing it back lets the frontend pick the right app type to create. It's
+    present for explicit modes too so the response shape stays uniform.
+    """
+    result["mode"] = mode
+    return result
+
+
+def _build_plan_event(
+    *,
+    plan: PlannerResultDict,
+    plan_nodes: list[dict[str, Any]],
+    start_inputs: list[dict[str, Any]],
+    mode: WorkflowGenerationMode,
+) -> dict[str, Any]:
+    """Shape the ``plan`` event emitted before the (slower) builder runs.
+
+    Node fields are pulled defensively: the planner schema only guarantees
+    ``node_type`` is present, so ``label`` / ``purpose`` may be missing on a
+    terse plan and default to empty strings.
+    """
+    return {
+        "title": str(plan.get("title") or ""),
+        "description": str(plan.get("description") or ""),
+        "app_name": str(plan.get("app_name") or "").strip(),
+        "icon": str(plan.get("icon") or "").strip(),
+        "mode": mode,
+        "nodes": [
+            {
+                "label": str(node.get("label") or ""),
+                "node_type": str(node.get("node_type") or ""),
+                "purpose": str(node.get("purpose") or ""),
+            }
+            for node in plan_nodes
+        ],
+        "start_inputs": start_inputs,
+    }
+
+
 def _stage_error_to_envelope_code(exc: Exception) -> str:
     """Map a stage-typed exception to the result envelope's error code."""
     if isinstance(exc, _StageJSONError):
@@ -231,6 +293,100 @@ class WorkflowGenerator:
         ``errors`` and keep the previous version visible.
         """
 
+        # Consume the shared event generator and keep only the final result
+        # envelope — ``generate_workflow_graph_stream`` shares the exact same
+        # pipeline so the two stay behaviourally identical. The plan event is
+        # ignored here.
+        result: WorkflowGenerateResultDict | None = None
+        for event_name, payload in cls._iter_generation_events(
+            model_instance=model_instance,
+            model_parameters=model_parameters,
+            provider=provider,
+            model_name=model_name,
+            model_mode=model_mode,
+            mode=mode,
+            instruction=instruction,
+            ideal_output=ideal_output,
+            tool_catalogue_text=tool_catalogue_text,
+            installed_tools=installed_tools,
+            current_graph=current_graph,
+        ):
+            if event_name == "result":
+                result = cast(WorkflowGenerateResultDict, payload)
+        # The event generator always emits exactly one result envelope; this
+        # fallback only guards against a future refactor that forgets to.
+        if result is None:
+            result = _with_mode(_empty_result(), mode)
+        return result
+
+    @classmethod
+    def generate_workflow_graph_stream(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        mode: WorkflowGenerationMode,
+        instruction: str,
+        ideal_output: str = "",
+        tool_catalogue_text: str = "",
+        installed_tools: set[tuple[str, str]] | None = None,
+        current_graph: dict[str, Any] | None = None,
+    ) -> Iterator[tuple[str, dict[str, Any]]]:
+        """
+        Streaming sibling of ``generate_workflow_graph``.
+
+        Yields a ``plan`` event (title / description / app_name / icon / mode /
+        high-level nodes / start_inputs) as soon as the planner returns, then a
+        final ``result`` event carrying the SAME envelope dict the non-streaming
+        method returns (graph / message / app_name / icon / error / errors /
+        mode, plus structural errors when any). On a planner / empty-plan /
+        builder failure only the ``result`` event is emitted — no ``plan``.
+        """
+        yield from cls._iter_generation_events(
+            model_instance=model_instance,
+            model_parameters=model_parameters,
+            provider=provider,
+            model_name=model_name,
+            model_mode=model_mode,
+            mode=mode,
+            instruction=instruction,
+            ideal_output=ideal_output,
+            tool_catalogue_text=tool_catalogue_text,
+            installed_tools=installed_tools,
+            current_graph=current_graph,
+        )
+
+    @classmethod
+    def _iter_generation_events(
+        cls,
+        *,
+        model_instance,
+        model_parameters: dict[str, Any],
+        provider: str,
+        model_name: str,
+        model_mode: str,
+        mode: WorkflowGenerationMode,
+        instruction: str,
+        ideal_output: str = "",
+        tool_catalogue_text: str = "",
+        installed_tools: set[tuple[str, str]] | None = None,
+        current_graph: dict[str, Any] | None = None,
+    ) -> Iterator[tuple[str, dict[str, Any]]]:
+        """
+        Drive planner → builder → postprocess and yield generation events.
+
+        Shared core for both ``generate_workflow_graph`` (keeps only the final
+        ``result``) and ``generate_workflow_graph_stream`` (streams every
+        event). Emits at most one ``plan`` event — only once the planner
+        produced a non-empty plan — followed by exactly one ``result`` event.
+        On a planner / empty-plan / builder failure it emits only the
+        ``result`` event carrying the error envelope. Every result envelope is
+        stamped with the resolved concrete ``mode``.
+        """
+
         # ── 1. PLANNER ────────────────────────────────────────────────────
         plan, plan_err = cls._run_stage(
             stage="Planner",
@@ -246,16 +402,22 @@ class WorkflowGenerator:
             ),
         )
         if plan_err is not None:
-            return _result_with_errors(_empty_result(), [plan_err])
+            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [plan_err]), mode))
+            return
 
         # The lambda return is non-None when no error fired — narrow it for type-checkers.
         plan = cast(PlannerResultDict, plan)
         plan_nodes: list[dict[str, Any]] = cast(list[dict[str, Any]], plan.get("nodes", []))
         if not plan_nodes:
-            return _result_with_errors(
-                _empty_result(),
-                [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
+            empty_plan = _with_mode(
+                _result_with_errors(
+                    _empty_result(),
+                    [_err(WorkflowGenerateErrorCode.EMPTY_PLAN, "Planner returned no nodes")],
+                ),
+                mode,
             )
+            yield "result", cast(dict[str, Any], empty_plan)
+            return
 
         # Planner-supplied user-input declarations. The builder uses these to
         # populate ``start.data.variables`` so downstream ``{#start.<var>#}``
@@ -266,6 +428,10 @@ class WorkflowGenerator:
             for item in (plan.get("start_inputs") or [])
             if isinstance(item, dict) and (item.get("variable") or "").strip()
         ]
+
+        # First event the stream sees: the high-level plan, before the slower
+        # builder call. Non-streaming callers ignore it.
+        yield "plan", _build_plan_event(plan=plan, plan_nodes=plan_nodes, start_inputs=start_inputs, mode=mode)
 
         # ── 2. BUILDER ────────────────────────────────────────────────────
         graph, build_err = cls._run_stage(
@@ -287,7 +453,8 @@ class WorkflowGenerator:
             ),
         )
         if build_err is not None:
-            return _result_with_errors(_empty_result(), [build_err])
+            yield "result", cast(dict[str, Any], _with_mode(_result_with_errors(_empty_result(), [build_err]), mode))
+            return
         graph = cast(GraphDict, graph)
 
         # ── 3. POSTPROC + VALIDATE ────────────────────────────────────────
@@ -303,6 +470,7 @@ class WorkflowGenerator:
             "error": "",
             "errors": [],
         }
+        _with_mode(result, mode)
 
         # Final structural sanity check — fail closed if start/end shape is
         # wrong, container topology is broken, a tool was hallucinated, or a
@@ -311,8 +479,9 @@ class WorkflowGenerator:
         structural_errors = cls._validate_structure(graph=graph, mode=mode, installed_tools=installed_tools)
         if structural_errors:
             logger.warning("Workflow generator: structural validation failed: %s", structural_errors)
-            return _result_with_errors(result, structural_errors)
-        return result
+            yield "result", cast(dict[str, Any], _result_with_errors(result, structural_errors))
+            return
+        yield "result", cast(dict[str, Any], result)
 
     @classmethod
     def _run_stage(
@@ -434,7 +603,7 @@ class WorkflowGenerator:
             if isinstance(parsed, dict):
                 if attempt > 0:
                     logger.info("Workflow generator: %s JSON parse recovered on retry", stage)
-                return cast(dict[str, Any], parsed)
+                return parsed
             last_detail = f"Non-object JSON: {type(parsed).__name__}"
             logger.info("Workflow generator: %s non-object JSON on attempt %s", stage, attempt + 1)
         raise _StageJSONError(stage, last_detail or "JSON parse failed")
@@ -512,8 +681,15 @@ class WorkflowGenerator:
             tool_catalogue_section=format_builder_tool_catalogue_section(tool_catalogue_text),
             start_inputs_section=format_start_inputs_section(start_inputs or []),
         )
+        # Scope the builder cheatsheet to exactly the node types the planner
+        # chose, so the prompt carries each type's FULL schema (e.g. a file
+        # start variable's required ``allowed_file_types``) without dragging in
+        # config for unrelated node types.
+        plan_node_types = {
+            str(node.get("node_type") or "").strip() for node in plan_nodes if str(node.get("node_type") or "").strip()
+        }
         messages = [
-            SystemPromptMessage(content=get_builder_system_prompt(mode)),
+            SystemPromptMessage(content=get_builder_system_prompt(mode, plan_node_types)),
             UserPromptMessage(content=user_prompt),
         ]
         parsed = cls._invoke_and_parse_json(
@@ -553,34 +729,32 @@ class WorkflowGenerator:
 
         # Defensive ID remap: Dify's run-time placeholder regex only accepts
         # ``[a-zA-Z0-9_]`` in the node-id slot, so anything the LLM emits with
-        # hyphens (``node-1``, ``node-Kstart``, etc.) would break every
-        # placeholder pointing at it. Strip hyphens out of every id + every
+        # hyphens, dots, or spaces (``node-1``, ``node.2``, etc.) would break
+        # every placeholder pointing at it. Sanitize every id + every
         # cross-reference (edges' ``source`` / ``target``, ``parentId``,
         # ``start_node_id`` / ``iteration_id`` / ``loop_id`` on data, and the
         # ``{{#…#}}`` and ``["node-id", "var"]`` references) BEFORE the rest
         # of the postprocess pass touches them.
-        cls._strip_hyphens_from_node_ids(nodes=nodes, edges=edges)
+        cls._sanitize_node_ids(nodes=nodes, edges=edges)
 
         # Container-child nodes carry their own relative positions inside the
         # parent and have a special ``type`` (custom-iteration-start /
         # custom-loop-start). We must not override their positions or wrapper
-        # ``type``; only top-level (parentId-less) nodes get the left-to-right
-        # auto layout.
-        top_level_index = 0
+        # ``type``; only top-level (parentId-less) nodes get the layered
+        # auto layout (x = topological depth, y = lane within the layer).
+        cls._layout_top_level_nodes(nodes=nodes, edges=edges)
         for node in nodes:
             cls._fill_node_defaults(node)
             if node.get("parentId"):
                 # Inner node — keep whatever the LLM emitted; only fill the
                 # absolutely-required defaults so the canvas can render it.
-                node.setdefault("position", {"x": 0.0, "y": 0.0})
                 node.setdefault("zIndex", 1002)
                 node.setdefault("extent", "parent")
-            else:
-                node["position"] = {
-                    "x": float(_NODE_X_OFFSET + _NODE_X_STEP * top_level_index),
-                    "y": float(_NODE_Y),
-                }
-                top_level_index += 1
+            # Inner nodes keep their LLM-emitted relative position; top-level
+            # nodes were positioned by the layered layout. The setdefault only
+            # fires for inner nodes without a position and for a (broken)
+            # id-less node the layout pass couldn't see.
+            node.setdefault("position", {"x": 0.0, "y": 0.0})
             node.setdefault("positionAbsolute", dict(node["position"]))
             node.setdefault("width", _DEFAULT_NODE_WIDTH)
             node.setdefault("height", _DEFAULT_NODE_HEIGHT)
@@ -597,6 +771,12 @@ class WorkflowGenerator:
         for n in nodes:
             if n.get("id") in inner_node_to_parent.values():
                 parent_type[n["id"]] = n.get("data", {}).get("type", "")
+
+        # Branch nodes (if-else / question-classifier) emit one handle per
+        # case; an edge leaving them on the default "source" handle dangles
+        # off a handle that doesn't exist on the canvas. Repair the
+        # unambiguous cases before edge ids are computed from the handles.
+        cls._repair_branch_edge_handles(nodes=nodes, edges=edges)
 
         # Dedupe edges (LLMs sometimes emit the same edge twice).
         seen: set[tuple[str, str, str, str]] = set()
@@ -658,6 +838,13 @@ class WorkflowGenerator:
         # variables before we surface them as errors.
         cls._reconcile_variable_references(nodes=nodes, mode=mode)
 
+        # Schema backstop: a "file" / "file-list" start variable MUST carry a
+        # non-empty ``allowed_file_types`` or Studio refuses to load the draft
+        # ("supported file types is required"). The builder is now told to set
+        # it, but we fill safe defaults for any variable that still lacks it so
+        # the generated workflow always loads and runs.
+        cls._normalize_start_file_variables(nodes=nodes)
+
         return cast(GraphDict, {"nodes": nodes, "edges": deduped_edges, "viewport": viewport})
 
     # ------------------------------------------------------------------
@@ -683,15 +870,35 @@ class WorkflowGenerator:
         r"\{\{#([a-zA-Z0-9_]{1,50})\.([a-zA-Z_][a-zA-Z0-9_]{0,29}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){0,9})#\}\}"
     )
 
-    # Lenient sibling used only by the defensive hyphen-strip pass — it
-    # allows hyphens in the node-id slot so we can rewrite the LLM's
-    # ``{{#node-1.var#}}`` outputs BEFORE the strict walker sees them.
+    # Lenient sibling used only by the defensive id-sanitize pass — it
+    # accepts ANY character in the node-id slot (except the ``.`` separator
+    # and ``#`` terminator) so we can rewrite the LLM's ``{{#node-1.var#}}``
+    # / ``{{#node 2.var#}}`` outputs BEFORE the strict walker sees them.
     # Never use this for validation, only for rewriting.
-    _LENIENT_VAR_REF_RE: ClassVar = re.compile(r"\{\{#([A-Za-z0-9_-]+)\.([^#]+)#\}\}")
+    _LENIENT_VAR_REF_RE: ClassVar = re.compile(r"\{\{#([^#.{}]+)\.([^#]+)#\}\}")
+
+    # Characters the run-time placeholder regex rejects in the node-id slot.
+    # Anything matching this in a node id must be sanitized away.
+    _INVALID_ID_CHARS_RE: ClassVar = re.compile(r"[^a-zA-Z0-9_]")
 
     # Strings inside ``data`` that look like node-id slugs and need
-    # remapping when we defensively strip hyphens out of LLM-emitted ids.
+    # remapping when we defensively sanitize LLM-emitted ids.
     _ID_FIELDS: ClassVar = frozenset({"start_node_id", "iteration_id", "loop_id", "parentId"})
+
+    # ``data`` keys whose value is a plain string list, never a
+    # ``[node_id, var]`` value-selector — so the reference walker must not read
+    # a 2-element one as a selector. ``default`` holds an input's default value;
+    # ``options`` holds select choices; the ``allowed_file_*`` keys hold a file
+    # variable's upload config (types / extensions / methods).
+    _NON_SELECTOR_LIST_KEYS: ClassVar = frozenset(
+        {
+            "default",
+            "options",
+            "allowed_file_types",
+            "allowed_file_extensions",
+            "allowed_file_upload_methods",
+        }
+    )
 
     @classmethod
     def _reconcile_variable_references(cls, *, nodes: list[dict[str, Any]], mode: WorkflowGenerationMode) -> None:
@@ -747,12 +954,16 @@ class WorkflowGenerator:
             # Known selector shapes: 2-element [node_id, var] lists.
             for k, v in value.items():
                 # ``value_selector`` / ``query_variable_selector`` / etc.: a
-                # flat 2-element list of strings.
+                # flat 2-element list of strings. Skip keys whose value is a
+                # plain string list that merely HAPPENS to have two entries —
+                # a 2-option ``select`` or a file variable's two allowed upload
+                # methods are NOT ``[node_id, var]`` selectors and must not be
+                # mistaken for references.
                 if (
                     isinstance(v, list)
                     and len(v) == 2
                     and all(isinstance(x, str) for x in v)
-                    and k != "default"  # default values for input variables are not selectors
+                    and k not in cls._NON_SELECTOR_LIST_KEYS
                 ):
                     node_id, var = v[0].strip(), v[1].strip()
                     if node_id and var:
@@ -812,34 +1023,51 @@ class WorkflowGenerator:
         return False
 
     @classmethod
-    def _strip_hyphens_from_node_ids(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
+    def _sanitize_node_ids(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
         """
-        Strip ``-`` out of every node id and rewrite every cross-reference.
+        Rewrite every node id to ``[a-zA-Z0-9_]`` and fix every cross-reference.
 
         Dify's run-time ``VARIABLE_PATTERN`` accepts only ``[a-zA-Z0-9_]`` in
         the node-id slot of ``{{#…#}}`` placeholders. The builder LLM often
-        emits ``node-1`` style ids; left unfixed those make every placeholder
-        silently fail at run time, the literal ``{{#node-1.var#}}`` survives
-        into the prompt, and the LLM at run time echoes it back as the user's
-        output — the bug we are here to kill.
+        emits ``node-1`` style ids (and occasionally dots or spaces); left
+        unfixed those make every placeholder silently fail at run time, the
+        literal ``{{#node-1.var#}}`` survives into the prompt, and the LLM at
+        run time echoes it back as the user's output — the bug we are here
+        to kill.
 
-        Approach: build a one-to-one ``old → new`` map by removing hyphens,
-        then rewrite (a) every node ``id``, (b) every edge ``source`` /
-        ``target``, (c) every ``parentId`` / ``start_node_id`` /
-        ``iteration_id`` / ``loop_id`` inside ``data``, (d) every
-        ``{{#…#}}`` reference in any string, (e) every ``["node-id", "var"]``
-        value-selector list. We do NOT rename variable names — only ids.
+        Approach: build a one-to-one ``old → new`` map by dropping the invalid
+        characters — collision-safe: when the sanitized id is already taken
+        (e.g. the builder emitted BOTH ``node-1`` and ``node1``) a numeric
+        suffix keeps the two distinct instead of silently merging every
+        reference onto one node. Then rewrite (a) every node ``id``, (b) every
+        edge ``source`` / ``target``, (c) every ``parentId`` /
+        ``start_node_id`` / ``iteration_id`` / ``loop_id`` inside ``data``,
+        (d) every ``{{#…#}}`` reference in any string, (e) every
+        ``["node-id", "var"]`` value-selector list. We do NOT rename variable
+        names — only ids.
         """
-        # Build id rewrite map. Collision-safe because we just strip a single
-        # character class — two different hyphenated ids ``node-1`` and
-        # ``node1`` would collide, but the builder LLM has been instructed
-        # to pick one style so in practice it's one or the other.
         id_map: dict[str, str] = {}
+        # Ids that are already valid are reserved up front so a sanitized id
+        # can never collide with an untouched sibling.
+        used: set[str] = {
+            n["id"] for n in nodes if isinstance(n.get("id"), str) and not cls._INVALID_ID_CHARS_RE.search(n["id"])
+        }
+        fallback_seq = 0
         for node in nodes:
             old = node.get("id")
-            if not isinstance(old, str) or "-" not in old:
+            if not isinstance(old, str) or not cls._INVALID_ID_CHARS_RE.search(old):
                 continue
-            new = old.replace("-", "")
+            base = cls._INVALID_ID_CHARS_RE.sub("", old)
+            if not base:
+                # Id was nothing but invalid characters (e.g. "节点", "--").
+                fallback_seq += 1
+                base = f"node_{fallback_seq}"
+            new = base
+            suffix = 2
+            while new in used:
+                new = f"{base}_{suffix}"
+                suffix += 1
+            used.add(new)
             id_map[old] = new
             node["id"] = new
         if not id_map:
@@ -853,10 +1081,12 @@ class WorkflowGenerator:
                     edge[key] = id_map[v]
             # Also rewrite the edge id if the builder emitted one referencing
             # the old ids; the dedupe pass later recomputes it anyway, but
-            # rewriting here keeps logs sane.
+            # rewriting here keeps logs sane. Longest-first so an id that is
+            # a substring of another (``node-1`` in ``node-12``) can't corrupt
+            # the longer match.
             eid = edge.get("id")
             if isinstance(eid, str):
-                for old, new in id_map.items():
+                for old, new in sorted(id_map.items(), key=lambda kv: -len(kv[0])):
                     eid = eid.replace(old, new)
                 edge["id"] = eid
 
@@ -875,35 +1105,147 @@ class WorkflowGenerator:
     @classmethod
     def _rewrite_refs_in_data(cls, value: Any, id_map: dict[str, str]) -> None:
         """Recursive sibling of ``_collect_refs_in_data`` that does rewrites."""
-        if isinstance(value, dict):
-            for k, v in list(value.items()):
-                if k in cls._ID_FIELDS and isinstance(v, str):
-                    # Direct id field — apply the longest matching prefix
-                    # (handles ``"nodeKstart"`` where ``nodeK`` is the
-                    # container's old id).
-                    for old, new in sorted(id_map.items(), key=lambda kv: -len(kv[0])):
-                        if old in v:
-                            value[k] = v.replace(old, new)
-                            v = value[k]
-                if isinstance(v, str):
-                    rewritten = cls._LENIENT_VAR_REF_RE.sub(lambda m: cls._rewrite_var_ref(m, id_map), v)
-                    if rewritten != v:
-                        value[k] = rewritten
-                elif isinstance(v, list) and len(v) == 2 and all(isinstance(x, str) for x in v) and v[0] in id_map:
-                    # 2-element ``["node-id", "var"]`` selector list.
-                    value[k] = [id_map[v[0]], v[1]]
-                else:
-                    cls._rewrite_refs_in_data(v, id_map)
-        elif isinstance(value, list):
-            for item in value:
-                cls._rewrite_refs_in_data(item, id_map)
+        match value:
+            case dict():
+                for k, v in list(value.items()):
+                    if k in cls._ID_FIELDS and isinstance(v, str):
+                        # Direct id field — apply the longest matching prefix
+                        # (handles ``"nodeKstart"`` where ``nodeK`` is the
+                        # container's old id).
+                        for old, new in sorted(id_map.items(), key=lambda kv: -len(kv[0])):
+                            if old in v:
+                                value[k] = v.replace(old, new)
+                                v = value[k]
+                    match v:
+                        case str():
+                            rewritten = cls._LENIENT_VAR_REF_RE.sub(lambda m: cls._rewrite_var_ref(m, id_map), v)
+                            if rewritten != v:
+                                value[k] = rewritten
+                        case [str(v0), str(v1)] if v0 in id_map:
+                            # 2-element ``["node-id", "var"]`` selector list.
+                            value[k] = [id_map[v0], v1]
+                        case _:
+                            cls._rewrite_refs_in_data(v, id_map)
+            case list():
+                for item in value:
+                    cls._rewrite_refs_in_data(item, id_map)
 
     @classmethod
-    def _rewrite_var_ref(cls, m: "re.Match[str]", id_map: dict[str, str]) -> str:
+    def _rewrite_var_ref(cls, m: re.Match[str], id_map: dict[str, str]) -> str:
         node_id = m.group(1)
         rest = m.group(2)
         new_id = id_map.get(node_id, node_id)
         return f"{{{{#{new_id}.{rest}#}}}}"
+
+    @classmethod
+    def _repair_branch_edge_handles(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
+        """
+        Re-home edges that leave a branch node on the default "source" handle.
+
+        if-else exposes one source handle per ``case_id`` plus the implicit
+        "false" (ELSE) handle; question-classifier exposes one per class id.
+        The builder prompt documents this, but LLMs still emit the default
+        handle, which renders as an edge hanging off a handle that doesn't
+        exist and the branch silently never runs.
+
+        Repair only when unambiguous: default-handle edges are assigned to the
+        node's UNUSED branch handles in declaration order, and only when there
+        are at least as many unused handles as edges to fix. Anything
+        ambiguous is left alone — a wrong guess that swaps the IF and ELSE
+        arms is worse than a visible dangling edge.
+        """
+        for node in nodes:
+            data = node.get("data") or {}
+            node_type = data.get("type")
+            if node_type == BuiltinNodeTypes.IF_ELSE:
+                branch_handles = [
+                    str(case["case_id"])
+                    for case in (data.get("cases") or [])
+                    if isinstance(case, dict) and case.get("case_id")
+                ]
+                # ELSE is implicit — it has a handle even though no case
+                # declares it.
+                branch_handles.append("false")
+            elif node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER:
+                branch_handles = [
+                    str(klass["id"])
+                    for klass in (data.get("classes") or [])
+                    if isinstance(klass, dict) and klass.get("id")
+                ]
+            else:
+                continue
+
+            node_id = node.get("id")
+            outgoing = [e for e in edges if e.get("source") == node_id]
+            taken = {e.get("sourceHandle") for e in outgoing if e.get("sourceHandle") in branch_handles}
+            unused = [h for h in branch_handles if h not in taken]
+            defaulted = [e for e in outgoing if e.get("sourceHandle") in (None, "", "source")]
+            if not defaulted or len(defaulted) > len(unused):
+                continue
+            for edge, handle in zip(defaulted, unused):
+                edge["sourceHandle"] = handle
+                logger.info(
+                    "Workflow generator: re-homed default-handle edge %s -> %s onto branch handle %r",
+                    node_id,
+                    edge.get("target"),
+                    handle,
+                )
+
+    @classmethod
+    def _layout_top_level_nodes(cls, *, nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
+        """
+        Lay out top-level nodes by graph topology instead of array order.
+
+        x = longest-path depth from the entry layer, y = lane within the
+        layer — so an if-else's two arms render as two parallel rows instead
+        of overlapping on one line, and a builder that emits nodes out of
+        execution order still gets a left-to-right canvas. Longest-path (not
+        BFS) layering keeps a join node (variable-aggregator, end) to the
+        right of its deepest branch.
+
+        Cycle-safe: Kahn's algorithm simply never reaches nodes on a cycle,
+        and those get parked one layer past the deepest laid-out node in
+        declaration order — the cycle itself is flagged by the structural
+        validator afterwards.
+        """
+        top_level = [n for n in nodes if not n.get("parentId") and isinstance(n.get("id"), str) and n.get("id")]
+        id_set = {n["id"] for n in top_level}
+
+        succs: dict[str, list[str]] = {node_id: [] for node_id in id_set}
+        indegree: dict[str, int] = dict.fromkeys(id_set, 0)
+        seen_pairs: set[tuple[str, str]] = set()
+        for edge in edges:
+            src, tgt = edge.get("source"), edge.get("target")
+            if not isinstance(src, str) or not isinstance(tgt, str):
+                continue
+            if src not in id_set or tgt not in id_set or src == tgt or (src, tgt) in seen_pairs:
+                continue
+            seen_pairs.add((src, tgt))
+            succs[src].append(tgt)
+            indegree[tgt] += 1
+
+        depth: dict[str, int] = {}
+        queue = [n["id"] for n in top_level if indegree[n["id"]] == 0]
+        for node_id in queue:
+            depth[node_id] = 0
+        while queue:
+            cur = queue.pop(0)
+            for nxt in succs[cur]:
+                depth[nxt] = max(depth.get(nxt, 0), depth[cur] + 1)
+                indegree[nxt] -= 1
+                if indegree[nxt] == 0:
+                    queue.append(nxt)
+
+        overflow_depth = (max(depth.values()) + 1) if depth else 0
+        lanes: dict[int, int] = {}
+        for node in top_level:
+            d = depth.get(node["id"], overflow_depth)
+            lane = lanes.get(d, 0)
+            lanes[d] = lane + 1
+            node["position"] = {
+                "x": float(_NODE_X_OFFSET + _NODE_X_STEP * d),
+                "y": float(_NODE_Y + _NODE_Y_STEP * lane),
+            }
 
     @classmethod
     def _inject_start_variable(cls, start_node: dict[str, Any], var: str) -> None:
@@ -922,6 +1264,96 @@ class WorkflowGenerator:
                 "options": [],
             }
         )
+
+    @classmethod
+    def _normalize_start_file_variables(cls, *, nodes: list[dict[str, Any]]) -> None:
+        """
+        Fill the required upload config on every file / file-list start variable.
+
+        A start variable of type ``file`` / ``file-list`` is invalid without a
+        non-empty ``allowed_file_types`` — Studio rejects the draft with
+        "supported file types is required" (see the front-end validator in
+        ``config-var/config-modal/utils.ts``) and the workflow never runs. The
+        builder prompt now documents these fields, but LLMs still drop them, so
+        we backfill safe defaults here:
+
+          * a start variable a ``document-extractor`` consumes but that wasn't
+            declared as a file type → promoted to ``file`` (or ``file-list``
+            when the extractor's ``is_array_file`` is set), defaulting its
+            allowed types to ``["document"]`` (what extraction needs);
+          * empty / missing ``allowed_file_types`` → every standard file type;
+          * ``custom`` present without ``allowed_file_extensions`` → drop
+            ``custom`` (it would otherwise require a non-empty extension list);
+          * empty / missing ``allowed_file_upload_methods`` → local + remote;
+          * ensure ``allowed_file_extensions`` is at least an empty list.
+
+        Idempotent: a variable that already declares valid file config is left
+        untouched.
+        """
+        start_node = next(
+            (n for n in nodes if (n.get("data") or {}).get("type") == BuiltinNodeTypes.START),
+            None,
+        )
+        if start_node is None:
+            return
+        variables = (start_node.get("data") or {}).get("variables")
+        if not isinstance(variables, list):
+            return
+
+        # Start variables a document-extractor reads → whether it wants an
+        # array (file-list). These MUST be file inputs even if the builder
+        # mistyped them (e.g. declared "paragraph"), or the extractor fails at
+        # run time. ``["document"]`` is the right default for text extraction.
+        extractor_file_vars = cls._document_extractor_start_vars(nodes=nodes, start_id=start_node.get("id", ""))
+
+        for var in variables:
+            if not isinstance(var, dict):
+                continue
+            name = var.get("variable")
+            if name in extractor_file_vars and var.get("type") not in _FILE_VARIABLE_TYPES:
+                var["type"] = "file-list" if extractor_file_vars[name] else "file"
+                var.setdefault("allowed_file_types", ["document"])
+            if var.get("type") not in _FILE_VARIABLE_TYPES:
+                continue
+            allowed_types = var.get("allowed_file_types")
+            if not isinstance(allowed_types, list) or not allowed_types:
+                allowed_types = list(_DEFAULT_ALLOWED_FILE_TYPES)
+                var["allowed_file_types"] = allowed_types
+            # ``custom`` demands a non-empty extension list; without one, drop it
+            # so the variable doesn't trip the "file extensions required" check.
+            extensions = var.get("allowed_file_extensions")
+            has_extensions = isinstance(extensions, list) and bool(extensions)
+            if "custom" in allowed_types and not has_extensions:
+                pruned = [t for t in allowed_types if t != "custom"]
+                var["allowed_file_types"] = pruned or list(_DEFAULT_ALLOWED_FILE_TYPES)
+            methods = var.get("allowed_file_upload_methods")
+            if not isinstance(methods, list) or not methods:
+                var["allowed_file_upload_methods"] = list(_DEFAULT_FILE_UPLOAD_METHODS)
+            if not isinstance(var.get("allowed_file_extensions"), list):
+                var["allowed_file_extensions"] = []
+
+    @classmethod
+    def _document_extractor_start_vars(cls, *, nodes: list[dict[str, Any]], start_id: str) -> dict[str, bool]:
+        """
+        Map start-variable name → ``is_array_file`` for every start variable a
+        ``document-extractor`` node reads via its ``variable_selector``.
+
+        When two extractors read the same variable we keep ``True`` (file-list)
+        if any of them wants an array, since a file-list also satisfies a
+        single-file read.
+        """
+        out: dict[str, bool] = {}
+        if not start_id:
+            return out
+        for node in nodes:
+            data = node.get("data") or {}
+            if data.get("type") != BuiltinNodeTypes.DOCUMENT_EXTRACTOR:
+                continue
+            selector = data.get("variable_selector")
+            if isinstance(selector, list) and len(selector) == 2 and selector[0] == start_id:
+                var_name = selector[1]
+                out[var_name] = out.get(var_name, False) or bool(data.get("is_array_file"))
+        return out
 
     @classmethod
     def _fill_node_defaults(cls, node: dict[str, Any]) -> None:
@@ -982,6 +1414,24 @@ class WorkflowGenerator:
             errors.append(_err(WorkflowGenerateErrorCode.INVALID_SCHEMA, "Generated graph has no nodes"))
             return errors
 
+        # Duplicate ids make every cross-reference ambiguous (edges, variable
+        # placeholders, parentId all resolve to "whichever node wins"), so a
+        # graph with them is unusable no matter how the canvas renders it.
+        id_counts: dict[str, int] = {}
+        for node in nodes:
+            node_id = node.get("id", "")
+            if node_id:
+                id_counts[node_id] = id_counts.get(node_id, 0) + 1
+        for node_id, count in id_counts.items():
+            if count > 1:
+                errors.append(
+                    _err(
+                        WorkflowGenerateErrorCode.DUPLICATE_NODE_ID,
+                        f"Duplicate node id {node_id!r} ({count} nodes share it)",
+                        node_id=node_id,
+                    )
+                )
+
         types = [node.get("data", {}).get("type", "") for node in nodes]
         starts = [t for t in types if t == BuiltinNodeTypes.START]
         if len(starts) != 1:
@@ -1016,6 +1466,11 @@ class WorkflowGenerator:
             if tgt not in known_ids:
                 errors.append(_err(WorkflowGenerateErrorCode.DANGLING_EDGE, f"Edge target node not found: {tgt!r}"))
 
+        # Workflow graphs must be DAGs — a directed cycle hangs or errors the
+        # run, and nothing downstream of the cycle ever executes. (A "loop"
+        # container is the sanctioned way to iterate; its edges are internal.)
+        errors.extend(cls._collect_edge_cycle_errors(graph=graph, known_ids=known_ids))
+
         # Dangling node-id references in node ``data`` (parentId, start_node_id, iteration_id, loop_id).
         errors.extend(cls._collect_dangling_id_refs(nodes=nodes, known_ids=known_ids))
 
@@ -1034,6 +1489,54 @@ class WorkflowGenerator:
         errors.extend(cls._collect_unresolved_refs(nodes=nodes, mode=mode))
 
         return errors
+
+    @classmethod
+    def _collect_edge_cycle_errors(cls, *, graph: GraphDict, known_ids: set[str]) -> list[WorkflowGenerateErrorDict]:
+        """
+        Flag directed cycles among the graph's edges (Kahn's algorithm).
+
+        Self-loops are reported per node; a longer cycle is reported once,
+        naming every node Kahn's peeling never reaches (cycle members plus
+        anything downstream of them). Edges into unknown ids are ignored
+        here — the dangling-edge check already covers those.
+        """
+        out: list[WorkflowGenerateErrorDict] = []
+        succs: dict[str, list[str]] = {node_id: [] for node_id in known_ids}
+        indegree: dict[str, int] = dict.fromkeys(known_ids, 0)
+        for edge in graph.get("edges", []):
+            src, tgt = edge.get("source"), edge.get("target")
+            if src not in known_ids or tgt not in known_ids:
+                continue
+            if src == tgt:
+                out.append(
+                    _err(
+                        WorkflowGenerateErrorCode.GRAPH_CYCLE,
+                        f"Node {src!r} has an edge pointing at itself",
+                        node_id=src,
+                    )
+                )
+                continue
+            succs[src].append(tgt)
+            indegree[tgt] += 1
+
+        queue = [node_id for node_id, deg in indegree.items() if deg == 0]
+        visited = 0
+        while queue:
+            cur = queue.pop()
+            visited += 1
+            for nxt in succs[cur]:
+                indegree[nxt] -= 1
+                if indegree[nxt] == 0:
+                    queue.append(nxt)
+        if visited < len(known_ids):
+            trapped = sorted(node_id for node_id, deg in indegree.items() if deg > 0)
+            out.append(
+                _err(
+                    WorkflowGenerateErrorCode.GRAPH_CYCLE,
+                    f"Workflow graph contains a cycle; affected nodes: {', '.join(trapped)}",
+                )
+            )
+        return out
 
     @classmethod
     def _collect_dangling_id_refs(

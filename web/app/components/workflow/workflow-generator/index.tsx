@@ -1,7 +1,8 @@
 'use client'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { GenerateWorkflowBody, GenerateWorkflowResponse as StreamResult, WorkflowGenPlan } from '@/service/debug'
+import type { CompletionParams, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -15,41 +16,44 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { RiErrorWarningLine } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import IdeaOutput from '@/app/components/app/configuration/config/automatic/idea-output'
 import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
-import { useAppContext } from '@/context/app-context'
-import { useLocalStorage } from '@/hooks/use-local-storage'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { generateWorkflow } from '@/service/debug'
+import { generateWorkflow, generateWorkflowStream } from '@/service/debug'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { applyToCurrentApp, applyToNewApp, WorkflowApplyHashCollisionError, WorkflowApplyOrphanError } from './apply'
 import ExamplePrompts from './example-prompts'
-import GenerationPhases from './generation-phases'
+import GenerationPlan from './generation-plan'
+import { diffGraphs } from './graph-diff'
+import { EMPTY_WORKFLOW_GENERATOR_MODEL, useWorkflowGeneratorLastInstruction, useWorkflowGeneratorModel } from './storage'
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
-const STORAGE_MODEL_KEY = 'workflow-gen-model'
-const FE_TIMEOUT_MS = 60_000
+// Hard ceiling before we abort a hung request. Generous on purpose: the
+// backend runs two sequential LLM calls and may retry a transient provider
+// error (bounded backoff) or an unparseable response (one extra call), so a
+// slow-but-succeeding generation can legitimately pass the one-minute mark.
+// Aborting work that would have landed is the worse failure mode.
+const FE_TIMEOUT_MS = 90_000
+// Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
+// keeping the limit client-side turns an opaque 400 into a visible input stop.
+const MAX_INSTRUCTION_LENGTH = 10_000
 
-// Stable default used both as the SSR/empty-storage seed for the persisted
-// model and as the merge base when patching a partial update. Module-level so
-// the reference stays identical across renders (useLocalStorage uses it as the
-// server value, which must not change identity each render).
-const EMPTY_MODEL: Model = {
-  name: '',
-  provider: '',
-  mode: 'chat' as unknown as ModelModeType.chat,
-  completion_params: {} as CompletionParams,
-}
+// A single structured generation error. Mirrors the backend ``errors[]`` entry
+// (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel
+// can localise the message and point at the offending node.
+type GenError = { code: string, detail: string, node_id?: string }
 
 const renderPlaceholder = (label: string) => (
   <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8">
@@ -102,21 +106,21 @@ const RecoveryDialog = ({ open, onOpenChange, title, description, cancelLabel, c
 const WorkflowGeneratorModal: React.FC = () => {
   const { t } = useTranslation('workflow')
   const router = useRouter()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const isOpen = useWorkflowGeneratorStore(s => s.isOpen)
   const mode = useWorkflowGeneratorStore(s => s.mode)
   const intent = useWorkflowGeneratorStore(s => s.intent)
   const currentAppId = useWorkflowGeneratorStore(s => s.currentAppId)
   const currentAppMode = useWorkflowGeneratorStore(s => s.currentAppMode)
+  const initialInstruction = useWorkflowGeneratorStore(s => s.initialInstruction)
+  const autoMode = useWorkflowGeneratorStore(s => s.autoMode)
   const closeGenerator = useWorkflowGeneratorStore(s => s.closeGenerator)
 
   const isRefine = intent === 'refine' && !!currentAppId
 
-  // Persisted model selection. ``useLocalStorage`` is the storage boundary
-  // mandated for client-only preferences — the empty model is the SSR/seed
-  // value so ``model`` is always a concrete ``Model`` (never null) here.
-  const [model, setModel] = useLocalStorage<Model>(STORAGE_MODEL_KEY, EMPTY_MODEL)
+  const [model, setModel] = useWorkflowGeneratorModel()
 
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
@@ -126,7 +130,7 @@ const WorkflowGeneratorModal: React.FC = () => {
   useEffect(() => {
     if (defaultModel && !model.name) {
       setModel(prev => ({
-        ...(prev ?? EMPTY_MODEL),
+        ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
         name: defaultModel.model,
         provider: defaultModel.provider.provider,
       }))
@@ -135,7 +139,7 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     setModel(prev => ({
-      ...(prev ?? EMPTY_MODEL),
+      ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
       provider: newValue.provider,
       name: newValue.modelId,
       mode: newValue.mode as ModelModeType,
@@ -144,13 +148,24 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     setModel(prev => ({
-      ...(prev ?? EMPTY_MODEL),
+      ...(prev ?? EMPTY_WORKFLOW_GENERATOR_MODEL),
       completion_params: newParams as CompletionParams,
     }))
   }, [setModel])
 
-  const [instruction, setInstruction] = useState('')
-  const [ideaOutput, setIdeaOutput] = useState('')
+  const [lastInstruction, setLastInstruction] = useWorkflowGeneratorLastInstruction()
+  // Seed from the palette's inline-captured instruction, else the last instruction
+  // generated from (persisted across opens). Captured at mount only — the modal
+  // remounts on each open, so this is just the initial value.
+  const [instruction, setInstruction] = useState(initialInstruction || lastInstruction || '')
+  // Planner result, streamed ahead of the graph (null until it lands).
+  const [plan, setPlan] = useState<WorkflowGenPlan | null>(null)
+  // Structured generation errors (validation / model). Drives the actionable
+  // error panel; null when the last attempt succeeded or hasn't run.
+  const [genError, setGenError] = useState<GenError[] | null>(null)
+  // Refine base graph captured at Generate time, diffed against the result so
+  // the user can see what "apply" changes before overwriting their draft.
+  const [refineBaseGraph, setRefineBaseGraph] = useState<GeneratedGraph | null>(null)
 
   const storageKey = `${mode}-${currentAppId ?? 'new'}`
   const { addVersion, current, currentVersionIndex, setCurrentVersionIndex, versions } = useGenGraph({
@@ -159,11 +174,6 @@ const WorkflowGeneratorModal: React.FC = () => {
 
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
   const [isApplying, { setTrue: setApplyingTrue, setFalse: setApplyingFalse }] = useBoolean(false)
-
-  // Per-attempt nonce — bumped on each Generate click so ``GenerationPhases``
-  // can reset its internal phase timer instead of resuming wherever the
-  // previous attempt left off (which makes the UI look wedged).
-  const [startedAt, setStartedAt] = useState(0)
 
   // Confirmation dialog for "Apply to current draft"
   const [isShowConfirmOverwrite, { setTrue: showConfirmOverwrite, setFalse: hideConfirmOverwrite }] = useBoolean(false)
@@ -218,7 +228,7 @@ const WorkflowGeneratorModal: React.FC = () => {
   }, [])
 
   // Note: the modal is mounted lazily by ``mount.tsx`` which unmounts it when
-  // ``isOpen`` flips to false, so transient state (instruction / ideaOutput)
+  // ``isOpen`` flips to false, so transient state (instruction / plan / errors)
   // resets implicitly on the next open. No reset effect needed.
 
   const isValid = () => {
@@ -238,82 +248,118 @@ const WorkflowGeneratorModal: React.FC = () => {
     return true
   }
 
+  // Apply a finished generation result (from the stream's ``result`` event or
+  // the non-streaming fallback). Structured errors go to the actionable error
+  // panel rather than a transient toast; a version is added only for a real graph.
+  const handleResult = useCallback((res: StreamResult) => {
+    if (res.errors?.length) {
+      setGenError(res.errors as GenError[])
+      return
+    }
+    if (!res.graph?.nodes?.length) {
+      setGenError([{ code: 'EMPTY', detail: res.error || t('workflowGenerator.generateFailed') }])
+      return
+    }
+    setGenError(null)
+    addVersion(res)
+  }, [addVersion, t])
+
   const onGenerate = async () => {
     if (!isValid())
       return
-    // Cancel any previous in-flight request (double-click guard). The
-    // previous promise will reject with AbortError which our catch swallows.
+    // Cancel any previous in-flight request (double-click guard).
     abortInFlight()
 
-    setStartedAt(Date.now())
     generatedModeRef.current = mode
+    setLastInstruction(instruction)
+    setGenError(null)
+    setPlan(null)
     setLoadingTrue()
 
-    // Hard frontend timeout — aborts the request and surfaces a localised
-    // toast so the user sees something actionable instead of a perpetual
-    // spinner if the backend hangs.
+    // Hard frontend timeout — aborts the request and surfaces a localised toast
+    // instead of a perpetual spinner if the backend hangs.
     timeoutRef.current = setTimeout(() => {
       abortRef.current?.abort()
       abortRef.current = null
       toast.error(t('workflowGenerator.errors.timeout'))
+      setLoadingFalse()
     }, FE_TIMEOUT_MS)
 
-    try {
-      // Refine mode: pull the current draft graph so the backend amends it
-      // instead of starting from scratch. The modal mounts outside the Studio's
-      // ReactFlow provider, so we read the persisted draft rather than the live
-      // canvas. A fetch failure (no draft saved yet) degrades gracefully to a
-      // from-scratch generation — better than blocking the user entirely.
-      let currentGraph: Awaited<ReturnType<typeof fetchWorkflowDraft>>['graph'] | undefined
-      if (isRefine && currentAppId) {
-        try {
-          const draft = await fetchWorkflowDraft(`apps/${currentAppId}/workflows/draft`)
-          if (draft?.graph?.nodes?.length)
-            currentGraph = draft.graph
-        }
-        catch {
-          currentGraph = undefined
-        }
+    // Refine mode: pull the current draft so the backend amends it instead of
+    // starting from scratch. The modal mounts outside the Studio's ReactFlow
+    // provider, so we read the persisted draft rather than the live canvas. A
+    // fetch failure (no draft yet) degrades to from-scratch generation, but we
+    // warn since the user explicitly asked to refine.
+    let currentGraph: GeneratedGraph | undefined
+    if (isRefine && currentAppId) {
+      try {
+        const draft = await fetchWorkflowDraft(`apps/${currentAppId}/workflows/draft`)
+        if (draft?.graph?.nodes?.length)
+          currentGraph = draft.graph as GeneratedGraph
       }
+      catch {
+        currentGraph = undefined
+      }
+      if (!currentGraph)
+        toast.warning(t('workflowGenerator.refineDraftUnavailable'))
+    }
+    setRefineBaseGraph(currentGraph ?? null)
 
-      const res = await generateWorkflow({
-        mode,
-        instruction,
-        ideal_output: ideaOutput,
-        model_config: model,
-        ...(currentGraph ? { current_graph: currentGraph } : {}),
-      }, {
-        getAbortController: (c) => { abortRef.current = c },
-      })
-      const first = res.errors?.[0]
-      if (first) {
-        // Prefer the localised copy for the structured code; fall back to
-        // the backend's human-readable ``detail`` for codes we don't have
-        // a translation for yet.
-        const i18nKey = `workflowGenerator.errors.${first.code}`
-        const localised = t(i18nKey, { defaultValue: '' })
-        toast.error(localised || first.detail || res.error || t('workflowGenerator.generateFailed'))
-        return
-      }
-      if (res.error) {
-        toast.error(res.error)
-        return
-      }
-      addVersion(res)
+    const body: GenerateWorkflowBody = {
+      // Auto-mode sends 'auto' so the planner picks Workflow vs Chatflow; the
+      // resolved concrete mode comes back on the result and drives apply.
+      mode: autoMode ? 'auto' : mode,
+      instruction,
+      model_config: model,
+      ...(currentGraph ? { current_graph: currentGraph } : {}),
     }
-    catch (e: unknown) {
-      // Aborts are intentional (modal close, second click, timeout) — never
-      // toast for them. The timeout path already showed its own toast.
-      if (isAbortError(e))
-        return
-      const message = e instanceof Error ? e.message : ''
-      toast.error(message || t('workflowGenerator.generateFailed'))
-    }
-    finally {
+
+    const finish = () => {
       setLoadingFalse()
       clearTimers()
       abortRef.current = null
     }
+
+    // Plan-first streaming: surface the planner outline the moment it lands, then
+    // the graph. ``settled`` tracks whether the stream produced anything, so a
+    // stream that dies before any event (endpoint missing, proxy buffering) can
+    // fall back to the single-shot endpoint instead of failing the user.
+    let settled = false
+    generateWorkflowStream(body, {
+      getAbortController: (c) => { abortRef.current = c },
+      onPlan: (p) => {
+        settled = true
+        setPlan(p)
+      },
+      onResult: (res) => {
+        settled = true
+        handleResult(res)
+        finish()
+      },
+      onError: (msg) => {
+        if (!settled) {
+          generateWorkflow(body, {
+            getAbortController: (c) => { abortRef.current = c },
+          })
+            .then(res => handleResult(res))
+            .catch((e: unknown) => {
+              if (isAbortError(e))
+                return
+              const message = e instanceof Error ? e.message : ''
+              toast.error(message || t('workflowGenerator.generateFailed'))
+            })
+            .finally(finish)
+          return
+        }
+        if (msg)
+          toast.error(msg)
+        finish()
+      },
+      onCompleted: () => {
+        if (settled)
+          finish()
+      },
+    })
   }
 
   const onCancelGeneration = useCallback(() => {
@@ -336,16 +382,20 @@ const WorkflowGeneratorModal: React.FC = () => {
       return
     setApplyingTrue()
     try {
-      const { appId, appMode } = await applyToNewApp({
-        mode,
+      const { appId, appMode, permissionKeys } = await applyToNewApp({
+        // Resolved mode — when the request used auto-mode this is the concrete
+        // type the planner picked, so the new app is created as the right kind.
+        mode: current.mode ?? mode,
         graph: current.graph as GeneratedGraph,
         instruction,
         appName: current.app_name,
         icon: current.icon,
       })
-      toast.success(t('workflowGenerator.applied'))
+      // Nudge the freshly-created Studio toward iterating with cmd+k /refine
+      // instead of regenerating from scratch for a small tweak.
+      toast.success(t('workflowGenerator.appliedRefineHint'))
       closeGenerator()
-      router.push(getRedirectionPath(isCurrentWorkspaceEditor, { id: appId, mode: appMode }))
+      router.push(getRedirectionPath({ id: appId, mode: appMode, permission_keys: permissionKeys }, { isRbacEnabled }))
     }
     catch (e: unknown) {
       if (e instanceof WorkflowApplyOrphanError) {
@@ -362,7 +412,7 @@ const WorkflowGeneratorModal: React.FC = () => {
     finally {
       setApplyingFalse()
     }
-  }, [current, instruction, mode, router, isCurrentWorkspaceEditor, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse])
+  }, [current, instruction, mode, router, closeGenerator, t, isApplying, isRbacEnabled, setApplyingTrue, setApplyingFalse])
 
   const handleApplyToCurrentConfirmed = useCallback(async () => {
     if (!current?.graph || !currentAppId || isApplying)
@@ -398,6 +448,21 @@ const WorkflowGeneratorModal: React.FC = () => {
   }, [current, currentAppId, hideConfirmOverwrite, closeGenerator, t, isApplying, setApplyingTrue, setApplyingFalse, showHashCollision])
 
   const modeLabel = mode === 'workflow' ? t('workflowGenerator.modes.workflow') : t('workflowGenerator.modes.chatflow')
+
+  // Refine diff — what an "apply" would change vs. the draft we started from.
+  const refineDiff = useMemo(() => {
+    if (!isRefine || !refineBaseGraph || !current?.graph?.nodes?.length)
+      return null
+    return diffGraphs(refineBaseGraph, current.graph as GeneratedGraph)
+  }, [isRefine, refineBaseGraph, current])
+  const hasRefineChanges = !!refineDiff && (refineDiff.added.length > 0 || refineDiff.removed.length > 0 || refineDiff.changed.length > 0)
+
+  // Derived view of the last structured error for the actionable error panel.
+  const firstGenError = genError?.[0]
+  const genErrorMessage = firstGenError
+    ? (t(`workflowGenerator.errors.${firstGenError.code}`, { defaultValue: '' }) || firstGenError.detail || t('workflowGenerator.generateFailed'))
+    : ''
+  const genErrorHasUnknownTool = !!genError?.some(e => e.code === 'UNKNOWN_TOOL')
 
   return (
     <Dialog
@@ -445,23 +510,32 @@ const WorkflowGeneratorModal: React.FC = () => {
                 {t('workflowGenerator.instruction')}
               </div>
               <Textarea
+                // Autofocus is appropriate here: the modal's sole purpose is to
+                // capture an instruction, so focusing it on open aids the flow.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
                 className="h-[160px]"
                 placeholder={isRefine
                   ? t('workflowGenerator.refineInstructionPlaceholder')
                   : t('workflowGenerator.instructionPlaceholder')}
                 value={instruction}
                 onValueChange={setInstruction}
+                onKeyDown={(e) => {
+                  // ⌘/Ctrl+Enter generates — the journey starts keyboard-first in
+                  // the palette, so let it finish without reaching for the mouse.
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                    e.preventDefault()
+                    if (!isLoading)
+                      onGenerate()
+                  }
+                }}
+                maxLength={MAX_INSTRUCTION_LENGTH}
               />
 
               {/* Example prompts are create-from-scratch starters ("Summarize a
                   URL"); they don't fit a refine-the-current-graph task, so hide
                   them in refine mode. */}
               {!isRefine && <ExamplePrompts mode={mode} onSelect={setInstruction} />}
-
-              <IdeaOutput
-                value={ideaOutput}
-                onChange={setIdeaOutput}
-              />
 
               <div className="mt-7 flex justify-end space-x-2">
                 <Button onClick={closeGenerator}>
@@ -496,65 +570,116 @@ const WorkflowGeneratorModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Right pane: preview + version selector + apply */}
-          {(!isLoading && current?.graph?.nodes?.length)
+          {/* Right pane: planning → graph result / actionable error / empty placeholder */}
+          {isLoading
             ? (
-                <div className="flex h-full w-0 grow flex-col bg-background-default-subtle p-6">
-                  <div className="mb-3 flex items-center justify-between">
-                    <VersionSelector
-                      versionLen={versions?.length || 0}
-                      value={currentVersionIndex || 0}
-                      onChange={setCurrentVersionIndex}
-                    />
-                    <div className="flex items-center space-x-2">
-                      {canApplyToCurrent
-                        ? (
-                            // Studio button entry — overwrite the current draft
-                            // is the only meaningful Apply action, so collapse
-                            // the two buttons into one primary "Apply".
-                            <Button
-                              size="small"
-                              variant="primary"
-                              onClick={showConfirmOverwrite}
-                              disabled={isApplying}
-                            >
-                              {t('workflowGenerator.studioApply')}
-                            </Button>
-                          )
-                        : (
-                            // cmd+k /create entry — no current-app context, so
-                            // the only path is "Create new app".
-                            <Button
-                              size="small"
-                              variant="primary"
-                              onClick={handleApplyToNew}
-                              disabled={isApplying}
-                            >
-                              {t('workflowGenerator.applyToNew')}
-                            </Button>
-                          )}
-                    </div>
-                  </div>
-                  <div className="relative w-full grow overflow-hidden rounded-2xl border border-divider-subtle bg-background-default">
-                    <WorkflowPreview
-                      nodes={current.graph.nodes}
-                      edges={current.graph.edges}
-                      viewport={current.graph.viewport}
-                      miniMapToRight
-                    />
-                  </div>
-                  {current.message && (
-                    <div className="mt-2 system-xs-regular text-text-tertiary">
-                      {current.message}
-                    </div>
-                  )}
-                </div>
+                <GenerationPlan plan={plan} />
               )
-            : null}
-
-          {isLoading && <GenerationPhases startedAt={startedAt} />}
-
-          {!isLoading && !current?.graph?.nodes?.length && renderPlaceholder(t('workflowGenerator.placeholder'))}
+            : genError?.length
+              ? (
+                  <div className="flex h-full w-0 grow flex-col items-center justify-center gap-4 px-8">
+                    <RiErrorWarningLine className="size-8 text-text-quaternary" />
+                    <div className="text-center">
+                      <div className="system-md-medium text-text-secondary">{genErrorMessage}</div>
+                      {firstGenError?.node_id && (
+                        <div className="mt-1 system-xs-regular text-text-tertiary">
+                          {t('workflowGenerator.errors.atNode', { node: firstGenError.node_id })}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="small" variant="primary" onClick={onGenerate} disabled={!model.name}>
+                        {t('workflowGenerator.regenerate')}
+                      </Button>
+                      {genErrorHasUnknownTool && (
+                        <Button
+                          size="small"
+                          variant="secondary"
+                          onClick={() => {
+                            closeGenerator()
+                            router.push('/tools')
+                          }}
+                        >
+                          {t('workflowGenerator.errors.installTools')}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              : current?.graph?.nodes?.length
+                ? (
+                    <div className="flex h-full w-0 grow flex-col bg-background-default-subtle p-6">
+                      {/* Planner-picked identity — surfaces the app_name + icon the
+                          UI used to discard so the user sees what they'll create. */}
+                      {(current.icon || current.app_name) && (
+                        <div className="mb-2 flex items-center gap-2">
+                          {current.icon && <span className="text-lg leading-none">{current.icon}</span>}
+                          {current.app_name && (
+                            <span className="truncate text-sm font-semibold text-text-primary">{current.app_name}</span>
+                          )}
+                        </div>
+                      )}
+                      <div className="mb-3 flex items-center justify-between">
+                        <VersionSelector
+                          versionLen={versions?.length || 0}
+                          value={currentVersionIndex || 0}
+                          onChange={setCurrentVersionIndex}
+                        />
+                        <div className="flex items-center space-x-2">
+                          {canApplyToCurrent
+                            ? (
+                                // Studio button entry — overwrite the current draft
+                                // is the only meaningful Apply action, so collapse
+                                // the two buttons into one primary "Apply".
+                                <Button
+                                  size="small"
+                                  variant="primary"
+                                  onClick={showConfirmOverwrite}
+                                  disabled={isApplying}
+                                >
+                                  {t('workflowGenerator.studioApply')}
+                                </Button>
+                              )
+                            : (
+                                // cmd+k /create entry — no current-app context, so
+                                // the only path is "Create new app".
+                                <Button
+                                  size="small"
+                                  variant="primary"
+                                  onClick={handleApplyToNew}
+                                  disabled={isApplying}
+                                >
+                                  {t('workflowGenerator.applyToNew')}
+                                </Button>
+                              )}
+                        </div>
+                      </div>
+                      <div className="relative w-full grow overflow-hidden rounded-2xl border border-divider-subtle bg-background-default">
+                        <WorkflowPreview
+                          nodes={current.graph.nodes}
+                          edges={current.graph.edges}
+                          viewport={current.graph.viewport}
+                          miniMapToRight
+                        />
+                      </div>
+                      {/* Refine diff — what an apply changes vs. the draft we started from. */}
+                      {hasRefineChanges && refineDiff && (
+                        <div className="mt-2 system-xs-regular text-text-tertiary">
+                          {t('workflowGenerator.diff.summary', {
+                            added: refineDiff.added.length,
+                            removed: refineDiff.removed.length,
+                            changed: refineDiff.changed.length,
+                          })}
+                        </div>
+                      )}
+                      {current.message && (
+                        <div className="mt-2 system-xs-regular text-text-tertiary">
+                          {current.message}
+                        </div>
+                      )}
+                    </div>
+                  )
+                : renderPlaceholder(t('workflowGenerator.placeholder'))}
         </div>
 
         <RecoveryDialog

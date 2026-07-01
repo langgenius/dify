@@ -20,7 +20,7 @@ export type Item = {
   name: string
 }
 
-type Props = {
+type Props = Readonly<{
   value: string | number
   onSelect: (value: Item) => void
   items: Item[]
@@ -28,7 +28,7 @@ type Props = {
   popupInnerClassName?: string
   readonly?: boolean
   hideChecked?: boolean
-}
+}>
 const TypeSelector: FC<Props> = ({
   value,
   onSelect,

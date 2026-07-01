@@ -14,6 +14,7 @@ vi.mock('@/service/use-plugins', () => ({
         plugins: [
           { id: 'plugin-1', status: TaskStatus.success, taskId: 'task-1' },
           { id: 'plugin-2', status: TaskStatus.running, taskId: 'task-1' },
+          { id: 'plugin-4', status: TaskStatus.pending, taskId: 'task-1' },
         ],
       },
       {
@@ -39,15 +40,15 @@ describe('usePluginTaskStatus', () => {
     const { result } = renderHook(() => usePluginTaskStatus())
 
     expect(result.current.successPlugins).toHaveLength(1)
-    expect(result.current.runningPlugins).toHaveLength(1)
+    expect(result.current.runningPlugins).toHaveLength(2)
     expect(result.current.errorPlugins).toHaveLength(1)
   })
 
   it('should compute correct length values', () => {
     const { result } = renderHook(() => usePluginTaskStatus())
 
-    expect(result.current.totalPluginsLength).toBe(3)
-    expect(result.current.runningPluginsLength).toBe(1)
+    expect(result.current.totalPluginsLength).toBe(4)
+    expect(result.current.runningPluginsLength).toBe(2)
     expect(result.current.errorPluginsLength).toBe(1)
     expect(result.current.successPluginsLength).toBe(1)
   })

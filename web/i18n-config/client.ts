@@ -2,10 +2,10 @@
 import type { Resource } from 'i18next'
 import type { Locale } from '.'
 import type { Namespace, NamespaceInFileName } from './resources'
-import { kebabCase } from 'es-toolkit/string'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import { getI18n, initReactI18next } from 'react-i18next'
+import { loadI18nResource } from './load-resource'
 import { getInitOptions } from './settings'
 
 export function createI18nextInstance(lng: Locale, resources: Resource) {
@@ -15,10 +15,7 @@ export function createI18nextInstance(lng: Locale, resources: Resource) {
     .use(resourcesToBackend((
       language: Locale,
       namespace: NamespaceInFileName | Namespace,
-    ) => {
-      const namespaceKebab = kebabCase(namespace)
-      return import(`../i18n/${language}/${namespaceKebab}.json`)
-    }))
+    ) => loadI18nResource(language, namespace)))
     .init({
       ...getInitOptions(),
       lng,

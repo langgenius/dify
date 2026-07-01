@@ -17,6 +17,14 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import CustomPage from '../index'
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
 const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: {
     branding: {
@@ -95,6 +103,7 @@ const createAppContextValue = (): AppContextValue => ({
   useSelector: vi.fn() as unknown as AppContextValue['useSelector'],
   isLoadingCurrentWorkspace: false,
   isValidatingCurrentWorkspace: false,
+  workspacePermissionKeys: [],
 })
 
 describe('CustomPage', () => {

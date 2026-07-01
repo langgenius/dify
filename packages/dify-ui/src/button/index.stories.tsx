@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import * as React from 'react'
+import { expect, fn } from 'storybook/test'
 
 import { Button } from '.'
 
@@ -11,6 +13,7 @@ const meta = {
   tags: ['autodocs'],
   argTypes: {
     loading: { control: 'boolean' },
+    focusableWhenDisabled: { control: 'boolean' },
     tone: {
       control: 'select',
       options: ['default', 'destructive'],
@@ -88,7 +91,27 @@ export const Loading: Story = {
   args: {
     variant: 'primary',
     loading: true,
+    onClick: fn(),
     children: 'Loading Button',
+  },
+  play: async ({ args, canvas, userEvent }) => {
+    const button = canvas.getByRole('button', { name: 'Loading Button' })
+
+    await expect(button).toHaveAttribute('aria-disabled', 'true')
+    await expect(button).not.toHaveAttribute('aria-busy')
+
+    button.focus()
+    await expect(button).toHaveFocus()
+
+    await userEvent.click(button)
+    await expect(args.onClick).not.toHaveBeenCalled()
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: 'Loading buttons remain focusable by default so focus is not lost after activation. Pass `focusableWhenDisabled={false}` to opt out.',
+      },
+    },
   },
 }
 
@@ -104,10 +127,10 @@ export const WithIcon: Story = {
   args: {
     variant: 'primary',
     children: (
-      <>
-        <span className="mr-1.5 i-heroicons-rocket-launch-20-solid h-4 w-4" />
+      <React.Fragment>
+        <span aria-hidden className="mr-1.5 i-ri-rocket-line size-4 shrink-0" />
         Launch
-      </>
+      </React.Fragment>
     ),
   },
 }
@@ -132,6 +155,7 @@ export const AsLink: Story = {
   args: {
     variant: 'ghost-accent',
     render: <a href="https://example.com" />,
+    nativeButton: false,
     children: 'Link Button',
   },
 }

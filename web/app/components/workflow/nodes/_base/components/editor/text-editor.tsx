@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import Base from './base'
 
-type Props = {
+type Props = Readonly<{
   value: string
   onChange: (value: string) => void
   title: React.JSX.Element | string
@@ -15,7 +15,7 @@ type Props = {
   placeholder?: string
   readonly?: boolean
   isInNode?: boolean
-}
+}>
 
 const TextEditor: FC<Props> = ({
   value,

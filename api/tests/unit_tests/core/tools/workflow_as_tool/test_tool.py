@@ -696,6 +696,53 @@ def test_transform_args_invalid_files(monkeypatch: pytest.MonkeyPatch):
     assert invalid_files == []
 
 
+@pytest.mark.parametrize("empty_value", [None, "", [], [None], [""]])
+def test_transform_args_normalizes_optional_files_parameter(
+    monkeypatch: pytest.MonkeyPatch,
+    empty_value: Any,
+):
+    """Pass optional workflow file-list inputs as an empty list when no files were provided."""
+    tool = _build_tool()
+    images_param = ToolParameter.get_simple_instance(
+        name="images",
+        llm_description="images",
+        typ=ToolParameter.ToolParameterType.FILES,
+        required=False,
+    )
+    images_param.form = ToolParameter.ToolParameterForm.FORM
+    monkeypatch.setattr(tool, "get_merged_runtime_parameters", lambda: [images_param])
+
+    params, files = tool._transform_args({"images": empty_value})
+
+    assert params == {"images": []}
+    assert files == []
+
+
+def test_workflow_tool_invocation_normalizes_optional_files_parameter(monkeypatch: pytest.MonkeyPatch):
+    """Ensure casted empty FILES values do not reach workflow input validation as [None]."""
+    tool = _build_tool()
+    images_param = ToolParameter.get_simple_instance(
+        name="images",
+        llm_description="images",
+        typ=ToolParameter.ToolParameterType.FILES,
+        required=False,
+    )
+    images_param.form = ToolParameter.ToolParameterForm.FORM
+    tool.entity.parameters = [images_param]
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: Mock())
+
+    generate_mock = MagicMock(return_value={"data": {}})
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+
+    list(tool.invoke("test_user", {"images": None}))
+
+    call_kwargs = generate_mock.call_args.kwargs
+    assert call_kwargs["args"]["inputs"]["images"] == []
+
+
 def test_extract_files():
     """Extract file outputs into result and file list."""
     tool = _build_tool()

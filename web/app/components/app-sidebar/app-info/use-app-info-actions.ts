@@ -3,15 +3,16 @@ import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-moda
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useProviderContext } from '@/context/provider-context'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
-import { useInvalidateAppList } from '@/service/use-apps'
+import { appDetailQueryKeyPrefix, useInvalidateAppList } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -53,10 +54,13 @@ const getCurrentUiState = (state: AppInfoUiState, resetKey?: string) => {
 export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoActionsParams) {
   const { t } = useTranslation()
   const { replace } = useRouter()
+  const queryClient = useQueryClient()
   const { onPlanInfoChanged } = useProviderContext()
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const invalidateAppList = useInvalidateAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const [uiState, setUiState] = useState(() => createInitialUiState(resetKey))
   const uiStateMatchesResetKey = uiState.resetKey === resetKey
@@ -108,7 +112,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     setActiveModal(null)
   }, [setActiveModal])
 
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const emitAppMetaUpdate = useCallback(() => {
     if (!appDetail?.id)
@@ -145,6 +149,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
             const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
             if (disposed)
               return
+            queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
             setAppDetail({ ...res })
           }
           catch (error) {
@@ -158,7 +163,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       disposed = true
       unsubscribe?.()
     }
-  }, [appDetail?.id, setAppDetail])
+  }, [appDetail?.id, queryClient, setAppDetail])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -184,13 +189,14 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       })
       closeModal()
       toast(t('editDone', { ns: 'app' }), { type: 'success' })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, app.id], app)
       setAppDetail(app)
       emitAppMetaUpdate()
     }
     catch {
       toast(t('editFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, setAppDetail, t, emitAppMetaUpdate])
+  }, [appDetail, closeModal, queryClient, setAppDetail, t, emitAppMetaUpdate])
 
   const onCopy: DuplicateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -213,12 +219,12 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       toast(t('newApp.appCreated', { ns: 'app' }), { type: 'success' })
       setNeedRefresh('1')
       onPlanInfoChanged()
-      getRedirection(true, newApp, replace)
+      getRedirection(newApp, replace, { isRbacEnabled })
     }
     catch {
       toast(t('newApp.appCreateFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, onPlanInfoChanged, replace, t])
+  }, [appDetail, closeModal, isRbacEnabled, onPlanInfoChanged, replace, setNeedRefresh, t])
 
   const onExport = useCallback(async (include = false) => {
     if (!appDetail)

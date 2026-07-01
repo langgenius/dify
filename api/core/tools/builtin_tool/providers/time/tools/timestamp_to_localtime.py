@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any
+from typing import Any, override
 
 import pytz  # type: ignore[import-untyped]
 
@@ -10,6 +10,7 @@ from core.tools.errors import ToolInvokeError
 
 
 class TimestampToLocaltimeTool(BuiltinTool):
+    @override
     def _invoke(
         self,
         user_id: str,

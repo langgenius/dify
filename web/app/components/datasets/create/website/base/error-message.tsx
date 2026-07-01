@@ -4,11 +4,11 @@ import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   title: string
   errorMsg?: string
-}
+}>
 
 const ErrorMessage: FC<Props> = ({
   className,

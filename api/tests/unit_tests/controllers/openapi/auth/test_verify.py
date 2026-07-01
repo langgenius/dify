@@ -5,17 +5,19 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.data import AuthData, RBACRequirement
 from controllers.openapi.auth.verify import (
     check_acl,
     check_app_access,
     check_app_api_enabled,
     check_private_app_permission,
+    check_rbac_permission,
     check_scope,
     check_workspace_member,
     check_workspace_mismatch,
     check_workspace_role,
 )
+from core.rbac import RBACPermission, RBACResourceScope
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Tenant, TenantAccountRole
 from models.model import App
@@ -73,6 +75,67 @@ def test_check_app_access_raises_when_not_member():
     with patch("controllers.openapi.auth.verify.TenantService.account_belongs_to_tenant", return_value=False):
         with pytest.raises(Forbidden, match="subject_no_app_access"):
             check_app_access(data)
+
+
+# --- check_rbac_permission ---
+
+_RBAC_REQ = RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_VIEW_LAYOUT)
+
+
+def test_check_rbac_noop_when_no_requirement():
+    with patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce:
+        check_rbac_permission(_data(rbac=None, caller_kind="account"))
+    mock_enforce.assert_not_called()
+
+
+def test_check_rbac_noop_when_rbac_disabled():
+    with (
+        patch("controllers.openapi.auth.verify.dify_config.RBAC_ENABLED", False),
+        patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce,
+    ):
+        check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="account"))
+    mock_enforce.assert_not_called()
+
+
+def test_check_rbac_skips_end_user_caller():
+    with (
+        patch("controllers.openapi.auth.verify.dify_config.RBAC_ENABLED", True),
+        patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce,
+    ):
+        check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="end_user"))
+    mock_enforce.assert_not_called()
+
+
+def test_check_rbac_raises_when_context_missing():
+    with patch("controllers.openapi.auth.verify.dify_config.RBAC_ENABLED", True):
+        with pytest.raises(Forbidden, match="rbac context missing"):
+            check_rbac_permission(_data(rbac=_RBAC_REQ, caller_kind="account", account_id=None, tenant=None))
+
+
+def test_check_rbac_enforces_for_account_caller():
+    tenant = MagicMock(spec=Tenant)
+    tenant.id = "t1"
+    account_id = uuid.uuid4()
+    data = _data(
+        rbac=_RBAC_REQ,
+        caller_kind="account",
+        account_id=account_id,
+        tenant=tenant,
+        path_params={"app_id": "app-1"},
+    )
+    with (
+        patch("controllers.openapi.auth.verify.dify_config.RBAC_ENABLED", True),
+        patch("controllers.openapi.auth.verify.enforce_rbac_access") as mock_enforce,
+    ):
+        check_rbac_permission(data)
+    mock_enforce.assert_called_once_with(
+        tenant_id="t1",
+        account_id=str(account_id),
+        resource_type=RBACResourceScope.APP,
+        scene=RBACPermission.APP_VIEW_LAYOUT,
+        resource_required=True,
+        path_args={"app_id": "app-1"},
+    )
 
 
 def test_check_acl_raises_when_app_or_mode_missing():

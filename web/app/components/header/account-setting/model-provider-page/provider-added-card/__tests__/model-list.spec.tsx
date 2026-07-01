@@ -4,12 +4,11 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ModelList from '../model-list'
 
 const mockSetShowModelLoadBalancingModal = vi.fn()
-let mockIsCurrentWorkspaceManager = true
+let mockWorkspacePermissionKeys: string[] = ['plugin.model_config', 'credential.manage', 'credential.use']
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: mockIsCurrentWorkspaceManager,
-  }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({ workspacePermissionKeys: mockWorkspacePermissionKeys }),
 }))
 
 vi.mock('@/context/modal-context', () => ({
@@ -46,7 +45,7 @@ describe('ModelList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['plugin.model_config', 'credential.manage', 'credential.use']
   })
 
   it('should render model count and model items', () => {
@@ -92,8 +91,8 @@ describe('ModelList', () => {
     expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalled()
   })
 
-  it('should hide custom model actions for non-manager', () => {
-    mockIsCurrentWorkspaceManager = false
+  it('should hide custom model actions without plugin.model_config', () => {
+    mockWorkspacePermissionKeys = []
     render(
       <ModelList
         provider={mockProvider}
@@ -107,15 +106,12 @@ describe('ModelList', () => {
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 
-  // isConfigurable=false: predefinedModel only provider hides custom model actions
   it('should hide custom model actions when provider uses predefinedModel only', () => {
-    // Arrange
     const predefinedProvider = {
       provider: 'test-provider',
       configurate_methods: ['predefinedModel'],
     } as unknown as ModelProvider
 
-    // Act
     render(
       <ModelList
         provider={predefinedProvider}
@@ -183,15 +179,12 @@ describe('ModelList', () => {
     expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalledWith(null)
   })
 
-  // fetchFromRemote filtered out: provider with only fetchFromRemote
   it('should hide custom model actions when provider uses fetchFromRemote only', () => {
-    // Arrange
     const fetchOnlyProvider = {
       provider: 'test-provider',
       configurate_methods: ['fetchFromRemote'],
     } as unknown as ModelProvider
 
-    // Act
     render(
       <ModelList
         provider={fetchOnlyProvider}
@@ -237,16 +230,14 @@ describe('ModelList', () => {
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 
-  it('should show custom model actions when provider is configurable and user is workspace manager', () => {
-    // Arrange: use ConfigurationMethodEnum.customizableModel ('customizable-model') so isConfigurable=true
+  it('should show custom model actions when provider is configurable and user can configure models', () => {
     const configurableProvider = {
       provider: 'test-provider',
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
 
-    mockIsCurrentWorkspaceManager = true
+    mockWorkspacePermissionKeys = ['plugin.model_config']
 
-    // Act
     render(
       <ModelList
         provider={configurableProvider}
@@ -256,22 +247,18 @@ describe('ModelList', () => {
       />,
     )
 
-    // Assert: custom model actions are shown (isConfigurable=true && isCurrentWorkspaceManager=true)
-    // Assert: custom model actions are shown (isConfigurable=true && isCurrentWorkspaceManager=true)
     expect(screen.getByTestId('manage-credentials'))!.toBeInTheDocument()
     expect(screen.getByTestId('add-custom-model'))!.toBeInTheDocument()
   })
 
-  it('should hide custom model actions when provider is configurable but user is not workspace manager', () => {
-    // Arrange: use ConfigurationMethodEnum.customizableModel ('customizable-model') so isConfigurable=true, but manager=false
+  it('should hide custom model actions when provider is configurable but user cannot configure models', () => {
     const configurableProvider = {
       provider: 'test-provider',
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
 
-    mockIsCurrentWorkspaceManager = false
+    mockWorkspacePermissionKeys = []
 
-    // Act
     render(
       <ModelList
         provider={configurableProvider}
@@ -281,38 +268,6 @@ describe('ModelList', () => {
       />,
     )
 
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
-    // Assert: custom model actions are hidden (isCurrentWorkspaceManager=false covers the && short-circuit)
     expect(screen.queryByTestId('manage-credentials')).not.toBeInTheDocument()
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })

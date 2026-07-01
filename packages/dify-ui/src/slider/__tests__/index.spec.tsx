@@ -87,7 +87,7 @@ describe('Slider', () => {
 
     expect(thumb).toHaveClass(
       'has-[:focus-visible]:ring-2',
-      'has-[:focus-visible]:ring-components-input-border-hover',
+      'has-[:focus-visible]:ring-state-accent-solid',
     )
   })
 

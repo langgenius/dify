@@ -1,11 +1,14 @@
-from collections.abc import Sequence
-from typing import Literal
+import json
+from collections.abc import Generator, Sequence
+from typing import Any, Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import SimpleDataResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -22,8 +25,10 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
+from core.workflow.generator.types import WorkflowGenerateErrorCode
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import compact_generate_response
 from libs.login import login_required
 from models import App
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -36,12 +41,23 @@ class InstructionGeneratePayload(BaseModel):
     current: str = Field(default="", description="Current instruction text")
     language: str = Field(default="javascript", description="Programming language (javascript/python)")
     instruction: str = Field(..., description="Instruction for generation")
-    model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
+    model_config_data: ModelConfig = Field(
+        ...,
+        alias="model_config",
+        description="Model configuration",
+    )
     ideal_output: str = Field(default="", description="Expected ideal output")
 
 
 class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
+
+
+# Upper bound for the generator's free-text inputs. Generous for prose (a
+# detailed instruction rarely passes 2k chars) while keeping the
+# planner+builder prompts well inside every mainstream context window.
+# Mirrored by the ``maxLength`` on the frontend generator textarea.
+_MAX_INSTRUCTION_LENGTH = 10_000
 
 
 class WorkflowGeneratePayload(BaseModel):
@@ -52,14 +68,38 @@ class WorkflowGeneratePayload(BaseModel):
     can reuse its existing handler.
     """
 
-    mode: Literal["workflow", "advanced-chat"] = Field(..., description="Target app mode for the generated graph")
+    mode: Literal["workflow", "advanced-chat", "auto"] = Field(
+        ...,
+        description="Target app mode for the generated graph; 'auto' lets the backend classify the instruction",
+    )
     instruction: str = Field(..., description="Natural-language workflow description")
     ideal_output: str = Field(default="", description="Optional sample output for grounding")
-    model_config_data: ModelConfig = Field(..., alias="model_config", description="Model configuration")
+    model_config_data: ModelConfig = Field(
+        ...,
+        alias="model_config",
+        description="Model configuration",
+    )
     current_graph: dict | None = Field(
         default=None,
         description="Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch",
     )
+
+
+class WorkflowInstructionSuggestionsPayload(BaseModel):
+    """Payload for the workflow-generator instruction-suggestions endpoint.
+
+    Runs before the user picks a model, so the suggestions come from the
+    tenant's default model. The underlying generator never raises — an empty
+    ``suggestions`` list is a valid 200 (soft-fail).
+    """
+
+    mode: Literal["workflow", "advanced-chat"] = Field(..., description="Target app mode for the suggestions")
+    language: str | None = Field(default=None, description="Optional language to write the suggestions in")
+    count: int = Field(default=4, ge=1, le=6, description="Number of suggestions to return (1-6)")
+
+
+class GeneratorResponse(RootModel[Any]):
+    root: Any
 
 
 register_enum_models(console_ns, LLMMode)
@@ -71,8 +111,10 @@ register_schema_models(
     InstructionGeneratePayload,
     InstructionTemplatePayload,
     WorkflowGeneratePayload,
+    WorkflowInstructionSuggestionsPayload,
     ModelConfig,
 )
+register_response_schema_models(console_ns, GeneratorResponse, SimpleDataResponse)
 
 
 @console_ns.route("/rule-generate")
@@ -80,7 +122,11 @@ class RuleGenerateApi(Resource):
     @console_ns.doc("generate_rule_config")
     @console_ns.doc(description="Generate rule configuration using LLM")
     @console_ns.expect(console_ns.models[RuleGeneratePayload.__name__])
-    @console_ns.response(200, "Rule configuration generated successfully")
+    @console_ns.response(
+        200,
+        "Rule configuration generated successfully",
+        console_ns.models[GeneratorResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
@@ -109,7 +155,7 @@ class RuleCodeGenerateApi(Resource):
     @console_ns.doc("generate_rule_code")
     @console_ns.doc(description="Generate code rules using LLM")
     @console_ns.expect(console_ns.models[RuleCodeGeneratePayload.__name__])
-    @console_ns.response(200, "Code rules generated successfully")
+    @console_ns.response(200, "Code rules generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
@@ -141,7 +187,7 @@ class RuleStructuredOutputGenerateApi(Resource):
     @console_ns.doc("generate_structured_output")
     @console_ns.doc(description="Generate structured output rules using LLM")
     @console_ns.expect(console_ns.models[RuleStructuredOutputPayload.__name__])
-    @console_ns.response(200, "Structured output generated successfully")
+    @console_ns.response(200, "Structured output generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
@@ -173,7 +219,7 @@ class InstructionGenerateApi(Resource):
     @console_ns.doc("generate_instruction")
     @console_ns.doc(description="Generate instruction for workflow nodes or general use")
     @console_ns.expect(console_ns.models[InstructionGeneratePayload.__name__])
-    @console_ns.response(200, "Instruction generated successfully")
+    @console_ns.response(200, "Instruction generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters or flow/workflow not found")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
@@ -191,7 +237,9 @@ class InstructionGenerateApi(Resource):
         try:
             # Generate from nothing for a workflow node
             if (args.current in (code_template, "")) and args.node_id != "":
-                app = session.get(App, args.flow_id)
+                app = session.scalar(
+                    select(App).where(App.id == args.flow_id, App.tenant_id == current_tenant_id).limit(1)
+                )
                 if not app:
                     return {"error": f"app {args.flow_id} not found"}, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app, session=session)
@@ -268,7 +316,7 @@ class InstructionGenerationTemplateApi(Resource):
     @console_ns.doc("get_instruction_template")
     @console_ns.doc(description="Get instruction generation template")
     @console_ns.expect(console_ns.models[InstructionTemplatePayload.__name__])
-    @console_ns.response(200, "Template retrieved successfully")
+    @console_ns.response(200, "Template retrieved successfully", console_ns.models[SimpleDataResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
@@ -288,6 +336,34 @@ class InstructionGenerationTemplateApi(Resource):
                 raise ValueError(f"Invalid type: {args.type}")
 
 
+def _workflow_instruction_guard(args: WorkflowGeneratePayload) -> tuple[dict, int] | None:
+    """Shared boundary guard for the workflow-generate endpoints.
+
+    Returns a ``(body, 400)`` tuple when the instruction is empty / whitespace
+    or either free-text field exceeds the cap, else ``None``. Pydantic only
+    validates the field is a str; a whitespace-only or pasted-document input
+    would otherwise waste a slow planner+builder roundtrip on a response the
+    validator rejects anyway. Both the blocking and streaming endpoints call
+    this so they reject identical inputs.
+    """
+    if not args.instruction.strip():
+        return {
+            "error": "Instruction is required",
+            "errors": [{"code": WorkflowGenerateErrorCode.EMPTY_INSTRUCTION, "detail": "Instruction is required"}],
+        }, 400
+    if len(args.instruction) > _MAX_INSTRUCTION_LENGTH or len(args.ideal_output) > _MAX_INSTRUCTION_LENGTH:
+        return {
+            "error": "Instruction is too long",
+            "errors": [
+                {
+                    "code": WorkflowGenerateErrorCode.INSTRUCTION_TOO_LONG,
+                    "detail": f"Instruction and ideal output must each be at most {_MAX_INSTRUCTION_LENGTH} characters",
+                }
+            ],
+        }, 400
+    return None
+
+
 @console_ns.route("/workflow-generate")
 class WorkflowGenerateApi(Resource):
     """Generate a Workflow / Chatflow draft graph from a natural-language description.
@@ -300,7 +376,7 @@ class WorkflowGenerateApi(Resource):
     @console_ns.doc("generate_workflow_graph")
     @console_ns.doc(description="Generate a Dify workflow graph from natural language")
     @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
-    @console_ns.response(200, "Workflow graph generated successfully")
+    @console_ns.response(200, "Workflow graph generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
@@ -310,15 +386,11 @@ class WorkflowGenerateApi(Resource):
     def post(self, current_tenant_id: str):
         args = WorkflowGeneratePayload.model_validate(console_ns.payload)
 
-        # Reject obviously-empty instructions at the boundary — Pydantic only
-        # validates ``instruction`` is a str, but a whitespace-only string
-        # would still hit the LLM and waste a planner+builder roundtrip on a
-        # response that the postprocess validator would reject anyway.
-        if not args.instruction.strip():
-            return {
-                "error": "Instruction is required",
-                "errors": [{"code": "EMPTY_INSTRUCTION", "detail": "Instruction is required"}],
-            }, 400
+        # Reject empty / over-length instructions at the boundary (shared with
+        # the streaming endpoint) before spending a planner+builder roundtrip.
+        guard = _workflow_instruction_guard(args)
+        if guard is not None:
+            return guard
 
         try:
             result = WorkflowGeneratorService.generate_workflow_graph(
@@ -339,3 +411,93 @@ class WorkflowGenerateApi(Resource):
             raise CompletionRequestError(e.description)
 
         return result
+
+
+@console_ns.route("/workflow-generate/suggestions")
+class WorkflowInstructionSuggestionsApi(Resource):
+    """Suggest short, buildable example instructions for the cmd+k generator.
+
+    Runs before a model is selected (uses the tenant's default model). The
+    underlying generator never raises, so an empty list is a valid 200 — the
+    frontend renders "no suggestions" rather than an error, so no provider-error
+    mapping is needed here.
+    """
+
+    @console_ns.doc("generate_workflow_instruction_suggestions")
+    @console_ns.doc(description="Suggest example workflow-generator instructions for the tenant")
+    @console_ns.expect(console_ns.models[WorkflowInstructionSuggestionsPayload.__name__])
+    @console_ns.response(200, "Suggestions generated successfully", console_ns.models[GeneratorResponse.__name__])
+    @console_ns.response(400, "Invalid request parameters")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
+        args = WorkflowInstructionSuggestionsPayload.model_validate(console_ns.payload)
+        suggestions = LLMGenerator.generate_workflow_instruction_suggestions(
+            tenant_id=current_tenant_id,
+            mode=args.mode,
+            language=args.language,
+            count=args.count,
+        )
+        return {"suggestions": suggestions}
+
+
+@console_ns.route("/workflow-generate/stream")
+class WorkflowGenerateStreamApi(Resource):
+    """Plan-first streaming variant of ``/workflow-generate`` (Server-Sent Events).
+
+    Emits a ``plan`` event (high-level node list + app metadata) as soon as the
+    planner returns, then a final ``result`` event with the full graph — the
+    SAME envelope ``/workflow-generate`` returns. Provider-init / invoke errors
+    are surfaced as a single ``result`` event (code ``MODEL_ERROR``) so the
+    frontend's stream parser always receives a result rather than a non-SSE HTTP
+    error.
+    """
+
+    @console_ns.doc("generate_workflow_graph_stream")
+    @console_ns.doc(description="Stream a Dify workflow graph (plan then result) via SSE")
+    @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
+    @console_ns.response(200, "Server-Sent Events stream of plan/result events")
+    @console_ns.response(400, "Invalid request parameters")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str):
+        args = WorkflowGeneratePayload.model_validate(console_ns.payload)
+
+        # Same boundary guards as the blocking endpoint — return a normal 400
+        # JSON for these BEFORE opening the stream.
+        guard = _workflow_instruction_guard(args)
+        if guard is not None:
+            return guard
+
+        def generate() -> Generator[str, None, None]:
+            try:
+                for event_name, payload in WorkflowGeneratorService.generate_workflow_graph_stream(
+                    tenant_id=current_tenant_id,
+                    mode=args.mode,
+                    instruction=args.instruction,
+                    model_config=args.model_config_data,
+                    ideal_output=args.ideal_output,
+                    current_graph=args.current_graph,
+                ):
+                    body = {"event": event_name, **payload}
+                    yield f"data: {json.dumps(body)}\n\n"
+            except (ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, InvokeError) as e:
+                # The model instance is resolved inside the service (lazily, on
+                # first iteration), so a provider / init error surfaces here.
+                # Emit it as a single SSE result event rather than a non-SSE
+                # error response so the frontend's stream parser always gets a
+                # result it can render.
+                detail = getattr(e, "description", None) or str(e) or "Model invocation failed"
+                error_body = {
+                    "event": "result",
+                    "graph": {"nodes": [], "edges": [], "viewport": {"x": 0.0, "y": 0.0, "zoom": 0.7}},
+                    "error": detail,
+                    "errors": [{"code": WorkflowGenerateErrorCode.MODEL_ERROR, "detail": detail}],
+                }
+                yield f"data: {json.dumps(error_body)}\n\n"
+
+        return compact_generate_response(generate())

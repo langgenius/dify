@@ -30,7 +30,7 @@ describe('PoweredByBrand', () => {
   it('should fall back to the Dify logo when no custom branding exists', () => {
     render(<PoweredByBrand imgKey={7} />)
 
-    expect(screen.getByAltText('Dify logo')).toBeInTheDocument()
+    expect(screen.getByAltText('Dify')).toBeInTheDocument()
   })
 
   it('should render nothing when branding is removed', () => {

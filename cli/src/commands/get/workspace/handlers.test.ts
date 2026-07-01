@@ -6,7 +6,7 @@ function env(): WorkspaceListResponse {
   return {
     workspaces: [
       { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
-      { id: 'ws-2', name: 'Other', role: 'normal', status: 'normal', current: false },
+      { id: '00000000-0000-0000-0000-000000000002', name: 'Other', role: 'normal', status: 'normal', current: false },
     ],
   }
 }

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, cast, override
 
 from sqlalchemy import select
 
@@ -67,6 +67,7 @@ class WorkflowTool(Tool):
 
         super().__init__(entity=entity, runtime=runtime)
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         """
         get the tool provider type
@@ -75,6 +76,7 @@ class WorkflowTool(Tool):
         """
         return ToolProviderType.WORKFLOW
 
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -194,18 +196,20 @@ class WorkflowTool(Tool):
                 return usage_candidate
 
         for value in payload.values():
-            if isinstance(value, Mapping):
-                found = cls._extract_usage_dict(value)
-                if found is not None:
-                    return found
-            elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-                for item in value:
-                    if isinstance(item, Mapping):
-                        found = cls._extract_usage_dict(item)
-                        if found is not None:
-                            return found
+            match value:
+                case _ if isinstance(value, Mapping):
+                    found = cls._extract_usage_dict(value)
+                    if found is not None:
+                        return found
+                case _ if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+                    for item in value:
+                        if isinstance(item, Mapping):
+                            found = cls._extract_usage_dict(item)
+                            if found is not None:
+                                return found
         return None
 
+    @override
     def fork_tool_runtime(self, runtime: ToolRuntime) -> WorkflowTool:
         """
         fork a new tool with metadata
@@ -363,10 +367,23 @@ class WorkflowTool(Tool):
                             files.append(file_dict)
                     except Exception:
                         logger.exception("Failed to transform file %s", file)
+            elif parameter.type == ToolParameter.ToolParameterType.FILES:
+                value = tool_parameters.get(parameter.name)
+                if not parameter.required and self._is_empty_files_parameter_value(value):
+                    value = []
+                parameters_result[parameter.name] = value
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 
         return parameters_result, files
+
+    @staticmethod
+    def _is_empty_files_parameter_value(value: Any) -> bool:
+        """Identify empty optional file-list placeholders before workflow input validation."""
+
+        if value is None or value == "":
+            return True
+        return isinstance(value, list) and all(item is None or item == "" for item in value)
 
     def _extract_files(self, outputs: dict[str, Any]) -> tuple[dict[str, Any], list[File]]:
         """
@@ -377,24 +394,25 @@ class WorkflowTool(Tool):
         files: list[File] = []
         result = {}
         for key, value in outputs.items():
-            if isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                        item = self._update_file_mapping(item)
-                        file = build_from_mapping(
-                            mapping=item,
-                            tenant_id=str(self.runtime.tenant_id),
-                            access_controller=_file_access_controller,
-                        )
-                        files.append(file)
-            elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                value = self._update_file_mapping(value)
-                file = build_from_mapping(
-                    mapping=value,
-                    tenant_id=str(self.runtime.tenant_id),
-                    access_controller=_file_access_controller,
-                )
-                files.append(file)
+            match value:
+                case list():
+                    for item in value:
+                        if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                            item = self._update_file_mapping(item)
+                            file = build_from_mapping(
+                                mapping=item,
+                                tenant_id=str(self.runtime.tenant_id),
+                                access_controller=_file_access_controller,
+                            )
+                            files.append(file)
+                case dict() if value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+                    value = self._update_file_mapping(value)
+                    file = build_from_mapping(
+                        mapping=value,
+                        tenant_id=str(self.runtime.tenant_id),
+                        access_controller=_file_access_controller,
+                    )
+                    files.append(file)
 
             result[key] = value
 

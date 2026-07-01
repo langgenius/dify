@@ -10,6 +10,8 @@ type SearchBoxProps = {
   onSearchChange: (search: string) => void
   wrapperClassName?: string
   inputClassName?: string
+  inputElementClassName?: string
+  searchIconClassName?: string
   tags: string[]
   onTagsChange: (tags: string[]) => void
   placeholder?: string
@@ -18,12 +20,15 @@ type SearchBoxProps = {
   onShowAddCustomCollectionModal?: () => void
   onAddedCustomTool?: () => void
   autoFocus?: boolean
+  showTags?: boolean
 }
 const SearchBox = ({
   search,
   onSearchChange,
   wrapperClassName,
   inputClassName,
+  inputElementClassName,
+  searchIconClassName,
   tags,
   onTagsChange,
   placeholder = '',
@@ -31,6 +36,7 @@ const SearchBox = ({
   supportAddCustomTool,
   onShowAddCustomCollectionModal,
   autoFocus = false,
+  showTags = true,
 }: SearchBoxProps) => {
   return (
     <div
@@ -43,16 +49,23 @@ const SearchBox = ({
         {
           usedInMarketplace && (
             <>
-              <TagsFilter
-                tags={tags}
-                onTagsChange={onTagsChange}
-                usedInMarketplace
-              />
-              <Divider type="vertical" className="mx-1 h-3.5" />
+              {
+                showTags && (
+                  <>
+                    <TagsFilter
+                      tags={tags}
+                      onTagsChange={onTagsChange}
+                      usedInMarketplace
+                    />
+                    <Divider type="vertical" className="mx-1 h-3.5" />
+                  </>
+                )
+              }
               <div className="flex grow items-center gap-x-2 p-1">
                 <input
                   className={cn(
                     'inline-block grow appearance-none bg-transparent body-md-medium text-text-secondary outline-hidden',
+                    inputElementClassName,
                   )}
                   value={search}
                   onChange={(e) => {
@@ -77,13 +90,14 @@ const SearchBox = ({
         {
           !usedInMarketplace && (
             <>
-              <div className="flex grow items-center py-[7px] pr-3 pl-2">
-                <RiSearchLine className="size-4 text-components-input-text-placeholder" />
+              <div className="flex h-8 min-w-0 grow items-center pr-2 pl-2">
+                <RiSearchLine className={cn('size-4 text-components-input-text-placeholder', searchIconClassName)} />
                 <input
                   autoFocus={autoFocus}
                   className={cn(
-                    'mr-1 ml-1.5 inline-block grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
+                    'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none truncate bg-transparent system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder',
                     search && 'mr-2',
+                    inputElementClassName,
                   )}
                   value={search}
                   onChange={(e) => {
@@ -94,6 +108,7 @@ const SearchBox = ({
                 {
                   search && (
                     <ActionButton
+                      size="xs"
                       onClick={() => onSearchChange('')}
                       className="shrink-0"
                     >
@@ -102,11 +117,17 @@ const SearchBox = ({
                   )
                 }
               </div>
-              <Divider type="vertical" className="mx-0 mr-0.5 h-3.5" />
-              <TagsFilter
-                tags={tags}
-                onTagsChange={onTagsChange}
-              />
+              {
+                showTags && (
+                  <>
+                    <Divider type="vertical" className="mx-0 mr-0.5 h-3.5" />
+                    <TagsFilter
+                      tags={tags}
+                      onTagsChange={onTagsChange}
+                    />
+                  </>
+                )
+              }
             </>
           )
         }

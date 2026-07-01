@@ -8,10 +8,10 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const MoreLikeThis = ({
   disabled,

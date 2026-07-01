@@ -1,12 +1,14 @@
 import logging
+from typing import Any
 
 from flask import request
-from flask_restx import Resource, fields
-from pydantic import BaseModel, Field
+from flask_restx import Resource
+from pydantic import BaseModel, Field, RootModel
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import AudioBinaryResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -20,11 +22,19 @@ from controllers.console.app.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+)
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.login import login_required
+from libs.login import current_user, login_required
 from models import App, AppMode
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -51,7 +61,12 @@ class AudioTranscriptResponse(BaseModel):
     text: str = Field(description="Transcribed text from audio")
 
 
+class TextToSpeechVoiceListResponse(RootModel[list[dict[str, Any]]]):
+    root: list[dict[str, Any]]
+
+
 register_schema_models(console_ns, AudioTranscriptResponse, TextToSpeechPayload, TextToSpeechVoiceQuery)
+register_response_schema_models(console_ns, AudioBinaryResponse, TextToSpeechVoiceListResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
@@ -113,21 +128,34 @@ class ChatMessageTextApi(Resource):
     @console_ns.doc(description="Convert text to speech for chat messages")
     @console_ns.doc(params={"app_id": "App ID"})
     @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
-    @console_ns.response(200, "Text to speech conversion successful")
+    @console_ns.response(
+        200,
+        "Text to speech conversion successful",
+        console_ns.models[AudioBinaryResponse.__name__],
+    )
     @console_ns.response(400, "Bad request - Invalid parameters")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @get_app_model
     def post(self, app_model: App):
         try:
             payload = TextToSpeechPayload.model_validate(console_ns.payload)
+            message_ref = None
+            if payload.message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    payload.message_id,
+                    account_id=current_user.id,
+                )
 
             response = AudioService.transcript_tts(
                 app_model=app_model,
+                session=db.session,
                 text=payload.text,
                 voice=payload.voice,
-                message_id=payload.message_id,
+                message_ref=message_ref,
                 is_draft=True,
             )
             return response
@@ -162,15 +190,18 @@ class TextModesApi(Resource):
     @console_ns.doc("get_text_to_speech_voices")
     @console_ns.doc(description="Get available TTS voices for a specific language")
     @console_ns.doc(params={"app_id": "App ID"})
-    @console_ns.expect(console_ns.models[TextToSpeechVoiceQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(TextToSpeechVoiceQuery))
     @console_ns.response(
-        200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices"))
+        200,
+        "TTS voices retrieved successfully",
+        console_ns.models[TextToSpeechVoiceListResponse.__name__],
     )
     @console_ns.response(400, "Invalid language parameter")
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model
     def get(self, app_model: App):
         try:
             args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))

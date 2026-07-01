@@ -9,7 +9,7 @@ import MemoryConfig from '../../_base/components/memory-config'
 
 const i18nPrefix = 'nodes.questionClassifiers'
 
-type Props = {
+type Props = Readonly<{
   instruction: string
   onInstructionChange: (instruction: string) => void
   hideMemorySetting: boolean
@@ -25,7 +25,7 @@ type Props = {
   }
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
-}
+}>
 
 const AdvancedSetting: FC<Props> = ({
   instruction,

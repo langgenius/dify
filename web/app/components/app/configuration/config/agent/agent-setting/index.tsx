@@ -14,13 +14,13 @@ import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 
-type Props = {
+type Props = Readonly<{
   isChatModel: boolean
   payload: AgentConfig
   isFunctionCall: boolean
   onCancel: () => void
   onSave: (payload: any) => void
-}
+}>
 
 const maxIterationsMin = 1
 

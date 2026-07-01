@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -8,6 +8,7 @@ from core.tools.errors import ToolInvokeError
 
 
 class SimpleCode(BuiltinTool):
+    @override
     def _invoke(
         self,
         user_id: str,

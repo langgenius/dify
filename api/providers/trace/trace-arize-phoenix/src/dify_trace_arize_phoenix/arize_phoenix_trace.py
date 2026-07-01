@@ -6,7 +6,7 @@ import traceback
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Protocol, Union, cast
+from typing import Any, Protocol, Union, cast, override
 from urllib.parse import urlparse
 
 from openinference.semconv.trace import (
@@ -730,6 +730,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         self.root_span_carriers: dict[str, dict[str, str]] = {}
         self.carrier: dict[str, str] = {}
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
         logger.info("[Arize/Phoenix] Trace Entity Info: %s", trace_info)
         logger.info("[Arize/Phoenix] Trace Entity Type: %s", type(trace_info))
@@ -1149,13 +1150,14 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         try:
             # Convert outputs to string based on type
             outputs_mime_type = OpenInferenceMimeTypeValues.TEXT.value
-            if isinstance(trace_info.outputs, dict | list):
-                outputs_str = safe_json_dumps(trace_info.outputs)
-                outputs_mime_type = OpenInferenceMimeTypeValues.JSON.value
-            elif isinstance(trace_info.outputs, str):
-                outputs_str = trace_info.outputs
-            else:
-                outputs_str = str(trace_info.outputs)
+            match trace_info.outputs:
+                case dict() | list():
+                    outputs_str = safe_json_dumps(trace_info.outputs)
+                    outputs_mime_type = OpenInferenceMimeTypeValues.JSON.value
+                case str():
+                    outputs_str = trace_info.outputs
+                case _:
+                    outputs_str = str(trace_info.outputs)
 
             llm_attributes: dict[str, Any] = {
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM.value,
@@ -1552,25 +1554,26 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             set_attribute(f"{base_path}.{ToolCallAttributes.TOOL_CALL_ID}", call_id)
 
         # Handle list of messages
-        if isinstance(prompts, list):
-            for message_index, message in enumerate(prompts):
-                if not isinstance(message, dict):
-                    continue
+        match prompts:
+            case list():
+                for message_index, message in enumerate(prompts):
+                    if not isinstance(message, dict):
+                        continue
 
-                role = message.get("role", "user")
-                content = message.get("text") or message.get("content") or ""
+                    role = message.get("role", "user")
+                    content = message.get("text") or message.get("content") or ""
 
-                set_message_attribute(message_index, MessageAttributes.MESSAGE_ROLE, role)
-                set_message_attribute(message_index, MessageAttributes.MESSAGE_CONTENT, content)
+                    set_message_attribute(message_index, MessageAttributes.MESSAGE_ROLE, role)
+                    set_message_attribute(message_index, MessageAttributes.MESSAGE_CONTENT, content)
 
-                tool_calls = message.get("tool_calls") or []
-                if isinstance(tool_calls, list):
-                    for tool_index, tool_call in enumerate(tool_calls):
-                        set_tool_call_attributes(message_index, tool_index, tool_call)
+                    tool_calls = message.get("tool_calls") or []
+                    if isinstance(tool_calls, list):
+                        for tool_index, tool_call in enumerate(tool_calls):
+                            set_tool_call_attributes(message_index, tool_index, tool_call)
 
-        # Handle single dict or plain string prompt
-        elif isinstance(prompts, (dict, str)):
-            set_message_attribute(0, MessageAttributes.MESSAGE_CONTENT, prompts)
-            set_message_attribute(0, MessageAttributes.MESSAGE_ROLE, "user")
+            # Handle single dict or plain string prompt
+            case dict() | str():
+                set_message_attribute(0, MessageAttributes.MESSAGE_CONTENT, prompts)
+                set_message_attribute(0, MessageAttributes.MESSAGE_ROLE, "user")
 
         return attributes

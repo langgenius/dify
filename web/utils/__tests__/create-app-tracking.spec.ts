@@ -18,28 +18,33 @@ describe('create-app-tracking', () => {
   })
 
   describe('extractExternalCreateAppAttribution', () => {
-    it('should map campaign links to external attribution', () => {
+    it('should keep the raw utm_source and report slug under its own field', () => {
       const attribution = extractExternalCreateAppAttribution({
         searchParams: new URLSearchParams('utm_source=x&slug=how-to-build-rag-agent'),
       })
 
       expect(attribution).toEqual({
-        utmSource: 'twitter/x',
-        utmCampaign: 'how-to-build-rag-agent',
+        utmSource: 'x',
+        slug: 'how-to-build-rag-agent',
       })
     })
 
-    it('should map newsletter and blog sources to blog', () => {
+    it('should gate on known external sources but keep raw values', () => {
       expect(extractExternalCreateAppAttribution({
         searchParams: new URLSearchParams('utm_source=newsletter'),
-      })).toEqual({ utmSource: 'blog' })
+      })).toEqual({ utmSource: 'newsletter' })
 
       expect(extractExternalCreateAppAttribution({
         utmInfo: { utm_source: 'dify_blog', slug: 'launch-week' },
       })).toEqual({
-        utmSource: 'blog',
-        utmCampaign: 'launch-week',
+        utmSource: 'dify_blog',
+        slug: 'launch-week',
       })
+
+      // Unknown sources are still rejected.
+      expect(extractExternalCreateAppAttribution({
+        searchParams: new URLSearchParams('utm_source=random&slug=x'),
+      })).toBeNull()
     })
   })
 
@@ -130,7 +135,7 @@ describe('create-app-tracking', () => {
         },
         {
           utmSource: 'linkedin',
-          utmCampaign: 'agent-launch',
+          slug: 'agent-launch',
         },
         new Date(2026, 3, 13, 7, 6, 5),
       )).toEqual({
@@ -139,7 +144,7 @@ describe('create-app-tracking', () => {
         time: '04-13-07:06:05',
         template_id: 'template-1',
         utm_source: 'linkedin',
-        utm_campaign: 'agent-launch',
+        slug: 'agent-launch',
       })
     })
 
@@ -164,8 +169,8 @@ describe('create-app-tracking', () => {
         app_mode: 'workflow',
         time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
         template_id: 'template-1',
-        utm_source: 'blog',
-        utm_campaign: 'how-to-build-rag-agent',
+        utm_source: 'newsletter',
+        slug: 'how-to-build-rag-agent',
       })
 
       trackCreateApp({ source: 'studio_template_list', appMode: AppModeEnum.WORKFLOW, templateId: 'template-1' })
@@ -195,7 +200,7 @@ describe('create-app-tracking', () => {
         time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
         template_id: 'template-2',
         utm_source: 'linkedin',
-        utm_campaign: 'agent-launch',
+        slug: 'agent-launch',
       })
     })
 
@@ -224,7 +229,7 @@ describe('create-app-tracking', () => {
       }
     })
 
-    it('should read, normalize, and consume snake_case sessionStorage attribution', () => {
+    it('should consume snake_case sessionStorage attribution and map legacy utm_campaign to slug', () => {
       window.sessionStorage.setItem('create_app_external_attribution', JSON.stringify({
         utm_source: 'twitter',
         utm_campaign: 'launch-week',
@@ -236,8 +241,8 @@ describe('create-app-tracking', () => {
         source: 'external',
         app_mode: 'chatflow',
         time: expect.stringMatching(/^\d{2}-\d{2}-\d{2}:\d{2}:\d{2}$/),
-        utm_source: 'twitter/x',
-        utm_campaign: 'launch-week',
+        utm_source: 'twitter',
+        slug: 'launch-week',
       })
       expect(window.sessionStorage.getItem('create_app_external_attribution')).toBeNull()
     })

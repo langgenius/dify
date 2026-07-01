@@ -7,10 +7,13 @@ from sqlalchemy import or_, select
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
-from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.helper.model_provider_cache import (
+    ProviderCredentialsCache,
+    ProviderCredentialsCacheType,
+)
 from core.model_manager import LBModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.provider_manager import ProviderManager
+from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -66,7 +69,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Enable model load balancing
-        provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
+        provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType(model_type))
 
     def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
@@ -87,7 +90,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # disable model load balancing
-        provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
+        provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType(model_type))
 
     def get_load_balancing_configs(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_from: str = ""
@@ -109,7 +112,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         # Get provider model setting
         provider_model_setting = provider_configuration.get_provider_model_setting(
@@ -250,7 +253,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         # Get load balancing configurations
         load_balancing_model_config = db.session.scalar(
@@ -313,6 +316,10 @@ class ModelLoadBalancingService:
         )
         db.session.add(inherit_config)
         db.session.commit()
+        ProviderManager.invalidate_configurations_cache(
+            tenant_id,
+            sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
+        )
 
         return inherit_config
 
@@ -338,7 +345,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
@@ -434,6 +441,10 @@ class ModelLoadBalancingService:
                 load_balancing_config.enabled = enabled
                 load_balancing_config.updated_at = naive_utc_now()
                 db.session.commit()
+                ProviderManager.invalidate_configurations_cache(
+                    tenant_id,
+                    sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
+                )
 
                 self._clear_credentials_cache(tenant_id, config_id)
             else:
@@ -487,12 +498,20 @@ class ModelLoadBalancingService:
 
                 db.session.add(load_balancing_model_config)
                 db.session.commit()
+                ProviderManager.invalidate_configurations_cache(
+                    tenant_id,
+                    sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
+                )
 
         # get deleted config ids
         deleted_config_ids = set(current_load_balancing_configs_dict.keys()) - updated_config_ids
         for config_id in deleted_config_ids:
             db.session.delete(current_load_balancing_configs_dict[config_id])
             db.session.commit()
+            ProviderManager.invalidate_configurations_cache(
+                tenant_id,
+                sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
+            )
 
             self._clear_credentials_cache(tenant_id, config_id)
 
@@ -524,7 +543,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         load_balancing_model_config = None
         if config_id:

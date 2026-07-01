@@ -32,6 +32,7 @@ describe('useAutoOnboarding', () => {
       showOnboarding: false,
       hasShownOnboarding: false,
       notInitialWorkflow: false,
+      isWorkflowDataLoaded: true,
       setShowOnboarding: mockSetShowOnboarding,
       setHasShownOnboarding: mockSetHasShownOnboarding,
       setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
@@ -56,11 +57,36 @@ describe('useAutoOnboarding', () => {
     expect(mockSetShouldAutoOpenStartNodeSelector).toHaveBeenCalledWith(true)
   })
 
+  it('should skip auto onboarding before workflow data is loaded', () => {
+    mockWorkflowStore.getState.mockReturnValue({
+      showOnboarding: false,
+      hasShownOnboarding: false,
+      notInitialWorkflow: false,
+      isWorkflowDataLoaded: false,
+      setShowOnboarding: mockSetShowOnboarding,
+      setHasShownOnboarding: mockSetHasShownOnboarding,
+      setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
+      hasSelectedStartNode: false,
+      setHasSelectedStartNode: mockSetHasSelectedStartNode,
+    })
+
+    renderHook(() => useAutoOnboarding())
+
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+
+    expect(mockSetShowOnboarding).not.toHaveBeenCalled()
+    expect(mockSetHasShownOnboarding).not.toHaveBeenCalled()
+    expect(mockSetShouldAutoOpenStartNodeSelector).not.toHaveBeenCalled()
+  })
+
   it('should skip auto onboarding when it is already visible or the workflow is not initial', () => {
     mockWorkflowStore.getState.mockReturnValue({
       showOnboarding: true,
       hasShownOnboarding: false,
       notInitialWorkflow: true,
+      isWorkflowDataLoaded: true,
       setShowOnboarding: mockSetShowOnboarding,
       setHasShownOnboarding: mockSetHasShownOnboarding,
       setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,
@@ -84,6 +110,7 @@ describe('useAutoOnboarding', () => {
       showOnboarding: false,
       hasShownOnboarding: true,
       notInitialWorkflow: false,
+      isWorkflowDataLoaded: true,
       setShowOnboarding: mockSetShowOnboarding,
       setHasShownOnboarding: mockSetHasShownOnboarding,
       setShouldAutoOpenStartNodeSelector: mockSetShouldAutoOpenStartNodeSelector,

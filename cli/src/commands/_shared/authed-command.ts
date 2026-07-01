@@ -2,7 +2,7 @@ import type { ActiveContext } from '@/auth/hosts'
 import type { AppInfoCache } from '@/cache/app-info'
 import type { Command } from '@/framework/command'
 import type { HttpClient } from '@/http/types'
-import type { Store } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import type { IOStreams } from '@/sys/io/streams'
 import { META_PROBE_TIMEOUT_MS, MetaClient } from '@/api/meta'
 import { notLoggedInError, Registry } from '@/auth/hosts'
@@ -11,7 +11,7 @@ import { loadNudgeStore } from '@/cache/nudge-store'
 import { getEnv } from '@/env/registry'
 import { formatErrorForCli } from '@/errors/format'
 import { createHttpClient } from '@/http/client'
-import { getTokenStore, tokenKey } from '@/store/manager'
+import { getTokenStore } from '@/store/manager'
 import { realStreams } from '@/sys/io/streams'
 import { hostWithScheme, openAPIBase } from '@/util/host'
 import { versionInfo } from '@/version/info'
@@ -21,7 +21,7 @@ import { resolveRetryAttempts } from './global-flags.js'
 export type AuthedContext = {
   readonly reg: Registry
   readonly active: ActiveContext
-  readonly store: Store
+  readonly store: TokenStore
   readonly http: HttpClient
   readonly host: string
   readonly io: IOStreams
@@ -39,13 +39,13 @@ export async function buildAuthedContext(
   opts: AuthedContextOptions,
 ): Promise<AuthedContext> {
   const io = realStreams(opts.format ?? '')
-  const reg = Registry.load()
+  const reg = await Registry.load()
   const active = reg.resolveActive()
   if (active === undefined)
     fail(cmd, opts, io)
 
-  const { store } = getTokenStore()
-  const bearer = store.get(tokenKey(active.host, active.email))
+  const store = getTokenStore(reg.token_storage)
+  const bearer = await store.read(active.host, active.email)
   if (bearer === '')
     fail(cmd, opts, io)
 

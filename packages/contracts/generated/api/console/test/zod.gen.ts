@@ -3,6 +3,14 @@
 import * as z from 'zod'
 
 /**
+ * ExternalRetrievalTestResponse
+ */
+export const zExternalRetrievalTestResponse = z.union([
+  z.record(z.string(), z.unknown()),
+  z.array(z.record(z.string(), z.unknown())),
+])
+
+/**
  * BedrockRetrievalSetting
  *
  * Retrieval settings for Amazon Bedrock knowledge base queries.
@@ -26,4 +34,4 @@ export const zPostTestRetrievalBody = zBedrockRetrievalPayload
 /**
  * Bedrock retrieval test completed
  */
-export const zPostTestRetrievalResponse = z.record(z.string(), z.unknown())
+export const zPostTestRetrievalResponse = zExternalRetrievalTestResponse

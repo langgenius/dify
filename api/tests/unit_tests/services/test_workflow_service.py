@@ -36,6 +36,7 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
     WorkflowService,
     _rebuild_file_for_user_inputs_in_start_node,
@@ -383,7 +384,7 @@ class TestWorkflowService:
 
         assert result == mock_workflow
 
-    def test_get_draft_workflow_with_workflow_id_reuses_provided_session(self, workflow_service):
+    def test_get_draft_workflow_with_workflow_id_reuses_provided_session(self, workflow_service: WorkflowService):
         """Test get_draft_workflow passes an injected session to published workflow lookup."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         workflow_id = "workflow-123"
@@ -458,7 +459,7 @@ class TestWorkflowService:
 
         assert result == mock_workflow
 
-    def test_get_published_workflow_returns_none_when_no_workflow_id(self, workflow_service):
+    def test_get_published_workflow_returns_none_when_no_workflow_id(self, workflow_service: WorkflowService):
         """Test get_published_workflow returns None when app has no workflow_id."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=None)
 
@@ -658,21 +659,21 @@ class TestWorkflowService:
     # ==================== Workflow Validation Tests ====================
     # These tests verify graph structure and feature configuration validation
 
-    def test_validate_graph_structure_empty_graph(self, workflow_service):
+    def test_validate_graph_structure_empty_graph(self, workflow_service: WorkflowService):
         """Test validate_graph_structure accepts empty graph."""
         graph = {"nodes": []}
 
         # Should not raise any exception
         workflow_service.validate_graph_structure(graph)
 
-    def test_validate_graph_structure_valid_graph(self, workflow_service):
+    def test_validate_graph_structure_valid_graph(self, workflow_service: WorkflowService):
         """Test validate_graph_structure accepts valid graph."""
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
 
         # Should not raise any exception
         workflow_service.validate_graph_structure(graph)
 
-    def test_validate_graph_structure_start_and_trigger_coexist_raises_error(self, workflow_service):
+    def test_validate_graph_structure_start_and_trigger_coexist_raises_error(self, workflow_service: WorkflowService):
         """
         Test validate_graph_structure raises error when start and trigger nodes coexist.
 
@@ -707,7 +708,7 @@ class TestWorkflowService:
         with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
             workflow_service.validate_graph_structure(graph)
 
-    def test_validate_features_structure_workflow_mode(self, workflow_service):
+    def test_validate_features_structure_workflow_mode(self, workflow_service: WorkflowService):
         """
         Test validate_features_structure for workflow mode.
 
@@ -723,7 +724,7 @@ class TestWorkflowService:
                 tenant_id=app.tenant_id, config=features, only_structure_validate=True
             )
 
-    def test_validate_features_structure_advanced_chat_mode(self, workflow_service):
+    def test_validate_features_structure_advanced_chat_mode(self, workflow_service: WorkflowService):
         """Test validate_features_structure for advanced chat mode."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock(mode=AppMode.ADVANCED_CHAT)
         features = {"opening_statement": "Hello"}
@@ -734,7 +735,7 @@ class TestWorkflowService:
                 tenant_id=app.tenant_id, config=features, only_structure_validate=True
             )
 
-    def test_validate_features_structure_invalid_mode_raises_error(self, workflow_service):
+    def test_validate_features_structure_invalid_mode_raises_error(self, workflow_service: WorkflowService):
         """Test validate_features_structure raises error for invalid mode."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock(mode=AppMode.COMPLETION)
         features = {}
@@ -767,7 +768,7 @@ class TestWorkflowService:
         assert workflow.updated_at == "now"
         mock_db_session.session.commit.assert_called_once()
 
-    def test_update_draft_workflow_environment_variables_raises_when_missing(self, workflow_service):
+    def test_update_draft_workflow_environment_variables_raises_when_missing(self, workflow_service: WorkflowService):
         """Test update_draft_workflow_environment_variables raises when draft missing."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         account = TestWorkflowAssociatedDataFactory.create_account_mock()
@@ -802,7 +803,7 @@ class TestWorkflowService:
         assert workflow.updated_at == "now"
         mock_db_session.session.commit.assert_called_once()
 
-    def test_update_draft_workflow_conversation_variables_raises_when_missing(self, workflow_service):
+    def test_update_draft_workflow_conversation_variables_raises_when_missing(self, workflow_service: WorkflowService):
         """Test update_draft_workflow_conversation_variables raises when draft missing."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         account = TestWorkflowAssociatedDataFactory.create_account_mock()
@@ -917,7 +918,7 @@ class TestWorkflowService:
     # ==================== Version Management Tests ====================
     # These tests verify listing and managing published workflow versions
 
-    def test_get_all_published_workflow_with_pagination(self, workflow_service):
+    def test_get_all_published_workflow_with_pagination(self, workflow_service: WorkflowService):
         """
         Test get_all_published_workflow returns paginated results.
 
@@ -950,7 +951,7 @@ class TestWorkflowService:
             assert len(workflows) == 5
             assert has_more is False
 
-    def test_get_all_published_workflow_has_more(self, workflow_service):
+    def test_get_all_published_workflow_has_more(self, workflow_service: WorkflowService):
         """
         Test get_all_published_workflow indicates has_more when results exceed limit.
 
@@ -983,7 +984,7 @@ class TestWorkflowService:
             assert len(workflows) == 10
             assert has_more is True
 
-    def test_get_all_published_workflow_no_workflow_id(self, workflow_service):
+    def test_get_all_published_workflow_no_workflow_id(self, workflow_service: WorkflowService):
         """Test get_all_published_workflow returns empty when app has no workflow_id."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=None)
         mock_session = MagicMock()
@@ -998,7 +999,7 @@ class TestWorkflowService:
     # ==================== Update Workflow Tests ====================
     # These tests verify updating workflow metadata (name, comments, etc.)
 
-    def test_update_workflow_success(self, workflow_service):
+    def test_update_workflow_success(self, workflow_service: WorkflowService):
         """
         Test update_workflow updates workflow attributes.
 
@@ -1008,6 +1009,8 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
         account_id = "user-123"
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id)
 
@@ -1021,10 +1024,9 @@ class TestWorkflowService:
 
             result = workflow_service.update_workflow(
                 session=mock_session,
-                workflow_id=workflow_id,
-                tenant_id=tenant_id,
                 account_id=account_id,
                 data={"marked_name": "Updated Name", "marked_comment": "Updated Comment"},
+                workflow_ref=workflow_ref,
             )
 
             assert result == mock_workflow
@@ -1032,7 +1034,7 @@ class TestWorkflowService:
             assert mock_workflow.marked_comment == "Updated Comment"
             assert mock_workflow.updated_by == account_id
 
-    def test_update_workflow_not_found(self, workflow_service):
+    def test_update_workflow_not_found(self, workflow_service: WorkflowService):
         """Test update_workflow returns None when workflow not found."""
         mock_session = MagicMock()
         mock_session.scalar.return_value = None
@@ -1044,18 +1046,46 @@ class TestWorkflowService:
 
             result = workflow_service.update_workflow(
                 session=mock_session,
-                workflow_id="nonexistent",
-                tenant_id="tenant-456",
                 account_id="user-123",
                 data={"marked_name": "Test"},
+                workflow_ref=WorkflowRef(tenant_id="tenant-456", owner_id="app-789", workflow_id="nonexistent"),
             )
 
             assert result is None
 
+    def test_update_workflow_with_ref_scopes_lookup_to_app(self, workflow_service: WorkflowService):
+        """Test update_workflow includes the trusted app owner in the lookup."""
+        workflow_id = "workflow-123"
+        tenant_id = "tenant-456"
+        app_id = "app-789"
+        account_id = "user-123"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id)
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = mock_workflow
+
+        result = workflow_service.update_workflow(
+            session=mock_session,
+            account_id=account_id,
+            data={"marked_name": "Updated Name"},
+            workflow_ref=workflow_ref,
+        )
+
+        stmt = mock_session.scalar.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "workflows.id" in statement
+        assert "workflows.tenant_id" in statement
+        assert "workflows.app_id" in statement
+        assert workflow_id in compiled.params.values()
+        assert tenant_id in compiled.params.values()
+        assert app_id in compiled.params.values()
+        assert result == mock_workflow
+
     # ==================== Delete Workflow Tests ====================
     # These tests verify workflow deletion with safety checks
 
-    def test_delete_workflow_success(self, workflow_service):
+    def test_delete_workflow_success(self, workflow_service: WorkflowService):
         """
         Test delete_workflow successfully deletes a published workflow.
 
@@ -1064,6 +1094,8 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
         mock_session = MagicMock()
@@ -1078,14 +1110,36 @@ class TestWorkflowService:
             mock_select.return_value = mock_stmt
             mock_stmt.where.return_value = mock_stmt
 
-            result = workflow_service.delete_workflow(
-                session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id
-            )
+            result = workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
             assert result is True
             mock_session.delete.assert_called_once_with(mock_workflow)
 
-    def test_delete_workflow_draft_raises_error(self, workflow_service):
+    def test_delete_workflow_with_ref_scopes_lookup_to_app(self, workflow_service: WorkflowService):
+        """Test delete_workflow includes the trusted app owner in the lookup."""
+        workflow_id = "workflow-123"
+        tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
+        mock_session = MagicMock()
+        mock_session.scalar.side_effect = [mock_workflow, None, None]
+
+        result = workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
+
+        stmt = mock_session.scalar.call_args_list[0].args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "workflows.id" in statement
+        assert "workflows.tenant_id" in statement
+        assert "workflows.app_id" in statement
+        assert workflow_id in compiled.params.values()
+        assert tenant_id in compiled.params.values()
+        assert app_id in compiled.params.values()
+        assert result is True
+        mock_session.delete.assert_called_once_with(mock_workflow)
+
+    def test_delete_workflow_draft_raises_error(self, workflow_service: WorkflowService):
         """
         Test delete_workflow raises error when trying to delete draft.
 
@@ -1094,6 +1148,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(
             workflow_id=workflow_id, version=Workflow.VERSION_DRAFT
         )
@@ -1107,9 +1162,9 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
-    def test_delete_workflow_in_use_by_app_raises_error(self, workflow_service):
+    def test_delete_workflow_in_use_by_app_raises_error(self, workflow_service: WorkflowService):
         """
         Test delete_workflow raises error when workflow is in use by app.
 
@@ -1118,6 +1173,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
         mock_app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=workflow_id)
 
@@ -1130,9 +1186,9 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="currently in use by app"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
-    def test_delete_workflow_published_as_tool_raises_error(self, workflow_service):
+    def test_delete_workflow_published_as_tool_raises_error(self, workflow_service: WorkflowService):
         """
         Test delete_workflow raises error when workflow is published as tool.
 
@@ -1142,6 +1198,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
         mock_tool_provider = MagicMock()
 
@@ -1154,12 +1211,13 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="published as a tool"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
-    def test_delete_workflow_not_found_raises_error(self, workflow_service):
+    def test_delete_workflow_not_found_raises_error(self, workflow_service: WorkflowService):
         """Test delete_workflow raises error when workflow not found."""
         workflow_id = "nonexistent"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
 
         mock_session = MagicMock()
         mock_session.scalar.return_value = None
@@ -1170,12 +1228,12 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(ValueError, match="not found"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     # ==================== Get Default Block Config Tests ====================
     # These tests verify retrieval of default node configurations
 
-    def test_get_default_block_configs(self, workflow_service):
+    def test_get_default_block_configs(self, workflow_service: WorkflowService):
         """
         Test get_default_block_configs returns list of default configs.
 
@@ -1195,7 +1253,7 @@ class TestWorkflowService:
 
                 assert len(result) > 0
 
-    def test_get_default_block_configs_http_request_injects_default_config(self, workflow_service):
+    def test_get_default_block_configs_http_request_injects_default_config(self, workflow_service: WorkflowService):
         injected_config = HttpRequestNodeConfig(
             max_connect_timeout=15,
             max_read_timeout=25,
@@ -1234,7 +1292,7 @@ class TestWorkflowService:
             assert passed_http_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is injected_config
             mock_llm_node_class.get_default_config.assert_called_once_with(filters=None)
 
-    def test_get_default_block_config_for_node_type(self, workflow_service):
+    def test_get_default_block_config_for_node_type(self, workflow_service: WorkflowService):
         """
         Test get_default_block_config returns config for specific node type.
 
@@ -1258,7 +1316,7 @@ class TestWorkflowService:
             assert result == mock_config
             mock_node_class.get_default_config.assert_called_once()
 
-    def test_get_default_block_config_invalid_node_type(self, workflow_service):
+    def test_get_default_block_config_invalid_node_type(self, workflow_service: WorkflowService):
         """Test get_default_block_config returns empty dict for invalid node type."""
         with patch("services.workflow_service.get_node_type_classes_mapping") as mock_mapping:
             mock_mapping.return_value = {}
@@ -1268,7 +1326,7 @@ class TestWorkflowService:
 
             assert result == {}
 
-    def test_get_default_block_config_http_request_injects_default_config(self, workflow_service):
+    def test_get_default_block_config_http_request_injects_default_config(self, workflow_service: WorkflowService):
         injected_config = HttpRequestNodeConfig(
             max_connect_timeout=11,
             max_read_timeout=22,
@@ -1299,7 +1357,7 @@ class TestWorkflowService:
             passed_filters = mock_node_class.get_default_config.call_args.kwargs["filters"]
             assert passed_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is injected_config
 
-    def test_get_default_block_config_http_request_uses_passed_config(self, workflow_service):
+    def test_get_default_block_config_http_request_uses_passed_config(self, workflow_service: WorkflowService):
         provided_config = HttpRequestNodeConfig(
             max_connect_timeout=13,
             max_read_timeout=23,
@@ -1330,7 +1388,9 @@ class TestWorkflowService:
             passed_filters = mock_node_class.get_default_config.call_args.kwargs["filters"]
             assert passed_filters[HTTP_REQUEST_CONFIG_FILTER_KEY] is provided_config
 
-    def test_get_default_block_config_http_request_malformed_config_raises_type_error(self, workflow_service):
+    def test_get_default_block_config_http_request_malformed_config_raises_type_error(
+        self, workflow_service: WorkflowService
+    ):
         with (
             patch(
                 "services.workflow_service.get_node_type_classes_mapping",
@@ -1347,7 +1407,7 @@ class TestWorkflowService:
     # ==================== Workflow Conversion Tests ====================
     # These tests verify converting basic apps to workflow apps
 
-    def test_convert_to_workflow_from_chat_app(self, workflow_service):
+    def test_convert_to_workflow_from_chat_app(self, workflow_service: WorkflowService):
         """
         Test convert_to_workflow converts chat app to workflow.
 
@@ -1374,7 +1434,7 @@ class TestWorkflowService:
             assert result == mock_new_app
             mock_converter.convert_to_workflow.assert_called_once()
 
-    def test_convert_to_workflow_from_completion_app(self, workflow_service):
+    def test_convert_to_workflow_from_completion_app(self, workflow_service: WorkflowService):
         """
         Test convert_to_workflow converts completion app to workflow.
 
@@ -1395,7 +1455,7 @@ class TestWorkflowService:
 
             assert result == mock_new_app
 
-    def test_convert_to_workflow_invalid_mode_raises_error(self, workflow_service):
+    def test_convert_to_workflow_invalid_mode_raises_error(self, workflow_service: WorkflowService):
         """
         Test convert_to_workflow raises error for invalid app mode.
 

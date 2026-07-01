@@ -305,6 +305,18 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
+  }
+}
+
+export type ReasoningChunkResponse = {
+  task_id: string
+  event: string
+  data: {
+    message_id: string
+    reasoning: string
+    node_id?: string
+    is_final?: boolean
   }
 }
 
@@ -433,6 +445,8 @@ export type PublishWorkflowParams = {
   title: string
   releaseNotes: string
 }
+
+export type WorkflowKind = 'standard'
 
 export type UpdateWorkflowParams = {
   url: string

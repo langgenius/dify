@@ -11,7 +11,7 @@ import { VarType } from '@/app/components/workflow/types'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
 
-type Props = {
+type Props = Readonly<{
   isVariable?: boolean
   onIsVariableChange?: (isVariable: boolean) => void
   nodeId: string
@@ -19,7 +19,7 @@ type Props = {
   onValueSelectorChange?: (valueSelector: ValueSelector | string) => void
   value?: string
   onValueChange?: (value: string) => void
-}
+}>
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 

@@ -1,3 +1,4 @@
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { Checkbox } from '../../checkbox'
 import { CheckboxGroup } from '../../checkbox-group'
@@ -96,7 +97,7 @@ describe('Field primitives', () => {
 
   it('should apply design-system control sizes when requested', async () => {
     const screen = await render(
-      <>
+      <React.Fragment>
         <FieldRoot name="name">
           <FieldLabel>Name</FieldLabel>
           <FieldControl size="large" />
@@ -105,7 +106,7 @@ describe('Field primitives', () => {
           <FieldLabel>Alias</FieldLabel>
           <FieldControl size="small" />
         </FieldRoot>
-      </>,
+      </React.Fragment>,
     )
 
     await expect.element(screen.getByRole('textbox', { name: 'Name' })).toHaveClass('rounded-[10px]', 'py-[7px]', 'system-md-regular')

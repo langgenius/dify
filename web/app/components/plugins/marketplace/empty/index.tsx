@@ -4,11 +4,11 @@ import { useTranslation } from '#i18n'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Line from './line'
 
-type Props = {
+type Props = Readonly<{
   text?: string
   lightCard?: boolean
   className?: string
-}
+}>
 
 const Empty = ({
   text,

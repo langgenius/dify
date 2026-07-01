@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
@@ -11,7 +11,6 @@ import {
 
 type DrawerSide = 'right' | 'left' | 'bottom' | 'top'
 type DrawerSwipeDirection = 'right' | 'left' | 'down' | 'up'
-type DrawerOpenChange = NonNullable<ComponentProps<typeof Drawer>['onOpenChange']>
 
 type CompletedDrawerProps = {
   open: boolean
@@ -47,16 +46,6 @@ export function CompletedDrawer({
   panelContentClassName,
   modal = false,
 }: CompletedDrawerProps) {
-  const handleOpenChange: DrawerOpenChange = (nextOpen, eventDetails) => {
-    if (nextOpen)
-      return
-
-    if (eventDetails.reason === 'focus-out' || eventDetails.reason === 'outside-press')
-      return
-
-    onClose()
-  }
-
   if (!open)
     return null
 
@@ -66,7 +55,7 @@ export function CompletedDrawer({
       modal={modal}
       swipeDirection={SIDE_TO_SWIPE_DIRECTION[side]}
       disablePointerDismissal
-      onOpenChange={handleOpenChange}
+      onOpenChange={nextOpen => !nextOpen && onClose()}
     >
       <DrawerPortal>
         {modal && (

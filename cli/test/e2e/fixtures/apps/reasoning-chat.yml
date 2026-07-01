@@ -1,0 +1,120 @@
+# Chatflow that exercises separated-mode reasoning (PR #37460): the LLM node sets
+# reasoning_format=separated, so the server strips <think>...</think> from the
+# answer and streams the chain-of-thought on the out-of-band `reasoning_chunk`
+# channel instead. The system prompt forces a <think> block, so the separated
+# path triggers with any chat model — no dedicated reasoning model required.
+#
+# NOTE: the LLM node leaves model.provider/name empty and relies on the target
+# workspace's configured default chat model. The run-app-reasoning E2E suite is
+# gated on DIFY_E2E_REASONING_APP_ID, so it is skipped unless a server with a
+# working model is wired up.
+app:
+  description: e2e-test reasoning (separated mode)
+  icon: 🧠
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: advanced-chat
+  name: reasoning-bot
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {}
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+      - id: start-llm
+        source: '1755189262236'
+        sourceHandle: source
+        target: llm
+        targetHandle: target
+      - id: llm-answer
+        source: llm
+        sourceHandle: source
+        target: answer
+        targetHandle: target
+    nodes:
+      - data:
+          desc: ''
+          title: Start
+          type: start
+          variables: []
+        id: '1755189262236'
+        position:
+          x: 80
+          y: 282
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          desc: ''
+          memory:
+            query_prompt_template: '{{#sys.query#}}'
+            window:
+              enabled: false
+              size: 10
+          model:
+            completion_params:
+              temperature: 0.7
+            mode: chat
+            name: ''
+            provider: ''
+          prompt_template:
+            - role: system
+              text: >-
+                You are a helpful assistant. Always reason step by step INSIDE a
+                single <think>...</think> block first, then write the final
+                answer AFTER the closing </think> tag. The final answer must not
+                contain any <think> tags.
+          reasoning_format: separated
+          selected: false
+          title: LLM
+          type: llm
+          variables: []
+          vision:
+            enabled: false
+        id: llm
+        position:
+          x: 380
+          y: 282
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+      - data:
+          answer: '{{#llm.text#}}'
+          desc: ''
+          title: Answer
+          type: answer
+          variables: []
+        id: answer
+        position:
+          x: 680
+          y: 282
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+    viewport:
+      x: 0
+      y: 0
+      zoom: 1
+  rag_pipeline_variables: []

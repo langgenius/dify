@@ -7,7 +7,7 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
 from models.model import (
     Message,
 )
@@ -74,8 +74,9 @@ class TestWorkflowRunService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -530,8 +531,9 @@ class TestWorkflowRunService:
             name="Test User",
             password="password123",
             interface_language="en-US",
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app
@@ -581,8 +583,9 @@ class TestWorkflowRunService:
             name="Test User",
             password="password123",
             interface_language="en-US",
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app
@@ -632,8 +635,9 @@ class TestWorkflowRunService:
             name="Test User",
             password="password123",
             interface_language="en-US",
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant")
+        TenantService.create_owner_tenant_if_not_exist(account, name="test_tenant", session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app
@@ -684,7 +688,7 @@ class TestWorkflowRunService:
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web_app",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id=str(uuid.uuid4()),
             external_user_id=str(uuid.uuid4()),

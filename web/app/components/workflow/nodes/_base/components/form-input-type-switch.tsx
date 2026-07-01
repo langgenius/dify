@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarType } from '@/app/components/workflow/nodes/tool/types'
 
-type Props = {
+type Props = Readonly<{
   value: VarType
   onChange: (value: VarType) => void
-}
+}>
 
 const FormInputTypeSwitch: FC<Props> = ({
   value,

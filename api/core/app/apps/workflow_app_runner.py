@@ -24,6 +24,7 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -74,6 +75,7 @@ from graphon.graph_events import (
     NodeRunLoopNextEvent,
     NodeRunLoopStartedEvent,
     NodeRunLoopSucceededEvent,
+    NodeRunReasoningChunkEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
@@ -104,7 +106,7 @@ class WorkflowBasedAppRunner:
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
-        if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+        if invoke_from.runs_as_account():
             return UserFrom.ACCOUNT
         return UserFrom.END_USER
 
@@ -572,6 +574,16 @@ class WorkflowBasedAppRunner:
                     QueueTextChunkEvent(
                         text=event.chunk,
                         from_variable_selector=list(event.selector),
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
+                )
+            case NodeRunReasoningChunkEvent():
+                self._publish_event(
+                    QueueReasoningChunkEvent(
+                        reasoning=event.chunk,
+                        from_node_id=event.node_id,
+                        is_final=event.is_final,
                         in_iteration_id=event.in_iteration_id,
                         in_loop_id=event.in_loop_id,
                     )

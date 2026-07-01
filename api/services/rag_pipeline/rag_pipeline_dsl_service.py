@@ -15,7 +15,7 @@ from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name
@@ -83,7 +83,7 @@ class RagPipelineDslService:
     when generated IDs are needed mid-operation; they never commit or rollback.
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session | scoped_session):
         self._session = session
 
     def import_rag_pipeline(
@@ -283,6 +283,7 @@ class RagPipelineDslService:
                             },
                             indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
@@ -415,6 +416,7 @@ class RagPipelineDslService:
                             },
                             indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,

@@ -5,10 +5,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { PremiumBadgeButton } from '../../base/premium-badge'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   style?: CSSProperties
   isFull?: boolean
@@ -18,7 +19,7 @@ type Props = {
   onClick?: () => void
   loc?: string
   labelKey?: Exclude<I18nKeysWithPrefix<'billing'>, 'plans.community.features' | 'plans.enterprise.features' | 'plans.premium.features'>
-}
+}>
 
 type GtagHandler = (command: 'event', action: 'click_upgrade_btn', payload: { loc: string }) => void
 
@@ -34,6 +35,10 @@ const UpgradeBtn: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { setShowPricingModal } = useModalContext()
+
+  if (!IS_CLOUD_EDITION)
+    return null
+
   const handleClick = () => {
     if (_onClick)
       _onClick()

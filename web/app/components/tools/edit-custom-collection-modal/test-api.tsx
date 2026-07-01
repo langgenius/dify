@@ -24,12 +24,12 @@ import { getLanguage } from '@/i18n-config/language'
 import { testAPIAvailable } from '@/service/tools'
 import ConfigCredentials from './config-credentials'
 
-type Props = {
+type Props = Readonly<{
   positionCenter?: boolean
   customCollection: CustomCollectionBackend
   tool: CustomParamSchema
   onHide: () => void
-}
+}>
 
 const TestApi: FC<Props> = ({
   positionCenter,

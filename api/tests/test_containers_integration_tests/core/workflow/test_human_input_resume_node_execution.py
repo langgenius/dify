@@ -205,7 +205,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             tenant_id=tenant.id,
             name="Test App",
             description="",
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             icon_type=IconType.EMOJI.value,
             icon="rocket",
             icon_background="#4ECDC4",

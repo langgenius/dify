@@ -10,6 +10,8 @@ when data is present, and (3) round-trip the raw catalogue text unchanged.
 from core.workflow.generator.prompts.builder_prompts import (
     BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT,
     BUILDER_SYSTEM_PROMPT_WORKFLOW,
+    compact_graph_for_builder,
+    format_builder_existing_graph_section,
     format_builder_tool_catalogue_section,
     format_plan_block,
     get_builder_system_prompt,
@@ -95,6 +97,61 @@ class TestGetBuilderSystemPrompt:
         assert prompt is BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT
         assert 'exactly one "answer" node' in prompt
 
+    def test_scopes_cheatsheet_to_planned_node_types(self):
+        # When the runner pins the plan's node-type set, the builder prompt
+        # carries ONLY those types' schemas — no schema for unrelated nodes.
+        prompt = get_builder_system_prompt("workflow", {"start", "llm", "end"})
+        assert "- start:" in prompt
+        assert "- llm:" in prompt
+        assert "- if-else:" not in prompt
+        assert "- tool" not in prompt
+        assert "## Containers" not in prompt
+        # Still a valid, mode-correct prompt.
+        assert 'exactly one "end" node' in prompt
+
+    def test_scoped_prompt_pulls_in_containers_for_iteration(self):
+        prompt = get_builder_system_prompt("workflow", {"start", "iteration", "llm", "end"})
+        assert "## Containers" in prompt
+
+    def test_scoped_prompt_is_smaller_than_full(self):
+        # The whole point of dynamic assembly: a small plan ships a smaller
+        # builder prompt than the full cheatsheet.
+        scoped = get_builder_system_prompt("workflow", {"start", "llm", "end"})
+        assert len(scoped) < len(BUILDER_SYSTEM_PROMPT_WORKFLOW)
+
+
+class TestBuildNodeConfigCheatsheet:
+    def test_none_returns_full_cheatsheet(self):
+        from core.workflow.generator.prompts.builder_prompts import (
+            NODE_CONFIG_CHEATSHEET,
+            build_node_config_cheatsheet,
+        )
+
+        full = build_node_config_cheatsheet(None)
+        assert full == NODE_CONFIG_CHEATSHEET
+        # Full cheatsheet documents every node type + containers.
+        assert "- tool" in full
+        assert "- if-else:" in full
+        assert "## Containers" in full
+
+    def test_always_includes_start_even_when_omitted(self):
+        # Every workflow has a start node; the assembler force-includes it so
+        # the builder can always declare input variables.
+        from core.workflow.generator.prompts.builder_prompts import build_node_config_cheatsheet
+
+        out = build_node_config_cheatsheet({"llm", "end"})
+        assert "- start:" in out
+
+    def test_start_snippet_documents_file_upload_schema(self):
+        # The bug this fixes: a file start variable needs allowed_file_types,
+        # which the builder never knew about. The snippet must now teach it.
+        from core.workflow.generator.prompts.builder_prompts import build_node_config_cheatsheet
+
+        out = build_node_config_cheatsheet({"start", "document-extractor", "llm", "end"})
+        assert "allowed_file_types" in out
+        assert "allowed_file_upload_methods" in out
+        assert "supported file types" in out  # the exact Studio error wording
+
 
 class TestFormatPlanBlockParentHints:
     def test_resolves_parent_label_to_node_id(self):
@@ -127,3 +184,102 @@ class TestFormatPlanBlockParentHints:
             ]
         )
         assert "parent='Ghost Container'" in out
+
+
+class TestCompactGraphForBuilder:
+    """
+    The refine-mode existing-graph JSON is the single biggest token sink in
+    the pipeline — and the builder echoes untouched nodes back, doubling the
+    cost. The compactor must drop canvas noise (recomputed in postprocess)
+    while keeping everything the builder genuinely has to preserve.
+    """
+
+    @staticmethod
+    def _graph() -> dict:
+        return {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 80, "y": 282},
+                    "positionAbsolute": {"x": 80, "y": 282},
+                    "width": 244,
+                    "height": 100,
+                    "sourcePosition": "right",
+                    "targetPosition": "left",
+                    "selected": True,
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "iter1",
+                    "type": "custom",
+                    "position": {"x": 400, "y": 282},
+                    "width": 808,
+                    "height": 204,
+                    "data": {"type": "iteration", "title": "Per Item", "start_node_id": "iter1start"},
+                },
+                {
+                    "id": "iter1start",
+                    "type": "custom-iteration-start",
+                    "parentId": "iter1",
+                    "position": {"x": 60, "y": 78},
+                    "positionAbsolute": {"x": 460, "y": 360},
+                    "data": {"type": "iteration-start", "title": ""},
+                },
+            ],
+            "edges": [
+                {
+                    "id": "node1-source-iter1-target",
+                    "source": "node1",
+                    "target": "iter1",
+                    "sourceHandle": "source",
+                    "targetHandle": "target",
+                    "type": "custom",
+                    "zIndex": 0,
+                    "data": {"sourceType": "start", "targetType": "iteration", "isInIteration": False},
+                }
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+
+    def test_drops_canvas_noise_from_top_level_nodes(self):
+        compact = compact_graph_for_builder(self._graph())
+        start = next(n for n in compact["nodes"] if n["id"] == "node1")
+        for key in ("position", "positionAbsolute", "width", "height", "sourcePosition", "targetPosition", "selected"):
+            assert key not in start
+        # Semantics survive.
+        assert start["data"]["type"] == "start"
+        assert start["type"] == "custom"
+
+    def test_keeps_container_size_but_not_position(self):
+        compact = compact_graph_for_builder(self._graph())
+        container = next(n for n in compact["nodes"] if n["id"] == "iter1")
+        assert container["width"] == 808
+        assert container["height"] == 204
+        assert "position" not in container
+
+    def test_keeps_child_relative_position(self):
+        compact = compact_graph_for_builder(self._graph())
+        child = next(n for n in compact["nodes"] if n["id"] == "iter1start")
+        assert child["position"] == {"x": 60, "y": 78}
+        assert child["parentId"] == "iter1"
+        assert child["type"] == "custom-iteration-start"
+        assert "positionAbsolute" not in child
+
+    def test_edges_keep_only_topology_fields(self):
+        compact = compact_graph_for_builder(self._graph())
+        assert compact["edges"] == [
+            {"source": "node1", "target": "iter1", "sourceHandle": "source", "targetHandle": "target"}
+        ]
+
+    def test_viewport_is_dropped(self):
+        assert "viewport" not in compact_graph_for_builder(self._graph())
+
+    def test_existing_graph_section_embeds_the_compact_graph(self):
+        section = format_builder_existing_graph_section(self._graph())
+        assert "Existing graph to refine" in section
+        assert "positionAbsolute" not in section
+        assert '"start_node_id":"iter1start"' in section
+
+    def test_existing_graph_section_empty_for_create_mode(self):
+        assert format_builder_existing_graph_section(None) == ""

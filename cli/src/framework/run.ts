@@ -1,5 +1,5 @@
 import type { CommandTree } from './registry'
-import { BaseError } from '@/errors/base'
+import { BaseError, unknownError } from '@/errors/base'
 import { formatErrorForCli } from '@/errors/format'
 import { findTopic } from '@/help/topics'
 import { formatCommandList, formatHelp, formatTopic, formatTopLevelHelp } from './help'
@@ -106,19 +106,12 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
   catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'EPIPE')
       process.exit(0)
-    if (err instanceof BaseError) {
-      const format = sniffOutputFormat(argv)
-      process.stderr.write(`${formatErrorForCli(err, { format, isErrTTY: process.stderr.isTTY })}\n`)
-      process.exit(err.exit())
-      return
-    }
-    if (err instanceof Error) {
-      process.stderr.write(`${err.message}\n`)
-      process.exit(1)
-      return
-    }
-    process.stderr.write(`${String(err)}\n`)
-    process.exit(1)
+    const e = err instanceof BaseError
+      ? err
+      : unknownError(err instanceof Error ? err.message : String(err), err)
+    const format = sniffOutputFormat(argv)
+    process.stderr.write(`${formatErrorForCli(e, { format, isErrTTY: process.stderr.isTTY })}\n`)
+    process.exit(e.exit())
   }
 }
 

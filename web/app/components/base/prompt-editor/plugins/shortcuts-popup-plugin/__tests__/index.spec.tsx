@@ -1,4 +1,4 @@
-import type { ShortcutPopupInsertHandler } from '../index'
+import type { ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from '../index'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -50,6 +50,7 @@ const CONTENT_EDITABLE_ID = 'ce'
 type MinimalEditorProps = {
   withContainer?: boolean
   hotkey?: string | string[] | string[][] | ((e: KeyboardEvent) => boolean)
+  displayMode?: ShortcutPopupDisplayMode
   children?: React.ReactNode | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)
   className?: string
   onOpen?: () => void
@@ -59,6 +60,7 @@ type MinimalEditorProps = {
 const MinimalEditor: React.FC<MinimalEditorProps> = ({
   withContainer = true,
   hotkey,
+  displayMode,
   children,
   className,
   onOpen,
@@ -83,6 +85,7 @@ const MinimalEditor: React.FC<MinimalEditorProps> = ({
         <ShortcutsPopupPlugin
           container={withContainer ? containerEl : undefined}
           hotkey={hotkey}
+          displayMode={displayMode}
           className={className}
           onOpen={onOpen}
           onClose={onClose}
@@ -179,7 +182,9 @@ describe('ShortcutsPopupPlugin', () => {
     const host = screen.getByTestId(CONTAINER_ID)
     focusAndTriggerHotkey('/')
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
+    const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(host).toContainElement(portalContent)
+    expect(floatingDiv).toHaveStyle({ position: 'absolute' })
   })
 
   it('falls back to document.body when container is not provided', async () => {
@@ -188,8 +193,63 @@ describe('ShortcutsPopupPlugin', () => {
     const portalContent = await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
     const floatingDiv = screen.getByTestId('shortcuts-popup')
     expect(document.body).toContainElement(portalContent)
+    expect(floatingDiv).toHaveStyle({ position: 'fixed' })
     expect(floatingDiv).toHaveStyle({ zIndex: '50' })
     expect(floatingDiv).toHaveStyle({ overflow: 'visible' })
+  })
+
+  it('clips the popup viewport so child popups own their internal scrolling', async () => {
+    render(<MinimalEditor />)
+    focusAndTriggerHotkey('/')
+    await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
+
+    const floatingDiv = screen.getByTestId('shortcuts-popup')
+    expect(floatingDiv.firstElementChild).toHaveClass('overflow-hidden')
+  })
+
+  it('can render fixed next to the workflow panel instead of following the cursor', async () => {
+    const originalInnerWidth = window.innerWidth
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1200 })
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 })
+
+    const rightPanel = document.createElement('div')
+    rightPanel.setAttribute('data-workflow-right-panel', '')
+    rightPanel.getBoundingClientRect = vi.fn(() => ({
+      x: 800,
+      y: 56,
+      width: 400,
+      height: 840,
+      top: 56,
+      right: 1200,
+      bottom: 896,
+      left: 800,
+      toJSON: () => ({}),
+    } as DOMRect))
+    document.body.appendChild(rightPanel)
+
+    try {
+      render(<MinimalEditor withContainer={false} displayMode="workflow-panel-adjacent-center" />)
+      focusAndTriggerHotkey('/')
+      await screen.findByText(SHORTCUTS_EMPTY_CONTENT)
+
+      const floatingDiv = screen.getByTestId('shortcuts-popup')
+      await waitFor(() => {
+        expect(floatingDiv).toHaveStyle({
+          position: 'fixed',
+          right: '404px',
+          top: '474px',
+          transform: 'translateY(-50%)',
+        })
+      })
+      expect(floatingDiv.style.getPropertyValue('--shortcut-popup-max-width')).toBe('400px')
+      expect(floatingDiv.style.getPropertyValue('--shortcut-popup-max-height')).toBe('836px')
+    }
+    finally {
+      rightPanel.remove()
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight })
+    }
   })
 
   // ─── matchHotkey: string hotkey ───

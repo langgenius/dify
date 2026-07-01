@@ -11,12 +11,12 @@ import Field from './field'
 
 const i18nPrefix = 'metadata.createMetadata'
 
-export type Props = {
+export type Props = Readonly<{
   onClose?: () => void
   onSave: (data: BuiltInMetadataItem) => void
   hasBack?: boolean
   onBack?: () => void
-}
+}>
 
 export function CreateContent({
   onClose = noop,

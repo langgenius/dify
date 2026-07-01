@@ -6,9 +6,9 @@ export type ClientOptions = {
 
 export type ActivatePayload = {
   email?: string | null
-  interface_language: string
-  name: string
-  timezone: string
+  interface_language?: string | null
+  name?: string | null
+  timezone?: string | null
   token: string
   workspace_id?: string | null
 }
@@ -18,12 +18,14 @@ export type ActivationResponse = {
 }
 
 export type ActivationCheckResponse = {
-  data?: ActivationCheckData
+  data?: ActivationCheckData | null
   is_valid: boolean
 }
 
 export type ActivationCheckData = {
+  account_status?: string | null
   email: string | null
+  requires_setup?: boolean | null
   workspace_id: string | null
   workspace_name: string | null
 }
@@ -36,12 +38,8 @@ export type PostActivateData = {
 }
 
 export type PostActivateErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostActivateError = PostActivateErrors[keyof PostActivateErrors]
 
 export type PostActivateResponses = {
   200: ActivationResponse
@@ -53,9 +51,9 @@ export type GetActivateCheckData = {
   body?: never
   path?: never
   query: {
-    email?: string | null
+    email?: string
     token: string
-    workspace_id?: string | null
+    workspace_id?: string
   }
   url: '/activate/check'
 }

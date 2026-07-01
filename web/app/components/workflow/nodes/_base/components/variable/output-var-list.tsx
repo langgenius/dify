@@ -13,13 +13,13 @@ import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var
 import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   outputs: OutputVar
   outputKeyOrders: string[]
   onChange: (payload: OutputVar, changedIndex?: number, newKey?: string) => void
   onRemove: (index: number) => void
-}
+}>
 
 const OutputVarList: FC<Props> = ({
   readonly,

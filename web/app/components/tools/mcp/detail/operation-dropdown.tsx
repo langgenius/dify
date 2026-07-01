@@ -16,12 +16,12 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 
-type Props = {
+type Props = Readonly<{
   inCard?: boolean
   onOpenChange?: (open: boolean) => void
   onEdit: () => void
   onRemove: () => void
-}
+}>
 
 const OperationDropdown: FC<Props> = ({
   inCard,

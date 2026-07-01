@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -11,18 +12,9 @@ from controllers.console.app import model_config as model_config_module
 from models.model import AppMode, AppModelConfig
 
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
-
-
 def test_post_updates_app_model_config_for_chat(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = model_config_module.ModelConfigResource()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     app_model = SimpleNamespace(
         id="app-1",
@@ -50,7 +42,7 @@ def test_post_updates_app_model_config_for_chat(app: Flask, monkeypatch: pytest.
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", send_mock)
 
     with app.test_request_context("/console/api/apps/app-1/model-config", method="POST", json={"pre_prompt": "hi"}):
-        response = method("t1", "u1", app_model=app_model)
+        response = method(api, "t1", "u1", app_model=app_model)
 
     session.add.assert_called_once()
     session.flush.assert_called_once()
@@ -62,7 +54,7 @@ def test_post_updates_app_model_config_for_chat(app: Flask, monkeypatch: pytest.
 
 def test_post_encrypts_agent_tool_parameters(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = model_config_module.ModelConfigResource()
-    method = _unwrap(api.post)
+    method = unwrap(api.post)
 
     app_model = SimpleNamespace(
         id="app-1",
@@ -137,7 +129,7 @@ def test_post_encrypts_agent_tool_parameters(app: Flask, monkeypatch: pytest.Mon
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", send_mock)
 
     with app.test_request_context("/console/api/apps/app-1/model-config", method="POST", json={"pre_prompt": "hi"}):
-        response = method("t1", "u1", app_model=app_model)
+        response = method(api, "t1", "u1", app_model=app_model)
 
     stored_config = session.add.call_args[0][0]
     stored_agent_mode = json.loads(stored_config.agent_mode)

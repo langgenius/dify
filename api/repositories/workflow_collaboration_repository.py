@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TypedDict
+from typing import TypedDict, override
 
 from extensions.ext_redis import redis_client
 
@@ -28,6 +28,7 @@ class WorkflowCollaborationRepository:
     def __init__(self) -> None:
         self._redis = redis_client
 
+    @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(redis_client={self._redis})"
 

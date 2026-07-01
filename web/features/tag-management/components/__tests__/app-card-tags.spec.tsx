@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AppCardTags } from '../app-card-tags'
@@ -13,6 +13,7 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
     targetId: string
     type: string
     value: Tag[]
+    canBindOrUnbindTags?: boolean
   }) => {
     renderTagSelector(props)
 
@@ -27,8 +28,8 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
 }))
 
 const tags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 1 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 2 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
 ]
 
 describe('AppCardTags', () => {
@@ -47,6 +48,7 @@ describe('AppCardTags', () => {
         targetId: 'app-1',
         type: 'app',
         value: tags,
+        canBindOrUnbindTags: undefined,
       }))
     })
 
@@ -89,6 +91,14 @@ describe('AppCardTags', () => {
 
       expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
         value: [],
+      }))
+    })
+
+    it('should forward app ACL tag binding capability', () => {
+      render(<AppCardTags appId="app-1" tags={tags} canBindOrUnbindTags={false} />)
+
+      expect(renderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
+        canBindOrUnbindTags: false,
       }))
     })
   })

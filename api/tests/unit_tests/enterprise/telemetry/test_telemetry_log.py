@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import uuid
-from unittest.mock import MagicMock, patch
+
+import pytest
 
 # ---------------------------------------------------------------------------
 # compute_trace_id_hex
@@ -135,134 +137,128 @@ class TestEmitTelemetryLog:
         compute_trace_id_hex.cache_clear()
         compute_span_id_hex.cache_clear()
 
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_logs_info_with_event_name_and_signal(self, mock_logger: MagicMock) -> None:
+    def test_logs_info_with_event_name_and_signal(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(
+                event_name="dify.workflow.run",
+                attributes={"tenant_id": "t1"},
+                signal="metric_only",
+            )
 
-        emit_telemetry_log(
-            event_name="dify.workflow.run",
-            attributes={"tenant_id": "t1"},
-            signal="metric_only",
-        )
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert record.levelno == logging.INFO
+        assert record.getMessage() == "telemetry.metric_only"
+        assert hasattr(record, "attributes")
+        assert record.attributes["dify.event.name"] == "dify.workflow.run"
+        assert record.attributes["dify.event.signal"] == "metric_only"
+        assert record.attributes["tenant_id"] == "t1"
 
-        mock_logger.info.assert_called_once()
-        args, kwargs = mock_logger.info.call_args
-        assert args[0] == "telemetry.%s"
-        assert args[1] == "metric_only"
-        extra = kwargs["extra"]
-        assert extra["attributes"]["dify.event.name"] == "dify.workflow.run"
-        assert extra["attributes"]["dify.event.signal"] == "metric_only"
-
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_no_log_when_info_disabled(self, mock_logger: MagicMock) -> None:
+    def test_no_log_when_info_disabled(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = False
+        with caplog.at_level(logging.WARNING, logger="dify.telemetry"):
+            emit_telemetry_log(event_name="dify.workflow.run", attributes={})
 
-        emit_telemetry_log(event_name="dify.workflow.run", attributes={})
+        assert len(caplog.records) == 0
 
-        mock_logger.info.assert_not_called()
-
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_trace_id_added_to_extra_when_valid_uuid(self, mock_logger: MagicMock) -> None:
+    def test_trace_id_added_to_extra_when_valid_uuid(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
         uid = "123e4567-e89b-12d3-a456-426614174000"
 
-        emit_telemetry_log(event_name="test.event", attributes={}, trace_id_source=uid)
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(event_name="test.event", attributes={}, trace_id_source=uid)
 
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert "trace_id" in extra
-        assert len(extra["trace_id"]) == 32
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert hasattr(record, "trace_id")
+        assert len(record.trace_id) == 32
 
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_trace_id_absent_when_invalid_source(self, mock_logger: MagicMock) -> None:
+    def test_trace_id_absent_when_invalid_source(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(event_name="test.event", attributes={}, trace_id_source="bad-id")
 
-        emit_telemetry_log(event_name="test.event", attributes={}, trace_id_source="bad-id")
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert not hasattr(record, "trace_id")
 
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert "trace_id" not in extra
-
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_span_id_added_to_extra_when_valid_uuid(self, mock_logger: MagicMock) -> None:
+    def test_span_id_added_to_extra_when_valid_uuid(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
         uid = "123e4567-e89b-12d3-a456-426614174000"
 
-        emit_telemetry_log(event_name="test.event", attributes={}, span_id_source=uid)
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(event_name="test.event", attributes={}, span_id_source=uid)
 
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert "span_id" in extra
-        assert len(extra["span_id"]) == 16
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert hasattr(record, "span_id")
+        assert len(record.span_id) == 16
 
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_tenant_id_added_when_provided(self, mock_logger: MagicMock) -> None:
+    def test_tenant_id_added_when_provided(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(event_name="test.event", attributes={}, tenant_id="tenant-99")
 
-        emit_telemetry_log(event_name="test.event", attributes={}, tenant_id="tenant-99")
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert hasattr(record, "tenant_id")
+        assert record.tenant_id == "tenant-99"
 
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert extra["tenant_id"] == "tenant-99"
-
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_user_id_added_when_provided(self, mock_logger: MagicMock) -> None:
+    def test_user_id_added_when_provided(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(event_name="test.event", attributes={}, user_id="user-42")
 
-        emit_telemetry_log(event_name="test.event", attributes={}, user_id="user-42")
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert hasattr(record, "user_id")
+        assert record.user_id == "user-42"
 
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert extra["user_id"] == "user-42"
-
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_tenant_and_user_id_absent_when_not_provided(self, mock_logger: MagicMock) -> None:
+    def test_tenant_and_user_id_absent_when_not_provided(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(event_name="test.event", attributes={})
 
-        emit_telemetry_log(event_name="test.event", attributes={})
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert not hasattr(record, "tenant_id")
+        assert not hasattr(record, "user_id")
 
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert "tenant_id" not in extra
-        assert "user_id" not in extra
-
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_caller_attributes_merged_into_attrs(self, mock_logger: MagicMock) -> None:
+    def test_caller_attributes_merged_into_attrs(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(
+                event_name="dify.node.run",
+                attributes={"node_type": "code", "elapsed": 0.5},
+            )
 
-        emit_telemetry_log(
-            event_name="dify.node.run",
-            attributes={"node_type": "code", "elapsed": 0.5},
-        )
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert hasattr(record, "attributes")
+        assert record.attributes["node_type"] == "code"
+        assert record.attributes["elapsed"] == 0.5
 
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert extra["attributes"]["node_type"] == "code"
-        assert extra["attributes"]["elapsed"] == 0.5
-
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_signal_span_detail_forwarded(self, mock_logger: MagicMock) -> None:
+    def test_signal_span_detail_forwarded(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_telemetry_log
 
-        mock_logger.isEnabledFor.return_value = True
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_telemetry_log(event_name="test.event", attributes={}, signal="span_detail")
 
-        emit_telemetry_log(event_name="test.event", attributes={}, signal="span_detail")
-
-        args = mock_logger.info.call_args[0]
-        assert args[1] == "span_detail"
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert extra["attributes"]["dify.event.signal"] == "span_detail"
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert record.getMessage() == "telemetry.span_detail"
+        assert hasattr(record, "attributes")
+        assert record.attributes["dify.event.signal"] == "span_detail"
 
 
 # ---------------------------------------------------------------------------
@@ -277,51 +273,50 @@ class TestEmitMetricOnlyEvent:
         compute_trace_id_hex.cache_clear()
         compute_span_id_hex.cache_clear()
 
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_delegates_to_emit_telemetry_log_with_metric_only_signal(self, mock_logger: MagicMock) -> None:
+    def test_delegates_to_emit_telemetry_log_with_metric_only_signal(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_metric_only_event
 
-        mock_logger.isEnabledFor.return_value = True
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_metric_only_event(
+                event_name="dify.app.created",
+                attributes={"app_id": "app-1"},
+                tenant_id="t1",
+                user_id="u1",
+            )
 
-        emit_metric_only_event(
-            event_name="dify.app.created",
-            attributes={"app_id": "app-1"},
-            tenant_id="t1",
-            user_id="u1",
-        )
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert hasattr(record, "attributes")
+        assert record.attributes["dify.event.signal"] == "metric_only"
+        assert record.attributes["dify.event.name"] == "dify.app.created"
+        assert record.attributes["app_id"] == "app-1"
+        assert hasattr(record, "tenant_id")
+        assert record.tenant_id == "t1"
+        assert hasattr(record, "user_id")
+        assert record.user_id == "u1"
 
-        mock_logger.info.assert_called_once()
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert extra["attributes"]["dify.event.signal"] == "metric_only"
-        assert extra["attributes"]["dify.event.name"] == "dify.app.created"
-        assert extra["attributes"]["app_id"] == "app-1"
-        assert extra["tenant_id"] == "t1"
-        assert extra["user_id"] == "u1"
-
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_trace_and_span_ids_passed_through(self, mock_logger: MagicMock) -> None:
+    def test_trace_and_span_ids_passed_through(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_metric_only_event
 
-        mock_logger.isEnabledFor.return_value = True
         uid = "123e4567-e89b-12d3-a456-426614174000"
 
-        emit_metric_only_event(
-            event_name="dify.workflow.run",
-            attributes={},
-            trace_id_source=uid,
-            span_id_source=uid,
-        )
+        with caplog.at_level(logging.INFO, logger="dify.telemetry"):
+            emit_metric_only_event(
+                event_name="dify.workflow.run",
+                attributes={},
+                trace_id_source=uid,
+                span_id_source=uid,
+            )
 
-        extra = mock_logger.info.call_args.kwargs["extra"]
-        assert "trace_id" in extra
-        assert "span_id" in extra
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert hasattr(record, "trace_id")
+        assert hasattr(record, "span_id")
 
-    @patch("enterprise.telemetry.telemetry_log.logger")
-    def test_no_log_emitted_when_logger_disabled(self, mock_logger: MagicMock) -> None:
+    def test_no_log_emitted_when_logger_disabled(self, caplog: pytest.LogCaptureFixture) -> None:
         from enterprise.telemetry.telemetry_log import emit_metric_only_event
 
-        mock_logger.isEnabledFor.return_value = False
+        with caplog.at_level(logging.WARNING, logger="dify.telemetry"):
+            emit_metric_only_event(event_name="dify.workflow.run", attributes={})
 
-        emit_metric_only_event(event_name="dify.workflow.run", attributes={})
-
-        mock_logger.info.assert_not_called()
+        assert len(caplog.records) == 0

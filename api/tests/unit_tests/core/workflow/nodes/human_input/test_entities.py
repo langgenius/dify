@@ -30,7 +30,7 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
-from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
@@ -171,12 +171,13 @@ def _build_human_input_node(
     typed_node_data = (
         node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
     )
+    runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     return HumanInputNode(
         node_id=node_id,
         data=typed_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
-        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
+        file_reference_factory=_TestFileReferenceFactory(),
         runtime=runtime,
     )
 

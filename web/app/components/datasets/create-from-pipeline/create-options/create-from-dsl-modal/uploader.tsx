@@ -9,11 +9,11 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { formatFileSize } from '@/utils/format'
 
-type Props = {
+type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
   className?: string
-}
+}>
 const Uploader: FC<Props> = ({ file, updateFile, className }) => {
   const { t } = useTranslation()
   const [dragging, setDragging] = useState(false)

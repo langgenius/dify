@@ -1,11 +1,14 @@
-import type { Store } from '@/store/store'
+import type { StorageMode } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import { z } from 'zod'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { getHostStore, tokenKey } from '@/store/manager'
+import { getHostStore } from '@/store/manager'
+import { STORAGE_MODES } from '@/store/store'
 
-const StorageModeSchema = z.enum(['keychain', 'file'])
-export type StorageMode = z.infer<typeof StorageModeSchema>
+const StorageModeSchema = z.enum(STORAGE_MODES)
+
+export type { StorageMode } from '@/store/store'
 
 export const AccountSchema = z.object({
   id: z.string().optional(),
@@ -30,7 +33,6 @@ export type ExternalSubject = z.infer<typeof ExternalSubjectSchema>
 export const AccountContextSchema = z.object({
   account: AccountSchema,
   workspace: WorkspaceSchema.optional(),
-  available_workspaces: z.array(WorkspaceSchema).optional(),
   token_id: z.string().optional(),
   token_expires_at: z.string().optional(),
   external_subject: ExternalSubjectSchema.optional(),
@@ -69,8 +71,8 @@ export class Registry {
     this.data = data
   }
 
-  static load(): Registry {
-    const raw = getHostStore().getTyped<Record<string, unknown>>()
+  static async load(): Promise<Registry> {
+    const raw = await getHostStore().getTyped<Record<string, unknown>>()
     if (raw === null)
       return Registry.empty()
     return new Registry(RegistrySchema.parse(raw))
@@ -163,16 +165,16 @@ export class Registry {
 
   // Teardown for "this credential is gone": drop the token, drop the context
   // (unsets pointers when active), persist. Logout + self-revoke share it.
-  forget(active: ActiveContext, store: Store): void {
+  async forget(active: ActiveContext, store: TokenStore): Promise<void> {
     try {
-      store.unset(tokenKey(active.host, active.email))
+      await store.remove(active.host, active.email)
     }
     catch { /* best-effort */ }
     this.remove(active.host, active.email)
-    this.save()
+    await this.save()
   }
 
-  save(): void {
-    getHostStore().setTyped(RegistrySchema.parse(this.data))
+  async save(): Promise<void> {
+    await getHostStore().setTyped(RegistrySchema.parse(this.data))
   }
 }

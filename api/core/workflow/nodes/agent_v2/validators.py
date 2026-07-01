@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.workflow.graph_topology import WorkflowGraphTopology
 from graphon.enums import BuiltinNodeTypes
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentFileRefConfig,
     AgentHumanContactConfig,
@@ -18,6 +18,7 @@ from models.agent_config_entities import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 
 from .entities import DifyAgentNodeData
 
@@ -35,7 +36,6 @@ class WorkflowAgentNodeValidator:
             "soul",
             "prompt",
             "system_prompt",
-            "skills_files",
             "skills",
             "files",
             "tools",
@@ -102,10 +102,6 @@ class WorkflowAgentNodeValidator:
     ) -> None:
         if binding.agent_id is None:
             raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} is missing agent binding.")
-        if binding.current_snapshot_id is None:
-            raise WorkflowAgentNodeValidationError(
-                f"Workflow Agent node {binding.node_id} is missing config snapshot binding."
-            )
 
         agent = session.scalar(
             select(Agent)
@@ -120,12 +116,22 @@ class WorkflowAgentNodeValidator:
                 f"Workflow Agent node {binding.node_id} references an unavailable agent."
             )
 
+        snapshot_id = (
+            agent.active_config_snapshot_id
+            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else binding.current_snapshot_id
+        )
+        if snapshot_id is None:
+            raise WorkflowAgentNodeValidationError(
+                f"Workflow Agent node {binding.node_id} is missing config snapshot binding."
+            )
+
         snapshot = session.scalar(
             select(AgentConfigSnapshot)
             .where(
                 AgentConfigSnapshot.tenant_id == binding.tenant_id,
                 AgentConfigSnapshot.agent_id == agent.id,
-                AgentConfigSnapshot.id == binding.current_snapshot_id,
+                AgentConfigSnapshot.id == snapshot_id,
             )
             .limit(1)
         )
@@ -141,6 +147,7 @@ class WorkflowAgentNodeValidator:
             )
         cls._validate_agent_soul_env(binding=binding, agent_soul=agent_soul)
         cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
+        cls._validate_agent_soul_knowledge(binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
@@ -265,7 +272,9 @@ class WorkflowAgentNodeValidator:
         binding: WorkflowAgentNodeBinding,
         node_job: WorkflowNodeJobConfig,
     ) -> None:
-        forbidden_paths = cls._find_locked_agent_soul_paths(node_job.metadata.model_dump(mode="python"))
+        forbidden_paths = cls._find_locked_agent_soul_paths(
+            node_job.metadata.model_dump(mode="python", exclude_none=True)
+        )
         if forbidden_paths:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} cannot override locked Agent Soul fields: "
@@ -320,7 +329,11 @@ class WorkflowAgentNodeValidator:
         for tool in agent_soul.tools.dify_tools:
             if not tool.enabled:
                 continue
-            exposed_name = tool.tool_name
+            # Provider-level entries (tool_name omitted = all tools of the
+            # provider) are deduped per provider here; the names they expand to
+            # are checked at runtime by the plugin tools builder.
+            provider_key = tool.provider_id or f"{tool.plugin_id}/{tool.provider}"
+            exposed_name = tool.tool_name or f"{provider_key}/*"
             if exposed_name in exposed_names:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has duplicate Dify Plugin Tool name {exposed_name}."
@@ -354,6 +367,24 @@ class WorkflowAgentNodeValidator:
             cli_tool_names.add(normalized_name)
 
     @classmethod
+    def _validate_agent_soul_knowledge(
+        cls,
+        *,
+        binding: WorkflowAgentNodeBinding,
+        agent_soul: AgentSoulConfig,
+    ) -> None:
+        """Validate knowledge set dataset rows against the publishing tenant."""
+        missing_ids = list_missing_tenant_knowledge_dataset_ids(
+            tenant_id=binding.tenant_id,
+            agent_soul=agent_soul,
+        )
+        if missing_ids:
+            raise WorkflowAgentNodeValidationError(
+                f"Workflow Agent node {binding.node_id} references missing or out-of-scope knowledge datasets: "
+                f"{', '.join(missing_ids)}."
+            )
+
+    @classmethod
     def _validate_agent_soul_env(
         cls,
         *,
@@ -361,8 +392,37 @@ class WorkflowAgentNodeValidator:
         agent_soul: AgentSoulConfig,
     ) -> None:
         seen_names: set[str] = set()
-        for env_var in agent_soul.env.variables:
-            name = env_var.name
+        cls._validate_env_entries(
+            binding=binding,
+            seen_names=seen_names,
+            variables=agent_soul.env.variables,
+            secret_refs=agent_soul.env.secret_refs,
+            label="agent",
+        )
+        for cli_tool in agent_soul.tools.cli_tools:
+            if not cli_tool.enabled:
+                continue
+            name = cli_tool.get("name") or cli_tool.get("tool_name") or cli_tool.get("label") or "<unnamed>"
+            cls._validate_env_entries(
+                binding=binding,
+                seen_names=seen_names,
+                variables=cli_tool.env.variables,
+                secret_refs=cli_tool.env.secret_refs,
+                label=f"CLI Tool {name}",
+            )
+
+    @classmethod
+    def _validate_env_entries(
+        cls,
+        *,
+        binding: WorkflowAgentNodeBinding,
+        seen_names: set[str],
+        variables: list[Any],
+        secret_refs: list[Any],
+        label: str,
+    ) -> None:
+        for env_var in variables:
+            name = cls._env_name(env_var)
             if not name:
                 continue
             if name in seen_names:
@@ -370,19 +430,28 @@ class WorkflowAgentNodeValidator:
                     f"Workflow Agent node {binding.node_id} has duplicate env/secret name {name}."
                 )
             seen_names.add(name)
-        for secret_ref in agent_soul.env.secret_refs:
-            name = secret_ref.name
+        for secret_ref in secret_refs:
+            name = cls._env_name(secret_ref)
             if not name:
                 continue
             if cls._permission_denied(secret_ref.model_dump(mode="python", exclude_none=True, exclude_defaults=True)):
                 raise WorkflowAgentNodeValidationError(
-                    f"Workflow Agent node {binding.node_id} has unauthorized secret reference {name}."
+                    f"Workflow Agent node {binding.node_id} has unauthorized secret reference {name} in {label}."
                 )
             if name in seen_names:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has duplicate env/secret name {name}."
                 )
             seen_names.add(name)
+
+    @staticmethod
+    def _env_name(value: Any) -> str | None:
+        if hasattr(value, "get"):
+            for key in ("name", "key", "env_name", "variable"):
+                item = value.get(key)
+                if isinstance(item, str) and item.strip():
+                    return item.strip()
+        return None
 
     @classmethod
     def _validate_tool_node_agentic_mode(cls, *, node_id: str, node_data: Mapping[str, Any]) -> None:
@@ -521,54 +590,6 @@ class WorkflowAgentNodeValidator:
         )
 
 
-class _WorkflowGraphTopology:
-    def __init__(self, *, node_ids: set[str], incoming: Mapping[str, Sequence[str]]) -> None:
-        self._node_ids = node_ids
-        self._incoming = incoming
-
-    @classmethod
-    def from_graph(cls, graph: Mapping[str, Any]) -> _WorkflowGraphTopology:
-        node_ids = cls._node_ids_from_graph(graph)
-        incoming: dict[str, list[str]] = defaultdict(list)
-        edges = graph.get("edges")
-        if isinstance(edges, list):
-            for edge in edges:
-                if not isinstance(edge, Mapping):
-                    continue
-                source = edge.get("source")
-                target = edge.get("target")
-                if isinstance(source, str) and isinstance(target, str):
-                    incoming[target].append(source)
-        return cls(node_ids=node_ids, incoming=incoming)
-
-    def has_node(self, node_id: str) -> bool:
-        return node_id in self._node_ids
-
-    def is_upstream(self, *, source_node_id: str, target_node_id: str) -> bool:
-        if source_node_id == target_node_id:
-            return False
-        visited: set[str] = set()
-        queue: deque[str] = deque(self._incoming.get(target_node_id, ()))
-        while queue:
-            candidate = queue.popleft()
-            if candidate == source_node_id:
-                return True
-            if candidate in visited:
-                continue
-            visited.add(candidate)
-            queue.extend(self._incoming.get(candidate, ()))
-        return False
-
-    @staticmethod
-    def _node_ids_from_graph(graph: Mapping[str, Any]) -> set[str]:
-        node_ids: set[str] = set()
-        nodes = graph.get("nodes")
-        if not isinstance(nodes, list):
-            return node_ids
-        for node in nodes:
-            if not isinstance(node, Mapping):
-                continue
-            node_id = node.get("id")
-            if isinstance(node_id, str):
-                node_ids.add(node_id)
-        return node_ids
+# Extracted to core/workflow/graph_topology.py (shared with the agent-composer
+# candidates endpoint, ENG-615); kept as a private alias for existing call sites.
+_WorkflowGraphTopology = WorkflowGraphTopology

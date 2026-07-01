@@ -3,6 +3,13 @@
 import * as z from 'zod'
 
 /**
+ * AudioTranscriptResponse
+ */
+export const zAudioTranscriptResponse = z.object({
+  text: z.string(),
+})
+
+/**
  * ChatRequest
  */
 export const zChatRequest = z.object({
@@ -26,6 +33,34 @@ export const zCompletionRequest = z.object({
 })
 
 /**
+ * SuggestedQuestionsResponse
+ */
+export const zSuggestedQuestionsResponse = z.object({
+  data: z.array(z.string()),
+})
+
+/**
+ * Site
+ */
+export const zSite = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
+/**
  * TextToSpeechRequest
  */
 export const zTextToSpeechRequest = z.object({
@@ -36,6 +71,11 @@ export const zTextToSpeechRequest = z.object({
 })
 
 /**
+ * AudioBinaryResponse
+ */
+export const zAudioBinaryResponse = z.custom<Blob | File>()
+
+/**
  * WorkflowRunRequest
  */
 export const zWorkflowRunRequest = z.object({
@@ -43,126 +83,482 @@ export const zWorkflowRunRequest = z.object({
   inputs: z.record(z.string(), z.unknown()),
 })
 
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+export const zTrialDeletedTool = z.object({
+  provider_id: z.string().optional(),
+  tool_name: z.string().optional(),
+  type: z.string().optional(),
+})
+
+export const zTrialAppModelConfig = z.object({
+  agent_mode: z.record(z.string(), z.unknown()).optional(),
+  annotation_reply: z.record(z.string(), z.unknown()).optional(),
+  chat_prompt_config: z.record(z.string(), z.unknown()).optional(),
+  completion_prompt_config: z.record(z.string(), z.unknown()).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  created_by: z.string().optional(),
+  dataset_configs: z.record(z.string(), z.unknown()).optional(),
+  dataset_query_variable: z.string().optional(),
+  external_data_tools: z.array(z.record(z.string(), z.unknown())).optional(),
+  file_upload: z.record(z.string(), z.unknown()).optional(),
+  model: z.record(z.string(), z.unknown()).optional(),
+  more_like_this: z.record(z.string(), z.unknown()).optional(),
+  opening_statement: z.string().optional(),
+  pre_prompt: z.string().optional(),
+  prompt_type: z.string().optional(),
+  retriever_resource: z.record(z.string(), z.unknown()).optional(),
+  sensitive_word_avoidance: z.record(z.string(), z.unknown()).optional(),
+  speech_to_text: z.record(z.string(), z.unknown()).optional(),
+  suggested_questions: z.array(z.string()).optional(),
+  suggested_questions_after_answer: z.record(z.string(), z.unknown()).optional(),
+  text_to_speech: z.record(z.string(), z.unknown()).optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  updated_by: z.string().optional(),
+  user_input_form: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+export const zTrialSite = z.object({
+  access_token: z.string().optional(),
+  app_base_url: z.string().optional(),
+  chat_color_theme: z.string().optional(),
+  chat_color_theme_inverted: z.boolean().optional(),
+  code: z.string().optional(),
+  copyright: z.string().optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  created_by: z.string().optional(),
+  custom_disclaimer: z.string().optional(),
+  customize_domain: z.string().optional(),
+  customize_token_strategy: z.string().optional(),
+  default_language: z.string().optional(),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  icon_background: z.string().optional(),
+  icon_type: z.string().optional(),
+  icon_url: z.string().optional(),
+  privacy_policy: z.string().optional(),
+  prompt_public: z.boolean().optional(),
+  show_workflow_steps: z.boolean().optional(),
+  title: z.string().optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  updated_by: z.string().optional(),
+  use_icon_as_answer_icon: z.boolean().optional(),
+})
+
+export const zTrialTag = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  type: z.string().optional(),
+})
+
+export const zTrialWorkflowPartial = z.object({
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  created_by: z.string().optional(),
+  id: z.string().optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  updated_by: z.string().optional(),
+})
+
+export const zTrialAppDetailWithSite = z.object({
+  access_mode: z.string().optional(),
+  api_base_url: z.string().optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  created_by: z.string().optional(),
+  deleted_tools: z.array(zTrialDeletedTool).optional(),
+  description: z.string().optional(),
+  enable_api: z.boolean().optional(),
+  enable_site: z.boolean().optional(),
+  icon: z.string().optional(),
+  icon_background: z.string().optional(),
+  icon_type: z.string().optional(),
+  icon_url: z.string().optional(),
+  id: z.string().optional(),
+  max_active_requests: z.int().optional(),
+  mode: z.string().optional(),
+  model_config: zTrialAppModelConfig.optional(),
+  name: z.string().optional(),
+  permission_keys: z.array(z.string()).optional(),
+  site: zTrialSite.optional(),
+  tags: z.array(zTrialTag).optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  updated_by: z.string().optional(),
+  use_icon_as_answer_icon: z.boolean().optional(),
+  workflow: zTrialWorkflowPartial.optional(),
+})
+
+export const zJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
+
+/**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponse = zJsonValue
+
+export const zTrialDataset = z.object({
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  created_by: z.string().optional(),
+  data_source_type: z.string().optional(),
+  description: z.string().optional(),
+  id: z.string().optional(),
+  indexing_technique: z.string().optional(),
+  name: z.string().optional(),
+  permission: z.string().optional(),
+  permission_keys: z.array(z.string()).optional(),
+})
+
+export const zTrialDatasetList = z.object({
+  data: z.array(zTrialDataset).optional(),
+  has_more: z.boolean().optional(),
+  limit: z.int().optional(),
+  page: z.int().optional(),
+  total: z.int().optional(),
+})
+
+export const zJsonObject = z.record(z.string(), z.unknown())
+
+/**
+ * SystemParameters
+ */
+export const zSystemParameters = z.object({
+  audio_file_size_limit: z.int(),
+  file_size_limit: z.int(),
+  image_file_size_limit: z.int(),
+  video_file_size_limit: z.int(),
+  workflow_file_upload_limit: z.int(),
+})
+
+/**
+ * Parameters
+ */
+export const zParameters = z.object({
+  annotation_reply: zJsonObject,
+  file_upload: zJsonObject,
+  more_like_this: zJsonObject,
+  opening_statement: z.string().nullish(),
+  retriever_resource: zJsonObject,
+  sensitive_word_avoidance: zJsonObject,
+  speech_to_text: zJsonObject,
+  suggested_questions: z.array(z.string()),
+  suggested_questions_after_answer: zJsonObject,
+  system_parameters: zSystemParameters,
+  text_to_speech: zJsonObject,
+  user_input_form: z.array(zJsonObject),
+})
+
+export const zTrialConversationVariable = z.object({
+  description: z.string().optional(),
+  id: z.string().optional(),
+  name: z.string().optional(),
+  value: z
+    .union([
+      z.string(),
+      z.int(),
+      z.number(),
+      z.boolean(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .nullish(),
+  value_type: z.string().optional(),
+})
+
+export const zTrialSimpleAccount = z.object({
+  email: z.string().optional(),
+  id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zTrialPipelineVariable = z.object({
+  allow_file_extension: z.array(z.string()).optional(),
+  allow_file_upload_methods: z.array(z.string()).optional(),
+  allowed_file_types: z.array(z.string()).optional(),
+  belong_to_node_id: z.string().optional(),
+  default_value: z
+    .union([
+      z.string(),
+      z.int(),
+      z.number(),
+      z.boolean(),
+      z.record(z.string(), z.unknown()),
+      z.array(z.unknown()),
+    ])
+    .nullish(),
+  label: z.string().optional(),
+  max_length: z.int().optional(),
+  options: z.array(z.string()).optional(),
+  placeholder: z.string().optional(),
+  required: z.boolean().optional(),
+  tooltips: z.string().optional(),
+  type: z.string().optional(),
+  unit: z.string().optional(),
+  variable: z.string().optional(),
+})
+
+export const zTrialWorkflow = z.object({
+  conversation_variables: z.array(zTrialConversationVariable).optional(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  created_by: zTrialSimpleAccount.optional(),
+  environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
+  features: z.record(z.string(), z.unknown()).optional(),
+  graph: z.record(z.string(), z.unknown()).optional(),
+  hash: z.string().optional(),
+  id: z.string().optional(),
+  marked_comment: z.string().optional(),
+  marked_name: z.string().optional(),
+  rag_pipeline_variables: z.array(zTrialPipelineVariable).optional(),
+  tool_published: z.boolean().optional(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .optional(),
+  updated_by: zTrialSimpleAccount.optional(),
+  version: z.string().optional(),
+})
+
+/**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponseWritable = zJsonValue
+
+/**
+ * Site
+ */
+export const zSiteWritable = z.object({
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  show_workflow_steps: z.boolean(),
+  title: z.string(),
+  use_icon_as_answer_icon: z.boolean(),
+})
+
 export const zGetTrialAppsByAppIdPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdResponse = zTrialAppDetailWithSite
 
 export const zPostTrialAppsByAppIdAudioToTextPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdAudioToTextResponse = z.record(z.string(), z.unknown())
+export const zPostTrialAppsByAppIdAudioToTextResponse = zAudioTranscriptResponse
 
 export const zPostTrialAppsByAppIdChatMessagesBody = zChatRequest
 
 export const zPostTrialAppsByAppIdChatMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdChatMessagesResponse = z.record(z.string(), z.unknown())
+export const zPostTrialAppsByAppIdChatMessagesResponse = zGeneratedAppResponse
 
 export const zPostTrialAppsByAppIdCompletionMessagesBody = zCompletionRequest
 
 export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdCompletionMessagesResponse = z.record(z.string(), z.unknown())
+export const zPostTrialAppsByAppIdCompletionMessagesResponse = zGeneratedAppResponse
 
 export const zGetTrialAppsByAppIdDatasetsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
+})
+
+export const zGetTrialAppsByAppIdDatasetsQuery = z.object({
+  ids: z.array(z.string()).optional(),
+  limit: z.int().gte(1).optional().default(20),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdDatasetsResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdDatasetsResponse = zTrialDatasetList
 
 export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  app_id: z.string(),
-  message_id: z.string(),
+  app_id: z.uuid(),
+  message_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
+  = zSuggestedQuestionsResponse
 
 export const zGetTrialAppsByAppIdParametersPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdParametersResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdParametersResponse = zParameters
 
 export const zGetTrialAppsByAppIdSitePath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdSiteResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdSiteResponse = zSite
 
 export const zPostTrialAppsByAppIdTextToAudioBody = zTextToSpeechRequest
 
 export const zPostTrialAppsByAppIdTextToAudioPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdTextToAudioResponse = z.record(z.string(), z.unknown())
+export const zPostTrialAppsByAppIdTextToAudioResponse = zAudioBinaryResponse
 
 export const zGetTrialAppsByAppIdWorkflowsPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zGetTrialAppsByAppIdWorkflowsResponse = z.record(z.string(), z.unknown())
+export const zGetTrialAppsByAppIdWorkflowsResponse = zTrialWorkflow
 
 export const zPostTrialAppsByAppIdWorkflowsRunBody = zWorkflowRunRequest
 
 export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdWorkflowsRunResponse = z.record(z.string(), z.unknown())
+export const zPostTrialAppsByAppIdWorkflowsRunResponse = zGeneratedAppResponse
 
 export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath = z.object({
-  app_id: z.string(),
+  app_id: z.uuid(),
   task_id: z.string(),
 })
 
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse = zSimpleResultResponse

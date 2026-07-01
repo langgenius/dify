@@ -32,6 +32,7 @@ const useHideLogic = (onClose: () => void) => {
   return {
     modalClassName,
     foldAnimInto,
+    foldIntoTaskTrigger: doFoldAnimInto,
     setIsInstalling,
     handleStartToInstall,
   }

@@ -25,7 +25,7 @@ from extensions.redis_names import (
     serialize_redis_name_args,
 )
 from libs.broadcast_channel.channel import BroadcastChannel as BroadcastChannelProtocol
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastChannel
 from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 
@@ -457,16 +457,14 @@ def init_app(app: DifyApp):
 
 def get_pubsub_broadcast_channel() -> BroadcastChannelProtocol:
     assert _pubsub_redis_client is not None, "PubSub redis Client should be initialized here."
-    join_timeout_ms = dify_config.PUBSUB_LISTENER_JOIN_TIMEOUT_MS
     if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "sharded":
-        return ShardedRedisBroadcastChannel(_pubsub_redis_client, join_timeout_ms=join_timeout_ms)
+        return ShardedRedisBroadcastChannel(_pubsub_redis_client)
     if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "streams":
         return StreamsBroadcastChannel(
             _pubsub_redis_client,
             retention_seconds=dify_config.PUBSUB_STREAMS_RETENTION_SECONDS,
-            join_timeout_ms=join_timeout_ms,
         )
-    return RedisBroadcastChannel(_pubsub_redis_client, join_timeout_ms=join_timeout_ms)
+    return RedisBroadcastChannel(_pubsub_redis_client)
 
 
 def redis_fallback[T](default_return: T | None = None):  # type: ignore

@@ -17,11 +17,11 @@ type TimePeriodOption = {
   name: string
 }
 
-type Props = {
+type Props = Readonly<{
   isCustomRange: boolean
   ranges: { value: number, name: TimePeriodName }[]
   onSelect: (payload: PeriodParamsWithTimeRange) => void
-}
+}>
 
 const RangeSelector: FC<Props> = ({
   isCustomRange,

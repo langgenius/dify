@@ -2,7 +2,7 @@ import type { ToolNodeType } from '../../nodes/tool/types'
 import type { ToolWithProvider } from '../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
-import { CHUNK_TYPE_MAP, getToolCheckParams, wrapStructuredVarItem } from '../tool'
+import { getToolCheckParams, wrapStructuredVarItem } from '../tool'
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
   toolParametersToFormSchemas: vi.fn((params: Array<Record<string, unknown>>) =>
@@ -158,16 +158,6 @@ describe('getToolCheckParams', () => {
     )
 
     expect(result.toolInputsSchema[0]!.label).toBe('Query')
-  })
-})
-
-describe('CHUNK_TYPE_MAP', () => {
-  it('should contain all expected chunk type mappings', () => {
-    expect(CHUNK_TYPE_MAP).toEqual({
-      general_chunks: 'GeneralStructureChunk',
-      parent_child_chunks: 'ParentChildStructureChunk',
-      qa_chunks: 'QAStructureChunk',
-    })
   })
 })
 

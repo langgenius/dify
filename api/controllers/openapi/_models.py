@@ -2,15 +2,40 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from libs.helper import EmailStr, UUIDStrOrEmpty, uuid_value
+from libs.helper import EmailStr, UUIDStr, UUIDStrOrEmpty, uuid_value
 from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
+
+
+class SupportedAppType(StrEnum):
+    """App types the ``app`` usage face (``get app``) lists and filters.
+
+    A curated subset of :class:`AppMode`: the real, user-facing app categories.
+    Excludes runtime-only mode tags that are not standalone apps
+    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+    roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+    Members reference ``AppMode.*.value`` so the subset relationship is
+    type-checked: dropping a member from ``AppMode`` breaks this at import.
+    This is the single source for the listable set — params, filters, and the
+    generated CLI whitelist all derive from it.
+    """
+
+    COMPLETION = AppMode.COMPLETION.value
+    CHAT = AppMode.CHAT.value
+    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
+    WORKFLOW = AppMode.WORKFLOW.value
+    AGENT_CHAT = AppMode.AGENT_CHAT.value
+
+
+SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 
 class UsageInfo(BaseModel):
@@ -38,18 +63,12 @@ class PaginationEnvelope[T](BaseModel):
         return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
 
 
-class TagItem(BaseModel):
-    name: str
-
-
 class AppListRow(BaseModel):
     id: str
     name: str
     description: str | None = None
     mode: AppMode
-    tags: list[TagItem] = []
     updated_at: str | None = None
-    created_by_name: str | None = None
     workspace_id: str | None = None
     workspace_name: str | None = None
 
@@ -70,16 +89,14 @@ class PermittedExternalAppsListResponse(BaseModel):
     data: list[AppListRow]
 
 
-class AppInfoResponse(BaseModel):
+class AppInfo(BaseModel):
     id: str
     name: str
     description: str | None = None
     mode: str
-    author: str | None = None
-    tags: list[TagItem] = []
 
 
-class AppDescribeInfo(AppInfoResponse):
+class AppDescribeInfo(AppInfo):
     updated_at: str | None = None
     service_api_enabled: bool
     is_agent: bool = False
@@ -87,8 +104,8 @@ class AppDescribeInfo(AppInfoResponse):
 
 class AppDescribeResponse(BaseModel):
     info: AppDescribeInfo | None = None
-    parameters: dict[str, Any] | None = None
-    input_schema: dict[str, Any] | None = None
+    parameters: dict[str, Any] | None = Field(default=None)
+    input_schema: dict[str, Any] | None = Field(default=None)
 
 
 class ChatMessageResponse(BaseModel):
@@ -146,6 +163,18 @@ class WorkspacePayload(BaseModel):
     role: str
 
 
+class DeviceTokenResponse(BaseModel):
+    token: str
+    expires_at: str
+    subject_type: Literal["account", "external_sso"]
+    account: AccountPayload | None = None
+    workspaces: list[WorkspacePayload] = []
+    default_workspace_id: str | None = None
+    token_id: str
+    subject_email: str | None = None
+    subject_issuer: str | None = None
+
+
 class AccountResponse(BaseModel):
     subject_type: str
     subject_email: str | None = None
@@ -171,6 +200,15 @@ class SessionListResponse(BaseModel):
     total: int
     has_more: bool
     data: list[SessionRow]
+
+
+class SessionListQuery(BaseModel):
+    """Pagination for GET /account/sessions. Strict (extra='forbid')."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    page: int = Field(1, ge=1)
+    limit: int = Field(100, ge=1, le=MAX_PAGE_LIMIT)
 
 
 class RevokeResponse(BaseModel):
@@ -223,6 +261,23 @@ class ServerVersionResponse(BaseModel):
     edition: Literal["SELF_HOSTED", "CLOUD"]
 
 
+class HealthResponse(BaseModel):
+    """Liveness payload for `GET /openapi/v1/_health` — no auth required."""
+
+    ok: bool
+
+
+def _csv_string_query_schema(schema: dict[str, Any]) -> None:
+    """Re-shape a set/list field's query schema to a comma-separated string — the wire form the
+    handler actually accepts (`request.args` is flat + the validator splits on ','). Without this
+    the generated contract would type it as an array and serialize `fields[0]=…&fields[1]=…`,
+    which `extra='forbid'` rejects. Runtime `set[str]` validation is unaffected."""
+    schema.pop("anyOf", None)
+    schema.pop("items", None)
+    schema.pop("uniqueItems", None)
+    schema["type"] = "string"
+
+
 class AppDescribeQuery(BaseModel):
     """`?fields=` allow-list for GET /apps/<id>/describe.
 
@@ -231,23 +286,7 @@ class AppDescribeQuery(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    fields: set[str] | None = None
-    workspace_id: str | None = None
-
-    @field_validator("workspace_id", mode="before")
-    @classmethod
-    def _validate_workspace_id(cls, v: object) -> str | None:
-        if v is None or v == "":
-            return None
-        if not isinstance(v, str):
-            raise ValueError("workspace_id must be a string")
-        try:
-            import uuid as _uuid
-
-            _uuid.UUID(v)
-        except ValueError:
-            raise ValueError("workspace_id must be a valid UUID")
-        return v
+    fields: set[str] | None = Field(default=None, json_schema_extra=_csv_string_query_schema)
 
     @field_validator("fields", mode="before")
     @classmethod
@@ -265,20 +304,19 @@ class AppDescribeQuery(BaseModel):
 
 
 class AppListQuery(BaseModel):
-    """mode is a closed enum."""
+    """mode is a closed enum of listable app types."""
 
-    workspace_id: str
+    workspace_id: UUIDStr
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
-    tag: str | None = Field(None, max_length=100)
 
 
 class AppRunRequest(BaseModel):
     inputs: dict[str, Any]
     query: str | None = None
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     conversation_id: UUIDStrOrEmpty | None = None
     auto_generate_name: bool = True
     workflow_id: str | None = None
@@ -322,7 +360,7 @@ class PermittedExternalAppsListQuery(BaseModel):
 
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
 
@@ -400,3 +438,66 @@ class MemberInviteResponse(BaseModel):
 
 class MemberActionResponse(BaseModel):
     result: Literal["success"] = "success"
+
+
+class TaskStopResponse(BaseModel):
+    """200 body for POST /apps/<id>/tasks/<task_id>/stop. The handler always returns
+    {"result": "success"}, so `result` is required (no default) — the generated contract
+    types it as a required `'success'` rather than an optional field."""
+
+    result: Literal["success"]
+
+
+class AppDslImportPayload(BaseModel):
+    """Request body for POST /workspaces/<workspace_id>/apps/imports."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["yaml-content", "yaml-url"] = Field(..., description="Import mode: yaml-content or yaml-url")
+    yaml_content: str | None = Field(None, description="Inline YAML DSL string (required when mode is yaml-content)")
+    yaml_url: str | None = Field(None, description="Remote URL to fetch YAML from (required when mode is yaml-url)")
+    name: str | None = Field(None, description="Override the app name from the DSL")
+    description: str | None = Field(None, description="Override the app description from the DSL")
+    icon_type: str | None = Field(None)
+    icon: str | None = Field(None)
+    icon_background: str | None = Field(None)
+    app_id: str | None = Field(None, description="Existing app ID to overwrite (workflow/advanced-chat apps only)")
+
+    @model_validator(mode="after")
+    def _validate_source_by_mode(self) -> AppDslImportPayload:
+        if self.mode == "yaml-content" and not self.yaml_content:
+            raise ValueError("yaml_content is required when mode is 'yaml-content'")
+        if self.mode == "yaml-url" and not self.yaml_url:
+            raise ValueError("yaml_url is required when mode is 'yaml-url'")
+        return self
+
+
+class AppDslExportQuery(BaseModel):
+    """Query parameters for GET /apps/<app_id>/export."""
+
+    include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
+    workflow_id: UUIDStr | None = Field(
+        None, description="Export a specific workflow version instead of the current draft"
+    )
+
+
+class AppDslExportResponse(BaseModel):
+    """Export DSL response."""
+
+    data: str = Field(..., description="DSL YAML string")
+
+
+class FormSubmitResponse(BaseModel):
+    """Empty 200 body for POST /apps/<id>/form/human_input/<token>. `extra='forbid'`
+    pins `additionalProperties: false` so the generated contract is an exact `{}` rather
+    than an under-annotated open object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class HumanInputFormDefinitionResponse(BaseModel):
+    form_content: str
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    resolved_default_values: dict[str, str]
+    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    expiration_time: int | None = None

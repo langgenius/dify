@@ -1,10 +1,10 @@
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 import yaml
 from sqlalchemy import select
 
 from extensions.ext_database import db
-from libs.login import current_account_with_tenant
+from libs.login import resolve_tenant_id_fallback
 from models.dataset import PipelineCustomizedTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
@@ -39,13 +39,16 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval recommended app from database
     """
 
-    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
-        _, current_tenant_id = current_account_with_tenant()
+    @override
+    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+        current_tenant_id = resolve_tenant_id_fallback(current_tenant_id)
         return self.fetch_pipeline_templates_from_customized(tenant_id=current_tenant_id, language=language)
 
+    @override
     def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
         return self.fetch_pipeline_template_detail_from_db(template_id)
 
+    @override
     def get_type(self) -> str:
         return PipelineTemplateType.CUSTOMIZED
 

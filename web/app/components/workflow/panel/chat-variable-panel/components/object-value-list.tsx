@@ -4,10 +4,10 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ObjectValueItem from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
 
-type Props = {
+type Props = Readonly<{
   list: any[]
   onChange: (list: any[]) => void
-}
+}>
 
 const ObjectValueList: FC<Props> = ({
   list,

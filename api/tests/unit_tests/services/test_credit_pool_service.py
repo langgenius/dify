@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -11,7 +12,11 @@ from sqlalchemy.orm import sessionmaker
 from core.errors.error import QuotaExceededError
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
-from services.credit_pool_service import CreditPoolService
+from services.credit_pool_service import (
+    CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS,
+    CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS,
+    CreditPoolService,
+)
 
 
 def _create_engine_with_pool(*, quota_limit: int, quota_used: int) -> tuple[Engine, str, str]:
@@ -43,6 +48,20 @@ def _patched_session_factory(engine: Engine) -> Generator[None, None, None]:
 def _get_quota_used(*, engine: Engine, pool_id: str) -> int | None:
     with engine.connect() as connection:
         return connection.scalar(select(TenantCreditPool.quota_used).where(TenantCreditPool.id == pool_id))
+
+
+def _make_session_maker(session: MagicMock) -> MagicMock:
+    session_maker = MagicMock()
+    transaction = session_maker.begin.return_value
+    transaction.__enter__.return_value = session
+    transaction.__exit__.return_value = None
+    return session_maker
+
+
+def _make_redis_lock() -> MagicMock:
+    lock = MagicMock()
+    lock.acquire.return_value = True
+    return lock
 
 
 def test_get_pool_uses_configured_session_factory_without_flask_app_context() -> None:
@@ -176,3 +195,110 @@ def test_deduct_credits_capped_reraises_quota_exceeded_errors() -> None:
         CreditPoolService.deduct_credits_capped(tenant_id=tenant_id, credits_required=1)
 
     assert _get_quota_used(engine=engine, pool_id=pool_id) == 2
+
+
+def test_check_and_deduct_credits_uses_tenant_redis_lock_before_db_deduction() -> None:
+    tenant_id = "tenant-1"
+    session = MagicMock()
+    session_maker = _make_session_maker(session)
+    pool = SimpleNamespace(remaining_credits=10, quota_used=2)
+    redis_lock = _make_redis_lock()
+
+    with (
+        patch("services.credit_pool_service.redis_client.lock", return_value=redis_lock) as lock,
+        patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker),
+        patch.object(CreditPoolService, "_get_locked_pool", return_value=pool) as get_locked_pool,
+    ):
+        result = CreditPoolService.check_and_deduct_credits(
+            tenant_id=tenant_id,
+            credits_required=3,
+            pool_type=ProviderQuotaType.TRIAL,
+        )
+
+    assert result == 3
+    assert pool.quota_used == 5
+    lock.assert_called_once_with(
+        "credit_pool:tenant:tenant-1:deduct_lock",
+        timeout=CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS,
+        blocking_timeout=CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS,
+    )
+    redis_lock.acquire.assert_called_once_with(blocking=True)
+    redis_lock.release.assert_called_once_with()
+    get_locked_pool.assert_called_once_with(session=session, tenant_id=tenant_id, pool_type=ProviderQuotaType.TRIAL)
+
+
+def test_deduct_credits_capped_uses_tenant_redis_lock_before_db_deduction() -> None:
+    tenant_id = "tenant-1"
+    session = MagicMock()
+    session_maker = _make_session_maker(session)
+    pool = SimpleNamespace(remaining_credits=2, quota_used=8)
+    redis_lock = _make_redis_lock()
+
+    with (
+        patch("services.credit_pool_service.redis_client.lock", return_value=redis_lock) as lock,
+        patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker),
+        patch.object(CreditPoolService, "_get_locked_pool", return_value=pool) as get_locked_pool,
+    ):
+        result = CreditPoolService.deduct_credits_capped(
+            tenant_id=tenant_id,
+            credits_required=5,
+            pool_type=ProviderQuotaType.PAID,
+        )
+
+    assert result == 2
+    assert pool.quota_used == 10
+    lock.assert_called_once_with(
+        "credit_pool:tenant:tenant-1:deduct_lock",
+        timeout=CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS,
+        blocking_timeout=CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS,
+    )
+    redis_lock.acquire.assert_called_once_with(blocking=True)
+    redis_lock.release.assert_called_once_with()
+    get_locked_pool.assert_called_once_with(session=session, tenant_id=tenant_id, pool_type=ProviderQuotaType.PAID)
+
+
+@pytest.mark.parametrize(
+    "deduct_method",
+    [
+        CreditPoolService.check_and_deduct_credits,
+        CreditPoolService.deduct_credits_capped,
+    ],
+)
+def test_non_positive_credit_request_skips_tenant_redis_lock(deduct_method) -> None:
+    with patch("services.credit_pool_service.redis_client.lock") as lock:
+        result = deduct_method(tenant_id="tenant-1", credits_required=0)
+
+    assert result == 0
+    lock.assert_not_called()
+
+
+def test_check_and_deduct_credits_wraps_redis_lock_errors_without_querying_db() -> None:
+    session_maker = MagicMock()
+
+    with (
+        patch("services.credit_pool_service.redis_client.lock", side_effect=RuntimeError("redis unavailable")),
+        patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker),
+        pytest.raises(QuotaExceededError, match="Failed to deduct credits"),
+    ):
+        CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=1)
+
+    session_maker.begin.assert_not_called()
+
+
+def test_deduct_credits_capped_ignores_release_errors_after_successful_deduction() -> None:
+    session = MagicMock()
+    session_maker = _make_session_maker(session)
+    pool = SimpleNamespace(remaining_credits=3, quota_used=7)
+    redis_lock = _make_redis_lock()
+    redis_lock.release.side_effect = RuntimeError("release failed")
+
+    with (
+        patch("services.credit_pool_service.redis_client.lock", return_value=redis_lock),
+        patch("services.credit_pool_service.session_factory.get_session_maker", return_value=session_maker),
+        patch.object(CreditPoolService, "_get_locked_pool", return_value=pool),
+    ):
+        result = CreditPoolService.deduct_credits_capped(tenant_id="tenant-1", credits_required=2)
+
+    assert result == 2
+    assert pool.quota_used == 9
+    redis_lock.release.assert_called_once_with()

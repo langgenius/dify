@@ -1,8 +1,6 @@
 import type { MouseEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiAspectRatioFill,
-  RiAspectRatioLine,
   RiCursorLine,
   RiFunctionAddLine,
   RiHand,
@@ -16,7 +14,6 @@ import { Comment } from '@/app/components/base/icons/src/public/other'
 import Divider from '../../base/divider'
 import {
   useNodesReadOnly,
-  useWorkflowCanvasMaximize,
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '../hooks'
@@ -32,12 +29,12 @@ import TipPopup from './tip-popup'
 const Control = () => {
   const { t } = useTranslation()
   const controlMode = useStore(s => s.controlMode)
-  const maximizeCanvas = useStore(s => s.maximizeCanvas)
   const {
     handleModePointer,
     handleModeHand,
     handleModeComment,
     isCommentModeAvailable,
+    canUseCommentMode,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
@@ -45,7 +42,6 @@ const Control = () => {
     nodesReadOnly,
     getNodesReadOnly,
   } = useNodesReadOnly()
-  const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
 
   const addNote = (e: MouseEvent<HTMLButtonElement>) => {
     if (getNodesReadOnly())
@@ -108,11 +104,11 @@ const Control = () => {
           <button
             type="button"
             aria-label={t('common.commentMode', { ns: 'workflow' })}
-            disabled={nodesReadOnly}
+            disabled={!canUseCommentMode}
             className={cn(
               'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
               controlMode === ControlMode.Comment ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-              `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+              `${!canUseCommentMode && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
             )}
             onClick={handleModeComment}
           >
@@ -133,22 +129,6 @@ const Control = () => {
           onClick={handleLayout}
         >
           <RiFunctionAddLine aria-hidden className="size-4" />
-        </button>
-      </TipPopup>
-      <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcut="workflow.toggle-maximize">
-        <button
-          type="button"
-          aria-label={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })}
-          disabled={nodesReadOnly}
-          className={cn(
-            'flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            maximizeCanvas ? 'bg-state-accent-active text-text-accent hover:text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
-          )}
-          onClick={handleToggleMaximizeCanvas}
-        >
-          {maximizeCanvas && <RiAspectRatioFill aria-hidden className="size-4" />}
-          {!maximizeCanvas && <RiAspectRatioLine aria-hidden className="size-4" />}
         </button>
       </TipPopup>
       <MoreActions />

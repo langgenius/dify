@@ -1,10 +1,18 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { usePathname, useRouter } from '@/next/navigation'
-import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { useDatasetDetail } from '@/service/knowledge/use-dataset'
+import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailLayout from '../layout-main'
 
 const mockReplace = vi.fn()
-const mockSetAppSidebarExpand = vi.fn()
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(),
@@ -13,18 +21,15 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useDatasetDetail: vi.fn(),
-  useDatasetRelatedApps: vi.fn(),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setAppSidebarExpand: typeof mockSetAppSidebarExpand }) => unknown) => selector({
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
 }))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceDatasetOperator: false,
+    isLoadingCurrentWorkspace: false,
+    isLoadingWorkspacePermissionKeys: false,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
   }),
 }))
 
@@ -34,34 +39,19 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'desktop',
-  MediaType: {
-    mobile: 'mobile',
-  },
-}))
-
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/app-sidebar', () => ({
-  default: () => <aside aria-label="dataset navigation" />,
-}))
-
-vi.mock('@/app/components/datasets/extra-info', () => ({
-  default: () => <div />,
-}))
-
-const mockUsePathname = vi.mocked(usePathname)
 const mockUseRouter = vi.mocked(useRouter)
+const mockUsePathname = vi.mocked(usePathname)
 const mockUseDatasetDetail = vi.mocked(useDatasetDetail)
-const mockUseDatasetRelatedApps = vi.mocked(useDatasetRelatedApps)
 
 describe('DatasetDetailLayout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUsePathname.mockReturnValue('/datasets/dataset-1/pipeline')
+    mockIsRbacEnabled = true
+    mockUsePathname.mockReturnValue('/datasets/dataset-1/documents')
     mockUseRouter.mockReturnValue({
       back: vi.fn(),
       forward: vi.fn(),
@@ -70,7 +60,6 @@ describe('DatasetDetailLayout', () => {
       replace: mockReplace,
       prefetch: vi.fn(),
     })
-    mockUseDatasetRelatedApps.mockReturnValue({ data: undefined } as ReturnType<typeof useDatasetRelatedApps>)
   })
 
   describe('Access Errors', () => {
@@ -93,7 +82,6 @@ describe('DatasetDetailLayout', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/datasets')
       })
-      expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: false })
       expect(screen.queryByText('Pipeline content')).not.toBeInTheDocument()
     })
 
@@ -144,8 +132,205 @@ describe('DatasetDetailLayout', () => {
 
       // Assert
       expect(screen.getByText('Pipeline content')).toBeInTheDocument()
-      expect(mockUseDatasetRelatedApps).toHaveBeenCalledWith('dataset-1', { enabled: true })
       expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('should apply the dataset surface outside pipeline pages', () => {
+      // Arrange
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'rag_pipeline',
+          is_published: true,
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Documents content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      expect(screen.getByText('Documents content').parentElement).toHaveClass('rounded-lg')
+    })
+
+    it('should keep pipeline pages unframed', () => {
+      // Arrange
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/pipeline')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'rag_pipeline',
+          is_published: false,
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Pipeline content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      expect(screen.getByText('Pipeline content').parentElement).not.toHaveClass('rounded-lg')
+    })
+
+    it('should keep create-from-pipeline pages unframed', () => {
+      // Arrange
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/documents/create-from-pipeline')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'rag_pipeline',
+          is_published: false,
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Create from pipeline content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      expect(screen.getByText('Create from pipeline content').parentElement).not.toHaveClass('rounded-lg')
+    })
+  })
+
+  describe('Permission Route Guards', () => {
+    it('should redirect from hit testing when retrieval recall permission is missing', async () => {
+      // Arrange
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/hitTesting')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'external',
+          runtime_mode: 'general',
+          is_published: true,
+          permission_keys: [],
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Hit testing content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets/dataset-1/settings')
+      })
+      expect(screen.queryByText('Hit testing content')).not.toBeInTheDocument()
+    })
+
+    it('should redirect from access config when access config permission is missing', async () => {
+      // Arrange
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'general',
+          is_published: true,
+          permission_keys: [],
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Access config content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets/dataset-1/documents')
+      })
+      expect(screen.queryByText('Access config content')).not.toBeInTheDocument()
+    })
+
+    it('should render access config when access config permission is granted', () => {
+      // Arrange
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'general',
+          is_published: true,
+          permission_keys: [DatasetACLPermission.AccessConfig],
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Access config content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      expect(screen.getByText('Access config content')).toBeInTheDocument()
+      expect(mockReplace).not.toHaveBeenCalled()
+    })
+
+    it('should redirect from access config when RBAC is disabled', async () => {
+      // Arrange
+      mockIsRbacEnabled = false
+      mockUsePathname.mockReturnValue('/datasets/dataset-1/access-config')
+      mockUseDatasetDetail.mockReturnValue({
+        data: {
+          id: 'dataset-1',
+          name: 'Dataset 1',
+          provider: 'vendor',
+          runtime_mode: 'general',
+          is_published: true,
+          permission_keys: [DatasetACLPermission.AccessConfig],
+        },
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useDatasetDetail>)
+
+      // Act
+      render(
+        <DatasetDetailLayout datasetId="dataset-1">
+          <div>Access config content</div>
+        </DatasetDetailLayout>,
+      )
+
+      // Assert
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets/dataset-1/documents')
+      })
+      expect(screen.queryByText('Access config content')).not.toBeInTheDocument()
     })
   })
 })

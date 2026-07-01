@@ -18,22 +18,32 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.login import current_user
+from libs.login import resolve_account_fallback
 from models.account import Account
 from models.dataset import Dataset
 from services.dataset_service import DatasetService
-from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import ExternalRetrievalModel, RetrievalModel
 from services.hit_testing_service import HitTestingService
 
 logger = logging.getLogger(__name__)
 
 
 class HitTestingPayload(BaseModel):
-    query: str = Field(max_length=250)
-    retrieval_model: RetrievalModel | None = None
-    external_retrieval_model: dict[str, Any] | None = None
-    attachment_ids: list[str] | None = None
+    query: str = Field(description="Search query text.", max_length=250)
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
+    external_retrieval_model: ExternalRetrievalModel = Field(
+        default=None,
+        description="Retrieval settings for external knowledge bases.",
+    )
+    attachment_ids: list[str] | None = Field(
+        default=None,
+        description="List of attachment IDs to include in the retrieval context.",
+    )
 
 
 class DatasetsHitTestingBase:
@@ -71,14 +81,16 @@ class DatasetsHitTestingBase:
         return normalized_records
 
     @staticmethod
-    def get_and_validate_dataset(dataset_id: str) -> Dataset:
-        assert isinstance(current_user, Account)
-        dataset = DatasetService.get_dataset(dataset_id)
+    def get_and_validate_dataset(
+        dataset_id: str, current_user: Account | None = None, current_tenant_id: str | None = None
+    ) -> Dataset:
+        current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
+        dataset = DatasetService.get_dataset(dataset_id, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -95,10 +107,16 @@ class DatasetsHitTestingBase:
         return hit_testing_payload.model_dump(exclude_none=True)
 
     @staticmethod
-    def perform_hit_testing(dataset: Dataset, args: dict[str, Any]) -> dict[str, Any]:
-        assert isinstance(current_user, Account)
+    def perform_hit_testing(
+        dataset: Dataset,
+        args: dict[str, Any],
+        current_user: Account | None = None,
+        current_tenant_id: str | None = None,
+    ) -> dict[str, Any]:
         try:
+            current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
+                session=db.session,
                 dataset=dataset,
                 query=cast(str, args.get("query")),
                 account=current_user,

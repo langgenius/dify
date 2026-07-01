@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -27,8 +27,8 @@ type TagItemEditorProps = {
 }
 export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation()
-  const updateTagMutation = useMutation(consoleQuery.tags.update.mutationOptions())
-  const deleteTagMutation = useMutation(consoleQuery.tags.delete.mutationOptions())
+  const updateTagMutation = useMutation(consoleQuery.tags.byTagId.patch.mutationOptions())
+  const deleteTagMutation = useMutation(consoleQuery.tags.byTagId.delete.mutationOptions())
   const [isEditing, setIsEditing] = useState(false)
   const editTag = (tagId: string, name: string) => {
     if (name === tag.name) {
@@ -43,7 +43,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
 
     updateTagMutation.mutate({
       params: {
-        tagId,
+        tag_id: tagId,
       },
       body: {
         name,
@@ -67,7 +67,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
 
     deleteTagMutation.mutate({
       params: {
-        tagId,
+        tag_id: tagId,
       },
     }, {
       onSuccess: () => {
@@ -99,7 +99,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             <button
               type="button"
               aria-label={`${t('operation.edit', { ns: 'common' })} ${tag.name}`}
-              className="group/edit shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="group/edit shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => setIsEditing(true)}
             >
               <span aria-hidden="true" className="i-ri-edit-line size-3 text-text-tertiary group-hover/edit:text-text-secondary" />
@@ -107,9 +107,9 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             <button
               type="button"
               aria-label={`${t('operation.remove', { ns: 'common' })} ${tag.name}`}
-              className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => {
-                if (tag.binding_count)
+                if (Number(tag.binding_count ?? 0) > 0)
                   setShowRemoveModal(true)
                 else
                   handleRemove()

@@ -6,11 +6,11 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import ToolCall from './tool-call'
 
-type Props = {
+type Props = Readonly<{
   isFinal: boolean
   index: number
   iterationInfo: AgentIteration
-}
+}>
 
 const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
   const { t } = useTranslation()

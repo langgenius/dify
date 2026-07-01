@@ -211,6 +211,12 @@ describe('ConfigModalFormFields', () => {
     expect(docLink).toHaveAttribute('rel', 'noopener noreferrer')
     textInputView.unmount()
 
+    const hiddenFieldDisabledProps = createBaseProps()
+    const hiddenFieldDisabledView = render(<ConfigModalFormFields {...hiddenFieldDisabledProps} showHiddenField={false} />)
+    expect(screen.queryByText('variableConfig.hidden')).not.toBeInTheDocument()
+    expect(screen.queryByText('variableConfig.hiddenDescription')).not.toBeInTheDocument()
+    hiddenFieldDisabledView.unmount()
+
     const singleFileProps = createBaseProps()
     singleFileProps.tempPayload = {
       ...singleFileProps.tempPayload,

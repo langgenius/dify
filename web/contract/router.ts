@@ -1,146 +1,119 @@
-import type { InferContractRouterInputs } from '@orpc/contract'
-import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
+import { account } from '@dify/contracts/api/console/account/orpc.gen'
+import { activate } from '@dify/contracts/api/console/activate/orpc.gen'
+import { agent } from '@dify/contracts/api/console/agent/orpc.gen'
+import { allWorkspaces } from '@dify/contracts/api/console/all-workspaces/orpc.gen'
+import { apiBasedExtension } from '@dify/contracts/api/console/api-based-extension/orpc.gen'
+import { apiKeyAuth } from '@dify/contracts/api/console/api-key-auth/orpc.gen'
+import { appDslVersion } from '@dify/contracts/api/console/app-dsl-version/orpc.gen'
+import { app } from '@dify/contracts/api/console/app/orpc.gen'
+import { apps } from '@dify/contracts/api/console/apps/orpc.gen'
+import { auth } from '@dify/contracts/api/console/auth/orpc.gen'
+import { codeBasedExtension } from '@dify/contracts/api/console/code-based-extension/orpc.gen'
+import { compliance } from '@dify/contracts/api/console/compliance/orpc.gen'
+import { dataSource } from '@dify/contracts/api/console/data-source/orpc.gen'
+import { datasets } from '@dify/contracts/api/console/datasets/orpc.gen'
+import { emailCodeLogin } from '@dify/contracts/api/console/email-code-login/orpc.gen'
+import { emailRegister } from '@dify/contracts/api/console/email-register/orpc.gen'
+import { features } from '@dify/contracts/api/console/features/orpc.gen'
+import { forgotPassword } from '@dify/contracts/api/console/forgot-password/orpc.gen'
+import { form } from '@dify/contracts/api/console/form/orpc.gen'
+import { info } from '@dify/contracts/api/console/info/orpc.gen'
+import { installedApps } from '@dify/contracts/api/console/installed-apps/orpc.gen'
+import { instructionGenerate } from '@dify/contracts/api/console/instruction-generate/orpc.gen'
+import { login } from '@dify/contracts/api/console/login/orpc.gen'
+import { logout } from '@dify/contracts/api/console/logout/orpc.gen'
+import { notification } from '@dify/contracts/api/console/notification/orpc.gen'
+import { notion } from '@dify/contracts/api/console/notion/orpc.gen'
+import { oauth } from '@dify/contracts/api/console/oauth/orpc.gen'
+import { rag } from '@dify/contracts/api/console/rag/orpc.gen'
+import { refreshToken } from '@dify/contracts/api/console/refresh-token/orpc.gen'
+import { remoteFiles } from '@dify/contracts/api/console/remote-files/orpc.gen'
+import { resetPassword } from '@dify/contracts/api/console/reset-password/orpc.gen'
+import { ruleCodeGenerate } from '@dify/contracts/api/console/rule-code-generate/orpc.gen'
+import { ruleGenerate } from '@dify/contracts/api/console/rule-generate/orpc.gen'
+import { ruleStructuredOutputGenerate } from '@dify/contracts/api/console/rule-structured-output-generate/orpc.gen'
+import { spec } from '@dify/contracts/api/console/spec/orpc.gen'
+import { systemFeatures } from '@dify/contracts/api/console/system-features/orpc.gen'
+import { tagBindings } from '@dify/contracts/api/console/tag-bindings/orpc.gen'
+import { tags } from '@dify/contracts/api/console/tags/orpc.gen'
+import { test } from '@dify/contracts/api/console/test/orpc.gen'
+import { trialModels } from '@dify/contracts/api/console/trial-models/orpc.gen'
+import { website } from '@dify/contracts/api/console/website/orpc.gen'
+import { workflowGenerate } from '@dify/contracts/api/console/workflow-generate/orpc.gen'
+import { workflow } from '@dify/contracts/api/console/workflow/orpc.gen'
+import { workspaces } from '@dify/contracts/api/console/workspaces/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
-import { appDeleteContract, appListContract, workflowOnlineUsersContract } from './console/apps'
-import { bindPartnerStackContract, invoicesContract } from './console/billing'
-import {
-  exploreAppDetailContract,
-  exploreAppsContract,
-  exploreBannersContract,
-  exploreInstalledAppAccessModeContract,
-  exploreInstalledAppMetaContract,
-  exploreInstalledAppParametersContract,
-  exploreInstalledAppPinContract,
-  exploreInstalledAppsContract,
-  exploreInstalledAppUninstallContract,
-} from './console/explore'
-import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
-import { notificationContract, notificationDismissContract } from './console/notification'
-import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
-import {
-  tagBindingCreateContract,
-  tagBindingRemoveContract,
-  tagCreateContract,
-  tagDeleteContract,
-  tagListContract,
-  tagUpdateContract,
-} from './console/tags'
-import {
-  triggerOAuthConfigContract,
-  triggerOAuthConfigureContract,
-  triggerOAuthDeleteContract,
-  triggerOAuthInitiateContract,
-  triggerProviderInfoContract,
-  triggersContract,
-  triggerSubscriptionBuildContract,
-  triggerSubscriptionBuilderCreateContract,
-  triggerSubscriptionBuilderLogsContract,
-  triggerSubscriptionBuilderUpdateContract,
-  triggerSubscriptionBuilderVerifyUpdateContract,
-  triggerSubscriptionDeleteContract,
-  triggerSubscriptionsContract,
-  triggerSubscriptionUpdateContract,
-  triggerSubscriptionVerifyContract,
-} from './console/trigger'
-import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
-import {
-  workflowDraftEnvironmentVariablesContract,
-  workflowDraftUpdateConversationVariablesContract,
-  workflowDraftUpdateEnvironmentVariablesContract,
-  workflowDraftUpdateFeaturesContract,
-} from './console/workflow'
+import { rbacAccessConfigContract } from './console/access-control'
+import { billingRouterContract } from './console/billing'
+import { exploreRouterContract } from './console/explore'
+import { filesRouterContract } from './console/files'
+import { modelProvidersRouterContract } from './console/model-providers'
+import { pluginsRouterContract } from './console/plugins'
+import { snippetsRouterContract } from './console/snippets'
+import { triggersRouterContract } from './console/trigger'
+import { trialAppsRouterContract } from './console/try-app'
+import { workflowDraftRouterContract } from './console/workflow'
 import { workflowCommentContracts } from './console/workflow-comment'
-import { collectionPluginsContract, collectionsContract, downloadPluginContract, searchAdvancedContract, templateDetailContract } from './marketplace'
 
-export const marketplaceRouterContract = {
-  collections: collectionsContract,
-  collectionPlugins: collectionPluginsContract,
-  searchAdvanced: searchAdvancedContract,
-  templateDetail: templateDetailContract,
-  downloadPlugin: downloadPluginContract,
+const communityContract = {
+  account,
+  activate,
+  agent,
+  allWorkspaces,
+  apiBasedExtension,
+  apiKeyAuth,
+  app,
+  appDslVersion,
+  apps,
+  auth,
+  codeBasedExtension,
+  compliance,
+  dataSource,
+  datasets,
+  emailCodeLogin,
+  emailRegister,
+  features,
+  forgotPassword,
+  form,
+  info,
+  installedApps,
+  instructionGenerate,
+  login,
+  logout,
+  notification,
+  notion,
+  oauth,
+  rag,
+  refreshToken,
+  remoteFiles,
+  resetPassword,
+  ruleCodeGenerate,
+  ruleGenerate,
+  ruleStructuredOutputGenerate,
+  spec,
+  systemFeatures,
+  tagBindings,
+  tags,
+  test,
+  trialModels,
+  website,
+  workflow,
+  workflowGenerate,
+  workspaces,
 }
 
-export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
-
-// Hand-written console contracts below are temporary overrides for gaps in the
-// generated community contract. Prefer fixing backend OpenAPI annotations so
-// generated contracts include accurate method, path, input, and output types;
-// once generated contracts are correct, the matching hand-written contracts
-// should be removed instead of kept in parallel.
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
   ...communityContract,
-  apps: {
-    ...communityContract.apps,
-    list: appListContract,
-    deleteApp: appDeleteContract,
-    workflowOnlineUsers: workflowOnlineUsersContract,
-  },
-  explore: {
-    ...communityContract.explore,
-    apps: exploreAppsContract,
-    appDetail: exploreAppDetailContract,
-    installedApps: exploreInstalledAppsContract,
-    uninstallInstalledApp: exploreInstalledAppUninstallContract,
-    updateInstalledApp: exploreInstalledAppPinContract,
-    appAccessMode: exploreInstalledAppAccessModeContract,
-    installedAppParameters: exploreInstalledAppParametersContract,
-    installedAppMeta: exploreInstalledAppMetaContract,
-    banners: exploreBannersContract,
-  },
-  trialApps: {
-    ...communityContract.trialApps,
-    info: trialAppInfoContract,
-    datasets: trialAppDatasetsContract,
-    parameters: trialAppParametersContract,
-    workflows: trialAppWorkflowsContract,
-  },
-  modelProviders: {
-    models: modelProvidersModelsContract,
-    changePreferredProviderType: changePreferredProviderTypeContract,
-  },
-  plugins: {
-    checkInstalled: pluginCheckInstalledContract,
-    latestVersions: pluginLatestVersionsContract,
-  },
-  billing: {
-    ...communityContract.billing,
-    invoices: invoicesContract,
-    bindPartnerStack: bindPartnerStackContract,
-  },
-  workflowDraft: {
-    environmentVariables: workflowDraftEnvironmentVariablesContract,
-    updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
-    updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
-    updateFeatures: workflowDraftUpdateFeaturesContract,
-  },
+  billing: billingRouterContract,
+  explore: exploreRouterContract,
+  files: filesRouterContract,
+  modelProviders: modelProvidersRouterContract,
+  plugins: pluginsRouterContract,
+  rbacAccessConfig: rbacAccessConfigContract,
+  snippets: snippetsRouterContract,
+  triggers: triggersRouterContract,
+  trialApps: trialAppsRouterContract,
   workflowComments: workflowCommentContracts,
-  notification: notificationContract,
-  notificationDismiss: notificationDismissContract,
-  tags: {
-    ...communityContract.tags,
-    list: tagListContract,
-    create: tagCreateContract,
-    update: tagUpdateContract,
-    delete: tagDeleteContract,
-    bind: tagBindingCreateContract,
-    unbind: tagBindingRemoveContract,
-  },
-  triggers: {
-    list: triggersContract,
-    providerInfo: triggerProviderInfoContract,
-    subscriptions: triggerSubscriptionsContract,
-    subscriptionBuilderCreate: triggerSubscriptionBuilderCreateContract,
-    subscriptionBuilderUpdate: triggerSubscriptionBuilderUpdateContract,
-    subscriptionBuilderVerifyUpdate: triggerSubscriptionBuilderVerifyUpdateContract,
-    subscriptionVerify: triggerSubscriptionVerifyContract,
-    subscriptionBuild: triggerSubscriptionBuildContract,
-    subscriptionDelete: triggerSubscriptionDeleteContract,
-    subscriptionUpdate: triggerSubscriptionUpdateContract,
-    subscriptionBuilderLogs: triggerSubscriptionBuilderLogsContract,
-    oauthConfig: triggerOAuthConfigContract,
-    oauthConfigure: triggerOAuthConfigureContract,
-    oauthDelete: triggerOAuthDeleteContract,
-    oauthInitiate: triggerOAuthInitiateContract,
-  },
+  workflowDraft: workflowDraftRouterContract,
 }

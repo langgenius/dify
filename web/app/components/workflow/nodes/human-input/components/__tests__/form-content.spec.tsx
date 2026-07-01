@@ -165,6 +165,12 @@ describe('FormContent', () => {
 
     expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
       editable: true,
+      shortcutPopups: [
+        expect.objectContaining({
+          hotkey: ['mod', '/'],
+          displayMode: 'workflow-panel-adjacent-center',
+        }),
+      ],
       hitlInputBlock: expect.objectContaining({
         workflowNodesMap: expect.objectContaining({
           'node-1': expect.objectContaining({ title: 'Start' }),

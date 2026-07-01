@@ -32,6 +32,7 @@ export type FileResponse = {
   name: string
   original_url?: string | null
   preview_url?: string | null
+  reference?: string | null
   size: number
   source_url?: string | null
   tenant_id?: string | null
