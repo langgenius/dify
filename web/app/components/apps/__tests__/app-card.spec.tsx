@@ -400,7 +400,7 @@ describe('AppCard', () => {
         author_name: 'Readonly Author',
         created_by: 'another-user',
         maintainer: 'another-user',
-        tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'app' as const, binding_count: 0 }],
+        tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'app' as const, binding_count: '' }],
         permission_keys: [AppACLPermission.Preview],
       })
 
@@ -501,7 +501,7 @@ describe('AppCard', () => {
     it('should handle app with tags', () => {
       const appWithTags = {
         ...mockApp,
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' }],
       }
       render(<AppCard app={appWithTags} />)
       // Verify the tag selector component renders
@@ -510,10 +510,10 @@ describe('AppCard', () => {
 
     it('should display refreshed tag names from app props when tag ids stay the same', () => {
       const firstApp = createMockApp({
-        tags: [{ id: 'tag1', name: 'Old Tag', type: 'app' as const, binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Old Tag', type: 'app' as const, binding_count: '' }],
       })
       const refreshedApp = createMockApp({
-        tags: [{ id: 'tag1', name: 'New Tag', type: 'app' as const, binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'New Tag', type: 'app' as const, binding_count: '' }],
       })
 
       const { rerender } = render(<AppCard app={firstApp} />)
@@ -531,7 +531,7 @@ describe('AppCard', () => {
       mockAppContext.userProfile = { id: 'user-2' }
       const editableApp = createMockApp({
         maintainer: 'user-1',
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' }],
         permission_keys: [AppACLPermission.Edit],
       })
 
@@ -546,7 +546,7 @@ describe('AppCard', () => {
       mockAppContext.userProfile = { id: 'user-2' }
       const tagManageApp = createMockApp({
         maintainer: 'user-1',
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' }],
         permission_keys: [AppACLPermission.ViewLayout],
       })
 
@@ -561,7 +561,7 @@ describe('AppCard', () => {
       mockAppContext.userProfile = { id: 'user-2' }
       const readonlyApp = createMockApp({
         maintainer: 'user-1',
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' }],
         permission_keys: [AppACLPermission.ViewLayout],
       })
 
@@ -1429,9 +1429,9 @@ describe('AppCard', () => {
       const multiTagApp = {
         ...mockApp,
         tags: [
-          { id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 },
-          { id: 'tag2', name: 'Tag 2', type: 'app' as const, binding_count: 0 },
-          { id: 'tag3', name: 'Tag 3', type: 'app' as const, binding_count: 0 },
+          { id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' },
+          { id: 'tag2', name: 'Tag 2', type: 'app' as const, binding_count: '' },
+          { id: 'tag3', name: 'Tag 3', type: 'app' as const, binding_count: '' },
         ],
       }
       render(<AppCard app={multiTagApp} />)
@@ -1586,7 +1586,7 @@ describe('AppCard', () => {
 
     it('should stop propagation when clicking tag selector area', () => {
       const multiTagApp = createMockApp({
-        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: '' }],
       })
 
       render(<AppCard app={multiTagApp} />)

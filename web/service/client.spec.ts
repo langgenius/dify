@@ -1,7 +1,7 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { MutationFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
-import type { Tag } from '@/contract/console/tags'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -32,7 +32,7 @@ const createTag = (overrides: Partial<Tag> = {}): Tag => ({
   id: 'tag-1',
   name: 'Frontend',
   type: 'app',
-  binding_count: 1,
+  binding_count: '1',
   ...overrides,
 })
 
@@ -588,14 +588,14 @@ describe('consoleQuery tag mutation defaults', () => {
   it('should add created tags to the matching list query cache', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
-    const appListKey = consoleQuery.tags.list.queryKey({
+    const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'app',
         },
       },
     })
-    const knowledgeListKey = consoleQuery.tags.list.queryKey({
+    const knowledgeListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'knowledge',
@@ -613,13 +613,13 @@ describe('consoleQuery tag mutation defaults', () => {
     queryClient.setQueryData(appListKey, [existingAppTag])
     queryClient.setQueryData(knowledgeListKey, [existingKnowledgeTag])
 
-    const mutationOptions = consoleQuery.tags.create.mutationOptions()
+    const mutationOptions = consoleQuery.tags.post.mutationOptions()
     await mutationOptions.onSuccess?.(
       createdTag,
       {
         body: {
           name: createdTag.name,
-          type: createdTag.type,
+          type: 'app',
         },
       },
       undefined,
@@ -633,14 +633,14 @@ describe('consoleQuery tag mutation defaults', () => {
   it('should update matching tags across cached list queries', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
-    const appListKey = consoleQuery.tags.list.queryKey({
+    const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'app',
         },
       },
     })
-    const knowledgeListKey = consoleQuery.tags.list.queryKey({
+    const knowledgeListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'knowledge',
@@ -661,14 +661,14 @@ describe('consoleQuery tag mutation defaults', () => {
     const updatedTag = createTag({
       ...targetTag,
       name: 'After',
-      binding_count: 5,
+      binding_count: '5',
     })
-    const mutationOptions = consoleQuery.tags.update.mutationOptions()
+    const mutationOptions = consoleQuery.tags.byTagId.patch.mutationOptions()
     await mutationOptions.onSuccess?.(
       updatedTag,
       {
         params: {
-          tagId: targetTag.id,
+          tag_id: targetTag.id,
         },
         body: {
           name: 'Ignored Client Name',
@@ -688,14 +688,14 @@ describe('consoleQuery tag mutation defaults', () => {
   it('should remove deleted tags across cached list queries', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
-    const appListKey = consoleQuery.tags.list.queryKey({
+    const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'app',
         },
       },
     })
-    const knowledgeListKey = consoleQuery.tags.list.queryKey({
+    const knowledgeListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'knowledge',
@@ -713,12 +713,12 @@ describe('consoleQuery tag mutation defaults', () => {
     queryClient.setQueryData(appListKey, [deletedTag, remainingTag])
     queryClient.setQueryData(knowledgeListKey, [knowledgeTag])
 
-    const mutationOptions = consoleQuery.tags.delete.mutationOptions()
+    const mutationOptions = consoleQuery.tags.byTagId.delete.mutationOptions()
     await mutationOptions.onSuccess?.(
       undefined,
       {
         params: {
-          tagId: deletedTag.id,
+          tag_id: deletedTag.id,
         },
       },
       undefined,
