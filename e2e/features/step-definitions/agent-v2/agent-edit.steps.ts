@@ -1,6 +1,6 @@
 import type { PostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../support/world'
-import { Then, When } from '@cucumber/cucumber'
+import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createE2EResourceName } from '../../../support/naming'
 import {
@@ -231,18 +231,23 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
   )
 })
 
-Then('Agent v2 Tool credential error state should be available', async function (this: DifyWorld) {
-  const toolsSection = this.getPage().getByRole('region', { name: 'Tools' })
-
-  await expect(toolsSection).toBeVisible({ timeout: 30_000 })
+async function skipToolCredentialErrorState(world: DifyWorld) {
   return skipBlockedPrecondition(
-    this,
+    world,
     'Agent v2 Tool credential error state is not covered: the current fixture only proves usable and not-authorized tool states.',
     {
       owner: 'seed/product',
       remediation: 'Define a stable invalid credential fixture and the expected user-visible error label before enabling this scenario.',
     },
   )
+}
+
+Given('Agent v2 Tool credential error state is available', async function (this: DifyWorld) {
+  return skipToolCredentialErrorState(this)
+})
+
+Then('Agent v2 Tool credential error state should be available', async function (this: DifyWorld) {
+  return skipToolCredentialErrorState(this)
 })
 
 Then('I should see the Agent v2 dual retrieval fixture settings', async function (this: DifyWorld) {

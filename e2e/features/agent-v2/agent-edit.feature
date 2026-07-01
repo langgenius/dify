@@ -34,6 +34,7 @@ Feature: Agent v2 Agent Edit page
   @tool-error-state @feature-gated
   Scenario: Tool credential error states are visible on the Agent Edit page
     Given I am signed in as the default E2E admin
+    And Agent v2 Tool credential error state is available
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" is available
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" includes the tool state fixture configuration
     When I open the preseeded Agent v2 configure page for "E2E New Agent Builder Tool States" from the Agent Roster

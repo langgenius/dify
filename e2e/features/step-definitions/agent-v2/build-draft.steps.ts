@@ -153,19 +153,23 @@ When('I apply the Agent v2 Build draft', async function (this: DifyWorld) {
   await expect(page.getByText('Action succeeded')).toBeVisible()
 })
 
-Then('Agent v2 Build chat Dify Tool writeback should be available', async function (this: DifyWorld) {
-  const toolsSection = this.getPage().getByRole('region', { name: 'Tools' })
-
-  await expect(toolsSection).toBeVisible({ timeout: 30_000 })
-
+async function skipBuildDraftToolWriteback(world: DifyWorld) {
   return skipBlockedPrecondition(
-    this,
+    world,
     'Build draft Dify Tool writeback is not available: Build draft currently supports files, skills, and env only.',
     {
       owner: 'product',
       remediation: 'Define and implement Build draft Tool writeback before enabling this scenario.',
     },
   )
+}
+
+Given('Agent v2 Build chat Dify Tool writeback is available', async function (this: DifyWorld) {
+  return skipBuildDraftToolWriteback(this)
+})
+
+Then('Agent v2 Build chat Dify Tool writeback should be available', async function (this: DifyWorld) {
+  return skipBuildDraftToolWriteback(this)
 })
 
 Then('I should see the Agent v2 Build draft pending changes', async function (this: DifyWorld) {
