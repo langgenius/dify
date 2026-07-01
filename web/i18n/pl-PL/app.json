@@ -56,7 +56,7 @@
   "gotoAnything.actions.accountDesc": "Przejdź do strony konta",
   "gotoAnything.actions.communityDesc": "Otwarta społeczność Discord",
   "gotoAnything.actions.createAuto": "Auto",
-  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description",
+  "gotoAnything.actions.createAutoDesc": "Pozwól AI wybrać Workflow lub Chatflow na podstawie Twojego opisu",
   "gotoAnything.actions.createCategoryDesc": "Utwórz przepływ pracy lub czat generowany przez sztuczną inteligencję",
   "gotoAnything.actions.createChatflow": "Przepływ czatu",
   "gotoAnything.actions.createChatflowDesc": "Wygeneruj aplikację Chatflow (czat zaawansowany) na podstawie opisu",
