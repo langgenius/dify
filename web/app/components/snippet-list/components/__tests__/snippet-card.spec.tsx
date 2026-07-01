@@ -228,7 +228,7 @@ describe('SnippetCard', () => {
 
       render(
         <SnippetCard
-          snippet={createSnippet({ tags: [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: 1 }] })}
+          snippet={createSnippet({ tags: [{ id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '' }] })}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onTagsChange}
         />,

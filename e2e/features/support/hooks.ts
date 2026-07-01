@@ -1,4 +1,5 @@
 import type { Browser } from '@playwright/test'
+import type { Buffer } from 'node:buffer'
 import type { DifyWorld } from './world'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -6,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
+import { deleteTestAgent } from '../../support/agent'
 import { deleteTestApp } from '../../support/api'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
 
@@ -41,7 +43,7 @@ BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
     slowMo: cucumberSlowMo,
   })
 
-  console.log(`[e2e] session cache bootstrap against ${baseURL}`)
+  console.warn(`[e2e] session cache bootstrap against ${baseURL}`)
   await ensureAuthenticatedState(browser, baseURL)
 })
 
@@ -58,7 +60,7 @@ Before(async function (this: DifyWorld, { pickle }) {
   this.scenarioStartedAt = Date.now()
 
   const tags = pickle.tags.map(tag => tag.name).join(' ')
-  console.log(`[e2e] start ${pickle.name}${tags ? ` ${tags}` : ''}`)
+  console.warn(`[e2e] start ${pickle.name}${tags ? ` ${tags}` : ''}`)
 })
 
 After(async function (this: DifyWorld, { pickle, result }) {
@@ -85,10 +87,11 @@ After(async function (this: DifyWorld, { pickle, result }) {
   }
 
   const status = result?.status || 'UNKNOWN'
-  console.log(
+  console.warn(
     `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
   )
 
+  for (const id of this.createdAgentIds) await deleteTestAgent(id).catch(() => {})
   for (const id of this.createdAppIds) await deleteTestApp(id).catch(() => {})
 
   await this.closeSession()

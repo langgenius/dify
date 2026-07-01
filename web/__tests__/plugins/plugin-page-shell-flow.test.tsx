@@ -6,6 +6,9 @@ import PluginPage from '@/app/components/plugins/plugin-page'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockFetchManifestFromMarketPlace = vi.fn()
+const { mockRouterReplace } = vi.hoisted(() => ({
+  mockRouterReplace: vi.fn(),
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -24,6 +27,12 @@ vi.mock('@/utils', async (importOriginal) => {
 vi.mock('@/hooks/use-document-title', () => ({
   __esModule: true,
   default: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockRouterReplace,
+  }),
 }))
 
 vi.mock('@/context/i18n', () => ({
