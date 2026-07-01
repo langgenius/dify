@@ -51,7 +51,10 @@ Keep Agent v2 step definitions grouped by user capability, not by DOM component 
 - `advanced-settings.steps.ts` — Env Editor, Content Moderation, and Advanced Settings behavior.
 - `agent-edit.steps.ts` — saved Agent detail display assertions.
 - `publish.steps.ts` — publish and publish-bar assertions.
-- `access-point.steps.ts` — Access Point behavior.
+- `access-point.steps.ts` — common Access Point navigation and overview.
+- `access-point-web-app.steps.ts` — Web app access entrypoints and public Web app assertions.
+- `access-point-service-api.steps.ts` — Backend service API entrypoints, keys, API reference, and service requests.
+- `access-point-workflow.steps.ts` — Workflow access references.
 - `preflight.steps.ts` — explicit `Given` entrypoints for Agent Builder preflight resources.
 
 Cucumber step definitions are globally registered. Do not duplicate the same step text across files, even if one is written as `Given` and another as `Then`.
