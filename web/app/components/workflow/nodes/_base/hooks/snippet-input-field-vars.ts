@@ -98,17 +98,18 @@ export const appendSnippetInputFieldVars = ({
   title,
 }: {
   availableNodes: Node[]
-  fields: SnippetInputField[]
+  fields?: SnippetInputField[]
   title: string
 }) => {
+  const inputFields = fields ?? []
   const shouldAppendSnippetInputFields = isSnippetCanvas()
-    && fields.length > 0
+    && inputFields.length > 0
     && !availableNodes.some(node => node.data.type === BlockEnum.Start)
   const snippetInputFieldNode = shouldAppendSnippetInputFields
-    ? buildSnippetInputFieldNode(fields, title)
+    ? buildSnippetInputFieldNode(inputFields, title)
     : undefined
   const snippetInputFieldVars = shouldAppendSnippetInputFields
-    ? buildSnippetInputFieldVars(fields, title)
+    ? buildSnippetInputFieldVars(inputFields, title)
     : undefined
 
   return {

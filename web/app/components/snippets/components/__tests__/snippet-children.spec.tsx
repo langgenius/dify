@@ -41,22 +41,15 @@ describe('SnippetChildren', () => {
 
   it('should render snippet header and workflow panel with forwarded props', () => {
     const callbacks = {
-      onCancel: vi.fn(),
-      onEdit: vi.fn(),
-      onExitEditing: vi.fn(),
-      onExitEditingWithoutSave: vi.fn(),
       onPublish: vi.fn(),
-      onSaveAndExitEditing: vi.fn(),
     }
 
     render(
       <SnippetChildren
         snippetId="snippet-1"
         fields={fields}
-        canDiscardChanges
         canSave
-        hasDraftChanges
-        isEditing
+        canEdit
         isPublishing={false}
         {...callbacks}
       />,
@@ -66,10 +59,8 @@ describe('SnippetChildren', () => {
     expect(screen.getByTestId('snippet-workflow-panel')).toBeInTheDocument()
     expect(capturedHeaderProps).toEqual(expect.objectContaining({
       snippetId: 'snippet-1',
-      canDiscardChanges: true,
       canSave: true,
-      hasDraftChanges: true,
-      isEditing: true,
+      canEdit: true,
       isPublishing: false,
       ...callbacks,
     }))

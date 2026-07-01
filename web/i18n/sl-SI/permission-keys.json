@@ -50,5 +50,5 @@
   "snippets.management": "Upravljanje izsekov",
   "tool.manage": "Upravljanje orodij",
   "workspace.member.manage": "Upravljanje članov",
-  "workspace.role.manage": "Upravljanje dovoljenj vlog in pravil za dostop do virov"
+  "workspace.role.manage": "Upravljanje vlog in naborov dovoljenj"
 }

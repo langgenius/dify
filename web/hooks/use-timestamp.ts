@@ -14,7 +14,7 @@ type UseTimestampOptions = {
 }
 
 const getBrowserTimezone = () => {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone
+  return new Intl.DateTimeFormat().resolvedOptions().timeZone
 }
 
 const useTimestamp = ({ timezone: timezoneOverride }: UseTimestampOptions = {}) => {

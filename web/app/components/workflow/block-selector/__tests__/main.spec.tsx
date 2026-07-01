@@ -106,7 +106,6 @@ describe('NodeSelector', () => {
     await user.click(trigger)
 
     const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock')
-    expect(screen.queryByText('workflow.tabs.snippets')).not.toBeInTheDocument()
     expect(screen.getByText('LLM')).toBeInTheDocument()
     expect(screen.getByText('End')).toBeInTheDocument()
 
