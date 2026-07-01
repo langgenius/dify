@@ -94,7 +94,9 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
     # Avoid touching real doc_form logic
     monkeypatch.setattr("services.dataset_service.DatasetService.check_doc_form", lambda *a, **k: None)
     # Avoid real DB interactions
-    monkeypatch.setattr("services.dataset_service.db", Mock())
+    db_mock = Mock()
+    db_mock.session = Mock()
+    monkeypatch.setattr("services.dataset_service.db", db_mock)
 
     # Act: this would hit the redis lock, whose __enter__ raises LockNotOwnedError.
     # Our implementation should catch it and still return (documents, batch).
@@ -102,6 +104,7 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
         dataset=dataset,
         knowledge_config=knowledge_config,
         account=account,
+        session=db_mock.session,
     )
 
     # Assert
@@ -148,7 +151,7 @@ def test_add_segment_ignores_lock_not_owned(
     monkeypatch.setattr("services.dataset_service.VectorService", Mock())
 
     # Act
-    result = SegmentService.create_segment(args=args, document=document, dataset=dataset)
+    result = SegmentService.create_segment(args=args, document=document, dataset=dataset, session=db_mock.session)
 
     # Assert
     # Under LockNotOwnedError except, add_segment should swallow the error and return None.

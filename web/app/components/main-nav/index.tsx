@@ -7,31 +7,21 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
-import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
-import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-section'
-import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
-import { SnippetCollapsedPreview } from '@/app/components/snippets/components/snippet-collapsed-preview'
-import { SnippetSidebarContent } from '@/app/components/snippets/components/snippet-sidebar'
-import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
-import { useSnippetDetailStore } from '@/app/components/snippets/store'
 import { useAppContext } from '@/context/app-context'
-import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { DeploymentDetailSection, DeploymentDetailTop } from '@/features/deployments/detail/deployment-sidebar'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
-import SnippetDetailTop from './components/snippet-detail-top'
-import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 import { useDetailSidebarMode } from './storage'
@@ -40,6 +30,16 @@ const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'co
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
 const DEPLOYMENT_COLLECTION_ROUTES = new Set(['create'])
 const secondarySidebarHelpTriggerIcon = <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
+
+const AppDetailSection = dynamic(() => import('@/app/components/app-sidebar/app-detail-section'), { ssr: false })
+const AppDetailTop = dynamic(() => import('@/app/components/app-sidebar/app-detail-top'), { ssr: false })
+const DatasetDetailSection = dynamic(() => import('@/app/components/app-sidebar/dataset-detail-section'), { ssr: false })
+const DatasetDetailTop = dynamic(() => import('@/app/components/app-sidebar/dataset-detail-top'), { ssr: false })
+const AgentDetailSection = dynamic(() => import('@/features/agent-v2/agent-detail/navigation').then(mod => mod.AgentDetailSection), { ssr: false })
+const AgentDetailTop = dynamic(() => import('@/features/agent-v2/agent-detail/navigation').then(mod => mod.AgentDetailTop), { ssr: false })
+const SnippetDetailTop = dynamic(() => import('./components/snippet-detail-top'), { ssr: false })
+const SnippetDetailSection = dynamic(() => import('./components/snippet-detail-section').then(mod => mod.SnippetDetailSection), { ssr: false })
+const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
 
 function SecondarySidebarHelpMenu({
   triggerClassName,
@@ -103,12 +103,6 @@ export function MainNav({
   const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
   const showSnippetDetailNavigation = isSnippetDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation || showSnippetDetailNavigation
-  const snippetNavigation = useSnippetDetailStore(useShallow(state => ({
-    onFieldsChange: state.onFieldsChange,
-    readonly: state.readonly,
-    snippet: state.snippet,
-  })))
-  const snippetInputFields = useSnippetDraftStore(state => state.inputFields)
   const { hasAppDetail, setAppDetail } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -307,18 +301,7 @@ export function MainNav({
                   ? <AgentDetailSection expand={detailNavigationVisibleExpanded} />
                   : showDeploymentDetailNavigation
                     ? <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
-                    : detailNavigationVisibleExpanded
-                      ? snippetNavigation.snippet && snippetNavigation.onFieldsChange
-                        ? (
-                            <SnippetSidebarContent
-                              snippet={snippetNavigation.snippet}
-                              fields={snippetInputFields}
-                              readonly={snippetNavigation.readonly}
-                              onFieldsChange={snippetNavigation.onFieldsChange}
-                            />
-                          )
-                        : null
-                      : <SnippetCollapsedPreview inputFieldCount={snippetInputFields.length} />
+                    : <SnippetDetailSection expand={detailNavigationVisibleExpanded} />
             : (
                 <>
                   <nav className="isolate flex flex-col gap-px p-2">
