@@ -347,3 +347,29 @@ def test_inline_noqa_without_explanatory_text_is_not_sufficient(tmp_path: Path) 
 
     assert result.returncode == 1
     assert_has_actionable_violation(result.stderr, "pkg/existing.py")
+
+
+def test_non_python_file_with_getattr_text_does_not_fail_guard(tmp_path: Path) -> None:
+    init_repo(tmp_path)
+    write_repo_file(
+        tmp_path,
+        "docs/example.txt",
+        """
+        Existing documentation.
+        """,
+    )
+    commit_all(tmp_path, "baseline")
+    checkout_feature_branch(tmp_path)
+
+    write_repo_file(
+        tmp_path,
+        "docs/example.txt",
+        """
+        getattr(obj, "dynamic_name", None)
+        """,
+    )
+    commit_all(tmp_path, "document getattr example")
+
+    result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
+
+    assert result.returncode == 0, result.stderr

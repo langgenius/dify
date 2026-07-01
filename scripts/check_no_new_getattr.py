@@ -136,6 +136,10 @@ def parse_count(value: str | None) -> int:
     return int(value)
 
 
+def is_python_source_path(path: str) -> bool:
+    return Path(path).suffix in {".py", ".pyi"}
+
+
 def load_file_versions(path: str, args: argparse.Namespace) -> tuple[str, str]:
     if args.mode == "pre-commit":
         return (
@@ -212,6 +216,8 @@ def collect_hunk_violations(path: str, old_matches: list[Match], new_matches: li
 def find_net_new_getattr_violations(changed_hunks: dict[str, list[Hunk]], args: argparse.Namespace) -> list[Violation]:
     violations: list[Violation] = []
     for path, hunks in changed_hunks.items():
+        if not is_python_source_path(path):
+            continue
         old_source, new_source = load_file_versions(path, args)
         old_matches = run_ast_grep(old_source)
         new_matches = run_ast_grep(new_source)
