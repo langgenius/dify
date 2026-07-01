@@ -30,8 +30,7 @@ Feature: Agent v2 build draft
 
   Scenario: Discarding a Build draft does not apply supported configuration changes
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     And an Agent v2 Build draft adds the supported E2E files, skills, and env
     When I open the Agent v2 configure page
     Then I should see the Agent v2 Build draft pending changes
@@ -116,9 +115,8 @@ Feature: Agent v2 build draft
 
   Scenario: Pending Build draft remains protected after leaving Configure
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And a runnable Agent v2 test agent has been created via API
-    And an Agent v2 Build draft uses the updated E2E prompt with the stable E2E model
+    And a basic configured Agent v2 test agent has been created via API
+    And an Agent v2 Build draft uses the updated E2E prompt
     When I open the Agent v2 configure page
     Then I should see the Agent v2 Build draft pending changes
     And I should see the updated E2E prompt in the Agent v2 prompt editor
