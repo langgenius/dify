@@ -111,6 +111,7 @@ export default function IntegrationsPage({
     canUpdatePlugin,
     handlePermissionChange,
     isPluginCategory,
+    isReferenceSettingLoading,
     permission,
     showPermissionQuickPanel,
     showPluginCategorySetting,
@@ -285,6 +286,7 @@ export default function IntegrationsPage({
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
                   canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
                   canUpdatePlugin={canUpdatePlugin}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
@@ -309,6 +311,7 @@ export default function IntegrationsPage({
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
                   canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
                   canUpdatePlugin={canUpdatePlugin}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />

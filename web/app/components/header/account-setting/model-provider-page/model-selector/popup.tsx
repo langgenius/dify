@@ -42,6 +42,7 @@ export type PopupProps = {
   providerSettingsSource?: 'agent'
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
+  onOpenMarketplace?: () => void
   onHide: () => void
 }
 function Popup({
@@ -53,6 +54,7 @@ function Popup({
   providerSettingsSource,
   onConfigureEmptyState,
   onInputValueChange,
+  onOpenMarketplace,
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
@@ -236,6 +238,7 @@ function Popup({
               theme={theme}
               onMarketplaceCollapsedChange={setMarketplaceCollapsed}
               onInstallPlugin={handleInstallPlugin}
+              onOpenMarketplace={onOpenMarketplace}
             />
           )}
         </div>

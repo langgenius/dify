@@ -26,5 +26,11 @@ export type GenerateWorkflowResponse = {
   app_name?: string
   /** Planner-picked emoji icon for the new App. Empty triggers a 🤖 fallback. */
   icon?: string
+  /**
+   * Resolved app mode for this generation. Echoes the requested mode, except
+   * when the request used `mode: 'auto'` — then it's the concrete mode the
+   * planner picked, used to decide which app type "Create new app" builds.
+   */
+  mode?: WorkflowGeneratorMode
   error?: string
 }
