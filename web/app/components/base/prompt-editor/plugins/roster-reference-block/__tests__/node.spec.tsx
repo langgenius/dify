@@ -4,8 +4,10 @@ import type {
   LexicalNode,
 } from 'lexical'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createEditor } from 'lexical'
 import RosterReferenceBlockComponent from '../component'
+import { RosterReferenceBlockContext } from '../context'
 import {
   $createRosterReferenceBlockNode,
   RosterReferenceBlockNode,
@@ -68,6 +70,28 @@ describe('RosterReferenceBlockNode', () => {
     expect(iconShell).toBeInTheDocument()
     expect(iconShell).toHaveClass('text-text-primary-on-surface')
     expect(iconShell?.querySelector('.i-ri-book-open-line')).toBeInTheDocument()
+  })
+
+  it('should render warning state for missing references', async () => {
+    const user = userEvent.setup()
+    render(
+      <RosterReferenceBlockContext value={{
+        getWarning: token => `${token.label} does not exist`,
+      }}
+      >
+        <RosterReferenceBlockComponent text="[§skill:playwright:Playwright§]" />
+      </RosterReferenceBlockContext>,
+    )
+
+    const token = screen.getByTitle('Playwright does not exist')
+    expect(token).toHaveAttribute('data-roster-reference-warning', 'true')
+    expect(token).toHaveClass('border-components-badge-status-light-warning-halo')
+    expect(token).toHaveClass('bg-state-warning-hover')
+    expect(token).toHaveTextContent('Playwright')
+    expect(token.querySelector('.i-ri-alert-fill')).toBeInTheDocument()
+
+    await user.hover(token)
+    expect(await screen.findByText('Playwright does not exist')).toBeInTheDocument()
   })
 
   it('should expose DecoratorNode behavior and preserve raw text content', () => {

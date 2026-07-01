@@ -29,7 +29,7 @@ from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
 from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
-from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
@@ -66,10 +66,12 @@ class StaticToolsTestLayer(ToolsLayer):
 
 class FakeRunnerShellctlClient:
     run_calls: list[tuple[str, str | None, Mapping[str, str] | None, float]]
+    delete_calls: list[tuple[str, bool, float | None]]
     closed: bool
 
     def __init__(self) -> None:
         self.run_calls = []
+        self.delete_calls = []
         self.closed = False
 
     async def run(
@@ -114,8 +116,8 @@ class FakeRunnerShellctlClient:
         force: bool = False,
         grace_seconds: float | None = None,
     ) -> DeleteJobResponse:
-        del job_id, force, grace_seconds
-        raise AssertionError("delete() should not be called in this test")
+        self.delete_calls.append((job_id, force, grace_seconds))
+        return DeleteJobResponse(job_id=job_id)
 
 
 def _request(
@@ -1347,7 +1349,11 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
         layer_type=DifyShellLayer,
         create=lambda config: DifyShellLayer.from_config_with_settings(
             DifyShellLayerConfig.model_validate(config),
-            shell_provisioner=ShellctlProvisioner(client_factory=lambda: shell_client),
+            shell_provider=ShellctlProvider(
+                entrypoint="http://shellctl",
+                token="",
+                client_factory=lambda: shell_client,
+            ),
         ),
     )
     layer_providers = tuple(
@@ -1426,6 +1432,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     asyncio.run(scenario())
 
     assert create_agent_called is False
+    assert shell_client.delete_calls == [("mkdir-job", True, None)]
     assert shell_client.closed is True
     assert [event.type for event in sink.events["run-shell-duplicate-tools"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-shell-duplicate-tools"] == "failed"
@@ -2342,7 +2349,7 @@ def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="non-null shell provisioner"):
+            with pytest.raises(AgentRunValidationError, match="non-null shell provider"):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,

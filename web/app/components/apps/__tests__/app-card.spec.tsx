@@ -14,6 +14,10 @@ import { StarredAppCard } from '../starred-app-card'
 
 let mockWebappAuthEnabled = false
 let mockRbacEnabled = true
+const mockUserCanAccessApp = vi.hoisted(() => ({
+  result: true as boolean | undefined,
+  isLoading: false,
+}))
 
 const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: {
@@ -118,15 +122,15 @@ vi.mock('@/service/explore', () => ({
 
 vi.mock('@/service/access-control', () => ({
   useGetUserCanAccessApp: () => ({
-    data: { result: true },
-    isLoading: false,
+    data: mockUserCanAccessApp.result === undefined ? undefined : { result: mockUserCanAccessApp.result },
+    isLoading: mockUserCanAccessApp.isLoading,
   }),
 }))
 
 vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({
-    data: { result: true },
-    isLoading: false,
+    data: mockUserCanAccessApp.result === undefined ? undefined : { result: mockUserCanAccessApp.result },
+    isLoading: mockUserCanAccessApp.isLoading,
   }),
 }))
 
@@ -380,6 +384,8 @@ describe('AppCard', () => {
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
     mockRbacEnabled = true
+    mockUserCanAccessApp.result = true
+    mockUserCanAccessApp.isLoading = false
     mockDeleteMutationPending = false
     mockToggleStarMutationPending = false
     mockAppContext.isCurrentWorkspaceEditor = true
@@ -1733,6 +1739,28 @@ describe('AppCard', () => {
   })
 
   describe('Open in Explore - No App Found', () => {
+    it('should tell workflow users to publish before opening in explore', async () => {
+      const workflowApp = createMockApp({
+        mode: AppModeEnum.WORKFLOW,
+        workflow: undefined,
+      })
+      render(<AppCard app={workflowApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('app.openInExplore'))
+
+      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
+      expect(exploreService.fetchInstalledAppList).not.toHaveBeenCalled()
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.notPublishedYet',
+      })
+    })
+
     it('should handle case when installed_apps is empty array', async () => {
       (exploreService.fetchInstalledAppList as Mock).mockResolvedValueOnce({ installed_apps: [] })
 
@@ -1756,6 +1784,10 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
+        expect(toastMocks.record).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'app.notPublishedYet',
+        })
       })
     })
 
@@ -1941,6 +1973,31 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
       await waitFor(() => {
         expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
+      })
+    })
+
+    it('should keep open in explore visible for unpublished workflow apps while access check is pending', async () => {
+      mockUserCanAccessApp.result = false
+      mockUserCanAccessApp.isLoading = true
+      const workflowApp = createMockApp({
+        mode: AppModeEnum.WORKFLOW,
+        workflow: undefined,
+      })
+
+      render(<AppCard app={workflowApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('app.openInExplore'))
+
+      expect(mockOpenAsyncWindow).not.toHaveBeenCalled()
+      expect(exploreService.fetchInstalledAppList).not.toHaveBeenCalled()
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'app.notPublishedYet',
       })
     })
 

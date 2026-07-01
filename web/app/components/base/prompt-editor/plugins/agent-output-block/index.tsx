@@ -31,6 +31,7 @@ function getAgentOutputBlockNodeType(name: string, outputs: NonNullable<AgentOut
 const AgentOutputBlock = memo(({
   outputs = [],
   onChange,
+  onEdit,
 }: AgentOutputBlockType) => {
   const [editor] = useLexicalComposerContext()
 
@@ -45,7 +46,7 @@ const AgentOutputBlock = memo(({
           const name = getUniqueAgentOutputName(outputs)
           const outputType = 'string'
           const nextOutputs = [...outputs, createAgentOutputConfig(name, outputType)]
-          const agentOutputBlockNode = $createAgentOutputBlockNode(name, outputType, true, nextOutputs, onChange)
+          const agentOutputBlockNode = $createAgentOutputBlockNode(name, outputType, true, nextOutputs, onChange, onEdit)
 
           $insertNodes([agentOutputBlockNode])
           const nextPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
@@ -56,7 +57,7 @@ const AgentOutputBlock = memo(({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, onChange, outputs])
+  }, [editor, onChange, onEdit, outputs])
 
   return null
 })
@@ -65,6 +66,7 @@ AgentOutputBlock.displayName = 'AgentOutputBlock'
 const AgentOutputBlockReplacementBlock = memo(({
   outputs = [],
   onChange,
+  onEdit,
 }: AgentOutputBlockType) => {
   const [editor] = useLexicalComposerContext()
 
@@ -78,8 +80,8 @@ const AgentOutputBlockReplacementBlock = memo(({
     const name = match?.name || ''
     const outputType = getAgentOutputBlockNodeType(name, outputs)
 
-    return $applyNodeReplacement($createAgentOutputBlockNode(name, outputType, false, outputs, onChange))
-  }, [onChange, outputs])
+    return $applyNodeReplacement($createAgentOutputBlockNode(name, outputType, false, outputs, onChange, onEdit))
+  }, [onChange, onEdit, outputs])
 
   const getMatch = useCallback((text: string) => {
     const match = parseAgentOutputToken(text)
@@ -116,8 +118,9 @@ const AgentOutputBlockReplacementBlock = memo(({
               child.getOutputType() !== outputType
               || child.getOutputs() !== outputs
               || child.getOnChange() !== onChange
+              || child.getOnEdit() !== onEdit
             ) {
-              child.replace($createAgentOutputBlockNode(name, outputType, child.isEditing(), outputs, onChange))
+              child.replace($createAgentOutputBlockNode(name, outputType, child.isEditing(), outputs, onChange, onEdit))
             }
             return
           }
@@ -129,7 +132,7 @@ const AgentOutputBlockReplacementBlock = memo(({
 
       visitNode($getRoot())
     })
-  }, [editor, onChange, outputs])
+  }, [editor, onChange, onEdit, outputs])
 
   return null
 })
