@@ -9,6 +9,7 @@ import {
   e2eWebEnvOverrides,
   ensureFileExists,
   ensureLineInFile,
+  getTcpPortListenerDescription,
   getWebEnvLocalHash,
   isMainModule,
   isTcpPortReachable,
@@ -25,6 +26,8 @@ import {
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
 const webBuildEnvStampPath = path.join(webDir, '.next', 'e2e-web-env.sha256')
+const apiHost = '127.0.0.1'
+const apiPort = 5001
 
 const middlewareDataPaths = [
   path.join(dockerDir, 'volumes', 'db', 'data'),
@@ -174,6 +177,17 @@ export const startWeb = async () => {
 }
 
 export const startApi = async () => {
+  if (await isTcpPortReachable(apiHost, apiPort)) {
+    const listenerDescription = await getTcpPortListenerDescription(apiPort)
+    const listenerMessage = listenerDescription
+      ? `\n\nPort listener:\n${listenerDescription}`
+      : ''
+
+    throw new Error(
+      `Cannot start the E2E API server because ${apiHost}:${apiPort} is already in use.${listenerMessage}`,
+    )
+  }
+
   const env = await getApiEnvironment()
 
   await runCommandOrThrow({
@@ -193,9 +207,9 @@ export const startApi = async () => {
       'flask',
       'run',
       '--host',
-      '127.0.0.1',
+      apiHost,
       '--port',
-      '5001',
+      String(apiPort),
     ],
     cwd: apiDir,
     env,

@@ -1,4 +1,5 @@
-import { mkdir, rm } from 'node:fs/promises'
+import type { ManagedProcess } from '../support/process'
+import { mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { startLoggedProcess, stopManagedProcess, waitForUrl } from '../support/process'
 import { startWebServer, stopWebServer } from '../support/web-server'
@@ -41,6 +42,44 @@ const parseArgs = (argv: string[]): RunOptions => {
 
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some(arg => arg === '--tags' || arg.startsWith('--tags='))
+
+const readLogTail = async (logFilePath: string) => {
+  const content = await readFile(logFilePath, 'utf8').catch(() => '')
+
+  return content
+    .trim()
+    .split(/\r?\n/)
+    .slice(-20)
+    .join('\n')
+}
+
+const waitForUnexpectedProcessExit = async (
+  managedProcess: ManagedProcess,
+  shouldIgnoreExit: () => boolean,
+) => {
+  const { childProcess, label, logFilePath } = managedProcess
+
+  await new Promise<void>((resolve) => {
+    if (childProcess.exitCode !== null) {
+      resolve()
+      return
+    }
+
+    childProcess.once('exit', () => resolve())
+  })
+
+  if (shouldIgnoreExit())
+    return
+
+  const logTail = await readLogTail(logFilePath)
+  const logTailMessage = logTail
+    ? `\n\nLast ${label} log lines:\n${logTail}`
+    : ''
+
+  throw new Error(
+    `${label} exited before becoming ready. See ${logFilePath}.${logTailMessage}`,
+  )
+}
 
 const main = async () => {
   const { forwardArgs, full, headed } = parseArgs(process.argv.slice(2))
@@ -107,11 +146,21 @@ const main = async () => {
   process.once('SIGTERM', onTerminate)
 
   try {
+    let waitingForApi = true
     try {
-      await waitForUrl(`${apiURL}/health`, 180_000, 1_000)
+      await Promise.race([
+        waitForUrl(`${apiURL}/health`, 180_000, 1_000),
+        waitForUnexpectedProcessExit(apiProcess, () => !waitingForApi),
+      ])
     }
-    catch {
-      throw new Error(`API did not become ready at ${apiURL}/health.`)
+    catch (error) {
+      if (error instanceof Error && error.message.includes('exited before becoming ready'))
+        throw error
+
+      throw new Error(`API did not become ready at ${apiURL}/health. See ${apiProcess.logFilePath}.`)
+    }
+    finally {
+      waitingForApi = false
     }
 
     await startWebServer({
