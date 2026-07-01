@@ -12,7 +12,7 @@ const brokenChatModelNameEnv = 'E2E_BROKEN_MODEL_NAME'
 const brokenChatModelTypeEnv = 'E2E_BROKEN_MODEL_TYPE'
 const activeModelStatus = 'active'
 const defaultStableChatModelProvider = 'openai'
-const defaultStableChatModelName = 'gpt-5'
+const defaultStableChatModelName = 'gpt-5.4-mini'
 const defaultStableChatModelType = 'llm'
 const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
 
