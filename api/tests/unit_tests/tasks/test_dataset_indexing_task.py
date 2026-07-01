@@ -9,6 +9,7 @@ This module tests the document indexing task functionality including:
 - Task cancellation and cleanup
 """
 
+import logging
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -758,7 +759,15 @@ class TestErrorHandling:
         assert mock_db_session.close.called
 
     def test_tenant_queue_error_handling_still_processes_next_task(
-        self, tenant_id, dataset_id, document_ids, mock_redis, mock_db_session, mock_dataset, mock_indexing_runner
+        self,
+        tenant_id,
+        dataset_id,
+        document_ids,
+        mock_redis,
+        mock_db_session,
+        mock_dataset,
+        mock_indexing_runner,
+        caplog: pytest.LogCaptureFixture,
     ):
         """
         Test that errors don't prevent processing next task in tenant queue.
@@ -778,14 +787,17 @@ class TestErrorHandling:
         with patch("tasks.document_indexing_task._document_indexing") as mock_indexing:
             mock_indexing.side_effect = Exception("Processing failed")
 
-            # Patch logger to avoid format string issue in actual code
-            with patch("tasks.document_indexing_task.logger"):
+            with caplog.at_level(logging.ERROR, logger="tasks.document_indexing_task"):
                 with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
                     # Act
                     _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
 
                     # Assert - Next task should still be enqueued despite error
                     mock_task.apply_async.assert_called()
+                    assert (
+                        f"Error processing document indexing {dataset_id} for tenant {tenant_id}: {document_ids}"
+                        in caplog.messages
+                    )
 
     def test_concurrent_task_limit_respected(
         self, tenant_id, dataset_id, document_ids, mock_redis, mock_db_session, mock_dataset

@@ -394,13 +394,15 @@ def test_switch_preferred_provider_type_returns_early_when_no_change_or_unsuppor
     configuration = _build_provider_configuration()
 
     with patch("core.entities.provider_configuration.Session") as mock_session_cls:
-        configuration.switch_preferred_provider_type(ProviderType.SYSTEM)
+        changed = configuration.switch_preferred_provider_type(ProviderType.SYSTEM)
+    assert changed is False
     mock_session_cls.assert_not_called()
 
     configuration.preferred_provider_type = ProviderType.CUSTOM
     configuration.system_configuration.enabled = False
     with patch("core.entities.provider_configuration.Session") as mock_session_cls:
-        configuration.switch_preferred_provider_type(ProviderType.SYSTEM)
+        changed = configuration.switch_preferred_provider_type(ProviderType.SYSTEM)
+    assert changed is False
     mock_session_cls.assert_not_called()
 
 
@@ -411,10 +413,13 @@ def test_switch_preferred_provider_type_updates_existing_record_with_session() -
     existing_record = SimpleNamespace(preferred_provider_type="custom")
     session.execute.return_value.scalars.return_value.first.return_value = existing_record
 
-    configuration.switch_preferred_provider_type(ProviderType.SYSTEM, session=session)
+    with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+        changed = configuration.switch_preferred_provider_type(ProviderType.SYSTEM, session=session)
 
+    assert changed is True
     assert existing_record.preferred_provider_type == ProviderType.SYSTEM
     session.commit.assert_called_once()
+    mock_invalidate.assert_not_called()
 
 
 def test_switch_preferred_provider_type_creates_record_when_missing() -> None:
@@ -423,10 +428,13 @@ def test_switch_preferred_provider_type_creates_record_when_missing() -> None:
     session = Mock()
     session.execute.return_value.scalars.return_value.first.return_value = None
 
-    configuration.switch_preferred_provider_type(ProviderType.CUSTOM, session=session)
+    with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+        changed = configuration.switch_preferred_provider_type(ProviderType.CUSTOM, session=session)
 
+    assert changed is True
     assert session.add.call_count == 1
     session.commit.assert_called_once()
+    mock_invalidate.assert_not_called()
 
 
 def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
@@ -1022,13 +1030,14 @@ def test_update_load_balancing_configs_updates_all_matching_configs() -> None:
     credential_record = SimpleNamespace(encrypted_config='{"api_key":"enc"}', credential_name="API KEY 3")
 
     with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-        configuration._update_load_balancing_configs_with_credential(
+        changed = configuration._update_load_balancing_configs_with_credential(
             credential_id="cred-1",
             credential_record=credential_record,
             credential_source=CredentialSourceType.PROVIDER,
             session=session,
         )
 
+    assert changed is True
     assert lb_config.encrypted_config == '{"api_key":"enc"}'
     assert lb_config.name == "API KEY 3"
     mock_cache.return_value.delete.assert_called_once()
@@ -1040,13 +1049,14 @@ def test_update_load_balancing_configs_returns_when_no_matching_configs() -> Non
     session = Mock()
     session.execute.return_value.scalars.return_value.all.return_value = []
 
-    configuration._update_load_balancing_configs_with_credential(
+    changed = configuration._update_load_balancing_configs_with_credential(
         credential_id="cred-1",
         credential_record=SimpleNamespace(encrypted_config="{}", credential_name="Main"),
         credential_source=CredentialSourceType.PROVIDER,
         session=session,
     )
 
+    assert changed is False
     session.commit.assert_not_called()
 
 
@@ -1478,12 +1488,15 @@ def test_model_load_balancing_enable_disable_and_switch_preferred_provider_type_
     switch_session = Mock()
     with _patched_session(switch_session):
         switch_session.execute.return_value.scalars.return_value.first.return_value = None
-        configuration.switch_preferred_provider_type(ProviderType.CUSTOM)
+        with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+            changed = configuration.switch_preferred_provider_type(ProviderType.CUSTOM)
+    assert changed is True
     assert any(
         call.args and call.args[0].__class__.__name__ == "TenantPreferredModelProvider"
         for call in switch_session.add.call_args_list
     )
     switch_session.commit.assert_called()
+    mock_invalidate.assert_called_once_with(preferred_model_providers=True)
 
 
 def test_system_and_custom_provider_model_helpers_cover_remaining_skip_paths() -> None:
@@ -2042,7 +2055,9 @@ def test_get_custom_provider_models_skips_schema_models_with_mismatched_type() -
     assert all(model.model != "embed-model" for model in models)
 
 
-def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none() -> None:
+def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     configuration = _build_provider_configuration()
     configuration.custom_configuration.models = [
         CustomModelConfiguration(model="error-custom", model_type=ModelType.LLM, credentials={"k": "v"}),
@@ -2064,7 +2079,7 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
             return None
         return _build_ai_model(model)
 
-    with patch("core.entities.provider_configuration.logger.warning") as mock_warning:
+    with caplog.at_level(logging.WARNING, logger="core.entities.provider_configuration"):
         with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_schema):
             models = configuration._get_custom_provider_models(
                 model_types=[ModelType.LLM],
@@ -2072,6 +2087,6 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
                 model_setting_map={},
             )
 
-    assert mock_warning.call_count == 1
+    assert "get custom model schema failed, boom" in caplog.messages
     assert any(model.model == "ok-custom" for model in models)
     assert all(model.model != "none-custom" for model in models)

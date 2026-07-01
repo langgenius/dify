@@ -3,7 +3,7 @@ Unit tests for Service API wraps (authentication decorators)
 """
 
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -469,7 +469,10 @@ class TestCloudEditionBillingRateLimitCheck:
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
     @patch("controllers.service_api.wraps.FeatureService.get_knowledge_rate_limit")
     @patch("controllers.service_api.wraps.db")
-    def test_rejects_over_rate_limit(self, mock_db, mock_get_rate_limit, mock_validate_token, app: Flask):
+    @patch("controllers.service_api.wraps.sessionmaker")
+    def test_rejects_over_rate_limit(
+        self, mock_sessionmaker, mock_db, mock_get_rate_limit, mock_validate_token, app: Flask
+    ):
         """Test that Forbidden is raised when over rate limit."""
         # Arrange
         mock_validate_token.return_value = Mock(tenant_id="tenant123")
@@ -479,6 +482,10 @@ class TestCloudEditionBillingRateLimitCheck:
         mock_rate_limit.limit = 10
         mock_rate_limit.subscription_plan = "pro"
         mock_get_rate_limit.return_value = mock_rate_limit
+        rate_limit_log_session = MagicMock()
+        session_factory = MagicMock()
+        session_factory.begin.return_value.__enter__.return_value = rate_limit_log_session
+        mock_sessionmaker.return_value = session_factory
 
         with patch("controllers.service_api.wraps.redis_client") as mock_redis:
             mock_redis.zcard.return_value = 15  # Over limit
@@ -492,6 +499,9 @@ class TestCloudEditionBillingRateLimitCheck:
                 with pytest.raises(Forbidden) as exc_info:
                     knowledge_request()
                 assert "rate limit" in str(exc_info.value)
+            mock_sessionmaker.assert_called_once_with(bind=mock_db.engine, expire_on_commit=False)
+            rate_limit_log_session.add.assert_called_once()
+            mock_db.session.commit.assert_not_called()
 
 
 class TestValidateDatasetToken:

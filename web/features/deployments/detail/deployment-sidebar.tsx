@@ -17,15 +17,16 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
-import { DeploymentActionsMenu } from '../components/deployment-actions'
-import { TitleTooltip } from '../components/title-tooltip'
+import { DeploymentActionsMenu } from '../deployment-actions'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
+import { TitleTooltip } from '../shared/components/title-tooltip'
 import { deploymentDetailAppInstanceQueryAtom } from './state'
 
 type TabDef = {
   key: InstanceDetailTabKey
   icon: NavIcon
   selectedIcon: NavIcon
+  hidden?: boolean
 }
 
 type TailwindNavIconProps = PropsWithoutRef<ComponentProps<'svg'>> & {
@@ -68,7 +69,7 @@ const DEPLOYMENT_TABS: TabDef[] = [
   { key: 'overview', icon: OverviewIcon, selectedIcon: OverviewSelectedIcon },
   { key: 'instances', icon: DeployIcon, selectedIcon: DeploySelectedIcon },
   { key: 'releases', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
-  { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon },
+  { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon, hidden: true },
   { key: 'api-tokens', icon: ApiIcon, selectedIcon: ApiSelectedIcon },
 ]
 
@@ -164,7 +165,7 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
                       )}
                     </div>
                     <DeploymentActionsMenu
-                      appInstanceId={appInstanceId}
+                      appInstance={app}
                       placement="bottom-end"
                       sideOffset={4}
                       className="shrink-0"
@@ -296,7 +297,7 @@ export function DeploymentDetailSection({
       </div>
 
       <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
-        {DEPLOYMENT_TABS.map(tab => (
+        {DEPLOYMENT_TABS.filter(tab => !tab.hidden).map(tab => (
           <NavLink
             key={tab.key}
             mode={expand ? 'expand' : 'collapse'}

@@ -15,7 +15,8 @@ const mockAppState = vi.hoisted(() => ({
 const mockUpdateAppSiteStatus = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteConfig = vi.hoisted(() => vi.fn())
 const mockUpdateAppSiteAccessToken = vi.hoisted(() => vi.fn())
-const mockInvalidateQueries = vi.hoisted(() => vi.fn())
+const mockFetchAppDetail = vi.hoisted(() => vi.fn())
+const mockSetQueryData = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T,>(selector: (state: typeof mockAppState) => T): T => selector(mockAppState),
@@ -26,6 +27,7 @@ vi.mock('@/service/use-workflow', () => ({
 }))
 
 vi.mock('@/service/apps', () => ({
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
   updateAppSiteStatus: (...args: unknown[]) => mockUpdateAppSiteStatus(...args),
   updateAppSiteConfig: (...args: unknown[]) => mockUpdateAppSiteConfig(...args),
   updateAppSiteAccessToken: (...args: unknown[]) => mockUpdateAppSiteAccessToken(...args),
@@ -33,7 +35,7 @@ vi.mock('@/service/apps', () => ({
 
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({
-    invalidateQueries: mockInvalidateQueries,
+    setQueryData: mockSetQueryData,
   }),
 }))
 
@@ -104,7 +106,14 @@ describe('CardView ACL edit guards', () => {
     mockUpdateAppSiteStatus.mockResolvedValue(mockAppState.appDetail as App)
     mockUpdateAppSiteConfig.mockResolvedValue(mockAppState.appDetail as App)
     mockUpdateAppSiteAccessToken.mockResolvedValue({ code: 'token' })
-    mockInvalidateQueries.mockResolvedValue(undefined)
+    mockFetchAppDetail.mockResolvedValue({
+      id: 'app-1',
+      mode: 'chat',
+      permission_keys: ['app.acl.edit'],
+      site: {
+        title: 'Saved site title',
+      },
+    } as unknown as App)
   })
 
   // User-facing card actions should not mutate app settings without app ACL edit permission.
@@ -122,6 +131,7 @@ describe('CardView ACL edit guards', () => {
       expect(mockUpdateAppSiteStatus).not.toHaveBeenCalled()
       expect(mockUpdateAppSiteConfig).not.toHaveBeenCalled()
       expect(mockUpdateAppSiteAccessToken).not.toHaveBeenCalled()
+      expect(mockFetchAppDetail).not.toHaveBeenCalled()
     })
 
     it('should call write APIs when app ACL edit permission is present', async () => {
@@ -153,7 +163,35 @@ describe('CardView ACL edit guards', () => {
       expect(mockUpdateAppSiteAccessToken).toHaveBeenCalledWith({
         url: '/apps/app-1/site/access-token-reset',
       })
-      expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['apps', 'detail', 'app-1'] })
+      await waitFor(() => {
+        expect(mockFetchAppDetail).toHaveBeenCalled()
+      })
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+      expect(mockSetQueryData).toHaveBeenCalledWith(['apps', 'detail', 'app-1'], expect.objectContaining({
+        site: expect.objectContaining({ title: 'Saved site title' }),
+      }))
+      expect(mockAppState.setAppDetail).toHaveBeenCalledWith(expect.objectContaining({
+        site: expect.objectContaining({ title: 'Saved site title' }),
+      }))
+    })
+
+    it('should refresh the Zustand app detail after saving webapp settings', async () => {
+      const user = userEvent.setup()
+      mockAppState.appDetail.permission_keys = ['app.acl.edit']
+
+      render(<CardView appId="app-1" />)
+
+      await user.click(screen.getByRole('button', { name: /save webapp/ }))
+
+      await waitFor(() => {
+        expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
+      })
+      expect(mockSetQueryData).toHaveBeenCalledWith(['apps', 'detail', 'app-1'], expect.objectContaining({
+        site: expect.objectContaining({ title: 'Saved site title' }),
+      }))
+      expect(mockAppState.setAppDetail).toHaveBeenCalledWith(expect.objectContaining({
+        site: expect.objectContaining({ title: 'Saved site title' }),
+      }))
     })
   })
 })

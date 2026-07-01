@@ -11,6 +11,7 @@ type OverviewCardType = 'api' | 'webapp'
 
 export type OverviewOperationKey = 'launch' | 'embedded' | 'customize' | 'settings' | 'develop'
 export type WorkflowLaunchInputValue = string | boolean
+export type EmbeddedWebAppRoute = 'chatbot' | 'agent'
 export type WorkflowHiddenStartVariable = Pick<
   InputVar,
   'default' | 'hide' | 'label' | 'max_length' | 'options' | 'required' | 'type' | 'variable'
@@ -156,12 +157,14 @@ ${entries.map(([key, value]) => `    ${key}: ${JSON.stringify(value)},`).join('\
 export const getEmbeddedScriptSnippet = ({
   url,
   token,
+  webAppRoute = 'chatbot',
   primaryColor,
   isTestEnv,
   inputValues,
 }: {
   url: string
   token: string
+  webAppRoute?: EmbeddedWebAppRoute
   primaryColor: string
   isTestEnv?: boolean
   inputValues: Record<string, WorkflowLaunchInputValue>
@@ -174,6 +177,9 @@ export const getEmbeddedScriptSnippet = ({
     : ''}${IS_CE_EDITION
     ? `,
   baseUrl: '${url}${basePath}'`
+    : ''}${webAppRoute !== 'chatbot'
+    ? `,
+  routeSegment: '${webAppRoute}'`
     : ''},
   inputs: ${getScriptInputsContent(inputValues)},
   systemVariables: {

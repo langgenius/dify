@@ -85,6 +85,12 @@ describe('app-redirection', () => {
 
       expect(getRedirectionPath(app)).toBe('/app/app-123/overview')
     })
+
+    it('returns logs path when app ACL can only access logs and annotations', () => {
+      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [AppACLPermission.LogAndAnnotation] }
+
+      expect(getRedirectionPath(app)).toBe('/app/app-123/logs')
+    })
   })
 
   /**

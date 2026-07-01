@@ -41,6 +41,7 @@ type PanelHarnessProps = {
   type?: TagType
   value?: Tag[]
   tagList?: Tag[]
+  canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
 }
 
@@ -52,6 +53,7 @@ const PanelHarness = ({
   type = 'app',
   value = [appTags[0]!],
   tagList = [...appTags, knowledgeTag],
+  canBindOrUnbindTags,
   onOpenTagManagement,
 }: PanelHarnessProps) => {
   const [selectedTags, setSelectedTags] = useState<Tag[]>(value)
@@ -92,6 +94,7 @@ const PanelHarness = ({
         type={type}
         inputValue={inputValue}
         onInputValueChange={setInputValue}
+        canBindOrUnbindTags={canBindOrUnbindTags}
         onOpenTagManagement={onOpenTagManagement}
       />
     </Combobox>
@@ -211,13 +214,38 @@ describe('TagSearchContent', () => {
     expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
   })
 
+  it('does not update selection when neither tag management nor binding permission is available', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness />)
+
+    await user.click(screen.getByRole('option', { name: /Backend/i }))
+
+    expect(onValueChangeSpy).not.toHaveBeenCalled()
+  })
+
+  it('updates selection with binding capability without tag management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness canBindOrUnbindTags />)
+
+    await user.click(screen.getByRole('option', { name: /Backend/i }))
+
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'tag-2' }),
+    ]))
+    expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+  })
+
   it('renders knowledge tags when the panel type is knowledge', () => {
     render(<PanelHarness type="knowledge" value={[]} />)
     expect(screen.getByRole('option', { name: /KnowledgeDB/i })).toBeInTheDocument()
   })
 
-  it('renders snippet management action with snippets management permission', () => {
-    mockWorkspacePermissionKeys.value = ['snippets.management']
+  it('renders snippet management action with snippets create-and-modify permission', () => {
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
 
     render(
       <PanelHarness

@@ -14,9 +14,8 @@ import ToolProviderList from './tool-provider-list'
 
 type IntegrationSectionRendererProps = {
   canInstallPlugin?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
   description?: ReactNode
   onProviderSearchTextChange: (value: string) => void
   onSwitchToMarketplace?: () => void
@@ -29,9 +28,8 @@ type IntegrationSectionRendererProps = {
 
 const IntegrationSectionRenderer = ({
   canInstallPlugin = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   description,
   onProviderSearchTextChange,
   onSwitchToMarketplace,
@@ -75,9 +73,8 @@ const IntegrationSectionRenderer = ({
   const renderPluginCategoryPage = (category: PluginCategoryEnum) => (
     <PluginCategoryPage
       canInstall={canInstallPlugin}
-      canManagePlugin={canManagePlugin}
+      canDeletePlugin={canDeletePlugin}
       canUpdatePlugin={canUpdatePlugin}
-      canViewInstalledPlugins={canViewInstalledPlugins}
       category={category}
       layout={renderDirectLayout}
       onSwitchToMarketplace={onSwitchToMarketplace}
