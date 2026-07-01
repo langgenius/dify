@@ -78,6 +78,7 @@ from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -1406,15 +1407,15 @@ class WorkflowByIdApi(Resource):
             return {"message": "No valid fields to update"}, 400
 
         workflow_service = WorkflowService()
+        workflow_ref = WorkflowRefService.create_app_workflow_ref(app_model, workflow_id)
 
         # Create a session and manage the transaction
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = workflow_service.update_workflow(
                 session=session,
-                workflow_id=workflow_id,
-                tenant_id=app_model.tenant_id,
                 account_id=current_user.id,
                 data=update_data,
+                workflow_ref=workflow_ref,
             )
 
             if not workflow:
@@ -1434,12 +1435,14 @@ class WorkflowByIdApi(Resource):
         Delete workflow
         """
         workflow_service = WorkflowService()
+        workflow_ref = WorkflowRefService.create_app_workflow_ref(app_model, workflow_id)
 
         # Create a session and manage the transaction
         with sessionmaker(db.engine).begin() as session:
             try:
                 workflow_service.delete_workflow(
-                    session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
+                    session=session,
+                    workflow_ref=workflow_ref,
                 )
             except WorkflowInUseError as e:
                 abort(400, description=str(e))

@@ -1,13 +1,13 @@
 'use client'
 
 import type { CredentialSlot, Environment } from '@dify/contracts/enterprise/types.gen'
-import type { RuntimeCredentialBindingSelections } from '../../components/runtime-credential-bindings-utils'
+import type { RuntimeCredentialBindingSelections } from '../../shared/components/runtime-credential-bindings-utils'
 import { DrawerDescription, DrawerTitle } from '@langgenius/dify-ui/drawer'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
-import { DeploymentStateMessage } from '../../components/empty-state'
-import { RuntimeCredentialBindingsPanel } from '../../components/runtime-credential-bindings'
+import { DeploymentStateMessage } from '../../shared/components/empty-state'
+import { RuntimeCredentialBindingsPanel } from '../../shared/components/runtime-credential-bindings'
 import { formatDate, releaseCommit } from '../../shared/domain/release'
 import {
   deployDisplayedReleaseAtom,

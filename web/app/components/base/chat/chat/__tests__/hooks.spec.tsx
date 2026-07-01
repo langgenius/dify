@@ -6,6 +6,10 @@ import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
 
+const useTimestampMock = vi.hoisted(() =>
+  vi.fn(() => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') })),
+)
+
 vi.mock('@/service/base', () => ({
   sseGet: vi.fn(),
   ssePost: vi.fn(),
@@ -31,7 +35,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') }),
+  default: useTimestampMock,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -89,6 +93,21 @@ describe('useChat', () => {
     expect(result.current.chatList).toEqual([])
     expect(result.current.isResponding).toBe(false)
     expect(result.current.suggestedQuestions).toEqual([])
+  })
+
+  it('should pass timestamp options to timestamp formatter', () => {
+    renderHook(() => useChat(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { timezone: 'UTC' },
+    ))
+
+    expect(useTimestampMock).toHaveBeenCalledWith({ timezone: 'UTC' })
   })
 
   it('should initialize with opening statement and suggested questions', () => {
@@ -685,6 +704,29 @@ describe('useChat', () => {
       const lastResponse = result.current.chatList[1]
       expect(lastResponse!.workflowProcess?.tracing).toBeDefined()
       expect(lastResponse!.workflowProcess?.status).toBe('failed')
+    })
+
+    it('should store workflow finished error on workflow process state', async () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'failed workflow' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-err', task_id: 't-err' })
+        callbacks.onWorkflowFinished({ data: { status: 'failed', error: 'Invalid upload file' } })
+      })
+
+      const lastResponse = result.current.chatList[1]
+      expect(lastResponse!.workflowProcess?.status).toBe('failed')
+      expect(lastResponse!.workflowProcess?.error).toBe('Invalid upload file')
     })
 
     it('should insert and then replace child QA when sending with parent_message_id', () => {

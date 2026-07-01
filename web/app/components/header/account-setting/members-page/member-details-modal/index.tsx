@@ -45,6 +45,25 @@ const MemberDetailsModal = ({
   const roles = useMemo(() => rolesOfMember?.roles ?? [], [rolesOfMember?.roles])
   const selectedRoles = pendingRoles ?? roles
   const selectedRoleIds = useMemo(() => selectedRoles.map(role => role.id), [selectedRoles])
+  const canRemoveRoles = canAssignRoles && allowMultipleRoles
+  const assignedRolesLabel = selectedRoleIds.length === 1
+    ? t('members.memberDetails.assignedRole', {
+        ns: 'common',
+        defaultValue: 'Assigned Role',
+      })
+    : t('members.memberDetails.assignedRoles', {
+        ns: 'common',
+        defaultValue: 'Assigned Roles',
+      })
+  const assignActionIconClassName = allowMultipleRoles
+    ? 'mr-0.5 i-ri-add-line h-3.5 w-3.5'
+    : 'mr-0.5 i-ri-edit-line h-3.5 w-3.5'
+  const assignActionLabel = allowMultipleRoles
+    ? t('members.memberDetails.assign', {
+        ns: 'common',
+        defaultValue: 'Assign',
+      })
+    : t('operation.edit', { ns: 'common' })
 
   const builtinRoles = useMemo(() => selectedRoles.filter(role => role.is_builtin), [selectedRoles])
   const customRoles = useMemo(() => selectedRoles.filter(role => !role.is_builtin), [selectedRoles])
@@ -110,10 +129,7 @@ const MemberDetailsModal = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 system-sm-semibold text-text-secondary">
                 <span>
-                  {t('members.memberDetails.assignedRoles', {
-                    ns: 'common',
-                    defaultValue: 'Assigned Roles',
-                  })}
+                  {assignedRolesLabel}
                 </span>
                 {!isLoadingRolesOfMember && (
                   <span className="system-xs-medium text-text-tertiary">
@@ -129,12 +145,9 @@ const MemberDetailsModal = ({
                 >
                   <span
                     aria-hidden
-                    className="mr-0.5 i-ri-add-line h-3.5 w-3.5"
+                    className={assignActionIconClassName}
                   />
-                  {t('members.memberDetails.assign', {
-                    ns: 'common',
-                    defaultValue: 'Assign',
-                  })}
+                  {assignActionLabel}
                 </Button>
               )}
             </div>
@@ -162,7 +175,7 @@ const MemberDetailsModal = ({
                               label={role.name}
                               isOwner={role.role_tag === 'owner'}
                               permissionKeys={role.permission_keys}
-                              onRemove={canAssignRoles ? handleRemove : undefined}
+                              onRemove={canRemoveRoles ? handleRemove : undefined}
                             />
                           ))}
                         </div>
@@ -183,7 +196,7 @@ const MemberDetailsModal = ({
                               label={role.name}
                               isOwner={role.role_tag === 'owner'}
                               permissionKeys={role.permission_keys}
-                              onRemove={canAssignRoles ? handleRemove : undefined}
+                              onRemove={canRemoveRoles ? handleRemove : undefined}
                             />
                           ))}
                         </div>

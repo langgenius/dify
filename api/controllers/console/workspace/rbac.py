@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from enum import StrEnum
 from typing import Any
 
 from flask import request
@@ -14,6 +13,7 @@ from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from core.db.session_factory import session_factory
+from core.rbac import RBACResourceWhitelistScope
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from services.enterprise import rbac_service as svc
@@ -511,14 +511,8 @@ class RBACAccessPolicyBindingUnlockApi(Resource):
 # ---------------------------------------------------------------------------
 
 
-class _AccessScope(StrEnum):
-    ALL = "all"
-    SPECIFIC = "specific"
-    ONLY_ME = "only_me"
-
-
 class _ResourceAccessScopeRequest(BaseModel):
-    scope: _AccessScope
+    scope: RBACResourceWhitelistScope
 
 
 class _ReplaceBindingsRequest(BaseModel):

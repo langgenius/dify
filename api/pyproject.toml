@@ -1,11 +1,11 @@
 [project]
 name = "dify-api"
-version = "1.14.2"
+version = "1.15.0"
 requires-python = "~=3.12.0"
 
 dependencies = [
     # Legacy: mature and widely deployed
-    "bleach>=6.3.0,<7.0.0",
+    "bleach>=6.4.0,<7.0.0",
     "boto3>=1.43.24,<2.0.0",
     "celery>=5.6.3,<6.0.0",
     "croniter>=6.2.2,<7.0.0",

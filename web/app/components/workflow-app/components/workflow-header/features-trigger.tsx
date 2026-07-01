@@ -42,6 +42,7 @@ import {
 } from '@/app/components/workflow/types'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
+import { fetchAppDetail } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
@@ -54,6 +55,7 @@ const FeaturesTrigger = () => {
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
   const appDetail = useAppStore(s => s.appDetail)
+  const setAppDetail = useAppStore(s => s.setAppDetail)
   const appID = appDetail?.id
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore(s => s.accessControl.canReleaseAndVersion)
@@ -148,12 +150,17 @@ const FeaturesTrigger = () => {
 
   const updateAppDetail = useCallback(async () => {
     try {
-      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appID!] })
+      if (!appID)
+        return
+
+      const res = await fetchAppDetail({ url: '/apps', id: appID })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appID], res)
+      setAppDetail({ ...res })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appID, queryClient])
+  }, [appID, queryClient, setAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()

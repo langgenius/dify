@@ -81,10 +81,10 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         metadata_args = MetadataArgs.model_validate(service_api_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata = MetadataService.create_metadata(db.session(), dataset_id_str, metadata_args)
         return dump_response(DatasetMetadataResponse, metadata), 201
@@ -116,7 +116,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
     def get(self, tenant_id, dataset_id: UUID):
         """Get all metadata for a dataset."""
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
         metadata = MetadataService.get_dataset_metadatas(db.session(), dataset)
@@ -154,10 +154,10 @@ class DatasetMetadataServiceApi(DatasetApiResource):
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata = MetadataService.update_metadata_name(db.session(), dataset_id_str, metadata_id_str, payload.name)
         return dump_response(DatasetMetadataResponse, metadata), 200
@@ -189,10 +189,10 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         """Delete metadata."""
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         MetadataService.delete_metadata(db.session(), dataset_id_str, metadata_id_str)
         return "", 204
@@ -257,10 +257,10 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
     def post(self, tenant_id, dataset_id: UUID, action: Literal["enable", "disable"]):
         """Enable or disable built-in metadata field."""
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         match action:
             case "enable":
@@ -303,10 +303,10 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
     def post(self, tenant_id, dataset_id: UUID):
         """Update metadata for multiple documents."""
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 

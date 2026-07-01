@@ -97,8 +97,10 @@ describe('WorkflowReferencesTable', () => {
       expect(screen.getByText('v3')).toBeInTheDocument()
       expect(screen.getByText('agentV2.agentDetail.access.workflow.nodeCount:{"count":2}')).toBeInTheDocument()
       expect(screen.getByText('formatted-1781660000')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'agentV2.agentDetail.access.workflow.openInStudioFor:{"name":"Support Workflow"}' }))
-        .toHaveAttribute('href', '/app/workflow-app-id/workflow')
+      const studioLink = screen.getByRole('link', { name: 'agentV2.agentDetail.access.workflow.openInStudioFor:{"name":"Support Workflow"}' })
+      expect(studioLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
+      expect(studioLink).toHaveAttribute('target', '_blank')
+      expect(studioLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
 
     it('should render an empty state when the agent has no workflow references', async () => {
