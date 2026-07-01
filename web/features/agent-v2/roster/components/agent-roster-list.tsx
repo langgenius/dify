@@ -71,7 +71,7 @@ function AgentRosterPlaceholderState({ title }: { title: string }) {
       aria-labelledby="agent-roster-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
         {emptyPlaceholderCardIds.map(id => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
@@ -262,7 +262,7 @@ export function AgentRosterList({
   const { t } = useTranslation('agentV2')
 
   return (
-    <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,294px),1fr))] gap-2.5" aria-busy={isFetching || undefined}>
+    <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5" aria-busy={isFetching || undefined}>
       {isPending && <AgentRosterSkeleton />}
       {!isPending && isError && (
         <AgentRosterPlaceholderState title={t('roster.loadingError')} />
