@@ -287,7 +287,9 @@ function AgentConfigurePageComposerContent({
     || isRefreshingDebugConversation
     || buildDraftActions.isApplyingBuildDraft
     || buildDraftActions.isDiscardingBuildDraft
-  const isChatFeaturesReadOnly = isViewingVersion || buildDraft.isActive
+  const isChatFeaturesReadOnly = versionQuery.isPending || isViewingVersion || buildDraft.isActive
+  // eslint-disable-next-line no-console
+  console.log(isChatFeaturesReadOnly, versionQuery.isPending, isViewingVersion, buildDraft.isActive)
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return
@@ -426,7 +428,7 @@ function AgentConfigurePageComposerContent({
           <AgentChatFeaturesPanel
             show={showChatFeatures}
             appFeatures={buildDraft.agentSoulConfig?.app_features}
-            disabled={versionQuery.isPending || isChatFeaturesReadOnly}
+            disabled={isChatFeaturesReadOnly}
             onClose={() => setShowChatFeatures(false)}
           />
         </>

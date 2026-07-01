@@ -136,8 +136,29 @@ type IntegrationRouteTarget
     | { type: 'section', section: IntegrationSection }
     | { type: 'not-found' }
 
+const getSectionByCanonicalPath = (path: string) => {
+  const entry = Object.entries(integrationPathBySection).find(([, sectionPath]) => {
+    return sectionPath.replace('/integrations/', '') === path
+  })
+
+  return entry?.[0] as IntegrationSection | undefined
+}
+
 export const getIntegrationRouteTargetBySlug = (slug?: string[], searchParams?: IntegrationRouteSearchParams): IntegrationRouteTarget => {
   const path = slug?.join('/') ?? ''
+  const nestedMarketplaceCallbackPath = path.endsWith('/plugins')
+    ? path.slice(0, -'/plugins'.length)
+    : undefined
+  const nestedMarketplaceCallbackSection = nestedMarketplaceCallbackPath
+    ? getSectionByCanonicalPath(nestedMarketplaceCallbackPath)
+    : undefined
+
+  if (nestedMarketplaceCallbackSection) {
+    return {
+      type: 'redirect',
+      destination: appendSearchParams(buildIntegrationPath(nestedMarketplaceCallbackSection), searchParams),
+    }
+  }
 
   switch (path) {
     case '':

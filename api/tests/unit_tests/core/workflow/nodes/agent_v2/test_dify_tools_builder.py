@@ -20,8 +20,8 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_manager import ToolManager
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
-    WorkflowAgentDifyToolsBuildError,
     WorkflowAgentDifyToolsBuilder,
+    WorkflowAgentDifyToolsBuildError,
 )
 from models.agent_config_entities import AgentSoulToolsConfig
 
@@ -832,7 +832,6 @@ def test_provider_level_entry_unknown_provider_maps_to_declaration_not_found():
     with pytest.raises(WorkflowAgentDifyToolsBuildError) as exc_info:
         _build(builder, tools)
     assert exc_info.value.error_code == "agent_tool_declaration_not_found"
-
 
 
 def test_list_provider_tool_names_reads_builtin_provider(monkeypatch):

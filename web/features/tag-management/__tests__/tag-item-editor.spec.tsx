@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -37,15 +37,17 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     tags: {
-      update: {
-        mutationOptions: () => ({
-          mutationFn: ({ params, body }: { params: { tagId: string }, body: { name: string } }) => tagMocks.updateTag(params.tagId, body.name),
-        }),
-      },
-      delete: {
-        mutationOptions: () => ({
-          mutationFn: ({ params }: { params: { tagId: string } }) => tagMocks.deleteTag(params.tagId),
-        }),
+      byTagId: {
+        patch: {
+          mutationOptions: () => ({
+            mutationFn: ({ params, body }: { params: { tag_id: string }, body: { name: string } }) => tagMocks.updateTag(params.tag_id, body.name),
+          }),
+        },
+        delete: {
+          mutationOptions: () => ({
+            mutationFn: ({ params }: { params: { tag_id: string } }) => tagMocks.deleteTag(params.tag_id),
+          }),
+        },
       },
     },
   },
@@ -76,7 +78,7 @@ const baseTag: Tag = {
   id: 'tag-1',
   name: 'Frontend',
   type: 'app',
-  binding_count: 3,
+  binding_count: '3',
 }
 
 const i18n = {
@@ -197,7 +199,7 @@ describe('TagItemEditor', () => {
   describe('Remove Flow', () => {
     it('should delete immediately when binding count is zero', async () => {
       const user = userEvent.setup()
-      const removableTag: Tag = { ...baseTag, binding_count: 0 }
+      const removableTag: Tag = { ...baseTag, binding_count: '' }
       render(<TagItemEditor tag={removableTag} />)
 
       const removeButton = screen.getByRole('button', { name: i18n.removeTag })
@@ -250,7 +252,7 @@ describe('TagItemEditor', () => {
     it('should notify error and keep tag when delete request fails', async () => {
       const user = userEvent.setup()
       vi.mocked(tagMocks.deleteTag).mockRejectedValueOnce(new Error('delete failed'))
-      const removableTag: Tag = { ...baseTag, binding_count: 0 }
+      const removableTag: Tag = { ...baseTag, binding_count: '' }
       render(<TagItemEditor tag={removableTag} />)
 
       const removeButton = screen.getByRole('button', { name: i18n.removeTag })

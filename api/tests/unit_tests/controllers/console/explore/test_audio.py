@@ -21,6 +21,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
+from services.app_ref_service import MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -40,6 +41,8 @@ def unwrap(func):
 def installed_app():
     app = MagicMock()
     app.app = MagicMock()
+    app.app.id = "app-1"
+    app.app.tenant_id = "tenant-1"
     return app
 
 
@@ -237,20 +240,29 @@ class TestChatTextApi:
         self.method = unwrap(self.api.post)
 
     def test_post_success(self, app: Flask, installed_app):
+        transcript_tts = MagicMock(return_value={"audio": "ok"})
+
         with (
             app.test_request_context(
                 "/",
                 json={"message_id": "m1", "text": "hello", "voice": "v1"},
             ),
             patch.object(
-                audio_module.AudioService,
-                "transcript_tts",
-                return_value={"audio": "ok"},
+                audio_module,
+                "current_account_with_tenant",
+                return_value=(MagicMock(id="account-1"), "tenant-1"),
             ),
+            patch.object(audio_module.AudioService, "transcript_tts", transcript_tts),
         ):
             resp = self.method(installed_app)
 
         assert resp == {"audio": "ok"}
+        assert transcript_tts.call_args.kwargs["message_ref"] == MessageRef(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            message_id="m1",
+            account_id="account-1",
+        )
 
     def test_provider_not_initialized(self, app: Flask, installed_app):
         with (

@@ -1,7 +1,8 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { handleStream, sseGet, ssePost } from './base'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+// eslint-disable-next-line no-restricted-imports
+import { del, get, handleStream, patch, post, put, sseGet, ssePost } from './base'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -380,5 +381,15 @@ describe('ssePost and sseGet', () => {
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
     expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
+  })
+})
+
+describe('HTTP methods', () => {
+  it('should export methods correctly', () => {
+    expect(typeof get).toBe('function')
+    expect(typeof post).toBe('function')
+    expect(typeof put).toBe('function')
+    expect(typeof patch).toBe('function')
+    expect(typeof del).toBe('function')
   })
 })

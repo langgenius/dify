@@ -1,15 +1,17 @@
 import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type {
   GetReleaseResponse,
   ListReleasesResponse,
   PrecheckReleaseRequest,
 } from '@dify/contracts/enterprise/types.gen'
-import type { ContractRouterClient } from '@orpc/contract'
+import type { ClientLink } from '@orpc/client'
+import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
-import type { Tag } from '@/contract/console/tags'
+import type { consoleRouterContract } from '@/contract/router'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
@@ -19,13 +21,11 @@ import {
   IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
-import {
-  consoleRouterContract,
-  marketplaceRouterContract,
-} from '@/contract/router'
+import { marketplaceRouterContract } from '@/contract/marketplace'
 import { isClient } from '@/utils/client'
 // eslint-disable-next-line no-restricted-imports
 import { request } from './base'
+import { createConsoleDynamicLink } from './console-link'
 
 function getMarketplaceHeaders() {
   return new Headers({
@@ -56,6 +56,34 @@ export function getBaseURL(path: string) {
   }
 
   return url
+}
+
+export type ConsoleClientContext = TanstackQueryOperationContext & {
+  silent?: boolean
+}
+
+type ConsoleClientLink = ClientLink<ConsoleClientContext>
+
+function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLink {
+  return new OpenAPILink<ConsoleClientContext>(contract, {
+    url: getBaseURL(API_PREFIX),
+    fetch: (input, init, options) => {
+      return request(
+        input.url,
+        init,
+        {
+          fetchCompat: true,
+          request: input,
+          silent: options.context.silent,
+        },
+      )
+    },
+    interceptors: [
+      onError((error) => {
+        console.error(error)
+      }),
+    ],
+  })
 }
 
 const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
@@ -94,11 +122,11 @@ type AppDeployInvalidationOptions = {
   developerApiSettings?: boolean
 }
 
-export type ConsoleClientContext = TanstackQueryOperationContext & {
-  silent?: boolean
-}
-
 type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>>>
+
+function isTagType(type: string | null | undefined): type is TagType {
+  return type === 'app' || type === 'knowledge' || type === 'snippet'
+}
 
 const defaultAppDeployInvalidationOptions = {
   appInstances: true,
@@ -327,25 +355,7 @@ async function invalidateReleaseMutationQueries(
   ])
 }
 
-const consoleLink = new OpenAPILink<ConsoleClientContext>(consoleRouterContract, {
-  url: getBaseURL(API_PREFIX),
-  fetch: (input, init, options) => {
-    return request(
-      input.url,
-      init,
-      {
-        fetchCompat: true,
-        request: input,
-        silent: options.context.silent,
-      },
-    )
-  },
-  interceptors: [
-    onError((error) => {
-      console.error(error)
-    }),
-  ],
-})
+const consoleLink = createConsoleDynamicLink<ConsoleClientContext>(createConsoleOpenAPILink)
 
 export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>> = createORPCClient(consoleLink)
 
@@ -666,11 +676,14 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
       },
     },
     tags: {
-      create: {
+      post: {
         mutationOptions: {
           onSuccess: (tag, _variables, _onMutateResult, context) => {
+            if (!isTagType(tag.type))
+              return
+
             context.client.setQueryData(
-              consoleQuery.tags.list.queryKey({
+              consoleQuery.tags.get.queryKey({
                 input: {
                   query: {
                     type: tag.type,
@@ -682,29 +695,31 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
       },
-      update: {
-        mutationOptions: {
-          onSuccess: (updatedTag, variables, _onMutateResult, context) => {
-            context.client.setQueriesData(
-              {
-                queryKey: consoleQuery.tags.list.key({ type: 'query' }),
-              },
-              (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tagId
-                ? updatedTag
-                : tag),
-            )
+      byTagId: {
+        patch: {
+          mutationOptions: {
+            onSuccess: (updatedTag, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                },
+                (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tag_id
+                  ? updatedTag
+                  : tag),
+              )
+            },
           },
         },
-      },
-      delete: {
-        mutationOptions: {
-          onSuccess: (_data, variables, _onMutateResult, context) => {
-            context.client.setQueriesData(
-              {
-                queryKey: consoleQuery.tags.list.key({ type: 'query' }),
-              },
-              (oldTags: Tag[] | undefined) => oldTags?.filter(tag => tag.id !== variables.params.tagId),
-            )
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                },
+                (oldTags: Tag[] | undefined) => oldTags?.filter(tag => tag.id !== variables.params.tag_id),
+              )
+            },
           },
         },
       },

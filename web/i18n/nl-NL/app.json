@@ -55,6 +55,8 @@
   "firstEmpty.title": "Nog geen app",
   "gotoAnything.actions.accountDesc": "Navigate to account page",
   "gotoAnything.actions.communityDesc": "Open Discord community",
+  "gotoAnything.actions.createAuto": "Automatisch",
+  "gotoAnything.actions.createAutoDesc": "Laat AI op basis van je beschrijving Workflow of Chatflow kiezen",
   "gotoAnything.actions.createCategoryDesc": "Creëer een door AI gegenereerde workflow of chatflow",
   "gotoAnything.actions.createChatflow": "Chatstroom",
   "gotoAnything.actions.createChatflowDesc": "Genereer een chatflow-app (geavanceerde chat) op basis van een beschrijving",

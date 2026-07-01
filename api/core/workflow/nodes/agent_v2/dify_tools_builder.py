@@ -344,7 +344,10 @@ class WorkflowAgentDifyToolsBuilder:
 
     @staticmethod
     def _provider_key(tool_config: AgentSoulDifyToolConfig) -> tuple[ToolProviderType, str]:
-        return ToolProviderType.value_of(tool_config.provider_type), WorkflowAgentDifyToolsBuilder._provider_id(tool_config)
+        return (
+            ToolProviderType.value_of(tool_config.provider_type),
+            WorkflowAgentDifyToolsBuilder._provider_id(tool_config),
+        )
 
     @staticmethod
     def _tool_layer_destination(tool_config: AgentSoulDifyToolConfig) -> Literal["plugin", "core"]:

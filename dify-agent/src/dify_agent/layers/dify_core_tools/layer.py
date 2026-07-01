@@ -56,9 +56,7 @@ class DifyCoreToolsLayer(PlainLayer[DifyCoreToolsDeps, DifyCoreToolsLayerConfig]
     @override
     def from_config(cls, config: DifyCoreToolsLayerConfig) -> Self:
         del config
-        raise TypeError(
-            "DifyCoreToolsLayer requires server-side Dify API settings and must use a provider factory."
-        )
+        raise TypeError("DifyCoreToolsLayer requires server-side Dify API settings and must use a provider factory.")
 
     @classmethod
     def from_config_with_settings(

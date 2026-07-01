@@ -294,7 +294,11 @@ def test_cli_config_manifest_omits_hash_fields(
     ("argv", "helper_name", "expected_kwargs"),
     [
         (["config", "note", "push"], "push_config_note_from_environment", {"local_path": None}),
-        (["config", "note", "push", "/tmp/note.md"], "push_config_note_from_environment", {"local_path": "/tmp/note.md"}),
+        (
+            ["config", "note", "push", "/tmp/note.md"],
+            "push_config_note_from_environment",
+            {"local_path": "/tmp/note.md"},
+        ),
         (["config", "env", "push"], "push_config_env_from_environment", {"local_path": None}),
         (["config", "env", "push", "/tmp/.env"], "push_config_env_from_environment", {"local_path": "/tmp/.env"}),
         (
@@ -372,9 +376,7 @@ def test_cli_config_pull_commands_support_plural_and_hidden_singular_aliases(
         response = type(
             "Response",
             (),
-            {
-                "model_dump_json": lambda self: json.dumps(expected_json)
-            },
+            {"model_dump_json": lambda self: json.dumps(expected_json)},
         )()
         expected_kwargs = {"names": ["alpha"], "local_dir": None}
     else:

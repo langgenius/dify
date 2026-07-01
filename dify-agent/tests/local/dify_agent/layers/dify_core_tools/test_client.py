@@ -126,7 +126,9 @@ def test_core_tools_client_marks_transport_failures_retryable(error_factory, exp
 
 def test_core_tools_client_validates_execution_context_prerequisites_separately() -> None:
     async def scenario() -> None:
-        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={}))) as http_client:
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={}))
+        ) as http_client:
             client = DifyCoreToolsClient(base_url="http://dify-api", api_key="inner-secret", http_client=http_client)
             with pytest.raises(DifyCoreToolsClientError) as exc_info:
                 _ = await client.invoke(

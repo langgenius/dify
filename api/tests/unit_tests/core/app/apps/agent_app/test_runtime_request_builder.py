@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,

@@ -68,7 +68,9 @@ config_skills_app = typer.Typer(help="Pull or update config skills through the A
 config_files_app = typer.Typer(help="Pull or update config files through the Agent Stub.", rich_markup_mode=None)
 config_skill_pull_alias_app = typer.Typer(help="Pull config skills through the Agent Stub.", rich_markup_mode=None)
 config_file_pull_alias_app = typer.Typer(help="Pull config files through the Agent Stub.", rich_markup_mode=None)
-config_env_app = typer.Typer(help="Pull or update config env variables visible to the current run.", rich_markup_mode=None)
+config_env_app = typer.Typer(
+    help="Pull or update config env variables visible to the current run.", rich_markup_mode=None
+)
 config_note_app = typer.Typer(help="Pull or update the current config note.", rich_markup_mode=None)
 drive_app = typer.Typer(help="List, pull, or push agent drive files through the Agent Stub.", rich_markup_mode=None)
 app.add_typer(file_app, name="file")

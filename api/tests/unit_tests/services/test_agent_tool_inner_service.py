@@ -5,16 +5,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from services.errors.agent_tool_inner import AgentToolInnerServiceError
-from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.agent_tool_inner_service import AgentToolInnerService
+from services.entities.agent_tool_inner import AgentToolInvokeRequest
+from services.errors.agent_tool_inner import AgentToolInnerServiceError
 
 
 def _request() -> AgentToolInvokeRequest:
@@ -60,7 +60,10 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation() -> None:
     session.get.return_value = fake_app
 
     with (
-        patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=fake_tool) as mock_get_runtime,
+        patch(
+            "services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime",
+            return_value=fake_tool,
+        ) as mock_get_runtime,
         patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=_messages()) as mock_invoke,
         patch(
             "services.agent_tool_inner_service.ToolFileMessageTransformer.transform_tool_invoke_messages",
@@ -132,7 +135,10 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper() -> N
 
     with (
         patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=fake_tool),
-        patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", side_effect=ToolInvokeError("workflow crashed")),
+        patch(
+            "services.agent_tool_inner_service.ToolEngine.generic_invoke",
+            side_effect=ToolInvokeError("workflow crashed"),
+        ),
     ):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
             AgentToolInnerService().invoke(_request(), session=session)

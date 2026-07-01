@@ -7,8 +7,8 @@ from unittest.mock import patch
 from flask import Flask
 
 from controllers.inner_api import bp as inner_api_bp
-from services.errors.agent_tool_inner import AgentToolInnerServiceError
 from services.entities.agent_tool_inner import AgentToolInvokeResponse
+from services.errors.agent_tool_inner import AgentToolInnerServiceError
 
 
 def _headers(api_key: str | None = "inner-key") -> dict[str, str]:

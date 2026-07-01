@@ -262,4 +262,26 @@ describe('applyToCurrentApp', () => {
       .rejects
       .toBe(original)
   })
+
+  it('should NOT translate string or null sync rejections', async () => {
+    mockFetchWorkflowDraft.mockResolvedValue({
+      hash: 'h1',
+      features: {},
+      environment_variables: [],
+      conversation_variables: [],
+    })
+
+    // String error
+    const strError = 'some string error'
+    mockSyncWorkflowDraft.mockRejectedValueOnce(strError)
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() }))
+      .rejects
+      .toBe(strError)
+
+    // Null error
+    mockSyncWorkflowDraft.mockRejectedValueOnce(null)
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() }))
+      .rejects
+      .toBeNull()
+  })
 })
