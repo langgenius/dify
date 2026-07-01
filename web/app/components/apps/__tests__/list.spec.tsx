@@ -535,6 +535,24 @@ describe('List', () => {
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
     })
 
+    it('should lay out first empty state placeholder cards with auto-fill grid columns', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      const { container } = renderList()
+      const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none'))
+        .find(element => element.className.includes('grid-rows-4'))
+
+      if (!placeholderGrid)
+        throw new Error('Expected first empty state placeholder grid to render')
+
+      expect(placeholderGrid).toHaveClass(
+        'grid',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+        'grid-rows-4',
+      )
+      expect(placeholderGrid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4')
+    })
+
     it('should hide learn dify in first empty state when learn app is disabled', () => {
       mockAppData = { pages: [{ data: [], total: 0 }] }
 
