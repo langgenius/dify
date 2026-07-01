@@ -7,6 +7,7 @@ import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { dslAppName, isWorkflowDsl } from '@/features/deployments/shared/domain/dsl'
 import { consoleQuery } from '@/service/client'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { dslFileAtom, dslFileReadVersionAtom, effectiveMethodAtom, selectedAppAtom, sourceSearchTextAtom } from './primitives'
 import { SOURCE_APPS_PAGE_SIZE } from './utils'
@@ -71,7 +72,7 @@ export const importDslReadyAtom = atom((get) => {
 export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   const sourceSearchText = get(sourceSearchTextAtom)
 
-  return consoleQuery.apps.list.infiniteOptions({
+  return consoleQuery.apps.get.infiniteOptions({
     input: pageParam => ({
       query: {
         page: Number(pageParam),
@@ -83,6 +84,10 @@ export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: 1,
     placeholderData: keepPreviousData,
+    select: data => ({
+      ...data,
+      pages: data.pages.map(normalizeAppPagination),
+    }),
     enabled: get(effectiveMethodAtom) === 'bindApp',
   })
 })
