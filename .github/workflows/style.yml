@@ -21,7 +21,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
@@ -53,6 +52,10 @@ jobs:
       - name: Run Response Contract Linter
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
+
+      - name: Fetch merge target ref for getattr guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
 
       - name: Bind merge target branch for getattr guard
         if: steps.changed-files.outputs.any_changed == 'true'
