@@ -57,7 +57,7 @@ class AgentToolInvokeApi(Resource):
             ) from exc
 
         try:
-            response = AgentToolInnerService().invoke(payload, session=db.session)
+            response = AgentToolInnerService().invoke(payload, session=db.session())
         except AgentToolInnerServiceError as exc:
             raise AgentToolInvokeHttpError(
                 error_code=exc.error_code,

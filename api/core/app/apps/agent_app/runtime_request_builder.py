@@ -29,7 +29,7 @@ from clients.agent_backend import (
     redact_for_agent_backend_log,
 )
 from configs import dify_config
-from core.app.entities.app_invoke_entities import DifyRunContext
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
     WorkflowAgentDifyToolsBuilder,
