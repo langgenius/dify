@@ -260,37 +260,41 @@ const BaseNode: FC<BaseNodeProps> = ({
             />
           )
         }
-        <button
-          type="button"
-          aria-label={data.title}
+        <div
           className={cn(
-            'flex w-full appearance-none items-center rounded-t-2xl border-0 bg-transparent px-3 pt-3 pb-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
             isContainerNode(data.type) && 'bg-transparent',
           )}
-          onClick={() => selectWorkflowNode(id)}
         >
-          <BlockIcon
-            className="mr-2 shrink-0"
-            type={data.type}
-            size="md"
-            toolIcon={toolIcon}
-          />
-          <div
-            className="mr-1 flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary"
+          <button
+            type="button"
+            aria-label={data.title}
+            className="mr-1 flex min-w-0 grow appearance-none items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            onClick={() => selectWorkflowNode(id)}
           >
-            <div title={data.title} className="min-w-0 grow truncate">
-              {data.title}
-            </div>
-            {viewingUsers.length > 0 && (
-              <div className="ml-3 shrink-0">
-                <UserAvatarList
-                  users={viewingUsers}
-                  maxVisible={3}
-                  size="sm"
-                />
+            <BlockIcon
+              className="mr-2 shrink-0"
+              type={data.type}
+              size="md"
+              toolIcon={toolIcon}
+            />
+            <div
+              className="flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary"
+            >
+              <div title={data.title} className="min-w-0 grow truncate">
+                {data.title}
               </div>
-            )}
-          </div>
+              {viewingUsers.length > 0 && (
+                <div className="ml-3 shrink-0">
+                  <UserAvatarList
+                    users={viewingUsers}
+                    maxVisible={3}
+                    size="sm"
+                  />
+                </div>
+              )}
+            </div>
+          </button>
           <div className="flex shrink-0 items-center">
             <NodeHeaderMeta
               data={data}
@@ -300,7 +304,7 @@ const BaseNode: FC<BaseNodeProps> = ({
               t={t}
             />
           </div>
-        </button>
+        </div>
         <NodeBody
           data={data}
           child={cloneElement(children, { id, data } satisfies Partial<NodeChildProps>)}
