@@ -1,0 +1,3 @@
+Ask the Agent to use E2E Summary Skill to summarize user input.
+When replacing JSON strings, use JSON Process / JSON Replace.
+After applying, include these capabilities in the Agent instructions.
