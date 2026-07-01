@@ -78,3 +78,10 @@ export const workflowDraftUpdateFeaturesContract = base
     }
   }>())
   .output(type<CommonResponse>())
+
+export const workflowDraftRouterContract = {
+  environmentVariables: workflowDraftEnvironmentVariablesContract,
+  updateEnvironmentVariables: workflowDraftUpdateEnvironmentVariablesContract,
+  updateConversationVariables: workflowDraftUpdateConversationVariablesContract,
+  updateFeatures: workflowDraftUpdateFeaturesContract,
+}

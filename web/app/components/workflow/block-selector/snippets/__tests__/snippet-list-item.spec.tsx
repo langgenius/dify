@@ -41,7 +41,7 @@ describe('SnippetListItem', () => {
       render(
         <SnippetListItem
           snippet={createSnippet({
-            tags: [{ id: 'tag-1', name: 'Search', type: 'snippet', binding_count: 1 }],
+            tags: [{ id: 'tag-1', name: 'Search', type: 'snippet', binding_count: '' }],
           })}
           isHovered={false}
           onMouseEnter={vi.fn()}

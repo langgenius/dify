@@ -342,3 +342,31 @@ export const stopSnippetWorkflowTaskContract = base
     }
   }>())
   .output(type<unknown>())
+
+export const snippetsRouterContract = {
+  list: listCustomizedSnippetsContract,
+  create: createCustomizedSnippetContract,
+  detail: getCustomizedSnippetContract,
+  update: updateCustomizedSnippetContract,
+  delete: deleteCustomizedSnippetContract,
+  export: exportCustomizedSnippetContract,
+  import: importCustomizedSnippetContract,
+  confirmImport: confirmSnippetImportContract,
+  checkDependencies: checkSnippetDependenciesContract,
+  incrementUseCount: incrementSnippetUseCountContract,
+  draftWorkflow: getSnippetDraftWorkflowContract,
+  syncDraftWorkflow: syncSnippetDraftWorkflowContract,
+  draftConfig: getSnippetDraftConfigContract,
+  publishedWorkflow: getSnippetPublishedWorkflowContract,
+  publishWorkflow: publishSnippetWorkflowContract,
+  defaultBlockConfigs: getSnippetDefaultBlockConfigsContract,
+  workflowRuns: listSnippetWorkflowRunsContract,
+  workflowRunDetail: getSnippetWorkflowRunDetailContract,
+  workflowRunNodeExecutions: listSnippetWorkflowRunNodeExecutionsContract,
+  runDraftNode: runSnippetDraftNodeContract,
+  lastDraftNodeRun: getSnippetDraftNodeLastRunContract,
+  runDraftIterationNode: runSnippetDraftIterationNodeContract,
+  runDraftLoopNode: runSnippetDraftLoopNodeContract,
+  runDraftWorkflow: runSnippetDraftWorkflowContract,
+  stopWorkflowTask: stopSnippetWorkflowTaskContract,
+}
