@@ -27,7 +27,7 @@ const SnippetTagsFilter = ({
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
 
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.get.queryOptions({
     input: {
       query: {
         type: 'snippet',

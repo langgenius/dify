@@ -25,6 +25,7 @@ import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { ExploreAppListHeader } from './explore-app-list-header'
@@ -72,9 +73,9 @@ function getExploreAppListQueryOptions(locale?: string) {
 }
 
 function getContinueWorkAppsQueryOptions() {
-  return consoleQuery.apps.list.queryOptions({
+  return consoleQuery.apps.get.queryOptions({
     input: homeContinueWorkAppsInput,
-    select: (response): WorkspaceApp[] => response.data ?? [],
+    select: (response): WorkspaceApp[] => normalizeAppPagination(response).data,
   })
 }
 

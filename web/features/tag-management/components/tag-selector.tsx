@@ -1,7 +1,7 @@
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
 import type { ComponentProps } from 'react'
 import type { TagComboboxItem } from './tag-combobox-item'
-import type { Tag, TagType } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -78,8 +78,8 @@ export const TagSelector = ({
   const {
     isPending: isCreatingTag,
     mutate: createTag,
-  } = useMutation(consoleQuery.tags.create.mutationOptions())
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+  } = useMutation(consoleQuery.tags.post.mutationOptions())
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.get.queryOptions({
     input: {
       query: {
         type,
@@ -125,7 +125,7 @@ export const TagSelector = ({
         id: `__create_tag__:${inputValue}`,
         name: inputValue,
         type,
-        binding_count: 0,
+        binding_count: '0',
         isCreateOption: true,
       })
     }
