@@ -100,7 +100,7 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert guard_step is not None
 
     pre_guard_text = job_text[: guard_step.start()]
-    step_pattern = r"(?ms)^      - name: .*\n(?P<step>.*?)(?=^      - name: |\Z)"
+    step_pattern = r"(?ms)^      - name: [^\n]*\n(?P<step>.*?)(?=^      - name: |\Z)"
     fetch_step_text = next(
         (
             match.group("step")
