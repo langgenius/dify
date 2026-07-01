@@ -260,6 +260,22 @@ Then('I should see one e2e-summary-skill Skill in the Skills section', async fun
 })
 
 Then(
+  'the normal Agent v2 draft should not include the e2e-summary-skill Skill',
+  async function (this: DifyWorld) {
+    await expect.poll(
+      async () => {
+        const agentSoul = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
+
+        return agentSoul?.config_skills?.some(
+          skill => skill.name === agentBuilderPreseededResources.summarySkill,
+        ) ?? false
+      },
+      { timeout: 30_000 },
+    ).toBe(false)
+  },
+)
+
+Then(
   'the normal Agent v2 draft should not include the Agent Builder JSON Replace tool',
   async function (this: DifyWorld) {
     const agentId = getCurrentAgentId(this)
