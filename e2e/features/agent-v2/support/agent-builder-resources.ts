@@ -33,7 +33,6 @@ export const agentBuilderFixedInputs = {
   moderationKeyword: 'E2E_BLOCKED_KEYWORD',
   inputModerationReply: 'E2E_INPUT_BLOCKED_REPLY',
   outputModerationReply: 'E2E_OUTPUT_BLOCKED_REPLY',
-  previewSuccessQuery: '请回复测试成功',
   backendApiUser: 'e2e-agent-access-point',
 } as const
 
