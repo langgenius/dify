@@ -159,6 +159,8 @@ When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
   const apiReferenceLink = page.getByRole('link', { name: 'API Reference' })
 
   await expect(apiReferenceLink).toBeVisible()
+  await expect(apiReferenceLink).toHaveAttribute('href', /\/use-dify\/publish\/developing-with-apis/)
+  await expect(apiReferenceLink).toHaveAttribute('target', '_blank')
 
   const [apiReferencePage] = await Promise.all([
     page.waitForEvent('popup'),
