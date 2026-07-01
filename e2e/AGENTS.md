@@ -302,6 +302,8 @@ Use `the Agent Builder preseeded Agent "{name}" is available`, `the Agent Builde
 
 Use `the Agent Builder preseeded Agent "{agent}" includes drive skill "{skill}"` to verify that a fixed Agent has a drive-backed Skill attached. Use `the Agent Builder preseeded Agent "{agent}" has Backend service API access with an API key` to verify that a fixed Agent has Backend service API enabled and at least one key. The API key step does not validate a human-readable key name because the Console API key response does not expose one.
 
+Run `pnpm -C e2e e2e -- --tags @agent-v2-preflight` against a seeded environment to verify Agent Builder preseeded resource readiness before running dependent scenarios. Keep each resource as a separate preflight scenario so a missing resource marks only its dependent precondition as blocked instead of hiding the rest of the readiness report.
+
 Use `DifyWorld.createdDatasetIds` for datasets created by a scenario, `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario, and `DifyWorld.createdBuiltinToolCredentials` for built-in tool credentials created during a scenario. The shared `After` hook deletes Agent drive files first so file cleanup also works for scenarios that upload into a preseeded Agent, then deletes created Agents and Apps before deleting dependent datasets and tool credentials. Use `DifyWorld.registerCleanup(...)` when a scenario creates any other resource type that is not covered by the typed cleanup fields. Cleanup callbacks run after the typed cleanup queues, even when the scenario fails.
 
 ## Reusing existing steps
