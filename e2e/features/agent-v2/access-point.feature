@@ -1,5 +1,6 @@
-@agent-v2 @authenticated @access-point @core
+@agent-v2 @authenticated @access-point
 Feature: Agent v2 Access Point
+  @core
   Scenario: Access Point shows the available Agent v2 access surfaces
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
@@ -7,7 +8,7 @@ Feature: Agent v2 Access Point
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Access Point overview
 
-  @web-app-access
+  @core @web-app-access
   Scenario: Web app access actions open their public surfaces
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent Published Web App" is available
@@ -27,7 +28,7 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Web app settings dialog
     And the Agent v2 orchestration draft for "E2E Agent Published Web App" should be unchanged
 
-  @web-app-access
+  @core @web-app-access
   Scenario: Web app access can be disabled and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent Published Web App" is available
@@ -45,7 +46,7 @@ Feature: Agent v2 Access Point
     When I refresh the current page
     Then Agent v2 Web app access should be in service
 
-  @workflow-reference
+  @core @workflow-reference
   Scenario: Workflow access shows the referencing workflow
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Workflow Reference" is available
@@ -56,6 +57,7 @@ Feature: Agent v2 Access Point
     When I open the Agent v2 Workflow access reference for "E2E Agent Reference Workflow"
     Then the Agent v2 Workflow access reference for "E2E Agent Reference Workflow" should open in Studio
 
+  @core
   Scenario: Backend service API supports endpoint copy, key creation, and API reference navigation
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
@@ -75,6 +77,7 @@ Feature: Agent v2 Access Point
     And I open the Agent v2 API Reference
     Then the Agent v2 API Reference should open in a new tab
 
+  @service-api-runtime
   Scenario: Backend service API can be disabled and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
