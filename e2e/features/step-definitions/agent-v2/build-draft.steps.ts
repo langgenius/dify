@@ -48,10 +48,7 @@ Given(
     await saveAgentBuildDraft(agentId, {
       ...updatedConfig,
       config_files: [configFile],
-      config_skills: [{
-        ...skill,
-        file_kind: skill.file_kind ?? 'tool_file',
-      }],
+      config_skills: [skill],
       env: {
         secret_refs: [],
         variables: [{
@@ -76,10 +73,7 @@ Given(
     const updatedConfig = this.agentBuilder.preflight.stableModel
       ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilder.preflight.stableModel)
       : updatedAgentSoulConfig
-    const configSkills = [{
-      ...skill,
-      file_kind: skill.file_kind ?? 'tool_file',
-    }]
+    const configSkills = [skill]
 
     await saveAgentComposerDraft(getCurrentAgentId(this), {
       ...normalConfig,

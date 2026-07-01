@@ -1,3 +1,4 @@
+import type { ProviderWithModelsDataResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
@@ -12,21 +13,6 @@ const brokenChatModelTypeEnv = 'E2E_BROKEN_MODEL_TYPE'
 const activeModelStatus = 'active'
 const defaultStableChatModelType = 'llm'
 const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
-
-type ModelTypeListResponse = {
-  data: Array<{
-    provider: string
-    models: Array<{
-      label?: {
-        en_US?: string
-        zh_Hans?: string
-      }
-      model: string
-      status?: string
-    }>
-    status?: string
-  }>
-}
 
 type ModelPreflightConfig
   = | {
@@ -107,7 +93,7 @@ async function skipMissingAgentBuilderModel(
       `/console/api/workspaces/current/models/model-types/${config.type}`,
     )
     await expectApiResponseOK(response, `Check ${config.resourceName}`)
-    const body = (await response.json()) as ModelTypeListResponse
+    const body = (await response.json()) as ProviderWithModelsDataResponse
     const provider = body.data.find(item => item.provider === config.provider)
     const model = provider?.models.find(
       item =>

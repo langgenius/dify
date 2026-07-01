@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@cucumber/cucumber": "catalog:",
+    "@dify/contracts": "workspace:*",
     "@dify/tsconfig": "workspace:*",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",

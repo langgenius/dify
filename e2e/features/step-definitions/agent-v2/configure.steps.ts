@@ -25,7 +25,7 @@ Given('an Agent v2 test agent has been created via API', async function (this: D
   const agent = await createTestAgent()
   this.createdAgentIds.push(agent.id)
   this.lastCreatedAgentName = agent.name
-  this.lastCreatedAgentRole = agent.role
+  this.lastCreatedAgentRole = agent.role ?? undefined
 })
 
 Given(
@@ -34,7 +34,7 @@ Given(
     const agent = await createConfiguredTestAgent()
     this.createdAgentIds.push(agent.id)
     this.lastCreatedAgentName = agent.name
-    this.lastCreatedAgentRole = agent.role
+    this.lastCreatedAgentRole = agent.role ?? undefined
   },
 )
 
@@ -50,7 +50,7 @@ Given('a runnable Agent v2 test agent has been created via API', async function 
   })
   this.createdAgentIds.push(agent.id)
   this.lastCreatedAgentName = agent.name
-  this.lastCreatedAgentRole = agent.role
+  this.lastCreatedAgentRole = agent.role ?? undefined
 })
 
 Given('a minimal Agent v2 composer draft has been synced', async function (this: DifyWorld) {

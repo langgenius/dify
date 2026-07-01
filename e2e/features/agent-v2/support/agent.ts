@@ -1,116 +1,50 @@
+import type {
+  AgentApiAccessResponse,
+  AgentAppComposerResponse,
+  AgentAppDetailWithSite,
+  AgentBuildDraftResponse,
+  AgentConfigFileRefConfig,
+  AgentConfigFileUploadResponse,
+  AgentConfigSkillRefConfig,
+  AgentConfigSkillUploadResponse,
+  AgentConfigSnapshotDetailResponse,
+  AgentDriveSkillItemResponse,
+  AgentDriveSkillListResponse,
+  AgentReferencingWorkflowResponse,
+  AgentReferencingWorkflowsResponse,
+  AgentSkillUploadResponse,
+  AgentSoulConfig,
+  ApiKeyItem,
+} from '@dify/contracts/api/console/agent/types.gen'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from '../../../support/api'
 import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming'
 
-export type AgentSeed = {
-  active_config_is_published?: boolean
+export type AgentSeed = Pick<
+  AgentAppDetailWithSite,
+  | 'active_config_is_published'
+  | 'app_id'
+  | 'backing_app_id'
+  | 'description'
+  | 'enable_site'
+  | 'id'
+  | 'name'
+  | 'role'
+  | 'site'
+> & {
   active_config_snapshot_id?: string | null
-  app_id?: string
-  backing_app_id?: string
-  description?: string
-  enable_site?: boolean
-  id: string
-  name: string
-  role?: string
-  site?: {
-    access_token?: string | null
-    app_base_url?: string | null
-    code?: string | null
-  } | null
 }
 
-export type AgentComposerConfigFile = {
-  file_id?: string | null
-  file_kind?: string | null
-  hash?: string | null
-  mime_type?: string | null
-  name: string
-  size?: number | null
-}
-export type AgentComposerConfigSkill = {
-  description?: string | null
-  file_id?: string | null
-  file_kind?: string | null
-  hash?: string | null
-  mime_type?: string | null
-  name: string
-  size?: number | null
-}
-export type AgentComposerEnvVariable = {
-  id?: string | null
-  key?: string | null
-  name?: string | null
-  value?: unknown
-  variable?: string | null
-}
+export type { AgentSoulConfig }
 
-export type AgentSoulConfig = Record<string, unknown> & {
-  config_files?: AgentComposerConfigFile[]
-  config_skills?: AgentComposerConfigSkill[]
-  env?: {
-    secret_refs?: unknown[]
-    variables?: AgentComposerEnvVariable[]
-  }
-}
+export type AgentComposerEnvVariable = NonNullable<
+  NonNullable<AgentSoulConfig['env']>['variables']
+>[number]
 export type AgentModelSelection = {
   name: string
   provider: string
-}
-
-export type AgentComposerResponse = {
-  agent_soul?: AgentSoulConfig
-}
-
-export type AgentBuildDraftResponse = {
-  agent_soul: AgentSoulConfig
-  draft: Record<string, unknown>
-  variant: 'agent_app'
-}
-
-export type AgentApiAccess = {
-  api_key_count: number
-  enabled: boolean
-  files_upload_endpoint: string
-  service_api_base_url: string
-}
-
-export type AgentApiKey = {
-  id: string
-  token?: string
-}
-
-export type AgentConfigSnapshotDetail = {
-  config_snapshot: AgentSoulConfig
-  id: string
-}
-
-export type AgentReferencingWorkflow = {
-  app_id: string
-  app_name: string
-  app_updated_at?: number | null
-  node_ids?: string[]
-  workflow_id: string
-  workflow_version: string
-}
-
-export type AgentReferencingWorkflowsResponse = {
-  data: AgentReferencingWorkflow[]
-}
-
-export type AgentDriveSkillUpload = {
-  skill: {
-    archive_key?: string | null
-    description: string
-    name: string
-    path: string
-    skill_md_key: string
-  }
-}
-
-export type AgentConfigSkillUpload = {
-  skill: AgentComposerConfigSkill
 }
 
 export type UploadedConsoleFile = {
@@ -118,20 +52,6 @@ export type UploadedConsoleFile = {
   mime_type?: string | null
   name: string
   size?: number | null
-}
-
-export type AgentConfigFileUpload = {
-  file: AgentComposerConfigFile
-}
-
-export type AgentDriveSkill = {
-  description?: string | null
-  name: string
-  path: string
-}
-
-export type AgentDriveSkillListResponse = {
-  items: AgentDriveSkill[]
 }
 
 export type CreateTestAgentOptions = {
@@ -362,12 +282,12 @@ export async function getTestAgent(agentId: string): Promise<AgentSeed> {
 export async function getAgentVersionDetail(
   agentId: string,
   versionId: string,
-): Promise<AgentConfigSnapshotDetail> {
+): Promise<AgentConfigSnapshotDetailResponse> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/versions/${versionId}`)
     await expectApiResponseOK(response, `Get Agent v2 version ${versionId} for ${agentId}`)
-    return (await response.json()) as AgentConfigSnapshotDetail
+    return (await response.json()) as AgentConfigSnapshotDetailResponse
   }
   finally {
     await ctx.dispose()
@@ -388,7 +308,7 @@ export async function deleteTestAgent(agentId: string): Promise<void> {
 export async function saveAgentComposerDraft(
   agentId: string,
   agentSoul: AgentSoulConfig = defaultAgentSoulConfig,
-): Promise<AgentComposerResponse> {
+): Promise<AgentAppComposerResponse> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.put(`/console/api/agent/${agentId}/composer`, {
@@ -399,7 +319,7 @@ export async function saveAgentComposerDraft(
       },
     })
     await expectApiResponseOK(response, `Save Agent v2 composer draft for ${agentId}`)
-    return (await response.json()) as AgentComposerResponse
+    return (await response.json()) as AgentAppComposerResponse
   }
   finally {
     await ctx.dispose()
@@ -414,7 +334,7 @@ export async function uploadAgentDriveSkill({
   agentId: string
   fileName: string
   filePath: string
-}): Promise<AgentDriveSkillUpload> {
+}): Promise<AgentSkillUploadResponse> {
   const ctx = await createApiContext()
   try {
     const upload = await toSkillArchiveUpload({ fileName, filePath })
@@ -428,7 +348,7 @@ export async function uploadAgentDriveSkill({
       },
     })
     await expectApiResponseOK(response, `Upload Agent v2 drive skill ${fileName} for ${agentId}`)
-    return (await response.json()) as AgentDriveSkillUpload
+    return (await response.json()) as AgentSkillUploadResponse
   }
   finally {
     await ctx.dispose()
@@ -443,7 +363,7 @@ export async function uploadAgentConfigFileToDraft({
   agentId: string
   fileName: string
   filePath: string
-}): Promise<AgentComposerConfigFile> {
+}): Promise<AgentConfigFileRefConfig> {
   const ctx = await createApiContext()
   try {
     const uploadResponse = await ctx.post('/console/api/files/upload', {
@@ -464,12 +384,18 @@ export async function uploadAgentConfigFileToDraft({
       },
     })
     await expectApiResponseOK(commitResponse, `Commit Agent v2 config file ${fileName} for ${agentId}`)
-    const body = (await commitResponse.json()) as AgentConfigFileUpload
-    const { id: _id, ...file } = body.file as AgentComposerConfigFile & { id?: string }
+    const body = (await commitResponse.json()) as AgentConfigFileUploadResponse
+    const file = body.file
+    if (!file.file_id)
+      throw new Error(`Agent v2 config file ${fileName} did not return a file_id.`)
 
     return {
-      ...file,
-      file_kind: file.file_kind ?? 'upload_file',
+      file_id: file.file_id,
+      file_kind: 'upload_file',
+      hash: file.hash,
+      mime_type: file.mime_type,
+      name: file.name,
+      size: file.size,
     }
   }
   finally {
@@ -485,7 +411,7 @@ export async function uploadAgentConfigSkillToDraft({
   agentId: string
   fileName: string
   filePath: string
-}): Promise<AgentComposerConfigSkill> {
+}): Promise<AgentConfigSkillRefConfig> {
   const ctx = await createApiContext()
   try {
     const upload = await toSkillArchiveUpload({ fileName, filePath })
@@ -499,12 +425,19 @@ export async function uploadAgentConfigSkillToDraft({
       },
     })
     await expectApiResponseOK(response, `Upload Agent v2 config skill ${fileName} for ${agentId}`)
-    const body = (await response.json()) as AgentConfigSkillUpload
-    const { id: _id, ...skill } = body.skill as AgentComposerConfigSkill & { id?: string }
+    const body = (await response.json()) as AgentConfigSkillUploadResponse
+    const skill = body.skill
+    if (!skill.file_id)
+      throw new Error(`Agent v2 config skill ${fileName} did not return a file_id.`)
 
     return {
-      ...skill,
-      file_kind: skill.file_kind ?? 'tool_file',
+      description: skill.description,
+      file_id: skill.file_id,
+      file_kind: 'tool_file',
+      hash: skill.hash,
+      mime_type: skill.mime_type,
+      name: skill.name,
+      size: skill.size,
     }
   }
   finally {
@@ -512,38 +445,38 @@ export async function uploadAgentConfigSkillToDraft({
   }
 }
 
-export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSkill[]> {
+export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSkillItemResponse[]> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/drive/skills`)
     await expectApiResponseOK(response, `Get Agent v2 drive skills for ${agentId}`)
     const body = (await response.json()) as AgentDriveSkillListResponse
-    return body.items
+    return body.items ?? []
   }
   finally {
     await ctx.dispose()
   }
 }
 
-export async function getAgentReferencingWorkflows(agentId: string): Promise<AgentReferencingWorkflow[]> {
+export async function getAgentReferencingWorkflows(agentId: string): Promise<AgentReferencingWorkflowResponse[]> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/referencing-workflows`)
     await expectApiResponseOK(response, `Get Agent v2 referencing workflows for ${agentId}`)
     const body = (await response.json()) as AgentReferencingWorkflowsResponse
-    return body.data
+    return body.data ?? []
   }
   finally {
     await ctx.dispose()
   }
 }
 
-export async function getAgentComposerDraft(agentId: string): Promise<AgentComposerResponse> {
+export async function getAgentComposerDraft(agentId: string): Promise<AgentAppComposerResponse> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/composer`)
     await expectApiResponseOK(response, `Get Agent v2 composer draft for ${agentId}`)
-    return (await response.json()) as AgentComposerResponse
+    return (await response.json()) as AgentAppComposerResponse
   }
   finally {
     await ctx.dispose()
@@ -629,12 +562,12 @@ export async function setAgentSiteAccessAndGetURL(
   return `${baseURL.replace(/\/$/, '')}/agent/${token}`
 }
 
-export async function getAgentApiAccess(agentId: string): Promise<AgentApiAccess> {
+export async function getAgentApiAccess(agentId: string): Promise<AgentApiAccessResponse> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/api-access`)
     await expectApiResponseOK(response, `Get Agent v2 API access for ${agentId}`)
-    return (await response.json()) as AgentApiAccess
+    return (await response.json()) as AgentApiAccessResponse
   }
   finally {
     await ctx.dispose()
@@ -644,7 +577,7 @@ export async function getAgentApiAccess(agentId: string): Promise<AgentApiAccess
 export async function setAgentApiAccess(
   agentId: string,
   enabled: boolean,
-): Promise<AgentApiAccess> {
+): Promise<AgentApiAccessResponse> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.post(`/console/api/agent/${agentId}/api-enable`, {
@@ -654,19 +587,19 @@ export async function setAgentApiAccess(
       response,
       `${enabled ? 'Enable' : 'Disable'} Agent v2 API access for ${agentId}`,
     )
-    return (await response.json()) as AgentApiAccess
+    return (await response.json()) as AgentApiAccessResponse
   }
   finally {
     await ctx.dispose()
   }
 }
 
-export async function createAgentApiKey(agentId: string): Promise<AgentApiKey> {
+export async function createAgentApiKey(agentId: string): Promise<ApiKeyItem> {
   const ctx = await createApiContext()
   try {
     const response = await ctx.post(`/console/api/agent/${agentId}/api-keys`)
     await expectApiResponseOK(response, `Create Agent v2 API key for ${agentId}`)
-    return (await response.json()) as AgentApiKey
+    return (await response.json()) as ApiKeyItem
   }
   finally {
     await ctx.dispose()

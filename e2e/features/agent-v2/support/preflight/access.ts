@@ -1,37 +1,14 @@
+import type {
+  AgentApiAccessResponse,
+  AgentAppDetailWithSite,
+  AgentReferencingWorkflowsResponse,
+  ApiKeyList,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import type { PreseededResource } from './common'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import { skipMissingPreseededAgent, skipMissingPreseededWorkflow } from './agents'
 import { skipBlockedPrecondition } from './common'
-
-type AgentApiAccessResponse = {
-  api_key_count: number
-  enabled: boolean
-}
-
-type AgentApiKeyListResponse = {
-  data: Array<{
-    id: string
-  }>
-}
-
-type AgentReferencingWorkflowsResponse = {
-  data: Array<{
-    app_id: string
-    app_name: string
-    node_ids?: string[]
-  }>
-}
-
-type PreseededAgentDetailResponse = {
-  active_config_is_published?: boolean
-  enable_site?: boolean
-  site?: {
-    access_token?: string | null
-    app_base_url?: string | null
-    code?: string | null
-  } | null
-}
 
 export async function skipMissingPreseededAgentBackendApiKey(
   world: DifyWorld,
@@ -55,7 +32,7 @@ export async function skipMissingPreseededAgentBackendApiKey(
 
     const keyResponse = await ctx.get(`/console/api/agent/${agent.id}/api-keys`)
     await expectApiResponseOK(keyResponse, `Check preseeded Agent API key ${agentName}`)
-    const keys = (await keyResponse.json()) as AgentApiKeyListResponse
+    const keys = (await keyResponse.json()) as ApiKeyList
     const key = keys.data.at(0)
     if (!key) {
       return skipBlockedPrecondition(
@@ -87,7 +64,7 @@ export async function skipMissingPreseededAgentPublishedWebApp(
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}`)
     await expectApiResponseOK(response, `Check preseeded Agent published Web app ${agentName}`)
-    const detail = (await response.json()) as PreseededAgentDetailResponse
+    const detail = (await response.json()) as AgentAppDetailWithSite
     if (detail.active_config_is_published !== true) {
       return skipBlockedPrecondition(world, `Preseeded Agent "${agentName}" is not published.`)
     }
@@ -136,7 +113,7 @@ export async function skipMissingPreseededAgentWorkflowReference(
     const response = await ctx.get(`/console/api/agent/${agent.id}/referencing-workflows`)
     await expectApiResponseOK(response, `Check preseeded Agent workflow reference ${agentName}`)
     const references = (await response.json()) as AgentReferencingWorkflowsResponse
-    const reference = references.data.find(
+    const reference = references.data?.find(
       item => item.app_id === workflow.id || item.app_name === workflow.name,
     )
 

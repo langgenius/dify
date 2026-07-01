@@ -76,6 +76,12 @@ Use `the Agent v2 configuration should be saved automatically` after UI edits th
 
 API setup is acceptable for creating scenario-owned Agents, enabling Backend service API, writing composer drafts, seeding Build drafts, and preparing fixed state. The scenario must still assert user-visible behavior or a real persisted product contract through the public Console API. Do not assert only that a setup API call succeeded.
 
+## API Contract Types
+
+Agent v2 support helpers consume Console API contracts from `@dify/contracts/api/console/.../types.gen`. When a generated request, response, or payload type exists, import and use that exact type name at the helper boundary. Do not keep an old local response type name as an alias for the generated type.
+
+Keep local types for Agent v2 E2E-owned state only, such as `DifyWorld.agentBuilder` state, scenario preflight resource records, fixture registry entries, helper input options, and deliberately narrowed test view models. If an endpoint response needs a field that the generated contract does not expose yet, fix the backend schema and regenerate contracts before broadening E2E types.
+
 ## Build Mode And Preview
 
 Build mode scope means:

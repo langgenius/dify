@@ -55,7 +55,7 @@ Given(
     })
     this.createdAgentIds.push(agent.id)
     this.lastCreatedAgentName = agent.name
-    this.lastCreatedAgentRole = agent.role
+    this.lastCreatedAgentRole = agent.role ?? undefined
 
     const app = await createTestApp(createE2EResourceName('App', 'workflow-agent-v2'), 'workflow')
     this.createdAppIds.push(app.id)

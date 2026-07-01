@@ -1,5 +1,10 @@
+import type {
+  AgentAppComposerResponse,
+  AgentDriveListResponse,
+  AgentDriveSkillListResponse,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../../support/world'
-import type { AgentComposerResponse, PreseededResource } from './common'
+import type { PreseededResource } from './common'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import {
   agentBuilderExpectedTokens,
@@ -12,14 +17,12 @@ import {
   agentBuilderTestMaterials,
 } from '../test-materials'
 import {
-
   asArray,
   asRecord,
   asString,
   buildQuery,
   findConsoleResourceByName,
   hasNamedOrKeyedEntry,
-
   skipBlockedPrecondition,
 } from './common'
 import { skipMissingReadyPreseededDataset } from './datasets'
@@ -31,19 +34,6 @@ import {
   skipMissingPreseededTool,
   splitToolDisplayName,
 } from './tools'
-
-type AgentDriveSkillListResponse = {
-  items: Array<{
-    name: string
-    path: string
-  }>
-}
-
-type AgentDriveFileListResponse = {
-  items?: Array<{
-    key: string
-  }>
-}
 
 const hasKnowledgeDataset = (
   soul: Record<string, unknown>,
@@ -150,7 +140,7 @@ export async function skipMissingPreseededAgentDriveSkill(
     const response = await ctx.get(`/console/api/agent/${agent.id}/drive/skills`)
     await expectApiResponseOK(response, `Check preseeded Agent skill ${skillName}`)
     const body = (await response.json()) as AgentDriveSkillListResponse
-    const skill = body.items.find(item => item.name === skillName)
+    const skill = body.items?.find(item => item.name === skillName)
 
     if (!skill) {
       return skipBlockedPrecondition(
@@ -208,7 +198,7 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
     await expectApiResponseOK(response, `Check preseeded Agent core configuration ${agentName}`)
-    const body = (await response.json()) as AgentComposerResponse
+    const body = (await response.json()) as AgentAppComposerResponse
     const soul = body.agent_soul ?? {}
     const missing: string[] = []
 
@@ -294,7 +284,7 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
     await expectApiResponseOK(response, `Check preseeded Agent tool states ${agentName}`)
-    const body = (await response.json()) as AgentComposerResponse
+    const body = (await response.json()) as AgentAppComposerResponse
     const soul = body.agent_soul ?? {}
     const toolItems = asArray(asRecord(soul.tools).dify_tools)
     const missing: string[] = []
@@ -364,7 +354,7 @@ export async function skipMissingPreseededDualRetrievalAgentConfiguration(
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
     await expectApiResponseOK(response, `Check preseeded Agent dual retrieval ${agentName}`)
-    const body = (await response.json()) as AgentComposerResponse
+    const body = (await response.json()) as AgentAppComposerResponse
     const soul = body.agent_soul ?? {}
     const missing: string[] = []
 
@@ -407,7 +397,7 @@ export async function skipMissingPreseededAgentFileTreeFixture(
     const query = buildQuery({ prefix: 'files/' })
     const response = await ctx.get(`/console/api/agent/${agent.id}/drive/files?${query}`)
     await expectApiResponseOK(response, `Check preseeded Agent file tree ${agentName}`)
-    const body = (await response.json()) as AgentDriveFileListResponse
+    const body = (await response.json()) as AgentDriveListResponse
     const keys = (body.items ?? []).map(item => item.key)
     const missingFiles = agentBuilderFileTreeFixtureFiles.filter(
       filePath =>
@@ -444,7 +434,7 @@ export async function skipMissingPreseededAgentFlatFileFixtureConfiguration(
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
     await expectApiResponseOK(response, `Check preseeded Agent flat file fixture ${agentName}`)
-    const body = (await response.json()) as AgentComposerResponse
+    const body = (await response.json()) as AgentAppComposerResponse
     const configFiles = Array.isArray(body.agent_soul?.config_files)
       ? body.agent_soul.config_files
       : []

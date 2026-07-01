@@ -1,5 +1,9 @@
+import type {
+  DatasetListItemResponse,
+  DocumentStatusListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { DifyWorld } from '../../../support/world'
-import type { NamedResource, PreseededResource } from './common'
+import type { PreseededResource } from './common'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import {
   buildQuery,
@@ -8,11 +12,6 @@ import {
   skipBlockedPrecondition,
 } from './common'
 
-type DatasetResource = NamedResource & {
-  document_count: number
-  total_available_documents: number
-}
-
 type DocumentIndexingStatus
   = | 'cleaning'
     | 'completed'
@@ -20,13 +19,6 @@ type DocumentIndexingStatus
     | 'parsing'
     | 'splitting'
     | 'waiting'
-
-type DatasetIndexingStatusResponse = {
-  data: Array<{
-    id: string
-    indexing_status?: string
-  }>
-}
 
 const completedDocumentIndexingStatus: DocumentIndexingStatus = 'completed'
 const activeDocumentIndexingStatuses = new Set<string>([
@@ -40,7 +32,7 @@ const activeDocumentIndexingStatuses = new Set<string>([
 export const getPreseededDataset = async (resourceName: string) => {
   const query = buildQuery({ keyword: resourceName, limit: '20', page: '1' })
 
-  return findConsoleResourceByName<DatasetResource>({
+  return findConsoleResourceByName<DatasetListItemResponse>({
     action: `Check preseeded dataset ${resourceName}`,
     path: `/console/api/datasets?${query}`,
     resourceName,
@@ -52,7 +44,7 @@ const getDatasetIndexingStatuses = async (datasetId: string, resourceName: strin
   try {
     const response = await ctx.get(`/console/api/datasets/${datasetId}/indexing-status`)
     await expectApiResponseOK(response, `Check preseeded dataset indexing status ${resourceName}`)
-    const body = (await response.json()) as DatasetIndexingStatusResponse
+    const body = (await response.json()) as DocumentStatusListResponse
 
     return body.data
   }
@@ -61,9 +53,7 @@ const getDatasetIndexingStatuses = async (datasetId: string, resourceName: strin
   }
 }
 
-export const toDatasetResource = (
-  resource: NamedResource,
-): PreseededResource => ({
+export const toDatasetResource = (resource: DatasetListItemResponse): PreseededResource => ({
   id: resource.id,
   kind: 'dataset',
   name: resource.name,

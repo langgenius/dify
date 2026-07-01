@@ -21,17 +21,13 @@ export type NamedResource = {
   name: string
 }
 
-export type NamedResourceListResponse<T extends NamedResource = NamedResource> = {
+export type NamedResourceCollection<T extends NamedResource = NamedResource> = {
   data: T[]
 }
 
 export type LocalizedLabel = {
   en_US?: string
   zh_Hans?: string
-}
-
-export type AgentComposerResponse = {
-  agent_soul?: Record<string, unknown>
 }
 
 export const readRequiredEnvResource = (
@@ -94,7 +90,7 @@ export const findConsoleResourceByName = async <T extends NamedResource = NamedR
   try {
     const response = await ctx.get(path)
     await expectApiResponseOK(response, action)
-    const body = (await response.json()) as NamedResourceListResponse<T>
+    const body = (await response.json()) as NamedResourceCollection<T>
 
     return body.data.find(item => item.name === resourceName)
   }
