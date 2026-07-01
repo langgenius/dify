@@ -31,6 +31,7 @@ Use tags in three layers:
 - `@files-limits` — feature-gated file format, size, count, and in-progress upload limit behavior.
 - `@knowledge` — Knowledge Retrieval configuration display, persistence, and reference cleanup.
 - `@advanced-settings` — Env Editor, Content Moderation, and related Advanced Settings behavior.
+- `@agent-create` — Agent Roster creation and initial Configure navigation.
 - `@agent-edit` — saved Agent detail/configuration display surfaces.
 - `@publish` — publish and publish-bar state.
 - `@access-point` — Web app, Backend service API, and Workflow access surfaces.
@@ -52,6 +53,7 @@ Keep Agent v2 step definitions grouped by user capability, not by DOM component 
 - `advanced-settings.steps.ts` — common Advanced Settings shell and supported-entry assertions.
 - `env-editor.steps.ts` — Env Editor add, import, delete, persistence, and restored-display behavior.
 - `content-moderation.steps.ts` — Content Moderation availability, keyword settings, and feature-gated assertions.
+- `agent-roster.steps.ts` — Agent Roster creation and Roster-level user actions.
 - `agent-edit.steps.ts` — saved Agent detail display assertions.
 - `publish.steps.ts` — publish and publish-bar assertions.
 - `access-point.steps.ts` — common Access Point navigation and overview.
