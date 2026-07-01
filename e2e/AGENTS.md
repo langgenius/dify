@@ -286,6 +286,16 @@ The `After` hook automatically captures on failure:
 
 Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
 
+### Seed resources and preflight checks
+
+Use `support/naming.ts` for generated test resource names. New app, Agent, dataset, file, or credential seeds should start with `E2E` so local and shared environments can identify disposable resources.
+
+Use `fixtures/test-materials/` for checked-in files that scenarios upload, preview, index, or retrieve. Keep these fixtures small and deterministic, and use `support/test-materials.ts` to resolve their absolute paths.
+
+Use `support/preflight.ts` for scenarios that require optional external resources such as a stable model provider, plugin/tool credential, or knowledge base seed. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
+
+Use `DifyWorld.registerCleanup(...)` when a scenario creates a resource that is not covered by `createdAppIds` or `createdAgentIds`. Cleanup callbacks run after the built-in App and Agent cleanup, even when the scenario fails.
+
 ## Reusing existing steps
 
 Before writing a new step definition, inspect the existing step definition files first. Reuse a matching step when the wording and behavior already fit, and only add a new step when the scenario needs a genuinely new user action or assertion. Steps in `common/` are designed for broad reuse across all features.
@@ -304,3 +314,7 @@ The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=tr
 Use `support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
 
 Keep Agent v2 step definitions under `features/step-definitions/agent-v2/`. Prefer API setup for prerequisite state, then use Playwright only for user-observable navigation, editing, and assertions.
+
+Use `a basic configured Agent v2 test agent has been created via API` when a scenario only needs a created Agent with a composer draft. Do not use that basic shell for runtime, model, tool, skill, knowledge, environment variable, moderation, or output-variable coverage until those resources have explicit seed helpers and readiness checks.
+
+Use `the Agent v2 configuration should be saved automatically` after UI edits that rely on Configure autosave. It waits for the user-visible publish bar saved state; do not replace it with network-idle waits or internal store checks.
