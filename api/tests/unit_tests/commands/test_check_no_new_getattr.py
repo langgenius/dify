@@ -181,6 +181,38 @@ def test_ci_mode_fails_for_new_file_with_builtins_getattr(tmp_path: Path) -> Non
     assert_has_actionable_violation(result.stderr, "pkg/new_usage.py")
 
 
+def test_ci_mode_fails_for_new_file_with_two_arg_builtins_getattr(tmp_path: Path) -> None:
+    init_repo(tmp_path)
+    write_repo_file(
+        tmp_path,
+        "pkg/existing.py",
+        """
+        def stable() -> str:
+            return "ok"
+        """,
+    )
+    commit_all(tmp_path, "baseline")
+    checkout_feature_branch(tmp_path)
+
+    write_repo_file(
+        tmp_path,
+        "pkg/new_usage.py",
+        """
+        import builtins
+
+
+        def read_value(obj):
+            return builtins.getattr(obj, "dynamic_name")
+        """,
+    )
+    commit_all(tmp_path, "add new two-arg builtins getattr usage")
+
+    result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
+
+    assert result.returncode == 1
+    assert_has_actionable_violation(result.stderr, "pkg/new_usage.py")
+
+
 def test_ci_mode_fails_for_new_file_with_dunder_builtins_getattr(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(
@@ -203,6 +235,35 @@ def test_ci_mode_fails_for_new_file_with_dunder_builtins_getattr(tmp_path: Path)
         """,
     )
     commit_all(tmp_path, "add new dunder builtins getattr usage")
+
+    result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
+
+    assert result.returncode == 1
+    assert_has_actionable_violation(result.stderr, "pkg/new_usage.py")
+
+
+def test_ci_mode_fails_for_new_file_with_two_arg_dunder_builtins_getattr(tmp_path: Path) -> None:
+    init_repo(tmp_path)
+    write_repo_file(
+        tmp_path,
+        "pkg/existing.py",
+        """
+        def stable() -> str:
+            return "ok"
+        """,
+    )
+    commit_all(tmp_path, "baseline")
+    checkout_feature_branch(tmp_path)
+
+    write_repo_file(
+        tmp_path,
+        "pkg/new_usage.py",
+        """
+        def read_value(obj):
+            return __builtins__.getattr(obj, "dynamic_name")
+        """,
+    )
+    commit_all(tmp_path, "add new two-arg dunder builtins getattr usage")
 
     result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
 
@@ -334,6 +395,37 @@ def test_pre_commit_mode_fails_for_staged_builtins_getattr(tmp_path: Path) -> No
 
         def read_value(obj):
             return builtins.getattr(obj, "value", None)
+        """,
+    )
+    git(tmp_path, "add", "pkg/module.py")
+
+    result = run_script(tmp_path, "--mode", "pre-commit")
+
+    assert result.returncode == 1
+    assert_has_actionable_violation(result.stderr, "pkg/module.py")
+
+
+def test_pre_commit_mode_fails_for_staged_two_arg_builtins_getattr(tmp_path: Path) -> None:
+    init_repo(tmp_path)
+    write_repo_file(
+        tmp_path,
+        "pkg/module.py",
+        """
+        def read_value(obj):
+            return obj.value
+        """,
+    )
+    commit_all(tmp_path, "baseline")
+
+    write_repo_file(
+        tmp_path,
+        "pkg/module.py",
+        """
+        import builtins
+
+
+        def read_value(obj):
+            return builtins.getattr(obj, "value")
         """,
     )
     git(tmp_path, "add", "pkg/module.py")
