@@ -69,7 +69,8 @@ Feature: Agent v2 publish
     Then the Agent v2 draft should be published and up to date
     When I open the Agent v2 Web app URL
     And I send an E2E message in the Agent v2 Web app
-    Then the Agent v2 Web app should answer with the normal E2E marker
+    Then the Agent v2 Web app response should include the normal E2E marker
+    When I close the Agent v2 Web app
 
   @web-app-runtime @published-web-app @stable-model
   Scenario: Published Web app remains isolated from unpublished Agent v2 draft edits
@@ -87,6 +88,7 @@ Feature: Agent v2 publish
     And I send an E2E message in the Agent v2 Web app
     Then the Agent v2 Web app response should include the normal E2E marker
     And the Agent v2 Web app response should not include the updated E2E marker
+    When I close the Agent v2 Web app
 
   @web-app-runtime @published-web-app @stable-model
   Scenario: Published Web app uses the latest Agent v2 published configuration
@@ -105,3 +107,4 @@ Feature: Agent v2 publish
     When I open the Agent v2 Web app URL
     And I send an E2E message in the Agent v2 Web app
     Then the Agent v2 Web app response should include the updated E2E marker
+    When I close the Agent v2 Web app
