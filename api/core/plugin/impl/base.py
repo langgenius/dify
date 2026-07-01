@@ -12,7 +12,12 @@ from yarl import URL
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 from core.plugin.endpoint.exc import EndpointSetupFailedError
-from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginDaemonError, PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import (
+    PluginDaemonBasicResponse,
+    PluginDaemonError,
+    PluginDaemonInnerError,
+    PluginListResponse,
+)
 from core.plugin.impl.exc import (
     PluginDaemonBadRequestError,
     PluginDaemonClientSideError,
@@ -63,6 +68,28 @@ _httpx_client: httpx.Client = get_pooled_http_client(
     "plugin_daemon",
     lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100), trust_env=False),
 )
+
+
+def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[object]) -> Any:
+    if type_ is not PluginListResponse:
+        return json_response
+
+    if isinstance(json_response, list):
+        return {
+            "code": 0,
+            "message": "",
+            "data": {"list": json_response, "total": len(json_response)},
+        }
+
+    if isinstance(json_response, dict):
+        data = json_response.get("data")
+        if isinstance(data, list):
+            return {
+                **json_response,
+                "data": {"list": data, "total": len(data)},
+            }
+
+    return json_response
 
 
 class BasePluginClient:
@@ -273,6 +300,7 @@ class BasePluginClient:
             json_response = response.json()
             if transformer:
                 json_response = transformer(json_response)
+            json_response = _normalize_plugin_daemon_response_for_type(json_response, type_)
             # https://stackoverflow.com/questions/59634937/variable-foo-class-is-not-valid-as-type-but-why
             rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
         except Exception:
