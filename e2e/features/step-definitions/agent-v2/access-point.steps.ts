@@ -6,6 +6,7 @@ import {
   getAgentComposerDraft,
   getAgentReferencingWorkflows,
   setAgentApiAccess,
+  setAgentSiteAccessAndGetURL,
 } from '../../../support/agent'
 import { agentBuilderPreseededResources } from '../../../support/agent-builder-resources'
 
@@ -31,6 +32,9 @@ const getPreseededResource = (world: DifyWorld, name: string, kind: 'agent' | 'w
 const getAccessRegion = (world: DifyWorld) =>
   world.getPage().getByRole('region', { name: 'Access Point' })
 
+const getWebAppCard = (world: DifyWorld) =>
+  getAccessRegion(world).locator('article').filter({ hasText: 'Web app' }).first()
+
 const getDialog = (world: DifyWorld, name: string | RegExp) =>
   world.getPage().getByRole('dialog', { name })
 
@@ -47,6 +51,17 @@ Given(
     const apiAccess = await setAgentApiAccess(getCurrentAgentId(this), true)
 
     this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
+  },
+)
+
+Given(
+  'Agent v2 Web app access will be restored for {string}',
+  async function (this: DifyWorld, agentName: string) {
+    const agent = getPreseededResource(this, agentName, 'agent')
+
+    this.registerCleanup(async () => {
+      await setAgentSiteAccessAndGetURL(agent.id, true)
+    })
   },
 )
 
@@ -111,12 +126,12 @@ Then('I should see the Agent v2 Access Point overview', async function (this: Di
 })
 
 Then('I should see the Agent v2 Web app access URL', async function (this: DifyWorld) {
-  const accessRegion = getAccessRegion(this)
+  const webAppCard = getWebAppCard(this)
 
-  await expect(accessRegion.getByRole('heading', { name: 'Web app' })).toBeVisible()
-  await expect(accessRegion.getByText('Access URL')).toBeVisible()
-  await expect(accessRegion.getByLabel('Copy access URL')).toBeEnabled()
-  await expect(accessRegion.getByRole('link', { name: 'Launch' })).toBeVisible()
+  await expect(webAppCard.getByRole('heading', { name: 'Web app' })).toBeVisible()
+  await expect(webAppCard.getByText('Access URL')).toBeVisible()
+  await expect(webAppCard.getByLabel('Copy access URL')).toBeEnabled()
+  await expect(webAppCard.getByRole('link', { name: 'Launch' })).toBeVisible()
 })
 
 Then(
@@ -130,7 +145,7 @@ Then(
 )
 
 When('I copy the Agent v2 Web app access URL', async function (this: DifyWorld) {
-  await getAccessRegion(this).getByLabel('Copy access URL').click()
+  await getWebAppCard(this).getByLabel('Copy access URL').click()
 })
 
 Then('the Agent v2 Web app access URL should show it was copied', async function (this: DifyWorld) {
@@ -138,7 +153,7 @@ Then('the Agent v2 Web app access URL should show it was copied', async function
 })
 
 When('I launch the Agent v2 Web app', async function (this: DifyWorld) {
-  const launchLink = getAccessRegion(this).getByRole('link', { name: 'Launch' })
+  const launchLink = getWebAppCard(this).getByRole('link', { name: 'Launch' })
   const href = await launchLink.getAttribute('href')
   if (!href)
     throw new Error('Agent v2 Web app Launch link does not expose an href.')
@@ -165,7 +180,7 @@ Then('the Agent v2 Web app should open in a new tab', async function (this: Dify
 })
 
 When('I open Agent v2 Embedded configuration', async function (this: DifyWorld) {
-  await getAccessRegion(this).getByRole('button', { name: 'Embedded' }).click()
+  await getWebAppCard(this).getByRole('button', { name: 'Embedded' }).click()
 })
 
 Then('I should see the Agent v2 Embedded configuration dialog', async function (this: DifyWorld) {
@@ -178,7 +193,7 @@ Then('I should see the Agent v2 Embedded configuration dialog', async function (
 })
 
 When('I open Agent v2 Web app customization', async function (this: DifyWorld) {
-  await getAccessRegion(this).getByRole('button', { name: 'Customize' }).click()
+  await getWebAppCard(this).getByRole('button', { name: 'Customize' }).click()
 })
 
 Then('I should see the Agent v2 Web app customization dialog', async function (this: DifyWorld) {
@@ -191,7 +206,7 @@ Then('I should see the Agent v2 Web app customization dialog', async function (t
 })
 
 When('I open Agent v2 Web app settings', async function (this: DifyWorld) {
-  await getAccessRegion(this).getByRole('button', { name: 'Settings' }).click()
+  await getWebAppCard(this).getByRole('button', { name: 'Settings' }).click()
 })
 
 Then('I should see the Agent v2 Web app settings dialog', async function (this: DifyWorld) {
@@ -217,6 +232,84 @@ Then(
     expect(JSON.stringify(draft.agent_soul ?? {})).toBe(snapshot)
   },
 )
+
+When('I disable Agent v2 Web app access', async function (this: DifyWorld) {
+  const webAppCard = getWebAppCard(this)
+  const launchLink = webAppCard.getByRole('link', { name: 'Launch' })
+  const href = await launchLink.getAttribute('href')
+  if (!href)
+    throw new Error('Agent v2 Web app Launch link does not expose an href.')
+
+  this.agentBuilder.accessPoint.webAppURL = href
+
+  await webAppCard.getByLabel('Toggle Web app access').click()
+})
+
+Then('Agent v2 Web app access should be out of service', async function (this: DifyWorld) {
+  const webAppCard = getWebAppCard(this)
+
+  await expect(webAppCard.getByText('Out of service')).toBeVisible()
+  await expect(webAppCard.getByRole('button', { name: 'Launch' })).toBeDisabled()
+})
+
+When('I open the disabled Agent v2 Web app URL', async function (this: DifyWorld) {
+  const webAppURL = this.agentBuilder.accessPoint.webAppURL
+  if (!webAppURL)
+    throw new Error('No Agent v2 Web app URL was recorded.')
+  if (!this.context)
+    throw new Error('Playwright browser context has not been initialized.')
+
+  const webAppPage = await this.context.newPage()
+  await webAppPage.goto(webAppURL)
+
+  this.agentBuilder.accessPoint.webAppPage = webAppPage
+})
+
+Then('the disabled Agent v2 Web app should show an unavailable state', async function (this: DifyWorld) {
+  const webAppPage = this.agentBuilder.accessPoint.webAppPage
+  if (!webAppPage)
+    throw new Error('No Agent v2 Web app page was opened.')
+
+  await expect(webAppPage.getByText(/app is unavailable|site is disabled/i)).toBeVisible({
+    timeout: 30_000,
+  })
+  await webAppPage.close()
+  this.agentBuilder.accessPoint.webAppPage = undefined
+})
+
+When('I enable Agent v2 Web app access', async function (this: DifyWorld) {
+  await getWebAppCard(this).getByLabel('Toggle Web app access').click()
+})
+
+Then('Agent v2 Web app access should be in service', async function (this: DifyWorld) {
+  const webAppCard = getWebAppCard(this)
+
+  await expect(webAppCard.getByText('In service')).toBeVisible()
+  await expect(webAppCard.getByRole('link', { name: 'Launch' })).toBeVisible()
+})
+
+When('I open the restored Agent v2 Web app URL', async function (this: DifyWorld) {
+  const webAppURL = this.agentBuilder.accessPoint.webAppURL
+  if (!webAppURL)
+    throw new Error('No Agent v2 Web app URL was recorded.')
+  if (!this.context)
+    throw new Error('Playwright browser context has not been initialized.')
+
+  const webAppPage = await this.context.newPage()
+  await webAppPage.goto(webAppURL)
+
+  this.agentBuilder.accessPoint.webAppPage = webAppPage
+})
+
+Then('the restored Agent v2 Web app should not show an unavailable state', async function (this: DifyWorld) {
+  const webAppPage = this.agentBuilder.accessPoint.webAppPage
+  if (!webAppPage)
+    throw new Error('No Agent v2 Web app page was opened.')
+
+  await expect(webAppPage.getByText(/app is unavailable|site is disabled/i)).not.toBeVisible()
+  await webAppPage.close()
+  this.agentBuilder.accessPoint.webAppPage = undefined
+})
 
 Then(
   'I should see the Agent v2 Workflow access reference for {string}',

@@ -589,12 +589,19 @@ export async function publishAgent(agentId: string, versionNote = 'E2E publish')
 }
 
 export async function enableAgentSiteAndGetURL(agentId: string): Promise<string> {
+  return setAgentSiteAccessAndGetURL(agentId, true)
+}
+
+export async function setAgentSiteAccessAndGetURL(
+  agentId: string,
+  enabled: boolean,
+): Promise<string> {
   const agent = await getTestAgent(agentId)
   const appId = agent.app_id ?? agent.backing_app_id
   if (!appId)
     throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
 
-  const appDetail = await setAppSiteEnabled(appId, true)
+  const appDetail = await setAppSiteEnabled(appId, enabled)
   const token = agent.site?.access_token ?? agent.site?.code ?? appDetail.site.access_token
   const baseURL = agent.site?.app_base_url ?? appDetail.site.app_base_url
 

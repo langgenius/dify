@@ -27,6 +27,24 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Web app settings dialog
     And the Agent v2 orchestration draft for "E2E Agent Published Web App" should be unchanged
 
+  @web-app-access
+  Scenario: Web app access can be disabled and restored
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E Agent Published Web App" is available
+    And the Agent Builder preseeded Agent "E2E Agent Published Web App" has published Web app access
+    And Agent v2 Web app access will be restored for "E2E Agent Published Web App"
+    When I open the preseeded Agent v2 Access Point page for "E2E Agent Published Web App" from the Agent Roster
+    And I disable Agent v2 Web app access
+    Then Agent v2 Web app access should be out of service
+    When I open the disabled Agent v2 Web app URL
+    Then the disabled Agent v2 Web app should show an unavailable state
+    When I enable Agent v2 Web app access
+    Then Agent v2 Web app access should be in service
+    When I open the restored Agent v2 Web app URL
+    Then the restored Agent v2 Web app should not show an unavailable state
+    When I refresh the current page
+    Then Agent v2 Web app access should be in service
+
   @workflow-reference
   Scenario: Workflow access shows the referencing workflow
     Given I am signed in as the default E2E admin
