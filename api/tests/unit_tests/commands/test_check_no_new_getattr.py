@@ -64,10 +64,26 @@ def assert_has_actionable_violation(stderr: str, path: str) -> None:
 
 def test_style_workflow_wires_no_new_getattr_guard() -> None:
     workflow = (REPO_ROOT / ".github" / "workflows" / "style.yml").read_text(encoding="utf-8")
+    python_style_job = re.search(
+        r"(?ms)^  python-style:\n(?P<job>.*?)(?=^  [a-z0-9-]+:\n|\Z)",
+        workflow,
+    )
+    assert python_style_job is not None
 
-    assert "scripts/check_no_new_getattr.py --mode ci --merge-target main" in workflow
-    assert "scripts/check_no_new_getattr.py" in workflow
-    assert "scripts/ast_grep_rules/no_new_getattr.yml" in workflow
+    job_text = python_style_job.group("job")
+    changed_files_step = re.search(
+        r"(?ms)^      - name: Check changed files\n.*?^          files: \|\n(?P<files>(?:^            \S[^\n]*\n)+)",
+        job_text,
+    )
+    assert changed_files_step is not None
+
+    files_block = changed_files_step.group("files")
+    assert "api/**\n" in files_block
+    assert "scripts/check_no_new_getattr.py\n" in files_block
+    assert "scripts/ast_grep_rules/no_new_getattr.yml\n" in files_block
+    assert ".github/workflows/style.yml\n" in files_block
+
+    assert "scripts/check_no_new_getattr.py --mode ci --merge-target main" in job_text
 
 
 def test_ci_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
