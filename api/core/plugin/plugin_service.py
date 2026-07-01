@@ -12,9 +12,12 @@ current, so the API reconciles those counts before serving workspace plugin
 metadata.
 """
 
+from __future__ import annotations
+
 import logging
 import time
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from mimetypes import guess_type
 from typing import Any, ClassVar
 
@@ -39,8 +42,13 @@ from core.plugin.entities.plugin import (
     PluginInstallationSource,
 )
 from core.plugin.entities.plugin_daemon import (
+    GithubPluginInstallIdentifierMeta,
+    MarketplacePluginInstallIdentifierMeta,
+    PackagePluginInstallIdentifierMeta,
     PluginDecodeResponse,
+    PluginInstallIdentifierMeta,
     PluginInstallTask,
+    PluginInstallTaskStartResponse,
     PluginInstallTaskStatus,
     PluginListResponse,
     PluginListWithoutTotalResponse,
@@ -66,6 +74,12 @@ from services.feature_service import FeatureService, PluginInstallationScope
 
 logger = logging.getLogger(__name__)
 _provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list[ProviderEntity])
+
+
+@dataclass(frozen=True, slots=True)
+class _MarketplaceIdentifierInstallPreparation:
+    plugin_unique_identifiers: tuple[str, ...]
+    metas: tuple[PluginInstallIdentifierMeta, ...]
 
 
 class PluginService:
@@ -859,7 +873,7 @@ class PluginService:
             tenant_id,
             plugin_unique_identifiers,
             PluginInstallationSource.Package,
-            [{}],
+            [PackagePluginInstallIdentifierMeta() for _ in plugin_unique_identifiers],
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
@@ -880,13 +894,7 @@ class PluginService:
             tenant_id,
             [plugin_unique_identifier],
             PluginInstallationSource.Github,
-            [
-                {
-                    "repo": repo,
-                    "version": version,
-                    "package": package,
-                }
-            ],
+            [GithubPluginInstallIdentifierMeta(repo=repo, version=version, package=package)],
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
@@ -923,48 +931,87 @@ class PluginService:
         Install plugin from marketplace package files,
         returns installation task id
         """
+        manager = PluginInstaller()
+        prepared_install = PluginService._prepare_marketplace_identifier_install(
+            tenant_id,
+            plugin_unique_identifiers,
+            manager,
+        )
+
+        result = manager.install_from_identifiers(
+            tenant_id,
+            prepared_install.plugin_unique_identifiers,
+            PluginInstallationSource.Marketplace,
+            prepared_install.metas,
+        )
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return result
+
+    @staticmethod
+    def install_from_resolved_marketplace_identifiers(
+        tenant_id: str, plugin_unique_identifiers: Sequence[str]
+    ) -> PluginInstallTaskStartResponse:
+        """
+        Install already-resolved marketplace plugin identifiers and refresh tenant plugin caches.
+        """
+        manager = PluginInstaller()
+        prepared_install = PluginService._prepare_marketplace_identifier_install(
+            tenant_id,
+            plugin_unique_identifiers,
+            manager,
+            require_exact_identifiers=True,
+        )
+        result = manager.install_from_identifiers(
+            tenant_id,
+            prepared_install.plugin_unique_identifiers,
+            PluginInstallationSource.Marketplace,
+            prepared_install.metas,
+        )
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return result
+
+    @staticmethod
+    def _prepare_marketplace_identifier_install(
+        tenant_id: str,
+        plugin_unique_identifiers: Sequence[str],
+        manager: PluginInstaller,
+        *,
+        require_exact_identifiers: bool = False,
+    ) -> _MarketplaceIdentifierInstallPreparation:
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
 
-        manager = PluginInstaller()
-
-        # collect actual plugin_unique_identifiers
-        actual_plugin_unique_identifiers = []
-        metas = []
         features = FeatureService.get_system_features()
+        actual_plugin_unique_identifiers: list[str] = []
+        metas: list[PluginInstallIdentifierMeta] = []
 
-        # check if already downloaded
         for plugin_unique_identifier in plugin_unique_identifiers:
             try:
                 manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
                 plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-                # check if the plugin is available to install
-                PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
-                # already downloaded, skip
-                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
-                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
+                actual_plugin_unique_identifier = plugin_unique_identifier
             except Exception:
-                # plugin not installed, download and upload pkg
                 pkg = download_plugin_pkg(plugin_unique_identifier)
-                response = manager.upload_pkg(
+                plugin_decode_response = manager.upload_pkg(
                     tenant_id,
                     pkg,
                     verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
                 )
-                # check if the plugin is available to install
-                PluginService._check_plugin_installation_scope(response.verification)
-                # use response plugin_unique_identifier
-                actual_plugin_unique_identifiers.append(response.unique_identifier)
-                metas.append({"plugin_unique_identifier": response.unique_identifier})
+                actual_plugin_unique_identifier = plugin_decode_response.unique_identifier
 
-        result = manager.install_from_identifiers(
-            tenant_id,
-            actual_plugin_unique_identifiers,
-            PluginInstallationSource.Marketplace,
-            metas,
+            PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
+            if require_exact_identifiers and actual_plugin_unique_identifier != plugin_unique_identifier:
+                raise ValueError("resolved marketplace identifier changed after package upload")
+
+            actual_plugin_unique_identifiers.append(actual_plugin_unique_identifier)
+            metas.append(
+                MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier=actual_plugin_unique_identifier)
+            )
+
+        return _MarketplaceIdentifierInstallPreparation(
+            plugin_unique_identifiers=tuple(actual_plugin_unique_identifiers),
+            metas=tuple(metas),
         )
-        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-        return result
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:

@@ -4,6 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from graphon.nodes import BuiltinNodeTypes
+from services.dsl_content import DownloadSizeLimitExceededError
 from services.snippet_dsl_service import (
     ImportMode,
     ImportStatus,
@@ -76,8 +77,8 @@ def test_import_snippet_rejects_invalid_yaml_url_scheme() -> None:
 def test_import_snippet_returns_failed_when_yaml_url_fetch_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr(
-        "services.snippet_dsl_service.ssrf_proxy.get",
-        Mock(return_value=SimpleNamespace(status_code=404, text="not found")),
+        "services.snippet_dsl_service.fetch_dsl_content_from_url",
+        Mock(side_effect=RuntimeError("404")),
     )
 
     result = service.import_snippet(
@@ -94,8 +95,8 @@ def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch: pytest.M
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 3)
     monkeypatch.setattr(
-        "services.snippet_dsl_service.ssrf_proxy.get",
-        Mock(return_value=SimpleNamespace(status_code=200, text="too large")),
+        "services.snippet_dsl_service.fetch_dsl_content_from_url",
+        Mock(side_effect=DownloadSizeLimitExceededError("Max file size reached")),
     )
 
     result = service.import_snippet(
@@ -111,7 +112,7 @@ def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch: pytest.M
 def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr(
-        "services.snippet_dsl_service.ssrf_proxy.get",
+        "services.snippet_dsl_service.fetch_dsl_content_from_url",
         Mock(side_effect=RuntimeError("network down")),
     )
 

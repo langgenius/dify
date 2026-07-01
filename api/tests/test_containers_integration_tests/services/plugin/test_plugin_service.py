@@ -313,7 +313,7 @@ class TestInstallFromMarketplacePkg:
         assert result == "task-id"
         installer.install_from_identifiers.assert_called_once()
         call_args = installer.install_from_identifiers.call_args[0]
-        assert call_args[1] == ["resolved-uid"]
+        assert tuple(call_args[1]) == ("resolved-uid",)
 
     @patch("core.plugin.plugin_service.FeatureService")
     @patch("core.plugin.plugin_service.PluginInstaller")
@@ -332,7 +332,7 @@ class TestInstallFromMarketplacePkg:
 
         installer.install_from_identifiers.assert_called_once()
         call_args = installer.install_from_identifiers.call_args[0]
-        assert call_args[1] == ["uid-1"]
+        assert tuple(call_args[1]) == ("uid-1",)
 
 
 class TestUninstall:

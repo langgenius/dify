@@ -4,15 +4,15 @@ import enum
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.parameters import PluginParameterOption
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
+from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.trigger.entities.entities import TriggerProviderEntity
@@ -169,6 +169,74 @@ class PluginInstallTaskStartResponse(BaseModel):
     all_installed: bool = Field(description="Whether all plugins are installed.")
     task_id: str = Field(description="The ID of the install task.")
     task: PluginInstallTask | None = Field(default=None, description="The install task.")
+
+
+class PackagePluginInstallIdentifierMeta(BaseModel):
+    """Metadata for package installs; the daemon expects an empty object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class GithubPluginInstallIdentifierMeta(BaseModel):
+    """Metadata required by plugin daemon for GitHub package installs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    repo: str
+    version: str
+    package: str
+
+
+class MarketplacePluginInstallIdentifierMeta(BaseModel):
+    """Metadata required by plugin daemon for marketplace package installs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    plugin_unique_identifier: str
+
+
+type PluginInstallIdentifierMeta = (
+    PackagePluginInstallIdentifierMeta | GithubPluginInstallIdentifierMeta | MarketplacePluginInstallIdentifierMeta
+)
+
+
+class PluginInstallIdentifiersRequest(BaseModel):
+    """JSON request body for daemon plugin installation from identifiers."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    plugin_unique_identifiers: list[str]
+    source: PluginInstallationSource
+    metas: list[PluginInstallIdentifierMeta]
+
+    @model_validator(mode="after")
+    def ensure_meta_contract(self) -> Self:
+        if len(self.metas) != len(self.plugin_unique_identifiers):
+            raise ValueError("metas must contain exactly one entry per plugin_unique_identifier")
+        expected_meta_cls: (
+            type[PackagePluginInstallIdentifierMeta]
+            | type[GithubPluginInstallIdentifierMeta]
+            | type[MarketplacePluginInstallIdentifierMeta]
+        )
+        match self.source:
+            case PluginInstallationSource.Package:
+                expected_meta_cls = PackagePluginInstallIdentifierMeta
+            case PluginInstallationSource.Github:
+                expected_meta_cls = GithubPluginInstallIdentifierMeta
+            case PluginInstallationSource.Marketplace:
+                expected_meta_cls = MarketplacePluginInstallIdentifierMeta
+            case _:
+                raise ValueError(f"installing plugins from {self.source} is not supported")
+        if any(not isinstance(meta, expected_meta_cls) for meta in self.metas):
+            raise ValueError(f"{self.source} installs require {expected_meta_cls.__name__} metas")
+        if self.source == PluginInstallationSource.Marketplace:
+            for plugin_unique_identifier, meta in zip(self.plugin_unique_identifiers, self.metas, strict=True):
+                if (
+                    isinstance(meta, MarketplacePluginInstallIdentifierMeta)
+                    and meta.plugin_unique_identifier != plugin_unique_identifier
+                ):
+                    raise ValueError("marketplace meta plugin_unique_identifier must match plugin_unique_identifier")
+        return self
 
 
 class PluginVerification(BaseModel):

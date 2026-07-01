@@ -203,6 +203,7 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
             if response.status_code not in STATUS_FORCELIST:
                 return response
             else:
+                response.close()
                 logger.warning(
                     "Received status code %s for URL %s which is in the force list",
                     response.status_code,

@@ -1,26 +1,22 @@
 import datetime
-import json
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
-from typing import TypedDict
 from uuid import uuid4
 
 import click
 import sqlalchemy as sa
 import tqdm
 from flask import Flask, current_app
-from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
-from core.plugin.entities.plugin import PluginInstallationSource
-from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
+from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStatus
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
@@ -30,33 +26,32 @@ from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
+from services.plugin.plugin_migration_models import (
+    ExtractedPluginIdentifiers,
+    PluginIdentifierResolution,
+    PluginInstallBatch,
+    PluginInstallResult,
+    PluginInstallSummary,
+    RagPipelinePluginInstallSummary,
+    TenantPluginInstallOutcome,
+    TenantPluginInstallPlan,
+    TenantPluginNotInstalled,
+    TenantPluginRecord,
+)
 
 logger = logging.getLogger(__name__)
 
 excluded_providers = ["time", "audio", "code", "webscraper"]
-
-
-class _TenantPluginRecord(TypedDict):
-    tenant_id: str
-    plugins: list[str]
-
-
-_tenant_plugin_adapter: TypeAdapter[_TenantPluginRecord] = TypeAdapter(_TenantPluginRecord)
-
-
-class ExtractedPluginsDict(TypedDict):
-    plugins: dict[str, str]
-    plugin_not_exist: list[str]
-
-
-class PluginInstallResultDict(TypedDict):
-    success: list[str]
-    failed: list[str]
+TENANT_INSTALL_BATCH_SIZE = 64
+PLUGIN_INSTANCE_INSTALL_BATCH_SIZE = 8
+PLUGIN_UPLOAD_WORKERS = 10
+PLUGIN_INSTALL_POLL_INTERVAL_SECONDS = 1
+PLUGIN_INSTALL_TASK_TIMEOUT_SECONDS = 30 * 60
 
 
 class PluginMigration:
     @classmethod
-    def extract_plugins(cls, filepath: str, workers: int):
+    def extract_plugins(cls, filepath: str, workers: int) -> None:
         """
         Migrate plugin.
         """
@@ -78,7 +73,7 @@ class PluginMigration:
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
-        def process_tenant(flask_app: Flask, tenant_id: str):
+        def process_tenant(flask_app: Flask, tenant_id: str) -> None:
             with flask_app.app_context():
                 nonlocal handled_tenant_count
                 try:
@@ -86,7 +81,8 @@ class PluginMigration:
                     # Use lock when writing to file
                     with file_lock:
                         with open(filepath, "a") as f:
-                            f.write(json.dumps({"tenant_id": tenant_id, "plugins": plugins}) + "\n")
+                            record = TenantPluginRecord(tenant_id=tenant_id, plugins=list(plugins))
+                            f.write(record.model_dump_json(by_alias=True) + "\n")
 
                     # Use lock when updating counter
                     with counter_lock:
@@ -319,230 +315,323 @@ class PluginMigration:
         return plugin_manifest[0].latest_package_identifier
 
     @classmethod
-    def extract_unique_plugins_to_file(cls, extracted_plugins: str, output_file: str):
+    def extract_unique_plugins_to_file(cls, extracted_plugins: str, output_file: str) -> None:
         """
         Extract unique plugins.
         """
-        Path(output_file).write_text(json.dumps(cls.extract_unique_plugins(extracted_plugins)))
+        Path(output_file).write_text(cls.extract_unique_plugins(extracted_plugins).model_dump_json(by_alias=True))
 
     @classmethod
-    def extract_unique_plugins(cls, extracted_plugins: str) -> ExtractedPluginsDict:
+    def extract_unique_plugins(cls, extracted_plugins: str) -> ExtractedPluginIdentifiers:
         plugins: dict[str, str] = {}
-        plugin_ids = []
-        plugin_not_exist = []
+        plugin_ids: list[str] = []
+        seen_plugin_ids: set[str] = set()
+        unresolved_plugin_ids: list[str] = []
         logger.info("Extracting unique plugins from %s", extracted_plugins)
         with open(extracted_plugins) as f:
             for line in f:
-                data = _tenant_plugin_adapter.validate_json(line)
-                for plugin_id in data["plugins"]:
-                    if plugin_id not in plugin_ids:
+                record = TenantPluginRecord.model_validate_json(line)
+                for plugin_id in record.plugin_ids:
+                    if plugin_id not in seen_plugin_ids:
+                        seen_plugin_ids.add(plugin_id)
                         plugin_ids.append(plugin_id)
 
-        def fetch_plugin(plugin_id):
+        def fetch_plugin(plugin_id: str) -> PluginIdentifierResolution:
             try:
-                unique_identifier = cls._fetch_plugin_unique_identifier(plugin_id)
-                if unique_identifier:
-                    plugins[plugin_id] = unique_identifier
-                else:
-                    plugin_not_exist.append(plugin_id)
+                return PluginIdentifierResolution(plugin_id, cls._fetch_plugin_unique_identifier(plugin_id))
             except Exception:
                 logger.exception("Failed to fetch plugin unique identifier for %s", plugin_id)
-                plugin_not_exist.append(plugin_id)
+                return PluginIdentifierResolution(plugin_id, None)
 
         with ThreadPoolExecutor(max_workers=10) as executor:
-            list(tqdm.tqdm(executor.map(fetch_plugin, plugin_ids), total=len(plugin_ids)))
+            with tqdm.tqdm(total=len(plugin_ids)) as progress:
+                for resolution in executor.map(fetch_plugin, plugin_ids):
+                    if resolution.unique_identifier:
+                        plugins[resolution.plugin_id] = resolution.unique_identifier
+                    else:
+                        unresolved_plugin_ids.append(resolution.plugin_id)
+                    progress.update()
 
-        return {"plugins": plugins, "plugin_not_exist": plugin_not_exist}
+        return ExtractedPluginIdentifiers(plugins=plugins, plugin_not_exist=unresolved_plugin_ids)
 
     @classmethod
-    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100):
+    def _install_resolved_plugins_for_tenant(cls, plan: TenantPluginInstallPlan) -> TenantPluginInstallOutcome:
+        """
+        Install already-resolved marketplace plugins for one tenant.
+
+        The outcome always uses plugin IDs, not plugin unique identifiers, so JSON summaries can be traced back to the
+        extracted tenant records without mixing daemon identifier formats into migration output.
+        """
+        installable_plugin_ids = plan.installable_plugin_ids
+        if not installable_plugin_ids:
+            return TenantPluginInstallOutcome(tenant_id=plan.tenant_id)
+
+        logger.info("Installing %s plugins for tenant %s", len(installable_plugin_ids), plan.tenant_id)
+        manager = PluginInstaller()
+        try:
+            installed_plugins = manager.list_plugins(plan.tenant_id)
+            installed_plugin_ids = {plugin.plugin_id for plugin in installed_plugins}
+        except Exception:
+            logger.exception("Failed to prepare plugin installation for tenant %s", plan.tenant_id)
+            return TenantPluginInstallOutcome(
+                tenant_id=plan.tenant_id,
+                failed_plugin_ids=installable_plugin_ids,
+            )
+
+        failed_plugin_ids: list[str] = []
+        for i in range(0, len(installable_plugin_ids), TENANT_INSTALL_BATCH_SIZE):
+            batch_plugin_ids = installable_plugin_ids[i : i + TENANT_INSTALL_BATCH_SIZE]
+            pending_plugin_ids = tuple(
+                plugin_id for plugin_id in batch_plugin_ids if plugin_id not in installed_plugin_ids
+            )
+            if not pending_plugin_ids:
+                continue
+
+            result = cls._install_resolved_plugin_batch(
+                PluginInstallBatch.from_plugin_ids(plan.tenant_id, pending_plugin_ids, plan.identifier_by_id),
+                manager,
+            )
+            failed_plugin_ids.extend(result.failed_plugin_ids)
+
+        return TenantPluginInstallOutcome(
+            tenant_id=plan.tenant_id,
+            failed_plugin_ids=tuple(failed_plugin_ids),
+        )
+
+    @classmethod
+    def _install_resolved_plugin_batch(
+        cls, batch: PluginInstallBatch, manager: PluginInstaller | None = None
+    ) -> PluginInstallResult:
+        """
+        Install a resolved marketplace batch and wait until the daemon reaches a terminal task state.
+
+        Plugin migration summaries are keyed by migration plugin ID, while the daemon reports package
+        unique identifiers. Keeping that translation here gives both fake-tenant preinstall and real-tenant install
+        the same failure semantics.
+        """
+        if not batch.plugin_ids:
+            return PluginInstallResult()
+
+        manager = manager or PluginInstaller()
+        try:
+            response = PluginService.install_from_resolved_marketplace_identifiers(
+                batch.tenant_id,
+                batch.plugin_unique_identifiers,
+            )
+        except Exception:
+            logger.exception("Failed to start plugin installation task for tenant %s", batch.tenant_id)
+            return PluginInstallResult(failed_plugin_ids=batch.plugin_ids)
+
+        if response.all_installed:
+            return PluginInstallResult(successful_plugin_ids=batch.plugin_ids)
+
+        if not response.task_id:
+            logger.error("Plugin installation for tenant %s did not return a task id", batch.tenant_id)
+            return PluginInstallResult(failed_plugin_ids=batch.plugin_ids)
+
+        return cls._wait_for_plugin_installation_task(manager, batch, response.task_id)
+
+    @classmethod
+    def _wait_for_plugin_installation_task(
+        cls, manager: PluginInstaller, batch: PluginInstallBatch, task_id: str
+    ) -> PluginInstallResult:
+        deadline = time.monotonic() + PLUGIN_INSTALL_TASK_TIMEOUT_SECONDS
+        terminal_statuses = {PluginInstallTaskStatus.Failed, PluginInstallTaskStatus.Success}
+
+        while True:
+            try:
+                status = manager.fetch_plugin_installation_task(batch.tenant_id, task_id)
+            except Exception:
+                logger.exception("Failed to fetch plugin installation task %s for tenant %s", task_id, batch.tenant_id)
+                PluginService.invalidate_plugin_model_providers_cache(batch.tenant_id)
+                return PluginInstallResult(failed_plugin_ids=batch.plugin_ids)
+
+            if status.status in terminal_statuses:
+                PluginService.invalidate_plugin_model_providers_cache(batch.tenant_id)
+                return cls._plugin_install_result_from_task_status(batch, status)
+
+            if time.monotonic() >= deadline:
+                logger.error(
+                    "Timed out waiting for plugin installation task %s for tenant %s", task_id, batch.tenant_id
+                )
+                PluginService.invalidate_plugin_model_providers_cache(batch.tenant_id)
+                return PluginInstallResult(failed_plugin_ids=batch.plugin_ids)
+
+            time.sleep(PLUGIN_INSTALL_POLL_INTERVAL_SECONDS)
+
+    @staticmethod
+    def _plugin_install_result_from_task_status(
+        batch: PluginInstallBatch, status: PluginInstallTask
+    ) -> PluginInstallResult:
+        successful_plugin_ids: list[str] = []
+        failed_plugin_ids: list[str] = []
+        resolved_plugin_ids: set[str] = set()
+        plugin_id_by_identifier = batch.plugin_id_by_identifier
+
+        for plugin in status.plugins:
+            plugin_id = plugin_id_by_identifier.get(plugin.plugin_unique_identifier)
+            if plugin_id is None:
+                logger.warning(
+                    "Ignoring install task status for unexpected plugin %s in tenant %s",
+                    plugin.plugin_unique_identifier,
+                    batch.tenant_id,
+                )
+                continue
+
+            if plugin_id in resolved_plugin_ids:
+                continue
+
+            resolved_plugin_ids.add(plugin_id)
+            if plugin.status == PluginInstallTaskStatus.Success:
+                successful_plugin_ids.append(plugin_id)
+            else:
+                failed_plugin_ids.append(plugin_id)
+                logger.error(
+                    "Failed to install plugin %s for tenant %s, error: %s",
+                    plugin.plugin_unique_identifier,
+                    batch.tenant_id,
+                    plugin.message,
+                )
+
+        missing_plugin_ids = tuple(plugin_id for plugin_id in batch.plugin_ids if plugin_id not in resolved_plugin_ids)
+        if status.status == PluginInstallTaskStatus.Success:
+            successful_plugin_ids.extend(missing_plugin_ids)
+        else:
+            failed_plugin_ids.extend(missing_plugin_ids)
+
+        return PluginInstallResult(
+            successful_plugin_ids=tuple(successful_plugin_ids),
+            failed_plugin_ids=tuple(failed_plugin_ids),
+        )
+
+    @classmethod
+    def _uninstall_all_plugins_for_tenant(cls, tenant_id: str) -> None:
+        """Remove every plugin installation for a temporary migration tenant."""
+        manager = PluginInstaller()
+        try:
+            installation = manager.list_plugins(tenant_id)
+            while installation:
+                for plugin in installation:
+                    manager.uninstall(tenant_id, plugin.installation_id)
+
+                installation = manager.list_plugins(tenant_id)
+        except Exception:
+            logger.exception("Failed to get installation for tenant %s", tenant_id)
+
+    @classmethod
+    def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100) -> None:
         """
         Install plugins.
         """
-        manager = PluginInstaller()
-
-        plugins = cls.extract_unique_plugins(extracted_plugins)
-        not_installed = []
-        plugin_install_failed = []
+        extracted_plugin_identifiers = cls.extract_unique_plugins(extracted_plugins)
+        plugin_identifier_by_id = extracted_plugin_identifiers.identifier_by_id
+        not_installed: list[TenantPluginNotInstalled] = []
+        failed_plugin_ids: list[str] = []
 
         # use a fake tenant id to install all the plugins
         fake_tenant_id = uuid4().hex
-        logger.info("Installing %s plugin instances for fake tenant %s", len(plugins["plugins"]), fake_tenant_id)
+        logger.info("Installing %s plugin instances for fake tenant %s", len(plugin_identifier_by_id), fake_tenant_id)
 
-        thread_pool = ThreadPoolExecutor(max_workers=workers)
-
-        response = cls.handle_plugin_instance_install(fake_tenant_id, plugins["plugins"])
-        if response.get("failed"):
-            plugin_install_failed.extend(response.get("failed", []))
-
-        def install(tenant_id: str, plugin_ids: list[str]):
-            logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
-            # fetch plugin already installed
-            installed_plugins = manager.list_plugins(tenant_id)
-            installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-            # at most 64 plugins one batch
-            for i in range(0, len(plugin_ids), 64):
-                batch_plugin_ids = plugin_ids[i : i + 64]
-                batch_plugin_identifiers = [
-                    plugins["plugins"][plugin_id]
-                    for plugin_id in batch_plugin_ids
-                    if plugin_id not in installed_plugins_ids and plugin_id in plugins["plugins"]
-                ]
-                if batch_plugin_identifiers:
-                    manager.install_from_identifiers(
-                        tenant_id,
-                        batch_plugin_identifiers,
-                        PluginInstallationSource.Marketplace,
-                        metas=[
-                            {
-                                "plugin_unique_identifier": identifier,
-                            }
-                            for identifier in batch_plugin_identifiers
-                        ],
-                    )
-                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-
-        with open(extracted_plugins) as f:
-            """
-            Read line by line, and install plugins for each tenant.
-            """
-            for line in f:
-                data = _tenant_plugin_adapter.validate_json(line)
-                tenant_id = data["tenant_id"]
-                plugin_ids = data["plugins"]
-                plugin_not_exist: list[str] = []
-                # get plugin unique identifier
-                for plugin_id in plugin_ids:
-                    unique_identifier = plugins.get(plugin_id)
-                    if unique_identifier:
-                        plugin_not_exist.append(plugin_id)
-
-                if plugin_not_exist:
-                    not_installed.append(
-                        {
-                            "tenant_id": tenant_id,
-                            "plugin_not_exist": plugin_not_exist,
-                        }
-                    )
-
-                thread_pool.submit(install, tenant_id, plugin_ids)
-
-        thread_pool.shutdown(wait=True)
-
-        logger.info("Uninstall plugins")
-
-        # get installation
         try:
-            installation = manager.list_plugins(fake_tenant_id)
-            while installation:
-                for plugin in installation:
-                    manager.uninstall(fake_tenant_id, plugin.installation_id)
+            response = cls.handle_plugin_instance_install(fake_tenant_id, plugin_identifier_by_id)
+            failed_plugin_ids.extend(response.failed_plugin_ids)
+            preinstall_failed_plugin_ids = response.failed_plugin_ids
 
-                installation = manager.list_plugins(fake_tenant_id)
-        except Exception:
-            logger.exception("Failed to get installation for tenant %s", fake_tenant_id)
+            # Read line by line, and install plugins for each tenant.
+            futures: list[Future[TenantPluginInstallOutcome]] = []
+            with ThreadPoolExecutor(max_workers=workers) as thread_pool:
+                with open(extracted_plugins) as f:
+                    for line in f:
+                        record = TenantPluginRecord.model_validate_json(line)
+                        plan = TenantPluginInstallPlan.from_record(
+                            record,
+                            plugin_identifier_by_id,
+                            excluded_plugin_ids=preinstall_failed_plugin_ids,
+                        )
 
-        Path(output_file).write_text(
-            json.dumps(
-                {
-                    "not_installed": not_installed,
-                    "plugin_install_failed": plugin_install_failed,
-                }
-            )
+                        if plan.unresolved_plugin_ids:
+                            not_installed.append(plan.to_not_installed_record())
+
+                        if plan.installable_plugin_ids:
+                            futures.append(thread_pool.submit(cls._install_resolved_plugins_for_tenant, plan))
+
+            for future in futures:
+                outcome = future.result()
+                failed_plugin_ids.extend(outcome.failed_plugin_ids)
+        finally:
+            logger.info("Uninstall plugins")
+            cls._uninstall_all_plugins_for_tenant(fake_tenant_id)
+
+        summary = PluginInstallSummary(
+            not_installed=not_installed,
+            plugin_install_failed=failed_plugin_ids,
         )
+        Path(output_file).write_text(summary.model_dump_json(by_alias=True))
 
     @classmethod
     def install_rag_pipeline_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100) -> None:
         """
         Install rag pipeline plugins.
         """
-        manager = PluginInstaller()
-
-        plugins = cls.extract_unique_plugins(extracted_plugins)
-        plugin_install_failed = []
+        extracted_plugin_identifiers = cls.extract_unique_plugins(extracted_plugins)
+        plugin_identifier_by_id = extracted_plugin_identifiers.identifier_by_id
+        unresolved_plugin_ids = tuple(extracted_plugin_identifiers.unresolved_plugin_ids)
+        failed_plugin_ids: list[str] = list(unresolved_plugin_ids)
 
         # use a fake tenant id to install all the plugins
         fake_tenant_id = uuid4().hex
-        logger.info("Installing %s plugin instances for fake tenant %s", len(plugins["plugins"]), fake_tenant_id)
+        logger.info("Installing %s plugin instances for fake tenant %s", len(plugin_identifier_by_id), fake_tenant_id)
 
-        thread_pool = ThreadPoolExecutor(max_workers=workers)
-
-        response = cls.handle_plugin_instance_install(fake_tenant_id, plugins["plugins"])
-        if response.get("failed"):
-            plugin_install_failed.extend(response.get("failed", []))
-
-        def install(
-            tenant_id: str, plugin_ids: dict[str, str], total_success_tenant: int, total_failed_tenant: int
-        ) -> None:
-            logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
-            try:
-                # fetch plugin already installed
-                installed_plugins = manager.list_plugins(tenant_id)
-                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
-                # at most 64 plugins one batch
-                for i in range(0, len(plugin_ids), 64):
-                    batch_plugin_ids = list(plugin_ids.keys())[i : i + 64]
-                    batch_plugin_identifiers = [
-                        plugin_ids[plugin_id]
-                        for plugin_id in batch_plugin_ids
-                        if plugin_id not in installed_plugins_ids and plugin_id in plugin_ids
-                    ]
-                    PluginService.install_from_marketplace_pkg(tenant_id, batch_plugin_identifiers)
-
-                total_success_tenant += 1
-            except Exception:
-                logger.exception("Failed to install plugins for tenant %s", tenant_id)
-                total_failed_tenant += 1
-
-        page = 1
-        total_success_tenant = 0
-        total_failed_tenant = 0
-        while True:
-            # paginate
-            tenants = db.paginate(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
-            if tenants.items is None or len(tenants.items) == 0:
-                break
-
-            for tenant in tenants:
-                tenant_id = tenant.id
-                # get plugin unique identifier
-                thread_pool.submit(
-                    install,
-                    tenant_id,
-                    plugins.get("plugins", {}),
-                    total_success_tenant,
-                    total_failed_tenant,
-                )
-
-            page += 1
-
-        thread_pool.shutdown(wait=True)
-
-        # uninstall all the plugins for fake tenant
         try:
-            installation = manager.list_plugins(fake_tenant_id)
-            while installation:
-                for plugin in installation:
-                    manager.uninstall(fake_tenant_id, plugin.installation_id)
+            response = cls.handle_plugin_instance_install(fake_tenant_id, plugin_identifier_by_id)
+            failed_plugin_ids.extend(response.failed_plugin_ids)
+            preinstall_failed_plugin_ids = tuple(response.failed_plugin_ids)
+            has_global_install_failures = bool(unresolved_plugin_ids or preinstall_failed_plugin_ids)
 
-                installation = manager.list_plugins(fake_tenant_id)
-        except Exception:
-            logger.exception("Failed to get installation for tenant %s", fake_tenant_id)
+            page = 1
+            futures: list[Future[TenantPluginInstallOutcome]] = []
+            with ThreadPoolExecutor(max_workers=workers) as thread_pool:
+                while True:
+                    # paginate
+                    tenants = db.paginate(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
+                    if tenants.items is None or len(tenants.items) == 0:
+                        break
 
-        Path(output_file).write_text(
-            json.dumps(
-                {
-                    "total_success_tenant": total_success_tenant,
-                    "total_failed_tenant": total_failed_tenant,
-                    "plugin_install_failed": plugin_install_failed,
-                }
-            )
+                    for tenant in tenants:
+                        tenant_id = tenant.id
+                        plan = TenantPluginInstallPlan.from_resolved_identifiers(
+                            tenant_id,
+                            plugin_identifier_by_id,
+                            excluded_plugin_ids=preinstall_failed_plugin_ids,
+                        )
+                        futures.append(thread_pool.submit(cls._install_resolved_plugins_for_tenant, plan))
+
+                    page += 1
+
+            total_success_tenant = 0
+            total_failed_tenant = 0
+            for future in futures:
+                outcome = future.result()
+                if outcome.succeeded and not has_global_install_failures:
+                    total_success_tenant += 1
+                else:
+                    total_failed_tenant += 1
+                    failed_plugin_ids.extend(outcome.failed_plugin_ids)
+        finally:
+            # uninstall all the plugins for fake tenant
+            cls._uninstall_all_plugins_for_tenant(fake_tenant_id)
+
+        summary = RagPipelinePluginInstallSummary(
+            total_success_tenant=total_success_tenant,
+            total_failed_tenant=total_failed_tenant,
+            plugin_install_failed=failed_plugin_ids,
         )
+        Path(output_file).write_text(summary.model_dump_json(by_alias=True))
 
     @classmethod
     def handle_plugin_instance_install(
         cls, tenant_id: str, plugin_identifiers_map: Mapping[str, str]
-    ) -> PluginInstallResultDict:
+    ) -> PluginInstallResult:
         """
         Install plugins for a tenant.
         """
@@ -554,77 +643,45 @@ class PluginMigration:
         manager = PluginInstaller()
 
         # download all the plugins and upload
-        thread_pool = ThreadPoolExecutor(max_workers=10)
-        futures = []
+        futures: dict[Future[None], str] = {}
+        uploaded_plugin_ids: list[str] = []
+        upload_failed_plugin_ids: set[str] = set()
 
-        for plugin_id, plugin_identifier in plugin_identifiers_map.items():
+        def download_and_upload(tenant_id: str, plugin_identifier: str) -> None:
+            plugin_package = marketplace.download_plugin_pkg(plugin_identifier)
+            if not plugin_package:
+                raise Exception(f"Failed to download plugin {plugin_identifier}")
 
-            def download_and_upload(tenant_id, plugin_id, plugin_identifier):
-                plugin_package = marketplace.download_plugin_pkg(plugin_identifier)
-                if not plugin_package:
-                    raise Exception(f"Failed to download plugin {plugin_identifier}")
+            # upload
+            manager.upload_pkg(tenant_id, plugin_package, verify_signature=True)
 
-                # upload
-                manager.upload_pkg(tenant_id, plugin_package, verify_signature=True)
+        with ThreadPoolExecutor(max_workers=PLUGIN_UPLOAD_WORKERS) as thread_pool:
+            for plugin_id, plugin_identifier in plugin_identifiers_map.items():
+                futures[thread_pool.submit(download_and_upload, tenant_id, plugin_identifier)] = plugin_id
 
-            futures.append(thread_pool.submit(download_and_upload, tenant_id, plugin_id, plugin_identifier))
+            # Wait for all downloads to complete
+            for future, plugin_id in futures.items():
+                try:
+                    future.result()
+                except Exception:
+                    logger.exception("Failed to download or upload plugin %s for tenant %s", plugin_id, tenant_id)
+                    upload_failed_plugin_ids.add(plugin_id)
+                else:
+                    uploaded_plugin_ids.append(plugin_id)
 
-        # Wait for all downloads to complete
-        for future in futures:
-            future.result()  # This will raise any exceptions that occurred
-
-        thread_pool.shutdown(wait=True)
-        success = []
-        failed = []
-
-        reverse_map = {v: k for k, v in plugin_identifiers_map.items()}
+        successful_plugin_ids: list[str] = []
+        failed_plugin_ids = [plugin_id for plugin_id in plugin_identifiers_map if plugin_id in upload_failed_plugin_ids]
+        uploaded_identifier_by_id = {plugin_id: plugin_identifiers_map[plugin_id] for plugin_id in uploaded_plugin_ids}
 
         # at most 8 plugins one batch
-        for i in range(0, len(plugin_identifiers_map), 8):
-            batch_plugin_ids = list(plugin_identifiers_map.keys())[i : i + 8]
-            batch_plugin_identifiers = [plugin_identifiers_map[plugin_id] for plugin_id in batch_plugin_ids]
+        for i in range(0, len(uploaded_plugin_ids), PLUGIN_INSTANCE_INSTALL_BATCH_SIZE):
+            batch_plugin_ids = uploaded_plugin_ids[i : i + PLUGIN_INSTANCE_INSTALL_BATCH_SIZE]
+            batch = PluginInstallBatch.from_plugin_ids(tenant_id, batch_plugin_ids, uploaded_identifier_by_id)
+            result = cls._install_resolved_plugin_batch(batch, manager)
+            successful_plugin_ids.extend(result.successful_plugin_ids)
+            failed_plugin_ids.extend(result.failed_plugin_ids)
 
-            try:
-                response = manager.install_from_identifiers(
-                    tenant_id=tenant_id,
-                    identifiers=batch_plugin_identifiers,
-                    source=PluginInstallationSource.Marketplace,
-                    metas=[
-                        {
-                            "plugin_unique_identifier": identifier,
-                        }
-                        for identifier in batch_plugin_identifiers
-                    ],
-                )
-                PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-            except Exception:
-                # add to failed
-                failed.extend(batch_plugin_identifiers)
-                continue
-
-            if response.all_installed:
-                success.extend(batch_plugin_identifiers)
-                continue
-
-            task_id = response.task_id
-            done = False
-            while not done:
-                status = manager.fetch_plugin_installation_task(tenant_id, task_id)
-                if status.status in [PluginInstallTaskStatus.Failed, PluginInstallTaskStatus.Success]:
-                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-                    for plugin in status.plugins:
-                        if plugin.status == PluginInstallTaskStatus.Success:
-                            success.append(reverse_map[plugin.plugin_unique_identifier])
-                        else:
-                            failed.append(reverse_map[plugin.plugin_unique_identifier])
-                            logger.error(
-                                "Failed to install plugin %s, error: %s",
-                                plugin.plugin_unique_identifier,
-                                plugin.message,
-                            )
-
-                    done = True
-                else:
-                    time.sleep(1)
-
-        return {"success": success, "failed": failed}
+        return PluginInstallResult(
+            successful_plugin_ids=tuple(successful_plugin_ids),
+            failed_plugin_ids=tuple(failed_plugin_ids),
+        )

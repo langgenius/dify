@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from graphon.enums import BuiltinNodeTypes
+from services.dsl_content import DownloadSizeLimitExceededError
 from services.dsl_version import check_version_compatibility
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, RagPipelineDatasetCreateEntity
 from services.rag_pipeline import rag_pipeline_dsl_service
@@ -208,7 +209,7 @@ def test_export_rag_pipeline_dsl_raises_when_dataset_missing() -> None:
 
 def test_import_rag_pipeline_url_fetch_error(mocker: MockerFixture) -> None:
     mocker.patch(
-        "services.rag_pipeline.rag_pipeline_dsl_service.remote_fetcher.make_request",
+        "services.rag_pipeline.rag_pipeline_dsl_service.fetch_dsl_content_from_url",
         side_effect=Exception("fetch failed"),
     )
     service = RagPipelineDslService(session=Mock())
@@ -633,6 +634,17 @@ def test_import_rag_pipeline_yaml_content_requires_content() -> None:
     assert "yaml_content is required" in result.error
 
 
+def test_import_rag_pipeline_rejects_oversized_yaml_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline_dsl_service.DSL_MAX_SIZE", 3)
+
+    result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content="too large")
+
+    assert result.status == ImportStatus.FAILED
+    assert "File size exceeds the limit" in result.error
+
+
 def test_import_rag_pipeline_yaml_content_requires_mapping() -> None:
     service = RagPipelineDslService(session=Mock())
     account = Mock(current_tenant_id="t1")
@@ -814,12 +826,9 @@ def test_confirm_import_updates_existing_dataset(mocker: MockerFixture) -> None:
 
 
 def test_import_rag_pipeline_yaml_url_handles_empty_content_after_github_rewrite(mocker: MockerFixture) -> None:
-    response = Mock()
-    response.raise_for_status.return_value = None
-    response.content = b""
     get_mock = mocker.patch(
-        "services.rag_pipeline.rag_pipeline_dsl_service.remote_fetcher.make_request",
-        return_value=response,
+        "services.rag_pipeline.rag_pipeline_dsl_service.fetch_dsl_content_from_url",
+        return_value=b"",
     )
     service = RagPipelineDslService(session=Mock())
     account = Mock(current_tenant_id="t1")
@@ -832,7 +841,7 @@ def test_import_rag_pipeline_yaml_url_handles_empty_content_after_github_rewrite
 
     assert result.status == ImportStatus.FAILED
     assert "Empty content from url" in result.error
-    called_url = get_mock.call_args.args[1]
+    called_url = get_mock.call_args.args[0]
     assert "raw.githubusercontent.com" in called_url
 
 
@@ -884,10 +893,10 @@ def test_create_or_update_pipeline_creates_draft_when_missing(mocker: MockerFixt
 
 
 def test_import_rag_pipeline_url_size_exceeds_limit(mocker: MockerFixture) -> None:
-    response = Mock()
-    response.raise_for_status.return_value = None
-    response.content = b"x" * (10 * 1024 * 1024 + 1)
-    mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.remote_fetcher.make_request", return_value=response)
+    mocker.patch(
+        "services.rag_pipeline.rag_pipeline_dsl_service.fetch_dsl_content_from_url",
+        side_effect=DownloadSizeLimitExceededError("Max file size reached"),
+    )
     service = RagPipelineDslService(session=Mock())
     account = Mock(current_tenant_id="t1")
 
