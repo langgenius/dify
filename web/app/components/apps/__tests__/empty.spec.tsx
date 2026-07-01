@@ -30,6 +30,14 @@ describe('Empty', () => {
       render(<Empty message="app.newApp.noAppsFound" />)
       expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
     })
+
+    it('should expose the step-by-step tour target on the centered empty content', () => {
+      render(<Empty message={defaultMessage} stepByStepTourTarget="studio-empty-target" />)
+
+      const target = screen.getByText(defaultMessage).closest('[data-step-by-step-tour-target]')
+      expect(target).toHaveAttribute('data-step-by-step-tour-target', 'studio-empty-target')
+      expect(target).toHaveClass('flex', 'flex-col', 'items-center', 'justify-center', 'gap-3')
+    })
   })
 
   describe('Styling', () => {

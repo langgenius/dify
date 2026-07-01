@@ -20,11 +20,15 @@ import { AppCardActionBar } from './app-card'
 type StarredAppCardProps = {
   app: App
   onRefresh?: () => void
+  stepByStepTourCardTarget?: string
+  stepByStepTourCardHighlightPart?: string
 }
 
 export function StarredAppCard({
   app,
   onRefresh,
+  stepByStepTourCardTarget,
+  stepByStepTourCardHighlightPart,
 }: StarredAppCardProps) {
   const { t } = useTranslation()
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
@@ -98,6 +102,8 @@ export function StarredAppCard({
               tabIndex={0}
               aria-disabled="true"
               aria-label={app.name}
+              data-step-by-step-tour-target={stepByStepTourCardTarget}
+              data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
               className={cardClassName}
               onClick={showPreviewOnlyAccessWarning}
               onKeyDown={handlePreviewOnlyCardKeyDown}
@@ -106,7 +112,12 @@ export function StarredAppCard({
             </div>
           )
         : (
-            <Link href={href} className={cardClassName}>
+            <Link
+              href={href}
+              data-step-by-step-tour-target={stepByStepTourCardTarget}
+              data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
+              className={cardClassName}
+            >
               {cardContent}
             </Link>
           )}

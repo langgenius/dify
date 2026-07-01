@@ -103,6 +103,7 @@ type AppCardProps = {
   onOpenTagManagement?: () => void
   stepByStepTourActionMenuOpen?: boolean
   stepByStepTourCardTarget?: string
+  stepByStepTourCardHighlightPart?: string
   stepByStepTourActionMenuHighlightPart?: string
 }
 
@@ -755,6 +756,7 @@ export function AppCard({
   onOpenTagManagement = () => {},
   stepByStepTourActionMenuOpen = false,
   stepByStepTourCardTarget,
+  stepByStepTourCardHighlightPart,
   stepByStepTourActionMenuHighlightPart,
 }: AppCardProps) {
   const { t } = useTranslation()
@@ -1123,6 +1125,7 @@ export function AppCard({
                 aria-labelledby={appNameId}
                 aria-describedby={app.description ? appDescriptionId : undefined}
                 data-step-by-step-tour-target={stepByStepTourCardTarget}
+                data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
                 className={appCardClassName}
                 onClick={showPreviewOnlyAccessWarning}
                 onKeyDown={handlePreviewOnlyCardKeyDown}
@@ -1136,6 +1139,7 @@ export function AppCard({
                 aria-labelledby={appNameId}
                 aria-describedby={app.description ? appDescriptionId : undefined}
                 data-step-by-step-tour-target={stepByStepTourCardTarget}
+                data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
                 className={appCardClassName}
               >
                 {appCardContent}

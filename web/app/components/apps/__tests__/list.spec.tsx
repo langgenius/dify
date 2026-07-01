@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { STEP_BY_STEP_TOUR_STORAGE_KEY } from '@/app/components/step-by-step-tour/constants'
-import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
+import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
@@ -288,17 +288,20 @@ vi.mock('../app-card', () => ({
     stepByStepTourActionMenuOpen,
     stepByStepTourActionMenuHighlightPart,
     stepByStepTourCardTarget,
+    stepByStepTourCardHighlightPart,
   }: {
     app: { id: string, name: string }
     stepByStepTourActionMenuOpen?: boolean
     stepByStepTourActionMenuHighlightPart?: string
     stepByStepTourCardTarget?: string
+    stepByStepTourCardHighlightPart?: string
   }) => {
     return React.createElement(
       'div',
       {
         'data-testid': `app-card-${app.id}`,
         'data-step-by-step-tour-target': stepByStepTourCardTarget,
+        'data-step-by-step-tour-highlight-part': stepByStepTourCardHighlightPart,
         'role': 'article',
       },
       app.name,
@@ -329,8 +332,12 @@ vi.mock('../app-card', () => ({
 }))
 
 vi.mock('../empty', () => ({
-  default: () => {
-    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
+  default: ({ stepByStepTourTarget }: { stepByStepTourTarget?: string }) => {
+    return React.createElement('div', {
+      'data-testid': 'empty-state',
+      'data-step-by-step-tour-target': stepByStepTourTarget,
+      'role': 'status',
+    }, 'No apps found')
   },
 }))
 
@@ -395,7 +402,7 @@ const openAppSortSelect = async (user = userEvent.setup()) => {
 
 const setActiveStudioStepByStepTour = (
   activeGuideIndex: number,
-  activeGuideGroup: 'studioWithApps' | undefined = 'studioWithApps',
+  activeGuideGroup: 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps' | undefined = 'studioWithApps',
 ) => {
   localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
     activeTaskId: 'studio',
@@ -631,6 +638,76 @@ describe('List', () => {
       expect(screen.queryByRole('menuitem', { name: 'app.newApp.startFromTemplate' })).not.toBeInTheDocument()
       expect(starredCard).not.toHaveAttribute('data-step-by-step-tour-target')
       expect(starredActionBar).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+    })
+
+    it('should highlight the first starred app row for the Studio no-create with-apps tour', () => {
+      mockWorkspacePermissionKeys = []
+      setActiveStudioStepByStepTour(0, 'studioNoCreateWithApps')
+      mockStarredAppData = {
+        data: [{
+          id: 'starred-app-1',
+          name: 'Starred App',
+          description: 'Starred description',
+          mode: AppModeEnum.CHAT,
+          icon: '⭐',
+          icon_type: 'emoji',
+          icon_background: '#FFEAD5',
+          icon_url: null,
+          tags: [],
+          author_name: 'Author 1',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        }],
+        total: 1,
+        page: 1,
+        limit: 100,
+        has_more: false,
+      }
+
+      renderList()
+
+      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+
+      expect(starredCard).toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard)
+      expect(starredCard).toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard)
+      expect(firstWorkspaceCard).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(firstWorkspaceCard).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'false')
+    })
+
+    it('should highlight the first all-apps row for the Studio no-create with-apps tour when there are no starred apps', () => {
+      mockWorkspacePermissionKeys = []
+      setActiveStudioStepByStepTour(0, 'studioNoCreateWithApps')
+
+      renderList()
+
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const secondWorkspaceCard = screen.getByTestId('app-card-app-2')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+
+      expect(firstWorkspaceCard).toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard)
+      expect(firstWorkspaceCard).toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard)
+      expect(secondWorkspaceCard).toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard)
+      expect(firstWorkspaceActionBar).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'false')
+    })
+
+    it('should expose the regular empty state for the Studio no-create empty tour', () => {
+      mockWorkspacePermissionKeys = []
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      setActiveStudioStepByStepTour(0, 'studioNoCreateEmpty')
+
+      renderList()
+
+      const target = document.querySelector(getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty))
+
+      expect(target).toBeInTheDocument()
+      expect(target).toBe(screen.getByTestId('empty-state'))
+      expect(target).not.toHaveClass('absolute', 'top-1/2', 'left-1/2')
+      expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
     })
 
     it('should not render new app card in the app grid', () => {

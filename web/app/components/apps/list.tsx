@@ -38,6 +38,7 @@ import { StarredAppList } from './starred-app-list'
 import { StudioListHeader } from './studio-list-header'
 
 const STARRED_APP_LIMIT = 100
+const STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT = 4
 
 type AppListQuery = NonNullable<GetAppsData['query']>
 type AppListSortBy = NonNullable<AppListQuery['sort_by']>
@@ -218,9 +219,14 @@ function List({
   const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || creatorIDs.length > 0
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
   const showFirstEmptyState = !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
-  const activeStudioGuideGroup = showFirstEmptyState
-    ? 'studioEmpty'
-    : hasAnyApp ? 'studioWithApps' : undefined
+  const showNoCreateEmptyState = !showSkeleton && !hasAnyApp && !canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const activeStudioGuideGroup = canCreateApp
+    ? showFirstEmptyState
+      ? 'studioEmpty'
+      : hasAnyApp ? 'studioWithApps' : undefined
+    : hasAnyApp
+      ? 'studioNoCreateWithApps'
+      : showNoCreateEmptyState ? 'studioNoCreateEmpty' : undefined
   const effectiveActiveStudioGuideGroup = stepByStepTourAccountState.activeGuideGroup ?? activeStudioGuideGroup
   const activeStudioGuides = stepByStepTourAccountState.activeTaskId === 'studio' && effectiveActiveStudioGuideGroup
     ? getStepByStepTourGuides('studio', effectiveActiveStudioGuideGroup)
@@ -228,6 +234,9 @@ function List({
   const activeStudioGuide = activeStudioGuides[stepByStepTourAccountState.activeGuideIndex ?? 0]
   const shouldOpenStepByStepTourCreateMenu = activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
   const shouldOpenStepByStepTourAppCardActionMenu = activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
+  const shouldHighlightStepByStepTourNoCreateAppRow = activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
+  const shouldHighlightStepByStepTourStarredAppRow = shouldHighlightStepByStepTourNoCreateAppRow && starredApps.length > 0
+  const shouldHighlightStepByStepTourAllAppsRow = shouldHighlightStepByStepTourNoCreateAppRow && !shouldHighlightStepByStepTourStarredAppRow
   const openCreateBlankModal = useCallback(() => {
     if (canCreateApp)
       setShowNewAppModal(true)
@@ -316,6 +325,9 @@ function List({
                   <StarredAppList
                     apps={starredApps}
                     onRefresh={refreshAppLists}
+                    stepByStepTourCardTarget={shouldHighlightStepByStepTourStarredAppRow ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard : undefined}
+                    stepByStepTourCardHighlightPart={shouldHighlightStepByStepTourStarredAppRow ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard : undefined}
+                    stepByStepTourHighlightedCardCount={shouldHighlightStepByStepTourStarredAppRow ? STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT : 0}
                   />
                 )}
                 <div className={cn(
@@ -334,11 +346,16 @@ function List({
                             onRefresh={refreshAppLists}
                             onOpenTagManagement={() => setShowTagManagementModal(true)}
                             stepByStepTourActionMenuOpen={index === 0 ? shouldOpenStepByStepTourAppCardActionMenu : undefined}
-                            stepByStepTourCardTarget={index === 0 ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard : undefined}
+                            stepByStepTourCardTarget={index === 0
+                              ? shouldHighlightStepByStepTourAllAppsRow
+                                ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard
+                                : canCreateApp ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard : undefined
+                              : undefined}
+                            stepByStepTourCardHighlightPart={index < STEP_BY_STEP_TOUR_APP_ROW_CARD_COUNT && shouldHighlightStepByStepTourAllAppsRow ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard : undefined}
                             stepByStepTourActionMenuHighlightPart={index === 0 && shouldOpenStepByStepTourAppCardActionMenu ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu : undefined}
                           />
                         ))
-                      : <Empty />}
+                      : <Empty stepByStepTourTarget={showNoCreateEmptyState ? STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty : undefined} />}
                   {isFetchingNextPage && (
                     <AppCardSkeleton count={3} />
                   )}
