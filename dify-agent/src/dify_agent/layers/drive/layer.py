@@ -5,9 +5,9 @@ mentioned in the prompt. When the layer enters a run context it eagerly pulls
 those mentioned skills/files through the already-active shell layer by running
 the sandbox-visible ``dify-agent drive pull`` command, then contributes a
 concise prompt block describing what was loaded. It also contributes a suffix
-prompt with the remaining skill catalog plus ``dify-agent drive`` and
-``dify-agent file`` usage so the model has concrete Agent Stub commands for
-materializing drive content and workflow files.
+prompt with the remaining skill catalog plus agent-visible ``dify-agent file``
+usage captured from the real CLI. Drive commands remain internal for now and
+are not exposed to the model.
 """
 
 from __future__ import annotations
@@ -24,26 +24,11 @@ from dify_agent.agent_stub.protocol import agent_stub_drive_base_for_ref
 from dify_agent.layers.drive.configs import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
 
-_AGENT_STUB_CLI_USAGE_PROMPT = """Agent Stub CLI usage is available inside shell jobs:
-
-Drive assets are Agent Soul versioned assets:
-
-- List drive assets: `dify-agent drive list [REMOTE_PREFIX]`
-- Pull drive assets: `dify-agent drive pull [REMOTE ...] [--to LOCAL_DIR]`
-  With no remote, pulls the whole visible drive. Pull overwrites local files.
-  Defaults to `$DIFY_AGENT_STUB_DRIVE_BASE`; use `--to .` for cwd.
-  `--to` is a local root; remote keys keep their path under it.
-  Skill archives are automatically extracted after pull.
-- Push one file: `dify-agent drive push LOCAL_FILE REMOTE_PATH`
-- Push a skill package: `dify-agent drive push LOCAL_DIR REMOTE_PATH --kind skill`
-- Push a raw directory: `dify-agent drive push LOCAL_DIR REMOTE_PATH --kind dir`
-
-Workflow file mappings:
-
-- Download a mapping: `dify-agent file download TRANSFER_METHOD REFERENCE_OR_URL [--to LOCAL_DIR]`
-- Or pass a mapping object: `dify-agent file download --mapping '{"transfer_method":"tool_file","reference":"..."}'`
-- Upload an output file: `dify-agent file upload PATH`
-  Prints JSON like `{"transfer_method":"tool_file","reference":"..."}`."""
+_AGENT_STUB_FILE_HELP_COMMANDS = (
+    "dify-agent file --help",
+    "dify-agent file upload --help",
+    "dify-agent file download --help",
+)
 
 
 class DifyDriveLayerError(RuntimeError):
@@ -63,6 +48,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     config: DifyDriveLayerConfig
     _loaded_skill_bodies: dict[str, str] = field(default_factory=dict)
     _pulled_file_paths: dict[str, str] = field(default_factory=dict)
+    _agent_stub_cli_help: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     @override
@@ -81,10 +67,12 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
 
     @override
     async def on_context_create(self) -> None:
+        await self._load_agent_stub_cli_help()
         await self._pull_mentioned_targets()
 
     @override
     async def on_context_resume(self) -> None:
+        await self._load_agent_stub_cli_help()
         await self._pull_mentioned_targets()
 
     def build_prompt_context(self) -> str:
@@ -127,19 +115,30 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             if skill.skill_md_key not in mentioned_skill_keys
         ]
         if other_skills:
-            pull_and_read_command = (
-                '`skill_dir="$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)"; '
-                + 'printf "%s\\n" "$skill_dir"; cat "$skill_dir/SKILL.md"`'
-            )
-            sections.append(
-                "Other available skills:\n"
-                + "\n".join(other_skills)
-                + "\n\nTo use one, pull it and read its SKILL.md in one command: "
-                + pull_and_read_command
-                + "."
-            )
-        sections.append(_AGENT_STUB_CLI_USAGE_PROMPT)
+            sections.append("Other available skills:\n" + "\n".join(other_skills))
+        if cli_help := self._format_agent_stub_cli_help():
+            sections.append(cli_help)
         return "\n\n".join(sections)
+
+    def _format_agent_stub_cli_help(self) -> str:
+        command_sections = [
+            f"$ {command}\n{self._agent_stub_cli_help[command]}"
+            for command in _AGENT_STUB_FILE_HELP_COMMANDS
+            if command in self._agent_stub_cli_help
+        ]
+        if not command_sections:
+            return ""
+        return "Agent Stub file CLI help:\n" + "\n\n".join(command_sections)
+
+    async def _load_agent_stub_cli_help(self) -> None:
+        self._agent_stub_cli_help = {}
+        for command in _AGENT_STUB_FILE_HELP_COMMANDS:
+            result = await self.deps.shell.run_remote_script(command, timeout=10.0)
+            if result.exit_code != 0 or not result.output_complete:
+                continue
+            output = result.output.strip()
+            if output:
+                self._agent_stub_cli_help[command] = output
 
     async def _pull_mentioned_targets(self) -> None:
         self._loaded_skill_bodies = {}
@@ -149,21 +148,30 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             return
 
         script = self._build_shell_pull_script(targets=targets)
-        result = await self.deps.shell.run_remote_script(script, inject_agent_stub_env=True)
+        result = await self.deps.shell.run_remote_script_complete(script, inject_agent_stub_env=True)
         if result.exit_code != 0:
             raise DifyDriveLayerError(
-                f"drive mentioned pull failed in shell: {result.status} exit_code={result.exit_code}\n{result.output}"
+                "drive mentioned pull failed in shell: "
+                + f"{result.status} exit_code={result.exit_code} "
+                + f"output_complete={result.output_complete} "
+                + f"incomplete_reason={result.incomplete_reason} "
+                + f"output_path={result.output_path}\n{result.output}"
             )
-        if result.truncated:
-            raise DifyDriveLayerError("drive mentioned pull output was truncated before SKILL.md content was loaded")
-
-        written_paths, skill_bodies = self._parse_shell_pull_output(result.output)
-        self._record_pulled_paths(written_paths)
-        for skill_key in self.config.mentioned_skill_keys:
-            body = skill_bodies.get(skill_key)
-            if body is None:
-                raise DifyDriveLayerError(f"missing pulled SKILL.md content for mentioned skill {skill_key}")
-            self._loaded_skill_bodies[skill_key] = body
+        try:
+            written_paths, skill_bodies = self._parse_shell_pull_output(result.output)
+            self._record_pulled_paths(written_paths)
+            for skill_key in self.config.mentioned_skill_keys:
+                body = skill_bodies.get(skill_key)
+                if body is None:
+                    raise DifyDriveLayerError(f"missing pulled SKILL.md content for mentioned skill {skill_key}")
+                self._loaded_skill_bodies[skill_key] = body
+        except DifyDriveLayerError:
+            if result.output_complete:
+                raise
+            raise DifyDriveLayerError(
+                "drive mentioned pull output incomplete before required SKILL.md content was captured: "
+                + f"reason={result.incomplete_reason} output_path={result.output_path}\n{result.output}"
+            ) from None
 
     def _build_shell_pull_script(self, *, targets: list[tuple[str, bool]]) -> str:
         pull_targets = list(dict.fromkeys(prefix for prefix, _exact in targets))

@@ -111,7 +111,7 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
         border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3
         text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2
         focus-visible:ring-state-accent-solid sm:w-[240px]`,
-        'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:ring-[0.5px] data-checked:ring-components-option-card-option-selected-border data-checked:ring-inset',
+        'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-option-card-option-selected-border',
       )}
     >
       <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-divider-subtle bg-background-default-subtle">

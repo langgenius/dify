@@ -13,7 +13,13 @@ import { ProviderContextProvider } from '@/context/provider-context-provider'
 import { CommonLayoutGlobalMounts } from './global-mounts'
 import { CommonLayoutHydrationBoundary } from './hydration-boundary'
 
-export default async function Layout({ children }: { children: ReactNode }) {
+export default async function Layout({
+  children,
+  detailSidebar,
+}: {
+  children: ReactNode
+  detailSidebar: ReactNode
+}) {
   return (
     <>
       <GoogleAnalyticsScripts />
@@ -26,7 +32,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
             <EventEmitterContextProvider>
               <ProviderContextProvider>
                 <ModalContextProvider>
-                  <MainNavLayout>
+                  <MainNavLayout detailSidebar={detailSidebar}>
                     {children}
                   </MainNavLayout>
                   <CommonLayoutGlobalMounts />
