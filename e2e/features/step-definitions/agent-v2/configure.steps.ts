@@ -54,6 +54,12 @@ async function fillAgentPromptEditor(page: Page, prompt: string) {
   await getPromptEditor(page).fill(prompt)
 }
 
+async function selectAgentModel(page: Page, modelName: string) {
+  await page.getByRole('combobox', { name: 'Configure model' }).click()
+  await page.getByLabel('Search model').fill(modelName)
+  await page.getByRole('option', { name: modelName }).click()
+}
+
 async function expectAgentComposerPrompt(agentId: string, prompt: string) {
   await expect.poll(
     async () => (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt,
@@ -124,6 +130,17 @@ Then('the Agent v2 test agent should include drive skill {string}', async functi
 When('I open the Agent v2 configure page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentConfigurePath(getCurrentAgentId(this)))
 })
+
+When(
+  'I select the stable E2E model in the Agent v2 model selector',
+  async function (this: DifyWorld) {
+    const stableModel = this.agentBuilder.preflight.stableModel
+    if (!stableModel)
+      throw new Error('Stable chat model preflight must run before selecting the Agent model.')
+
+    await selectAgentModel(this.getPage(), stableModel.name)
+  },
+)
 
 When('I switch to the Agent v2 Configure section', async function (this: DifyWorld) {
   const page = this.getPage()
