@@ -607,6 +607,8 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
       return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.builder.verifyAndUpdate.bySubscriptionBuilderId.post({
         params: { provider, subscription_builder_id: subscriptionBuilderId },
         body: { credentials: credentials ?? {} },
+      }, {
+        context: { silent: true },
       })
     },
   })
@@ -624,6 +626,8 @@ export const useVerifyTriggerSubscription = () => {
       return consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.verify.bySubscriptionId.post({
         params: { provider, subscription_id: subscriptionId },
         body: { credentials: credentials ?? {} },
+      }, {
+        context: { silent: true },
       })
     },
   })
@@ -755,6 +759,8 @@ export const useInitiateTriggerOAuth = () => {
     mutationFn: async (provider: string) => {
       const response = await consoleClient.workspaces.current.triggerProvider.byProvider.subscriptions.oauth.authorize.get({
         params: { provider },
+      }, {
+        context: { silent: true },
       })
       return {
         authorization_url: response.authorization_url,
@@ -788,6 +794,8 @@ export const useTriggerPluginDynamicOptions = (payload: {
               plugin_id: payload.plugin_id,
               provider: payload.provider,
             },
+          }, {
+            context: { silent: true },
           }),
         )
       }
@@ -802,6 +810,8 @@ export const useTriggerPluginDynamicOptions = (payload: {
             provider: payload.provider,
             provider_type: 'trigger',
           },
+        }, {
+          context: { silent: true },
         }),
       )
     },
