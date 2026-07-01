@@ -101,6 +101,8 @@ Use `the Agent v2 configuration should be saved automatically` after UI edits th
 
 API setup is acceptable for creating scenario-owned Agents, enabling Backend service API, writing composer drafts, seeding Build drafts, and preparing fixed state. The scenario must still assert user-visible behavior or a real persisted product contract through the public Console API. Do not assert only that a setup API call succeeded.
 
+Do not use scenario API setup to repair an environment-owned Agent Builder seed. If a scenario depends on a fixed Agent, dataset, workflow, Skill, Tool, credential, published Web app, or active model, use the matching preflight step to verify it and block when it is missing or drifted. Create or mutate resources only when they are scenario-owned and registered for cleanup.
+
 ## API Contract Types
 
 Agent v2 support helpers consume Console API contracts from `@dify/contracts/api/console/.../types.gen`. When a generated request, response, or payload type exists, import and use that exact type name at the helper boundary. Do not keep an old local response type name as an alias for the generated type.
@@ -136,6 +138,8 @@ Agent Builder resource checks live under `features/agent-v2/support/preflight/`.
 - `access.ts`
 
 `preflight.steps.ts` should remain the explicit `Given` entrypoint. Do not move preflight into hidden hooks.
+
+Agent Builder preflight is read-only. It checks long-lived seed resources and records their IDs or normalized metadata for later steps, but it must not create missing resources, toggle fixed access settings, upload missing Skills/files, publish fixed Agents, or patch model/provider credentials. Seed creation and repair belong to the environment setup process, not to Cucumber scenarios.
 
 Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios and build-mode workflows whose backend API requires model config, such as Agent workflow nodes. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
 
