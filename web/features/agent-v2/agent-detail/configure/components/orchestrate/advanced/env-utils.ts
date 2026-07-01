@@ -70,8 +70,6 @@ export const parseEnvImport = (content: string) => {
   }
 }
 
-export const parseEnvVariables = (content: string) => parseEnvImport(content).variables
-
 export type EnvImportPlatform = 'mac' | 'windows' | 'other'
 
 export const getEnvImportPlatform = ({

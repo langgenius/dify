@@ -6,7 +6,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentEnvEditor, EnvVariablesTable } from '../env'
-import { getEnvImportPlatform, parseEnvImport, parseEnvVariables } from '../env-utils'
+import { getEnvImportPlatform, parseEnvImport } from '../env-utils'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -50,22 +50,6 @@ describe('AgentEnvEditor', () => {
   })
 
   describe('Env parsing', () => {
-    it('should parse dotenv entries from supported line formats', () => {
-      expect(parseEnvVariables([
-        '# ignored',
-        'API_KEY=abc123',
-        'export BASE_URL="https://example.com"',
-        'PASSWORD=secret # inline comment',
-        'MULTILINE="first\\nsecond"',
-        'INVALID_LINE',
-      ].join('\n'))).toEqual([
-        { key: 'API_KEY', value: 'abc123' },
-        { key: 'BASE_URL', value: 'https://example.com' },
-        { key: 'PASSWORD', value: 'secret' },
-        { key: 'MULTILINE', value: 'first\nsecond' },
-      ])
-    })
-
     it('should report invalid dotenv lines without blocking valid entries', () => {
       expect(parseEnvImport([
         '# ignored',
