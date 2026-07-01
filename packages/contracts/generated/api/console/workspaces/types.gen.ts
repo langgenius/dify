@@ -1132,26 +1132,19 @@ export type PluginAutoUpgradeSettingsResponseModel = {
 }
 
 export type PluginInstallationItemResponse = {
-  alternative_plugin_id: string
   checksum: string
   created_at: string
   declaration: PluginDeclarationResponse
-  deprecated_reason: string
   endpoints_active: number
   endpoints_setups: number
   id: string
-  installation_id: string
-  latest_unique_identifier: string
-  latest_version: string
   meta: {
     [key: string]: unknown
   }
-  name: string
   plugin_id: string
   plugin_unique_identifier: string
   runtime_type: string
   source: PluginInstallationSource
-  status: 'active' | 'deleted'
   tenant_id: string
   updated_at: string
   version: string

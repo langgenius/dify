@@ -31,7 +31,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.helper.position_helper import is_filtered
-from core.plugin.entities.plugin import PluginCategory, PluginInstallation, PluginInstallationSource
+from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -309,8 +309,6 @@ class PluginInstallationItemResponse(ResponseModel):
     id: str
     created_at: datetime
     updated_at: datetime
-    name: str
-    installation_id: str
     tenant_id: str
     endpoints_setups: int
     endpoints_active: int
@@ -320,43 +318,12 @@ class PluginInstallationItemResponse(ResponseModel):
     plugin_id: str
     plugin_unique_identifier: str
     version: str
-    latest_version: str
-    latest_unique_identifier: str
-    status: Literal["active", "deleted"]
-    deprecated_reason: str
-    alternative_plugin_id: str
     checksum: str
     declaration: PluginDeclarationResponse
 
 
 class PluginInstallationsResponse(ResponseModel):
     plugins: list[PluginInstallationItemResponse]
-
-
-def _plugin_installation_response(plugin: PluginInstallation) -> PluginInstallationItemResponse:
-    return PluginInstallationItemResponse(
-        id=plugin.id,
-        created_at=plugin.created_at,
-        updated_at=plugin.updated_at,
-        name=plugin.declaration.name,
-        installation_id=plugin.id,
-        tenant_id=plugin.tenant_id,
-        endpoints_setups=plugin.endpoints_setups,
-        endpoints_active=plugin.endpoints_active,
-        runtime_type=plugin.runtime_type,
-        source=plugin.source,
-        meta=plugin.meta,
-        plugin_id=plugin.plugin_id,
-        plugin_unique_identifier=plugin.plugin_unique_identifier,
-        version=plugin.version,
-        latest_version=plugin.version,
-        latest_unique_identifier=plugin.plugin_unique_identifier,
-        status="active",
-        deprecated_reason="",
-        alternative_plugin_id="",
-        checksum=plugin.checksum,
-        declaration=PluginDeclarationResponse.model_validate(jsonable_encoder(plugin.declaration)),
-    )
 
 
 class PluginManifestResponse(ResponseModel):
@@ -623,7 +590,7 @@ class PluginListInstallationsFromIdsApi(Resource):
 
         return dump_response(
             PluginInstallationsResponse,
-            {"plugins": [_plugin_installation_response(plugin) for plugin in plugins]},
+            {"plugins": jsonable_encoder(plugins)},
         )
 
 

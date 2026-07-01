@@ -73,22 +73,15 @@ const createPluginInstallation = (): PluginInstallationItemResponse => ({
   id: 'installation-row-id',
   created_at: '2026-06-01T00:00:00Z',
   updated_at: '2026-06-02T00:00:00Z',
-  name: 'Full declaration plugin',
   plugin_id: 'langgenius/full-declaration',
   plugin_unique_identifier: 'langgenius/full-declaration:1.0.0@test',
-  installation_id: 'installation-id',
   tenant_id: 'tenant-id',
   endpoints_setups: 1,
   endpoints_active: 1,
   version: '1.0.0',
-  latest_version: '1.0.1',
-  latest_unique_identifier: 'langgenius/full-declaration:1.0.1@test',
   source: PluginSource.marketplace,
   runtime_type: 'local',
-  status: 'active',
   checksum: 'checksum',
-  deprecated_reason: '',
-  alternative_plugin_id: '',
   meta: {
     repo: 'langgenius/full-declaration',
     version: '1.0.0',
@@ -218,6 +211,11 @@ describe('normalizeInstalledPluginDetail', () => {
   it('should preserve generated plugin declaration capabilities', () => {
     const detail = normalizeInstalledPluginDetail(createPluginInstallation())
 
+    expect(detail.name).toBe('full-declaration')
+    expect(detail.installation_id).toBe('installation-row-id')
+    expect(detail.latest_version).toBe('1.0.0')
+    expect(detail.latest_unique_identifier).toBe('langgenius/full-declaration:1.0.0@test')
+    expect(detail.status).toBe('active')
     expect(detail.declaration.tool?.identity.name).toBe('tool-provider')
     expect(detail.declaration.tool?.credentials_schema[0]?.name).toBe('api_key')
     expect(detail.declaration.datasource?.identity.name).toBe('datasource-provider')

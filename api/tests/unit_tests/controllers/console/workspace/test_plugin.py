@@ -485,13 +485,17 @@ class TestPluginListInstallationsFromIdsApi:
             result = method(api, "t1")
 
         assert result["plugins"][0]["id"] == "entity-1"
-        assert result["plugins"][0]["name"] == "test-plugin"
-        assert result["plugins"][0]["installation_id"] == "entity-1"
-        assert result["plugins"][0]["latest_version"] == "1.0.0"
-        assert result["plugins"][0]["latest_unique_identifier"] == "test-author/test-plugin:1.0.0@checksum"
-        assert result["plugins"][0]["status"] == "active"
-        assert result["plugins"][0]["deprecated_reason"] == ""
-        assert result["plugins"][0]["alternative_plugin_id"] == ""
+        assert result["plugins"][0]["plugin_id"] == "test-author/test-plugin"
+        assert result["plugins"][0]["plugin_unique_identifier"] == "test-author/test-plugin:1.0.0@checksum"
+        assert result["plugins"][0]["version"] == "1.0.0"
+        assert result["plugins"][0]["declaration"]["name"] == "test-plugin"
+        assert "name" not in result["plugins"][0]
+        assert "installation_id" not in result["plugins"][0]
+        assert "latest_version" not in result["plugins"][0]
+        assert "latest_unique_identifier" not in result["plugins"][0]
+        assert "status" not in result["plugins"][0]
+        assert "deprecated_reason" not in result["plugins"][0]
+        assert "alternative_plugin_id" not in result["plugins"][0]
 
     def test_daemon_error(self, app: Flask):
         api = PluginListInstallationsFromIdsApi()

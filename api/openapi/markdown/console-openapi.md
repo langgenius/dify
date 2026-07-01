@@ -19588,24 +19588,17 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| alternative_plugin_id | string |  | Yes |
 | checksum | string |  | Yes |
 | created_at | dateTime |  | Yes |
 | declaration | [PluginDeclarationResponse](#plugindeclarationresponse) |  | Yes |
-| deprecated_reason | string |  | Yes |
 | endpoints_active | integer |  | Yes |
 | endpoints_setups | integer |  | Yes |
 | id | string |  | Yes |
-| installation_id | string |  | Yes |
-| latest_unique_identifier | string |  | Yes |
-| latest_version | string |  | Yes |
 | meta | object |  | Yes |
-| name | string |  | Yes |
 | plugin_id | string |  | Yes |
 | plugin_unique_identifier | string |  | Yes |
 | runtime_type | string |  | Yes |
 | source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
-| status | string, <br>**Available values:** "active", "deleted" | *Enum:* `"active"`, `"deleted"` | Yes |
 | tenant_id | string |  | Yes |
 | updated_at | dateTime |  | Yes |
 | version | string |  | Yes |

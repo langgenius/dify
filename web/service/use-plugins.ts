@@ -442,26 +442,28 @@ const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): Plu
 }
 
 export const normalizeInstalledPluginDetail = (plugin: PluginInstallationItemResponse): PluginDetail => {
+  const declaration = normalizePluginDeclaration(plugin)
+
   return {
     id: plugin.id,
     created_at: plugin.created_at,
     updated_at: plugin.updated_at,
-    name: plugin.name,
+    name: declaration.name,
     plugin_id: plugin.plugin_id,
     plugin_unique_identifier: plugin.plugin_unique_identifier,
-    declaration: normalizePluginDeclaration(plugin),
-    installation_id: plugin.installation_id,
+    declaration,
+    installation_id: plugin.id,
     tenant_id: plugin.tenant_id,
     endpoints_setups: plugin.endpoints_setups,
     endpoints_active: plugin.endpoints_active,
     version: plugin.version,
-    latest_version: plugin.latest_version,
-    latest_unique_identifier: plugin.latest_unique_identifier,
+    latest_version: plugin.version,
+    latest_unique_identifier: plugin.plugin_unique_identifier,
     source: normalizePluginSource(plugin.source),
     meta: normalizePluginMeta(plugin.meta),
-    status: plugin.status,
-    deprecated_reason: plugin.deprecated_reason,
-    alternative_plugin_id: plugin.alternative_plugin_id,
+    status: 'active',
+    deprecated_reason: '',
+    alternative_plugin_id: '',
   }
 }
 
