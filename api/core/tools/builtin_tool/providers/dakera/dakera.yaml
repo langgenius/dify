@@ -1,0 +1,64 @@
+identity:
+  author: Dakera
+  name: dakera
+  label:
+    en_US: Dakera Memory
+    zh_Hans: Dakera 记忆
+    pt_BR: Dakera Memory
+  description:
+    en_US: >-
+      Self-hosted persistent memory for AI agents. Dakera stores and semantically
+      recalls memories across sessions using decay-weighted importance scoring —
+      so agents remember what matters without accumulating stale context.
+    zh_Hans: >-
+      面向 AI 代理的自托管持久记忆。Dakera 使用衰减权重重要性评分跨会话存储和语义召回记忆，
+      让代理在不积累过时上下文的情况下记住重要事项。
+    pt_BR: >-
+      Memória persistente auto-hospedada para agentes de IA. O Dakera armazena e
+      recupera semanticamente memórias entre sessões usando pontuação de importância
+      ponderada por decaimento.
+  icon: icon.svg
+  tags:
+    - productivity
+    - utilities
+credentials_for_provider:
+  api_url:
+    type: secret-input
+    required: true
+    label:
+      en_US: Dakera Server URL
+      zh_Hans: Dakera 服务器地址
+      pt_BR: URL do Servidor Dakera
+    placeholder:
+      en_US: http://localhost:3300
+      zh_Hans: http://localhost:3300
+      pt_BR: http://localhost:3300
+    help:
+      en_US: >-
+        Base URL of your self-hosted Dakera server, e.g. http://localhost:3300.
+        Self-host with: docker run -p 3300:3300 -e DAKERA_API_KEY=demo ghcr.io/dakera-ai/dakera:latest
+      zh_Hans: >-
+        自托管 Dakera 服务器的基础地址，例如 http://localhost:3300
+      pt_BR: >-
+        URL base do seu servidor Dakera auto-hospedado, ex: http://localhost:3300
+    url: https://dakera.ai
+  api_key:
+    type: secret-input
+    required: false
+    label:
+      en_US: Dakera API Key
+      zh_Hans: Dakera API 密钥
+      pt_BR: Chave de API Dakera
+    placeholder:
+      en_US: dk_...
+      zh_Hans: dk_...
+      pt_BR: dk_...
+    help:
+      en_US: >-
+        API key for your Dakera server. Leave empty for unauthenticated local development
+        (when the server is started without DAKERA_API_KEY).
+      zh_Hans: >-
+        Dakera 服务器的 API 密钥。本地开发时如未设置认证可留空。
+      pt_BR: >-
+        Chave de API do servidor Dakera. Deixe vazio para desenvolvimento local sem autenticação.
+    url: https://dakera.ai
