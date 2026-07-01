@@ -1,0 +1,37 @@
+@reference "../../../styles/globals.css";
+
+.stepByStepTourRecoveryPulse {
+  animation: step-by-step-tour-help-pulse 2.4s ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stepByStepTourRecoveryPulse {
+    animation: none;
+  }
+}
+
+@keyframes step-by-step-tour-help-pulse {
+  0% {
+    background-color: var(--color-components-card-bg);
+    box-shadow: 0 0 0 0 rgb(0 51 255 / 32%);
+    color: var(--color-text-tertiary);
+  }
+
+  18% {
+    background-color: var(--color-state-accent-hover);
+    box-shadow: 0 0 0 6px rgb(0 51 255 / 18%);
+    color: var(--color-saas-dify-blue-inverted);
+  }
+
+  56% {
+    background-color: var(--color-state-accent-hover);
+    box-shadow: 0 0 0 12px rgb(0 51 255 / 0%);
+    color: var(--color-saas-dify-blue-inverted);
+  }
+
+  100% {
+    background-color: var(--color-components-card-bg);
+    box-shadow: 0 0 0 0 rgb(0 51 255 / 0%);
+    color: var(--color-text-tertiary);
+  }
+}

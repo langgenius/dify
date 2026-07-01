@@ -200,8 +200,9 @@ export const useStepByStepTourTargetRect = (
         return
       }
 
-      const rectSettled = Boolean(previousMeasuredRects)
-        && areMeasuredTargetRectSetsEqual(previousMeasuredRects, nextMeasuredRects)
+      const rectSettled = previousMeasuredRects
+        ? areMeasuredTargetRectSetsEqual(previousMeasuredRects, nextMeasuredRects)
+        : false
       const shouldCommitMeasuredRect = rectSettled || settleFrameCount >= MAX_RECT_SETTLE_FRAMES
       previousMeasuredRects = nextMeasuredRects
       if (shouldCommitMeasuredRect) {

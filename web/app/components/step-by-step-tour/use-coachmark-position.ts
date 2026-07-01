@@ -23,7 +23,7 @@ type CoachmarkPosition = {
   bubbleStyle: CSSProperties
 }
 
-export type StepByStepTourCoachmarkPlacement = 'bottom' | 'top'
+export type StepByStepTourCoachmarkPlacement = 'bottom' | 'right' | 'top'
 
 const getViewportSize = (): ViewportSize => ({
   height: window.innerHeight,
@@ -40,6 +40,32 @@ export const getStepByStepTourCoachmarkPosition = (
   placement: StepByStepTourCoachmarkPlacement = 'bottom',
   anchorRect: StepByStepTourTargetRect = placementRect,
 ): CoachmarkPosition => {
+  if (placement === 'right') {
+    const maxBubbleLeft = viewportSize.width - BUBBLE_WIDTH - VIEWPORT_PADDING
+    const bubbleLeft = clamp(
+      placementRect.left + placementRect.width + BUBBLE_SIDE_OFFSET,
+      VIEWPORT_PADDING,
+      Math.max(VIEWPORT_PADDING, maxBubbleLeft),
+    )
+    const maxBubbleTop = viewportSize.height - BUBBLE_HEIGHT - VIEWPORT_PADDING
+    const preferredBubbleTop = anchorRect.top + (anchorRect.height - BUBBLE_HEIGHT) / 2
+    const bubbleTop = clamp(
+      preferredBubbleTop,
+      VIEWPORT_PADDING,
+      Math.max(VIEWPORT_PADDING, maxBubbleTop),
+    )
+
+    return {
+      arrowStyle: {
+        top: anchorRect.top + anchorRect.height / 2 - bubbleTop,
+      },
+      bubbleStyle: {
+        left: bubbleLeft,
+        top: bubbleTop,
+      },
+    }
+  }
+
   const maxBubbleLeft = viewportSize.width - BUBBLE_WIDTH - VIEWPORT_PADDING
   const bubbleLeft = clamp(
     placementRect.left,

@@ -21,6 +21,7 @@ import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import { useSetStepByStepTourSkipRecoveryVisible, useStepByStepTourSkipRecoveryVisible } from '@/app/components/step-by-step-tour/atoms'
 import {
   useSetStepByStepTourAccountState,
   useStepByStepTourAccountStateValue,
@@ -30,6 +31,7 @@ import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import styles from './help-menu.module.css'
 import SupportMenu from './support-menu'
 
 type HelpMenuProps = {
@@ -83,8 +85,12 @@ const HelpMenu = ({
   const { langGeniusVersionInfo, isCurrentWorkspaceOwner, currentWorkspace } = useAppContext()
   const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
   const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
   const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
+  const skipRecoveryVisible = useStepByStepTourSkipRecoveryVisible()
+  const setSkipRecoveryVisible = useSetStepByStepTourSkipRecoveryVisible()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
@@ -97,6 +103,7 @@ const HelpMenu = ({
     )
 
   const handleStepByStepTourCheckedChange = (checked: boolean) => {
+    setSkipRecoveryVisible(false)
     setStepByStepTourAccountState({
       ...stepByStepTourAccountState,
       skipped: checked ? false : stepByStepTourAccountState.skipped,
@@ -112,12 +119,19 @@ const HelpMenu = ({
       setOpen(false)
   }
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+
+    if (nextOpen)
+      setSkipRecoveryVisible(false)
+  }
+
   if (systemFeatures.branding.enabled)
     return null
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
           aria-label={t('mainNav.help.openMenu', { ns: 'common' })}
           data-learn-dify-help-target
@@ -125,6 +139,7 @@ const HelpMenu = ({
             'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
             triggerClassName,
             open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
+            skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
           )}
         >
           {triggerIcon}

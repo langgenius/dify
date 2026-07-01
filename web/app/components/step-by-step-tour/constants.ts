@@ -29,7 +29,7 @@ export const STEP_BY_STEP_TOUR_TASKS = [
     target: STEP_BY_STEP_TOUR_TARGETS.knowledge,
     iconClassName: 'i-custom-vender-main-nav-knowledge',
     fallbackTarget: STEP_BY_STEP_TOUR_TARGETS.knowledge,
-    learnMoreDocPath: '/use-dify/knowledge/create-knowledge/introduction',
+    learnMoreDocPath: undefined,
     canClickThrough: true,
     permissionFallback: 'show-disabled-reason',
   },

@@ -30,7 +30,8 @@ type StepByStepTourAccountState = {
   firstWorkspaceId?: string
   activeTaskId?: StepByStepTourTaskId
   activeGuideIndex?: number
-  activeGuideGroup?: 'studioEmpty' | 'studioWithApps'
+  activeGuideGroup?: 'studioEmpty' | 'studioWithApps' | 'knowledgeEmpty' | 'knowledgeWithDatasets' | 'integrationEditor' | 'integrationNoPermission'
+  activeGuideIndexes?: number[]
   manuallyEnabledWorkspaceIds: string[]
   manuallyDisabledWorkspaceIds: string[]
   minimized: boolean
@@ -114,6 +115,27 @@ Required behavior:
 - Clicking a CTA should route to the relevant surface and start the task target flow.
 - Minimize keeps a small entry visible.
 - Skip hides the tour for the account until manually re-enabled.
+
+### Skip Recovery Hint
+
+Purpose: after users hide the full checklist, keep the recovery path visible
+long enough that the tour does not feel lost.
+
+Required behavior:
+
+- Clicking `Skip tour` fades the floating checklist out before the account-level
+  `skipped` state removes it from the layout.
+- After the checklist is hidden, show a one-time recovery bubble near the
+  bottom-left Help trigger with the copy:
+  `Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.`
+- The bubble includes a `Got it` action that dismisses only this temporary
+  hint. It does not change the persisted tour state.
+- While the bubble is shown, pulse the Help trigger for 2.4 seconds to draw
+  attention to the recovery entry point. Respect reduced-motion preferences.
+- Opening the Help menu or toggling `Step-by-step Tour` from the Help menu
+  dismisses the recovery bubble.
+- This recovery hint is feature-local UI state, not account persistence. Keep
+  `skipped` as the durable account-level hide flag.
 
 ### Help Menu Toggle
 
@@ -276,6 +298,132 @@ Dynamic walkthrough step list:
 If no workspace app card target is rendered, the with-apps walkthrough should
 skip that optional target and become a 1-step walkthrough.
 
+### Step 3: Knowledge
+
+Step 3 is for users who can create knowledge bases and connect external
+knowledge bases. The current frontend permission gates are:
+
+- `dataset.create_and_management`: shows the ready-to-use and custom knowledge
+  base entry cards, and allows `/datasets/create` and
+  `/datasets/create-from-pipeline`.
+- `dataset.external.connect`: shows the external knowledge base entry card,
+  allows `/datasets/connect`, and enables external knowledge API queries.
+
+The first implementation slice only starts the Knowledge empty walkthrough when
+both permissions are present, so all three empty-state entry cards are visible.
+In the legacy role snapshots this covers Owner, Admin, Editor, and Dataset
+Operator. Normal users can still enter the Knowledge list route, but they do not
+see these empty-state actions, and their no-permission tour behavior should be
+handled later by the shared no-permission flow.
+
+When the user clicks the Knowledge task CTA from the floating checklist:
+
+- Route to `/datasets`.
+- Minimize the floating checklist.
+- The Knowledge task row does not show a `Learn more` secondary action.
+- After the Knowledge list first page resolves, set `activeGuideGroup` from the
+  page's own state: `knowledgeEmpty` when the no-filter empty state is rendered,
+  or `knowledgeWithDatasets` when at least one knowledge base exists.
+
+#### Empty Knowledge Walkthrough
+
+When there are no knowledge bases, no active filters, and all three entry
+actions are visible, Knowledge shows a 3-step display walkthrough:
+
+1. `Create a ready-to-use knowledge base` entry card.
+1. `Build a custom knowledge base` entry card.
+1. `Connect to an external knowledge base` entry card.
+
+The walkthrough is completed by the final `Got it`, not by navigating into one
+of the creation flows. Partial-permission variants are intentionally out of
+scope for this slice and should be covered by the future shared permission
+fallback behavior.
+
+#### With-datasets Knowledge Walkthrough
+
+When at least one knowledge base exists and the user has both Knowledge
+walkthrough permissions, Knowledge shows a 2-step display walkthrough:
+
+1. Top-right `Create` trigger/action area. During this guide, automatically
+   open the Create dropdown so users can see ready-to-use creation, custom
+   pipeline creation, and external connection options. The primary target
+   remains the stable trigger/action area; the visual highlight includes the
+   opened dropdown as a highlight part.
+1. First knowledge card in the main list, only when a card target is rendered.
+   During this guide, automatically show the card operations menu. The primary
+   target remains the stable card; the visual highlight includes the opened
+   operations menu as a highlight part.
+
+If no knowledge card target is rendered, the with-datasets walkthrough should
+skip that optional target and become a 1-step walkthrough.
+
+### Step 4: Integration
+
+Step 4 orients users to the Integrations page and the major integration
+categories available there.
+
+When the user clicks the Integration task CTA from the floating checklist:
+
+- Route to `/integrations/model-provider`.
+- Minimize the floating checklist.
+- Start a 14-step display walkthrough.
+- The first active category is Model Provider.
+- As each guide becomes active, the Integrations sidebar active item must
+  follow the guide's category, the right content area must render that category,
+  and the active target should scroll into view.
+
+Integration walkthrough step list:
+
+1. Model Provider: AI Credits card.
+1. Model Provider: first configured provider card, or the first provider card
+   available when no provider is configured.
+1. Model Provider: bottom Install model providers area.
+1. Tool Plugin: top-right Auto-update action.
+1. Tool Plugin: first visible tool/plugin card.
+1. MCP: Add MCP Server action or create card.
+1. MCP: first visible MCP server card.
+1. Workflow as Tool: card grid/content area. This step shows Learn more.
+1. Swagger API as Tool: card grid/content area. This step shows Learn more.
+1. Data Source: first visible data source group card, or the empty setup card.
+   This step shows Learn more.
+1. Trigger: card grid/content area or empty state. This step shows Learn more.
+1. Agent Strategy: content area or empty state. This step shows Learn more.
+1. Extension: card grid/content area or empty state. This step shows Learn more.
+1. Custom Endpoint: empty explanation card or first configured endpoint. This
+   step shows Learn more.
+
+Some Integration steps are optional because they only make sense when the
+underlying target exists. Today this includes the bottom Install model
+providers area and the first MCP server card. The lightweight implementation
+does not prefetch every Integration category before the walkthrough starts.
+Instead, it initializes the current session with the role-specific raw guide
+indexes and lazily removes an optional guide when the active category renders
+without that target.
+
+Known trade-off: users do not see the skipped optional coachmark, but the
+visible total can change after the skip point. For example, an admin may see
+`2 of 14`; if the Install model providers target is not rendered, the next
+visible step becomes `3 of 13`. Avoiding this would require precomputing the
+complete visible guide plan before the first coachmark, which means adding
+Integration data dependencies or target registration across categories to the
+global tour controller.
+
+Empty states are different from optional missing targets. If a feature exists
+for the current role but its list is empty, the walkthrough should keep the
+step and target the empty state or create/setup entry. Swagger API as Tool,
+Workflow as Tool, Trigger, Agent Strategy, Extension, and Custom Endpoint use
+this pattern rather than being pruned from the guide plan.
+
+Required target contract:
+
+- Integration guides declare the `integrationSection` they belong to.
+- `StepByStepTourMount` synchronizes the active guide's section to the route
+  with `buildIntegrationPath(...)`.
+- The Integrations page remains the owner of sidebar active state; the tour
+  should not duplicate sidebar state.
+- Targets use stable `data-step-by-step-tour-target` attributes on existing
+  semantic containers, not brittle CSS selectors.
+
 #### Composite Highlight Rules
 
 Composite highlights must separate positioning from visual coverage:
@@ -328,8 +476,8 @@ Possible first rules:
 
 - `home`: completed after user opens the Learn Dify lesson or lands on the chosen learning surface.
 - `studio`: completed after the final guide in the active Studio walkthrough. Empty Studio currently completes after the final `Got it` in the empty walkthrough.
-- `knowledge`: completed after user visits Knowledge page, opens a dataset, or creates one. PM decision needed.
-- `integration`: completed after user visits Integrations page or reaches a valid fallback empty state. PM decision needed.
+- `knowledge`: completed after the final guide in the active Knowledge walkthrough. Empty Knowledge and with-datasets Knowledge both currently complete after the final `Got it`.
+- `integration`: completed after the final guide in the Integration walkthrough.
 
 ## Placeholder Versus Future Backend
 

@@ -180,6 +180,8 @@ function TourTaskRow({
   const completed = task.status === 'completed'
   const current = task.status === 'current'
   const disabled = task.status === 'disabled'
+  const completionToggleDisabled = disabled || task.canToggleCompletion === false
+  const statusIndicatorDisabled = completed ? disabled : completionToggleDisabled
 
   return (
     <div
@@ -238,7 +240,7 @@ function TourTaskRow({
       </div>
       <TaskStatusIndicator
         completed={completed}
-        disabled={disabled}
+        disabled={statusIndicatorDisabled}
         completeLabel={`Mark ${task.title} complete`}
         incompleteLabel={`Mark ${task.title} incomplete`}
         onComplete={() => onCompleteTask(task.id)}
@@ -268,7 +270,8 @@ function TaskStatusIndicator({
       <button
         type="button"
         aria-label={incompleteLabel}
-        className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-saas-dify-blue-accessible text-text-primary-on-surface outline-hidden hover:bg-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        disabled={disabled}
+        className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-saas-dify-blue-accessible text-text-primary-on-surface outline-hidden hover:bg-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-saas-dify-blue-accessible"
         onClick={onUncomplete}
       >
         <span aria-hidden className="i-ri-check-line size-3" />
