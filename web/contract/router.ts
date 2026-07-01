@@ -40,6 +40,7 @@ import { systemFeatures } from '@dify/contracts/api/console/system-features/orpc
 import { tagBindings } from '@dify/contracts/api/console/tag-bindings/orpc.gen'
 import { tags } from '@dify/contracts/api/console/tags/orpc.gen'
 import { test } from '@dify/contracts/api/console/test/orpc.gen'
+import { trialApps } from '@dify/contracts/api/console/trial-apps/orpc.gen'
 import { trialModels } from '@dify/contracts/api/console/trial-models/orpc.gen'
 import { website } from '@dify/contracts/api/console/website/orpc.gen'
 import { workflowGenerate } from '@dify/contracts/api/console/workflow-generate/orpc.gen'
@@ -94,6 +95,7 @@ const communityContract = {
   tagBindings,
   tags,
   test,
+  trialApps,
   trialModels,
   website,
   workflow,
