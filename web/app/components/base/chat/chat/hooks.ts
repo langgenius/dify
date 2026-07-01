@@ -399,6 +399,7 @@ export const useChat = (
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
         })
+        handleResponding(false)
       },
       onMessageReplace: (messageReplace) => {
         updateChatTreeNode(messageId, (responseItem) => {
