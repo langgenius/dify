@@ -126,6 +126,20 @@ Then(
 )
 
 Then(
+  'the Agent v2 Web app should answer with the normal E2E marker',
+  async function (this: DifyWorld) {
+    const webAppPage = this.agentBuilder.accessPoint.webAppPage
+    if (!webAppPage)
+      throw new Error('No Agent v2 Web app page was opened.')
+
+    await expect(webAppPage.getByText(agentBuilderExpectedTokens.agentReply))
+      .toBeVisible({ timeout: 120_000 })
+    await webAppPage.close()
+    this.agentBuilder.accessPoint.webAppPage = undefined
+  },
+)
+
+Then(
   'the Agent v2 Web app response should not include the updated E2E marker',
   async function (this: DifyWorld) {
     const webAppPage = this.agentBuilder.accessPoint.webAppPage
