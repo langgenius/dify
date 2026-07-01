@@ -28,6 +28,10 @@ export type AgentBuilderPreseededResource = {
   kind: 'agent' | 'api-key' | 'dataset' | 'skill' | 'tool' | 'workflow'
   name: string
 }
+export type AgentV2WorkflowOutputVariable = {
+  name: string
+  type: string
+}
 
 export class DifyWorld extends World {
   context: BrowserContext | undefined
@@ -51,6 +55,7 @@ export class DifyWorld extends World {
   agentBuilderBrokenChatModel: AgentBuilderStableChatModel | undefined
   agentBuilderStableChatModel: AgentBuilderStableChatModel | undefined
   agentBuilderPreseededResources: Record<string, AgentBuilderPreseededResource> = {}
+  agentV2WorkflowOutputVariables: AgentV2WorkflowOutputVariable[] = []
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
@@ -78,6 +83,7 @@ export class DifyWorld extends World {
     this.agentBuilderBrokenChatModel = undefined
     this.agentBuilderStableChatModel = undefined
     this.agentBuilderPreseededResources = {}
+    this.agentV2WorkflowOutputVariables = []
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined

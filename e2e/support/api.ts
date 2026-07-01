@@ -33,6 +33,18 @@ export type AppSeed = {
   name: string
 }
 
+export type WorkflowDraft = {
+  graph: {
+    edges: Array<Record<string, unknown>>
+    nodes: Array<{
+      data?: Record<string, unknown>
+      id: string
+      type: string
+    }>
+    viewport?: Record<string, unknown>
+  }
+}
+
 export async function createTestApp(
   name = createE2EResourceName('App'),
   mode = 'workflow',
@@ -52,6 +64,18 @@ export async function createTestApp(
     await expectApiResponseOK(response, `Create ${mode} app ${name}`)
     const body = (await response.json()) as AppSeed
     return body
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function getWorkflowDraft(appId: string): Promise<WorkflowDraft> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/apps/${appId}/workflows/draft`)
+    await expectApiResponseOK(response, `Get workflow draft for ${appId}`)
+    return (await response.json()) as WorkflowDraft
   }
   finally {
     await ctx.dispose()
@@ -80,6 +104,52 @@ export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function syncAgentV2WorkflowDraft(appId: string, agentId: string): Promise<void> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.post(`/console/api/apps/${appId}/workflows/draft`, {
+      data: {
+        graph: {
+          nodes: [
+            {
+              id: 'start',
+              type: 'custom',
+              position: { x: 80, y: 282 },
+              data: { id: 'start', type: 'start', title: 'Start', variables: [] },
+            },
+            {
+              id: 'agent-v2',
+              type: 'custom',
+              position: { x: 420, y: 282 },
+              data: {
+                id: 'agent-v2',
+                type: 'agent',
+                title: 'Agent',
+                desc: '',
+                agent_binding: {
+                  binding_type: 'roster_agent',
+                  agent_id: agentId,
+                },
+                agent_node_kind: 'dify_agent',
+                version: '2',
+              },
+            },
+          ],
+          edges: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+        },
+        features: {},
+        environment_variables: [],
+        conversation_variables: [],
+      },
+    })
+    await expectApiResponseOK(response, `Sync Agent v2 workflow draft for ${appId}`)
   }
   finally {
     await ctx.dispose()

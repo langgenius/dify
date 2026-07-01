@@ -29,6 +29,7 @@ import {
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
+import { selectWorkflowNode } from '../../utils/node-navigation'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
@@ -168,15 +169,17 @@ const BaseNode: FC<BaseNodeProps> = ({
         height: isContainerNode(data.type) ? data.height : 'auto',
       }}
     >
-      {(data._dimmed || pluginDimmed || pluginInstallLocked) && (
+      {pluginInstallLocked && (
+        <button
+          type="button"
+          disabled
+          aria-label={t('installPlugin', { ns: 'plugin' })}
+          className="pointer-events-auto absolute inset-0 z-30 rounded-2xl border-0 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]"
+        />
+      )}
+      {!pluginInstallLocked && (data._dimmed || pluginDimmed) && (
         <div
-          className={cn(
-            'absolute inset-0 rounded-2xl transition-opacity',
-            pluginInstallLocked
-              ? 'pointer-events-auto z-30 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]'
-              : 'pointer-events-none z-20 bg-workflow-block-parma-bg opacity-50',
-          )}
-          onClick={pluginInstallLocked ? e => e.stopPropagation() : undefined}
+          className="pointer-events-none absolute inset-0 z-20 rounded-2xl bg-workflow-block-parma-bg opacity-50 transition-opacity"
           data-testid="workflow-node-install-overlay"
         />
       )}
@@ -257,10 +260,14 @@ const BaseNode: FC<BaseNodeProps> = ({
             />
           )
         }
-        <div className={cn(
-          'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
-          isContainerNode(data.type) && 'bg-transparent',
-        )}
+        <button
+          type="button"
+          aria-label={data.title}
+          className={cn(
+            'flex w-full appearance-none items-center rounded-t-2xl border-0 bg-transparent px-3 pt-3 pb-2 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            isContainerNode(data.type) && 'bg-transparent',
+          )}
+          onClick={() => selectWorkflowNode(id)}
         >
           <BlockIcon
             className="mr-2 shrink-0"
@@ -293,10 +300,10 @@ const BaseNode: FC<BaseNodeProps> = ({
               t={t}
             />
           </div>
-        </div>
+        </button>
         <NodeBody
           data={data}
-          child={cloneElement(children, { id, data } as any)}
+          child={cloneElement(children, { id, data } satisfies Partial<NodeChildProps>)}
         />
         {
           hasRetryNode(data.type) && (
