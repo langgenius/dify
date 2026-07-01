@@ -62,6 +62,14 @@ def assert_has_actionable_violation(stderr: str, path: str) -> None:
     assert "no-new-getattr" in stderr
 
 
+def test_style_workflow_wires_no_new_getattr_guard() -> None:
+    workflow = (REPO_ROOT / ".github" / "workflows" / "style.yml").read_text(encoding="utf-8")
+
+    assert "scripts/check_no_new_getattr.py --mode ci --merge-target main" in workflow
+    assert "scripts/check_no_new_getattr.py" in workflow
+    assert "scripts/ast_grep_rules/no_new_getattr.yml" in workflow
+
+
 def test_ci_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(
