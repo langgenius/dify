@@ -650,7 +650,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
-    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.2.1" },
+    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.3.0" },
     { name = "typer", specifier = ">=0.16.1,<0.17" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
@@ -3503,7 +3503,7 @@ wheels = [
 
 [[package]]
 name = "shell-session-manager"
-version = "2.2.1"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -3515,9 +3515,9 @@ dependencies = [
     { name = "typer" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/54/c3/83701914c5194e0390b93a05685ddfceda425348523254f43fdcb5024a37/shell_session_manager-2.2.1.tar.gz", hash = "sha256:421531c8bca5a586e9245282e13fdbe2566fca34e72a7320749c745cc2a935ee", size = 51380, upload-time = "2026-06-19T12:21:58.67Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/27/64b6086f54a700836c3fe6fc403e1a180a5c0285b528588663d0de951a6b/shell_session_manager-2.3.0.tar.gz", hash = "sha256:59598f4824623053405a6d0ba85c931e263597752aa6b91e67b0e523474dccf5", size = 51361, upload-time = "2026-06-28T18:32:57.249Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/b6/b8d84ff7e59661cef85a1f021f500c798451121775f5aafd7b670ba63117/shell_session_manager-2.2.1-py3-none-any.whl", hash = "sha256:b7452dd5d50b5f55d2a108a2c422ed9883a817e2145f884844d072ec95dcaff8", size = 48895, upload-time = "2026-06-19T12:21:57.183Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/26/07e4815e630316f1840e36b686f91bd389940437e38b897a0231c487298f/shell_session_manager-2.3.0-py3-none-any.whl", hash = "sha256:7727cc328661d93dd40d6f42d2c6b46c95d49717698558e81d78b41a42501b4f", size = 48900, upload-time = "2026-06-28T18:32:55.937Z" },
 ]
 
 [[package]]
