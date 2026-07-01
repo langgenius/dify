@@ -1,3 +1,6 @@
+import { Buffer } from 'node:buffer'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from './api'
 import { assertE2EResourceName, createE2EResourceName } from './naming'
 
@@ -67,6 +70,16 @@ export type AgentApiKey = {
   token?: string
 }
 
+export type AgentDriveSkillUpload = {
+  skill: {
+    archive_key?: string | null
+    description: string
+    name: string
+    path: string
+    skill_md_key: string
+  }
+}
+
 export type CreateTestAgentOptions = {
   description?: string
   name?: string
@@ -116,6 +129,111 @@ const getExistingModelConfig = (agentSoul: AgentSoulConfig) => {
     return model as Record<string, unknown>
 
   return {}
+}
+
+const crc32Table = new Uint32Array(256)
+for (let i = 0; i < crc32Table.length; i++) {
+  let c = i
+  for (let k = 0; k < 8; k++)
+    c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1
+  crc32Table[i] = c >>> 0
+}
+
+const crc32 = (buffer: Buffer) => {
+  let crc = 0xFFFFFFFF
+  for (const byte of buffer)
+    crc = crc32Table[(crc ^ byte) & 0xFF]! ^ (crc >>> 8)
+  return (crc ^ 0xFFFFFFFF) >>> 0
+}
+
+const createSingleFileZip = ({
+  content,
+  entryName,
+}: {
+  content: Buffer
+  entryName: string
+}) => {
+  const entryNameBuffer = Buffer.from(entryName)
+  const checksum = crc32(content)
+  const localHeader = Buffer.alloc(30)
+  localHeader.writeUInt32LE(0x04034B50, 0)
+  localHeader.writeUInt16LE(20, 4)
+  localHeader.writeUInt16LE(0, 6)
+  localHeader.writeUInt16LE(0, 8)
+  localHeader.writeUInt16LE(0, 10)
+  localHeader.writeUInt16LE(0, 12)
+  localHeader.writeUInt32LE(checksum, 14)
+  localHeader.writeUInt32LE(content.length, 18)
+  localHeader.writeUInt32LE(content.length, 22)
+  localHeader.writeUInt16LE(entryNameBuffer.length, 26)
+  localHeader.writeUInt16LE(0, 28)
+
+  const centralDirectoryOffset = localHeader.length + entryNameBuffer.length + content.length
+  const centralDirectoryHeader = Buffer.alloc(46)
+  centralDirectoryHeader.writeUInt32LE(0x02014B50, 0)
+  centralDirectoryHeader.writeUInt16LE(20, 4)
+  centralDirectoryHeader.writeUInt16LE(20, 6)
+  centralDirectoryHeader.writeUInt16LE(0, 8)
+  centralDirectoryHeader.writeUInt16LE(0, 10)
+  centralDirectoryHeader.writeUInt16LE(0, 12)
+  centralDirectoryHeader.writeUInt16LE(0, 14)
+  centralDirectoryHeader.writeUInt32LE(checksum, 16)
+  centralDirectoryHeader.writeUInt32LE(content.length, 20)
+  centralDirectoryHeader.writeUInt32LE(content.length, 24)
+  centralDirectoryHeader.writeUInt16LE(entryNameBuffer.length, 28)
+  centralDirectoryHeader.writeUInt16LE(0, 30)
+  centralDirectoryHeader.writeUInt16LE(0, 32)
+  centralDirectoryHeader.writeUInt16LE(0, 34)
+  centralDirectoryHeader.writeUInt16LE(0, 36)
+  centralDirectoryHeader.writeUInt32LE(0, 38)
+  centralDirectoryHeader.writeUInt32LE(0, 42)
+
+  const centralDirectorySize = centralDirectoryHeader.length + entryNameBuffer.length
+  const endOfCentralDirectory = Buffer.alloc(22)
+  endOfCentralDirectory.writeUInt32LE(0x06054B50, 0)
+  endOfCentralDirectory.writeUInt16LE(0, 4)
+  endOfCentralDirectory.writeUInt16LE(0, 6)
+  endOfCentralDirectory.writeUInt16LE(1, 8)
+  endOfCentralDirectory.writeUInt16LE(1, 10)
+  endOfCentralDirectory.writeUInt32LE(centralDirectorySize, 12)
+  endOfCentralDirectory.writeUInt32LE(centralDirectoryOffset, 16)
+  endOfCentralDirectory.writeUInt16LE(0, 20)
+
+  return Buffer.concat([
+    localHeader,
+    entryNameBuffer,
+    content,
+    centralDirectoryHeader,
+    entryNameBuffer,
+    endOfCentralDirectory,
+  ])
+}
+
+const toSkillArchiveUpload = async ({
+  fileName,
+  filePath,
+}: {
+  fileName: string
+  filePath: string
+}) => {
+  if (fileName.endsWith('.zip') || fileName.endsWith('.skill')) {
+    return {
+      buffer: await readFile(filePath),
+      name: path.basename(fileName),
+    }
+  }
+  const sourceDirName = path.basename(path.dirname(fileName))
+  const archiveBaseName = sourceDirName && sourceDirName !== '.'
+    ? sourceDirName
+    : path.basename(fileName, path.extname(fileName))
+
+  return {
+    buffer: createSingleFileZip({
+      content: await readFile(filePath),
+      entryName: 'SKILL.md',
+    }),
+    name: `${archiveBaseName}.skill`,
+  }
 }
 
 export function createAgentSoulConfigWithModel(
@@ -213,6 +331,35 @@ export async function saveAgentComposerDraft(
     })
     await expectApiResponseOK(response, `Save Agent v2 composer draft for ${agentId}`)
     return (await response.json()) as AgentComposerResponse
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function uploadAgentDriveSkill({
+  agentId,
+  fileName,
+  filePath,
+}: {
+  agentId: string
+  fileName: string
+  filePath: string
+}): Promise<AgentDriveSkillUpload> {
+  const ctx = await createApiContext()
+  try {
+    const upload = await toSkillArchiveUpload({ fileName, filePath })
+    const response = await ctx.post(`/console/api/agent/${agentId}/skills/upload`, {
+      multipart: {
+        file: {
+          buffer: upload.buffer,
+          mimeType: 'application/zip',
+          name: upload.name,
+        },
+      },
+    })
+    await expectApiResponseOK(response, `Upload Agent v2 drive skill ${fileName} for ${agentId}`)
+    return (await response.json()) as AgentDriveSkillUpload
   }
   finally {
     await ctx.dispose()

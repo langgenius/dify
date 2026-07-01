@@ -21,7 +21,7 @@ export const agentBuilderTestMaterials = {
   validEnv: 'agent-valid.env',
   invalidEnv: 'agent-invalid.env',
   buildInstruction: 'agent-build-instruction.txt',
-  summarySkill: 'e2e-summary.SKILL.md',
+  summarySkill: 'e2e-summary-skill/SKILL.md',
   fileTreeFixture: 'file_tree_fixture',
   countBatch5: 'count_batch_5_valid_files',
   countBatch6: 'count_batch_6_valid_files',

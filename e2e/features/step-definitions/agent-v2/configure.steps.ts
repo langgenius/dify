@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test'
 import type { AgentComposerEnvVariable } from '../../../support/agent'
 import type { DifyWorld } from '../../support/world'
+import { readFile } from 'node:fs/promises'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import {
@@ -16,6 +17,7 @@ import {
   saveAgentComposerDraft,
   updatedAgentPrompt,
   updatedAgentSoulConfig,
+  uploadAgentDriveSkill,
 } from '../../../support/agent'
 import {
   agentBuilderExpectedTokens,
@@ -197,6 +199,14 @@ Given('the Agent v2 composer draft uses the normal E2E prompt', async function (
   await saveAgentComposerDraft(getCurrentAgentId(this), normalAgentSoulConfig)
 })
 
+Given('the e2e-summary-skill Skill is available to the Agent v2 test agent', async function (this: DifyWorld) {
+  await uploadAgentDriveSkill({
+    agentId: getCurrentAgentId(this),
+    fileName: agentBuilderTestMaterials.summarySkill,
+    filePath: getAgentBuilderTestMaterialPath('summarySkill'),
+  })
+})
+
 Given('an Agent v2 Build draft uses the updated E2E prompt', async function (this: DifyWorld) {
   await saveAgentBuildDraft(getCurrentAgentId(this), updatedAgentSoulConfig)
 })
@@ -216,6 +226,31 @@ Given(
 
 When('I open the Agent v2 configure page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentConfigurePath(getCurrentAgentId(this)))
+})
+
+When('I generate an Agent v2 Build draft from the fixed instruction', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const agentId = getCurrentAgentId(this)
+  const instruction = (await readFile(getAgentBuilderTestMaterialPath('buildInstruction'), 'utf8')).trim()
+
+  await page.getByRole('button', { name: 'Build' }).click()
+  await page.getByPlaceholder('Describe what your agent should do').fill(instruction)
+
+  const checkoutResponsePromise = page.waitForResponse(response => (
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-draft/checkout`)
+  ))
+  const chatResponsePromise = page.waitForResponse(response => (
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/chat-messages`)
+  ))
+
+  await page.getByRole('button', { name: 'Start build' }).click()
+  expect((await checkoutResponsePromise).ok()).toBe(true)
+  expect((await chatResponsePromise).ok()).toBe(true)
+  await expect(page.getByText('Build draft')).toBeVisible({ timeout: 120_000 })
+  await expect(page.getByRole('button', { name: 'Apply' })).toBeEnabled({ timeout: 120_000 })
+  await expect(page.getByRole('button', { name: 'Discard' })).toBeEnabled()
 })
 
 When('I open the Agent v2 configure page from the Agent Roster', async function (this: DifyWorld) {
@@ -779,8 +814,17 @@ Then('I should see the Agent v2 Build draft pending changes', async function (th
   const page = this.getPage()
 
   await expect(page.getByText('Build draft')).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByRole('button', { name: 'Apply' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Discard' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Apply' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Discard' })).toBeEnabled()
+})
+
+Then('I should see the Agent v2 Build mode confirmation state', async function (this: DifyWorld) {
+  const page = this.getPage()
+
+  await expect(page.getByText('Build mode', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('You\'re in build mode. Shape this setup through the chat on the right, then Apply.'),
+  ).toBeVisible()
 })
 
 Then(

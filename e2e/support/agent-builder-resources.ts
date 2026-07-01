@@ -1,6 +1,6 @@
 export const agentBuilderPreseededResources = {
   stableChatModel: 'E2E Stable Chat Model',
-  summarySkill: 'E2E Summary Skill',
+  summarySkill: 'e2e-summary-skill',
   jsonReplaceTool: 'JSON Process / JSON Replace',
   tavilySearchTool: 'Tavily / Tavily Search',
   agentKnowledgeBase: 'E2E Agent Knowledge Base',
