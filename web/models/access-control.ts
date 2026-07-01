@@ -263,8 +263,4 @@ export type RemoveAppAccessPolicyMemberBindingsRequest = RemoveResourceAccessPol
 
 export type RemoveDatasetAccessPolicyMemberBindingsRequest = RemoveResourceAccessPolicyMemberBindingsRequest
 
-export type GetAccessPolicyDetailResponse = {
-  access_policies: Pick<AccessPolicy, 'id' | 'name' | 'resource_type' | 'policy_key' | 'permission_keys'>[]
-}
-
 export type ResourceOpenScope = 'all' | 'specific'
