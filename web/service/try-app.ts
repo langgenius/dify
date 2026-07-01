@@ -55,8 +55,10 @@ const normalizeEnabledConfig = (value: Record<string, unknown>, fallback = false
 
 const normalizeTextToSpeechConfig = (value: Record<string, unknown>): ChatConfig['text_to_speech'] => {
   const autoPlay = getString(value.autoPlay)
+  const config = { ...value }
+  delete config.autoPlay
   return {
-    ...normalizeEnabledConfig(value),
+    ...normalizeEnabledConfig(config),
     voice: getOptionalString(value.voice),
     language: getOptionalString(value.language),
     ...(autoPlay === TtsAutoPlay.enabled || autoPlay === TtsAutoPlay.disabled ? { autoPlay } : {}),
