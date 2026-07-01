@@ -55,6 +55,8 @@
   "firstEmpty.title": "Belum ada aplikasi",
   "gotoAnything.actions.accountDesc": "Arahkan ke halaman akun",
   "gotoAnything.actions.communityDesc": "Buka komunitas Discord",
+  "gotoAnything.actions.createAuto": "Otomatis",
+  "gotoAnything.actions.createAutoDesc": "Biarkan AI memilih Workflow atau Chatflow dari deskripsi Anda",
   "gotoAnything.actions.createCategoryDesc": "Buat alur kerja atau alur obrolan yang dihasilkan AI",
   "gotoAnything.actions.createChatflow": "Alur obrolan",
   "gotoAnything.actions.createChatflowDesc": "Hasilkan aplikasi chatflow (obrolan lanjutan) dari deskripsi",

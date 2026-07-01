@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { handleStream } from './base'
+// eslint-disable-next-line no-restricted-imports
+import { del, get, handleStream, patch, post, put } from './base'
 
 describe('handleStream', () => {
   beforeEach(() => {
@@ -278,5 +279,15 @@ describe('handleStream', () => {
       // Act & Assert
       expect(() => handleStream(mockResponse, onData)).toThrow('Network response was not ok')
     })
+  })
+})
+
+describe('HTTP methods', () => {
+  it('should export methods correctly', () => {
+    expect(typeof get).toBe('function')
+    expect(typeof post).toBe('function')
+    expect(typeof put).toBe('function')
+    expect(typeof patch).toBe('function')
+    expect(typeof del).toBe('function')
   })
 })
