@@ -5,7 +5,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginListResponse
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
 from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
 from core.trigger.errors import (
@@ -120,6 +120,26 @@ class TestBasePluginClientImpl:
 
         assert result is True
         assert transformed == {"code": 0, "message": "", "data": True}
+
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        mocker.patch.object(client, "_request", return_value=_ResponseStub({"code": 0, "message": "", "data": []}))
+
+        result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
+
+        assert result.list == []
+        assert result.total == 0
+
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_top_level_array(
+        self, mocker: MockerFixture
+    ):
+        client = BasePluginClient()
+        mocker.patch.object(client, "_request", return_value=_ResponseStub([]))
+
+        result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
+
+        assert result.list == []
+        assert result.total == 0
 
     def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker: MockerFixture):
         client = BasePluginClient()
