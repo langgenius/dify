@@ -4,6 +4,8 @@ import {
   skipMissingAgentBuilderBrokenChatModel,
   skipMissingAgentBuilderStableChatModel,
   skipMissingPreseededAgent,
+  skipMissingPreseededAgentBackendApiKey,
+  skipMissingPreseededAgentDriveSkill,
   skipMissingPreseededDataset,
   skipMissingPreseededTool,
   skipMissingPreseededWorkflow,
@@ -66,5 +68,27 @@ Given(
       return resource
 
     this.agentBuilderPreseededResources[resourceName] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} includes drive skill {string}',
+  async function (this: DifyWorld, agentName: string, skillName: string) {
+    const resource = await skipMissingPreseededAgentDriveSkill(this, agentName, skillName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilderPreseededResources[`${agentName} / ${skillName}`] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} has Backend service API access with an API key',
+  async function (this: DifyWorld, agentName: string) {
+    const resource = await skipMissingPreseededAgentBackendApiKey(this, agentName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilderPreseededResources[`${agentName} / Backend service API key`] = resource
   },
 )

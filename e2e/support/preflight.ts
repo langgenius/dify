@@ -106,6 +106,24 @@ type BuiltinToolProvider = {
   }>
 }
 
+type AgentDriveSkillListResponse = {
+  items: Array<{
+    name: string
+    path: string
+  }>
+}
+
+type AgentApiAccessResponse = {
+  api_key_count: number
+  enabled: boolean
+}
+
+type AgentApiKeyListResponse = {
+  data: Array<{
+    id: string
+  }>
+}
+
 const findConsoleResourceByName = async ({
   action,
   path,
@@ -240,6 +258,82 @@ export async function skipMissingPreseededTool(
       id: `${provider.name}/${tool.name}`,
       kind: 'tool',
       name: resourceName,
+    }
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededAgentDriveSkill(
+  world: DifyWorld,
+  agentName: string,
+  skillName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped')
+    return agent
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agent.id}/drive/skills`)
+    await expectApiResponseOK(response, `Check preseeded Agent skill ${skillName}`)
+    const body = (await response.json()) as AgentDriveSkillListResponse
+    const skill = body.items.find(item => item.name === skillName)
+
+    if (!skill) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" does not include drive skill "${skillName}".`,
+      )
+    }
+
+    return {
+      id: skill.path,
+      kind: 'skill',
+      name: skill.name,
+    }
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededAgentBackendApiKey(
+  world: DifyWorld,
+  agentName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped')
+    return agent
+
+  const ctx = await createApiContext()
+  try {
+    const accessResponse = await ctx.get(`/console/api/agent/${agent.id}/api-access`)
+    await expectApiResponseOK(accessResponse, `Check preseeded Agent API access ${agentName}`)
+    const access = (await accessResponse.json()) as AgentApiAccessResponse
+    if (!access.enabled || access.api_key_count < 1) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" does not have Backend service API enabled with an API key.`,
+      )
+    }
+
+    const keyResponse = await ctx.get(`/console/api/agent/${agent.id}/api-keys`)
+    await expectApiResponseOK(keyResponse, `Check preseeded Agent API key ${agentName}`)
+    const keys = (await keyResponse.json()) as AgentApiKeyListResponse
+    const key = keys.data.at(0)
+    if (!key) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" Backend service API key list is empty.`,
+      )
+    }
+
+    return {
+      id: key.id,
+      kind: 'api-key',
+      name: `${agentName} Backend service API key`,
     }
   }
   finally {

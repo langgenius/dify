@@ -300,6 +300,8 @@ Use `the Agent Builder broken chat model is available` before model-recovery sce
 
 Use `the Agent Builder preseeded Agent "{name}" is available`, `the Agent Builder preseeded workflow "{name}" is available`, `the Agent Builder preseeded dataset "{name}" is available`, and `the Agent Builder preseeded tool "{provider} / {tool}" is available` when a scenario depends on a fixed environment resource. These steps verify the resource through Console APIs, store the result in `DifyWorld.agentBuilderPreseededResources`, and return `skipped` with a blocked-precondition attachment when the resource is missing. The tool step checks built-in tool availability only; credential-validity scenarios still need explicit credential-state setup or assertions.
 
+Use `the Agent Builder preseeded Agent "{agent}" includes drive skill "{skill}"` to verify that a fixed Agent has a drive-backed Skill attached. Use `the Agent Builder preseeded Agent "{agent}" has Backend service API access with an API key` to verify that a fixed Agent has Backend service API enabled and at least one key. The API key step does not validate a human-readable key name because the Console API key response does not expose one.
+
 Use `DifyWorld.createdDatasetIds` for datasets created by a scenario and `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario. The shared `After` hook deletes Agent drive files before deleting created Agents so file cleanup also works for scenarios that upload into a preseeded Agent. Use `DifyWorld.registerCleanup(...)` when a scenario creates any other resource type that is not covered by the typed cleanup fields. Cleanup callbacks run after the typed cleanup queues, even when the scenario fails.
 
 ## Reusing existing steps
