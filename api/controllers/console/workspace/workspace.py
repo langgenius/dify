@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 from flask import request
+from flask_login import current_user
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -334,7 +335,9 @@ class TenantApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        return dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant)), 200
+        return dump_response(
+            TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, db.session, current_user)
+        ), 200
 
 
 @console_ns.route("/workspaces/switch")
@@ -359,7 +362,12 @@ class SwitchWorkspaceApi(Resource):
         if new_tenant is None:
             raise ValueError("Tenant not found")
 
-        return {"result": "success", "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
+        return {
+            "result": "success",
+            "new_tenant": marshal(
+                WorkspaceService.get_tenant_info(new_tenant, db.session, current_user), tenant_fields
+            ),
+        }
 
 
 @console_ns.route("/workspaces/custom-config")
@@ -388,7 +396,10 @@ class CustomConfigWorkspaceApi(Resource):
         tenant.custom_config_dict = custom_config_dict
         db.session.commit()
 
-        return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+        return {
+            "result": "success",
+            "tenant": marshal(WorkspaceService.get_tenant_info(tenant, db.session, current_user), tenant_fields),
+        }
 
 
 @console_ns.route("/workspaces/custom-config/webapp-logo/upload")
@@ -451,7 +462,10 @@ class WorkspaceInfoApi(Resource):
         tenant.name = args.name
         db.session.commit()
 
-        return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+        return {
+            "result": "success",
+            "tenant": marshal(WorkspaceService.get_tenant_info(tenant, db.session, current_user), tenant_fields),
+        }
 
 
 @console_ns.route("/workspaces/current/permission")

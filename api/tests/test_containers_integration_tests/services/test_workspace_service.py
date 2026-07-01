@@ -104,7 +104,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -151,7 +151,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -206,7 +206,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -261,7 +261,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -291,7 +291,7 @@ class TestWorkspaceService:
         # Arrange: No test data needed for this test
 
         # Act: Execute the method under test with None tenant
-        result = WorkspaceService.get_tenant_info(None)
+        result = WorkspaceService.get_tenant_info(None, db_session_with_containers, None)
 
         # Assert: Verify the expected outcomes
         assert result is None
@@ -341,7 +341,7 @@ class TestWorkspaceService:
             # Mock current_user for flask_login
             with patch("services.workspace_service.current_user", account):
                 # Act: Execute the method under test
-                result = WorkspaceService.get_tenant_info(tenant)
+                result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
                 # Assert: Verify the expected outcomes
                 assert result is not None
@@ -398,7 +398,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -448,7 +448,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -513,7 +513,7 @@ class TestWorkspaceService:
             # Mock current_user for flask_login
             with patch("services.workspace_service.current_user", account):
                 # Act: Execute the method under test
-                result = WorkspaceService.get_tenant_info(tenant)
+                result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
                 # Assert: Verify the expected outcomes
                 assert result is not None
@@ -553,7 +553,7 @@ class TestWorkspaceService:
         # No TenantAccountJoin created
         with patch("services.workspace_service.current_user", account):
             with pytest.raises(AssertionError, match="TenantAccountJoin not found"):
-                WorkspaceService.get_tenant_info(tenant)
+                WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
     def test_get_tenant_info_should_set_replace_webapp_logo_to_none_when_flag_absent(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -572,7 +572,7 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = True
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert result["custom_config"]["replace_webapp_logo"] is None
@@ -596,7 +596,7 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = True
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert result["custom_config"]["replace_webapp_logo"].startswith(custom_base)
@@ -615,7 +615,7 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert "next_credit_reset_date" not in result
@@ -642,7 +642,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=None),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert result["next_credit_reset_date"] == "2025-02-01"
@@ -669,7 +669,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=paid_pool),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert result["trial_credits"] == 1000
@@ -697,7 +697,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, None]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert result["trial_credits"] == -1
@@ -726,7 +726,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert result["trial_credits"] == 100
@@ -754,7 +754,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[None, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert result["trial_credits"] == 50
@@ -785,7 +785,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert result["trial_credits"] == 200
@@ -811,7 +811,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[None, None]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant)
+            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers, account)
 
         assert result is not None
         assert "trial_credits" not in result

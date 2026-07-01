@@ -1275,7 +1275,7 @@ class TenantService:
 
         from services.credit_pool_service import CreditPoolService
 
-        CreditPoolService.create_default_pool(tenant.id)
+        CreditPoolService.create_default_pool(tenant.id, db.session)
 
         return tenant
 

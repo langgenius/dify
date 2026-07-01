@@ -35,11 +35,10 @@ class TestCreditPoolService:
         db_session.add(pool)
         db_session.commit()
 
-    @pytest.mark.usefixtures("db_session_with_containers")
-    def test_create_default_pool(self) -> None:
+    def test_create_default_pool(self, db_session_with_containers: Session) -> None:
         tenant_id = self._create_tenant_id()
 
-        pool = CreditPoolService.create_default_pool(tenant_id)
+        pool = CreditPoolService.create_default_pool(tenant_id, db_session_with_containers)
 
         assert isinstance(pool, TenantCreditPool)
         assert pool.tenant_id == tenant_id
