@@ -131,7 +131,7 @@ class TestPluginModelProviderCache:
     def test_fetch_plugin_model_providers_returns_cached_provider_without_calling_daemon(self) -> None:
         """A valid tenant cache entry is reused across runtime calls without plugin daemon access."""
         cached_provider = _build_provider_entity()
-        cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider]).decode("utf-8")
+        cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider])
         generation_key = _provider_generation_key("tenant-1")
         cache_key = _provider_cache_key("tenant-1", 0)
 
@@ -229,7 +229,7 @@ class TestPluginModelProviderCache:
     def test_fetch_plugin_model_providers_waits_for_concurrent_refresh_cache_fill(self) -> None:
         """A cache miss waits for the active tenant refresh instead of stampeding the daemon."""
         cached_provider = _build_provider_entity()
-        cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider]).decode("utf-8")
+        cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider])
         cache_key = _provider_cache_key("tenant-1", 0)
 
         with (
@@ -262,8 +262,9 @@ class TestPluginModelProviderCache:
         client.fetch_model_providers.assert_not_called()
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
 
-    def test_fetch_plugin_model_providers_fails_when_refresh_lock_wait_times_out(self) -> None:
-        """A request should fail fast instead of waiting indefinitely behind an active refresh lock."""
+    def test_fetch_plugin_model_providers_falls_back_when_refresh_lock_wait_times_out(self) -> None:
+        """A request should stop waiting and fetch directly instead of surfacing lock contention."""
+        cache_key = _provider_cache_key("tenant-1", 0)
         with (
             patch(f"{MODULE}.redis_client") as redis_client,
             patch(f"{MODULE}.PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT", 0),
@@ -277,8 +278,7 @@ class TestPluginModelProviderCache:
 
             from core.plugin.plugin_service import PluginService
 
-            with pytest.raises(RuntimeError, match="Timed out waiting for plugin model providers refresh lock"):
-                PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+            result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
 
         redis_client.lock.assert_called_once_with(
             PluginService._get_plugin_model_providers_lock_key("tenant-1", 0),
@@ -287,7 +287,10 @@ class TestPluginModelProviderCache:
         )
         redis_client.lock.return_value.acquire.assert_called_once_with(blocking=True, blocking_timeout=0)
         redis_client.lock.return_value.release.assert_not_called()
-        client.fetch_model_providers.assert_not_called()
+        client.fetch_model_providers.assert_called_once_with("tenant-1")
+        redis_client.setex.assert_called_once()
+        assert redis_client.setex.call_args.args[0] == cache_key
+        assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
 
     def test_fetch_plugin_model_providers_restarts_lock_path_after_generation_changes(self) -> None:
         """Waiters re-read provider generation before trying to become the next refresh owner."""
@@ -342,8 +345,8 @@ class TestPluginModelProviderCache:
         assert redis_client.setex.call_args.args[0] == new_cache_key
         assert [provider.provider for provider in result] == ["langgenius/anthropic/anthropic"]
 
-    def test_fetch_plugin_model_providers_fails_when_generation_retries_exhaust_wait_budget(self) -> None:
-        """Generation retry loops share one request-local lock wait deadline."""
+    def test_fetch_plugin_model_providers_falls_back_when_generation_retries_exhaust_wait_budget(self) -> None:
+        """Generation retry loops share one request-local lock wait deadline before direct fetch fallback."""
         generation_key = _provider_generation_key("tenant-1")
         stale_cache_key = _provider_cache_key("tenant-1", 0)
         new_cache_key = _provider_cache_key("tenant-1", 1)
@@ -352,16 +355,17 @@ class TestPluginModelProviderCache:
             patch(f"{MODULE}.redis_client") as redis_client,
             patch(f"{MODULE}.time.monotonic", side_effect=[100.0, 100.0, 102.1]),
         ):
-            redis_client.get.side_effect = [None, b"1", b"1"]
+            redis_client.get.side_effect = [None, b"1", b"1", b"1"]
             redis_client.mget.side_effect = [[None], [None], [None]]
             client = Mock()
+            client.fetch_model_providers.return_value = [_build_plugin_model_provider(provider="anthropic")]
 
             from core.plugin.plugin_service import PluginService
 
-            with pytest.raises(RuntimeError, match="Timed out waiting for plugin model providers refresh lock"):
-                PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+            result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
 
         assert redis_client.get.call_args_list == [
+            call(generation_key),
             call(generation_key),
             call(generation_key),
             call(generation_key),
@@ -378,7 +382,10 @@ class TestPluginModelProviderCache:
         )
         redis_client.lock.return_value.acquire.assert_called_once_with(blocking=True, blocking_timeout=2.0)
         redis_client.lock.return_value.release.assert_called_once()
-        client.fetch_model_providers.assert_not_called()
+        client.fetch_model_providers.assert_called_once_with("tenant-1")
+        redis_client.setex.assert_called_once()
+        assert redis_client.setex.call_args.args[0] == new_cache_key
+        assert [provider.provider for provider in result] == ["langgenius/anthropic/anthropic"]
 
     def test_fetch_plugin_model_providers_releases_owned_refresh_lock_after_store(self) -> None:
         """The refresh owner releases only its token after storing provider metadata."""
@@ -549,7 +556,7 @@ class TestPluginModelProviderCache:
 
     def test_fetch_plugin_model_providers_reuses_cached_empty_provider_list(self) -> None:
         """A cached empty list should prevent repeated daemon fetches for tenants without plugin models."""
-        empty_payload = TypeAdapter(list[ProviderEntity]).dump_json([]).decode("utf-8")
+        empty_payload = TypeAdapter(list[ProviderEntity]).dump_json([])
         cache_key = _provider_cache_key("tenant-1", 0)
 
         with patch(f"{MODULE}.redis_client") as redis_client:
