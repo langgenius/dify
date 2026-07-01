@@ -125,6 +125,8 @@ Feature: Agent v2 Access Point
     Then Agent v2 API keys should not expose a secret by default
     When I create a new Agent v2 API key
     Then I should see the newly generated Agent v2 API key once
+    When I copy the newly generated Agent v2 API key
+    Then the newly generated Agent v2 API key should show it was copied
     When I close the newly generated Agent v2 API key
     Then the Agent v2 API key list should not expose the full generated secret
 

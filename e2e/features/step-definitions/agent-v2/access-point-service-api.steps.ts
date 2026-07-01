@@ -104,6 +104,25 @@ Then('I should see the newly generated Agent v2 API key once', async function (t
     throw new Error('Generated Agent v2 API key was empty.')
 })
 
+When('I copy the newly generated Agent v2 API key', async function (this: DifyWorld) {
+  const generatedKeyDialog = this.getPage()
+    .getByRole('dialog', { name: /API Secret key/i })
+    .last()
+
+  await generatedKeyDialog.getByLabel('Copy').first().click()
+})
+
+Then(
+  'the newly generated Agent v2 API key should show it was copied',
+  async function (this: DifyWorld) {
+    const generatedKeyDialog = this.getPage()
+      .getByRole('dialog', { name: /API Secret key/i })
+      .last()
+
+    await expect(generatedKeyDialog.getByLabel('Copied')).toBeVisible()
+  },
+)
+
 When('I close the newly generated Agent v2 API key', async function (this: DifyWorld) {
   const page = this.getPage()
   const generatedKeyDialog = page.getByRole('dialog', { name: /API Secret key/i }).last()
