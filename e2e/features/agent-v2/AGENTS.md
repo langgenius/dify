@@ -119,7 +119,19 @@ Agent Builder resource checks live under `features/agent-v2/support/preflight/`.
 
 `preflight.steps.ts` should remain the explicit `Given` entrypoint. Do not move preflight into hidden hooks.
 
-Use `the Agent Builder stable chat model is available` before scenarios that must run an Agent with a real model. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` define the single usable model for the E2E environment. The step defaults the type to `llm`, verifies the model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
+Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios and build-mode workflows whose backend API requires model config, such as Agent workflow nodes. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults the type to `llm`, verifies the model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
+
+Do not pass model provider API keys through Cucumber or Playwright env vars. Provider credentials belong to the Dify environment seed/admin setup. If the selected provider/model is missing or inactive, the scenario must be blocked by preflight instead of trying to create or patch provider credentials during the test.
+
+Use this stable OpenAI GPT-5 family selector unless a scenario explicitly needs a different model:
+
+```bash
+E2E_STABLE_MODEL_PROVIDER=openai
+E2E_STABLE_MODEL_NAME=gpt-5.4-mini
+E2E_STABLE_MODEL_TYPE=llm
+```
+
+Dify may expose OpenAI as either `openai` or a plugin provider ID such as `langgenius/openai/openai`. The preflight accepts both forms for selection and stores the actual Console API provider ID for Agent Soul setup.
 
 Use `the Agent Builder broken chat model is available` before model-recovery scenarios that intentionally start from an invalid model. The step requires `E2E_BROKEN_MODEL_PROVIDER`, defaults `E2E_BROKEN_MODEL_NAME` to `e2e-broken-model`, defaults `E2E_BROKEN_MODEL_TYPE` to `llm`, and only verifies that the model entry exists. The scenario must still assert the user-visible failure and recovery behavior.
 

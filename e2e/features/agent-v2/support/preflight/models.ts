@@ -14,6 +14,11 @@ const activeModelStatus = 'active'
 const defaultStableChatModelType = 'llm'
 const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
 
+const getProviderAlias = (provider: string) => provider.split('/').filter(Boolean).at(-1) ?? provider
+
+const matchesProvider = (actual: string, expected: string) =>
+  actual === expected || getProviderAlias(actual) === getProviderAlias(expected)
+
 type ModelPreflightConfig
   = | {
     ok: true
@@ -94,7 +99,7 @@ async function skipMissingAgentBuilderModel(
     )
     await expectApiResponseOK(response, `Check ${config.resourceName}`)
     const body = (await response.json()) as ProviderWithModelsDataResponse
-    const provider = body.data.find(item => item.provider === config.provider)
+    const provider = body.data.find(item => matchesProvider(item.provider, config.provider))
     const model = provider?.models.find(
       item =>
         item.model === config.value

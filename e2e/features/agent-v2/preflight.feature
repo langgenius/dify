@@ -9,10 +9,12 @@ Feature: Agent Builder preseeded environment
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
 
+  @stable-model
   Scenario: Stable chat model is available
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
 
+  @broken-model
   Scenario: Broken chat model is available for recovery scenarios
     Given I am signed in as the default E2E admin
     And the Agent Builder broken chat model is available
