@@ -1,54 +1,111 @@
-import lamejs from 'lamejs'
-import BitStream from 'lamejs/src/js/BitStream'
-import Lame from 'lamejs/src/js/Lame'
-import MPEGMode from 'lamejs/src/js/MPEGMode'
+import { registerMp3Encoder } from '@mediabunny/mp3-encoder'
+import {
+  AudioSample,
+  AudioSampleSource,
+  BufferTarget,
+  canEncodeAudio,
+  Mp3OutputFormat,
+  Output,
+} from 'mediabunny'
 
-/* v8 ignore next - @preserve */
-if (globalThis) {
-  (globalThis as any).MPEGMode = MPEGMode
-  ; (globalThis as any).Lame = Lame
-  ; (globalThis as any).BitStream = BitStream
+type SupportedChannelCount = 1 | 2
+
+type RecorderChannelData = {
+  left: DataView
+  right?: DataView | null
 }
 
-export const convertToMp3 = (recorder: any) => {
-  const wav = lamejs.WavHeader.readHeader(recorder.getWAV())
-  const { channels, sampleRate } = wav
-  const mp3enc = new lamejs.Mp3Encoder(channels, sampleRate, 128)
+export type AudioRecorder = {
+  getWAV: () => ArrayBuffer | DataView
+  getChannelData: () => RecorderChannelData
+}
+
+const wavChannelsOffset = 22
+const wavSampleRateOffset = 24
+const bytesPerSample = 2
+const mp3Bitrate = 128_000
+
+const ensureMp3Encoder = async () => {
+  if (!(await canEncodeAudio('mp3')))
+    registerMp3Encoder()
+}
+
+const readWavInfo = (wav: ArrayBuffer | DataView) => {
+  const view = wav instanceof DataView ? wav : new DataView(wav)
+  const channels = view.getUint16(wavChannelsOffset, true)
+
+  if (channels !== 1 && channels !== 2)
+    throw new Error(`Unsupported WAV channel count: ${channels}`)
+
+  return {
+    channels: channels as SupportedChannelCount,
+    sampleRate: view.getUint32(wavSampleRateOffset, true),
+  }
+}
+
+const readInt16Samples = (data: DataView) => {
+  const samples = new Int16Array(data.byteLength / bytesPerSample)
+
+  for (let i = 0; i < samples.length; i++)
+    samples[i] = data.getInt16(i * bytesPerSample, true)
+
+  return samples
+}
+
+const createPcmData = (data: RecorderChannelData, channels: SupportedChannelCount) => {
+  const leftSamples = readInt16Samples(data.left)
+
+  if (channels === 1)
+    return leftSamples
+
+  if (!data.right)
+    throw new Error('Missing right channel data for stereo WAV')
+
+  const rightSamples = readInt16Samples(data.right)
+
+  if (leftSamples.length !== rightSamples.length)
+    throw new Error('Stereo WAV channel sample counts do not match')
+
+  const samples = new Int16Array(leftSamples.length * channels)
+
+  for (let i = 0; i < leftSamples.length; i++) {
+    samples[i * channels] = leftSamples[i]!
+    samples[i * channels + 1] = rightSamples[i]!
+  }
+
+  return samples
+}
+
+export const convertToMp3 = async (recorder: AudioRecorder) => {
+  const { channels, sampleRate } = readWavInfo(recorder.getWAV())
   const result = recorder.getChannelData()
-  const buffer: BlobPart[] = []
+  const pcmData = createPcmData(result, channels)
 
-  const leftData = result.left && new Int16Array(result.left.buffer, 0, result.left.byteLength / 2)
-  const rightData = result.right && new Int16Array(result.right.buffer, 0, result.right.byteLength / 2)
-  const remaining = leftData.length + (rightData ? rightData.length : 0)
+  await ensureMp3Encoder()
 
-  const maxSamples = 1152
-  const toArrayBuffer = (bytes: Int8Array) => {
-    const arrayBuffer = new ArrayBuffer(bytes.length)
-    new Uint8Array(arrayBuffer).set(bytes)
-    return arrayBuffer
-  }
+  const target = new BufferTarget()
+  const output = new Output({
+    format: new Mp3OutputFormat(),
+    target,
+  })
+  const source = new AudioSampleSource({
+    codec: 'mp3',
+    bitrate: mp3Bitrate,
+  })
+  const sample = new AudioSample({
+    data: pcmData,
+    format: 's16',
+    numberOfChannels: channels,
+    sampleRate,
+    timestamp: 0,
+  })
 
-  for (let i = 0; i < remaining; i += maxSamples) {
-    const left = leftData.subarray(i, i + maxSamples)
-    let right = null
-    let mp3buf = null
+  output.addAudioTrack(source)
+  await output.start()
+  await source.add(sample)
+  sample.close()
+  source.close()
+  await output.finalize()
 
-    if (channels === 2) {
-      right = rightData.subarray(i, i + maxSamples)
-      mp3buf = mp3enc.encodeBuffer(left, right)
-    }
-    else {
-      mp3buf = mp3enc.encodeBuffer(left)
-    }
-
-    if (mp3buf.length > 0)
-      buffer.push(toArrayBuffer(mp3buf))
-  }
-
-  const enc = mp3enc.flush()
-
-  if (enc.length > 0)
-    buffer.push(toArrayBuffer(enc))
-
-  return new Blob(buffer, { type: 'audio/mp3' })
+  return new Blob([target.buffer ?? new ArrayBuffer(0)], { type: 'audio/mp3' })
 }

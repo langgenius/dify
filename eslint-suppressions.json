@@ -2412,11 +2412,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/voice-input/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
@@ -7414,11 +7409,6 @@
   "web/types/common.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
-    }
-  },
-  "web/types/lamejs.d.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
     }
   },
   "web/types/pipeline.tsx": {

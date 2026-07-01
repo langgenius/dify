@@ -1,3 +1,4 @@
+import type { AudioRecorder } from './utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRafInterval } from 'ahooks'
 import Recorder from 'js-audio-recorder'
@@ -21,12 +22,12 @@ const VoiceInput = ({
   wordTimestamps,
 }: VoiceInputTypes) => {
   const { t } = useTranslation()
-  const recorder = useRef(new Recorder({
+  const recorder = useRef<Recorder & AudioRecorder>(new Recorder({
     sampleBits: 16,
     sampleRate: 16000,
     numChannels: 1,
     compiling: false,
-  }))
+  }) as Recorder & AudioRecorder)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawRecordId = useRef<number | null>(null)
@@ -83,7 +84,7 @@ const VoiceInput = ({
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    const mp3Blob = convertToMp3(recorder.current)
+    const mp3Blob = await convertToMp3(recorder.current)
     const mp3File = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
     const formData = new FormData()
     formData.append('file', mp3File)
