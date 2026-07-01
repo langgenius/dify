@@ -30,7 +30,10 @@ def generator(mocker: MockerFixture):
 
     mocker.patch.object(module, "MessageBasedAppQueueManager", return_value=MagicMock())
     mocker.patch.object(module, "TraceQueueManager", return_value=MagicMock())
-    mocker.patch.object(module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
+    generate_entity = mocker.patch.object(
+        module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs)
+    )
+    gen.generate_entity = generate_entity
 
     return gen
 
@@ -92,12 +95,13 @@ class TestCompletionAppGenerator:
         result = generator.generate(
             app_model=_build_app_model(),
             user=_build_user(),
-            args={"query": "q", "inputs": {"a": 1}, "files": []},
+            args={"query": "q", "inputs": {"a": 1}, "files": [], "trace_session_id": "session-1"},
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
 
         assert result == "converted"
+        assert generator.generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
         module.file_factory.build_from_mappings.assert_not_called()
 
     def test_generate_success_with_files(self, generator, mocker: MockerFixture):

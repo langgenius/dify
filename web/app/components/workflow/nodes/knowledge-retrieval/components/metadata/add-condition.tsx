@@ -41,7 +41,7 @@ const AddCondition = ({
             size="small"
             variant="secondary"
           >
-            <RiAddLine className="h-3.5 w-3.5" />
+            <RiAddLine className="size-3.5" />
             {t('nodes.knowledgeRetrieval.metadata.panel.add', { ns: 'workflow' })}
           </Button>
         )}

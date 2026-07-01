@@ -1,9 +1,11 @@
+import type { Subject } from '@dify/contracts/enterprise/types.gen'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
 import type { Banner } from '@/models/app'
 import type { App, AppCategory, InstalledApp } from '@/models/explore'
 import type { AppMeta } from '@/models/share'
 import type { AppModeEnum } from '@/types/app'
+import { explore } from '@dify/contracts/api/console/explore/orpc.gen'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -35,9 +37,23 @@ type AppAccessModeResponse = {
   accessMode: AccessMode
 }
 
+type UpdateAppAccessModeBody = {
+  appId: string
+  accessMode: AccessMode
+  subjects?: Pick<Subject, 'subjectId' | 'subjectType'>[]
+}
+
 export const exploreAppsContract = base
   .route({
     path: '/explore/apps',
+    method: 'GET',
+  })
+  .input(type<{ query?: { language?: string } }>())
+  .output(type<ExploreAppsResponse>())
+
+export const learnDifyAppsContract = base
+  .route({
+    path: '/explore/apps/learn-dify',
     method: 'GET',
   })
   .input(type<{ query?: { language?: string } }>())
@@ -88,6 +104,14 @@ export const exploreInstalledAppAccessModeContract = base
   .input(type<{ query: { appId: string } }>())
   .output(type<AppAccessModeResponse>())
 
+export const exploreInstalledAppAccessModeUpdateContract = base
+  .route({
+    path: '/enterprise/webapp/app/access-mode',
+    method: 'POST',
+  })
+  .input(type<{ body: UpdateAppAccessModeBody }>())
+  .output(type<unknown>())
+
 export const exploreInstalledAppParametersContract = base
   .route({
     path: '/installed-apps/{appId}/parameters',
@@ -119,3 +143,18 @@ export const exploreBannersContract = base
   })
   .input(type<{ query?: { language?: string } }>())
   .output(type<Banner[]>())
+
+export const exploreRouterContract = {
+  ...explore,
+  apps: exploreAppsContract,
+  learnDifyApps: learnDifyAppsContract,
+  appDetail: exploreAppDetailContract,
+  installedApps: exploreInstalledAppsContract,
+  uninstallInstalledApp: exploreInstalledAppUninstallContract,
+  updateInstalledApp: exploreInstalledAppPinContract,
+  appAccessMode: exploreInstalledAppAccessModeContract,
+  updateAppAccessMode: exploreInstalledAppAccessModeUpdateContract,
+  installedAppParameters: exploreInstalledAppParametersContract,
+  installedAppMeta: exploreInstalledAppMetaContract,
+  banners: exploreBannersContract,
+}

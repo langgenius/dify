@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -11,13 +12,16 @@ import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
 
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { getBrowserTimezone } from '@/utils/timezone'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t, i18n } = useTranslation()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
@@ -39,7 +43,13 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await emailLoginWithCode({ email, code: encryptVerificationCode(code), token, language })
+      const ret = await emailLoginWithCode({
+        email,
+        code: encryptVerificationCode(code),
+        token,
+        language,
+        timezone: getBrowserTimezone(),
+      })
       if (ret.result === 'success') {
         // Track login success event
         trackEvent('user_login_success', {
@@ -51,8 +61,9 @@ export default function CheckCode() {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
+          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           const redirectUrl = resolvePostLoginRedirect(searchParams)
-          router.replace(redirectUrl || '/apps')
+          router.replace(redirectUrl || '/')
         }
       }
     }
@@ -85,8 +96,8 @@ export default function CheckCode() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
-        <RiMailSendFill className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+      <div className="inline-flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
+        <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
         <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>

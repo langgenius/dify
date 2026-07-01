@@ -17,8 +17,8 @@ type IOperationBtnProps = {
 }
 
 const iconMap = {
-  add: <RiAddLine className="h-3.5 w-3.5" />,
-  edit: <RiEditLine className="h-3.5 w-3.5" />,
+  add: <RiAddLine className="size-3.5" />,
+  edit: <RiEditLine className="size-3.5" />,
 }
 
 const OperationBtn: FC<IOperationBtnProps> = ({

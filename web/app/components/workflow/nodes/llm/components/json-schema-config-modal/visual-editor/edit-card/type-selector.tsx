@@ -66,7 +66,7 @@ const TypeSelector: FC<TypeSelectorProps> = ({
               className="gap-x-1 rounded-lg px-2 py-1"
             >
               <SelectItemText className="px-1 system-sm-medium text-text-secondary">{item.text}</SelectItemText>
-              {isSelected && <RiCheckLine className="h-4 w-4 text-text-accent" />}
+              {isSelected && <RiCheckLine className="size-4 text-text-accent" />}
               <SelectItemIndicator className="hidden" />
             </SelectItem>
           )

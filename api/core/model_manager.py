@@ -391,10 +391,10 @@ class ModelInstance:
 
             # Additional policy compliance check as fallback (in case fetch_next didn't catch it)
             try:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
                 if lb_config.credential_id:
-                    check_credential_policy_compliance(
+                    runtime_check_credential_policy_compliance(
                         credential_id=lb_config.credential_id,
                         provider=self.provider,
                         credential_type=PluginCredentialType.MODEL,
@@ -630,10 +630,10 @@ class LBModelManager:
 
             # Check policy compliance for the selected configuration
             try:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
                 if config.credential_id:
-                    check_credential_policy_compliance(
+                    runtime_check_credential_policy_compliance(
                         credential_id=config.credential_id,
                         provider=self._provider,
                         credential_type=PluginCredentialType.MODEL,

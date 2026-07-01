@@ -19,6 +19,7 @@ from core.app.app_config.entities import (
     ModelConfig,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
+from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import session_factory
 from core.entities.agent_entities import PlanningStrategy
@@ -122,7 +123,7 @@ class DatasetRetrieval:
         if not available_datasets_ids:
             return []
 
-        if not request.query:
+        if not request.query and not request.attachment_ids:
             return []
 
         metadata_filter_document_ids, metadata_condition = None, None
@@ -326,6 +327,7 @@ class DatasetRetrieval:
                         if record.summary:
                             source.summary = record.summary
 
+                        grant_retriever_segment_access([str(segment.id)])
                         retrieval_resource_list.append(source)
 
         if retrieval_resource_list:
@@ -515,6 +517,9 @@ class DatasetRetrieval:
                             )
                         ).all()
                         if attachments_with_bindings:
+                            grant_upload_file_access(
+                                str(upload_file.id) for _, upload_file in attachments_with_bindings
+                            )
                             for _, upload_file in attachments_with_bindings:
                                 attachment_info = File(
                                     file_id=upload_file.id,
@@ -604,7 +609,7 @@ class DatasetRetrieval:
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
-        tools = []
+        tools: list[PromptMessageTool] = []
         for dataset in available_datasets:
             description = dataset.description
             if not description:
@@ -1025,6 +1030,10 @@ class DatasetRetrieval:
     ):
         """
         Persist dataset query audit rows for retrieval requests.
+
+        Query audit logging is a side effect of retrieval. Keep it in an
+        independent transaction so failures or commits here do not affect the
+        request/workflow transaction that called the retriever.
         """
         if not query and not attachment_ids:
             return
@@ -1035,6 +1044,9 @@ class DatasetRetrieval:
                 user_from,
                 app_id,
             )
+            return
+        created_by_role = self._resolve_creator_user_role(user_from)
+        if created_by_role is None:
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
@@ -1050,13 +1062,16 @@ class DatasetRetrieval:
                     content=json.dumps(contents),
                     source=DatasetQuerySource.APP,
                     source_app_id=app_id,
-                    created_by_role=CreatorUserRole(user_from),
+                    created_by_role=created_by_role,
                     created_by=created_by,
                 )
                 dataset_queries.append(dataset_query)
-            if dataset_queries:
-                db.session.add_all(dataset_queries)
-        db.session.commit()
+
+        if not dataset_queries:
+            return
+
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            session.add_all(dataset_queries)
 
     def _retriever(
         self,
@@ -1157,7 +1172,7 @@ class DatasetRetrieval:
         :param invoke_from: invoke from
         :param hit_callback: hit callback
         """
-        tools = []
+        tools: list[DatasetRetrieverBaseTool] = []
         available_datasets = []
         for dataset_id in dataset_ids:
             # get dataset from dataset id
@@ -1520,16 +1535,18 @@ class DatasetRetrieval:
                 filters.append(json_field.like(f"%{escaped_value}", escape="\\"))
 
             case "is" | "=":
-                if isinstance(value, str):
-                    filters.append(json_field == value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
+                match value:
+                    case str():
+                        filters.append(json_field == value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
 
             case "is not" | "≠":
-                if isinstance(value, str):
-                    filters.append(json_field != value)
-                elif isinstance(value, (int, float)):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+                match value:
+                    case str():
+                        filters.append(json_field != value)
+                    case int() | float():
+                        filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
 
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
@@ -1549,12 +1566,13 @@ class DatasetRetrieval:
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
             case "in" | "not in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
+                match value:
+                    case str():
+                        value_list = [v.strip() for v in value.split(",") if v.strip()]
+                    case list() | tuple():
+                        value_list = [str(v) for v in value if v is not None]
+                    case _:
+                        value_list = [str(value)] if value is not None else []
 
                 if not value_list:
                     # `field in []` is False, `field not in []` is True
@@ -1701,12 +1719,13 @@ class DatasetRetrieval:
         usage = None
         for result in invoke_result:
             text = result.delta.message.content
-            if isinstance(text, str):
-                full_text += text
-            elif isinstance(text, list):
-                for i in text:
-                    if i.data:
-                        full_text += i.data
+            match text:
+                case str():
+                    full_text += text
+                case list():
+                    for i in text:
+                        if i.data:
+                            full_text += i.data
 
             if not model:
                 model = result.model

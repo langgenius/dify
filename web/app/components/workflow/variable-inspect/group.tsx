@@ -18,7 +18,7 @@ import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/com
 import { VarInInspectType } from '@/types/workflow'
 import { useToolIcon } from '../hooks'
 
-type Props = {
+type Props = Readonly<{
   nodeData?: NodeWithVar
   currentVar?: currentVarType
   varType: VarInInspectType
@@ -26,7 +26,7 @@ type Props = {
   handleSelect: (state: any) => void
   handleView?: () => void
   handleClear?: () => void
-}
+}>
 
 const Group = ({
   nodeData,
@@ -111,12 +111,12 @@ const Group = ({
           className="flex min-w-0 grow cursor-pointer items-center gap-0.5 rounded-sm border-none bg-transparent p-0 text-left outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
-          <div className="h-3 w-3 shrink-0">
+          <div className="size-3 shrink-0">
             {nodeData?.isSingRunRunning && (
-              <RiLoader2Line className="h-3 w-3 animate-spin text-text-accent" aria-hidden />
+              <RiLoader2Line className="size-3 animate-spin text-text-accent" aria-hidden />
             )}
             {(!nodeData || !nodeData.isSingRunRunning) && visibleVarList.length > 0 && (
-              <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} aria-hidden />
+              <RiArrowRightSLine className={cn('size-3 text-text-tertiary', !isCollapsed && 'rotate-90')} aria-hidden />
             )}
           </div>
           {nodeData && (
@@ -142,7 +142,7 @@ const Group = ({
               <TooltipTrigger
                 render={(
                   <ActionButton aria-label={t('debug.variableInspect.view', { ns: 'workflow' })} onClick={handleView}>
-                    <RiFileList3Line className="h-4 w-4" aria-hidden />
+                    <RiFileList3Line className="size-4" aria-hidden />
                   </ActionButton>
                 )}
               />
@@ -154,7 +154,7 @@ const Group = ({
               <TooltipTrigger
                 render={(
                   <ActionButton aria-label={t('debug.variableInspect.clearNode', { ns: 'workflow' })} onClick={handleClear}>
-                    <RiDeleteBinLine className="h-4 w-4" aria-hidden />
+                    <RiDeleteBinLine className="size-4" aria-hidden />
                   </ActionButton>
                 )}
               />

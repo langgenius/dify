@@ -4,6 +4,7 @@ import type { InputVar } from '../../../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -18,7 +19,6 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import Textarea from '@/app/components/base/textarea'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -28,14 +28,14 @@ import CodeEditor from '../editor/code-editor'
 import TextEditor from '../editor/text-editor'
 import BoolInput from './bool-input'
 
-type Props = {
+type Props = Readonly<{
   payload: InputVar
   value: any
   onChange: (value: any) => void
   className?: string
   autoFocus?: boolean
   inStepRun?: boolean
-}
+}>
 
 const FormItem: FC<Props> = ({
   payload,
@@ -89,8 +89,8 @@ const FormItem: FC<Props> = ({
             </div>
           )}
           <div className="flex items-center text-primary-600">
-            {!isChatVar && <Variable02 className="h-3.5 w-3.5" />}
-            {isChatVar && <BubbleX className="h-3.5 w-3.5 text-util-colors-teal-teal-700" />}
+            {!isChatVar && <Variable02 className="size-3.5" />}
+            {isChatVar && <BubbleX className="size-3.5 text-util-colors-teal-teal-700" />}
             <div className={cn('ml-0.5 max-w-[150px] truncate text-xs font-medium', isChatVar && 'text-text-secondary')} title={variable}>
               {variable}
             </div>
@@ -170,8 +170,9 @@ const FormItem: FC<Props> = ({
         {
           type === InputVarType.paragraph && (
             <Textarea
+              aria-label={typeof payload.label === 'object' ? payload.label.variable : payload.label}
               value={value || ''}
-              onChange={e => onChange(e.target.value)}
+              onValueChange={value => onChange(value)}
               placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
               autoFocus={autoFocus}
             />
@@ -319,7 +320,7 @@ const FormItem: FC<Props> = ({
                       ? (
                           <RiDeleteBinLine
                             onClick={handleArrayItemRemove(index)}
-                            className="mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary"
+                            className="mr-1 size-3.5 cursor-pointer text-text-tertiary"
                           />
                         )
                       : undefined
@@ -354,7 +355,7 @@ const FormItem: FC<Props> = ({
                       ? (
                           <RiDeleteBinLine
                             onClick={handleArrayItemRemove(index)}
-                            className="mr-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary"
+                            className="mr-1 size-3.5 cursor-pointer text-text-tertiary"
                           />
                         )
                       : undefined

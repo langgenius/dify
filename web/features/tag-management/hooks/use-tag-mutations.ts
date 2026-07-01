@@ -1,4 +1,4 @@
-import type { TagType } from '@/contract/console/tags'
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 
@@ -20,7 +20,7 @@ export const useApplyTagBindingsMutation = () => {
       const operations: Promise<unknown>[] = []
 
       if (addTagIds.length) {
-        operations.push(consoleClient.tags.bind({
+        operations.push(consoleClient.tagBindings.post({
           body: {
             tag_ids: addTagIds,
             target_id: targetId,
@@ -30,7 +30,7 @@ export const useApplyTagBindingsMutation = () => {
       }
 
       if (removeTagIds.length) {
-        operations.push(consoleClient.tags.unbind({
+        operations.push(consoleClient.tagBindings.remove.post({
           body: {
             tag_ids: removeTagIds,
             target_id: targetId,
@@ -43,7 +43,7 @@ export const useApplyTagBindingsMutation = () => {
     },
     onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: consoleQuery.tags.list.key({
+        queryKey: consoleQuery.tags.get.key({
           type: 'query',
           input: {
             query: {

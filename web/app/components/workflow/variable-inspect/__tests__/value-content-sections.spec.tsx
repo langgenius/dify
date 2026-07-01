@@ -38,6 +38,7 @@ vi.mock('@/app/components/workflow/nodes/llm/components/json-schema-config-modal
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ token: '' }),
+  usePathname: () => '/',
 }))
 
 describe('value-content sections', () => {

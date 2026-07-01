@@ -6,8 +6,8 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from models import Account, CreatorUserRole
-from models.enums import ConversationFromSource, MessageFileBelongsTo
+from models import Account, AppMode, CreatorUserRole
+from models.enums import ConversationFromSource, EndUserType, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -114,8 +114,9 @@ class TestAgentService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -134,7 +135,7 @@ class TestAgentService:
         app = app_service.create_app(tenant.id, app_args, account)
 
         # Update the app model config to set agent_mode for agent-chat mode
-        if app.mode == "agent-chat" and app.app_model_config:
+        if app.mode == AppMode.AGENT_CHAT and app.app_model_config:
             app.app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
 
             db_session_with_containers.commit()
@@ -272,7 +273,7 @@ class TestAgentService:
             tool_input=json.dumps({"dataset_tool": {"query": "test_query"}}),
             observation=json.dumps({"dataset_tool": {"results": "test_results"}}),
             tokens=30,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
         db_session_with_containers.add(thought2)
@@ -388,7 +389,7 @@ class TestAgentService:
             id=fake.uuid4(),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web_app",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id=fake.uuid4(),
             name=fake.name(),

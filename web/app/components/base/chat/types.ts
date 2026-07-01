@@ -38,6 +38,7 @@ export type ChatConfig = Omit<ModelConfig, 'model'> & {
 export type WorkflowProcess = {
   status: WorkflowRunningStatus
   tracing: NodeTracing[]
+  error?: string
   expand?: boolean // for UI
   resultText?: string
   files?: FileEntity[]

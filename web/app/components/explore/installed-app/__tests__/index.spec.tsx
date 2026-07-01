@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
-import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import InstalledApp from '../index'
@@ -12,7 +12,7 @@ import InstalledApp from '../index'
 vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: vi.fn(),
 }))
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: vi.fn(),
 }))
 vi.mock('@/service/use-explore', () => ({
@@ -159,9 +159,9 @@ describe('InstalledApp', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
+    it('should render without crashing', async () => {
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
+      expect(await screen.findByText(/Chat With History/i)).toBeInTheDocument()
     })
 
     it('should render loading state when fetching app params', () => {

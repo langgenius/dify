@@ -1,6 +1,7 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectLoadingButton } from '@/test/button'
 
 // ==================== Imports (after mocks) ====================
 
@@ -341,6 +342,26 @@ describe('Action Component', () => {
       })
     })
 
+    it('should invalidate installed plugin list after successful uninstall', async () => {
+      // Arrange
+      mockUninstallPlugin.mockResolvedValue({ success: true })
+      const props = createActionProps({
+        isShowDelete: true,
+        isShowInfo: false,
+        isShowFetchNewVersion: false,
+      })
+
+      // Act
+      render(<Action {...props} />)
+      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteConfirmButton())
+
+      // Assert
+      await waitFor(() => {
+        expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
+      })
+    })
+
     it('should not call onDelete if uninstall fails', async () => {
       // Arrange
       mockUninstallPlugin.mockResolvedValue({ success: false })
@@ -408,7 +429,7 @@ describe('Action Component', () => {
 
       // Assert - Loading state
       await waitFor(() => {
-        expect(getDeleteConfirmButton())!.toBeDisabled()
+        expectLoadingButton(getDeleteConfirmButton())
       })
 
       // Resolve and check modal closes
@@ -865,7 +886,7 @@ describe('Action Component', () => {
 
       // The confirm button should be disabled during deletion
       // The confirm button should be disabled during deletion
-      expect(getDeleteConfirmButton())!.toBeDisabled()
+      expectLoadingButton(getDeleteConfirmButton())
 
       // Resolve the deletion
       resolveFirst!({ success: true })

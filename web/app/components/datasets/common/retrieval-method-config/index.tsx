@@ -18,12 +18,12 @@ import { EffectColor } from '../../settings/chunk-structure/types'
 import OptionCard from '../../settings/option-card'
 import RetrievalParamConfig from '../retrieval-param-config'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   value: RetrievalConfig
   showMultiModalTip?: boolean
   onChange: (value: RetrievalConfig) => void
-}
+}>
 
 const RetrievalMethodConfig: FC<Props> = ({
   disabled = false,
@@ -114,6 +114,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             value={value}
             onChange={onChange}
             showMultiModalTip={showMultiModalTip}
+            disabled={disabled}
           />
         </OptionCard>
       )}
@@ -137,6 +138,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             value={value}
             onChange={onChange}
             showMultiModalTip={showMultiModalTip}
+            disabled={disabled}
           />
         </OptionCard>
       )}
@@ -161,6 +163,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             value={value}
             onChange={onChange}
             showMultiModalTip={showMultiModalTip}
+            disabled={disabled}
           />
         </OptionCard>
       )}

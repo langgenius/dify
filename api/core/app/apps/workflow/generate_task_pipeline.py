@@ -31,6 +31,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -47,6 +48,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
     WorkflowAppBlockingResponse,
@@ -145,50 +147,51 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """
         human_input_responses: list[HumanInputRequiredResponse] = []
         for stream_response in generator:
-            if isinstance(stream_response, ErrorStreamResponse):
-                raise stream_response.err
-            elif isinstance(stream_response, HumanInputRequiredResponse):
-                human_input_responses.append(stream_response)
-            elif isinstance(stream_response, WorkflowPauseStreamResponse):
-                return WorkflowAppPausedBlockingResponse(
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_run_id=stream_response.data.workflow_run_id,
-                    data=WorkflowAppPausedBlockingResponse.Data(
-                        id=stream_response.data.workflow_run_id,
-                        workflow_id=self._workflow.id,
-                        status=stream_response.data.status,
-                        outputs=stream_response.data.outputs or {},
-                        error=None,
-                        elapsed_time=stream_response.data.elapsed_time,
-                        total_tokens=stream_response.data.total_tokens,
-                        total_steps=stream_response.data.total_steps,
-                        created_at=stream_response.data.created_at,
-                        finished_at=None,
-                        paused_nodes=stream_response.data.paused_nodes,
-                        reasons=stream_response.data.reasons,
-                    ),
-                )
-
-            elif isinstance(stream_response, WorkflowFinishStreamResponse):
-                return WorkflowAppBlockingResponse(
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_run_id=stream_response.data.id,
-                    data=WorkflowAppBlockingResponse.Data(
-                        id=stream_response.data.id,
-                        workflow_id=stream_response.data.workflow_id,
-                        status=stream_response.data.status,
-                        outputs=stream_response.data.outputs,
-                        error=stream_response.data.error,
-                        elapsed_time=stream_response.data.elapsed_time,
-                        total_tokens=stream_response.data.total_tokens,
-                        total_steps=stream_response.data.total_steps,
-                        created_at=int(stream_response.data.created_at),
-                        finished_at=int(stream_response.data.finished_at) if stream_response.data.finished_at else None,
-                    ),
-                )
-
-            else:
-                continue
+            match stream_response:
+                case ErrorStreamResponse():
+                    raise stream_response.err
+                case HumanInputRequiredResponse():
+                    human_input_responses.append(stream_response)
+                case WorkflowPauseStreamResponse():
+                    return WorkflowAppPausedBlockingResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run_id=stream_response.data.workflow_run_id,
+                        data=WorkflowAppPausedBlockingResponse.Data(
+                            id=stream_response.data.workflow_run_id,
+                            workflow_id=self._workflow.id,
+                            status=stream_response.data.status,
+                            outputs=stream_response.data.outputs or {},
+                            error=None,
+                            elapsed_time=stream_response.data.elapsed_time,
+                            total_tokens=stream_response.data.total_tokens,
+                            total_steps=stream_response.data.total_steps,
+                            created_at=stream_response.data.created_at,
+                            finished_at=None,
+                            paused_nodes=stream_response.data.paused_nodes,
+                            reasons=stream_response.data.reasons,
+                        ),
+                    )
+                case WorkflowFinishStreamResponse():
+                    return WorkflowAppBlockingResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run_id=stream_response.data.id,
+                        data=WorkflowAppBlockingResponse.Data(
+                            id=stream_response.data.id,
+                            workflow_id=stream_response.data.workflow_id,
+                            status=stream_response.data.status,
+                            outputs=stream_response.data.outputs,
+                            error=stream_response.data.error,
+                            elapsed_time=stream_response.data.elapsed_time,
+                            total_tokens=stream_response.data.total_tokens,
+                            total_steps=stream_response.data.total_steps,
+                            created_at=int(stream_response.data.created_at),
+                            finished_at=int(stream_response.data.finished_at)
+                            if stream_response.data.finished_at
+                            else None,
+                        ),
+                    )
+                case _:
+                    continue
 
         if human_input_responses:
             return self._build_paused_blocking_response_from_human_input(human_input_responses)
@@ -570,6 +573,22 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
 
+    def _handle_reasoning_chunk_event(
+        self, event: QueueReasoningChunkEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle reasoning chunk events."""
+        # is_final with empty reasoning is still forwarded as the "thinking finished" signal
+        if not event.reasoning and not event.is_final:
+            return
+        yield ReasoningChunkStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=ReasoningChunkStreamResponse.Data(
+                reasoning=event.reasoning,
+                node_id=event.from_node_id,
+                is_final=event.is_final,
+            ),
+        )
+
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
         yield self._workflow_response_converter.handle_agent_log(
@@ -599,6 +618,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueuePingEvent: self._handle_ping_event,
             QueueErrorEvent: self._handle_error_event,
             QueueTextChunkEvent: self._handle_text_chunk_event,
+            QueueReasoningChunkEvent: self._handle_reasoning_chunk_event,
             # Workflow events
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
@@ -730,6 +750,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         match invoke_from:
             case InvokeFrom.SERVICE_API:
                 created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            case InvokeFrom.OPENAPI:
+                created_from = WorkflowAppLogCreatedFrom.OPENAPI
             case InvokeFrom.EXPLORE:
                 created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
             case InvokeFrom.WEB_APP:

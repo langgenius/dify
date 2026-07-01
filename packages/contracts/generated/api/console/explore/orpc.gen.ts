@@ -6,12 +6,30 @@ import * as z from 'zod'
 import {
   zGetExploreAppsByAppIdPath,
   zGetExploreAppsByAppIdResponse,
+  zGetExploreAppsLearnDifyQuery,
+  zGetExploreAppsLearnDifyResponse,
   zGetExploreAppsQuery,
   zGetExploreAppsResponse,
+  zGetExploreBannersQuery,
   zGetExploreBannersResponse,
 } from './zod.gen'
 
 export const get = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getExploreAppsLearnDify',
+    path: '/explore/apps/learn-dify',
+    tags: ['console'],
+  })
+  .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }))
+  .output(zGetExploreAppsLearnDifyResponse)
+
+export const learnDify = {
+  get,
+}
+
+export const get2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -23,10 +41,10 @@ export const get = oc
   .output(zGetExploreAppsByAppIdResponse)
 
 export const byAppId = {
-  get,
+  get: get2,
 }
 
-export const get2 = oc
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -38,14 +56,15 @@ export const get2 = oc
   .output(zGetExploreAppsResponse)
 
 export const apps = {
-  get: get2,
+  get: get3,
+  learnDify,
   byAppId,
 }
 
 /**
  * Get banner list
  */
-export const get3 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -54,10 +73,11 @@ export const get3 = oc
     summary: 'Get banner list',
     tags: ['default'],
   })
+  .input(z.object({ query: zGetExploreBannersQuery.optional() }))
   .output(zGetExploreBannersResponse)
 
 export const banners = {
-  get: get3,
+  get: get4,
 }
 
 export const explore = {

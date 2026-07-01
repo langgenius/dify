@@ -7,13 +7,14 @@ import { t } from 'i18next'
 import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { useParams, usePathname } from '@/next/navigation'
 
-type AudioBtnProps = {
+type AudioBtnProps = Readonly<{
   id?: string
   voice?: string
   value?: string
-}
+}>
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
@@ -53,7 +54,7 @@ const AudioBtn = ({
     isPublic = true
   }
   else if (params.appId) {
-    if (pathname.search('explore/installed') > -1)
+    if (isInstalledAppPath(pathname))
       url = `/installed-apps/${params.appId}/text-to-audio`
     else
       url = `/apps/${params.appId}/text-to-audio`
@@ -92,7 +93,7 @@ const AudioBtn = ({
               onClick={handleToggle}
               disabled={audioState === 'loading'}
             >
-              <RiVolumeUpLine className="h-4 w-4" aria-hidden="true" />
+              <RiVolumeUpLine className="size-4" aria-hidden="true" />
             </ActionButton>
           </span>
         )}

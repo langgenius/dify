@@ -15,12 +15,12 @@ import { fetchAgentLogDetail } from '@/service/log'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
 
-type AgentLogDetailProps = {
+type AgentLogDetailProps = Readonly<{
   activeTab?: 'DETAIL' | 'TRACING'
   conversationID: string
   log: IChatItem
   messageID: string
-}
+}>
 const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', conversationID, messageID, log }) => {
   const { t } = useTranslation()
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
@@ -69,7 +69,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
       <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-regular px-4">
         <button
           type="button"
-          className={cn('mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary')}
+          className={cn('mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary')}
           data-active={currentTab === 'DETAIL'}
           onClick={() => switchTab('DETAIL')}
         >
@@ -77,7 +77,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
         </button>
         <button
           type="button"
-          className={cn('mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary')}
+          className={cn('mr-6 cursor-pointer border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 py-3 text-left text-[13px] leading-[18px] font-semibold text-text-tertiary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary')}
           data-active={currentTab === 'TRACING'}
           onClick={() => switchTab('TRACING')}
         >
@@ -85,7 +85,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
         </button>
       </div>
       {/* panel detail */}
-      <div className={cn('h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg', currentTab !== 'DETAIL' && '!bg-background-section')}>
+      <div className={cn('h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg', currentTab !== 'DETAIL' && 'bg-background-section!')}>
         {loading && (
           <div className="flex h-full items-center justify-center bg-components-panel-bg">
             <Loading />

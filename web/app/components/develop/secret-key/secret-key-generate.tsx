@@ -36,7 +36,7 @@ const SecretKeyGenerateModal = ({
         </DialogTitle>
 
         <div className="-mt-6 -mr-2 mb-4 flex justify-end">
-          <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
+          <XMarkIcon className="size-6 cursor-pointer text-text-tertiary" onClick={onClose} />
         </div>
         <p className="mt-1 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.generateTips', { ns: 'appApi' })}</p>
         <div className="my-4">

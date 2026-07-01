@@ -165,8 +165,8 @@
 
 import type { ActionItem, SearchResult } from './types'
 import { appAction } from './app'
-import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
+import { slashAction } from './commands/slash'
 import { knowledgeAction } from './knowledge'
 import { pluginAction } from './plugin'
 import { ragPipelineNodesAction } from './rag-pipeline-nodes'
@@ -293,6 +293,3 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
     return reg.test(query)
   })
 }
-
-export * from './commands'
-export * from './types'

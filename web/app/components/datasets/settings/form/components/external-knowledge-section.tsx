@@ -14,6 +14,7 @@ type ExternalKnowledgeSectionProps = {
   scoreThreshold: number
   scoreThresholdEnabled: boolean
   handleSettingsChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void
+  readonly?: boolean
 }
 
 const ExternalKnowledgeSection = ({
@@ -22,6 +23,7 @@ const ExternalKnowledgeSection = ({
   scoreThreshold,
   scoreThresholdEnabled,
   handleSettingsChange,
+  readonly = false,
 }: ExternalKnowledgeSectionProps) => {
   const { t } = useTranslation()
 
@@ -40,6 +42,7 @@ const ExternalKnowledgeSection = ({
           scoreThresholdEnabled={scoreThresholdEnabled}
           onChange={handleSettingsChange}
           isInRetrievalSetting={true}
+          readonly={readonly}
         />
       </div>
 
@@ -52,7 +55,7 @@ const ExternalKnowledgeSection = ({
         </div>
         <div className="w-full">
           <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
-            <ApiConnectionMod className="h-4 w-4 text-text-secondary" />
+            <ApiConnectionMod className="size-4 text-text-secondary" />
             <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
               {currentDataset.external_knowledge_info.external_knowledge_api_name}
             </div>

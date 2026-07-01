@@ -23,6 +23,23 @@ class EnterpriseFeatureConfig(BaseSettings):
         ge=1, description="Maximum timeout in seconds for enterprise requests", default=5
     )
 
+    ENTERPRISE_DISABLE_RUNTIME_CREDENTIAL_CHECK: bool = Field(
+        default=False,
+        description="If disabled, credential policy check is only performed when saving workflows."
+        "This helps gain runtime performance by trading off consistency.",
+    )
+
+    RBAC_ENABLED: bool = Field(
+        description="Enable enterprise RBAC APIs. When disabled, compatibility responses fall back to legacy roles.",
+        default=False,
+    )
+
+    ENTERPRISE_RBAC_REQUEST_TIMEOUT: int = Field(
+        ge=1,
+        description="Maximum timeout in seconds for inner RBAC requests.",
+        default=30,
+    )
+
 
 class EnterpriseTelemetryConfig(BaseSettings):
     """

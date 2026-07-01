@@ -1,7 +1,7 @@
 import type { AnnotationItem } from '../type'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import * as React from 'react'
-import List from '../list'
+import { List } from '../list'
 
 const mockFormatTime = vi.fn(() => 'formatted-time')
 
@@ -18,8 +18,6 @@ const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationIt
   created_at: overrides.created_at ?? 1700000000,
   hit_count: overrides.hit_count ?? 2,
 })
-
-const getCheckboxes = (container: HTMLElement) => container.querySelectorAll('[data-testid^="checkbox"]')
 
 describe('List', () => {
   beforeEach(() => {
@@ -38,7 +36,6 @@ describe('List', () => {
         selectedIds={[]}
         onSelectedIdsChange={vi.fn()}
         onBatchDelete={vi.fn()}
-        onCancel={vi.fn()}
       />,
     )
 
@@ -51,7 +48,7 @@ describe('List', () => {
   it('should toggle single and bulk selection states', () => {
     const list = [createAnnotation({ id: 'a', question: 'A' }), createAnnotation({ id: 'b', question: 'B' })]
     const onSelectedIdsChange = vi.fn()
-    const { container, rerender } = render(
+    const { rerender } = render(
       <List
         list={list}
         onView={vi.fn()}
@@ -59,13 +56,11 @@ describe('List', () => {
         selectedIds={[]}
         onSelectedIdsChange={onSelectedIdsChange}
         onBatchDelete={vi.fn()}
-        onCancel={vi.fn()}
       />,
     )
 
-    const checkboxes = getCheckboxes(container)
-    fireEvent.click(checkboxes[1]!)
-    expect(onSelectedIdsChange).toHaveBeenCalledWith(['a'])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
+    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual(['a'])
 
     rerender(
       <List
@@ -75,15 +70,13 @@ describe('List', () => {
         selectedIds={['a']}
         onSelectedIdsChange={onSelectedIdsChange}
         onBatchDelete={vi.fn()}
-        onCancel={vi.fn()}
       />,
     )
-    const updatedCheckboxes = getCheckboxes(container)
-    fireEvent.click(updatedCheckboxes[1]!)
-    expect(onSelectedIdsChange).toHaveBeenCalledWith([])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
+    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual([])
 
-    fireEvent.click(updatedCheckboxes[0]!)
-    expect(onSelectedIdsChange).toHaveBeenCalledWith(['a', 'b'])
+    fireEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+    expect(onSelectedIdsChange.mock.calls.at(-1)?.[0]).toEqual(['a', 'b'])
   })
 
   it('should confirm before removing an annotation and expose batch actions', async () => {
@@ -97,7 +90,6 @@ describe('List', () => {
         selectedIds={[item.id]}
         onSelectedIdsChange={vi.fn()}
         onBatchDelete={vi.fn()}
-        onCancel={vi.fn()}
       />,
     )
 

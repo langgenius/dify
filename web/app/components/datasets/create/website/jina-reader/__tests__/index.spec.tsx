@@ -6,6 +6,17 @@ import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datas
 import { sleep } from '@/utils'
 import JinaReader from '../index'
 
+const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetShowAccountSettingModal: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
 vi.mock('@/service/datasets', () => ({
   createJinaReaderTask: vi.fn(),
   checkJinaReaderTaskStatus: vi.fn(),
@@ -16,7 +27,6 @@ vi.mock('@/utils', () => ({
 }))
 
 // Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -388,12 +398,14 @@ describe('JinaReader', () => {
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<JinaReader {...props} />)
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
@@ -429,9 +441,8 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should handle URL input and run button click', async () => {
@@ -499,11 +510,9 @@ describe('JinaReader', () => {
 
       render(<JinaReader {...props} />)
 
-      // Find and click the checkbox by data-testid
-      const checkbox = screen.getByTestId('checkbox-crawl-sub-pages')
+      const checkbox = screen.getByRole('checkbox', { name: /crawlSubPage/ })
       fireEvent.click(checkbox)
 
-      // Assert - onCrawlOptionsChange should be called
       expect(onCrawlOptionsChange).toHaveBeenCalled()
     })
 

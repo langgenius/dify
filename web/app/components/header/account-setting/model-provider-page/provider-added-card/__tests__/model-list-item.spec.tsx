@@ -14,10 +14,11 @@ function createWrapper() {
 
 let mockModelLoadBalancingEnabled = false
 let mockPlanType: string = 'pro'
+let mockWorkspacePermissionKeys: string[] = ['plugin.model_config']
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -42,7 +43,7 @@ vi.mock('../../model-icon', () => ({
 }))
 
 vi.mock('../../model-name', () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="model-name">{children}</div>,
+  default: ({ children, nameClassName }: { children: React.ReactNode, nameClassName?: string }) => <div data-testid="model-name" className={nameClassName}>{children}</div>,
 }))
 
 vi.mock('../../model-auth', () => ({
@@ -70,6 +71,7 @@ describe('ModelListItem', () => {
     vi.clearAllMocks()
     mockModelLoadBalancingEnabled = false
     mockPlanType = 'pro'
+    mockWorkspacePermissionKeys = ['plugin.model_config']
   })
 
   it('should render model item with icon and name', () => {
@@ -142,6 +144,42 @@ describe('ModelListItem', () => {
     expect(onModifyLoadBalancing).toHaveBeenCalledWith(mockModel)
   })
 
+  it('should allow model status and load balancing controls with plugin.model_config', () => {
+    mockWorkspacePermissionKeys = ['plugin.model_config']
+    mockModelLoadBalancingEnabled = true
+
+    render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable
+        onModifyLoadBalancing={vi.fn()}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    expect(screen.getByRole('switch')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'modify load balancing' })).toBeInTheDocument()
+  })
+
+  it('should hide model status and load balancing controls without plugin.model_config', () => {
+    mockWorkspacePermissionKeys = []
+    mockModelLoadBalancingEnabled = true
+
+    render(
+      <ModelListItem
+        model={mockModel}
+        provider={mockProvider}
+        isConfigurable
+        onModifyLoadBalancing={vi.fn()}
+      />,
+      { wrapper: createWrapper() },
+    )
+
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
+  })
+
   // Deprecated branches: opacity-60, disabled switch, no ConfigModel
   it('should show deprecated model with opacity and disabled switch', () => {
     // Arrange
@@ -160,6 +198,7 @@ describe('ModelListItem', () => {
 
     // Assert
     expect(container.querySelector('.opacity-60')).toBeInTheDocument()
+    expect(screen.getByTestId('model-name')).toHaveClass('line-through')
     expect(screen.queryByRole('button', { name: 'modify load balancing' })).not.toBeInTheDocument()
   })
 

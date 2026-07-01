@@ -48,10 +48,10 @@ class _TestHitCallback(DatasetIndexToolCallbackHandler):
         self.documents: list[RagDocument] | None = None
         self.resources = None
 
-    def on_query(self, query: str, dataset_id: str):
+    def on_query(self, query: str, dataset_id: str, session=None):
         self.queries.append((query, dataset_id))
 
-    def on_tool_end(self, documents: list[RagDocument]):
+    def on_tool_end(self, documents: list[RagDocument], session=None):
         self.documents = documents
 
     def return_retriever_resource_info(self, resource):

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -14,7 +14,7 @@ from controllers.console.auth.oauth import (
     _get_account_by_openid_or_email,
     get_oauth_providers,
 )
-from libs.oauth import OAuthUserInfo
+from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import AccountStatus
 from services.account_service import AccountService
 from services.errors.account import AccountRegisterError
@@ -45,7 +45,7 @@ class TestGetOAuthProviders:
     )
     @patch("controllers.console.auth.oauth.dify_config")
     def test_should_configure_oauth_providers_correctly(
-        self, mock_config, app, github_config, google_config, expected_github, expected_google
+        self, mock_config, app: Flask, github_config, google_config, expected_github, expected_google
     ):
         mock_config.GITHUB_CLIENT_ID = github_config["id"]
         mock_config.GITHUB_CLIENT_SECRET = github_config["secret"]
@@ -89,7 +89,7 @@ class TestOAuthLogin:
         self,
         mock_redirect,
         mock_get_providers,
-        resource,
+        resource: OAuthLogin,
         app: Flask,
         mock_oauth_provider,
         invite_token,
@@ -101,7 +101,55 @@ class TestOAuthLogin:
         with app.test_request_context(f"/auth/oauth/github?{query_string}"):
             resource.get("github")
 
-        mock_oauth_provider.get_authorization_url.assert_called_once_with(invite_token=expected_token)
+        mock_oauth_provider.get_authorization_url.assert_called_once_with(
+            invite_token=expected_token,
+            timezone=None,
+            language=None,
+        )
+        mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
+
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth.redirect")
+    def test_should_pass_timezone_to_oauth_state(
+        self,
+        mock_redirect,
+        mock_get_providers,
+        resource: OAuthLogin,
+        app: Flask,
+        mock_oauth_provider,
+    ):
+        mock_get_providers.return_value = {"github": mock_oauth_provider, "google": None}
+
+        with app.test_request_context("/auth/oauth/github?timezone=Asia/Shanghai"):
+            resource.get("github")
+
+        mock_oauth_provider.get_authorization_url.assert_called_once_with(
+            invite_token=None,
+            timezone="Asia/Shanghai",
+            language=None,
+        )
+        mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
+
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth.redirect")
+    def test_should_pass_language_to_oauth_state(
+        self,
+        mock_redirect,
+        mock_get_providers,
+        resource: OAuthLogin,
+        app: Flask,
+        mock_oauth_provider,
+    ):
+        mock_get_providers.return_value = {"github": mock_oauth_provider, "google": None}
+
+        with app.test_request_context("/auth/oauth/github?language=zh-Hans"):
+            resource.get("github")
+
+        mock_oauth_provider.get_authorization_url.assert_called_once_with(
+            invite_token=None,
+            timezone=None,
+            language="zh-Hans",
+        )
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
     @pytest.mark.parametrize(
@@ -164,7 +212,7 @@ class TestOAuthCallback:
         mock_generate_account,
         mock_get_providers,
         mock_config,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
@@ -189,7 +237,9 @@ class TestOAuthCallback:
         ],
     )
     @patch("controllers.console.auth.oauth.get_oauth_providers")
-    def test_should_handle_oauth_exceptions(self, mock_get_providers, resource, app, exception, expected_error):
+    def test_should_handle_oauth_exceptions(
+        self, mock_get_providers, resource: OAuthCallback, app: Flask, exception, expected_error
+    ):
         # Import the real requests module to create a proper exception
         import httpx
 
@@ -217,7 +267,7 @@ class TestOAuthCallback:
         mock_register_service,
         mock_get_providers,
         mock_config,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
@@ -229,7 +279,8 @@ class TestOAuthCallback:
         mock_register_service.is_valid_invite_token.return_value = True
         mock_register_service.get_invitation_by_token.return_value = {"email": "user@example.com"}
 
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=invite123"):
+        state = encode_oauth_state(invite_token="invite123", timezone="Asia/Shanghai")
+        with app.test_request_context(f"/auth/oauth/github/callback?code=test_code&state={state}"):
             resource.get("github")
 
         mock_register_service.get_invitation_by_token.assert_called_once_with(token="invite123")
@@ -261,7 +312,7 @@ class TestOAuthCallback:
         mock_config,
         mock_tenant_service,
         mock_account_service,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
         account_status,
@@ -300,7 +351,7 @@ class TestOAuthCallback:
         mock_generate_account,
         mock_get_providers,
         mock_config,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
@@ -336,7 +387,7 @@ class TestOAuthCallback:
         mock_generate_account,
         mock_get_providers,
         mock_config,
-        resource,
+        resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
@@ -411,7 +462,12 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.oauth.Account")
     def test_should_get_account_by_openid_or_email(
-        self, mock_account_model, mock_get_account, flask_req_ctx_with_containers, user_info, mock_account
+        self,
+        mock_account_model,
+        mock_get_account,
+        flask_req_ctx_with_containers,
+        user_info: OAuthUserInfo,
+        mock_account,
     ):
         # Test OpenID found
         mock_account_model.get_by_openid.return_value = mock_account
@@ -438,10 +494,7 @@ class TestAccountGeneration:
         second_result.scalar_one_or_none.return_value = expected_account
         mock_session.execute.side_effect = [first_result, second_result]
 
-        with patch("services.account_service.session_factory") as mock_factory:
-            mock_factory.create_session.return_value.__enter__ = MagicMock(return_value=mock_session)
-            mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
-            result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com")
+        result = AccountService.get_account_by_email_with_case_fallback(mock_session, "Case@Test.com")
 
         assert result is expected_account
         assert mock_session.execute.call_count == 2
@@ -461,13 +514,13 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_handle_account_generation_scenarios(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
-        user_info,
+        user_info: OAuthUserInfo,
         mock_account,
         allow_register,
         existing_account,
@@ -488,7 +541,14 @@ class TestAccountGeneration:
 
                 if should_create:
                     mock_register_service.register.assert_called_once_with(
-                        email="test@example.com", name="Test User", password=None, open_id="123", provider="github"
+                        email="test@example.com",
+                        name="Test User",
+                        password=None,
+                        open_id="123",
+                        provider="github",
+                        language="en-US",
+                        timezone=None,
+                        session=ANY,
                     )
                 else:
                     mock_register_service.register.assert_not_called()
@@ -500,11 +560,11 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.TenantService")
     def test_should_register_with_lowercase_email(
         self,
-        mock_tenant_service,
-        mock_account_service,
-        mock_register_service,
-        mock_feature_service,
-        mock_get_account,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
     ):
         user_info = OAuthUserInfo(id="123", name="Test User", email="Upper@Example.com")
@@ -515,7 +575,78 @@ class TestAccountGeneration:
             _generate_account("github", user_info)
 
         mock_register_service.register.assert_called_once_with(
-            email="upper@example.com", name="Test User", password=None, open_id="123", provider="github"
+            email="upper@example.com",
+            name="Test User",
+            password=None,
+            open_id="123",
+            provider="github",
+            language="en-US",
+            timezone=None,
+            session=ANY,
+        )
+
+    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
+    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.RegisterService")
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.TenantService")
+    def test_should_register_with_browser_timezone(
+        self,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
+        app: Flask,
+        user_info: OAuthUserInfo,
+    ):
+        mock_feature_service.get_system_features.return_value.is_allow_register = True
+        mock_register_service.register.return_value = MagicMock()
+
+        with app.test_request_context(headers={"Accept-Language": "zh-Hans,zh;q=0.9"}):
+            _generate_account("github", user_info, timezone="Asia/Shanghai")
+
+        mock_register_service.register.assert_called_once_with(
+            email="test@example.com",
+            name="Test User",
+            password=None,
+            open_id="123",
+            provider="github",
+            language="zh-Hans",
+            timezone="Asia/Shanghai",
+            session=ANY,
+        )
+
+    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
+    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.RegisterService")
+    @patch("controllers.console.auth.oauth.AccountService")
+    @patch("controllers.console.auth.oauth.TenantService")
+    def test_should_register_with_state_language(
+        self,
+        mock_tenant_service: MagicMock,
+        mock_account_service: MagicMock,
+        mock_register_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_get_account: MagicMock,
+        app: Flask,
+        user_info: OAuthUserInfo,
+    ):
+        mock_feature_service.get_system_features.return_value.is_allow_register = True
+        mock_register_service.register.return_value = MagicMock()
+
+        with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
+            _generate_account("github", user_info, language="zh-Hans")
+
+        mock_register_service.register.assert_called_once_with(
+            email="test@example.com",
+            name="Test User",
+            password=None,
+            open_id="123",
+            provider="github",
+            language="zh-Hans",
+            timezone=None,
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
@@ -525,13 +656,13 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.tenant_was_created")
     def test_should_create_workspace_for_account_without_tenant(
         self,
-        mock_event,
-        mock_account_service,
-        mock_feature_service,
-        mock_tenant_service,
-        mock_get_account,
+        mock_event: MagicMock,
+        mock_account_service: MagicMock,
+        mock_feature_service: MagicMock,
+        mock_tenant_service: MagicMock,
+        mock_get_account: MagicMock,
         app: Flask,
-        user_info,
+        user_info: OAuthUserInfo,
         mock_account,
     ):
         mock_get_account.return_value = mock_account
@@ -546,8 +677,8 @@ class TestAccountGeneration:
 
             assert result == mock_account
             assert oauth_new_user is False
-            mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace")
+            mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace", session=ANY)
             mock_tenant_service.create_tenant_member.assert_called_once_with(
-                mock_new_tenant, mock_account, role="owner"
+                mock_new_tenant, mock_account, ANY, role="owner"
             )
             mock_event.send.assert_called_once_with(mock_new_tenant)

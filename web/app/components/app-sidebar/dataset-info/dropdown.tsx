@@ -15,23 +15,27 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import ActionButton from '../../base/action-button'
 import RenameDatasetModal from '../../datasets/rename-modal'
 import Menu from './menu'
 
 type DropDownProps = {
   expand: boolean
+  triggerClassName?: string
 }
 
 type JsonErrorResponse = {
@@ -55,16 +59,30 @@ const getErrorMessage = async (error: unknown) => {
 
 const DropDown = ({
   expand,
+  triggerClassName,
 }: DropDownProps) => {
   const { t } = useTranslation()
-  const { replace } = useRouter()
+  const { push, replace } = useRouter()
   const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset) as DataSet
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+    isRbacEnabled,
+  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
+  const canShowOperations = datasetACLCapabilities.canEdit
+    || datasetACLCapabilities.canImportExportDSL
+    || datasetACLCapabilities.canAccessConfig
+    || datasetACLCapabilities.canDelete
 
   const invalidDatasetList = useInvalidDatasetList()
   const invalidDatasetDetail = useInvalid([...datasetDetailQueryKeyPrefix, dataset.id])
@@ -113,6 +131,11 @@ const DropDown = ({
     }
   }, [dataset.id, t])
 
+  const openAccessConfig = useCallback(() => {
+    setOpen(false)
+    push(`/datasets/${dataset.id}/access-config`)
+  }, [dataset.id, push])
+
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
@@ -125,6 +148,9 @@ const DropDown = ({
     }
   }, [dataset.id, replace, invalidDatasetList, t])
 
+  if (!canShowOperations)
+    return null
+
   return (
     <DropdownMenu
       open={open}
@@ -134,7 +160,8 @@ const DropDown = ({
         render={(
           <ActionButton
             aria-label={t('operation.more', { ns: 'common' })}
-            className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md', open && 'bg-state-base-hover')}
+            size={expand ? 'l' : 'm'}
+            className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
           />
         )}
       >
@@ -146,10 +173,14 @@ const DropDown = ({
         popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <Menu
-          showDelete={!isCurrentWorkspaceDatasetOperator}
+          showEdit={datasetACLCapabilities.canEdit}
+          showDelete={datasetACLCapabilities.canDelete}
+          showExportPipeline={datasetACLCapabilities.canImportExportDSL}
+          showAccessConfig={datasetACLCapabilities.canAccessConfig}
           openRenameModal={openRenameModal}
           handleExportPipeline={handleExportPipeline}
           detectIsUsedByApp={detectIsUsedByApp}
+          openAccessConfig={openAccessConfig}
         />
       </DropdownMenuContent>
       {showRenameModal && (

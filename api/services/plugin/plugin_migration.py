@@ -16,11 +16,13 @@ from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
 from extensions.ext_database import db
 from models.account import Tenant
@@ -28,7 +30,6 @@ from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,6 @@ class PluginMigration:
 
                     # Use lock when updating counter
                     with counter_lock:
-                        nonlocal handled_tenant_count
                         handled_tenant_count += 1
                         click.echo(
                             click.style(
@@ -310,6 +310,8 @@ class PluginMigration:
         """
         Fetch plugin unique identifier using plugin id.
         """
+        if not dify_config.MARKETPLACE_ENABLED:
+            return None
         plugin_manifest = marketplace.batch_fetch_plugin_manifests([plugin_id])
         if not plugin_manifest:
             return None
@@ -386,17 +388,19 @@ class PluginMigration:
                     for plugin_id in batch_plugin_ids
                     if plugin_id not in installed_plugins_ids and plugin_id in plugins["plugins"]
                 ]
-                manager.install_from_identifiers(
-                    tenant_id,
-                    batch_plugin_identifiers,
-                    PluginInstallationSource.Marketplace,
-                    metas=[
-                        {
-                            "plugin_unique_identifier": identifier,
-                        }
-                        for identifier in batch_plugin_identifiers
-                    ],
-                )
+                if batch_plugin_identifiers:
+                    manager.install_from_identifiers(
+                        tenant_id,
+                        batch_plugin_identifiers,
+                        PluginInstallationSource.Marketplace,
+                        metas=[
+                            {
+                                "plugin_unique_identifier": identifier,
+                            }
+                            for identifier in batch_plugin_identifiers
+                        ],
+                    )
+                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
 
         with open(extracted_plugins) as f:
             """
@@ -542,6 +546,11 @@ class PluginMigration:
         """
         Install plugins for a tenant.
         """
+        if plugin_identifiers_map and not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError(
+                "Marketplace disabled in offline mode; cannot bulk-install plugins. "
+                "Pre-upload plugin packages via Console first."
+            )
         manager = PluginInstaller()
 
         # download all the plugins and upload
@@ -587,6 +596,7 @@ class PluginMigration:
                         for identifier in batch_plugin_identifiers
                     ],
                 )
+                PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             except Exception:
                 # add to failed
                 failed.extend(batch_plugin_identifiers)
@@ -601,6 +611,7 @@ class PluginMigration:
             while not done:
                 status = manager.fetch_plugin_installation_task(tenant_id, task_id)
                 if status.status in [PluginInstallTaskStatus.Failed, PluginInstallTaskStatus.Success]:
+                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
                     for plugin in status.plugins:
                         if plugin.status == PluginInstallTaskStatus.Success:
                             success.append(reverse_map[plugin.plugin_unique_identifier])

@@ -1,12 +1,10 @@
 import type { Credential } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
-  RiCheckLine,
-  RiDeleteBinLine,
-  RiEditLine,
-  RiEqualizer2Line,
+  RiInformationLine,
 } from '@remixicon/react'
 import {
   memo,
@@ -17,14 +15,14 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
-import Indicator from '@/app/components/header/indicator'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { CredentialTypeEnum } from '../types'
 
 type ItemProps = {
   credential: Credential
-  disabled?: boolean
   onDelete?: (id: string) => void
-  onEdit?: (id: string, values: Record<string, any>) => void
+  onEdit?: (id: string, values: Record<string, unknown>) => void
   onSetDefault?: (id: string) => void
   onRename?: (payload: {
     credential_id: string
@@ -37,10 +35,10 @@ type ItemProps = {
   onItemClick?: (id: string) => void
   showSelectedIcon?: boolean
   selectedCredentialId?: string
+  disabled?: boolean
 }
 const Item = ({
   credential,
-  disabled,
   onDelete,
   onEdit,
   onSetDefault,
@@ -52,11 +50,25 @@ const Item = ({
   onItemClick,
   showSelectedIcon,
   selectedCredentialId,
+  disabled,
 }: ItemProps) => {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credential.name)
+  const { canUseCredential, canManageCredential } = useCredentialPermissions()
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
+  const isPersonal = credential.visibility === 'only_me'
+  const userProfile = useAppContextWithSelector(state => state.userProfile)
+  // Borrowed-from-teammate: the backend explicitly flagged this row as another member's
+  // only_me credential, returned only because the current node still references it.
+  // Fallback heuristic (created_by mismatch on a selected row) is kept for backends
+  // that don't yet emit the flag.
+  const isSelected = showSelectedIcon && selectedCredentialId === credential.id
+  const isConfiguredByOther
+    = !!credential.created_by && !!userProfile?.id && credential.created_by !== userProfile.id
+  const isBorrowed
+    = !!credential.from_other_member || (isSelected && isConfiguredByOther && isPersonal)
+  const showSwitchAwayHint = isBorrowed
   const showAction = useMemo(() => {
     return !(disableRename && disableEdit && disableDelete && disableSetDefault)
   }, [disableRename, disableEdit, disableDelete, disableSetDefault])
@@ -67,10 +79,10 @@ const Item = ({
       className={cn(
         'group flex h-8 items-center rounded-lg p-1 hover:bg-state-base-hover',
         renaming && 'bg-state-base-hover',
-        (disabled || credential.not_allowed_to_use) && 'cursor-not-allowed opacity-50',
+        (disabled || !canUseCredential || credential.not_allowed_to_use) && 'cursor-not-allowed opacity-50',
       )}
       onClick={() => {
-        if (credential.not_allowed_to_use || disabled)
+        if (disabled || credential.not_allowed_to_use || !canUseCredential)
           return
         onItemClick?.(credential.id === '__workspace_default__' ? '' : credential.id)
       }}
@@ -117,18 +129,18 @@ const Item = ({
           <div className="flex w-0 grow items-center space-x-1.5">
             {
               showSelectedIcon && (
-                <div className="h-4 w-4">
+                <div className="size-4">
                   {
                     selectedCredentialId === credential.id && (
-                      <RiCheckLine className="h-4 w-4 text-text-accent" />
+                      <span className="i-ri-check-line size-4 text-text-accent" />
                     )
                   }
                 </div>
               )
             }
-            <Indicator
+            <StatusDot
               className="mr-1.5 ml-2 shrink-0"
-              color={credential.not_allowed_to_use ? 'gray' : 'green'}
+              status={credential.not_allowed_to_use ? 'disabled' : 'success'}
             />
             <div
               className="truncate system-md-regular text-text-secondary"
@@ -147,9 +159,25 @@ const Item = ({
         )
       }
       {
-        credential.from_enterprise && (
+        showSwitchAwayHint && (
+          <Tooltip>
+            <TooltipTrigger
+              render={(
+                <div className="ml-2 flex shrink-0 cursor-help items-center text-text-tertiary">
+                  <RiInformationLine className="size-4" />
+                </div>
+              )}
+            />
+            <TooltipContent>
+              {t('auth.onlyAtCreationHintTooltip', { ns: 'plugin' })}
+            </TooltipContent>
+          </Tooltip>
+        )
+      }
+      {
+        !showSwitchAwayHint && credential.from_enterprise && (
           <Badge className="shrink-0">
-            Enterprise
+            {t('auth.enterprise', { ns: 'plugin' })}
           </Badge>
         )
       }
@@ -157,10 +185,10 @@ const Item = ({
         showAction && !renaming && (
           <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
             {
-              !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && (
+              !credential.is_default && !disableSetDefault && !credential.not_allowed_to_use && !isBorrowed && (
                 <Button
                   size="small"
-                  disabled={disabled}
+                  disabled={disabled || !canUseCredential}
                   onClick={(e) => {
                     e.stopPropagation()
                     onSetDefault?.(credential.id)
@@ -171,19 +199,19 @@ const Item = ({
               )
             }
             {
-              !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && (
+              !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && !isBorrowed && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
                       <ActionButton
-                        disabled={disabled}
+                        disabled={disabled || !canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           setRenaming(true)
                           setRenameValue(credential.name)
                         }}
                       >
-                        <RiEditLine className="h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-edit-line size-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -194,12 +222,12 @@ const Item = ({
               )
             }
             {
-              !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && (
+              !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && !isBorrowed && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
                       <ActionButton
-                        disabled={disabled}
+                        disabled={disabled || !canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           onEdit?.(
@@ -212,7 +240,7 @@ const Item = ({
                           )
                         }}
                       >
-                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+                        <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
                       </ActionButton>
                     )}
                   />
@@ -223,19 +251,19 @@ const Item = ({
               )
             }
             {
-              !disableDelete && !credential.from_enterprise && (
+              !disableDelete && !credential.from_enterprise && !isBorrowed && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
                       <ActionButton
                         className="hover:bg-transparent"
-                        disabled={disabled}
+                        disabled={disabled || !canManageCredential}
                         onClick={(e) => {
                           e.stopPropagation()
                           onDelete?.(credential.id)
                         }}
                       >
-                        <RiDeleteBinLine className="h-4 w-4 text-text-tertiary hover:text-text-destructive" />
+                        <span className="i-ri-delete-bin-line size-4 text-text-tertiary hover:text-text-destructive" />
                       </ActionButton>
                     )}
                   />

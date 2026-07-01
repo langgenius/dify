@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Engine
@@ -83,6 +83,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
     def _get_repo(self) -> APIWorkflowRunRepository:
         return DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_maker)
 
+    @override
     def on_graph_start(self) -> None:
         """
         Called when graph execution starts.
@@ -92,6 +93,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         """
         pass
 
+    @override
     def on_event(self, event: GraphEngineEvent) -> None:
         """
         Called for every event emitted by the engine.
@@ -132,6 +134,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             pause_reasons=event.reasons,
         )
 
+    @override
     def on_graph_end(self, error: Exception | None) -> None:
         """
         Called when graph execution ends.

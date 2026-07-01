@@ -35,9 +35,10 @@ from services.app_dsl_service import (
     ImportMode,
     ImportStatus,
     PendingData,
-    _check_version_compatibility,
 )
 from services.app_service import AppService, CreateAppParams
+from services.dsl_version import check_version_compatibility
+from services.errors.app import WorkflowNotFoundError
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -75,7 +76,7 @@ def _app_stub(**overrides: Any) -> App:
     defaults = {
         "id": str(uuid4()),
         "tenant_id": _DEFAULT_TENANT_ID,
-        "mode": AppMode.WORKFLOW.value,
+        "mode": AppMode.WORKFLOW,
         "name": "n",
         "description": "d",
         "icon_type": IconType.EMOJI,
@@ -144,8 +145,11 @@ class TestAppDslService:
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
+                session=db_session_with_containers,
             )
-            TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+            TenantService.create_owner_tenant_if_not_exist(
+                account, name=fake.company(), session=db_session_with_containers
+            )
             tenant = account.current_tenant
             app_args = CreateAppParams(
                 name=fake.company(),
@@ -193,22 +197,25 @@ class TestAppDslService:
     # ── Version Compatibility ─────────────────────────────────────────
 
     def test_check_version_compatibility_invalid_version_returns_failed(self):
-        assert _check_version_compatibility("not-a-version") == ImportStatus.FAILED
+        assert check_version_compatibility("not-a-version", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.FAILED
 
     def test_check_version_compatibility_newer_version_returns_pending(self):
-        assert _check_version_compatibility("99.0.0") == ImportStatus.PENDING
+        assert check_version_compatibility("99.0.0", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.PENDING
 
     def test_check_version_compatibility_major_older_returns_pending(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(app_dsl_service, "CURRENT_DSL_VERSION", "1.0.0")
-        assert _check_version_compatibility("0.9.9") == ImportStatus.PENDING
+        assert check_version_compatibility("0.9.9", app_dsl_service.CURRENT_DSL_VERSION) == ImportStatus.PENDING
 
     def test_check_version_compatibility_minor_older_returns_completed_with_warnings(
         self,
     ):
-        assert _check_version_compatibility("0.5.0") == ImportStatus.COMPLETED_WITH_WARNINGS
+        assert (
+            check_version_compatibility("0.5.0", app_dsl_service.CURRENT_DSL_VERSION)
+            == ImportStatus.COMPLETED_WITH_WARNINGS
+        )
 
     def test_check_version_compatibility_equal_returns_completed(self):
-        assert _check_version_compatibility(CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
+        assert check_version_compatibility(CURRENT_DSL_VERSION, CURRENT_DSL_VERSION) == ImportStatus.COMPLETED
 
     # ── Import: Validation ────────────────────────────────────────────
 
@@ -313,9 +320,9 @@ class TestAppDslService:
         self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
     ):
         monkeypatch.setattr(
-            app_dsl_service.ssrf_proxy,
-            "get",
-            lambda _url, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
+            app_dsl_service.remote_fetcher,
+            "make_request",
+            lambda _method, _url, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
         )
 
         service = AppDslService(db_session_with_containers)
@@ -333,7 +340,7 @@ class TestAppDslService:
         response = MagicMock()
         response.content = b""
         response.raise_for_status.return_value = None
-        monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", lambda _url, **_kw: response)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -350,7 +357,7 @@ class TestAppDslService:
         response = MagicMock()
         response.content = b"x" * (DSL_MAX_SIZE + 1)
         response.raise_for_status.return_value = None
-        monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", lambda _url, **_kw: response)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -369,14 +376,15 @@ class TestAppDslService:
 
         requested_urls: list[str] = []
 
-        def fake_get(url: str, **kwargs):
+        def fake_make_request(method: str, url: str, **kwargs):
+            assert method == "GET"
             requested_urls.append(url)
             response = MagicMock()
             response.content = yaml_bytes
             response.raise_for_status.return_value = None
             return response
 
-        monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", fake_get)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -398,7 +406,8 @@ class TestAppDslService:
 
         requested_urls: list[str] = []
 
-        def fake_get(url: str, **kwargs):
+        def fake_make_request(method: str, url: str, **kwargs):
+            assert method == "GET"
             requested_urls.append(url)
             assert url == raw_url
             response = MagicMock()
@@ -406,7 +415,7 @@ class TestAppDslService:
             response.raise_for_status.return_value = None
             return response
 
-        monkeypatch.setattr(app_dsl_service.ssrf_proxy, "get", fake_get)
+        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -523,7 +532,7 @@ class TestAppDslService:
 
         created_app = SimpleNamespace(
             id=str(uuid4()),
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             tenant_id=_DEFAULT_TENANT_ID,
         )
         monkeypatch.setattr(
@@ -702,7 +711,7 @@ class TestAppDslService:
         )
 
         app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="old",
             description="old-desc",
             icon_type=IconType.EMOJI,
@@ -716,7 +725,7 @@ class TestAppDslService:
             app=app,
             data={
                 "app": {
-                    "mode": AppMode.WORKFLOW.value,
+                    "mode": AppMode.WORKFLOW,
                     "name": "yaml-name",
                     "icon_type": IconType.IMAGE,
                     "icon": "X",
@@ -742,7 +751,7 @@ class TestAppDslService:
         with pytest.raises(ValueError, match="Current tenant is not set"):
             service._create_or_update_app(
                 app=None,
-                data={"app": {"mode": AppMode.WORKFLOW.value, "name": "n"}},
+                data={"app": {"mode": AppMode.WORKFLOW, "name": "n"}},
                 account=account,
             )
 
@@ -767,7 +776,7 @@ class TestAppDslService:
             )
         ]
         data = {
-            "app": {"mode": AppMode.WORKFLOW.value, "name": "n"},
+            "app": {"mode": AppMode.WORKFLOW, "name": "n"},
             "workflow": {
                 "graph": {"nodes": []},
                 "features": {},
@@ -787,8 +796,8 @@ class TestAppDslService:
         service = AppDslService(db_session_with_containers)
         with pytest.raises(ValueError, match="Missing workflow data"):
             service._create_or_update_app(
-                app=_app_stub(mode=AppMode.WORKFLOW.value),
-                data={"app": {"mode": AppMode.WORKFLOW.value}},
+                app=_app_stub(mode=AppMode.WORKFLOW),
+                data={"app": {"mode": AppMode.WORKFLOW}},
                 account=_account_mock(),
             )
 
@@ -847,7 +856,7 @@ class TestAppDslService:
         )
 
         workflow_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             icon_type="emoji",
         )
         AppDslService.export_dsl(workflow_app)
@@ -869,7 +878,7 @@ class TestAppDslService:
         )
 
         emoji_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="Emoji App",
             icon="🎨",
             icon_type=IconType.EMOJI,
@@ -884,7 +893,7 @@ class TestAppDslService:
         assert data["app"]["icon_background"] == "#FF5733"
 
         image_app = _app_stub(
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             name="Image App",
             icon="https://example.com/icon.png",
             icon_type=IconType.IMAGE,
@@ -1022,7 +1031,7 @@ class TestAppDslService:
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.return_value = None
 
         with pytest.raises(
-            ValueError,
+            WorkflowNotFoundError,
             match="Missing draft workflow configuration, please check.",
         ):
             AppDslService.export_dsl(app, include_secret=False, workflow_id=str(uuid4()))
@@ -1134,7 +1143,7 @@ class TestAppDslService:
         workflow_service.get_draft_workflow.return_value = None
         monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
 
-        with pytest.raises(ValueError, match="Missing draft workflow configuration"):
+        with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
             AppDslService._append_workflow_export_data(
                 export_data={},
                 app_model=_app_stub(),

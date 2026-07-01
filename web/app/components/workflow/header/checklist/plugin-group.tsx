@@ -59,7 +59,7 @@ export const ChecklistPluginGroup = memo(({
         <div className="flex size-5 shrink-0 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-icon-bg-midnight-solid shadow-xs">
           <span className="i-ri-download-line size-3.5 text-white" />
         </div>
-        <span className="min-w-0 grow truncate text-sm leading-5 font-medium text-text-primary">
+        <span className="min-w-0 grow truncate text-sm/5 font-medium text-text-primary">
           {t('nodes.common.pluginsNotInstalled', { ns: 'workflow', count: items.length })}
         </span>
         <PopoverClose
@@ -87,7 +87,7 @@ export const ChecklistPluginGroup = memo(({
               size="xs"
               toolIcon={item.toolIcon}
             />
-            <span className="min-w-0 grow truncate text-xs leading-4 text-text-warning">
+            <span className="min-w-0 grow truncate text-xs/4 text-text-warning">
               {item.title}
             </span>
           </div>

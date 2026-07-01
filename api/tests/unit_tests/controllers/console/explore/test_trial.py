@@ -1,4 +1,6 @@
+from inspect import unwrap as inspect_unwrap
 from io import BytesIO
+from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -30,25 +32,28 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode
+from services.app_ref_service import MessageRef
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+unwrap: Any = inspect_unwrap
 
 
 @pytest.fixture
-def account():
-    acc = MagicMock(spec=Account)
+def account() -> Account:
+    acc = Account(name="User", email="user@example.com")
     acc.id = "u1"
     return acc
 
 
+def _file_data() -> Any:
+    file_data: Any = BytesIO(b"fake audio data")
+    file_data.filename = "test.wav"
+    return file_data
+
+
 @pytest.fixture
-def trial_app_chat():
+def trial_app_chat() -> MagicMock:
     app = MagicMock()
     app.id = "a-chat"
     app.mode = AppMode.CHAT
@@ -56,7 +61,7 @@ def trial_app_chat():
 
 
 @pytest.fixture
-def trial_app_completion():
+def trial_app_completion() -> MagicMock:
     app = MagicMock()
     app.id = "a-comp"
     app.mode = AppMode.COMPLETION
@@ -64,7 +69,7 @@ def trial_app_completion():
 
 
 @pytest.fixture
-def trial_app_workflow():
+def trial_app_workflow() -> MagicMock:
     app = MagicMock()
     app.id = "a-workflow"
     app.mode = AppMode.WORKFLOW
@@ -72,7 +77,7 @@ def trial_app_workflow():
 
 
 @pytest.fixture
-def valid_parameters():
+def valid_parameters() -> dict[str, object]:
     return {
         "user_input_form": [],
         "system_parameters": {},
@@ -88,41 +93,39 @@ def valid_parameters():
     }
 
 
-def test_trial_workflow_uses_trial_scoped_simple_account_model():
+def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
     assert module.simple_account_model.name == "TrialSimpleAccount"
     assert hasattr(module.simple_account_model, "items")
 
 
 class TestTrialAppWorkflowRunApi:
-    def test_not_workflow_app(self, app: Flask):
+    def test_not_workflow_app(self, app: Flask, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with app.test_request_context("/"):
             with pytest.raises(NotWorkflowAppError):
-                method(api, MagicMock(mode=AppMode.CHAT))
+                method(api, account, MagicMock(mode=AppMode.CHAT))
 
-    def test_success(self, app, trial_app_workflow, account):
+    def test_success(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}}),
-            patch.object(module, "current_user", account),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
             patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
-            result = method(api, trial_app_workflow)
+            result = method(api, account, trial_app_workflow)
 
         assert result is not None
 
-    def test_workflow_provider_not_init(self, app, trial_app_workflow, account):
+    def test_workflow_provider_not_init(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -130,15 +133,14 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, trial_app_workflow)
+                method(api, account, trial_app_workflow)
 
-    def test_workflow_quota_exceeded(self, app, trial_app_workflow, account):
+    def test_workflow_quota_exceeded(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -146,15 +148,14 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(api, trial_app_workflow)
+                method(api, account, trial_app_workflow)
 
-    def test_workflow_model_not_support(self, app, trial_app_workflow, account):
+    def test_workflow_model_not_support(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -162,15 +163,14 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(api, trial_app_workflow)
+                method(api, account, trial_app_workflow)
 
-    def test_workflow_invoke_error(self, app, trial_app_workflow, account):
+    def test_workflow_invoke_error(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -178,15 +178,14 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(api, trial_app_workflow)
+                method(api, account, trial_app_workflow)
 
-    def test_workflow_rate_limit_error(self, app, trial_app_workflow, account):
+    def test_workflow_rate_limit_error(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -194,15 +193,14 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, trial_app_workflow)
+                method(api, account, trial_app_workflow)
 
-    def test_workflow_value_error(self, app, trial_app_workflow, account):
+    def test_workflow_value_error(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "files": []}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -210,15 +208,14 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, trial_app_workflow)
+                method(api, account, trial_app_workflow)
 
-    def test_workflow_generic_exception(self, app, trial_app_workflow, account):
+    def test_workflow_generic_exception(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "files": []}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -226,39 +223,37 @@ class TestTrialAppWorkflowRunApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(api, trial_app_workflow)
+                method(api, account, trial_app_workflow)
 
 
 class TestTrialChatApi:
-    def test_not_chat_app(self, app: Flask):
+    def test_not_chat_app(self, app: Flask, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with app.test_request_context("/", json={"inputs": {}, "query": "hi"}):
             with pytest.raises(NotChatAppError):
-                method(api, MagicMock(mode="completion"))
+                method(api, account, MagicMock(mode="completion"))
 
-    def test_success(self, app, trial_app_chat, account):
+    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
             patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
-            result = method(api, trial_app_chat)
+            result = method(api, account, trial_app_chat)
 
         assert result is not None
 
-    def test_chat_conversation_not_exists(self, app, trial_app_chat, account):
+    def test_chat_conversation_not_exists(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -266,15 +261,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_conversation_completed(self, app, trial_app_chat, account):
+    def test_chat_conversation_completed(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -282,15 +276,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(ConversationCompletedError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_app_config_broken(self, app, trial_app_chat, account):
+    def test_chat_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -298,15 +291,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(AppUnavailableError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_provider_not_init(self, app, trial_app_chat, account):
+    def test_chat_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -314,15 +306,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_quota_exceeded(self, app, trial_app_chat, account):
+    def test_chat_quota_exceeded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -330,15 +321,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_model_not_support(self, app, trial_app_chat, account):
+    def test_chat_model_not_support(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -346,15 +336,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_invoke_error(self, app, trial_app_chat, account):
+    def test_chat_invoke_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -362,15 +351,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_rate_limit_error(self, app, trial_app_chat, account):
+    def test_chat_rate_limit_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -378,15 +366,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_value_error(self, app, trial_app_chat, account):
+    def test_chat_value_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -394,15 +381,14 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_chat_generic_exception(self, app, trial_app_chat, account):
+    def test_chat_generic_exception(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -410,39 +396,37 @@ class TestTrialChatApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
 
 class TestTrialCompletionApi:
-    def test_not_completion_app(self, app: Flask):
+    def test_not_completion_app(self, app: Flask, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with app.test_request_context("/", json={"inputs": {}, "query": ""}):
             with pytest.raises(NotCompletionAppError):
-                method(api, MagicMock(mode=AppMode.CHAT))
+                method(api, account, MagicMock(mode=AppMode.CHAT))
 
-    def test_success(self, app, trial_app_completion, account):
+    def test_success(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
             patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
-            result = method(api, trial_app_completion)
+            result = method(api, account, trial_app_completion)
 
         assert result is not None
 
-    def test_completion_app_config_broken(self, app, trial_app_completion, account):
+    def test_completion_app_config_broken(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -450,15 +434,14 @@ class TestTrialCompletionApi:
             ),
         ):
             with pytest.raises(AppUnavailableError):
-                method(api, trial_app_completion)
+                method(api, account, trial_app_completion)
 
-    def test_completion_provider_not_init(self, app, trial_app_completion, account):
+    def test_completion_provider_not_init(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -466,15 +449,14 @@ class TestTrialCompletionApi:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, trial_app_completion)
+                method(api, account, trial_app_completion)
 
-    def test_completion_quota_exceeded(self, app, trial_app_completion, account):
+    def test_completion_quota_exceeded(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -482,15 +464,14 @@ class TestTrialCompletionApi:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(api, trial_app_completion)
+                method(api, account, trial_app_completion)
 
-    def test_completion_model_not_support(self, app, trial_app_completion, account):
+    def test_completion_model_not_support(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -498,15 +479,14 @@ class TestTrialCompletionApi:
             ),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(api, trial_app_completion)
+                method(api, account, trial_app_completion)
 
-    def test_completion_invoke_error(self, app, trial_app_completion, account):
+    def test_completion_invoke_error(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -514,15 +494,14 @@ class TestTrialCompletionApi:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(api, trial_app_completion)
+                method(api, account, trial_app_completion)
 
-    def test_completion_rate_limit_error(self, app, trial_app_completion, account):
+    def test_completion_rate_limit_error(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -530,15 +509,14 @@ class TestTrialCompletionApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(api, trial_app_completion)
+                method(api, account, trial_app_completion)
 
-    def test_completion_value_error(self, app, trial_app_completion, account):
+    def test_completion_value_error(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -546,15 +524,14 @@ class TestTrialCompletionApi:
             ),
         ):
             with pytest.raises(ValueError):
-                method(api, trial_app_completion)
+                method(api, account, trial_app_completion)
 
-    def test_completion_generic_exception(self, app, trial_app_completion, account):
+    def test_completion_generic_exception(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AppGenerateService,
                 "generate",
@@ -562,42 +539,40 @@ class TestTrialCompletionApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(api, trial_app_completion)
+                method(api, account, trial_app_completion)
 
 
 class TestTrialMessageSuggestedQuestionApi:
-    def test_not_chat_app(self, app: Flask):
+    def test_not_chat_app(self, app: Flask, account: Account) -> None:
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
         with app.test_request_context("/"):
             with pytest.raises(NotChatAppError):
-                method(MagicMock(mode="completion"), str(uuid4()))
+                method(api, account, MagicMock(mode="completion"), str(uuid4()))
 
-    def test_success(self, app, trial_app_chat, account):
+    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.MessageService,
                 "get_suggested_questions_after_answer",
                 return_value=["q1", "q2"],
             ),
         ):
-            result = method(trial_app_chat, str(uuid4()))
+            result = method(api, account, trial_app_chat, str(uuid4()))
 
         assert result == {"data": ["q1", "q2"]}
 
-    def test_conversation_not_exists(self, app, trial_app_chat, account):
+    def test_conversation_not_exists(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.MessageService,
                 "get_suggested_questions_after_answer",
@@ -605,18 +580,18 @@ class TestTrialMessageSuggestedQuestionApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(trial_app_chat, str(uuid4()))
+                method(api, account, trial_app_chat, str(uuid4()))
 
 
 class TestTrialAppParameterApi:
-    def test_app_unavailable(self):
+    def test_app_unavailable(self) -> None:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
 
         with pytest.raises(AppUnavailableError):
             method(api, None)
 
-    def test_success_non_workflow(self, valid_parameters):
+    def test_success_non_workflow(self, valid_parameters: dict[str, object]) -> None:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
 
@@ -643,37 +618,33 @@ class TestTrialAppParameterApi:
 
 
 class TestTrialChatAudioApi:
-    def test_success(self, app, trial_app_chat, account):
+    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(module.AudioService, "transcript_asr", return_value={"text": "hello"}),
             patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
-            result = method(api, trial_app_chat)
+            result = method(api, account, trial_app_chat)
 
         assert result == {"text": "hello"}
 
-    def test_app_config_broken(self, app, trial_app_chat, account):
+    def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_asr",
@@ -681,20 +652,18 @@ class TestTrialChatAudioApi:
             ),
         ):
             with pytest.raises(module.AppUnavailableError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_no_audio_uploaded(self, app, trial_app_chat, account):
+    def test_no_audio_uploaded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_asr",
@@ -702,20 +671,18 @@ class TestTrialChatAudioApi:
             ),
         ):
             with pytest.raises(module.NoAudioUploadedError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_audio_too_large(self, app, trial_app_chat, account):
+    def test_audio_too_large(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_asr",
@@ -723,20 +690,18 @@ class TestTrialChatAudioApi:
             ),
         ):
             with pytest.raises(module.AudioTooLargeError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_unsupported_audio_type(self, app, trial_app_chat, account):
+    def test_unsupported_audio_type(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_asr",
@@ -744,20 +709,18 @@ class TestTrialChatAudioApi:
             ),
         ):
             with pytest.raises(module.UnsupportedAudioTypeError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_provider_not_support_tts(self, app, trial_app_chat, account):
+    def test_provider_not_support_tts(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_asr",
@@ -765,65 +728,80 @@ class TestTrialChatAudioApi:
             ),
         ):
             with pytest.raises(module.ProviderNotSupportSpeechToTextError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_provider_not_init(self, app, trial_app_chat, account):
+    def test_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(module.AudioService, "transcript_asr", side_effect=ProviderTokenNotInitError("test")),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_quota_exceeded(self, app, trial_app_chat, account):
+    def test_quota_exceeded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(module.AudioService, "transcript_asr", side_effect=QuotaExceededError()),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
 
 class TestTrialChatTextApi:
-    def test_success(self, app, trial_app_chat, account):
+    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(module.AudioService, "transcript_tts", return_value={"audio": "base64_data"}),
             patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
-            result = method(api, trial_app_chat)
+            result = method(api, account, trial_app_chat)
 
         assert result == {"audio": "base64_data"}
 
-    def test_app_config_broken(self, app, trial_app_chat, account):
+    def test_success_with_message_ref(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+        api = module.TrialChatTextApi()
+        method = unwrap(api.post)
+        transcript_tts = MagicMock(return_value={"audio": "base64_data"})
+        trial_app_chat.tenant_id = "tenant-1"
+
+        with (
+            app.test_request_context("/", json={"text": "hello", "message_id": "message-1"}),
+            patch.object(module.AudioService, "transcript_tts", transcript_tts),
+            patch.object(module.RecommendedAppService, "add_trial_app_record"),
+        ):
+            result = method(api, account, trial_app_chat)
+
+        assert result == {"audio": "base64_data"}
+        assert transcript_tts.call_args.kwargs["message_ref"] == MessageRef(
+            "tenant-1",
+            "a-chat",
+            "message-1",
+            account_id="u1",
+        )
+
+    def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_tts",
@@ -831,15 +809,14 @@ class TestTrialChatTextApi:
             ),
         ):
             with pytest.raises(module.AppUnavailableError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_provider_not_support(self, app, trial_app_chat, account):
+    def test_provider_not_support(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_tts",
@@ -847,15 +824,14 @@ class TestTrialChatTextApi:
             ),
         ):
             with pytest.raises(module.ProviderNotSupportSpeechToTextError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_audio_too_large(self, app, trial_app_chat, account):
+    def test_audio_too_large(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_tts",
@@ -863,15 +839,14 @@ class TestTrialChatTextApi:
             ),
         ):
             with pytest.raises(module.AudioTooLargeError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_no_audio_uploaded(self, app, trial_app_chat, account):
+    def test_no_audio_uploaded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_tts",
@@ -879,59 +854,55 @@ class TestTrialChatTextApi:
             ),
         ):
             with pytest.raises(module.NoAudioUploadedError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_provider_not_init(self, app, trial_app_chat, account):
+    def test_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(module.AudioService, "transcript_tts", side_effect=ProviderTokenNotInitError("test")),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_quota_exceeded(self, app, trial_app_chat, account):
+    def test_quota_exceeded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(module.AudioService, "transcript_tts", side_effect=QuotaExceededError()),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_model_not_support(self, app, trial_app_chat, account):
+    def test_model_not_support(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(module.AudioService, "transcript_tts", side_effect=ModelCurrentlyNotSupportError()),
         ):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_invoke_error(self, app, trial_app_chat, account):
+    def test_invoke_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(module.AudioService, "transcript_tts", side_effect=InvokeError("test error")),
         ):
             with pytest.raises(CompletionRequestError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
 
 class TestTrialAppWorkflowTaskStopApi:
-    def test_not_workflow_app(self, app, trial_app_chat):
+    def test_not_workflow_app(self, app: Flask, trial_app_chat: MagicMock) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
         method = unwrap(api.post)
 
@@ -939,14 +910,13 @@ class TestTrialAppWorkflowTaskStopApi:
             with pytest.raises(NotWorkflowAppError):
                 method(api, trial_app_chat, str(uuid4()))
 
-    def test_success(self, app, trial_app_workflow, account):
+    def test_success(self, app: Flask, trial_app_workflow: MagicMock) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
         method = unwrap(api.post)
 
         task_id = str(uuid4())
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_user", account),
             patch.object(module.AppQueueManager, "set_stop_flag_no_user_check") as mock_set_flag,
             patch.object(module.GraphEngineManager, "send_stop_command") as mock_send_cmd,
         ):
@@ -958,7 +928,7 @@ class TestTrialAppWorkflowTaskStopApi:
 
 
 class TestTrialSitApi:
-    def test_no_site(self, app: Flask):
+    def test_no_site(self, app: Flask) -> None:
         api = module.TrialSitApi()
         method = unwrap(api.get)
         app_model = MagicMock()
@@ -969,7 +939,7 @@ class TestTrialSitApi:
             with pytest.raises(Forbidden):
                 method(api, app_model)
 
-    def test_archived_tenant(self, app: Flask):
+    def test_archived_tenant(self, app: Flask) -> None:
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
@@ -984,7 +954,7 @@ class TestTrialSitApi:
             with pytest.raises(Forbidden):
                 method(api, app_model)
 
-    def test_success(self, app: Flask):
+    def test_success(self, app: Flask) -> None:
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
@@ -1009,18 +979,16 @@ class TestTrialSitApi:
 
 
 class TestTrialChatAudioApiExceptionHandlers:
-    def test_provider_not_init(self, app, trial_app_chat, account):
+    def test_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_asr",
@@ -1028,20 +996,18 @@ class TestTrialChatAudioApiExceptionHandlers:
             ),
         ):
             with pytest.raises(ProviderNotInitializeError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_quota_exceeded(self, app, trial_app_chat, account):
+    def test_quota_exceeded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_asr",
@@ -1049,20 +1015,18 @@ class TestTrialChatAudioApiExceptionHandlers:
             ),
         ):
             with pytest.raises(ProviderQuotaExceededError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_invoke_error(self, app, trial_app_chat, account):
+    def test_invoke_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
-        file_data = BytesIO(b"fake audio data")
-        file_data.filename = "test.wav"
+        file_data = _file_data()
 
         with (
             app.test_request_context(
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_asr",
@@ -1070,17 +1034,16 @@ class TestTrialChatAudioApiExceptionHandlers:
             ),
         ):
             with pytest.raises(CompletionRequestError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
 
 class TestTrialChatTextApiExceptionHandlers:
-    def test_app_config_broken(self, app, trial_app_chat, account):
+    def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_tts",
@@ -1088,15 +1051,14 @@ class TestTrialChatTextApiExceptionHandlers:
             ),
         ):
             with pytest.raises(module.AppUnavailableError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)
 
-    def test_unsupported_audio_type(self, app, trial_app_chat, account):
+    def test_unsupported_audio_type(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
-            patch.object(module, "current_user", account),
             patch.object(
                 module.AudioService,
                 "transcript_tts",
@@ -1104,4 +1066,4 @@ class TestTrialChatTextApiExceptionHandlers:
             ),
         ):
             with pytest.raises(module.UnsupportedAudioTypeError):
-                method(api, trial_app_chat)
+                method(api, account, trial_app_chat)

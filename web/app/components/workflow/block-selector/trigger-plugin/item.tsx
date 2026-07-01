@@ -1,10 +1,18 @@
 'use client'
 import type { FC } from 'react'
+import type { TriggerPluginActionPreviewCardHandle } from './action-item'
 import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -13,6 +21,7 @@ import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
+import { BlockSelectorRow } from '../block-selector-row'
 import TriggerPluginActionItem from './action-item'
 
 const normalizeProviderIcon = (icon?: TriggerWithProvider['icon']) => {
@@ -23,18 +32,22 @@ const normalizeProviderIcon = (icon?: TriggerWithProvider['icon']) => {
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: TriggerWithProvider
   hasSearchText: boolean
+  previewCardHandle: TriggerPluginActionPreviewCardHandle
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
-}
+  disabled?: boolean
+}>
 
 const TriggerPluginItem: FC<Props> = ({
   className,
   payload,
   hasSearchText,
+  previewCardHandle,
   onSelect,
+  disabled = false,
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -42,17 +55,14 @@ const TriggerPluginItem: FC<Props> = ({
   const notShowProvider = payload.type === CollectionType.workflow
   const actions = payload.events
   const hasAction = !notShowProvider
-  const [isFold, setFold] = React.useState<boolean>(true)
+  const [isFold, setIsFold] = React.useState<boolean>(true)
+  const [isFoldHasSearchText, setIsFoldHasSearchText] = React.useState(hasSearchText)
   const ref = useRef(null)
 
-  useEffect(() => {
-    if (hasSearchText && isFold) {
-      setFold(false)
-      return
-    }
-    if (!hasSearchText && !isFold)
-      setFold(true)
-  }, [hasSearchText])
+  if (isFoldHasSearchText !== hasSearchText) {
+    setIsFoldHasSearchText(hasSearchText)
+    setIsFold(!hasSearchText)
+  }
 
   const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
@@ -93,18 +103,22 @@ const TriggerPluginItem: FC<Props> = ({
       ref={ref}
     >
       <div className={cn(className)}>
-        <div
-          className="group/item flex w-full cursor-pointer items-center justify-between rounded-lg pr-1 pl-3 select-none hover:bg-state-base-hover"
+        <BlockSelectorRow
+          nativeDisabled={disabled}
+          disabled={disabled}
+          className="group/item justify-between select-none"
           onClick={() => {
+            if (disabled)
+              return
             if (hasAction) {
-              setFold(!isFold)
+              setIsFold(!isFold)
               return
             }
 
             const event = actions[0]
             const params: Record<string, string> = {}
             if (event!.parameters) {
-              event!.parameters.forEach((item: any) => {
+              event!.parameters.forEach((item) => {
                 params[item.name] = ''
               })
             }
@@ -125,13 +139,14 @@ const TriggerPluginItem: FC<Props> = ({
             })
           }}
         >
-          <div className="flex h-8 grow items-center">
+          <div className="flex min-w-0 grow items-center">
             <BlockIcon
-              className="shrink-0"
+              className="mr-2 shrink-0"
               type={BlockEnum.TriggerPlugin}
+              size="sm"
               toolIcon={providerIcon}
             />
-            <div className="ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary">
+            <div className="flex min-w-0 flex-1 items-center text-sm text-text-primary">
               <span className="max-w-[200px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
               <span className="ml-2 truncate system-xs-regular text-text-quaternary">{groupName}</span>
             </div>
@@ -139,22 +154,36 @@ const TriggerPluginItem: FC<Props> = ({
 
           <div className="ml-2 flex items-center">
             {hasAction && (
-              <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
+              <FoldIcon className={cn('size-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
             )}
           </div>
-        </div>
+        </BlockSelectorRow>
 
         {!notShowProvider && hasAction && !isFold && (
-          actions.map(action => (
-            <TriggerPluginActionItem
-              key={action.name}
-              provider={providerWithResolvedIcon}
-              payload={action}
-              onSelect={onSelect}
-              disabled={false}
-              isAdded={false}
-            />
-          ))
+          <ScrollAreaRoot className="relative max-h-[240px] overflow-hidden overscroll-contain">
+            <ScrollAreaViewport
+              aria-label={t('tabs.allTriggers', { ns: 'workflow' })}
+              className="max-h-[240px] overscroll-contain"
+              role="region"
+            >
+              <ScrollAreaContent>
+                {actions.map(action => (
+                  <TriggerPluginActionItem
+                    key={action.name}
+                    provider={providerWithResolvedIcon}
+                    payload={action}
+                    previewCardHandle={previewCardHandle}
+                    onSelect={onSelect}
+                    disabled={disabled}
+                    isAdded={false}
+                  />
+                ))}
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollAreaRoot>
         )}
       </div>
     </div>

@@ -1,4 +1,5 @@
 import threading
+from typing import override
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
@@ -46,6 +47,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             name=f"dataset_{tenant_id.replace('-', '_')}", tenant_id=tenant_id, dataset_ids=dataset_ids, **kwargs
         )
 
+    @override
     def _run(self, query: str) -> str:
         threads = []
         all_documents: list[RagDocument] = []
@@ -77,7 +79,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         all_documents = rerank_runner.run(query, all_documents, self.score_threshold, self.top_k)
 
         for hit_callback in self.hit_callbacks:
-            hit_callback.on_tool_end(all_documents)
+            hit_callback.on_tool_end(all_documents, db.session)
 
         document_score_list = {}
         for item in all_documents:
@@ -164,7 +166,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 return []
 
             for hit_callback in hit_callbacks:
-                hit_callback.on_query(query, dataset.id)
+                hit_callback.on_query(query, dataset.id, db.session)
 
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model

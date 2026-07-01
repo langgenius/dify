@@ -1,4 +1,5 @@
 import datetime
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -195,9 +196,7 @@ class _ImmediateExecutor:
 
 def _session_wrapper_for_no_autoflush(session: Mock) -> Mock:
     """
-    ClearFreePlanTenantExpiredLogs.process_tenant uses:
-      with Session(db.engine).no_autoflush as session:
-    so Session(db.engine) must return an object with a no_autoflush context manager.
+    Return an object with a no_autoflush context manager for legacy tests that need Session-like wrappers.
     """
     cm = MagicMock()
     cm.__enter__.return_value = session
@@ -223,7 +222,7 @@ def _sessionmaker_wrapper_for_begin(session: Mock) -> Mock:
 
 
 def _session_wrapper_for_direct(session: Mock) -> Mock:
-    """ClearFreePlanTenantExpiredLogs.process uses: with Session(db.engine) as session: (for old code paths)"""
+    """Return an object usable as a direct context manager for legacy Session-like test paths."""
     wrapper = MagicMock()
     wrapper.__enter__.return_value = session
     wrapper.__exit__.return_value = None
@@ -233,17 +232,13 @@ def _session_wrapper_for_direct(session: Mock) -> Mock:
 def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -> None:
     flask_app = service_module.Flask("test-app")
 
+    app_session = MagicMock()
+    app_session.scalars.return_value.all.return_value = [SimpleNamespace(id="app-1"), SimpleNamespace(id="app-2")]
+
     monkeypatch.setattr(
         service_module,
         "db",
-        SimpleNamespace(
-            engine=object(),
-            session=SimpleNamespace(
-                scalars=lambda _stmt: SimpleNamespace(
-                    all=lambda: [SimpleNamespace(id="app-1"), SimpleNamespace(id="app-2")]
-                )
-            ),
-        ),
+        SimpleNamespace(engine=object()),
     )
 
     mock_storage = MagicMock()
@@ -304,8 +299,11 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(service_module, "select", fake_select)
 
     # Repositories for workflow node executions and workflow runs
+    node_execution = SimpleNamespace(id="ne-1")
+    node_execution.__table__ = SimpleNamespace(columns=[SimpleNamespace(name="id")])
+
     node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [[SimpleNamespace(id="ne-1")], []]
+    node_repo.get_expired_executions_batch.side_effect = [[node_execution], []]
     node_repo.delete_executions_by_ids.return_value = 1
 
     run_repo = MagicMock()
@@ -322,14 +320,32 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
         lambda _sm: run_repo,
     )
 
-    ClearFreePlanTenantExpiredLogs.process_tenant(flask_app, "tenant-1", days=7, batch=10)
+    ClearFreePlanTenantExpiredLogs.process_tenant(flask_app, "tenant-1", days=7, batch=10, session=app_session)
 
     # messages backup, conversations backup, node executions backup, runs backup, workflow app logs backup
+    app_session.scalars.assert_called_once()
     assert mock_storage.save.call_count >= 5
     clear_related.assert_called()
 
 
-def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_serialize_record_falls_back_to_table_columns() -> None:
+    record = SimpleNamespace(id="ne-1", node_id="node-1")
+    record.__table__ = SimpleNamespace(
+        columns=[
+            SimpleNamespace(name="id"),
+            SimpleNamespace(name="node_id"),
+        ]
+    )
+
+    assert ClearFreePlanTenantExpiredLogs._serialize_record(record) == {
+        "id": "ne-1",
+        "node_id": "node-1",
+    }
+
+
+def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=object()))
 
     # Total tenant count query
@@ -363,14 +379,14 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(monkeypatch: py
     process_tenant_mock = MagicMock(side_effect=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("err")))
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant_mock)
 
-    logger_exc = MagicMock()
-    monkeypatch.setattr(service_module.logger, "exception", logger_exc)
-
-    ClearFreePlanTenantExpiredLogs.process(days=7, batch=10, tenant_ids=["t_sandbox", "t_paid", "t_fail"])
+    with caplog.at_level(logging.ERROR, logger=service_module.logger.name):
+        ClearFreePlanTenantExpiredLogs.process(days=7, batch=10, tenant_ids=["t_sandbox", "t_paid", "t_fail"])
 
     # Only sandbox tenant should attempt processing, and its failure should be swallowed + logged.
     assert process_tenant_mock.call_count == 1
-    assert logger_exc.call_count >= 1
+    assert process_tenant_mock.call_args.args[4] is count_session
+    assert "Failed to process tenant t_sandbox" in caplog.messages
+    assert "Failed to process tenant t_fail" in caplog.messages
 
 
 def test_process_without_tenant_ids_batches_and_scales_interval(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -409,7 +425,14 @@ def test_process_without_tenant_ids_batches_and_scales_interval(monkeypatch: pyt
     batch_session.scalar.side_effect = [200, 200, 200, 50]
     batch_session.execute.return_value = rows
 
-    sessions = [_sessionmaker_wrapper_for_begin(total_session), _sessionmaker_wrapper_for_begin(batch_session)]
+    tenant_session_a = MagicMock()
+    tenant_session_b = MagicMock()
+    sessions = [
+        _sessionmaker_wrapper_for_begin(total_session),
+        _sessionmaker_wrapper_for_begin(batch_session),
+        _sessionmaker_wrapper_for_begin(tenant_session_a),
+        _sessionmaker_wrapper_for_begin(tenant_session_b),
+    ]
     monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: sessions.pop(0))
 
     process_tenant_mock = MagicMock()
@@ -480,7 +503,12 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(mon
     batch_session.scalar.side_effect = [200, 200, 200, 200, 200]
     batch_session.execute.return_value = rows
 
-    sessions = [_sessionmaker_wrapper_for_begin(total_session), _sessionmaker_wrapper_for_begin(batch_session)]
+    tenant_session = MagicMock()
+    sessions = [
+        _sessionmaker_wrapper_for_begin(total_session),
+        _sessionmaker_wrapper_for_begin(batch_session),
+        _sessionmaker_wrapper_for_begin(tenant_session),
+    ]
     monkeypatch.setattr(service_module, "sessionmaker", lambda _engine: sessions.pop(0))
 
     process_tenant_mock = MagicMock()
@@ -495,13 +523,13 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(mon
 def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pytest.MonkeyPatch) -> None:
     flask_app = service_module.Flask("test-app")
 
+    app_session = MagicMock()
+    app_session.scalars.return_value.all.return_value = [SimpleNamespace(id="app-1")]
+
     monkeypatch.setattr(
         service_module,
         "db",
-        SimpleNamespace(
-            engine=object(),
-            session=SimpleNamespace(scalars=lambda _stmt: SimpleNamespace(all=lambda: [SimpleNamespace(id="app-1")])),
-        ),
+        SimpleNamespace(engine=object()),
     )
     mock_storage = MagicMock()
     monkeypatch.setattr(service_module, "storage", mock_storage)
@@ -533,9 +561,14 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pyte
     monkeypatch.setattr(service_module, "select", fake_select)
 
     # Repos: first returns exactly batch items -> no "< batch" break, second returns [] -> hit the len==0 break.
+    node_execution_1 = SimpleNamespace(id="ne-1")
+    node_execution_1.__table__ = SimpleNamespace(columns=[SimpleNamespace(name="id")])
+    node_execution_2 = SimpleNamespace(id="ne-2")
+    node_execution_2.__table__ = SimpleNamespace(columns=[SimpleNamespace(name="id")])
+
     node_repo = MagicMock()
     node_repo.get_expired_executions_batch.side_effect = [
-        [SimpleNamespace(id="ne-1"), SimpleNamespace(id="ne-2")],
+        [node_execution_1, node_execution_2],
         [],
     ]
     node_repo.delete_executions_by_ids.return_value = 2
@@ -560,7 +593,8 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pyte
         lambda _sm: run_repo,
     )
 
-    ClearFreePlanTenantExpiredLogs.process_tenant(flask_app, "tenant-1", days=7, batch=2)
+    ClearFreePlanTenantExpiredLogs.process_tenant(flask_app, "tenant-1", days=7, batch=2, session=app_session)
 
+    app_session.scalars.assert_called_once()
     assert node_repo.get_expired_executions_batch.call_count == 2
     assert run_repo.get_expired_runs_batch.call_count == 2

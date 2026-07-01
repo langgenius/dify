@@ -49,6 +49,19 @@ describe('Switch', () => {
     await expect.element(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
   })
 
+  it('should work in uncontrolled mode with defaultChecked prop', async () => {
+    const onCheckedChange = vi.fn()
+    const screen = await render(<Switch defaultChecked={false} onCheckedChange={onCheckedChange} />)
+    const switchElement = screen.getByRole('switch')
+
+    await expect.element(switchElement).toHaveAttribute('aria-checked', 'false')
+
+    asHTMLElement(switchElement.element()).click()
+
+    expect(onCheckedChange).toHaveBeenCalledWith(true)
+    await expect.element(switchElement).toHaveAttribute('aria-checked', 'true')
+  })
+
   it('should not call onCheckedChange when disabled', async () => {
     const onCheckedChange = vi.fn()
     const screen = await render(<Switch checked={false} disabled onCheckedChange={onCheckedChange} />)
@@ -110,9 +123,13 @@ describe('Switch', () => {
     await expect.element(screen.getByRole('switch')).toHaveAttribute('data-checked', '')
   })
 
-  it('should have focus-visible ring-3 styles', async () => {
+  it('should replace the native focus outline with the accent focus ring', async () => {
     const screen = await render(<Switch checked={false} />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('focus-visible:ring-2')
+    await expect.element(screen.getByRole('switch')).toHaveClass(
+      'outline-hidden',
+      'focus-visible:ring-2',
+      'focus-visible:ring-state-accent-solid',
+    )
   })
 
   it('should respect prefers-reduced-motion', async () => {
@@ -140,6 +157,24 @@ describe('Switch', () => {
 
       await screen.rerender(<Switch checked={false} loading size="lg" />)
       expect(screen.container.querySelector('span[aria-hidden="true"] i')).toBeInTheDocument()
+    })
+
+    it('should use checked data attributes to position spinner', async () => {
+      const screen = await render(<Switch checked={false} loading size="md" />)
+      const spinner = screen.container.querySelector('span[aria-hidden="true"]')
+
+      expect(spinner).toHaveClass(
+        'left-[calc(50%+6px)]',
+        'group-data-checked:left-[calc(50%-6px)]',
+      )
+
+      await screen.rerender(<Switch checked={true} loading size="md" />)
+
+      await expect.element(screen.getByRole('switch')).toHaveAttribute('data-checked', '')
+      expect(screen.container.querySelector('span[aria-hidden="true"]')).toHaveClass(
+        'left-[calc(50%+6px)]',
+        'group-data-checked:left-[calc(50%-6px)]',
+      )
     })
 
     it('should not show spinner for xs and sm sizes', async () => {

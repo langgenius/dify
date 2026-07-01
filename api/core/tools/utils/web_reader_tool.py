@@ -9,7 +9,7 @@ import charset_normalizer
 import cloudscraper
 from readabilipy import simple_json_from_html_string
 
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.extractor import extract_processor
 from core.rag.extractor.extract_processor import ExtractProcessor
 
@@ -38,7 +38,7 @@ def get_url(url: str, user_agent: str | None = None) -> str:
 
     main_content_type = None
     supported_content_types = extract_processor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
-    response = ssrf_proxy.head(url, headers=headers, follow_redirects=True, timeout=(5, 10))
+    response = remote_fetcher.make_request("HEAD", url, headers=headers, follow_redirects=True, timeout=(5, 10))
 
     if response.status_code == 200:
         # check content-type
@@ -60,10 +60,10 @@ def get_url(url: str, user_agent: str | None = None) -> str:
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
             return cast(str, ExtractProcessor.load_from_url(url, return_text=True))
 
-        response = ssrf_proxy.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
+        response = remote_fetcher.make_request("GET", url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
-        scraper.perform_request = ssrf_proxy.make_request
+        object.__setattr__(scraper, "perform_request", remote_fetcher.make_request)
         response = scraper.get(url, headers=headers, timeout=(120, 300))
 
     if response.status_code != 200:

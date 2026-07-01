@@ -90,7 +90,7 @@ class TestChatMessageApiPermissions:
         # Mock app loading
 
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
 
         # Mock current user
         monkeypatch.setattr(completion_api, "current_user", mock_account)
@@ -139,7 +139,7 @@ class TestChatMessageApiPermissions:
         """Ensure GET chat-messages endpoint enforces edit permissions."""
 
         mock_load_app_model = mock.Mock(return_value=mock_app_model)
-        monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
+        monkeypatch.setattr(wraps, "_load_app_model_from_scoped_session", mock_load_app_model)
 
         conversation_id = uuid.uuid4()
         created_at = naive_utc_now()

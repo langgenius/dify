@@ -45,7 +45,7 @@ const VariableLabel = ({
       {
         notShowFullPath && (
           <>
-            <span className="i-ri-more-line h-3 w-3 shrink-0 text-text-secondary" />
+            <span className="i-ri-more-line size-3 shrink-0 text-text-secondary" />
             <div className="shrink-0 system-xs-regular text-divider-deep">/</div>
           </>
         )
@@ -68,7 +68,7 @@ const VariableLabel = ({
       }
       {
         !!errorMsg && (
-          <Warning className="h-3 w-3 shrink-0 text-text-warning" />
+          <Warning className="size-3 shrink-0 text-text-warning" />
         )
       }
       {

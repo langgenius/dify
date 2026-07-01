@@ -1,4 +1,5 @@
 import type { RefObject } from 'react'
+import type { HumanInputFieldValue } from '../../chat/answer/human-input-content/field-renderer'
 import type { ChatConfig, ChatItem, ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
 import type { ConversationItem } from '@/models/share'
@@ -59,7 +60,7 @@ vi.mock('../../chat', () => ({
     onSend: (message: string) => void
     onRegenerate: (chatItem: ChatItem, editedQuestion?: { message: string, files?: never[] }) => void
     switchSibling: (siblingMessageId: string) => void
-    onHumanInputFormSubmit: (formToken: string, formData: Record<string, string>) => Promise<void>
+    onHumanInputFormSubmit: (formToken: string, formData: { inputs: Record<string, HumanInputFieldValue>, action: string }) => Promise<void>
     onStopResponding: () => void
   }) => (
     <div>
@@ -78,7 +79,7 @@ vi.mock('../../chat', () => ({
       <button onClick={() => switchSibling('sibling-2')}>switch sibling</button>
       <button disabled={inputDisabled}>send message</button>
       <button onClick={onStopResponding}>stop responding</button>
-      <button onClick={() => onHumanInputFormSubmit('form-token', { answer: 'ok' })}>submit human input</button>
+      <button onClick={() => onHumanInputFormSubmit('form-token', { inputs: { answer: 'ok' }, action: 'approve' })}>submit human input</button>
     </div>
   ),
 }))
@@ -351,7 +352,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
 
       await waitFor(() => {
-        expect(submitHumanInputFormService).toHaveBeenCalledWith('form-token', { answer: 'ok' })
+        expect(submitHumanInputFormService).toHaveBeenCalledWith('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
       })
       expect(submitHumanInputForm).not.toHaveBeenCalled()
     })
@@ -391,7 +392,7 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
 
       await waitFor(() => {
-        expect(submitHumanInputForm).toHaveBeenCalledWith('form-token', { answer: 'ok' })
+        expect(submitHumanInputForm).toHaveBeenCalledWith('form-token', { inputs: { answer: 'ok' }, action: 'approve' })
       })
       expect(handleSend).toHaveBeenCalledTimes(2)
       const sendOptions = handleSend.mock.calls[0]?.[2] as { onGetSuggestedQuestions: (responseItemId: string) => void }

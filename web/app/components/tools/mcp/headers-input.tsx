@@ -1,12 +1,12 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'
-import Input from '@/app/components/base/input'
 
 export type HeaderItem = {
   id: string
@@ -14,12 +14,12 @@ export type HeaderItem = {
   value: string
 }
 
-type Props = {
+type Props = Readonly<{
   headersItems: HeaderItem[]
   onChange: (headerItems: HeaderItem[]) => void
   readonly?: boolean
   isMasked?: boolean
-}
+}>
 
 const HeadersInput = ({
   headersItems,
@@ -61,7 +61,7 @@ const HeadersInput = ({
             onClick={handleAddItem}
             className="w-full"
           >
-            <RiAddLine className="mr-1 h-4 w-4" />
+            <RiAddLine className="mr-1 size-4" />
             {t('mcp.modal.addHeader', { ns: 'tools' })}
           </Button>
         )}
@@ -111,7 +111,7 @@ const HeadersInput = ({
                   onClick={() => handleRemoveItem(index)}
                   className="mr-2"
                 >
-                  <RiDeleteBinLine className="h-4 w-4 text-text-destructive" />
+                  <RiDeleteBinLine className="size-4 text-text-destructive" />
                 </ActionButton>
               )}
             </div>
@@ -125,7 +125,7 @@ const HeadersInput = ({
           onClick={handleAddItem}
           className="w-full"
         >
-          <RiAddLine className="mr-1 h-4 w-4" />
+          <RiAddLine className="mr-1 size-4" />
           {t('mcp.modal.addHeader', { ns: 'tools' })}
         </Button>
       )}

@@ -30,6 +30,7 @@
   "dependencies": {
     "@hono/node-server": "catalog:",
     "c12": "catalog:",
+    "chokidar": "catalog:",
     "hono": "catalog:"
   },
   "devDependencies": {

@@ -55,7 +55,7 @@ const ConditionVariableSelector = ({
             {!valueSelector.length && (
               <>
                 <div className="flex grow items-center system-sm-regular text-components-input-text-placeholder">
-                  <Variable02 className="mr-1 h-4 w-4" />
+                  <Variable02 className="mr-1 size-4" />
                   {t('nodes.knowledgeRetrieval.metadata.panel.select', { ns: 'workflow' })}
                 </div>
                 <div className="flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] system-2xs-medium text-text-tertiary">

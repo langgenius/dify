@@ -195,22 +195,23 @@ class BaseAppGenerator:
             )
 
         if variable_entity.type == VariableEntityType.NUMBER:
-            if isinstance(value, (int, float)):
-                return value
-            elif isinstance(value, str):
-                # handle empty string case
-                if not value.strip():
-                    return None
-                # may raise ValueError if user_input_value is not a valid number
-                try:
-                    if "." in value:
-                        return float(value)
-                    else:
-                        return int(value)
-                except ValueError:
-                    raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
-            else:
-                raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
+            match value:
+                case int() | float():
+                    return value
+                case str():
+                    # handle empty string case
+                    if not value.strip():
+                        return None
+                    # may raise ValueError if user_input_value is not a valid number
+                    try:
+                        if "." in value:
+                            return float(value)
+                        else:
+                            return int(value)
+                    except ValueError:
+                        raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
+                case _:
+                    raise TypeError(f"expected value type int, float or str, got {type(value)}, value: {value}")
 
         match variable_entity.type:
             case VariableEntityType.SELECT:
@@ -241,17 +242,18 @@ class BaseAppGenerator:
                         f"{variable_entity.variable} in input form must be less than {variable_entity.max_length} files"
                     )
             case VariableEntityType.CHECKBOX:
-                if isinstance(value, str):
-                    normalized_value = value.strip().lower()
-                    if normalized_value in {"true", "1", "yes", "on"}:
-                        value = True
-                    elif normalized_value in {"false", "0", "no", "off"}:
-                        value = False
-                elif isinstance(value, (int, float)):
-                    if value == 1:
-                        value = True
-                    elif value == 0:
-                        value = False
+                match value:
+                    case str():
+                        normalized_value = value.strip().lower()
+                        if normalized_value in {"true", "1", "yes", "on"}:
+                            value = True
+                        elif normalized_value in {"false", "0", "no", "off"}:
+                            value = False
+                    case int() | float():
+                        if value == 1:
+                            value = True
+                        elif value == 0:
+                            value = False
             case VariableEntityType.JSON_OBJECT:
                 if value and not isinstance(value, dict):
                     raise ValueError(f"{variable_entity.variable} in input form must be a dict")

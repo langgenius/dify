@@ -13,12 +13,11 @@ import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
-from packaging import version
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name
 from core.plugin.entities.plugin import PluginDependency
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -37,6 +36,7 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
@@ -64,30 +64,6 @@ class RagPipelineImportInfo(BaseModel):
     dataset_id: str | None = None
 
 
-def _check_version_compatibility(imported_version: str) -> ImportStatus:
-    """Determine import status based on version comparison"""
-    try:
-        current_ver = version.parse(CURRENT_DSL_VERSION)
-        imported_ver = version.parse(imported_version)
-    except version.InvalidVersion:
-        return ImportStatus.FAILED
-
-    # If imported version is newer than current, always return PENDING
-    if imported_ver > current_ver:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's major, return PENDING
-    if imported_ver.major < current_ver.major:
-        return ImportStatus.PENDING
-
-    # If imported version is older than current's minor, return COMPLETED_WITH_WARNINGS
-    if imported_ver.minor < current_ver.minor:
-        return ImportStatus.COMPLETED_WITH_WARNINGS
-
-    # If imported version equals or is older than current's micro, return COMPLETED
-    return ImportStatus.COMPLETED
-
-
 class RagPipelinePendingData(BaseModel):
     import_mode: str
     yaml_content: str
@@ -100,7 +76,14 @@ class CheckDependenciesPendingData(BaseModel):
 
 
 class RagPipelineDslService:
-    def __init__(self, session: Session):
+    """Import, export, and inspect RAG pipeline DSL using the caller-owned session.
+
+    Callers pass a plain ``Session`` (not wrapped in ``.begin()``) and are responsible for calling
+    ``session.commit()`` on success or ``session.rollback()`` on failure.  Methods here only flush
+    when generated IDs are needed mid-operation; they never commit or rollback.
+    """
+
+    def __init__(self, session: Session | scoped_session):
         self._session = session
 
     def import_rag_pipeline(
@@ -142,7 +125,7 @@ class RagPipelineDslService:
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
-                response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
+                response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 content = response.content.decode()
 
@@ -195,7 +178,7 @@ class RagPipelineDslService:
             # check if imported_version is a float-like string
             if not isinstance(imported_version, str):
                 raise ValueError(f"Invalid version type, expected str, got {type(imported_version)}")
-            status = _check_version_compatibility(imported_version)
+            status = check_version_compatibility(imported_version, CURRENT_DSL_VERSION)
 
             # Extract app data
             pipeline_data = data.get("rag_pipeline")
@@ -300,6 +283,7 @@ class RagPipelineDslService:
                             },
                             indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
@@ -325,7 +309,7 @@ class RagPipelineDslService:
                                 type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
-                            self._session.commit()
+                            self._session.flush()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
@@ -337,7 +321,7 @@ class RagPipelineDslService:
                         dataset.summary_index_setting = knowledge_configuration.summary_index_setting
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
-                    self._session.commit()
+                    self._session.flush()
                     dataset_id = dataset.id
             if not dataset_id:
                 raise ValueError("DSL is not valid, please check the Knowledge Index node.")
@@ -432,6 +416,7 @@ class RagPipelineDslService:
                             },
                             indexing_technique=IndexTechniqueType(knowledge_configuration.indexing_technique),
                             created_by=account.id,
+                            maintainer=account.id,
                             retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
                             chunk_structure=knowledge_configuration.chunk_structure,
@@ -462,7 +447,7 @@ class RagPipelineDslService:
                                 type=CollectionBindingType.DATASET,
                             )
                             self._session.add(dataset_collection_binding)
-                            self._session.commit()
+                            self._session.flush()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = knowledge_configuration.embedding_model
@@ -474,7 +459,7 @@ class RagPipelineDslService:
                         dataset.summary_index_setting = knowledge_configuration.summary_index_setting
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
-                    self._session.commit()
+                    self._session.flush()
                     dataset_id = dataset.id
             if not dataset_id:
                 raise ValueError("DSL is not valid, please check the Knowledge Index node.")
@@ -585,7 +570,7 @@ class RagPipelineDslService:
             pipeline.id = str(uuid4())
 
             self._session.add(pipeline)
-            self._session.commit()
+            self._session.flush()
         # save dependencies
         if dependencies:
             redis_client.setex(
@@ -627,8 +612,8 @@ class RagPipelineDslService:
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
             workflow.rag_pipeline_variables = rag_pipeline_variables_list
-        # commit db session changes
-        self._session.commit()
+        # Keep transaction ownership with the caller while materializing IDs and constraint checks before returning.
+        self._session.flush()
 
         return pipeline
 

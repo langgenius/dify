@@ -2,9 +2,114 @@
 
 import * as z from 'zod'
 
-export const zFeatureResponse = z.record(z.string(), z.unknown())
+/**
+ * LimitationModel
+ */
+export const zLimitationModel = z.object({
+  limit: z.int().default(0),
+  size: z.int().default(0),
+})
+
+/**
+ * Quota
+ */
+export const zQuota = z.object({
+  limit: z.int().default(0),
+  reset_date: z.int().default(-1),
+  usage: z.int().default(0),
+})
+
+/**
+ * EducationModel
+ */
+export const zEducationModel = z.object({
+  activated: z.boolean().default(false),
+  enabled: z.boolean().default(false),
+})
+
+/**
+ * KnowledgePipeline
+ */
+export const zKnowledgePipeline = z.object({
+  publish_enabled: z.boolean().default(false),
+})
+
+/**
+ * LicenseLimitationModel
+ *
+ * - enabled: whether this limit is enforced
+ * - size: current usage count
+ * - limit: maximum allowed count; 0 means unlimited
+ */
+export const zLicenseLimitationModel = z.object({
+  enabled: z.boolean().default(false),
+  limit: z.int().default(0),
+  size: z.int().default(0),
+})
+
+/**
+ * SubscriptionModel
+ */
+export const zSubscriptionModel = z.object({
+  interval: z.string().default(''),
+  plan: z.string().default('sandbox'),
+})
+
+/**
+ * BillingModel
+ */
+export const zBillingModel = z.object({
+  enabled: z.boolean().default(false),
+  subscription: zSubscriptionModel.default({ interval: '', plan: 'sandbox' }),
+})
+
+/**
+ * FeatureModel
+ */
+export const zFeatureModel = z.object({
+  annotation_quota_limit: zLimitationModel.default({ limit: 10, size: 0 }),
+  api_rate_limit: zQuota.default({
+    limit: 5000,
+    reset_date: 0,
+    usage: 0,
+  }),
+  apps: zLimitationModel.default({ limit: 10, size: 0 }),
+  billing: zBillingModel.default({
+    enabled: false,
+    subscription: { interval: '', plan: 'sandbox' },
+  }),
+  can_replace_logo: z.boolean().default(false),
+  dataset_operator_enabled: z.boolean().default(false),
+  docs_processing: z.string().default('standard'),
+  documents_upload_quota: zLimitationModel.default({ limit: 50, size: 0 }),
+  education: zEducationModel.default({ activated: false, enabled: false }),
+  human_input_email_delivery_enabled: z.boolean().default(false),
+  is_allow_transfer_workspace: z.boolean().default(true),
+  knowledge_pipeline: zKnowledgePipeline.default({ publish_enabled: false }),
+  knowledge_rate_limit: z.int().default(10),
+  members: zLimitationModel.default({ limit: 1, size: 0 }),
+  model_load_balancing_enabled: z.boolean().default(false),
+  next_credit_reset_date: z.int().default(0),
+  trigger_event: zQuota.default({
+    limit: 3000,
+    reset_date: 0,
+    usage: 0,
+  }),
+  vector_space: zLimitationModel.nullable().default({ limit: 5, size: 0 }),
+  webapp_copyright_enabled: z.boolean().default(false),
+  workspace_members: zLicenseLimitationModel.default({
+    enabled: false,
+    limit: 0,
+    size: 0,
+  }),
+})
 
 /**
  * Success
  */
-export const zGetFeaturesResponse = zFeatureResponse
+export const zGetFeaturesResponse = zFeatureModel
+
+/**
+ * Success
+ */
+export const zGetFeaturesVectorSpaceResponse = zLimitationModel

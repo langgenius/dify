@@ -20,6 +20,7 @@ import { AppModeEnum } from '@/types/app'
 let mockIsCurrentWorkspaceEditor = true
 let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 let mockSystemFeatures = {
   branding: { enabled: false },
@@ -45,6 +46,7 @@ vi.mock('@/next/navigation', () => ({
     push: mockRouterPush,
     replace: mockRouterReplace,
   }),
+  usePathname: () => '/apps',
   useSearchParams: () => new URLSearchParams(),
 }))
 
@@ -63,6 +65,13 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    userProfile: { id: 'member-1' },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -88,6 +97,17 @@ vi.mock('@/service/tag', () => ({
   fetchTagList: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@/service/use-common', () => ({
+  useMembers: () => ({
+    data: {
+      accounts: [
+        { id: 'member-1', name: 'Alice', avatar_url: null, status: 'active' },
+        { id: 'member-2', name: 'Bob', avatar_url: null, status: 'active' },
+      ],
+    },
+  }),
+}))
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
@@ -109,7 +129,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: <T,>(response: T) => response,
   useDeleteAppMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useToggleAppStarMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
@@ -198,6 +223,7 @@ describe('App List Browsing Flow', () => {
     mockIsCurrentWorkspaceEditor = true
     mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -228,7 +254,7 @@ describe('App List Browsing Flow', () => {
       mockPages = [createPage([])]
       renderList()
 
-      expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
+      expect(screen.getByText('app.firstEmpty.title')).toBeInTheDocument()
     })
 
     it('should transition from loading to content when data loads', () => {
@@ -276,38 +302,42 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByText('A powerful AI assistant')).toBeInTheDocument()
     })
 
-    it('should show the NewAppCard for workspace editors', () => {
+    it('should show the create menu for workspace editors', () => {
       mockPages = [createPage([
         createMockApp({ name: 'Test App' }),
       ])]
 
       renderList()
 
-      expect(screen.getByText('app.createApp')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
     })
 
-    it('should hide NewAppCard when user is not a workspace editor', () => {
+    it('should hide the create menu when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       mockPages = [createPage([
         createMockApp({ name: 'Test App' }),
       ])]
 
       renderList()
 
-      expect(screen.queryByText('app.createApp')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.newApp.startFromBlank' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.newApp.startFromTemplate' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.importDSL' })).not.toBeInTheDocument()
     })
   })
 
-  // -- Footer visibility --
-  describe('Footer Visibility', () => {
-    it('should show footer when branding is disabled', () => {
+  // -- Legacy footer removal --
+  describe('Legacy Footer', () => {
+    it('should not show the legacy footer when branding is disabled', () => {
       mockSystemFeatures = { ...mockSystemFeatures, branding: { enabled: false } }
       mockPages = [createPage([createMockApp()])]
 
       renderList()
 
-      expect(screen.getByText('app.join')).toBeInTheDocument()
-      expect(screen.getByText('app.communityIntro')).toBeInTheDocument()
+      expect(screen.queryByText('app.join')).not.toBeInTheDocument()
+      expect(screen.queryByText('app.communityIntro')).not.toBeInTheDocument()
     })
 
     it('should hide footer when branding is enabled', () => {
@@ -329,8 +359,9 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
 
-    it('should hide drag-drop hint for non-editors', () => {
+    it('should hide drag-drop hint without app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       mockPages = [createPage([createMockApp()])]
       renderList()
 
@@ -340,16 +371,18 @@ describe('App List Browsing Flow', () => {
 
   // -- Tab navigation --
   describe('Tab Navigation', () => {
-    it('should render all category tabs', () => {
+    it('should render all category options', async () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.getByText('app.types.all')).toBeInTheDocument()
-      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
-      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
-      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
-      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.types' }))
+
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.all' })).toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' })).toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' })).toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' })).toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' })).toBeInTheDocument()
+      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' })).toBeInTheDocument()
     })
   })
 
@@ -378,23 +411,22 @@ describe('App List Browsing Flow', () => {
     })
   })
 
-  // -- "Created by me" filter --
-  describe('Created By Me Filter', () => {
-    it('should render the "created by me" checkbox', () => {
+  // -- Creators filter --
+  describe('Creators Filter', () => {
+    it('should render the creators filter', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
     })
 
-    it('should toggle the "created by me" filter on click', () => {
+    it('should open the creators filter menu', () => {
       mockPages = [createPage([createMockApp()])]
       renderList()
 
-      const checkbox = screen.getByText('app.showMyCreatedAppsOnly')
-      fireEvent.click(checkbox)
+      fireEvent.click(screen.getByRole('button', { name: 'app.studio.filters.creators' }))
 
-      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Bob/ })).toBeInTheDocument()
     })
   })
 

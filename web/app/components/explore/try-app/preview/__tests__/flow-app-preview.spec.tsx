@@ -173,7 +173,7 @@ describe('FlowAppPreview', () => {
       const { container } = render(<FlowAppPreview appId="test-app-id" />)
 
       const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('h-full', 'w-full')
+      expect(wrapper).toHaveClass('size-full')
     })
   })
 })

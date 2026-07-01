@@ -1,0 +1,49 @@
+name: Hotfix Cherry-Pick Provenance
+
+on:
+  pull_request:
+    branches:
+      - 'hotfix/**'
+      - 'lts/**'
+    types:
+      - opened
+      - edited
+      - reopened
+      - ready_for_review
+      - synchronize
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotfix-cherry-pick-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check-cherry-pick-provenance:
+    name: Require cherry-pick provenance
+    runs-on: depot-ubuntu-24.04
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR base, PR head, and main
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          git fetch --no-tags --prune origin \
+            "+refs/heads/main:refs/remotes/origin/main" \
+            "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" \
+            "+refs/pull/${PR_NUMBER}/head:refs/remotes/pull/${PR_NUMBER}/head"
+
+      - name: Load checker from main
+        run: git show origin/main:.github/scripts/check-hotfix-cherry-picks.sh > "$RUNNER_TEMP/check-hotfix-cherry-picks.sh"
+
+      - name: Check PR commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MAIN_REF: origin/main
+        run: bash "$RUNNER_TEMP/check-hotfix-cherry-picks.sh"

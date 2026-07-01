@@ -2,7 +2,7 @@ import json
 import logging
 import math
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, override
 
 import tablestore  # type: ignore
 from pydantic import BaseModel, model_validator
@@ -77,14 +77,17 @@ class TableStoreVector(BaseVector):
                 docs.append(Document(page_content=kv[Field.CONTENT_KEY], metadata=metadata))
         return docs
 
+    @override
     def get_type(self) -> str:
         return VectorType.TABLESTORE
 
+    @override
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection(dimension)
         self.add_texts(documents=texts, embeddings=embeddings, **kwargs)
 
+    @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
 
@@ -99,6 +102,7 @@ class TableStoreVector(BaseVector):
             )
         return uuids
 
+    @override
     def text_exists(self, id: str) -> bool:
         result = self._tablestore_client.get_row(
             table_name=self._table_name, primary_key=[("id", id)], columns_to_get=["id"]
@@ -109,19 +113,23 @@ class TableStoreVector(BaseVector):
 
         return return_row is not None
 
+    @override
     def delete_by_ids(self, ids: list[str]):
         if not ids:
             return
         for id in ids:
             self._delete_row(id=id)
 
+    @override
     def get_ids_by_metadata_field(self, key: str, value: str):
         return self._search_by_metadata(key, value)
 
+    @override
     def delete_by_metadata_field(self, key: str, value: str):
         ids = self.get_ids_by_metadata_field(key, value)
         self.delete_by_ids(ids)
 
+    @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -131,6 +139,7 @@ class TableStoreVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._search_by_vector(query_vector, filtered_list, top_k, score_threshold)
 
+    @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
@@ -140,6 +149,7 @@ class TableStoreVector(BaseVector):
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._search_by_full_text(query, filtered_list, top_k, score_threshold)
 
+    @override
     def delete(self):
         self._delete_table_if_exist()
 
@@ -393,6 +403,7 @@ class TableStoreVector(BaseVector):
 
 
 class TableStoreVectorFactory(AbstractVectorFactory):
+    @override
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TableStoreVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]

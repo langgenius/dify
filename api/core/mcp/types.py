@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, FileUrl, RootModel
+from pydantic import BaseModel, ConfigDict, Field, FileUrl, RootModel, model_validator
 from pydantic.networks import AnyUrl, UrlConstraints
 
 """
@@ -173,7 +173,21 @@ class JSONRPCError(BaseModel):
 
 
 class JSONRPCMessage(RootModel[JSONRPCRequest | JSONRPCNotification | JSONRPCResponse | JSONRPCError]):
-    pass
+    @model_validator(mode="before")
+    @classmethod
+    def _select_message_type(
+        cls, value: Any
+    ) -> JSONRPCRequest | JSONRPCNotification | JSONRPCResponse | JSONRPCError | Any:
+        if isinstance(value, dict):
+            if "result" in value:
+                return JSONRPCResponse.model_validate(value)
+            if "error" in value:
+                return JSONRPCError.model_validate(value)
+            if "method" in value:
+                if "id" in value:
+                    return JSONRPCRequest.model_validate(value)
+                return JSONRPCNotification.model_validate(value)
+        return value
 
 
 class EmptyResult(Result):

@@ -84,7 +84,7 @@ const ConditionNumberInput = ({
           )}
         >
           {capitalize(numberVarType)}
-          <RiArrowDownSLine className="ml-px h-3.5 w-3.5" />
+          <RiArrowDownSLine className="ml-px size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-start"
@@ -138,7 +138,7 @@ const ConditionNumberInput = ({
                 {
                   !value && (
                     <div className="flex h-6 items-center p-1 text-[13px] text-components-input-text-placeholder">
-                      <Variable02 className="mr-1 h-4 w-4 shrink-0" />
+                      <Variable02 className="mr-1 size-4 shrink-0" />
                       <div className="w-0 grow truncate">{t('nodes.ifElse.selectVariable', { ns: 'workflow' })}</div>
                     </div>
                   )

@@ -7,8 +7,8 @@ import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 import { useGetTryAppFlowPreview } from '@/service/use-try-app'
 
 type Props = {
-  appId: string
-  className?: string
+  readonly appId: string
+  readonly className?: string
 }
 
 const FlowAppPreview: FC<Props> = ({
@@ -27,7 +27,7 @@ const FlowAppPreview: FC<Props> = ({
   if (!data)
     return null
   return (
-    <div className="h-full w-full">
+    <div className="size-full">
       <WorkflowPreview
         {...data.graph}
         className={cn(className)}

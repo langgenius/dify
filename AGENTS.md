@@ -9,6 +9,7 @@ The codebase is split into:
 - **Backend API** (`/api`): Python Flask application organized with Domain-Driven Design
 - **Frontend Web** (`/web`): Next.js application using TypeScript and React
 - **Docker deployment** (`/docker`): Containerized deployment configurations
+- **Dify Agent Backend** (`/dify-agent`): Backend services for managing and executing agent
 
 ## Backend Workflow
 

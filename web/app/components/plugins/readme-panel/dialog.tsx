@@ -42,7 +42,7 @@ export function ReadmeDialog({
           closeButton={(
             <DialogCloseButton
               aria-label={t('operation.close', { ns: 'common' })}
-              className="static h-8 w-8 rounded-lg"
+              className="static size-8 rounded-lg"
             />
           )}
         />

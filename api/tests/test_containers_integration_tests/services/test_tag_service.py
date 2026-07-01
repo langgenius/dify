@@ -246,7 +246,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result = TagService.get_tags("knowledge", tenant.id)
+        result = TagService.get_tags(db_session_with_containers, "knowledge", tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -299,7 +299,7 @@ class TestTagService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test with keyword filter
-        result = TagService.get_tags("app", tenant.id, keyword="development")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="development")
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -310,7 +310,7 @@ class TestTagService:
             assert "development" in tag_result.name.lower()
 
         # Verify no results for non-matching keyword
-        result_no_match = TagService.get_tags("app", tenant.id, keyword="nonexistent")
+        result_no_match = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="nonexistent")
         assert len(result_no_match) == 0
 
     def test_get_tags_with_special_characters_in_keyword(
@@ -371,22 +371,22 @@ class TestTagService:
         db_session_with_containers.commit()
 
         # Act & Assert: Test 1 - Search with % character
-        result = TagService.get_tags("app", tenant.id, keyword="50%")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="50%")
         assert len(result) == 1
         assert result[0].name == "50% discount"
 
         # Test 2 - Search with _ character
-        result = TagService.get_tags("app", tenant.id, keyword="test_data")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="test_data")
         assert len(result) == 1
         assert result[0].name == "test_data_tag"
 
         # Test 3 - Search with \ character
-        result = TagService.get_tags("app", tenant.id, keyword="path\\to\\tag")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="path\\to\\tag")
         assert len(result) == 1
         assert result[0].name == "path\\to\\tag"
 
         # Test 4 - Search with % should NOT match 100% (verifies escaping works)
-        result = TagService.get_tags("app", tenant.id, keyword="50%")
+        result = TagService.get_tags(db_session_with_containers, "app", tenant.id, keyword="50%")
         assert len(result) == 1
         assert all("50%" in item.name for item in result)
 
@@ -405,7 +405,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result = TagService.get_tags("knowledge", tenant.id)
+        result = TagService.get_tags(db_session_with_containers, "knowledge", tenant.id)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -449,7 +449,7 @@ class TestTagService:
 
         # Act: Execute the method under test
         tag_ids = [tag.id for tag in tags]
-        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, tag_ids)
+        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, tag_ids, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -485,12 +485,69 @@ class TestTagService:
         )
 
         # Act: Execute the method under test with empty tag IDs
-        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, [])
+        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, [], db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
         assert len(result) == 0
         assert isinstance(result, list)
+
+    def test_get_target_ids_by_tag_ids_match_all(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """
+        Test target ID retrieval when every requested tag must be bound to the same target.
+
+        This test verifies:
+        - Targets with only one requested tag are excluded
+        - Targets with all requested tags are returned once
+        - Missing requested tags make the filter unsatisfiable
+        """
+        # Arrange: Create test data
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        tags = self._create_test_tags(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id, "knowledge", 2
+        )
+        dataset_with_all_tags = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id
+        )
+        dataset_with_one_tag = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, tenant.id
+        )
+        self._create_test_tag_bindings(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            tags,
+            dataset_with_all_tags.id,
+            tenant.id,
+        )
+        self._create_test_tag_bindings(
+            db_session_with_containers,
+            mock_external_service_dependencies,
+            tags[:1],
+            dataset_with_one_tag.id,
+            tenant.id,
+        )
+
+        # Act: Execute the method under test
+        tag_ids = [tag.id for tag in tags]
+        result = TagService.get_target_ids_by_tag_ids(
+            "knowledge", tenant.id, tag_ids, db_session_with_containers, match_all=True
+        )
+
+        # Assert: Verify the expected outcomes
+        assert result == [dataset_with_all_tags.id]
+
+        missing_tag_result = TagService.get_target_ids_by_tag_ids(
+            "knowledge",
+            tenant.id,
+            [tags[0].id, str(uuid.uuid4())],
+            db_session_with_containers,
+            match_all=True,
+        )
+        assert missing_tag_result == []
 
     def test_get_target_ids_by_tag_ids_no_matching_tags(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -514,7 +571,9 @@ class TestTagService:
         non_existent_tag_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
         # Act: Execute the method under test
-        result = TagService.get_target_ids_by_tag_ids("knowledge", tenant.id, non_existent_tag_ids)
+        result = TagService.get_target_ids_by_tag_ids(
+            "knowledge", tenant.id, non_existent_tag_ids, db_session_with_containers
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -548,7 +607,7 @@ class TestTagService:
         db_session_with_containers.commit()
 
         # Act: Execute the method under test
-        result = TagService.get_tag_by_tag_name("app", tenant.id, "python_tag")
+        result = TagService.get_tag_by_tag_name("app", tenant.id, "python_tag", db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -574,7 +633,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test with non-existent tag name
-        result = TagService.get_tag_by_tag_name("knowledge", tenant.id, "nonexistent_tag")
+        result = TagService.get_tag_by_tag_name("knowledge", tenant.id, "nonexistent_tag", db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -599,8 +658,8 @@ class TestTagService:
         )
 
         # Act: Execute the method under test with empty parameters
-        result_empty_type = TagService.get_tag_by_tag_name("", tenant.id, "test_tag")
-        result_empty_name = TagService.get_tag_by_tag_name("knowledge", tenant.id, "")
+        result_empty_type = TagService.get_tag_by_tag_name("", tenant.id, "test_tag", db_session_with_containers)
+        result_empty_name = TagService.get_tag_by_tag_name("knowledge", tenant.id, "", db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result_empty_type is not None
@@ -637,7 +696,7 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result = TagService.get_tags_by_target_id("app", tenant.id, app.id)
+        result = TagService.get_tags_by_target_id("app", tenant.id, app.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -669,7 +728,7 @@ class TestTagService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, tenant.id)
 
         # Act: Execute the method under test
-        result = TagService.get_tags_by_target_id("app", tenant.id, app.id)
+        result = TagService.get_tags_by_target_id("app", tenant.id, app.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -694,7 +753,7 @@ class TestTagService:
         tag_args = SaveTagPayload(name="test_tag_name", type="knowledge")
 
         # Act: Execute the method under test
-        result = TagService.save_tags(tag_args)
+        result = TagService.save_tags(tag_args, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -732,11 +791,11 @@ class TestTagService:
 
         # Create first tag
         tag_args = SaveTagPayload(name="duplicate_tag", type="app")
-        TagService.save_tags(tag_args)
+        TagService.save_tags(tag_args, db_session_with_containers)
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            TagService.save_tags(tag_args)
+            TagService.save_tags(tag_args, db_session_with_containers)
         assert "Tag name already exists" in str(exc_info.value)
 
     def test_update_tags_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -756,13 +815,13 @@ class TestTagService:
 
         # Create a tag to update
         tag_args = SaveTagPayload(name="original_name", type="knowledge")
-        tag = TagService.save_tags(tag_args)
+        tag = TagService.save_tags(tag_args, db_session_with_containers)
 
         # Update args
-        update_args = UpdateTagPayload(name="updated_name", type="knowledge")
+        update_args = UpdateTagPayload(name="updated_name")
 
         # Act: Execute the method under test
-        result = TagService.update_tags(update_args, tag.id)
+        result = TagService.update_tags(update_args, tag.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -799,11 +858,11 @@ class TestTagService:
 
         non_existent_tag_id = str(uuid.uuid4())
 
-        update_args = UpdateTagPayload(name="updated_name", type="knowledge")
+        update_args = UpdateTagPayload(name="updated_name")
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.update_tags(update_args, non_existent_tag_id)
+            TagService.update_tags(update_args, non_existent_tag_id, db_session_with_containers)
         assert "Tag not found" in str(exc_info.value)
 
     def test_update_tags_duplicate_name_error(
@@ -824,17 +883,17 @@ class TestTagService:
 
         # Create two tags
         tag1_args = SaveTagPayload(name="first_tag", type="app")
-        tag1 = TagService.save_tags(tag1_args)
+        tag1 = TagService.save_tags(tag1_args, db_session_with_containers)
 
         tag2_args = SaveTagPayload(name="second_tag", type="app")
-        tag2 = TagService.save_tags(tag2_args)
+        tag2 = TagService.save_tags(tag2_args, db_session_with_containers)
 
         # Try to update second tag with first tag's name
-        update_args = UpdateTagPayload(name="first_tag", type="app")
+        update_args = UpdateTagPayload(name="first_tag")
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            TagService.update_tags(update_args, tag2.id)
+            TagService.update_tags(update_args, tag2.id, db_session_with_containers)
         assert "Tag name already exists" in str(exc_info.value)
 
     def test_get_tag_binding_count_success(
@@ -866,8 +925,8 @@ class TestTagService:
         )
 
         # Act: Execute the method under test
-        result_tag_with_bindings = TagService.get_tag_binding_count(tags[0].id)
-        result_tag_without_bindings = TagService.get_tag_binding_count(tags[1].id)
+        result_tag_with_bindings = TagService.get_tag_binding_count(tags[0].id, db_session_with_containers)
+        result_tag_without_bindings = TagService.get_tag_binding_count(tags[1].id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result_tag_with_bindings == 1
@@ -895,7 +954,7 @@ class TestTagService:
         non_existent_tag_id = str(uuid.uuid4())
 
         # Act: Execute the method under test
-        result = TagService.get_tag_binding_count(non_existent_tag_id)
+        result = TagService.get_tag_binding_count(non_existent_tag_id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         assert result == 0
@@ -935,7 +994,7 @@ class TestTagService:
         assert binding_before is not None
 
         # Act: Execute the method under test
-        TagService.delete_tag(tag.id)
+        TagService.delete_tag(tag.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # Verify tag was deleted
@@ -967,7 +1026,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.delete_tag(non_existent_tag_id)
+            TagService.delete_tag(non_existent_tag_id, db_session_with_containers)
         assert "Tag not found" in str(exc_info.value)
 
     def test_save_tag_binding_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
@@ -997,7 +1056,7 @@ class TestTagService:
         binding_payload = TagBindingCreatePayload(
             type="knowledge", target_id=dataset.id, tag_ids=[tag.id for tag in tags]
         )
-        TagService.save_tag_binding(binding_payload)
+        TagService.save_tag_binding(binding_payload, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
 
@@ -1039,10 +1098,10 @@ class TestTagService:
 
         # Create first binding
         binding_payload = TagBindingCreatePayload(type="app", target_id=app.id, tag_ids=[tag.id])
-        TagService.save_tag_binding(binding_payload)
+        TagService.save_tag_binding(binding_payload, db_session_with_containers)
 
         # Act: Try to create duplicate binding
-        TagService.save_tag_binding(binding_payload)
+        TagService.save_tag_binding(binding_payload, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
 
@@ -1122,7 +1181,7 @@ class TestTagService:
         delete_payload = TagBindingDeletePayload(
             type="knowledge", target_id=dataset.id, tag_ids=[tag.id for tag in tags]
         )
-        TagService.delete_tag_binding(delete_payload)
+        TagService.delete_tag_binding(delete_payload, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # Verify tag bindings were deleted
@@ -1158,7 +1217,7 @@ class TestTagService:
 
         # Act: Try to delete non-existent binding
         delete_payload = TagBindingDeletePayload(type="app", target_id=app.id, tag_ids=[tag.id])
-        TagService.delete_tag_binding(delete_payload)
+        TagService.delete_tag_binding(delete_payload, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # No error should be raised, and database state should remain unchanged
@@ -1189,7 +1248,7 @@ class TestTagService:
         dataset = self._create_test_dataset(db_session_with_containers, mock_external_service_dependencies, tenant.id)
 
         # Act: Execute the method under test
-        TagService.check_target_exists("knowledge", dataset.id)
+        TagService.check_target_exists("knowledge", dataset.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # No exception should be raised for existing dataset
@@ -1217,7 +1276,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.check_target_exists("knowledge", non_existent_dataset_id)
+            TagService.check_target_exists("knowledge", non_existent_dataset_id, db_session_with_containers)
         assert "Dataset not found" in str(exc_info.value)
 
     def test_check_target_exists_app_success(
@@ -1241,7 +1300,7 @@ class TestTagService:
         app = self._create_test_app(db_session_with_containers, mock_external_service_dependencies, tenant.id)
 
         # Act: Execute the method under test
-        TagService.check_target_exists("app", app.id)
+        TagService.check_target_exists("app", app.id, db_session_with_containers)
 
         # Assert: Verify the expected outcomes
         # No exception should be raised for existing app
@@ -1269,7 +1328,7 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.check_target_exists("app", non_existent_app_id)
+            TagService.check_target_exists("app", non_existent_app_id, db_session_with_containers)
         assert "App not found" in str(exc_info.value)
 
     def test_check_target_exists_invalid_type(
@@ -1295,5 +1354,5 @@ class TestTagService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            TagService.check_target_exists("invalid_type", non_existent_target_id)
+            TagService.check_target_exists("invalid_type", non_existent_target_id, db_session_with_containers)
         assert "Invalid binding type" in str(exc_info.value)

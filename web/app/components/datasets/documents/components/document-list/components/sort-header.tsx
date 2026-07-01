@@ -30,7 +30,7 @@ const SortHeader: FC<SortHeaderProps> = React.memo(({
       {label}
       <span
         className={cn(
-          'ml-0.5 i-ri-arrow-down-line h-3 w-3 transition-all',
+          'ml-0.5 i-ri-arrow-down-line size-3 transition-all',
           isActive ? 'text-text-tertiary' : 'text-text-disabled',
           isActive && !isDesc ? 'rotate-180' : '',
         )}

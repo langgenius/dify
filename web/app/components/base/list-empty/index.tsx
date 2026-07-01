@@ -21,7 +21,7 @@ const ListEmpty = ({
         <div className="relative flex grow items-center justify-center gap-2 self-stretch rounded-[10px] border-[0.5px]
           border-components-card-border bg-components-card-bg p-1 shadow-lg"
         >
-          {icon || <Variable02 className="h-5 w-5 shrink-0 text-text-accent" />}
+          {icon || <Variable02 className="size-5 shrink-0 text-text-accent" />}
           <VerticalLine className="absolute top-1/2 -right-px -translate-y-1/4" />
           <VerticalLine className="absolute top-1/2 -left-px -translate-y-1/4" />
           <HorizontalLine className="absolute top-0 left-3/4 -translate-x-1/4 -translate-y-1/2" />

@@ -130,7 +130,7 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
 
     # Disable `.env` loading to ensure test stability across environments
-    flask_app.config.from_mapping(DifyConfig(_env_file=None).model_dump())  # pyright: ignore
+    flask_app.config.from_mapping(DifyConfig(_env_file=None).model_dump())
     config = flask_app.config
 
     # configs read from pydantic-settings

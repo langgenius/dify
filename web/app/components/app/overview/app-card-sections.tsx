@@ -226,7 +226,7 @@ export const AppCardUrlSection = ({
   isApp,
   accessibleUrl,
   showConfirmDelete,
-  isCurrentWorkspaceManager,
+  canRegenerateUrl,
   genLoading,
   onRegenerate,
   onShowRegenerateConfirm,
@@ -236,7 +236,7 @@ export const AppCardUrlSection = ({
   isApp: boolean
   accessibleUrl: string
   showConfirmDelete: boolean
-  isCurrentWorkspaceManager: boolean
+  canRegenerateUrl: boolean
   genLoading: boolean
   onRegenerate: () => void
   onShowRegenerateConfirm: () => void
@@ -250,7 +250,7 @@ export const AppCardUrlSection = ({
     </div>
     <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
       <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
-        <div className="overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap text-text-secondary">
+        <div className="truncate text-xs font-medium text-text-secondary">
           {accessibleUrl}
         </div>
       </div>
@@ -259,7 +259,7 @@ export const AppCardUrlSection = ({
       {isApp && <Divider type="vertical" className="mx-0.5! h-3.5! shrink-0" />}
       <AlertDialog open={showConfirmDelete} onOpenChange={open => !open && onHideRegenerateConfirm()}>
         <AlertDialogContent>
-          <div className="flex flex-col items-start gap-2 self-stretch pt-6 pr-6 pb-4 pl-6">
+          <div className="flex flex-col items-start gap-2 self-stretch px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
               {t('overview.appInfo.regenerate', { ns: 'appOverview' })}
             </AlertDialogTitle>
@@ -277,13 +277,13 @@ export const AppCardUrlSection = ({
           </AlertDialogActions>
         </AlertDialogContent>
       </AlertDialog>
-      {isApp && isCurrentWorkspaceManager && (
+      {isApp && canRegenerateUrl && (
         <MaybeTooltip content={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}>
           <div
-            className="h-6 w-6 cursor-pointer rounded-md hover:bg-state-base-hover"
+            className="size-6 cursor-pointer rounded-md hover:bg-state-base-hover"
             onClick={onShowRegenerateConfirm}
           >
-            <div className={`h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`} />
+            <div className={`size-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`} />
           </div>
         </MaybeTooltip>
       )}
@@ -313,12 +313,12 @@ export const AppCardAccessControlSection = ({
         onClick={onClick}
       >
         <div className="flex grow items-center gap-x-1.5 pr-1">
-          <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
+          <Icon className="size-4 shrink-0 text-text-secondary" />
           <p className="system-sm-medium text-text-secondary">{t(labelKey, { ns: 'app' })}</p>
         </div>
         {!isAppAccessSet && <p className="shrink-0 system-xs-regular text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
-        <div className="flex h-4 w-4 shrink-0 items-center justify-center">
-          <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
+        <div className="flex size-4 shrink-0 items-center justify-center">
+          <RiArrowRightSLine className="size-4 text-text-quaternary" />
         </div>
       </div>
     </div>
@@ -343,7 +343,7 @@ export const AppCardOperations = ({
           show={disabled}
         >
           <div className="flex items-center justify-center gap-px">
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className="size-3.5" />
             <div className={`${disabled ? 'text-components-button-ghost-text-disabled' : 'text-text-tertiary'} px-[3px] system-xs-medium`}>{label}</div>
           </div>
         </MaybeTooltip>
@@ -366,7 +366,7 @@ export const AppCardOperations = ({
               >
                 <div className="flex h-full min-w-[88px] items-center justify-center rounded-l-md px-2 hover:bg-components-button-secondary-bg-hover">
                   <div className="flex items-center justify-center gap-px">
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="size-3.5" />
                     <div className="px-[3px] system-xs-medium">{label}</div>
                   </div>
                 </div>
@@ -378,7 +378,7 @@ export const AppCardOperations = ({
             />
             <Button
               aria-label={launchConfigAction.label}
-              className="w-8 rounded-l-none border-0 px-0 py-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg-hover"
+              className="w-8 rounded-l-none border-0 p-0 shadow-none backdrop-blur-none hover:bg-components-button-secondary-bg-hover"
               size="small"
               variant="secondary"
               onClick={launchConfigAction.onClick}
@@ -386,7 +386,7 @@ export const AppCardOperations = ({
             >
               <div className="flex h-full w-8 shrink-0 items-center justify-center rounded-r-md">
                 <div className="flex items-center justify-center gap-px">
-                  <RiSettings2Line className="h-3.5 w-3.5" aria-hidden="true" />
+                  <RiSettings2Line className="size-3.5" aria-hidden="true" />
                 </div>
               </div>
             </Button>

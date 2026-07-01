@@ -344,7 +344,7 @@ class TestDispatchRouting:
                 proxy._dispatch()
 
         # Assert
-        mock_features.assert_called_once_with(TENANT_ID)
+        mock_features.assert_called_once_with(TENANT_ID, exclude_vector_space=True)
 
 
 class TestBaseRouterHelpers:

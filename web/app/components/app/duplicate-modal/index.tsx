@@ -78,7 +78,7 @@ const DuplicateAppModal = ({
             aria-label={t('operation.close', { ns: 'common' })}
             onClick={onHide}
           >
-            <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
           </button>
           <div className="relative mt-3 mb-9 text-xl leading-[30px] font-semibold text-text-primary">{t('duplicateTitle', { ns: 'app' })}</div>
           <div className="mb-9 system-sm-regular text-text-secondary">
@@ -109,15 +109,13 @@ const DuplicateAppModal = ({
       </Dialog>
       {showAppIconPicker && (
         <AppIconPicker
+          open={showAppIconPicker}
+          initialEmoji={appIcon.type === 'emoji'
+            ? { icon: appIcon.icon, background: appIcon.background }
+            : undefined}
+          onOpenChange={setShowAppIconPicker}
           onSelect={(payload) => {
             setAppIcon(payload)
-            setShowAppIconPicker(false)
-          }}
-          onClose={() => {
-            setAppIcon(icon_type === 'image'
-              ? { type: 'image', url: icon_url!, fileId: icon }
-              : { type: 'emoji', icon, background: icon_background! })
-            setShowAppIconPicker(false)
           }}
         />
       )}

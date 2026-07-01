@@ -54,6 +54,20 @@ describe('TagInput', () => {
       expect(screen.getByPlaceholderText('Custom placeholder'))!.toBeInTheDocument()
     })
 
+    it('should apply input className and expose visible text for CSS sizing', async () => {
+      renderTagInput({ inputClassName: 'custom-input', placeholder: 'Tag' })
+      const input = screen.getByRole('textbox')
+      const inputContainer = input.parentElement
+
+      expect(input)!.toHaveClass('custom-input')
+      expect(input)!.not.toHaveAttribute('style')
+      expect(inputContainer).toHaveAttribute('data-input-value', 'Tag')
+
+      await userEvent.type(input, 'longer')
+
+      expect(inputContainer).toHaveAttribute('data-input-value', 'longer')
+    })
+
     it('should hide input when add is disabled', () => {
       renderTagInput({ disableAdd: true })
 

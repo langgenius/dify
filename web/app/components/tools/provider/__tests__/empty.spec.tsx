@@ -42,18 +42,18 @@ describe('Empty', () => {
 
   // Tests for different type prop values
   describe('Type Props', () => {
-    it('should render with Custom type and include link to /tools?category=api', () => {
+    it('should render with Custom type and include link to Swagger API as Tool', () => {
       render(<Empty type={ToolTypeEnum.Custom} />)
 
-      const link = document.querySelector('a[href="/tools?category=api"]')
+      const link = document.querySelector('a[href="/integrations/tools/api"]')
       expect(link).toBeInTheDocument()
       expect(link).toHaveAttribute('target', '_blank')
     })
 
-    it('should render with MCP type and include link to /tools?category=mcp', () => {
+    it('should render with MCP type and include link to the MCP route', () => {
       render(<Empty type={ToolTypeEnum.MCP} />)
 
-      const link = document.querySelector('a[href="/tools?category=mcp"]')
+      const link = document.querySelector('a[href="/integrations/tools/mcp"]')
       expect(link).toBeInTheDocument()
       expect(link).toHaveAttribute('target', '_blank')
     })
@@ -61,8 +61,8 @@ describe('Empty', () => {
     it('should render arrow icon for types with links', () => {
       render(<Empty type={ToolTypeEnum.Custom} />)
 
-      // Check for RiArrowRightUpLine icon (has class h-3 w-3)
-      const arrowIcon = document.querySelector('.h-3.w-3')
+      // Check for RiArrowRightUpLine icon (has class size-3)
+      const arrowIcon = document.querySelector('.size-3')
       expect(arrowIcon).toBeInTheDocument()
     })
 
@@ -73,11 +73,18 @@ describe('Empty', () => {
       expect(link).not.toBeInTheDocument()
     })
 
-    it('should not render link for Workflow type', () => {
+    it('should render workflow empty guide with studio and docs links', () => {
       render(<Empty type={ToolTypeEnum.Workflow} />)
 
-      const link = document.querySelector('a')
-      expect(link).not.toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.title')).toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.description')).toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.step1')).toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.step2')).toBeInTheDocument()
+      expect(screen.getByText('tools.workflowToolEmpty.step3')).toBeInTheDocument()
+
+      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.goToStudio/i })).toHaveAttribute('href', '/apps')
+      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i })).toHaveAttribute('target', '_blank')
+      expect(screen.getByRole('link', { name: /tools\.workflowToolEmpty\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow-tool')
     })
   })
 
@@ -95,7 +102,7 @@ describe('Empty', () => {
       render(<Empty type={ToolTypeEnum.Custom} isAgent />)
 
       // Arrow icon should not be present when isAgent is true
-      const arrowIcon = document.querySelector('.h-3.w-3')
+      const arrowIcon = document.querySelector('.size-3')
       expect(arrowIcon).not.toBeInTheDocument()
     })
   })

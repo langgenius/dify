@@ -86,7 +86,7 @@ const Item: FC<ItemProps> = ({
                 setShowSettingsModal(true)
               }}
             >
-              <RiEditLine className="h-4 w-4 shrink-0 text-text-tertiary" />
+              <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
             </ActionButton>
           )
         }
@@ -98,7 +98,7 @@ const Item: FC<ItemProps> = ({
               onMouseEnter={() => setIsDeleting(true)}
               onMouseLeave={() => setIsDeleting(false)}
             >
-              <RiDeleteBinLine className={cn('h-4 w-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')} />
+              <RiDeleteBinLine className={cn('size-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')} />
             </ActionButton>
           )
         }

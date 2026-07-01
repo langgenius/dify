@@ -161,7 +161,7 @@ const Prompt: FC<IPromptProps> = ({
           onClick={handleAddMessage}
           className="mt-3 w-full"
         >
-          <RiAddLine className="mr-2 h-4 w-4" />
+          <RiAddLine className="mr-2 size-4" />
           <div>{t('promptMode.operation.addMessage', { ns: 'appDebug' })}</div>
         </Button>
       )}

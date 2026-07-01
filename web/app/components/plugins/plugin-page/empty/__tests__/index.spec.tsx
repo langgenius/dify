@@ -1,10 +1,10 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
 import type { FilterState } from '../../filter-management'
-import type { SystemFeatures } from '@/types/feature'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import { InstallationScope } from '@/types/feature'
+import { InstallationScope } from '@/features/system-features/constants'
 
 // ==================== Imports (after mocks) ====================
 
@@ -32,7 +32,7 @@ const {
         plugin_installation_scope: 'all' as const,
         restrict_to_marketplace_only: false,
       },
-    } as Partial<SystemFeatures>,
+    } as Partial<GetSystemFeaturesResponse>,
     pluginList: { plugins: [] as Array<{ id: string }> } as { plugins: Array<{ id: string }> } | undefined,
   }
   return {
@@ -105,7 +105,7 @@ const setMockFilters = (filters: Partial<FilterState>) => {
   mockState.filters = { ...mockState.filters, ...filters }
 }
 
-const setMockSystemFeatures = (features: Partial<SystemFeatures>) => {
+const setMockSystemFeatures = (features: Partial<GetSystemFeaturesResponse>) => {
   mockState.systemFeatures = { ...mockState.systemFeatures, ...features }
 }
 
@@ -155,6 +155,63 @@ describe('Empty Component', () => {
       // Assert - line components
       const lines = screen.getAllByTestId('line-component')
       expect(lines).toHaveLength(4)
+    })
+
+    it('should render the Figma trigger empty layout variant', async () => {
+      // Arrange & Act
+      const { container } = render(<Empty contentInset="compact" variant="integrationsTrigger" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.getByText('plugin.list.noTriggerFound')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
+      expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
+      expect(container.querySelector('.i-custom-vender-integrations-trigger-active')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-integrations-trigger')).not.toBeInTheDocument()
+
+      const skeletonGrid = container.querySelector('.grid')
+      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
+
+      const skeletonCards = container.querySelectorAll('.h-\\[72px\\].rounded-lg')
+      expect(skeletonCards).toHaveLength(22)
+
+      const buttons = screen.getAllByRole('button')
+      buttons.forEach(button => expect(button).toHaveClass('h-8', 'w-full', 'justify-start'))
+    })
+
+    it('should render the Figma agent strategy empty layout at the shared center position', async () => {
+      // Arrange & Act
+      const { container } = render(<Empty contentInset="compact" variant="integrationsAgentStrategy" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.getByText('plugin.list.noAgentStrategyFound')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
+      expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
+
+      const skeletonGrid = container.querySelector('.grid')
+      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
+      expect(container.querySelector('.items-center')).toBeInTheDocument()
+      expect(container.querySelector('.-translate-y-7')).not.toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-integrations-agent-strategy-active')).toHaveClass('size-6', 'shrink-0')
+    })
+
+    it('should render the Figma extension empty layout with extension copy', async () => {
+      // Arrange & Act
+      const { container } = render(<Empty contentInset="compact" variant="integrationsExtension" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.getByText('plugin.list.noExtensionFound')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
+
+      const skeletonGrid = container.querySelector('.grid')
+      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
+      expect(skeletonGrid).toHaveStyle({ background: 'radial-gradient(ellipse at 50% 48%, #F3F4F7 0%, #FFFFFF 58%)' })
+      expect(container.querySelector('.i-custom-vender-integrations-extension-active')).toHaveClass('size-6', 'shrink-0')
     })
   })
 
@@ -301,6 +358,19 @@ describe('Empty Component', () => {
       const buttons = screen.queryAllByRole('button')
       expect(buttons).toHaveLength(0)
     })
+
+    it('should render no install methods or drop hint when install permission is unavailable', async () => {
+      // Act
+      render(<Empty canInstall={false} contentInset="compact" variant="integrationsTrigger" />)
+      await flushEffects()
+
+      // Assert
+      expect(screen.queryAllByRole('button')).toHaveLength(0)
+      expect(screen.queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.source.github')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.source.local')).not.toBeInTheDocument()
+      expect(screen.queryByText('plugin.installModal.dropIntegrationToInstall')).not.toBeInTheDocument()
+    })
   })
 
   // ==================== User Interactions Tests ====================
@@ -315,6 +385,20 @@ describe('Empty Component', () => {
 
       // Assert
       expect(mockSetActiveTab).toHaveBeenCalledWith('discover')
+    })
+
+    it('should use the provided marketplace action when marketplace button is clicked', async () => {
+      // Arrange
+      const onSwitchToMarketplace = vi.fn()
+      render(<Empty onSwitchToMarketplace={onSwitchToMarketplace} variant="integrationsExtension" />)
+      await flushEffects()
+
+      // Act
+      fireEvent.click(screen.getByText('plugin.source.marketplace'))
+
+      // Assert
+      expect(onSwitchToMarketplace).toHaveBeenCalledTimes(1)
+      expect(mockSetActiveTab).not.toHaveBeenCalled()
     })
 
     it('should open and close GitHub modal correctly', async () => {
@@ -385,6 +469,20 @@ describe('Empty Component', () => {
 
       // Act - trigger change with empty files
       Object.defineProperty(fileInput, 'files', { value: [], writable: true })
+      fireEvent.change(fileInput)
+
+      // Assert
+      expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
+    })
+
+    it('should ignore selected files when install permission is unavailable', async () => {
+      // Arrange
+      render(<Empty canInstall={false} />)
+      await flushEffects()
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+
+      // Act
+      Object.defineProperty(fileInput, 'files', { value: [createMockFile('blocked-plugin.difypkg')], writable: true })
       fireEvent.change(fileInput)
 
       // Assert

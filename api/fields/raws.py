@@ -1,9 +1,12 @@
+from typing import override
+
 from flask_restx import fields
 
 from graphon.file import File
 
 
 class FilesContainedField(fields.Raw):
+    @override
     def format(self, value):
         return self._format_file_object(value)
 

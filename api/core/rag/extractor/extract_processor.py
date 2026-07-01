@@ -5,7 +5,7 @@ from typing import Union
 from urllib.parse import unquote
 
 from configs import dify_config
-from core.helper import ssrf_proxy
+from core.file import remote_fetcher
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -55,7 +55,7 @@ class ExtractProcessor:
 
     @classmethod
     def load_from_url(cls, url: str, return_text: bool = False) -> Union[list[Document], str]:
-        response = ssrf_proxy.get(url, headers={"User-Agent": USER_AGENT})
+        response = remote_fetcher.make_request("GET", url, headers={"User-Agent": USER_AGENT})
 
         with tempfile.TemporaryDirectory() as temp_dir:
             suffix = Path(url).suffix
@@ -113,7 +113,12 @@ class ExtractProcessor:
                     unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY or ""
 
                     if file_extension in {".xlsx", ".xls"}:
-                        extractor = ExcelExtractor(file_path)
+                        extractor = ExcelExtractor(
+                            file_path,
+                            upload_file.tenant_id,
+                            upload_file.created_by,
+                            upload_file.id,
+                        )
                     elif file_extension == ".pdf":
                         assert upload_file is not None
                         extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
@@ -151,7 +156,12 @@ class ExtractProcessor:
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
                 else:
                     if file_extension in {".xlsx", ".xls"}:
-                        extractor = ExcelExtractor(file_path)
+                        extractor = ExcelExtractor(
+                            file_path,
+                            upload_file.tenant_id,
+                            upload_file.created_by,
+                            upload_file.id,
+                        )
                     elif file_extension == ".pdf":
                         assert upload_file is not None
                         extractor = PdfExtractor(file_path, upload_file.tenant_id, upload_file.created_by)

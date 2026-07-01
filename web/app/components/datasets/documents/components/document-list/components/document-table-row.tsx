@@ -1,19 +1,21 @@
-import type { FC } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { pick } from 'es-toolkit/object'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-label'
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
 import StatusItem from '@/app/components/datasets/documents/status-item'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useTimestamp from '@/hooks/use-timestamp'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { formatNumber } from '@/utils/format'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import DocumentSourceIcon from './document-source-icon'
 import { renderTdValue } from './utils'
 
@@ -23,12 +25,10 @@ type DocumentTableRowProps = {
   doc: LocalDoc
   index: number
   datasetId: string
-  isSelected: boolean
   isGeneralMode: boolean
   isQAMode: boolean
   embeddingAvailable: boolean
   selectedIds: string[]
-  onSelectOne: (docId: string) => void
   onSelectedIdChange: (ids: string[]) => void
   onShowRenameModal: (doc: LocalDoc) => void
   onUpdate: () => void
@@ -44,24 +44,31 @@ const renderCount = (count: number | undefined) => {
   return `${formatNumber((count / 1000).toFixed(1))}k`
 }
 
-const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
+const DocumentTableRow = React.memo(({
   doc,
   index,
   datasetId,
-  isSelected,
   isGeneralMode,
   isQAMode,
   embeddingAvailable,
   selectedIds,
-  onSelectOne,
   onSelectedIdChange,
   onShowRenameModal,
   onUpdate,
-}) => {
+}: DocumentTableRowProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const documentNameId = React.useId()
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset?.maintainer,
+    workspacePermissionKeys,
+  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
 
   const isFile = doc.data_source_type === DataSourceType.FILE
   const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
@@ -71,7 +78,7 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
     router.push(`/datasets/${datasetId}/documents/${doc.id}${queryString ? `?${queryString}` : ''}`)
   }, [router, datasetId, doc.id, queryString])
 
-  const handleCheckboxClick = useCallback((e: React.MouseEvent) => {
+  const stopPropagation = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation()
   }, [])
 
@@ -86,12 +93,11 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
       onClick={handleRowClick}
     >
       <td className="text-left align-middle text-xs text-text-tertiary">
-        <div className="flex items-center" onClick={handleCheckboxClick}>
+        <div className="flex items-center" role="presentation" onClick={stopPropagation} onKeyDown={stopPropagation}>
           <Checkbox
             className="mr-2 shrink-0"
-            checked={isSelected}
-            onCheck={() => onSelectOne(doc.id)}
-            id={`doc-row-${doc.id}`}
+            value={doc.id}
+            aria-labelledby={documentNameId}
           />
           {index + 1}
         </div>
@@ -104,7 +110,7 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
           <Tooltip>
             <TooltipTrigger
               render={(
-                <span className="grow truncate text-sm">{doc.name}</span>
+                <span id={documentNameId} className="grow truncate text-sm">{doc.name}</span>
               )}
             />
             <TooltipContent>
@@ -116,23 +122,26 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
               <SummaryStatus status={doc.summary_index_status} />
             </div>
           )}
-          <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
-            <Tooltip>
-              <TooltipTrigger
-                render={(
-                  <div
-                    className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
-                    onClick={handleRenameClick}
-                  >
-                    <span className="i-ri-edit-line h-4 w-4 text-text-tertiary" />
-                  </div>
-                )}
-              />
-              <TooltipContent>
-                {t('list.table.rename', { ns: 'datasetDocuments' })}
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          {datasetACLCapabilities.canEdit && (
+            <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <button
+                      type="button"
+                      className="cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover"
+                      onClick={handleRenameClick}
+                    >
+                      <span className="i-ri-edit-line size-4 text-text-tertiary" />
+                    </button>
+                  )}
+                />
+                <TooltipContent>
+                  {t('list.table.rename', { ns: 'datasetDocuments' })}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
       </td>
       <td>
@@ -157,6 +166,10 @@ const DocumentTableRow: FC<DocumentTableRowProps> = React.memo(({
           datasetId={datasetId}
           detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form', 'display_status'])}
           onUpdate={onUpdate}
+          canEdit={datasetACLCapabilities.canEdit}
+          canDownload={datasetACLCapabilities.canDocumentDownload}
+          canDelete={datasetACLCapabilities.canDeleteFile}
+          canViewSettings={datasetACLCapabilities.canEdit}
         />
       </td>
     </tr>

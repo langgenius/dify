@@ -37,6 +37,7 @@ describe('dev proxy config', () => {
       '0.0.0.0',
       '--port',
       '8083',
+      '--no-watch',
     ])
 
     // Assert
@@ -45,6 +46,7 @@ describe('dev proxy config', () => {
       envFile: './.env.proxy',
       host: '0.0.0.0',
       port: '8083',
+      watch: false,
     })
   })
 

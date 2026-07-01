@@ -9,10 +9,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 
-export type Props = {
+export type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
-}
+}>
 
 const CSVUploader: FC<Props> = ({
   file,
@@ -106,7 +106,7 @@ const CSVUploader: FC<Props> = ({
                 </button>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className="absolute top-0 left-0 h-full w-full" />}
+            {dragging && <div ref={dragRef} className="absolute top-0 left-0 size-full" />}
           </div>
         )}
         {file && (
@@ -125,7 +125,7 @@ const CSVUploader: FC<Props> = ({
                 aria-label={t('operation.delete', { ns: 'common' })}
                 onClick={removeFile}
               >
-                <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                <RiDeleteBinLine className="size-4 text-text-tertiary" aria-hidden="true" />
               </button>
             </div>
           </div>

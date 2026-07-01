@@ -13,7 +13,7 @@ from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenc
 from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
@@ -21,7 +21,7 @@ from graphon.graph_engine import GraphEngine
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
-from graphon.nodes.human_input.entities import HumanInputNodeData, UserAction
+from graphon.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from graphon.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
@@ -112,7 +112,7 @@ def _build_graph(
         form_content="Awaiting human input",
         inputs=[],
         user_actions=[
-            UserAction(id="continue", title="Continue"),
+            UserActionConfig(id="continue", title="Continue"),
         ],
     )
     human_node = HumanInputNode(
@@ -121,6 +121,7 @@ def _build_graph(
         graph_init_params=params,
         graph_runtime_state=runtime_state,
         form_repository=form_repository,
+        file_reference_factory=DifyFileReferenceFactory(params.run_context),
         runtime=DifyHumanInputNodeRuntime(params.run_context),
     )
 
@@ -204,7 +205,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
             tenant_id=tenant.id,
             name="Test App",
             description="",
-            mode=AppMode.WORKFLOW.value,
+            mode=AppMode.WORKFLOW,
             icon_type=IconType.EMOJI.value,
             icon="rocket",
             icon_background="#4ECDC4",

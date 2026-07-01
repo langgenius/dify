@@ -131,10 +131,10 @@ const CodeEditor: FC<CodeEditorProps> = ({
                     <button
                       type="button"
                       aria-label={t('operation.format', { ns: 'common' })}
-                      className="flex h-6 w-6 items-center justify-center"
+                      className="flex size-6 items-center justify-center"
                       onClick={formatJsonContent}
                     >
-                      <span aria-hidden className="i-ri-indent-increase h-4 w-4 text-text-tertiary" />
+                      <span aria-hidden className="i-ri-indent-increase size-4 text-text-tertiary" />
                     </button>
                   )}
                 />
@@ -147,10 +147,10 @@ const CodeEditor: FC<CodeEditorProps> = ({
                   <button
                     type="button"
                     aria-label={t('operation.copy', { ns: 'common' })}
-                    className="flex h-6 w-6 items-center justify-center"
+                    className="flex size-6 items-center justify-center"
                     onClick={() => copy(value)}
                   >
-                    <span aria-hidden className="i-ri-clipboard-line h-4 w-4 text-text-tertiary" />
+                    <span aria-hidden className="i-ri-clipboard-line size-4 text-text-tertiary" />
                   </button>
                 )}
               />

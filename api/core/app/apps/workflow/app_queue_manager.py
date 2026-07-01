@@ -1,5 +1,6 @@
+from typing import override
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -19,6 +20,7 @@ class WorkflowAppQueueManager(AppQueueManager):
 
         self._app_mode = app_mode
 
+    @override
     def _publish(self, event: AppQueueEvent, pub_from: PublishFrom):
         """
         Publish event to queue
@@ -40,6 +42,3 @@ class WorkflowAppQueueManager(AppQueueManager):
             | QueueWorkflowPartialSuccessEvent,
         ):
             self.stop_listen()
-
-        if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
-            raise GenerateTaskStoppedError()

@@ -7,8 +7,6 @@ import DocumentList from '../list'
 
 // Mock hooks used by DocumentList
 const mockHandleSort = vi.fn()
-const mockOnSelectAll = vi.fn()
-const mockOnSelectOne = vi.fn()
 const mockClearSelection = vi.fn()
 const mockHandleAction = vi.fn(() => vi.fn())
 const mockHandleBatchReIndex = vi.fn()
@@ -24,10 +22,6 @@ vi.mock('../document-list/hooks', () => ({
     handleSort: mockHandleSort,
   })),
   useDocumentSelection: vi.fn(() => ({
-    isAllSelected: false,
-    isSomeSelected: false,
-    onSelectAll: mockOnSelectAll,
-    onSelectOne: mockOnSelectOne,
     hasErrorDocumentsSelected: false,
     downloadableSelectedIds: [],
     clearSelection: mockClearSelection,
@@ -144,11 +138,9 @@ describe('DocumentList', () => {
     })
 
     it('should render select-all area when embeddingAvailable is true', () => {
-      const { container } = render(<DocumentList {...defaultProps} embeddingAvailable={true} />)
+      render(<DocumentList {...defaultProps} embeddingAvailable={true} />)
 
-      // Checkbox component renders inside the first td
-      const firstTd = container.querySelector('thead td')
-      expect(firstTd?.textContent).toContain('#')
+      expect(screen.getByRole('checkbox', { name: 'common.operation.selectAll' })).toBeInTheDocument()
     })
 
     it('should still render # column when embeddingAvailable is false', () => {
@@ -170,6 +162,17 @@ describe('DocumentList', () => {
 
       expect(screen.getByTestId('doc-row-a')).toBeInTheDocument()
       expect(screen.getByTestId('doc-row-b')).toBeInTheDocument()
+    })
+
+    it('should call onSelectedIdChange when select-all is clicked', () => {
+      const docs = [createDoc({ id: 'a', name: 'Doc A' }), createDoc({ id: 'b', name: 'Doc B' })]
+      const onSelectedIdChange = vi.fn()
+
+      render(<DocumentList {...defaultProps} documents={docs} onSelectedIdChange={onSelectedIdChange} />)
+
+      fireEvent.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+
+      expect(onSelectedIdChange).toHaveBeenCalledWith(['a', 'b'])
     })
   })
 

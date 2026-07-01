@@ -12,11 +12,11 @@ import EditParam from './update'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   list: Param[]
   onChange: (list: Param[], moreInfo?: MoreInfo) => void
-}
+}>
 
 const List: FC<Props> = ({
   list,

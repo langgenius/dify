@@ -1,5 +1,5 @@
 'use client'
-import type { PropsWithChildren, ReactElement, ReactNode } from 'react'
+import type { PropsWithChildren, ReactElement } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Tabs,
@@ -9,8 +9,6 @@ import {
 } from '@langgenius/dify-ui/tabs'
 import {
   Children,
-  createContext,
-  useContext,
   useEffect,
   useRef,
   useState,
@@ -68,7 +66,7 @@ function CopyButton({ code }: { code: string }) {
         aria-hidden={copied}
         className={cn('pointer-events-none flex items-center gap-0.5 text-zinc-400 transition duration-300', copied && '-translate-y-1.5 opacity-0')}
       >
-        <ClipboardIcon className="h-5 w-5 fill-zinc-500/20 stroke-zinc-500 transition-colors group-hover/button:stroke-zinc-400" />
+        <ClipboardIcon className="size-5 fill-zinc-500/20 stroke-zinc-500 transition-colors group-hover/button:stroke-zinc-400" />
         Copy
       </span>
       <span
@@ -93,7 +91,7 @@ function CodePanelHeader({ tag, label }: { tag?: string, label?: string }) {
         </div>
       )}
       {tag && label && (
-        <span className="h-0.5 w-0.5 rounded-full bg-zinc-500" />
+        <span className="size-0.5 rounded-full bg-zinc-500" />
       )}
       {label && (
         <span className="font-mono text-xs text-zinc-400">{label}</span>
@@ -269,8 +267,6 @@ function useTabGroupProps(tabValues: string[]) {
   }
 }
 
-const CodeGroupContext = createContext(false)
-
 type CodeGroupProps = PropsWithChildren<{
   /** Code example(s) to display */
   targetCode?: string | CodeExample[]
@@ -297,42 +293,20 @@ export function CodeGroup({ children, title, targetCode, ...props }: CodeGroupPr
     </>
   )
 
-  return (
-    <CodeGroupContext.Provider value={true}>
-      {hasTabs
-        ? (
-            <Tabs
-              {...tabGroupProps}
-              className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
-            >
-              {content}
-            </Tabs>
-          )
-        : (
-            <div className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10">
-              {content}
-            </div>
-          )}
-    </CodeGroupContext.Provider>
-  )
-}
-
-type IChildProps = {
-  children: ReactNode
-  [key: string]: any
-}
-
-export function Code({ children, ...props }: IChildProps) {
-  return <code {...props}>{children}</code>
-}
-
-export function Pre({ children, ...props }: IChildrenProps) {
-  const isGrouped = useContext(CodeGroupContext)
-
-  if (isGrouped)
-    return children
-
-  return <CodeGroup {...props}>{children}</CodeGroup>
+  return hasTabs
+    ? (
+        <Tabs
+          {...tabGroupProps}
+          className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10"
+        >
+          {content}
+        </Tabs>
+      )
+    : (
+        <div className="not-prose my-6 overflow-hidden rounded-2xl bg-zinc-900 shadow-md dark:ring-1 dark:ring-white/10">
+          {content}
+        </div>
+      )
 }
 
 export function Embed({ value, ...props }: IChildrenProps) {

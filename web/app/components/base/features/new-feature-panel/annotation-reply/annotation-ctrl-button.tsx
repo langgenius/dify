@@ -10,7 +10,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { addAnnotation } from '@/service/annotation'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   messageId?: string
   cached: boolean
@@ -18,7 +18,7 @@ type Props = {
   answer: string
   onAdded: (annotationId: string, authorName: string) => void
   onEdit: () => void
-}
+}>
 const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, messageId, onAdded, onEdit }) => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
@@ -44,7 +44,7 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
           <TooltipTrigger
             render={(
               <ActionButton onClick={onEdit}>
-                <RiEditLine className="h-4 w-4" />
+                <RiEditLine className="size-4" />
               </ActionButton>
             )}
           />
@@ -58,7 +58,7 @@ const AnnotationCtrlButton: FC<Props> = ({ cached, query, answer, appId, message
           <TooltipTrigger
             render={(
               <ActionButton onClick={handleAdd}>
-                <RiFileEditLine className="h-4 w-4" />
+                <RiFileEditLine className="size-4" />
               </ActionButton>
             )}
           />

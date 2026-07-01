@@ -1,7 +1,7 @@
 import logging
 import os
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, override
 
 from pydantic.fields import FieldInfo
 
@@ -41,6 +41,7 @@ class NacosSettingsSource(RemoteSettingsSource):
         except Exception as e:
             raise RuntimeError(f"Failed to parse config: {e}")
 
+    @override
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
         field_value = self.remote_configs.get(field_name)
         if field_value is None:

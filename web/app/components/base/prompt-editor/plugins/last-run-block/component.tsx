@@ -6,9 +6,9 @@ import { DELETE_LAST_RUN_COMMAND, LastRunBlockNode } from '.'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
 import { useSelectOrDelete } from '../../hooks'
 
-type Props = {
+type Props = Readonly<{
   nodeKey: string
-}
+}>
 
 const LastRunBlockComponent: FC<Props> = ({
   nodeKey,

@@ -2,15 +2,15 @@
 import type { AppIconType } from '@/types/app'
 
 import { cn } from '@langgenius/dify-ui/cn'
-import { useHover } from 'ahooks'
 import * as React from 'react'
-import { useRef } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
+import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import ItemOperation from '@/app/components/explore/item-operation'
-import { useRouter } from '@/next/navigation'
+import Link from '@/next/link'
 
 type IAppNavItemProps = {
   isMobile: boolean
+  variant?: 'default' | 'mainNav'
   name: string
   id: string
   icon_type: AppIconType | null
@@ -26,6 +26,7 @@ type IAppNavItemProps = {
 
 export default function AppNavItem({
   isMobile,
+  variant = 'default',
   name,
   id,
   icon_type,
@@ -38,30 +39,44 @@ export default function AppNavItem({
   uninstallable,
   onDelete,
 }: IAppNavItemProps) {
-  const router = useRouter()
-  const url = `/explore/installed/${id}`
-  const ref = useRef(null)
-  const isHovering = useHover(ref)
+  const url = buildInstalledAppPath(id)
+  const isMainNav = variant === 'mainNav'
+
   return (
     <div
-      ref={ref}
       key={id}
-      className={cn('flex h-8 items-center justify-between rounded-lg px-2 system-sm-medium text-sm font-normal text-components-menu-item-text mobile:justify-center mobile:px-1', isSelected ? 'bg-state-base-active text-components-menu-item-text-active' : 'hover:bg-state-base-hover hover:text-components-menu-item-text-hover')}
-      onClick={() => {
-        router.push(url) // use Link causes popup item always trigger jump. Can not be solved by e.stopPropagation().
-      }}
+      className={cn(
+        isMainNav
+          ? 'group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors has-[>a:focus-visible]:ring-2 has-[>a:focus-visible]:ring-state-accent-solid has-[>a:focus-visible]:ring-inset'
+          : 'group flex h-8 items-center justify-between rounded-lg px-2 system-sm-medium text-sm font-normal text-components-menu-item-text has-[>a:focus-visible]:ring-2 has-[>a:focus-visible]:ring-state-accent-solid has-[>a:focus-visible]:ring-inset mobile:justify-center mobile:px-1',
+        isMainNav
+          ? (isSelected ? 'bg-state-base-hover' : 'hover:bg-state-base-hover')
+          : (isSelected ? 'bg-state-base-active text-components-menu-item-text-active' : 'hover:bg-state-base-hover hover:text-components-menu-item-text-hover'),
+      )}
     >
-      {isMobile && <AppIcon size="tiny" iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />}
+      {isMobile && (
+        <Link
+          href={url}
+          aria-label={name}
+          title={name}
+          className="flex min-w-0 flex-1 items-center justify-center outline-hidden"
+        >
+          <AppIcon size="tiny" iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
+        </Link>
+      )}
       {!isMobile && (
         <>
-          <div className="flex w-0 grow items-center space-x-2">
-            <AppIcon size="tiny" iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
-            <div className="truncate system-sm-regular text-components-menu-item-text" title={name}>{name}</div>
-          </div>
+          <Link
+            href={url}
+            title={name}
+            className={cn(isMainNav ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden' : 'flex w-0 grow items-center space-x-2 outline-hidden')}
+          >
+            <AppIcon size="tiny" className={cn(isMainNav && 'size-5 rounded-md text-sm')} iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
+            <div className={cn(isMainNav ? 'min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular' : 'truncate system-sm-regular text-components-menu-item-text')} title={name}>{name}</div>
+          </Link>
           <div className="h-6 shrink-0" onClick={e => e.stopPropagation()}>
             <ItemOperation
               isPinned={isPinned}
-              isItemHovering={isHovering}
               togglePin={togglePin}
               isShowDelete={!uninstallable && !isSelected}
               onDelete={() => onDelete(id)}

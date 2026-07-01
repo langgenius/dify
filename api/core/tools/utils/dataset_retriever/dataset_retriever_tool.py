@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, cast, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -56,6 +56,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             **kwargs,
         )
 
+    @override
     def _run(self, query: str) -> str:
         dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
         dataset = db.session.scalar(dataset_stmt)
@@ -63,7 +64,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         if not dataset:
             return ""
         for hit_callback in self.hit_callbacks:
-            hit_callback.on_query(query, dataset.id)
+            hit_callback.on_query(query, dataset.id, db.session)
         dataset_retrieval = DatasetRetrieval()
         metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
             [dataset.id],
@@ -158,7 +159,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 else:
                     documents = []
                 for hit_callback in self.hit_callbacks:
-                    hit_callback.on_tool_end(documents)
+                    hit_callback.on_tool_end(documents, db.session)
                 document_score_list = {}
                 if dataset.indexing_technique != IndexTechniqueType.ECONOMY:
                     for item in documents:

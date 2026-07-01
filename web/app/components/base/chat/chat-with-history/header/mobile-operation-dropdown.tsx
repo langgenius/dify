@@ -8,11 +8,11 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 
-type Props = {
+type Props = Readonly<{
   handleResetChat: () => void
   handleViewChatSettings: () => void
   hideViewChatSettings?: boolean
-}
+}>
 
 const MobileOperationDropdown = ({
   handleResetChat,

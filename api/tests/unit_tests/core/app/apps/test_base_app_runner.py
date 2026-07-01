@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -12,6 +13,7 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.base_app_runner import AppRunner
+from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -39,6 +41,23 @@ class _QueueRecorder:
     def publish(self, event, pub_from):
         _ = pub_from
         self.events.append(event)
+
+
+class _ClosableStream:
+    def __init__(self, chunks: list[LLMResultChunk]) -> None:
+        self._chunks = chunks
+        self.closed = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if not self._chunks:
+            raise StopIteration
+        return self._chunks.pop(0)
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class TestAppRunner:
@@ -245,11 +264,11 @@ class TestAppRunner:
                 files=[],
             )
 
-    def test_handle_invoke_result_stream_routes_chunks_and_builds_message(self, monkeypatch: pytest.MonkeyPatch):
+    def test_handle_invoke_result_stream_routes_chunks_and_builds_message(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         runner = AppRunner()
         queue = _QueueRecorder()
-        warning_logger = MagicMock()
-        monkeypatch.setattr("core.app.apps.base_app_runner._logger.warning", warning_logger)
 
         image_content = ImagePromptMessageContent(
             url="https://example.com/image.png", format="png", mime_type="image/png"
@@ -272,23 +291,24 @@ class TestAppRunner:
                 ),
             )
 
-        runner._handle_invoke_result(
-            invoke_result=_stream(),
-            queue_manager=queue,
-            stream=True,
-            agent=False,
-        )
+        with caplog.at_level(logging.WARNING, logger="core.app.apps.base_app_runner"):
+            runner._handle_invoke_result(
+                invoke_result=_stream(),
+                queue_manager=queue,
+                stream=True,
+                agent=False,
+            )
 
         assert isinstance(queue.events[0], QueueLLMChunkEvent)
         assert isinstance(queue.events[-1], QueueMessageEndEvent)
         assert queue.events[-1].llm_result.message.content == "abc"
-        warning_logger.assert_called_once()
+        assert "Received multimodal output but missing required parameters" in caplog.messages
 
-    def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(self, monkeypatch: pytest.MonkeyPatch):
+    def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         runner = AppRunner()
         queue = _QueueRecorder()
-        exception_logger = MagicMock()
-        monkeypatch.setattr("core.app.apps.base_app_runner._logger.exception", exception_logger)
 
         monkeypatch.setattr(
             runner,
@@ -317,19 +337,42 @@ class TestAppRunner:
                 ),
             )
 
-        runner._handle_invoke_result_stream(
-            invoke_result=_stream(),
-            queue_manager=queue,
-            agent=True,
-            message_id="message-id",
-            user_id="user-id",
-            tenant_id="tenant-id",
-        )
+        with caplog.at_level(logging.ERROR, logger="core.app.apps.base_app_runner"):
+            runner._handle_invoke_result_stream(
+                invoke_result=_stream(),
+                queue_manager=queue,
+                agent=True,
+                message_id="message-id",
+                user_id="user-id",
+                tenant_id="tenant-id",
+            )
 
         assert isinstance(queue.events[0], QueueAgentMessageEvent)
         assert isinstance(queue.events[-1], QueueMessageEndEvent)
         assert queue.events[-1].llm_result.usage == usage
-        exception_logger.assert_called_once()
+        assert "Failed to handle multimodal image output" in caplog.messages
+
+    def test_handle_invoke_result_stream_closes_generator_when_stopped(self):
+        runner = AppRunner()
+        chunk = LLMResultChunk(
+            model="stream-model",
+            prompt_messages=[AssistantPromptMessage(content="prompt")],
+            delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="a")),
+        )
+        stream = _ClosableStream([chunk])
+
+        queue_manager = SimpleNamespace(
+            publish=MagicMock(side_effect=GenerateTaskStoppedError("stopped")),
+        )
+
+        with pytest.raises(GenerateTaskStoppedError):
+            runner._handle_invoke_result_stream(
+                invoke_result=stream,
+                queue_manager=queue_manager,
+                agent=False,
+            )
+
+        assert stream.closed is True
 
     def test_handle_multimodal_image_content_fallback_return_branch(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()

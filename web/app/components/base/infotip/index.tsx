@@ -36,6 +36,8 @@ type InfotipProps = {
   'aria-label': string
   /** Placement of the popup relative to the trigger. Defaults to `top`. */
   'placement'?: Placement
+  /** Distance between the trigger and popup. Defaults to the popover primitive spacing. */
+  'sideOffset'?: number
   /** Extra classes on the outer trigger wrapper (layout / margin). */
   'className'?: string
   /** Extra classes on the `?` icon itself (size / color overrides). */
@@ -52,6 +54,7 @@ export function Infotip({
   children,
   'aria-label': ariaLabel,
   placement = 'top',
+  sideOffset,
   className,
   iconClassName,
   popupClassName,
@@ -71,14 +74,15 @@ export function Infotip({
         aria-label={ariaLabel}
         onClick={handleClick}
         className={cn(
-          'inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden',
+          'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
           className,
         )}
       >
-        <span aria-hidden className={cn('i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary', iconClassName)} />
+        <span aria-hidden className={cn('i-ri-question-line size-3.5 text-text-quaternary hover:text-text-tertiary', iconClassName)} />
       </PopoverTrigger>
       <PopoverContent
         placement={placement}
+        sideOffset={sideOffset}
         popupClassName={cn('max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
       >
         {children}

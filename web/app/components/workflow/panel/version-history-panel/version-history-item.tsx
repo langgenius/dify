@@ -14,7 +14,9 @@ type VersionHistoryItemProps = {
   latestVersionId: string
   onClick: (item: VersionHistory) => void
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
+  canImportExportDSL: boolean
   isLast: boolean
+  hideActionMenu?: boolean
 }
 
 const formatVersion = (versionHistory: VersionHistory, latestVersionId: string): string => {
@@ -42,7 +44,9 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
   latestVersionId,
   onClick,
   handleClickActionMenuItem,
+  canImportExportDSL,
   isLast,
+  hideActionMenu,
 }) => {
   const { t } = useTranslation()
   const [isHovering, setIsHovering] = useState(false)
@@ -78,6 +82,9 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         setOpen(false)
       }}
       onContextMenu={(e) => {
+        if (hideActionMenu)
+          return
+
         e.preventDefault()
         setOpen(true)
       }}
@@ -85,7 +92,7 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
       {!isLast && <div className="absolute top-6 left-4 h-[calc(100%-0.75rem)] w-0.5 bg-divider-subtle" />}
       <div className="flex h-5 w-[18px] shrink-0 items-center justify-center">
         <div className={cn(
-          'h-2 w-2 rounded-lg border-2',
+          'size-2 rounded-lg border-2',
           isSelected ? 'border-text-accent' : 'border-text-quaternary',
         )}
         />
@@ -123,11 +130,12 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({
         }
       </div>
       {/* Action Menu */}
-      {!isDraft && isHovering && (
+      {!hideActionMenu && !isDraft && isHovering && (
         <div className="absolute top-1 right-1">
           <ActionMenu
             isShowDelete={!isLatest}
             isNamedVersion={!!item.marked_name}
+            canImportExportDSL={canImportExportDSL}
             open={open}
             setOpen={setOpen}
             handleClickActionMenuItem={handleClickActionMenuItem}

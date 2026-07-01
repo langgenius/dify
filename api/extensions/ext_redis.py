@@ -25,7 +25,7 @@ from extensions.redis_names import (
     serialize_redis_name_args,
 )
 from libs.broadcast_channel.channel import BroadcastChannel as BroadcastChannelProtocol
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+from libs.broadcast_channel.redis.pubsub_channel import BroadcastChannel as RedisBroadcastChannel
 from libs.broadcast_channel.redis.sharded_channel import ShardedRedisBroadcastChannel
 from libs.broadcast_channel.redis.streams_channel import StreamsBroadcastChannel
 

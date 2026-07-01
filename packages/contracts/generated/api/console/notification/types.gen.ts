@@ -4,6 +4,29 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type NotificationResponse = {
+  notifications: Array<NotificationItemResponse>
+  should_show: boolean
+}
+
+export type DismissNotificationPayload = {
+  notification_id: string
+}
+
+export type SimpleResultResponse = {
+  result: string
+}
+
+export type NotificationItemResponse = {
+  body: string
+  frequency?: string | null
+  lang: string
+  notification_id?: string | null
+  subtitle: string
+  title: string
+  title_pic_url: string
+}
+
 export type GetNotificationData = {
   body?: never
   path?: never
@@ -12,41 +35,28 @@ export type GetNotificationData = {
 }
 
 export type GetNotificationErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
 }
 
-export type GetNotificationError = GetNotificationErrors[keyof GetNotificationErrors]
-
 export type GetNotificationResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: NotificationResponse
 }
 
 export type GetNotificationResponse = GetNotificationResponses[keyof GetNotificationResponses]
 
 export type PostNotificationDismissData = {
-  body?: never
+  body: DismissNotificationPayload
   path?: never
   query?: never
   url: '/notification/dismiss'
 }
 
 export type PostNotificationDismissErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
 }
 
-export type PostNotificationDismissError
-  = PostNotificationDismissErrors[keyof PostNotificationDismissErrors]
-
 export type PostNotificationDismissResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostNotificationDismissResponse

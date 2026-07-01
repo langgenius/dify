@@ -1,5 +1,7 @@
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import CheckboxWithLabel from '../checkbox-with-label'
 import CrawledResult from '../crawled-result'
@@ -43,20 +45,15 @@ describe('CheckboxWithLabel', () => {
     })
 
     it('should render checkbox in unchecked state', () => {
-      const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={false} />)
+      render(<CheckboxWithLabel {...defaultProps} isChecked={false} />)
 
-      // Assert - Custom checkbox component uses div with data-testid
-      const checkbox = container.querySelector('[data-testid^="checkbox"]')
-      expect(checkbox)!.toBeInTheDocument()
-      expect(checkbox).not.toHaveClass('bg-components-checkbox-bg')
+      expect(screen.getByRole('checkbox', { name: 'Test Label' })).toHaveAttribute('aria-checked', 'false')
     })
 
     it('should render checkbox in checked state', () => {
-      const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={true} />)
+      render(<CheckboxWithLabel {...defaultProps} isChecked={true} />)
 
-      // Assert - Checked state has check icon
-      const checkIcon = container.querySelector('[data-testid^="check-icon"]')
-      expect(checkIcon)!.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'Test Label' })).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should render tooltip when provided', () => {
@@ -90,32 +87,32 @@ describe('CheckboxWithLabel', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onChange with true when clicking unchecked checkbox', () => {
+    it('should call onChange with true when clicking unchecked checkbox', async () => {
       const mockOnChange = vi.fn()
-      const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={false} onChange={mockOnChange} />)
+      const user = userEvent.setup()
+      render(<CheckboxWithLabel {...defaultProps} isChecked={false} onChange={mockOnChange} />)
 
-      const checkbox = container.querySelector('[data-testid^="checkbox"]')!
-      fireEvent.click(checkbox)
+      await user.click(screen.getByText('Test Label'))
 
       expect(mockOnChange).toHaveBeenCalledWith(true)
     })
 
-    it('should call onChange with false when clicking checked checkbox', () => {
+    it('should call onChange with false when clicking checked checkbox', async () => {
       const mockOnChange = vi.fn()
-      const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={true} onChange={mockOnChange} />)
+      const user = userEvent.setup()
+      render(<CheckboxWithLabel {...defaultProps} isChecked={true} onChange={mockOnChange} />)
 
-      const checkbox = container.querySelector('[data-testid^="checkbox"]')!
-      fireEvent.click(checkbox)
+      await user.click(screen.getByText('Test Label'))
 
       expect(mockOnChange).toHaveBeenCalledWith(false)
     })
 
-    it('should trigger onChange when clicking label text', () => {
+    it('should trigger onChange when clicking label text', async () => {
       const mockOnChange = vi.fn()
+      const user = userEvent.setup()
       render(<CheckboxWithLabel {...defaultProps} onChange={mockOnChange} />)
 
-      const labelText = screen.getByText('Test Label')
-      fireEvent.click(labelText)
+      await user.click(screen.getByText('Test Label'))
 
       expect(mockOnChange).toHaveBeenCalledWith(true)
     })
@@ -146,11 +143,9 @@ describe('CrawledResultItem', () => {
     })
 
     it('should render checkbox when isMultipleChoice is true', () => {
-      const { container } = render(<CrawledResultItem {...defaultProps} isMultipleChoice={true} />)
+      render(<CrawledResultItem {...defaultProps} isMultipleChoice={true} />)
 
-      // Assert - Custom checkbox uses data-testid
-      const checkbox = container.querySelector('[data-testid^="checkbox"]')
-      expect(checkbox)!.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: /Test Page Title/ })).toBeInTheDocument()
     })
 
     it('should render radio when isMultipleChoice is false', () => {
@@ -162,11 +157,9 @@ describe('CrawledResultItem', () => {
     })
 
     it('should render checkbox as checked when isChecked is true', () => {
-      const { container } = render(<CrawledResultItem {...defaultProps} isChecked={true} />)
+      render(<CrawledResultItem {...defaultProps} isChecked={true} />)
 
-      // Assert - Checked state shows check icon
-      const checkIcon = container.querySelector('[data-testid^="check-icon"]')
-      expect(checkIcon)!.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: /Test Page Title/ })).toHaveAttribute('aria-checked', 'true')
     })
 
     it('should render preview button when showPreview is true', () => {
@@ -225,9 +218,10 @@ describe('CrawledResultItem', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onCheckChange with true when clicking unchecked checkbox', () => {
+    it('should call onCheckChange with true when clicking unchecked checkbox', async () => {
       const mockOnCheckChange = vi.fn()
-      const { container } = render(
+      const user = userEvent.setup()
+      render(
         <CrawledResultItem
           {...defaultProps}
           isChecked={false}
@@ -235,15 +229,15 @@ describe('CrawledResultItem', () => {
         />,
       )
 
-      const checkbox = container.querySelector('[data-testid^="checkbox"]')!
-      fireEvent.click(checkbox)
+      await user.click(screen.getByText('Test Page Title'))
 
       expect(mockOnCheckChange).toHaveBeenCalledWith(true)
     })
 
-    it('should call onCheckChange with false when clicking checked checkbox', () => {
+    it('should call onCheckChange with false when clicking checked checkbox', async () => {
       const mockOnCheckChange = vi.fn()
-      const { container } = render(
+      const user = userEvent.setup()
+      render(
         <CrawledResultItem
           {...defaultProps}
           isChecked={true}
@@ -251,8 +245,7 @@ describe('CrawledResultItem', () => {
         />,
       )
 
-      const checkbox = container.querySelector('[data-testid^="checkbox"]')!
-      fireEvent.click(checkbox)
+      await user.click(screen.getByText('Test Page Title'))
 
       expect(mockOnCheckChange).toHaveBeenCalledWith(false)
     })
@@ -268,18 +261,24 @@ describe('CrawledResultItem', () => {
 
     it('should toggle radio state when isMultipleChoice is false', () => {
       const mockOnCheckChange = vi.fn()
-      const { container } = render(
-        <CrawledResultItem
-          {...defaultProps}
-          isMultipleChoice={false}
-          isChecked={false}
-          onCheckChange={mockOnCheckChange}
-        />,
+      render(
+        <RadioGroup
+          aria-label="Crawled pages"
+          onValueChange={(sourceUrl) => {
+            if (sourceUrl === defaultProps.payload.source_url)
+              mockOnCheckChange(true)
+          }}
+        >
+          <CrawledResultItem
+            {...defaultProps}
+            isMultipleChoice={false}
+            isChecked={false}
+            onCheckChange={mockOnCheckChange}
+          />
+        </RadioGroup>,
       )
 
-      // Act - Radio uses size-4 rounded-full classes
-      const radio = container.querySelector('.size-4.rounded-full')!
-      fireEvent.click(radio)
+      fireEvent.click(screen.getByRole('radio', { name: /Test Page Title/ }))
 
       expect(mockOnCheckChange).toHaveBeenCalledWith(true)
     })
@@ -325,19 +324,16 @@ describe('CrawledResult', () => {
     })
 
     it('should render select all checkbox when isMultipleChoice is true', () => {
-      const { container } = render(<CrawledResult {...defaultProps} isMultipleChoice={true} />)
+      render(<CrawledResult {...defaultProps} isMultipleChoice={true} />)
 
-      // Assert - Multiple custom checkboxes (select all + items)
-      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
-      expect(checkboxes.length).toBe(4) // 1 select all + 3 items
+      expect(screen.getAllByRole('checkbox')).toHaveLength(4)
     })
 
     it('should not render select all checkbox when isMultipleChoice is false', () => {
       const { container } = render(<CrawledResult {...defaultProps} isMultipleChoice={false} />)
 
       // Assert - No select all checkbox, only radio buttons for items
-      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
-      expect(checkboxes.length).toBe(0)
+      expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
       // Radio buttons have size-4 and rounded-full classes
       const radios = container.querySelectorAll('.size-4.rounded-full')
       expect(radios.length).toBe(3)
@@ -368,13 +364,12 @@ describe('CrawledResult', () => {
     })
 
     it('should highlight item at previewIndex', () => {
-      const { container } = render(
+      render(
         <CrawledResult {...defaultProps} previewIndex={1} />,
       )
 
       // Assert - Second item should have active state
-      const items = container.querySelectorAll('[class*="rounded-lg"][class*="cursor-pointer"]')
-      expect(items[1])!.toHaveClass('bg-state-base-active')
+      expect(screen.getByText('Page 2').closest('.relative')).toHaveClass('bg-state-base-active')
     })
 
     it('should pass showPreview to items', () => {
@@ -392,10 +387,11 @@ describe('CrawledResult', () => {
   })
 
   describe('User Interactions', () => {
-    it('should call onSelectedChange with all items when clicking select all', () => {
+    it('should call onSelectedChange with all items when clicking select all', async () => {
       const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
-      const { container } = render(
+      const user = userEvent.setup()
+      render(
         <CrawledResult
           {...defaultProps}
           list={list}
@@ -404,17 +400,16 @@ describe('CrawledResult', () => {
         />,
       )
 
-      // Act - Click select all checkbox (first checkbox)
-      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
-      fireEvent.click(checkboxes[0]!)
+      await user.click(screen.getByText(/selectAll/i))
 
       expect(mockOnSelectedChange).toHaveBeenCalledWith(list)
     })
 
-    it('should call onSelectedChange with empty array when clicking reset all', () => {
+    it('should call onSelectedChange with empty array when clicking reset all', async () => {
       const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
-      const { container } = render(
+      const user = userEvent.setup()
+      render(
         <CrawledResult
           {...defaultProps}
           list={list}
@@ -423,16 +418,16 @@ describe('CrawledResult', () => {
         />,
       )
 
-      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
-      fireEvent.click(checkboxes[0]!)
+      await user.click(screen.getByText(/resetAll/i))
 
       expect(mockOnSelectedChange).toHaveBeenCalledWith([])
     })
 
-    it('should add item to checkedList when checking unchecked item', () => {
+    it('should add item to checkedList when checking unchecked item', async () => {
       const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
-      const { container } = render(
+      const user = userEvent.setup()
+      render(
         <CrawledResult
           {...defaultProps}
           list={list}
@@ -441,17 +436,16 @@ describe('CrawledResult', () => {
         />,
       )
 
-      // Act - Click second item checkbox (index 2, accounting for select all)
-      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
-      fireEvent.click(checkboxes[2]!)
+      await user.click(screen.getByText('Page 2'))
 
       expect(mockOnSelectedChange).toHaveBeenCalledWith([list[0], list[1]])
     })
 
-    it('should remove item from checkedList when unchecking checked item', () => {
+    it('should remove item from checkedList when unchecking checked item', async () => {
       const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
-      const { container } = render(
+      const user = userEvent.setup()
+      render(
         <CrawledResult
           {...defaultProps}
           list={list}
@@ -460,9 +454,7 @@ describe('CrawledResult', () => {
         />,
       )
 
-      // Act - Uncheck first item (index 1, after select all)
-      const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
-      fireEvent.click(checkboxes[1]!)
+      await user.click(screen.getByText('Page 1'))
 
       expect(mockOnSelectedChange).toHaveBeenCalledWith([list[1]])
     })
@@ -751,7 +743,7 @@ describe('Base Components Integration', () => {
   it('should render CrawledResult with CheckboxWithLabel for select all', () => {
     const list = createMockCrawlResultItems(2)
 
-    const { container } = render(
+    render(
       <CrawledResult
         list={list}
         checkedList={[]}
@@ -762,16 +754,16 @@ describe('Base Components Integration', () => {
     )
 
     // Assert - Should have select all checkbox + item checkboxes
-    const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
-    expect(checkboxes.length).toBe(3) // select all + 2 items
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3)
   })
 
-  it('should allow selecting and previewing items', () => {
+  it('should allow selecting and previewing items', async () => {
     const list = createMockCrawlResultItems(3)
     const mockOnSelectedChange = vi.fn()
     const mockOnPreview = vi.fn()
+    const user = userEvent.setup()
 
-    const { container } = render(
+    render(
       <CrawledResult
         list={list}
         checkedList={[]}
@@ -782,9 +774,7 @@ describe('Base Components Integration', () => {
       />,
     )
 
-    // Act - Select first item (index 1, after select all)
-    const checkboxes = container.querySelectorAll('[data-testid^="checkbox"]')
-    fireEvent.click(checkboxes[1]!)
+    await user.click(screen.getByText('Page 1'))
 
     expect(mockOnSelectedChange).toHaveBeenCalledWith([list[0]])
 

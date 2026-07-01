@@ -136,6 +136,7 @@ export const post4 = oc
     method: 'POST',
     operationId: 'postAuthPluginDatasourceByProviderIdUpdate',
     path: '/auth/plugin/datasource/{provider_id}/update',
+    successStatus: 201,
     tags: ['console'],
   })
   .input(

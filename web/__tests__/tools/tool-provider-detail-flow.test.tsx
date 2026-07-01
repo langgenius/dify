@@ -48,6 +48,9 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
   }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
+  }),
 }))
 
 const mockSetShowModelModal = vi.fn()
@@ -141,10 +144,6 @@ vi.mock('@remixicon/react', () => ({
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
   ConfigurationMethodEnum: { predefinedModel: 'predefined-model' },
-}))
-
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <span data-testid={`indicator-${color}`} />,
 }))
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
@@ -282,7 +281,7 @@ describe('Tool Provider Detail Flow Integration', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Authorized')).toBeInTheDocument()
-        expect(screen.getByTestId('indicator-green')).toBeInTheDocument()
+        expect(document.querySelector('.shadow-status-indicator-green-shadow')).toBeInTheDocument()
       })
     })
 

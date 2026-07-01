@@ -1,6 +1,5 @@
 'use client'
 import type { CreateApiKeyResponse } from '@/models/app'
-import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -13,7 +12,6 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { RiDeleteBinLine } from '@remixicon/react'
 import {
   useState,
 } from 'react'
@@ -39,19 +37,21 @@ import s from './style.module.css'
 type ISecretKeyModalProps = {
   isShow: boolean
   appId?: string
+  canManage: boolean
   onClose: () => void
 }
 
 const SecretKeyModal = ({
   isShow = false,
   appId,
+  canManage,
   onClose,
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { currentWorkspace, isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const { currentWorkspace } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [isVisible, setVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
   const invalidateAppApiKeys = useInvalidateAppApiKeys()
   const invalidateDatasetApiKeys = useInvalidateDatasetApiKeys()
@@ -64,6 +64,8 @@ const SecretKeyModal = ({
 
   const onDel = async () => {
     setShowConfirmDelete(false)
+    if (!canManage)
+      return
     if (!delKeyID)
       return
 
@@ -79,12 +81,15 @@ const SecretKeyModal = ({
   }
 
   const onCreate = async () => {
+    if (!currentWorkspace || !canManage)
+      return
+
     const params = appId
       ? { url: `/apps/${appId}/api-keys`, body: {} }
       : { url: '/datasets/api-keys', body: {} }
     const createApikey = appId ? createAppApikey : createDatasetApikey
     const res = await createApikey(params)
-    setVisible(true)
+    setIsVisible(true)
     setNewKey(res)
     if (appId)
       invalidateAppApiKeys(appId)
@@ -105,7 +110,7 @@ const SecretKeyModal = ({
   }
 
   const handleClose = () => {
-    setVisible(false)
+    setIsVisible(false)
     onClose()
   }
 
@@ -124,7 +129,7 @@ const SecretKeyModal = ({
           </DialogTitle>
 
           <div className="-mt-6 -mr-2 mb-4 flex justify-end">
-            <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
+            <span className="i-heroicons-x-mark-20-solid size-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
           </div>
           <p className="mt-1 shrink-0 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
           {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
@@ -145,14 +150,14 @@ const SecretKeyModal = ({
                       <div className="w-[200px] shrink-0 truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
                       <div className="flex grow space-x-2 px-3">
                         <CopyFeedback content={api.token} />
-                        {isCurrentWorkspaceManager && (
+                        {canManage && (
                           <ActionButton
                             onClick={() => {
                               setDelKeyId(api.id)
                               setShowConfirmDelete(true)
                             }}
                           >
-                            <RiDeleteBinLine className="h-4 w-4" />
+                            <span className="i-ri-delete-bin-line size-4" />
                           </ActionButton>
                         )}
                       </div>
@@ -163,8 +168,8 @@ const SecretKeyModal = ({
             )
           }
           <div className="flex">
-            <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-              <PlusIcon className="mr-1 flex h-4 w-4 shrink-0" />
+            <Button className={`mt-4 flex shrink-0 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !canManage}>
+              <span className="mr-1 i-heroicons-plus-20-solid flex size-4 shrink-0" />
               <div className="text-xs font-medium text-text-secondary">{t('apiKeyModal.createNewSecretKey', { ns: 'appApi' })}</div>
             </Button>
           </div>
@@ -194,7 +199,7 @@ const SecretKeyModal = ({
         </DialogContent>
       </Dialog>
       {isShow && (
-        <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
+        <SecretKeyGenerateModal className="shrink-0" isShow={isVisible} onClose={() => setIsVisible(false)} newKey={newKey} />
       )}
     </>
   )

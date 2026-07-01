@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
@@ -24,6 +25,7 @@ const Publisher = () => {
   const [open, setOpen] = useState(false)
   const [confirmVisible, { setFalse: hideConfirm, setTrue: showConfirm }] = useBoolean(false)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const canPipelineRelease = useHooksStore(s => s.accessControl.canReleaseAndVersion)
   const docLink = useDocLink()
   const pipelineId = useStore(s => s.pipelineId)
   const { mutateAsync: publishAsCustomizedPipeline } = usePublishAsCustomizedPipeline()
@@ -34,10 +36,10 @@ const Publisher = () => {
   const handleOpenChange = useCallback((newOpen: boolean) => {
     if (!newOpen && confirmVisible)
       return
-    if (newOpen)
+    if (newOpen && canPipelineRelease)
       handleSyncWorkflowDraft(true)
-    setOpen(newOpen)
-  }, [confirmVisible, handleSyncWorkflowDraft])
+    setOpen(canPipelineRelease && newOpen)
+  }, [confirmVisible, handleSyncWorkflowDraft, canPipelineRelease])
   const closePopover = useCallback(() => {
     setOpen(false)
   }, [])
@@ -91,9 +93,10 @@ const Publisher = () => {
             <Button
               className="px-2"
               variant="primary"
+              disabled={!canPipelineRelease}
             >
               <span className="pl-1">{t('common.publish', { ns: 'workflow' })}</span>
-              <RiArrowDownSLine className="h-4 w-4" />
+              <RiArrowDownSLine className="size-4" />
             </Button>
           )}
         />

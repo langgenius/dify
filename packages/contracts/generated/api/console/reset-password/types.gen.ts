@@ -9,6 +9,11 @@ export type EmailPayload = {
   language?: string | null
 }
 
+export type SimpleResultDataResponse = {
+  data: string
+  result: string
+}
+
 export type PostResetPasswordData = {
   body: EmailPayload
   path?: never
@@ -17,9 +22,7 @@ export type PostResetPasswordData = {
 }
 
 export type PostResetPasswordResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultDataResponse
 }
 
 export type PostResetPasswordResponse = PostResetPasswordResponses[keyof PostResetPasswordResponses]

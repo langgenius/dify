@@ -33,7 +33,7 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
         className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onClose}
       >
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+        <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
       </button>
       <div className="flex items-center bg-components-panel-bg">
         <h1 className="shrink-0 px-4 py-1 system-xl-semibold text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
@@ -43,11 +43,11 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
               render={(
                 <button
                   type="button"
-                  className="mr-1 flex h-6 w-6 items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-state-base-hover"
+                  className="mr-1 flex size-6 items-center justify-center rounded-md border-none bg-transparent p-0 hover:bg-state-base-hover"
                   aria-label={t('runDetail.testWithParams', { ns: 'appLog' })}
                   onClick={handleReplay}
                 >
-                  <RiPlayLargeLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                  <RiPlayLargeLine className="size-4 text-text-tertiary" aria-hidden="true" />
                 </button>
               )}
             />

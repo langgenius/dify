@@ -6,7 +6,7 @@ vi.mock('@/service/apps', () => ({
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
-  getRedirectionPath: vi.fn((_isAdmin: boolean, app: { id: string }) => `/app/${app.id}`),
+  getRedirectionPath: vi.fn((app: { id: string }) => `/app/${app.id}`),
 }))
 
 vi.mock('../../../app/type-selector', () => ({

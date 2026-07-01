@@ -291,7 +291,25 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      await user.click(screen.getByTestId('checkbox-acceptTerms'))
+      await user.click(screen.getByRole('checkbox', { name: 'Accept terms' }))
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('acceptTerms: true')
+      })
+    })
+
+    it('should toggle checkbox when external label is clicked', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode([
+        createElementNode('label', { htmlFor: 'acceptTerms' }, [createTextNode('Accept terms')]),
+        createElementNode('input', { type: 'checkbox', name: 'acceptTerms', value: false }),
+        createElementNode('button', {}, [createTextNode('Submit')]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByText('Accept terms'))
       await user.click(screen.getByRole('button', { name: 'Submit' }))
 
       await waitFor(() => {
@@ -514,6 +532,54 @@ describe('MarkdownForm', () => {
     })
   })
 
+  // Unicode letters should be valid form field names.
+  describe('Unicode name support', () => {
+    it('should include Unicode-named fields from all supported controls in JSON output', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('label', { for: '用户名' }, [createTextNode('Username:')]),
+          createElementNode('input', { type: 'text', name: '用户名', value: 'Alice' }),
+          createElementNode('label', { for: '密码' }, [createTextNode('Password:')]),
+          createElementNode('input', { type: 'password', name: '密码', value: 'secret' }),
+          createElementNode('label', { for: '内容' }, [createTextNode('Content:')]),
+          createElementNode('textarea', { name: '内容', value: 'Hello' }),
+          createElementNode('label', { for: '日期' }, [createTextNode('Date:')]),
+          createElementNode('input', { type: 'date', name: '日期', value: dayjs('2026-01-10') }),
+          createElementNode('label', { for: '时间' }, [createTextNode('Time:')]),
+          createElementNode('input', { type: 'time', name: '时间', value: '09:00' }),
+          createElementNode('label', { for: '日期时间' }, [createTextNode('Datetime:')]),
+          createElementNode('input', { type: 'datetime', name: '日期时间', value: dayjs('2026-01-10T08:30:00') }),
+          createElementNode('label', { for: 'café' }, [createTextNode('Select:')]),
+          createElementNode('input', { type: 'select', name: 'café', value: 'hello', dataOptions: ['hello', 'world'] }),
+          createElementNode('input', { type: 'checkbox', name: '同意条款', value: true, dataTip: 'By checking this means you agreed' }),
+          createElementNode('button', { dataSize: 'small', dataVariant: 'primary' }, [createTextNode('Login')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Login' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalled()
+      })
+
+      const submittedPayload = JSON.parse(mockOnSend.mock.calls[0]![0]) as Record<string, unknown>
+      expect(submittedPayload).toMatchObject({
+        用户名: 'Alice',
+        密码: 'secret',
+        内容: 'Hello',
+        日期: 'formatted-date',
+        日期时间: 'formatted-datetime',
+        café: 'hello',
+        同意条款: true,
+      })
+      expect(submittedPayload).toHaveProperty('时间')
+    })
+  })
+
   // Double-click protection: button disables after the first submit.
   describe('Double submit prevention', () => {
     it('should disable submit button after first click', async () => {
@@ -689,7 +755,7 @@ describe('MarkdownForm', () => {
 
       render(<MarkdownForm node={node} />)
 
-      expect(screen.getByTestId('checkbox-agree'))!.toBeInTheDocument()
+      expect(screen.getByRole('checkbox', { name: 'agree' }))!.toBeInTheDocument()
     })
 
     it('should render select with no options when dataOptions is missing', () => {

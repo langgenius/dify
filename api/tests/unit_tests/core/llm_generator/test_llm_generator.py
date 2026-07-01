@@ -422,6 +422,13 @@ class TestLLMGenerator:
                 "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
             )
             assert result == {"modified": "prompt"}
+            stmt = mock_scalar.call_args.args[0]
+            compiled = stmt.compile()
+            statement = str(compiled)
+            assert "messages.app_id" in statement
+            assert "apps.tenant_id" in statement
+            assert "flow_id" in compiled.params.values()
+            assert "tenant_id" in compiled.params.values()
 
     def test_instruction_modify_legacy_with_last_run(self, mock_model_instance, model_config_entity):
         with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
@@ -439,12 +446,26 @@ class TestLLMGenerator:
                 "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
             )
             assert result == {"modified": "prompt"}
+            stmt = mock_scalar.call_args.args[0]
+            compiled = stmt.compile()
+            statement = str(compiled)
+            assert "messages.app_id" in statement
+            assert "apps.tenant_id" in statement
+            assert "flow_id" in compiled.params.values()
+            assert "tenant_id" in compiled.params.values()
 
     def test_instruction_modify_workflow_app_not_found(self):
         with patch("extensions.ext_database.db.session") as mock_session:
             mock_session.return_value.scalar.return_value = None
             with pytest.raises(ValueError, match="App not found."):
                 LLMGenerator.instruction_modify_workflow("t", "f", "n", "c", "i", MagicMock(), "o", MagicMock())
+            stmt = mock_session.return_value.scalar.call_args.args[0]
+            compiled = stmt.compile()
+            statement = str(compiled)
+            assert "apps.id" in statement
+            assert "apps.tenant_id" in statement
+            assert "f" in compiled.params.values()
+            assert "t" in compiled.params.values()
 
     def test_instruction_modify_workflow_no_workflow(self):
         with patch("extensions.ext_database.db.session") as mock_session:

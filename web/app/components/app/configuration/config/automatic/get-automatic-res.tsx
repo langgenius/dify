@@ -39,6 +39,7 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
+import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from './idea-output'
 import InstructionEditorInBasic from './instruction-editor'
 import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
@@ -72,7 +73,7 @@ const TryLabel: FC<{
       className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
-      <Icon className="h-4 w-4 text-text-tertiary"></Icon>
+      <Icon className="size-4 text-text-tertiary"></Icon>
       <div className="ml-1 text-xs font-medium text-text-secondary">{text}</div>
     </div>
   )
@@ -90,13 +91,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
-  const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
-    : null
-  const [model, setModel] = React.useState<Model>(localModel || {
+  const [storedModel, setStoredModel] = useAutoGenModel()
+  const [model, setModel] = React.useState<Model>(storedModel || {
     name: '',
     provider: '',
-    mode: mode as unknown as ModelModeType.chat,
+    mode: mode as unknown as ModelModeType,
     completion_params: {} as CompletionParams,
   })
   const {
@@ -182,11 +181,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   useEffect(() => {
     if (defaultModel) {
-      const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
-        : null
-      if (localModel) {
-        setModel(localModel)
+      if (storedModel) {
+        setModel(storedModel)
       }
       else {
         setModel(prev => ({
@@ -196,7 +192,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         }))
       }
     }
-  }, [defaultModel])
+  }, [defaultModel, storedModel])
 
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
@@ -213,8 +209,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       mode: newValue.mode as ModelModeType,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    setStoredModel(newModel)
+  }, [model, setModel, setStoredModel])
 
   const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
     const newModel = {
@@ -222,8 +218,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       completion_params: newParams as CompletionParams,
     }
     setModel(newModel)
-    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
-  }, [model, setModel])
+    setStoredModel(newModel)
+  }, [model, setModel, setStoredModel])
 
   const onGenerate = async () => {
     if (!isValid())
@@ -289,9 +285,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           onClose()
       }}
     >
-      <DialogContent className="max-h-none w-[1140px] max-w-none! min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
+      <DialogContent className="h-[min(680px,calc(100dvh-2rem))] max-h-none! w-[1140px] max-w-none! min-w-[1140px] overflow-hidden! border-none p-0! text-left align-middle">
 
-        <div className="flex h-[680px] flex-wrap">
+        <div className="flex h-full min-h-0 flex-wrap">
           <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
             <div className="mb-5">
               <div className={`text-lg leading-[28px] font-bold ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
@@ -375,7 +371,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   onClick={onGenerate}
                   disabled={isLoading}
                 >
-                  <Generator className="h-4 w-4" />
+                  <Generator className="size-4" />
                   <span className="text-xs font-semibold">{t('generate.generate', { ns: 'appDebug' })}</span>
                 </Button>
               </div>

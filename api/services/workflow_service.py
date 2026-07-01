@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -29,7 +29,11 @@ from core.workflow.node_factory import (
     get_node_type_classes_mapping,
     is_start_node_type,
 )
-from core.workflow.node_runtime import DifyHumanInputNodeRuntime, apply_dify_debug_email_recipient
+from core.workflow.node_runtime import (
+    DifyFileReferenceFactory,
+    DifyHumanInputNodeRuntime,
+    apply_dify_debug_email_recipient,
+)
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -55,7 +59,7 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from graphon.nodes.human_input.entities import HumanInputNodeData, validate_human_input_submission
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from graphon.nodes.human_input.enums import HumanInputFormKind
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
@@ -78,7 +82,9 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
+from services.workflow_ref_service import WorkflowRef
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .human_input_delivery_test_service import (
@@ -136,14 +142,21 @@ class WorkflowService:
         )
         return db.session.execute(stmt).scalar_one()
 
-    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+    def get_draft_workflow(
+        self, app_model: App, workflow_id: str | None = None, session: Session | scoped_session | None = None
+    ) -> Workflow | None:
         """
         Get draft workflow
+
+        When ``session`` is provided, reuse it so callers that already hold a
+        Session avoid checking out an extra request-scoped ``db.session``
+        connection. Falls back to ``db.session`` for backward compatibility.
         """
         if workflow_id:
-            return self.get_published_workflow_by_id(app_model, workflow_id)
+            return self.get_published_workflow_by_id(app_model, workflow_id, session=session)
         # fetch draft workflow by app_model
-        workflow = db.session.scalar(
+        bind = session if session is not None else db.session
+        workflow = bind.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -157,7 +170,7 @@ class WorkflowService:
         return workflow
 
     def get_published_workflow_by_id(
-        self, app_model: App, workflow_id: str, session: Session | None = None
+        self, app_model: App, workflow_id: str, session: Session | scoped_session | None = None
     ) -> Workflow | None:
         """
         fetch published workflow by workflow_id
@@ -308,6 +321,19 @@ class WorkflowService:
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        db.session.flush()
+        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+            session=cast(Session, db.session),
+            draft_workflow=workflow,
+            account_id=account.id,
+        )
+        WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
+            session=cast(Session, db.session),
+            draft_workflow=workflow,
+        )
+
         # commit db session changes
         db.session.commit()
 
@@ -453,6 +479,13 @@ class WorkflowService:
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
 
+        from services.agent.workflow_publish_service import WorkflowAgentPublishService
+
+        WorkflowAgentPublishService.validate_agent_nodes_for_publish(
+            session=session,
+            draft_workflow=draft_workflow,
+        )
+
         # billing check
         if dify_config.BILLING_ENABLED:
             limit_info = BillingService.get_info(app_model.tenant_id)
@@ -486,6 +519,11 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+            session=session,
+            draft_workflow=draft_workflow,
+            published_workflow=workflow,
+        )
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
@@ -990,7 +1028,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1050,7 +1088,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1058,9 +1096,10 @@ class WorkflowService:
         )
         node_data = node.node_data
 
-        validate_human_input_submission(
-            inputs=node_data.inputs,
-            user_actions=node_data.user_actions,
+        human_input_service = HumanInputService(session_factory=sessionmaker(db.engine))
+        normalized_form_inputs = human_input_service.validate_and_normalize_submission(
+            tenant_id=app_model.tenant_id,
+            form_definition=node_data,
             selected_action_id=action,
             form_data=form_inputs,
         )
@@ -1070,11 +1109,14 @@ class WorkflowService:
             (user_action for user_action in node_data.user_actions if user_action.id == action),
             None,
         )
-        outputs: dict[str, Any] = dict(form_inputs)
+        outputs: dict[str, Any] = dict(normalized_form_inputs)
         outputs["__action_id"] = action
         outputs["__action_value"] = selected_action.title if selected_action else ""
         outputs["__rendered_content"] = node.render_form_content_with_outputs(
-            rendered_content, outputs, node_data.outputs_field_names()
+            rendered_content,
+            outputs,
+            node_data.outputs_field_names(),
+            node_data.inputs,
         )
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
@@ -1134,7 +1176,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1227,7 +1269,7 @@ class WorkflowService:
                 recipients_data.append(DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token))
         return recipients_data
 
-    def _build_human_input_node(
+    def _build_human_input_node_for_debugging(
         self,
         *,
         workflow: Workflow,
@@ -1260,6 +1302,7 @@ class WorkflowService:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             runtime=DifyHumanInputNodeRuntime(run_context),
+            file_reference_factory=DifyFileReferenceFactory(run_context),
         )
         return node
 
@@ -1551,19 +1594,27 @@ class WorkflowService:
             raise ValueError(f"Invalid HumanInput node data: {str(e)}")
 
     def update_workflow(
-        self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict[str, Any]
+        self,
+        *,
+        session: Session,
+        account_id: str,
+        data: dict[str, Any],
+        workflow_ref: WorkflowRef,
     ) -> Workflow | None:
         """
         Update workflow attributes
 
         :param session: SQLAlchemy database session
-        :param workflow_id: Workflow ID
-        :param tenant_id: Tenant ID
         :param account_id: Account ID (for permission check)
         :param data: Dictionary containing fields to update
+        :param workflow_ref: Owner-bound workflow reference
         :return: Updated workflow or None if not found
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_ref.workflow_id,
+            Workflow.tenant_id == workflow_ref.tenant_id,
+            Workflow.app_id == workflow_ref.owner_id,
+        )
         workflow = session.scalar(stmt)
 
         if not workflow:
@@ -1580,30 +1631,33 @@ class WorkflowService:
 
         return workflow
 
-    def delete_workflow(self, *, session: Session, workflow_id: str, tenant_id: str) -> bool:
+    def delete_workflow(self, *, session: Session, workflow_ref: WorkflowRef) -> bool:
         """
         Delete a workflow
 
         :param session: SQLAlchemy database session
-        :param workflow_id: Workflow ID
-        :param tenant_id: Tenant ID
+        :param workflow_ref: Owner-bound workflow reference
         :return: True if successful
         :raises: ValueError if workflow not found
         :raises: WorkflowInUseError if workflow is in use
         :raises: DraftWorkflowDeletionError if workflow is a draft version
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_ref.workflow_id,
+            Workflow.tenant_id == workflow_ref.tenant_id,
+            Workflow.app_id == workflow_ref.owner_id,
+        )
         workflow = session.scalar(stmt)
 
         if not workflow:
-            raise ValueError(f"Workflow with ID {workflow_id} not found")
+            raise ValueError(f"Workflow with ID {workflow_ref.workflow_id} not found")
 
         # Check if workflow is a draft version
         if workflow.version == Workflow.VERSION_DRAFT:
             raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
 
         # Check if this workflow is currently referenced by an app
-        app_stmt = select(App).where(App.workflow_id == workflow_id)
+        app_stmt = select(App).where(App.workflow_id == workflow_ref.workflow_id)
         app = session.scalar(app_stmt)
         if app:
             # Cannot delete a workflow that's currently in use by an app

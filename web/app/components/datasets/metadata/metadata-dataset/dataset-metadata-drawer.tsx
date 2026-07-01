@@ -32,13 +32,13 @@ import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
-import { getIcon } from '../utils/get-icon'
+import { CreateMetadataModal } from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
+import { getIconClassName } from '../utils/get-icon'
 import Field from './field'
 
 const i18nPrefix = 'metadata.datasetMetadata'
 
-type Props = {
+type Props = Readonly<{
   userMetadata: MetadataItemWithValueLength[]
   builtInMetadata: BuiltInMetadataItem[]
   isBuiltInEnabled: boolean
@@ -47,7 +47,7 @@ type Props = {
   onAdd: (payload: BuiltInMetadataItem) => void
   onRename: (payload: MetadataItemWithValueLength) => void
   onRemove: (metaDataId: string) => void
-}
+}>
 
 type ItemProps = {
   readonly?: boolean
@@ -64,7 +64,7 @@ const Item: FC<ItemProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation()
-  const Icon = getIcon(payload.type)
+  const iconClassName = getIconClassName(payload.type)
 
   const handleRename = useCallback(() => {
     onRename?.()
@@ -97,7 +97,7 @@ const Item: FC<ItemProps> = ({
         )}
       >
         <div className="flex h-full items-center space-x-1 text-text-tertiary">
-          <Icon className="size-4 shrink-0" />
+          <span className={cn(iconClassName, 'size-4 shrink-0')} aria-hidden="true" />
           <div className="max-w-[250px] truncate system-sm-medium text-text-primary">{payload.name}</div>
           <div className="shrink-0 system-xs-regular">{payload.type}</div>
         </div>
@@ -212,17 +212,17 @@ const DatasetMetadataDrawer: FC<Props> = ({
           <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[420px]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
-                <DrawerTitle className="text-lg leading-6 font-medium text-text-primary">
+                <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t('metadata.metadata', { ns: 'dataset' })}
                 </DrawerTitle>
                 <DrawerCloseButton
                   aria-label={t('operation.close', { ns: 'common' })}
-                  className="h-6 w-6 rounded-md"
+                  className="size-6 rounded-md"
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
                 <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
-                <CreateModal
+                <CreateMetadataModal
                   open={open}
                   setOpen={setOpen}
                   trigger={(
@@ -283,6 +283,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
                       <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
                         <Input
+                          aria-label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}
                           value={templeName}
                           onChange={e => setTempleName(e.target.value)}
                           placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}

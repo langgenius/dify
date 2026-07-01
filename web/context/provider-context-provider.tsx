@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { ProviderContextState } from './provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -23,20 +24,52 @@ import {
 } from '@/service/use-common'
 import { useEducationStatus } from '@/service/use-education'
 import { ProviderContext } from './provider-context'
+import { useAnthropicQuotaNotice } from './provider-storage'
 
 type ProviderContextProviderProps = {
   children: ReactNode
+}
+
+type MemberInviteLimit = {
+  size: number
+  limit: number
+}
+
+const unlimitedMemberInviteLimit: MemberInviteLimit = {
+  size: 0,
+  limit: 0,
+}
+
+const resolveMemberInviteLimit = (data: Awaited<ReturnType<typeof fetchCurrentPlanInfo>>): MemberInviteLimit => {
+  if (!data)
+    return unlimitedMemberInviteLimit
+
+  if (data.workspace_members?.enabled) {
+    return {
+      size: data.workspace_members.size,
+      limit: data.workspace_members.limit,
+    }
+  }
+
+  if (data.billing?.enabled && data.members?.limit > 0) {
+    return {
+      size: data.members.size,
+      limit: data.members.limit,
+    }
+  }
+
+  return unlimitedMemberInviteLimit
 }
 
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
   const queryClient = useQueryClient()
-  const { data: providersData } = useModelProviders()
+  const { data: providersData, isLoading: isLoadingModelProviders } = useModelProviders()
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
   const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
-  const [plan, setPlan] = useState(defaultPlan)
+  const [plan, setPlan] = useState<ProviderContextState['plan']>(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   const [isFetchedPlanInfo, setIsFetchedPlanInfo] = useState(false)
   const [enableBilling, setEnableBilling] = useState(true)
@@ -77,7 +110,7 @@ export const ProviderContextProvider = ({
       setEnableReplaceWebAppLogo(data.can_replace_logo ?? false)
 
       if (data.billing?.enabled) {
-        setPlan(parseCurrentPlan(data) as any)
+        setPlan(parseCurrentPlan(data))
         setIsFetchedPlan(true)
       }
 
@@ -87,8 +120,7 @@ export const ProviderContextProvider = ({
         setDatasetOperatorEnabled(true)
       if (data.webapp_copyright_enabled)
         setWebappCopyrightEnabled(true)
-      if (data.workspace_members)
-        setLicenseLimit({ workspace_members: data.workspace_members })
+      setLicenseLimit({ workspace_members: resolveMemberInviteLimit(data) })
       if (data.is_allow_transfer_workspace)
         setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
       if (data.knowledge_pipeline?.publish_enabled)
@@ -124,8 +156,10 @@ export const ProviderContextProvider = ({
   // #endregion Zendesk conversation fields
 
   const { t } = useTranslation()
+  const [anthropicQuotaNotice, setAnthropicQuotaNotice] = useAnthropicQuotaNotice()
+
   useEffect(() => {
-    if (localStorage.getItem('anthropic_quota_notice') === 'true')
+    if (anthropicQuotaNotice === 'true')
       return
 
     if (dayjs().isAfter(dayjs('2025-03-17')))
@@ -136,18 +170,19 @@ export const ProviderContextProvider = ({
       if (anthropic && anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial) {
         const quota = anthropic.system_configuration.quota_configurations.find(item => item.quota_type === anthropic.system_configuration.current_quota_type)
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
-          localStorage.setItem('anthropic_quota_notice', 'true')
+          setAnthropicQuotaNotice('true')
           toast.info(t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }), {
             timeout: 60000,
           })
         }
       }
     }
-  }, [providersData, t])
+  }, [anthropicQuotaNotice, providersData, setAnthropicQuotaNotice, t])
 
   return (
     <ProviderContext.Provider value={{
       modelProviders: providersData?.data || [],
+      isLoadingModelProviders,
       refreshModelProviders,
       textGenerationModelList: textGenerationModelList?.data || [],
       isAPIKeySet: !!textGenerationModelList?.data?.some(model => model.status === ModelStatusEnum.active),

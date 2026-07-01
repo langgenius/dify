@@ -35,12 +35,12 @@ const ResDownload: FC<IResDownloadProps> = ({
     >
       {isMobile && (
         <ActionButton>
-          <RiDownloadLine className="h-4 w-4" />
+          <RiDownloadLine className="size-4" />
         </ActionButton>
       )}
       {!isMobile && (
         <Button className={cn('space-x-1')}>
-          <RiDownloadLine className="h-4 w-4" />
+          <RiDownloadLine className="size-4" />
           <span>{t('operation.download', { ns: 'common' })}</span>
         </Button>
       )}

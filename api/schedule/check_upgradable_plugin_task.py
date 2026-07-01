@@ -73,6 +73,7 @@ def check_upgradable_plugin_task():
                 strategy.upgrade_mode,
                 strategy.exclude_plugins,
                 strategy.include_plugins,
+                strategy.category,
             )
 
         # Only sleep if batch_interval_time > 0.0001 AND current batch is not the last one

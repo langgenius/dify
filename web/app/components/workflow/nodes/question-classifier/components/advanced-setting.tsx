@@ -9,7 +9,7 @@ import MemoryConfig from '../../_base/components/memory-config'
 
 const i18nPrefix = 'nodes.questionClassifiers'
 
-type Props = {
+type Props = Readonly<{
   instruction: string
   onInstructionChange: (instruction: string) => void
   hideMemorySetting: boolean
@@ -25,7 +25,7 @@ type Props = {
   }
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
-}
+}>
 
 const AdvancedSetting: FC<Props> = ({
   instruction,
@@ -50,7 +50,7 @@ const AdvancedSetting: FC<Props> = ({
             <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
             <Infotip
               aria-label={t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
-              className="ml-0.5 h-3.5 w-3.5"
+              className="ml-0.5 size-3.5"
               iconClassName="h-3.5 w-3.5"
               popupClassName="w-[120px]"
             >

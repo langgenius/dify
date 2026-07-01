@@ -38,6 +38,21 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
     return node?.data.title || nodeId
   }, [nodes])
 
+  const renderInputPreview = React.useCallback(({ node }: { node?: { properties?: Record<string, unknown> } }) => {
+    const name = String(node?.properties?.dataName ?? '')
+    const input = formInputs.find(i => i.output_variable_name === name)
+    if (!input) {
+      return (
+        <div>
+          Can't find note:
+          {name}
+        </div>
+      )
+    }
+
+    return <Note input={input} nodeName={nodeName} />
+  }, [formInputs, nodeName])
+
   return (
     <div
       className="fixed top-[112px] z-10 max-h-[calc(100vh-116px)] w-[600px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl"
@@ -64,22 +79,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
               }
               return <Variable path={newPath} />
             },
-            section: ({ node }) => (() => {
-              const name = String(node?.properties?.dataName ?? '')
-              const input = formInputs.find(i => i.output_variable_name === name)
-              if (!input) {
-                return (
-                  <div>
-                    Can't find note:
-                    {name}
-                  </div>
-                )
-              }
-              const defaultInput = input.default
-              return (
-                <Note defaultInput={defaultInput!} nodeName={nodeName} />
-              )
-            })(),
+            section: renderInputPreview,
           }}
         />
         <div className="mt-3 flex flex-wrap gap-1 py-1">

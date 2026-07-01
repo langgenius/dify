@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -27,7 +28,7 @@ def _count_permissions(session: Session, tenant_id: str) -> int:
 class TestGetPermission:
     """Integration tests for PluginPermissionService.get_permission using testcontainers."""
 
-    def test_returns_permission_when_found(self, db_session_with_containers: Session):
+    def test_returns_permission_when_found(self, db_session_with_containers: Session) -> None:
         tenant_id = _tenant_id()
         permission = TenantPluginPermission(
             tenant_id=tenant_id,
@@ -45,7 +46,8 @@ class TestGetPermission:
         assert result.install_permission == TenantPluginPermission.InstallPermission.ADMINS
         assert result.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE
 
-    def test_returns_none_when_not_found(self, db_session_with_containers: Session):
+    @pytest.mark.usefixtures("flask_app_with_containers")
+    def test_returns_none_when_not_found(self) -> None:
         result = PluginPermissionService.get_permission(_tenant_id())
 
         assert result is None
@@ -54,7 +56,7 @@ class TestGetPermission:
 class TestChangePermission:
     """Integration tests for PluginPermissionService.change_permission using testcontainers."""
 
-    def test_creates_new_permission_when_not_exists(self, db_session_with_containers: Session):
+    def test_creates_new_permission_when_not_exists(self, db_session_with_containers: Session) -> None:
         tenant_id = _tenant_id()
 
         result = PluginPermissionService.change_permission(
@@ -69,7 +71,7 @@ class TestChangePermission:
         assert permission.install_permission == TenantPluginPermission.InstallPermission.EVERYONE
         assert permission.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE
 
-    def test_updates_existing_permission(self, db_session_with_containers: Session):
+    def test_updates_existing_permission(self, db_session_with_containers: Session) -> None:
         tenant_id = _tenant_id()
         existing = TenantPluginPermission(
             tenant_id=tenant_id,

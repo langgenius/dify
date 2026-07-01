@@ -3,30 +3,16 @@ from __future__ import annotations
 from datetime import datetime
 
 from flask_restx import fields
-from pydantic import computed_field, field_validator
+from pydantic import Field, computed_field, field_validator
 
 from fields.base import ResponseModel
-from graphon.file import helpers as file_helpers
+from libs.helper import build_avatar_url, to_timestamp
 
 simple_account_fields = {
     "id": fields.String,
     "name": fields.String,
     "email": fields.String,
 }
-
-
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
-def _build_avatar_url(avatar: str | None) -> str | None:
-    if avatar is None:
-        return None
-    if avatar.startswith(("http://", "https://")):
-        return avatar
-    return file_helpers.get_signed_file_url(avatar)
 
 
 class SimpleAccount(ResponseModel):
@@ -41,7 +27,7 @@ class _AccountAvatar(ResponseModel):
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
     @property
     def avatar_url(self) -> str | None:
-        return _build_avatar_url(self.avatar)
+        return build_avatar_url(self.avatar)
 
 
 class Account(_AccountAvatar):
@@ -59,7 +45,7 @@ class Account(_AccountAvatar):
     @field_validator("last_login_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AccountWithRole(_AccountAvatar):
@@ -70,12 +56,13 @@ class AccountWithRole(_AccountAvatar):
     last_active_at: int | None = None
     created_at: int | None = None
     role: str
+    roles: list[dict[str, str]] = Field(default_factory=list)
     status: str
 
     @field_validator("last_login_at", "last_active_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AccountWithRoleList(ResponseModel):

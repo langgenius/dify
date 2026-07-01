@@ -82,11 +82,14 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
+from collections.abc import Iterator
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask
+from flask import Flask, g
+from flask.testing import FlaskClient
 from flask_restx import Api
 
 from controllers.console.datasets.datasets import DatasetApi, DatasetListApi
@@ -94,6 +97,7 @@ from controllers.console.datasets.external import (
     ExternalApiTemplateListApi,
 )
 from controllers.console.datasets.hit_testing import HitTestingApi
+from models.account import Account, AccountStatus, TenantAccountRole
 from models.dataset import Dataset, DatasetPermissionEnum
 
 # ============================================================================
@@ -339,7 +343,7 @@ class TestDatasetListApi:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_get_datasets_success(self, client, mock_current_user):
+    def test_get_datasets_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful retrieval of dataset list.
 
@@ -380,7 +384,7 @@ class TestDatasetListApi:
         # Verify service was called
         mock_get_datasets.assert_called_once()
 
-    def test_get_datasets_with_search(self, client, mock_current_user):
+    def test_get_datasets_with_search(self, client: FlaskClient, mock_current_user):
         """
         Test dataset listing with search keyword.
 
@@ -410,7 +414,7 @@ class TestDatasetListApi:
         call_args = mock_get_datasets.call_args
         assert call_args[1]["search"] == search_keyword
 
-    def test_get_datasets_with_pagination(self, client, mock_current_user):
+    def test_get_datasets_with_pagination(self, client: FlaskClient, mock_current_user):
         """
         Test dataset listing with pagination parameters.
 
@@ -495,7 +499,7 @@ class TestDatasetApiGet:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_get_dataset_success(self, client, mock_current_user):
+    def test_get_dataset_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful retrieval of a single dataset.
 
@@ -533,7 +537,7 @@ class TestDatasetApiGet:
         mock_get_dataset.assert_called_once_with(dataset_id)
         mock_check_perm.assert_called_once()
 
-    def test_get_dataset_not_found(self, client, mock_current_user):
+    def test_get_dataset_not_found(self, client: FlaskClient, mock_current_user):
         """
         Test error handling when dataset is not found.
 
@@ -611,7 +615,7 @@ class TestDatasetApiCreate:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_create_dataset_success(self, client, mock_current_user):
+    def test_create_dataset_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful creation of a dataset.
 
@@ -706,7 +710,7 @@ class TestHitTestingApi:
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_hit_testing_success(self, client, mock_current_user):
+    def test_hit_testing_success(self, client: FlaskClient, mock_current_user):
         """
         Test successful hit testing operation.
 
@@ -816,15 +820,32 @@ class TestExternalDatasetApi:
         )
 
     @pytest.fixture
-    def mock_current_user(self):
-        """Mock current user and tenant context."""
-        with patch("controllers.console.datasets.external.current_account_with_tenant") as mock_get_user:
-            mock_user = ControllerApiTestDataFactory.create_user_mock(is_dataset_editor=True)
+    def mock_current_account_context(self, app: Flask) -> Iterator[Mock]:
+        """Provide the wrapper auth context required by HTTP-client controller tests."""
+        mock_user = Account(name="Test User", email="user-123@example.com")
+        mock_user.id = "user-123"
+        mock_user.status = AccountStatus.ACTIVE
+        mock_user.role = TenantAccountRole.EDITOR
+
+        def load_user_from_request_context() -> None:
+            g._login_user = mock_user
+
+        setattr(  # noqa: B010
+            app,
+            "login_manager",
+            SimpleNamespace(load_user_from_request_context=load_user_from_request_context),
+        )
+
+        with (
+            patch("controllers.console.wraps.current_account_with_tenant") as mock_get_user,
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("libs.login.check_csrf_token", return_value=None),
+        ):
             mock_tenant_id = "tenant-123"
             mock_get_user.return_value = (mock_user, mock_tenant_id)
             yield mock_get_user
 
-    def test_get_external_knowledge_apis_success(self, client_list, mock_current_user):
+    def test_get_external_knowledge_apis_success(self, client_list: FlaskClient, mock_current_account_context: Mock):
         """
         Test successful retrieval of external knowledge API list.
 
@@ -838,7 +859,11 @@ class TestExternalDatasetApi:
         - Status code is 200
         """
         # Arrange
-        apis = [{"id": f"api-{i}", "name": f"API {i}", "endpoint": f"https://api{i}.com"} for i in range(3)]
+        apis = []
+        for i in range(3):
+            api_item = Mock()
+            api_item.to_dict.return_value = {"id": f"api-{i}", "name": f"API {i}", "endpoint": f"https://api{i}.com"}
+            apis.append(api_item)
 
         with patch(
             "controllers.console.datasets.external.ExternalDatasetService.get_external_knowledge_apis"
@@ -846,6 +871,7 @@ class TestExternalDatasetApi:
             mock_get_apis.return_value = (apis, 3)
 
             # Act
+            # TODO: this should be made integrated tests...
             response = client_list.get("/datasets/external-knowledge-api?page=1&limit=20")
 
         # Assert

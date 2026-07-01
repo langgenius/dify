@@ -7,11 +7,11 @@ import { ChunkingMode } from '@/models/datasets'
 import { formatFileSize, formatNumber, formatTime } from '@/utils/format'
 
 export type inputType = 'input' | 'select' | 'textarea'
-export type metadataType = DocType | 'originInfo' | 'technicalParameters'
+type MetadataType = DocType | 'originInfo' | 'technicalParameters'
 
 type MetadataMap
   = Record<
-    metadataType,
+    MetadataType,
     {
       text: string
       allowEdit?: boolean
@@ -325,81 +325,5 @@ export const useLanguages = () => {
     th: t(`${langPrefix}th`, { ns: 'datasetDocuments' }),
     id: t(`${langPrefix}id`, { ns: 'datasetDocuments' }),
     ro: t(`${langPrefix}ro`, { ns: 'datasetDocuments' }),
-  }
-}
-
-const bookCategoryPrefix = 'metadata.categoryMap.book.'
-
-export const useBookCategories = () => {
-  const { t } = useTranslation()
-  return {
-    fiction: t(`${bookCategoryPrefix}fiction`, { ns: 'datasetDocuments' }),
-    biography: t(`${bookCategoryPrefix}biography`, { ns: 'datasetDocuments' }),
-    history: t(`${bookCategoryPrefix}history`, { ns: 'datasetDocuments' }),
-    science: t(`${bookCategoryPrefix}science`, { ns: 'datasetDocuments' }),
-    technology: t(`${bookCategoryPrefix}technology`, { ns: 'datasetDocuments' }),
-    education: t(`${bookCategoryPrefix}education`, { ns: 'datasetDocuments' }),
-    philosophy: t(`${bookCategoryPrefix}philosophy`, { ns: 'datasetDocuments' }),
-    religion: t(`${bookCategoryPrefix}religion`, { ns: 'datasetDocuments' }),
-    socialSciences: t(`${bookCategoryPrefix}socialSciences`, { ns: 'datasetDocuments' }),
-    art: t(`${bookCategoryPrefix}art`, { ns: 'datasetDocuments' }),
-    travel: t(`${bookCategoryPrefix}travel`, { ns: 'datasetDocuments' }),
-    health: t(`${bookCategoryPrefix}health`, { ns: 'datasetDocuments' }),
-    selfHelp: t(`${bookCategoryPrefix}selfHelp`, { ns: 'datasetDocuments' }),
-    businessEconomics: t(`${bookCategoryPrefix}businessEconomics`, { ns: 'datasetDocuments' }),
-    cooking: t(`${bookCategoryPrefix}cooking`, { ns: 'datasetDocuments' }),
-    childrenYoungAdults: t(`${bookCategoryPrefix}childrenYoungAdults`, { ns: 'datasetDocuments' }),
-    comicsGraphicNovels: t(`${bookCategoryPrefix}comicsGraphicNovels`, { ns: 'datasetDocuments' }),
-    poetry: t(`${bookCategoryPrefix}poetry`, { ns: 'datasetDocuments' }),
-    drama: t(`${bookCategoryPrefix}drama`, { ns: 'datasetDocuments' }),
-    other: t(`${bookCategoryPrefix}other`, { ns: 'datasetDocuments' }),
-  }
-}
-
-const personalDocCategoryPrefix
-  = 'metadata.categoryMap.personalDoc.'
-
-export const usePersonalDocCategories = () => {
-  const { t } = useTranslation()
-  return {
-    notes: t(`${personalDocCategoryPrefix}notes`, { ns: 'datasetDocuments' }),
-    blogDraft: t(`${personalDocCategoryPrefix}blogDraft`, { ns: 'datasetDocuments' }),
-    diary: t(`${personalDocCategoryPrefix}diary`, { ns: 'datasetDocuments' }),
-    researchReport: t(`${personalDocCategoryPrefix}researchReport`, { ns: 'datasetDocuments' }),
-    bookExcerpt: t(`${personalDocCategoryPrefix}bookExcerpt`, { ns: 'datasetDocuments' }),
-    schedule: t(`${personalDocCategoryPrefix}schedule`, { ns: 'datasetDocuments' }),
-    list: t(`${personalDocCategoryPrefix}list`, { ns: 'datasetDocuments' }),
-    projectOverview: t(`${personalDocCategoryPrefix}projectOverview`, { ns: 'datasetDocuments' }),
-    photoCollection: t(`${personalDocCategoryPrefix}photoCollection`, { ns: 'datasetDocuments' }),
-    creativeWriting: t(`${personalDocCategoryPrefix}creativeWriting`, { ns: 'datasetDocuments' }),
-    codeSnippet: t(`${personalDocCategoryPrefix}codeSnippet`, { ns: 'datasetDocuments' }),
-    designDraft: t(`${personalDocCategoryPrefix}designDraft`, { ns: 'datasetDocuments' }),
-    personalResume: t(`${personalDocCategoryPrefix}personalResume`, { ns: 'datasetDocuments' }),
-    other: t(`${personalDocCategoryPrefix}other`, { ns: 'datasetDocuments' }),
-  }
-}
-
-const businessDocCategoryPrefix
-  = 'metadata.categoryMap.businessDoc.'
-
-export const useBusinessDocCategories = () => {
-  const { t } = useTranslation()
-  return {
-    meetingMinutes: t(`${businessDocCategoryPrefix}meetingMinutes`, { ns: 'datasetDocuments' }),
-    researchReport: t(`${businessDocCategoryPrefix}researchReport`, { ns: 'datasetDocuments' }),
-    proposal: t(`${businessDocCategoryPrefix}proposal`, { ns: 'datasetDocuments' }),
-    employeeHandbook: t(`${businessDocCategoryPrefix}employeeHandbook`, { ns: 'datasetDocuments' }),
-    trainingMaterials: t(`${businessDocCategoryPrefix}trainingMaterials`, { ns: 'datasetDocuments' }),
-    requirementsDocument: t(`${businessDocCategoryPrefix}requirementsDocument`, { ns: 'datasetDocuments' }),
-    designDocument: t(`${businessDocCategoryPrefix}designDocument`, { ns: 'datasetDocuments' }),
-    productSpecification: t(`${businessDocCategoryPrefix}productSpecification`, { ns: 'datasetDocuments' }),
-    financialReport: t(`${businessDocCategoryPrefix}financialReport`, { ns: 'datasetDocuments' }),
-    marketAnalysis: t(`${businessDocCategoryPrefix}marketAnalysis`, { ns: 'datasetDocuments' }),
-    projectPlan: t(`${businessDocCategoryPrefix}projectPlan`, { ns: 'datasetDocuments' }),
-    teamStructure: t(`${businessDocCategoryPrefix}teamStructure`, { ns: 'datasetDocuments' }),
-    policiesProcedures: t(`${businessDocCategoryPrefix}policiesProcedures`, { ns: 'datasetDocuments' }),
-    contractsAgreements: t(`${businessDocCategoryPrefix}contractsAgreements`, { ns: 'datasetDocuments' }),
-    emailCorrespondence: t(`${businessDocCategoryPrefix}emailCorrespondence`, { ns: 'datasetDocuments' }),
-    other: t(`${businessDocCategoryPrefix}other`, { ns: 'datasetDocuments' }),
   }
 }

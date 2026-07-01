@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { NUM_INFINITE } from '../config'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   Icon: ComponentType<{ className?: string }>
   name: string
@@ -26,7 +26,7 @@ type Props = {
   storageThreshold?: number
   storageTooltip?: string
   isSandboxPlan?: boolean
-}
+}>
 
 const UsageInfo: FC<Props> = ({
   className,
@@ -144,13 +144,13 @@ const UsageInfo: FC<Props> = ({
           <div
             className={cn(
               'h-1 rounded-md bg-progress-bar-indeterminate-stripe',
-              isSandboxPlan ? 'w-full' : 'w-[30px]',
+              isSandboxPlan ? 'w-full' : 'w-7.5',
             )}
           />
         </div>
       )
     : (
-        <MeterRoot value={effectivePercent} max={100}>
+        <MeterRoot value={effectivePercent} max={100} aria-label={name}>
           <MeterTrack>
             <MeterIndicator tone={tone} />
           </MeterTrack>
@@ -162,7 +162,7 @@ const UsageInfo: FC<Props> = ({
       return (
         <Tooltip>
           <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
-          <TooltipContent className="w-[200px] max-w-[200px]">
+          <TooltipContent className="w-50 max-w-50">
             {storageTooltip}
           </TooltipContent>
         </Tooltip>
@@ -174,7 +174,7 @@ const UsageInfo: FC<Props> = ({
   return (
     <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
       {!hideIcon && Icon && (
-        <Icon className="h-4 w-4 text-text-tertiary" />
+        <Icon className="size-4 text-text-tertiary" />
       )}
       <div className="flex items-center gap-1">
         <div className="system-xs-medium text-text-tertiary">{name}</div>

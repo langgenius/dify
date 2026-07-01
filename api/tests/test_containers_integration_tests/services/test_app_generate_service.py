@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import App
+from models.enums import EndUserType
 from models.model import EndUser
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
@@ -37,9 +38,9 @@ class TestAppGenerateService:
                 "services.app_generate_service.MessageBasedAppGenerator", autospec=True
             ) as mock_message_based_generator,
             patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
-            patch("services.app_generate_service.dify_config", autospec=True) as mock_dify_config,
-            patch("services.quota_service.dify_config", autospec=True) as mock_quota_dify_config,
-            patch("configs.dify_config", autospec=True) as mock_global_dify_config,
+            patch("services.app_generate_service.dify_config") as mock_dify_config,
+            patch("services.quota_service.dify_config") as mock_quota_dify_config,
+            patch("configs.dify_config") as mock_global_dify_config,
         ):
             # Setup default mock returns for billing service
             mock_billing_service.quota_reserve.return_value = {
@@ -165,8 +166,9 @@ class TestAppGenerateService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         from services.app_service import AppService, CreateAppParams
@@ -446,7 +448,7 @@ class TestAppGenerateService:
         end_user = EndUser(
             tenant_id=account.current_tenant.id,
             app_id=app.id,
-            type="normal",
+            type=EndUserType.BROWSER,
             external_user_id=fake.uuid4(),
             name=fake.name(),
             is_anonymous=False,
@@ -831,7 +833,7 @@ class TestAppGenerateService:
         end_user = EndUser(
             tenant_id=account.current_tenant.id,
             app_id=app.id,
-            type="normal",
+            type=EndUserType.BROWSER,
             external_user_id=fake.uuid4(),
             name=fake.name(),
             is_anonymous=False,

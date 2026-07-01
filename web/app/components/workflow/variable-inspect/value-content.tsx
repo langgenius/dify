@@ -20,11 +20,11 @@ import {
   validateInspectJsonValue,
 } from './value-content.helpers'
 
-type Props = {
+type Props = Readonly<{
   currentVar: VarInInspect
   handleValueChange: (varId: string, value: any) => void
   isTruncated: boolean
-}
+}>
 
 const ValueContent = ({
   currentVar,

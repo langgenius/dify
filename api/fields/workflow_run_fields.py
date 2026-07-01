@@ -16,7 +16,7 @@ from pydantic import AliasChoices, Field, field_validator
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
 from fields.member_fields import SimpleAccount
-from libs.helper import TimestampField
+from libs.helper import TimestampField, to_timestamp
 
 workflow_run_for_log_fields = {
     "id": fields.String,
@@ -50,12 +50,6 @@ def build_workflow_run_for_archived_log_model(api_or_ns: Namespace):
     return api_or_ns.model("WorkflowRunForArchivedLog", workflow_run_for_archived_log_fields)
 
 
-def _to_timestamp(value: datetime | int | None) -> int | None:
-    if isinstance(value, datetime):
-        return int(value.timestamp())
-    return value
-
-
 class WorkflowRunForLogResponse(ResponseModel):
     id: str
     version: str | None = None
@@ -79,7 +73,7 @@ class WorkflowRunForLogResponse(ResponseModel):
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class WorkflowRunForArchivedLogResponse(ResponseModel):
@@ -120,7 +114,7 @@ class WorkflowRunForListResponse(ResponseModel):
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class AdvancedChatWorkflowRunForListResponse(WorkflowRunForListResponse):
@@ -180,7 +174,7 @@ class WorkflowRunDetailResponse(ResponseModel):
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class WorkflowRunNodeExecutionResponse(ResponseModel):
@@ -217,7 +211,7 @@ class WorkflowRunNodeExecutionResponse(ResponseModel):
     @field_validator("created_at", "finished_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
-        return _to_timestamp(value)
+        return to_timestamp(value)
 
 
 class WorkflowRunNodeExecutionListResponse(ResponseModel):

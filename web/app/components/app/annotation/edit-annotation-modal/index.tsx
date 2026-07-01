@@ -29,7 +29,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { addAnnotation, editAnnotation } from '@/service/annotation'
 import EditItem, { EditItemType } from './edit-item'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onHide: () => void
   appId: string
@@ -42,7 +42,7 @@ type Props = {
   createdAt?: number
   onRemove: () => void
   onlyEditResponse?: boolean
-}
+}>
 
 const EditAnnotationModal: FC<Props> = ({
   isShow,
@@ -126,7 +126,7 @@ const EditAnnotationModal: FC<Props> = ({
                     </DrawerTitle>
                     <DrawerCloseButton
                       aria-label={t('operation.close', { ns: 'common' })}
-                      className="h-6 w-6 rounded-md"
+                      className="size-6 rounded-md"
                     />
                   </div>
                 </div>
@@ -183,7 +183,7 @@ const EditAnnotationModal: FC<Props> = ({
                   {
                     annotationId
                       ? (
-                          <div className="flex h-16 items-center justify-between rounded-br-xl rounded-bl-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
+                          <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
                             <div
                               className="flex cursor-pointer items-center space-x-2 pl-3"
                               onClick={() => setShowModal(true)}

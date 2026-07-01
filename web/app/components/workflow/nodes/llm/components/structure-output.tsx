@@ -8,11 +8,11 @@ import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable
 import { Type } from '../types'
 import { JsonSchemaConfigModal } from './json-schema-config-modal'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value?: StructuredOutput
   onChange: (value: StructuredOutput) => void
-}
+}>
 
 export function StructureOutput({
   className,

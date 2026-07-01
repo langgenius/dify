@@ -45,12 +45,8 @@ export type PostForgotPasswordData = {
 }
 
 export type PostForgotPasswordErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostForgotPasswordError = PostForgotPasswordErrors[keyof PostForgotPasswordErrors]
 
 export type PostForgotPasswordResponses = {
   200: ForgotPasswordEmailResponse
@@ -67,13 +63,8 @@ export type PostForgotPasswordResetsData = {
 }
 
 export type PostForgotPasswordResetsErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostForgotPasswordResetsError
-  = PostForgotPasswordResetsErrors[keyof PostForgotPasswordResetsErrors]
 
 export type PostForgotPasswordResetsResponses = {
   200: ForgotPasswordResetResponse
@@ -90,13 +81,8 @@ export type PostForgotPasswordValidityData = {
 }
 
 export type PostForgotPasswordValidityErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
-
-export type PostForgotPasswordValidityError
-  = PostForgotPasswordValidityErrors[keyof PostForgotPasswordValidityErrors]
 
 export type PostForgotPasswordValidityResponses = {
   200: ForgotPasswordCheckResponse

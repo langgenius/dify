@@ -1,7 +1,8 @@
-import type { FC, ReactNode } from 'react'
+import type { CSSProperties, FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import {
   Tooltip,
   TooltipContent,
@@ -29,6 +30,7 @@ import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevice
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import {
   AuthCategory,
   AuthorizedInDataSourceNode,
@@ -55,18 +57,19 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import {
   canRunBySingle,
+  getNodeCatalogType,
   hasErrorHandleNode,
   hasRetryNode,
   isSupportCustomRunForm,
 } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
 import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
@@ -89,8 +92,13 @@ import {
 } from './helpers'
 import LastRun from './last-run'
 import useLastRun from './last-run/use-last-run'
-import Tab, { TabType } from './tab'
+import {
+  StartPlaceholderPanelBody,
+  StartPlaceholderPanelDescription,
+  StartPlaceholderPanelTitle,
+} from './start-placeholder-panel'
 import { TriggerSubscription } from './trigger-subscription'
+import { TabType } from './types'
 
 type BasePanelProps = {
   children: ReactNode
@@ -157,6 +165,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
   const pendingSingleRun = useStore(s => s.pendingSingleRun)
   const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
+  const setNodePanelWidthStorage = useSetWorkflowNodePanelWidth()
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -169,10 +178,10 @@ const BasePanel: FC<BasePanelProps> = ({
     const newValue = clampNodePanelWidth(width, maxNodePanelWidth)
 
     if (source === 'user')
-      localStorage.setItem('workflow-node-panel-width', `${newValue}`)
+      setNodePanelWidthStorage(newValue)
 
     setNodePanelWidth(newValue)
-  }, [maxNodePanelWidth, setNodePanelWidth])
+  }, [maxNodePanelWidth, setNodePanelWidth, setNodePanelWidthStorage])
 
   const handleResize = useCallback((width: number) => {
     updateNodePanelWidth(width, 'user')
@@ -201,7 +210,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const { handleNodeSelect } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
   const toolIcon = useToolIcon(data)
 
   const { saveStateToHistory } = useWorkflowHistory()
@@ -221,6 +230,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
+  const nodeMetaType = getNodeCatalogType(data)
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore(state => state.appDetail)
 
@@ -257,6 +267,7 @@ const BasePanel: FC<BasePanelProps> = ({
   } = useNodesMetaData()
 
   const configsMap = useHooksStore(s => s.configsMap)
+  const canRun = useHooksStore(s => s.accessControl.canRun)
   const {
     isShowSingleRun,
     hideSingleRun,
@@ -285,7 +296,7 @@ const BasePanel: FC<BasePanelProps> = ({
     flowId: configsMap?.flowId || '',
     flowType: configsMap?.flowType || FlowType.appFlow,
     data,
-    defaultRunInputData: nodesMap?.[data.type]?.defaultRunInputData || {},
+    defaultRunInputData: nodesMap?.[nodeMetaType]?.defaultRunInputData || {},
     isPaused,
   })
 
@@ -354,11 +365,11 @@ const BasePanel: FC<BasePanelProps> = ({
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
 
   const handleJumpToDataSourcePage = useCallback(() => {
-    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
-  }, [setShowAccountSettingModal])
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
+  }, [openIntegrationsSetting])
 
   const {
     appendNodeInspectVars,
@@ -397,6 +408,11 @@ const BasePanel: FC<BasePanelProps> = ({
     id,
     data,
   }) as Node, [id, data])
+  const singleRunForms = singleRunParams?.forms
+  const isCustomRunFormNode = isSupportCustomRunForm(data.type)
+  const shouldRenderSingleRunPanel = isShowSingleRun && (isCustomRunFormNode || !!singleRunForms)
+  const isSingleRunPanelVisible = showSingleRunPanel && shouldRenderSingleRunPanel
+
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -405,7 +421,7 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div
           ref={containerRef}
-          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
           style={{
             width: `${nodePanelWidth}px`,
           }}
@@ -423,20 +439,39 @@ const BasePanel: FC<BasePanelProps> = ({
     )
   }
 
-  if (isShowSingleRun) {
-    const form = getCustomRunForm({
-      nodeId: id,
-      flowId: configsMap?.flowId || '',
-      flowType: configsMap?.flowType || FlowType.appFlow,
-      payload: data,
-      setRunResult,
-      setIsRunAfterSingleRun,
-      isPaused,
-      isRunAfterSingleRun,
-      onSuccess: handleAfterCustomSingleRun,
-      onCancel: hideSingleRun,
-      appendNodeInspectVars,
-    })
+  if (shouldRenderSingleRunPanel) {
+    const customRunForm = isCustomRunFormNode
+      ? getCustomRunForm({
+          nodeId: id,
+          flowId: configsMap?.flowId || '',
+          flowType: configsMap?.flowType || FlowType.appFlow,
+          payload: data,
+          setRunResult,
+          setIsRunAfterSingleRun,
+          isPaused,
+          isRunAfterSingleRun,
+          onSuccess: handleAfterCustomSingleRun,
+          onCancel: hideSingleRun,
+          appendNodeInspectVars,
+        })
+      : null
+    const singleRunPanelContent = isCustomRunFormNode
+      ? customRunForm
+      : singleRunForms
+        ? (
+            <BeforeRunForm
+              nodeName={data.title}
+              nodeType={data.type}
+              onHide={hideSingleRun}
+              onRun={handleRunWithParams}
+              {...singleRunParams!}
+              {...passedLogParams}
+              existVarValuesInForms={getExistVarValuesInForms(singleRunForms)}
+              filteredExistVarForms={getFilteredExistVarForms(singleRunForms)}
+              handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
+            />
+          )
+        : null
 
     return (
       <div className={cn(
@@ -445,29 +480,12 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div
           ref={containerRef}
-          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
           style={{
             width: `${nodePanelWidth}px`,
           }}
         >
-          {isSupportCustomRunForm(data.type)
-            ? (
-                form
-              )
-            : (
-                <BeforeRunForm
-                  nodeName={data.title}
-                  nodeType={data.type}
-                  onHide={hideSingleRun}
-                  onRun={handleRunWithParams}
-                  {...singleRunParams!}
-                  {...passedLogParams}
-                  existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
-                  filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
-                  handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
-                />
-              )}
-
+          {singleRunPanelContent}
         </div>
       </div>
     )
@@ -477,6 +495,33 @@ const BasePanel: FC<BasePanelProps> = ({
   const singleRunActionLabel = isSingleRunning
     ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
     : runThisStepLabel
+  const nodePanelRightOffset = !showMessageLogModal
+    ? '4px'
+    : `${otherPanelWidth + 8}px`
+  const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
+  const panelChildren = cloneElement(children as any, {
+    id,
+    data,
+    panelProps: {
+      getInputVars,
+      toVarInputs,
+      runInputData,
+      setRunInputData,
+      runResult,
+      runInputDataRef,
+    },
+  })
+
+  const panelTabs = (
+    <TabsList>
+      <TabsTab value={TabType.settings}>
+        {t('debug.settingsTab', { ns: 'workflow' }).toLocaleUpperCase()}
+      </TabsTab>
+      <TabsTab value={TabType.lastRun}>
+        {t('debug.lastRunTab', { ns: 'workflow' }).toLocaleUpperCase()}
+      </TabsTab>
+    </TabsList>
+  )
 
   return (
     <div
@@ -485,8 +530,9 @@ const BasePanel: FC<BasePanelProps> = ({
         showMessageLogModal && 'absolute z-0 mr-2 w-[400px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={{
-        right: !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
-      }}
+        'right': !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
+        '--workflow-node-panel-right': nodePanelRightOffset,
+      } as CSSProperties}
     >
       <div
         ref={triggerRef}
@@ -494,25 +540,36 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div className="h-10 w-0.5 rounded-xs bg-state-base-handle hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </div>
-      <div
+      <Tabs
         ref={containerRef}
-        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        value={tabType}
+        onValueChange={selectedValue => setTabType(selectedValue)}
+        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
-          width: `${nodePanelWidth}px`,
-        }}
+          'width': `${nodePanelWidth}px`,
+          '--workflow-node-panel-width': `${nodePanelWidth}px`,
+        } as CSSProperties}
       >
         <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
-            <BlockIcon
-              className="mr-1 shrink-0"
-              type={data.type}
-              toolIcon={toolIcon}
-              size="md"
-            />
-            <TitleInput
-              value={data.title || ''}
-              onBlur={handleTitleBlur}
-            />
+            {!isStartPlaceholderPanel && (
+              <BlockIcon
+                className="mr-1 shrink-0"
+                type={data.type}
+                toolIcon={toolIcon}
+                size="md"
+              />
+            )}
+            {isStartPlaceholderPanel
+              ? (
+                  <StartPlaceholderPanelTitle />
+                )
+              : (
+                  <TitleInput
+                    value={data.title || ''}
+                    onBlur={handleTitleBlur}
+                  />
+                )}
             {viewingUsers.length > 0 && (
               <div className="ml-3 shrink-0">
                 <UserAvatarList
@@ -524,14 +581,14 @@ const BasePanel: FC<BasePanelProps> = ({
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {
-                isSupportSingleRun && !nodesReadOnly && (
+                isSupportSingleRun && canRun && !nodesReadOnly && (
                   <Tooltip disabled={isSingleRunning}>
                     <TooltipTrigger
                       render={(
                         <button
                           type="button"
                           aria-label={singleRunActionLabel}
-                          className="mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
+                          className="mr-1 flex size-6 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                           onClick={() => {
                             if (isSingleRunning)
                               handleStop()
@@ -541,8 +598,8 @@ const BasePanel: FC<BasePanelProps> = ({
                         >
                           {
                             isSingleRunning
-                              ? <Stop aria-hidden className="h-4 w-4 text-text-tertiary" />
-                              : <RiPlayLargeLine aria-hidden className="h-4 w-4 text-text-tertiary" />
+                              ? <Stop aria-hidden className="size-4 text-text-tertiary" />
+                              : <RiPlayLargeLine aria-hidden className="size-4 text-text-tertiary" />
                           }
                         </button>
                       )}
@@ -553,112 +610,108 @@ const BasePanel: FC<BasePanelProps> = ({
                   </Tooltip>
                 )
               }
-              <HelpLink nodeType={data.type} />
+              <HelpLink nodeType={nodeMetaType} />
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
-              <div
-                className="flex h-6 w-6 cursor-pointer items-center justify-center"
+              <button
+                type="button"
+                aria-label={t('common.operation.close')}
+                className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-              </div>
+                <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
+              </button>
             </div>
           </div>
-          <div className="p-2">
-            <DescriptionInput
-              value={data.desc || ''}
-              onChange={handleDescriptionChange}
-            />
-          </div>
-          {
-            needsToolAuth && (
-              <PluginAuth
-                className="px-4 pb-2"
-                pluginPayload={{
-                  provider: currToolCollection?.name || '',
-                  providerType: currToolCollection?.type || '',
-                  category: AuthCategory.tool,
-                  detail: currToolCollection as any,
-                }}
-              >
-                <div className="flex items-center justify-between pr-3 pl-4">
-                  <Tab
-                    value={tabType}
-                    onChange={setTabType}
+          {isStartPlaceholderPanel
+            ? (
+                <StartPlaceholderPanelDescription />
+              )
+            : (
+                <div className="p-2">
+                  <DescriptionInput
+                    value={data.desc || ''}
+                    onChange={handleDescriptionChange}
                   />
-                  <AuthorizedInNode
+                </div>
+              )}
+          {!isStartPlaceholderPanel && (
+            <>
+              {
+                needsToolAuth && (
+                  <PluginAuth
+                    className="px-4 pb-2"
                     pluginPayload={{
                       provider: currToolCollection?.name || '',
                       providerType: currToolCollection?.type || '',
                       category: AuthCategory.tool,
                       detail: currToolCollection as any,
                     }}
-                    onAuthorizationItemClick={handleAuthorizationItemClick}
-                    credentialId={data.credential_id}
-                  />
-                </div>
-              </PluginAuth>
-            )
-          }
-          {
-            !!currentDataSource && (
-              <PluginAuthInDataSourceNode
-                onJumpToDataSourcePage={handleJumpToDataSourcePage}
-                isAuthorized={currentDataSource.is_authorized}
-              >
-                <div className="flex items-center justify-between pr-3 pl-4">
-                  <Tab
-                    value={tabType}
-                    onChange={setTabType}
-                  />
-                  <AuthorizedInDataSourceNode
+                  >
+                    <div className="flex items-center justify-between pr-3 pl-4">
+                      {panelTabs}
+                      <AuthorizedInNode
+                        pluginPayload={{
+                          provider: currToolCollection?.name || '',
+                          providerType: currToolCollection?.type || '',
+                          category: AuthCategory.tool,
+                          detail: currToolCollection as any,
+                        }}
+                        onAuthorizationItemClick={handleAuthorizationItemClick}
+                        credentialId={data.credential_id}
+                      />
+                    </div>
+                  </PluginAuth>
+                )
+              }
+              {
+                !!currentDataSource && (
+                  <PluginAuthInDataSourceNode
                     onJumpToDataSourcePage={handleJumpToDataSourcePage}
-                    authorizationsNum={3}
-                  />
-                </div>
-              </PluginAuthInDataSourceNode>
-            )
-          }
-          {
-            currentTriggerPlugin && (
-              <TriggerSubscription
-                subscriptionIdSelected={data.subscription_id}
-                onSubscriptionChange={handleSubscriptionChange}
-              >
-                <Tab
-                  value={tabType}
-                  onChange={setTabType}
-                />
-              </TriggerSubscription>
-            )
-          }
-          {
-            !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
-              <div className="flex items-center justify-between pr-3 pl-4">
-                <Tab
-                  value={tabType}
-                  onChange={setTabType}
-                />
-              </div>
-            )
-          }
-          <Split />
+                    isAuthorized={currentDataSource.is_authorized}
+                  >
+                    <div className="flex items-center justify-between pr-3 pl-4">
+                      {panelTabs}
+                      <AuthorizedInDataSourceNode
+                        onJumpToDataSourcePage={handleJumpToDataSourcePage}
+                        authorizationsNum={3}
+                      />
+                    </div>
+                  </PluginAuthInDataSourceNode>
+                )
+              }
+              {
+                currentTriggerPlugin && (
+                  <TriggerSubscription
+                    subscriptionIdSelected={data.subscription_id}
+                    onSubscriptionChange={handleSubscriptionChange}
+                  >
+                    {panelTabs}
+                  </TriggerSubscription>
+                )
+              }
+              {
+                !needsToolAuth && !currentDataSource && !currentTriggerPlugin && (
+                  <div className="flex items-center justify-between pr-3 pl-4">
+                    {panelTabs}
+                  </div>
+                )
+              }
+              <Split />
+            </>
+          )}
         </div>
-        {tabType === TabType.settings && (
-          <div className="flex flex-1 flex-col overflow-y-auto">
+
+        {isStartPlaceholderPanel && (
+          <StartPlaceholderPanelBody>
+            {panelChildren}
+          </StartPlaceholderPanelBody>
+        )}
+
+        {!isStartPlaceholderPanel && (
+          <TabsPanel value={TabType.settings} className="flex flex-1 flex-col overflow-y-auto">
             <div>
-              {cloneElement(children as any, {
-                id,
-                data,
-                panelProps: {
-                  getInputVars,
-                  toVarInputs,
-                  runInputData,
-                  setRunInputData,
-                  runResult,
-                  runInputDataRef,
-                },
-              })}
+              {panelChildren}
             </div>
             <Split />
             {
@@ -691,26 +744,28 @@ const BasePanel: FC<BasePanelProps> = ({
               )
             }
             {readmeEntranceComponent}
-          </div>
+          </TabsPanel>
         )}
 
-        {tabType === TabType.lastRun && (
-          <LastRun
-            appId={appDetail?.id || ''}
-            nodeId={id}
-            canSingleRun={isSupportSingleRun}
-            runningStatus={runningStatus}
-            isRunAfterSingleRun={isRunAfterSingleRun}
-            updateNodeRunningStatus={updateNodeRunningStatus}
-            onSingleRunClicked={handleSingleRun}
-            nodeInfo={nodeInfo!}
-            singleRunResult={runResult!}
-            isPaused={isPaused}
-            {...passedLogParams}
-          />
+        {!isStartPlaceholderPanel && (
+          <TabsPanel value={TabType.lastRun} className="flex flex-1 flex-col">
+            <LastRun
+              appId={appDetail?.id || ''}
+              nodeId={id}
+              canSingleRun={isSupportSingleRun}
+              runningStatus={runningStatus}
+              isRunAfterSingleRun={isRunAfterSingleRun}
+              updateNodeRunningStatus={updateNodeRunningStatus}
+              onSingleRunClicked={handleSingleRun}
+              nodeInfo={nodeInfo!}
+              singleRunResult={runResult!}
+              isPaused={isPaused}
+              {...passedLogParams}
+            />
+          </TabsPanel>
         )}
 
-      </div>
+      </Tabs>
     </div>
   )
 }

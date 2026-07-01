@@ -29,7 +29,7 @@ class RagPipelineTaskProxy:
 
     @cached_property
     def features(self):
-        return FeatureService.get_features(self._dataset_tenant_id)
+        return FeatureService.get_features(self._dataset_tenant_id, exclude_vector_space=True)
 
     def _upload_invoke_entities(self) -> str:
         text = [item.model_dump() for item in self._rag_pipeline_invoke_entities]

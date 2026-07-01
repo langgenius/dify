@@ -29,6 +29,12 @@ const FieldHarness = ({ config, initialData = {} }: FieldHarnessProps) => {
   return <Component form={form} />
 }
 
+const getVisibleText = (text: string) => {
+  const element = screen.getAllByText(text).find(element => !element.classList.contains('sr-only'))
+  expect(element).toBeDefined()
+  return element!
+}
+
 describe('InputField', () => {
   it('should render text input field by default', () => {
     render(<FieldHarness config={createConfig({ label: 'Prompt' })} initialData={{ fieldA: '' }} />)
@@ -51,7 +57,7 @@ describe('InputField', () => {
       />,
     )
 
-    expect(screen.getByText('Temperature')).toBeInTheDocument()
+    expect(getVisibleText('Temperature')).toBeInTheDocument()
     expect(screen.getByText('Control randomness')).toBeInTheDocument()
   })
 

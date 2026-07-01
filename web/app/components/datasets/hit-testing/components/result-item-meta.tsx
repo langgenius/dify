@@ -8,11 +8,11 @@ import { SegmentIndexTag } from '../../documents/detail/completed/common/segment
 import Score from './score'
 
 type Props = {
-  labelPrefix: string
-  positionId: number
-  wordCount: number
-  score: number
-  className?: string
+  readonly labelPrefix: string
+  readonly positionId: number
+  readonly wordCount: number
+  readonly score: number
+  readonly className?: string
 }
 
 const ResultItemMeta: FC<Props> = ({

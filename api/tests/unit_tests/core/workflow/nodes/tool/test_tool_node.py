@@ -111,8 +111,8 @@ def tool_node(monkeypatch) -> ToolNode:
 
     config = graph_config["nodes"][0]
 
-    # Provide a stub ToolFileManager to satisfy the updated ToolNode constructor
-    tool_file_manager_factory = MagicMock(spec=ToolFileManagerProtocol)
+    # Provide a stub ToolFileManager to satisfy the ToolNode constructor.
+    tool_file_manager = MagicMock(spec=ToolFileManagerProtocol)
     runtime = _StubToolRuntime()
 
     node = ToolNode(
@@ -120,7 +120,7 @@ def tool_node(monkeypatch) -> ToolNode:
         data=ToolNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        tool_file_manager_factory=tool_file_manager_factory,
+        tool_file_manager=tool_file_manager,
         runtime=runtime,
     )
     return node
@@ -215,7 +215,7 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
         size=123,
         storage_key="file-key",
     )
-    tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.return_value = (
+    tool_node._tool_file_manager.get_file_generator_by_tool_file_id.return_value = (
         None,
         SimpleNamespace(mime_type="application/pdf"),
     )
@@ -228,7 +228,7 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode):
 
     events, _ = _run_transform(tool_node, message)
 
-    tool_node._tool_file_manager_factory.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
+    tool_node._tool_file_manager.get_file_generator_by_tool_file_id.assert_called_once_with("file-id")
     completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
     assert len(completed_events) == 1
     files_segment = completed_events[0].node_run_result.outputs["files"]

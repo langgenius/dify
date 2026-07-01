@@ -39,7 +39,7 @@ const Panel: FC<NodePanelProps<EndNodeType>> = ({
                     className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                     onClick={handleAddVariable}
                   >
-                    <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                    <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
                   </button>
                 )
               : undefined

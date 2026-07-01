@@ -125,7 +125,7 @@ describe('Tag', () => {
     it('should always have correct font-size class', () => {
       render(<Tag>GET</Tag>)
       const tag = screen.getByText('GET')
-      expect(tag.className).toContain('text-[0.625rem]')
+      expect(tag.className).toContain('text-2xs/6')
     })
 
     it('should always have font-semibold class', () => {
@@ -134,10 +134,10 @@ describe('Tag', () => {
       expect(tag.className).toContain('font-semibold')
     })
 
-    it('should always have leading-6 class', () => {
+    it('should always have text-2xs/6 class', () => {
       render(<Tag>GET</Tag>)
       const tag = screen.getByText('GET')
-      expect(tag.className).toContain('leading-6')
+      expect(tag.className).toContain('text-2xs/6')
     })
   })
 

@@ -196,8 +196,9 @@ describe('MethodSelector', () => {
       await user.click(trigger)
 
       await waitFor(() => {
-        const openTrigger = document.querySelector('.bg-background-section-burn\\!')
-        expect(openTrigger)!.toBeInTheDocument()
+        const openTrigger = screen.getByTestId('popover-trigger')
+        expect(openTrigger).toHaveAttribute('data-popup-open')
+        expect(openTrigger).toHaveClass('data-popup-open:bg-background-section-burn!')
       })
     })
 

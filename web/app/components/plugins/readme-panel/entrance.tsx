@@ -47,10 +47,10 @@ export const ReadmeEntrance = ({
         onClick={handleReadmeClick}
         className="flex w-full items-center justify-start gap-1 rounded-sm text-text-tertiary transition-opacity hover:text-text-accent-light-mode-only focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden"
       >
-        <div className="relative flex h-3 w-3 items-center justify-center overflow-hidden">
-          <span aria-hidden="true" className="i-ri-book-read-line h-3 w-3" />
+        <div className="relative flex size-3 items-center justify-center overflow-hidden">
+          <span aria-hidden="true" className="i-ri-book-read-line size-3" />
         </div>
-        <span className="text-xs leading-4 font-normal">
+        <span className="text-xs/4 font-normal">
           {!showShortTip ? t('readmeInfo.needHelpCheckReadme', { ns: 'plugin' }) : t('readmeInfo.title', { ns: 'plugin' })}
         </span>
       </button>

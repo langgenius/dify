@@ -1,6 +1,6 @@
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
-import type { WorkflowShortcutId } from '@/app/components/workflow/shortcuts/definitions'
+import type { WorkflowCanvasShortcutId } from '@/app/components/workflow/shortcuts/definitions'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 
 export const NODE_ACTIONS_MENU_WIDTH_CLASS_NAME = 'w-[240px] rounded-lg'
@@ -14,7 +14,7 @@ export function NodeActionsMenuItemContent({
 }: {
   children: ReactNode
   hotkey?: RegisterableHotkey | (string & {})
-  shortcut?: WorkflowShortcutId
+  shortcut?: WorkflowCanvasShortcutId
 }) {
   return (
     <>

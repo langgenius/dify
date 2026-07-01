@@ -8,11 +8,11 @@ import {
   AlertDialogContent,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 
 export type DSLExportConfirmModalProps = {
   envList: EnvironmentVariable[]
@@ -70,10 +70,10 @@ export const DSLExportConfirmContent = ({
                 <tr key={env.name}>
                   <td className={cn('h-7 border-r border-divider-regular pl-3 system-xs-medium', index + 1 !== envList.length && 'border-b border-divider-regular')}>
                     <div className="flex w-50 items-center gap-1">
-                      <span aria-hidden="true" className="i-custom-vender-line-others-env h-4 w-4 shrink-0 text-util-colors-violet-violet-600" />
+                      <span aria-hidden="true" className="i-custom-vender-line-others-env size-4 shrink-0 text-util-colors-violet-violet-600" />
                       <div className="truncate text-text-primary">{env.name}</div>
                       <div className="shrink-0 text-text-tertiary">{t('env.export.secret', { ns: 'workflow' })}</div>
-                      <span aria-hidden="true" className="i-ri-lock-2-line h-3 w-3 shrink-0 text-text-tertiary" />
+                      <span aria-hidden="true" className="i-ri-lock-2-line size-3 shrink-0 text-text-tertiary" />
                     </div>
                   </td>
                   <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b border-divider-regular')}>
@@ -84,24 +84,22 @@ export const DSLExportConfirmContent = ({
             </tbody>
           </table>
         </div>
-        <div className="mt-4 flex gap-2">
+        <label className={cn('mt-4 flex gap-2', !isExporting && 'cursor-pointer')}>
           <Checkbox
             className="shrink-0"
             checked={exportSecrets}
             disabled={isExporting}
-            onCheck={() => setExportSecrets(!exportSecrets)}
-            ariaLabelledBy="dsl-export-secrets-checkbox-label"
+            onCheckedChange={setExportSecrets}
           />
-          <button
-            id="dsl-export-secrets-checkbox-label"
-            type="button"
-            disabled={isExporting}
-            className="cursor-pointer rounded-sm text-left system-sm-medium text-text-primary outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={() => setExportSecrets(!exportSecrets)}
+          <span
+            className={cn(
+              'rounded-sm text-left system-sm-medium text-text-primary outline-hidden',
+              isExporting && 'cursor-not-allowed opacity-50',
+            )}
           >
             {t('env.export.checkbox', { ns: 'workflow' })}
-          </button>
-        </div>
+          </span>
+        </label>
       </div>
       <AlertDialogActions>
         <AlertDialogCancelButton disabled={isExporting}>

@@ -563,8 +563,6 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
-      // Trigger ESC key event - ahooks useKeyPress listens for 'esc' which maps to Escape key
-      // Need to dispatch on window/document with the correct event properties
       const escEvent = new KeyboardEvent('keydown', {
         key: 'Escape',
         code: 'Escape',

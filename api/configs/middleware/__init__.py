@@ -1,5 +1,5 @@
 import os
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, TypedDict, cast
 from urllib.parse import parse_qsl, quote_plus
 
 from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
@@ -50,28 +50,30 @@ from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
 
+_VALID_STORAGE_TYPE = Literal[
+    "opendal",
+    "s3",
+    "aliyun-oss",
+    "azure-blob",
+    "baidu-obs",
+    "clickzetta-volume",
+    "google-storage",
+    "huawei-obs",
+    "oci-storage",
+    "tencent-cos",
+    "volcengine-tos",
+    "supabase",
+    "local",
+]
+
 
 class StorageConfig(BaseSettings):
-    STORAGE_TYPE: Literal[
-        "opendal",
-        "s3",
-        "aliyun-oss",
-        "azure-blob",
-        "baidu-obs",
-        "clickzetta-volume",
-        "google-storage",
-        "huawei-obs",
-        "oci-storage",
-        "tencent-cos",
-        "volcengine-tos",
-        "supabase",
-        "local",
-    ] = Field(
+    STORAGE_TYPE: _VALID_STORAGE_TYPE = Field(
         description="Type of storage to use."
         " Options: 'opendal', '(deprecated) local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', "
         "'clickzetta-volume', 'google-storage', 'huawei-obs', 'oci-storage', 'tencent-cos', "
         "'volcengine-tos', 'supabase'. Default is 'opendal'.",
-        default="opendal",
+        default=cast(_VALID_STORAGE_TYPE, "opendal"),
     )
 
     STORAGE_LOCAL_PATH: str = Field(

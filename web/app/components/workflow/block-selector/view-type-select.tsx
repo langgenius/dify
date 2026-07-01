@@ -10,10 +10,10 @@ export enum ViewType {
   tree = 'tree',
 }
 
-type Props = {
+type Props = Readonly<{
   viewType: ViewType
   onChange: (viewType: ViewType) => void
-}
+}>
 
 const ViewTypeSelect: FC<Props> = ({
   viewType,
@@ -37,7 +37,7 @@ const ViewTypeSelect: FC<Props> = ({
         }
         onClick={handleChange(ViewType.flat)}
       >
-        <RiSortAlphabetAsc className="h-4 w-4" />
+        <RiSortAlphabetAsc className="size-4" />
       </div>
       <div
         className={
@@ -47,7 +47,7 @@ const ViewTypeSelect: FC<Props> = ({
         }
         onClick={handleChange(ViewType.tree)}
       >
-        <RiNodeTree className="h-4 w-4" />
+        <RiNodeTree className="size-4" />
       </div>
     </div>
   )
