@@ -1,4 +1,4 @@
-@agent-v2 @authenticated @tools @core
+@agent-v2 @authenticated @tools @core @tool-fixture
 Feature: Agent v2 tools
   Scenario: JSON Replace tool is saved after adding it from the Tools selector
     Given I am signed in as the default E2E admin

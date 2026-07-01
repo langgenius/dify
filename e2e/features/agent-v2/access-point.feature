@@ -8,7 +8,7 @@ Feature: Agent v2 Access Point
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Access Point overview
 
-  @core @web-app-access
+  @core @web-app-access @published-web-app
   Scenario: Web app access URL can be copied without changing orchestration
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -21,7 +21,7 @@ Feature: Agent v2 Access Point
     Then the Agent v2 Web app access URL should show it was copied
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access @stable-model
+  @core @web-app-access @published-web-app @stable-model
   Scenario: Published Web app can be launched from Access Point
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -36,7 +36,7 @@ Feature: Agent v2 Access Point
     Then the Agent v2 Web app should open in a new tab
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access
+  @core @web-app-access @published-web-app
   Scenario: Web app Embedded configuration opens from Access Point
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -48,7 +48,7 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Embedded configuration dialog
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access
+  @core @web-app-access @published-web-app
   Scenario: Web app customization opens from Access Point
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -60,7 +60,7 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Web app customization dialog
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access
+  @core @web-app-access @published-web-app
   Scenario: Web app settings open from Access Point without changing orchestration
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -72,7 +72,7 @@ Feature: Agent v2 Access Point
     Then I should see the Agent v2 Web app settings dialog
     And the current Agent v2 orchestration draft should be unchanged
 
-  @core @web-app-access @stable-model
+  @core @web-app-access @published-web-app @stable-model
   Scenario: Web app access can be disabled and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -103,7 +103,7 @@ Feature: Agent v2 Access Point
     When I open the Agent v2 Workflow access reference for "E2E Agent Reference Workflow"
     Then the Agent v2 Workflow access reference for "E2E Agent Reference Workflow" should open in Studio
 
-  @core
+  @core @backend-api-access
   Scenario: Backend service API endpoint can be copied
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
@@ -114,7 +114,7 @@ Feature: Agent v2 Access Point
     When I copy the Agent v2 Backend service API endpoint
     Then the Agent v2 Backend service API endpoint should show it was copied
 
-  @core
+  @core @backend-api-access
   Scenario: Backend service API keys are managed without exposing existing secrets
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
@@ -130,7 +130,7 @@ Feature: Agent v2 Access Point
     When I close the newly generated Agent v2 API key
     Then the Agent v2 API key list should not expose the full generated secret
 
-  @core
+  @core @backend-api-access
   Scenario: Backend service API Reference opens from Access Point
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
@@ -140,7 +140,7 @@ Feature: Agent v2 Access Point
     And I open the Agent v2 API Reference
     Then the Agent v2 API Reference should open in a new tab
 
-  @service-api-runtime @stable-model
+  @service-api-runtime @backend-api-access @stable-model
   Scenario: Backend service API can be disabled and restored
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available

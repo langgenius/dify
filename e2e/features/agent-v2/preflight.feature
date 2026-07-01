@@ -19,10 +19,12 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder broken chat model is available
 
+  @tool-fixture
   Scenario: JSON Replace tool is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded tool "JSON Process / JSON Replace" is available
 
+  @tool-fixture
   Scenario: Tavily Search tool is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded tool "Tavily / Tavily Search" is available
@@ -34,22 +36,27 @@ Feature: Agent Builder preseeded environment
     And the e2e-summary-skill Skill is available to the Agent v2 test agent
     Then the Agent v2 test agent should include drive skill "e2e-summary-skill"
 
+  @knowledge-fixture
   Scenario: Agent knowledge base is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
 
+  @knowledge-fixture
   Scenario: Indexing knowledge base is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base Indexing" is indexing
 
+  @full-config-agent
   Scenario: Full config Agent is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" is available
 
+  @full-config-agent @skill-fixture
   Scenario: Full config Agent includes the summary Skill
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" includes drive skill "e2e-summary-skill"
 
+  @full-config-agent @stable-model @tool-fixture @skill-fixture @knowledge-fixture
   Scenario: Full config Agent includes core fixture configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Full Config" includes the core fixture configuration
@@ -62,46 +69,57 @@ Feature: Agent Builder preseeded environment
     And I expand Agent v2 Advanced Settings
     Then Agent v2 Content Moderation Settings should be available
 
+  @tool-states-agent
   Scenario: Tool states Agent is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" is available
 
+  @tool-states-agent @tool-fixture @skill-fixture
   Scenario: Tool states Agent includes tool state fixture configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" includes the tool state fixture configuration
 
+  @file-tree-fixture
   Scenario: File tree Agent includes fixture files
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With File Tree" includes the file tree fixture files
 
+  @dual-retrieval-fixture
   Scenario: Dual retrieval Agent is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Dual Retrieval" is available
 
+  @dual-retrieval-fixture @knowledge-fixture
   Scenario: Dual retrieval Agent includes dual retrieval fixture configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Dual Retrieval" includes the dual retrieval fixture configuration
 
+  @published-web-app
   Scenario: Published Web app Agent exposes Web app access
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent Published Web App" has published Web app access
 
+  @backend-api-access
   Scenario: Backend API-enabled Agent is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent Backend API Enabled" is available
 
+  @backend-api-access
   Scenario: Backend API-enabled Agent exposes API access with a key
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent Backend API Enabled" has Backend service API access with an API key
 
+  @workflow-reference
   Scenario: Workflow reference Agent is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Workflow Reference" is available
 
+  @workflow-reference
   Scenario: Reference workflow is available
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded workflow "E2E Agent Reference Workflow" is available
 
+  @workflow-reference
   Scenario: Workflow reference Agent is used by the reference workflow
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With Workflow Reference" is referenced by workflow "E2E Agent Reference Workflow"

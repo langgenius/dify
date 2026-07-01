@@ -1,6 +1,6 @@
 @agent-v2 @authenticated @build
 Feature: Agent v2 build draft
-  @core @stable-model
+  @core @stable-model @tool-fixture @skill-fixture
   Scenario: Generating a Build draft leaves the normal Agent configuration unchanged
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -31,7 +31,7 @@ Feature: Agent v2 build draft
     Then I should see the normal E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
-  @core
+  @core @skill-fixture
   Scenario: Discarding a Build draft does not apply supported configuration changes
     Given I am signed in as the default E2E admin
     And a basic configured Agent v2 test agent has been created via API
@@ -75,7 +75,7 @@ Feature: Agent v2 build draft
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
-  @core @stable-model
+  @core @stable-model @skill-fixture
   Scenario: Applying a Build draft updates supported configuration sections
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -102,7 +102,7 @@ Feature: Agent v2 build draft
     And I should see the supported E2E environment variable in Advanced Settings
     And the Agent v2 Build draft should no longer be active
 
-  @core @stable-model
+  @core @stable-model @skill-fixture
   Scenario: Applying a Build draft with an existing Skill keeps a single Skill entry
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available

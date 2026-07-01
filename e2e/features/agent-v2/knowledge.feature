@@ -1,4 +1,4 @@
-@agent-v2 @authenticated @knowledge @core
+@agent-v2 @authenticated @knowledge @knowledge-fixture @core
 Feature: Agent v2 Knowledge Retrieval
   Scenario: Agent decide Knowledge Retrieval settings are saved and restored
     Given I am signed in as the default E2E admin

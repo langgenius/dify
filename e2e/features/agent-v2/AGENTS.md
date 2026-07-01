@@ -36,6 +36,15 @@ Use tags in three layers:
 - `@publish` — publish and publish-bar state.
 - `@access-point` — Web app, Backend service API, and Workflow access surfaces.
 - `@stable-model` — active model fixture dependency. Apply this to every scenario that includes `the Agent Builder stable chat model is available` or otherwise requires an active model configured in the workspace.
+- `@tool-fixture` — preseeded Tool dependency such as `JSON Process / JSON Replace` or `Tavily / Tavily Search`.
+- `@skill-fixture` — checked-in or preseeded Skill dependency such as `e2e-summary-skill`.
+- `@knowledge-fixture` — preseeded dataset dependency such as `E2E Agent Knowledge Base`.
+- `@full-config-agent` — fixed `E2E New Agent Builder Full Config` Agent dependency.
+- `@tool-states-agent` — fixed `E2E New Agent Builder Tool States` Agent dependency.
+- `@file-tree-fixture` — fixed file-tree Agent drive/config-files dependency.
+- `@dual-retrieval-fixture` — fixed dual Knowledge Retrieval Agent dependency.
+- `@backend-api-access` — fixed or scenario-owned Backend service API access dependency.
+- `@published-web-app` — fixed or scenario-owned published Web app access dependency.
 - `@web-app-runtime` — published public Web app runtime behavior. Use it for scenarios that open the public Web app and assert real chat responses. Access Point URL, launch, customization, and settings surfaces remain `@access-point` behavior unless they send messages through the public Web app.
 - `@service-api-runtime` — Backend service API runtime behavior. Use it for scenarios that call the published service API and assert real chat responses. Endpoint display, copy, API key, and API reference surfaces remain `@access-point` behavior.
 - `@feature-gated` — product capability is optional. This tag alone does not skip execution; the scenario must include an explicit step that returns `skipped` with a blocked-precondition reason when the feature is unavailable.
