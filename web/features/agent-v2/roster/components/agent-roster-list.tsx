@@ -71,7 +71,7 @@ function AgentRosterPlaceholderState({ title }: { title: string }) {
       aria-labelledby="agent-roster-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {emptyPlaceholderCardIds.map(id => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
