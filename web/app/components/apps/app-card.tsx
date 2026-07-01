@@ -1064,10 +1064,14 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
           app.access_mode ? 'pr-9' : 'pr-4',
         )}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
-          <div className="min-w-0 truncate">{app.author_name}</div>
-          <div className="shrink-0">·</div>
-          <div className="min-w-0 truncate">{editTimeText}</div>
+        <div className="min-w-0 flex-1 whitespace-nowrap">
+          {app.author_name && (
+            <>
+              <span className="sr-only">{app.author_name}</span>
+              <span className="sr-only"> · </span>
+            </>
+          )}
+          <span className="block min-w-0 truncate">{editTimeText}</span>
         </div>
       </div>
     </>
