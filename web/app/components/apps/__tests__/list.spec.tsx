@@ -46,15 +46,17 @@ vi.mock('@/service/client', () => ({
   },
   consoleQuery: {
     apps: {
-      list: {
+      get: {
         infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
       },
-      starredList: {
-        queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
+      starred: {
+        get: {
+          queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
+        },
       },
     },
     tags: {
-      list: {
+      get: {
         queryOptions: (options: unknown) => options,
       },
     },
@@ -229,6 +231,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: (response: unknown) => response,
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
