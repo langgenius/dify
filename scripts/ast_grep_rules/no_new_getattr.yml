@@ -1,0 +1,6 @@
+id: no-new-getattr
+language: python
+rule:
+  pattern: getattr($OBJ, $NAME, $$$REST)
+message: net-new getattr() in added code
+severity: error
