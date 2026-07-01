@@ -20221,14 +20221,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | account_ids | [ string ] |  | No |
 
-#### RBACResourceWhitelistScope
-
-Whitelist scopes accepted by RBAC app and dataset access config APIs.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| RBACResourceWhitelistScope | string | Whitelist scopes accepted by RBAC app and dataset access config APIs. |  |
-
 #### RestrictModel
 
 | Name | Type | Description | Required |
