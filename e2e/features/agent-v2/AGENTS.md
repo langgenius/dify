@@ -34,6 +34,7 @@ Keep Agent v2 step definitions grouped by user capability, not by DOM component 
 - `configure.steps.ts` — common configure navigation, refresh, autosave, and normal draft assertions.
 - `build-draft.steps.ts` — Build mode checkout, apply, discard, supported writeback, and Build draft isolation.
 - `files.steps.ts` — Files upload, display, and fixture-list assertions.
+- `tools.steps.ts` — Tools selector, search, and configuration-boundary behavior.
 - `advanced-settings.steps.ts` — Env Editor, Content Moderation, and Advanced Settings behavior.
 - `agent-edit.steps.ts` — saved Agent detail display assertions.
 - `publish.steps.ts` — publish and publish-bar assertions.
