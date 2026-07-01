@@ -88,6 +88,20 @@ type NamedResourceListResponse = {
   data: NamedResource[]
 }
 
+type LocalizedLabel = {
+  en_US?: string
+  zh_Hans?: string
+}
+
+type BuiltinToolProvider = {
+  label?: LocalizedLabel
+  name: string
+  tools: Array<{
+    label?: LocalizedLabel
+    name: string
+  }>
+}
+
 const findConsoleResourceByName = async ({
   action,
   path,
@@ -111,6 +125,26 @@ const findConsoleResourceByName = async ({
 }
 
 const buildQuery = (params: Record<string, string>) => new URLSearchParams(params).toString()
+
+const matchesNameOrLabel = (value: string, name: string, label?: LocalizedLabel) =>
+  value === name || value === label?.en_US || value === label?.zh_Hans
+
+const splitToolDisplayName = (resourceName: string) => {
+  const [providerName, toolName] = resourceName.split('/').map(item => item.trim())
+
+  if (!providerName || !toolName) {
+    return {
+      ok: false as const,
+      reason: `Preseeded tool "${resourceName}" must use "Provider / Tool" format.`,
+    }
+  }
+
+  return {
+    ok: true as const,
+    providerName,
+    toolName,
+  }
+}
 
 export async function skipMissingPreseededAgent(
   world: DifyWorld,
@@ -172,6 +206,40 @@ export async function skipMissingPreseededDataset(
     id: resource.id,
     kind: 'dataset',
     name: resource.name,
+  }
+}
+
+export async function skipMissingPreseededTool(
+  world: DifyWorld,
+  resourceName: string,
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+  const parsed = splitToolDisplayName(resourceName)
+  if (!parsed.ok)
+    return skipBlockedPrecondition(world, parsed.reason)
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get('/console/api/workspaces/current/tools/builtin')
+    await expectApiResponseOK(response, `Check preseeded tool ${resourceName}`)
+    const providers = (await response.json()) as BuiltinToolProvider[]
+    const provider = providers.find(item =>
+      matchesNameOrLabel(parsed.providerName, item.name, item.label),
+    )
+    const tool = provider?.tools.find(item =>
+      matchesNameOrLabel(parsed.toolName, item.name, item.label),
+    )
+
+    if (!provider || !tool)
+      return skipBlockedPrecondition(world, `Preseeded tool "${resourceName}" was not found.`)
+
+    return {
+      id: `${provider.name}/${tool.name}`,
+      kind: 'tool',
+      name: resourceName,
+    }
+  }
+  finally {
+    await ctx.dispose()
   }
 }
 

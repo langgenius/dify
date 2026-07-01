@@ -17,7 +17,7 @@ export type AgentBuilderStableChatModel = {
 }
 export type AgentBuilderPreseededResource = {
   id: string
-  kind: 'agent' | 'dataset' | 'workflow'
+  kind: 'agent' | 'dataset' | 'tool' | 'workflow'
   name: string
 }
 

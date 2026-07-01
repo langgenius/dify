@@ -4,6 +4,7 @@ import {
   skipMissingAgentBuilderStableChatModel,
   skipMissingPreseededAgent,
   skipMissingPreseededDataset,
+  skipMissingPreseededTool,
   skipMissingPreseededWorkflow,
 } from '../../../support/preflight'
 
@@ -41,6 +42,17 @@ Given(
   'the Agent Builder preseeded dataset {string} is available',
   async function (this: DifyWorld, resourceName: string) {
     const resource = await skipMissingPreseededDataset(this, resourceName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilderPreseededResources[resourceName] = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded tool {string} is available',
+  async function (this: DifyWorld, resourceName: string) {
+    const resource = await skipMissingPreseededTool(this, resourceName)
     if (resource === 'skipped')
       return resource
 
