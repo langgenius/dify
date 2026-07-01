@@ -381,7 +381,7 @@
   "roster.searchLabel": "Cerca agenti",
   "roster.searchPlaceholder": "Cerca agenti per nome…",
   "roster.tabs.agent": "Agente",
-  "roster.tabs.human": "Umano",
+  "roster.tabs.human": "Contatti",
   "roster.tabsLabel": "Tipo di roster",
   "roster.updateSuccess": "Agente aggiornato.",
   "roster.usageStatus.draft": "Bozza"

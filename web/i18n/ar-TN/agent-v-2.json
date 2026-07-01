@@ -381,7 +381,7 @@
   "roster.searchLabel": "البحث عن الوكلاء",
   "roster.searchPlaceholder": "ابحث عن الوكلاء بالاسم…",
   "roster.tabs.agent": "وكيل",
-  "roster.tabs.human": "إنسان",
+  "roster.tabs.human": "جهات الاتصال",
   "roster.tabsLabel": "نوع Roster",
   "roster.updateSuccess": "تم تحديث الوكيل.",
   "roster.usageStatus.draft": "مسودة"

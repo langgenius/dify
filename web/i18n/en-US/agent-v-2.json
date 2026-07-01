@@ -381,7 +381,7 @@
   "roster.searchLabel": "Search agents",
   "roster.searchPlaceholder": "Search agents by name…",
   "roster.tabs.agent": "Agent",
-  "roster.tabs.human": "Human",
+  "roster.tabs.human": "Contacts",
   "roster.tabsLabel": "Roster type",
   "roster.updateSuccess": "Agent updated.",
   "roster.usageStatus.draft": "Draft"

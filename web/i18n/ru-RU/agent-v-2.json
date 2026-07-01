@@ -381,7 +381,7 @@
   "roster.searchLabel": "Поиск агентов",
   "roster.searchPlaceholder": "Поиск агентов по имени…",
   "roster.tabs.agent": "Агент",
-  "roster.tabs.human": "Человек",
+  "roster.tabs.human": "Контакты",
   "roster.tabsLabel": "Тип Roster",
   "roster.updateSuccess": "Агент обновлён.",
   "roster.usageStatus.draft": "Черновик"
