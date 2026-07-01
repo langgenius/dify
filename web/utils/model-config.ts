@@ -25,10 +25,6 @@ const getDefaultValue = (value: unknown) => {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : undefined
 }
 
-const getTextDefaultValue = (value: unknown) => {
-  return typeof value === 'string' || typeof value === 'number' ? value : undefined
-}
-
 const getStringArray = (value: unknown) => {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 }
@@ -194,9 +190,9 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           label: item.name,
           variable: item.key,
           required: item.required !== false, // default true
-          max_length: item.max_length ?? 0,
+          max_length: item.max_length,
           default: '',
-          hide: item.hide ?? false,
+          hide: item.hide,
         },
       })
       return
@@ -207,9 +203,9 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           label: item.name,
           variable: item.key,
           required: item.required !== false, // default true
-          max_length: item.max_length ?? 0,
+          max_length: item.max_length,
           default: '',
-          hide: item.hide ?? false,
+          hide: item.hide,
         },
       })
       return
@@ -220,8 +216,8 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           label: item.name,
           variable: item.key,
           required: item.required !== false, // default true
-          default: getTextDefaultValue(item.default) ?? '',
-          hide: item.hide ?? false,
+          default: '',
+          hide: item.hide,
         },
       })
     }
@@ -231,8 +227,8 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           label: item.name,
           variable: item.key,
           required: item.required !== false, // default true
-          default: typeof item.default === 'boolean' ? item.default : undefined,
-          hide: item.hide ?? false,
+          default: '',
+          hide: item.hide,
         },
       })
     }
@@ -242,9 +238,9 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           label: item.name,
           variable: item.key,
           required: item.required !== false, // default true
-          options: item.options ?? [],
+          options: item.options,
           default: getString(item.default),
-          hide: item.hide ?? false,
+          hide: item.hide,
         },
       })
     }
@@ -253,10 +249,10 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
         external_data_tool: {
           label: item.name,
           variable: item.key,
-          enabled: item.enabled ?? false,
+          enabled: item.enabled,
           type: item.type,
           config: getStringRecord(item.config),
-          required: item.required ?? true,
+          required: item.required,
           icon: item.icon,
           icon_background: item.icon_background,
           hide: item.hide,
@@ -268,7 +264,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
   return userInputs
 }
 
-export const formatBooleanInputs = (useInputs?: PromptVariable[] | null, inputs?: Record<string, string | number | object | boolean> | null) => {
+export const formatBooleanInputs = (useInputs?: PromptVariable[] | null, inputs?: Record<string, string | number | object | boolean | null> | null) => {
   if (!useInputs)
     return inputs
   const res = { ...inputs }

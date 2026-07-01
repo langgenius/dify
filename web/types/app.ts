@@ -85,21 +85,21 @@ export type PromptVariable = {
 }
 
 type TextTypeFormItem = {
-  default: string
+  default?: string
   label: string
   variable: string
   required: boolean
-  max_length: number
-  hide: boolean
+  max_length?: number
+  hide?: boolean
 }
 
 type SelectTypeFormItem = {
-  default: string
+  default?: string
   label: string
   variable: string
   required: boolean
-  options: string[]
-  hide: boolean
+  options?: string[]
+  hide?: boolean
 }
 
 type NumberTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
@@ -108,7 +108,7 @@ type NumberTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
 }
 
 type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
-  default?: boolean
+  default?: string | boolean
 }
 
 type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> & Partial<UploadFileSetting> & {
@@ -118,7 +118,7 @@ type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> & Partial<UploadFil
 type ExternalDataToolFormItem = ExternalDataTool & {
   label: string
   variable: string
-  required: boolean
+  required?: boolean
   hide?: boolean
 }
 
