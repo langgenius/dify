@@ -63,3 +63,42 @@ In other words, the harness is already exercising the intended entrypoints and r
 
 - The exact brief command currently hits a repo-environment issue first because of pytest coverage addopts. I worked around that only for verification by using `-o addopts=''` on the same focused test file.
 - I did not modify any implementation under `scripts/`.
+
+## Follow-up review fixes
+
+I tightened the test harness in `api/tests/unit_tests/commands/test_check_no_new_getattr.py` to close the gaps called out in review:
+
+- added a CI-mode regression test that requires diffing from `merge-base(main, HEAD)`, not merely `HEAD~1`
+- added a passing case for a modified hunk with a decreased `getattr` count
+- strengthened failure contracts so violating cases require actionable `path:line:` output via regex assertions
+- tightened the inline suppression assumption so accepted `noqa` usage must include non-empty explanatory text on the same line after `no-new-getattr`
+
+The new suppression contract is encoded by the test name and fixture content:
+
+```python
+# noqa: no-new-getattr needed for plugin-defined attributes
+```
+
+That is a deliberate assumption for Task 2: a bare rule id is no longer the only example accepted by the tests.
+
+## Follow-up verification
+
+I reran the focused file in RED state with the same addopts workaround:
+
+```bash
+uv run --project api pytest -o addopts='' api/tests/unit_tests/commands/test_check_no_new_getattr.py -q
+```
+
+Result:
+
+- 8 tests executed
+- 8 tests failed
+- all failures still point to the missing fixed-path CLI `scripts/check_no_new_getattr.py`
+- Python reported `[Errno 2] No such file or directory`
+
+This remains the correct RED-state failure, but the contract is now stricter for Task 2 because it additionally requires:
+
+- merge-base-aware CI diffing across multiple feature commits
+- non-regression when `getattr` count decreases
+- actionable `file:line` violation output
+- explanatory inline suppression text

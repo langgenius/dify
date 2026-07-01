@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import textwrap
 from pathlib import Path
@@ -55,6 +56,11 @@ def checkout_feature_branch(repo: Path) -> None:
 
 def stderr_lines(result: subprocess.CompletedProcess[str]) -> list[str]:
     return [line for line in result.stderr.splitlines() if line.strip()]
+
+
+def assert_has_actionable_violation(stderr: str, path: str) -> None:
+    assert re.search(rf"{re.escape(path)}:\d+:", stderr), stderr
+    assert "no-new-getattr" in stderr
 
 
 def test_ci_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
@@ -111,8 +117,46 @@ def test_ci_mode_fails_for_new_file_with_getattr(tmp_path: Path) -> None:
     result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
 
     assert result.returncode == 1
-    assert "pkg/new_usage.py" in result.stderr
-    assert "no-new-getattr" in result.stderr
+    assert_has_actionable_violation(result.stderr, "pkg/new_usage.py")
+
+
+def test_ci_mode_uses_merge_base_against_main_not_just_head_parent(tmp_path: Path) -> None:
+    init_repo(tmp_path)
+    write_repo_file(
+        tmp_path,
+        "pkg/existing.py",
+        """
+        def stable() -> str:
+            return "ok"
+        """,
+    )
+    commit_all(tmp_path, "baseline")
+    checkout_feature_branch(tmp_path)
+
+    write_repo_file(
+        tmp_path,
+        "pkg/introduced_earlier.py",
+        """
+        def read_value(obj):
+            return getattr(obj, "introduced_in_first_feature_commit", None)
+        """,
+    )
+    commit_all(tmp_path, "introduce violating getattr in first feature commit")
+
+    write_repo_file(
+        tmp_path,
+        "pkg/other.py",
+        """
+        def meaning() -> int:
+            return 42
+        """,
+    )
+    commit_all(tmp_path, "later feature commit does not touch violating file")
+
+    result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
+
+    assert result.returncode == 1
+    assert_has_actionable_violation(result.stderr, "pkg/introduced_earlier.py")
 
 
 def test_pre_commit_mode_reads_staged_content_only(tmp_path: Path) -> None:
@@ -185,6 +229,35 @@ def test_modified_hunk_with_same_getattr_count_is_allowed(tmp_path: Path) -> Non
     assert result.returncode == 0, result.stderr
 
 
+def test_modified_hunk_with_decreased_getattr_count_is_allowed(tmp_path: Path) -> None:
+    init_repo(tmp_path)
+    write_repo_file(
+        tmp_path,
+        "pkg/sample.py",
+        """
+        def resolve_name(user):
+            primary = getattr(user, "display_name", None)
+            return primary or getattr(user, "username", None)
+        """,
+    )
+    commit_all(tmp_path, "baseline")
+    checkout_feature_branch(tmp_path)
+
+    write_repo_file(
+        tmp_path,
+        "pkg/sample.py",
+        """
+        def resolve_name(user):
+            return getattr(user, "display_name", None)
+        """,
+    )
+    commit_all(tmp_path, "remove one legacy getattr")
+
+    result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_modified_hunk_with_increased_getattr_count_fails(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(
@@ -212,11 +285,11 @@ def test_modified_hunk_with_increased_getattr_count_fails(tmp_path: Path) -> Non
     result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
 
     assert result.returncode == 1
-    assert "pkg/sample.py" in result.stderr
+    assert_has_actionable_violation(result.stderr, "pkg/sample.py")
     assert "net-new getattr" in result.stderr
 
 
-def test_inline_noqa_suppression_skips_added_getattr(tmp_path: Path) -> None:
+def test_inline_noqa_suppression_with_explanatory_text_skips_added_getattr(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write_repo_file(
         tmp_path,
@@ -234,11 +307,14 @@ def test_inline_noqa_suppression_skips_added_getattr(tmp_path: Path) -> None:
         "pkg/existing.py",
         """
         def read_value(obj):
-            return getattr(obj, "dynamic_name", None)  # noqa: no-new-getattr
+            return getattr(obj, "dynamic_name", None)  # noqa: no-new-getattr needed for plugin-defined attributes
         """,
     )
     commit_all(tmp_path, "add suppressed getattr")
 
     result = run_script(tmp_path, "--mode", "ci", "--merge-target", "main")
 
+    assert "no-new-getattr needed for plugin-defined attributes" in (
+        tmp_path / "pkg/existing.py"
+    ).read_text(encoding="utf-8")
     assert result.returncode == 0, stderr_lines(result)
