@@ -693,6 +693,18 @@ Then(
 )
 
 Then(
+  'I should see the stable E2E model in the Agent v2 model selector',
+  async function (this: DifyWorld) {
+    const stableModel = this.agentBuilderStableChatModel
+    if (!stableModel)
+      throw new Error('Stable chat model preflight must run before asserting the Agent model.')
+
+    await expect(this.getPage().getByText(stableModel.name, { exact: true }))
+      .toBeVisible({ timeout: 30_000 })
+  },
+)
+
+Then(
   'I should see the updated E2E prompt in the Agent v2 prompt editor',
   async function (this: DifyWorld) {
     const page = this.getPage()
@@ -1107,6 +1119,33 @@ Then(
       async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt,
       { timeout: 30_000 },
     ).toEqual({ system_prompt: updatedAgentPrompt })
+  },
+)
+
+Then(
+  'the Agent v2 draft should use the stable E2E model',
+  async function (this: DifyWorld) {
+    const stableModel = this.agentBuilderStableChatModel
+    if (!stableModel)
+      throw new Error('Stable chat model preflight must run before asserting the Agent model.')
+
+    await expect.poll(
+      async () => {
+        const model = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.model
+        const modelConfig = typeof model === 'object' && model !== null && !Array.isArray(model)
+          ? model as Record<string, unknown>
+          : undefined
+
+        return {
+          model: modelConfig?.model,
+          provider: modelConfig?.model_provider,
+        }
+      },
+      { timeout: 30_000 },
+    ).toEqual({
+      model: stableModel.name,
+      provider: stableModel.provider,
+    })
   },
 )
 
