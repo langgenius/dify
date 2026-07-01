@@ -10,6 +10,7 @@ from extensions.ext_redis import (
     _get_connection_health_params,
     _normalize_redis_key_prefix,
     _serialize_redis_name,
+    create_redis_client,
     redis_fallback,
 )
 
@@ -80,6 +81,50 @@ class TestGetBaseRedisParams:
         # Existing params still present
         assert params["db"] == 0
         assert params["encoding"] == "utf-8"
+
+
+class TestCreateRedisClient:
+    @patch("extensions.ext_redis._create_sentinel_client")
+    @patch("extensions.ext_redis._get_base_redis_params", return_value={"db": 0})
+    @patch("extensions.ext_redis.dify_config")
+    def test_uses_sentinel_client(self, mock_config, mock_base_params, mock_create_sentinel):
+        mock_config.REDIS_USE_SENTINEL = True
+        mock_config.REDIS_USE_CLUSTERS = False
+        sentinel_client = MagicMock()
+        mock_create_sentinel.return_value = sentinel_client
+
+        assert create_redis_client() is sentinel_client
+
+        mock_base_params.assert_called_once()
+        mock_create_sentinel.assert_called_once_with({"db": 0})
+
+    @patch("extensions.ext_redis._create_cluster_client")
+    @patch("extensions.ext_redis._get_base_redis_params")
+    @patch("extensions.ext_redis.dify_config")
+    def test_uses_cluster_client(self, mock_config, mock_base_params, mock_create_cluster):
+        mock_config.REDIS_USE_SENTINEL = False
+        mock_config.REDIS_USE_CLUSTERS = True
+        cluster_client = MagicMock()
+        mock_create_cluster.return_value = cluster_client
+
+        assert create_redis_client() is cluster_client
+
+        mock_base_params.assert_not_called()
+        mock_create_cluster.assert_called_once_with()
+
+    @patch("extensions.ext_redis._create_standalone_client")
+    @patch("extensions.ext_redis._get_base_redis_params", return_value={"db": 0})
+    @patch("extensions.ext_redis.dify_config")
+    def test_uses_standalone_client(self, mock_config, mock_base_params, mock_create_standalone):
+        mock_config.REDIS_USE_SENTINEL = False
+        mock_config.REDIS_USE_CLUSTERS = False
+        standalone_client = MagicMock()
+        mock_create_standalone.return_value = standalone_client
+
+        assert create_redis_client() is standalone_client
+
+        mock_base_params.assert_called_once()
+        mock_create_standalone.assert_called_once_with({"db": 0})
 
 
 class TestRedisFallback:
