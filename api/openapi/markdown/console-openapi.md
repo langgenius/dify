@@ -21646,14 +21646,6 @@ Enum class for tool provider
 | id | string |  | Yes |
 | name | string |  | No |
 
-#### TrialWorkflowGraph
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| edges | [ [JsonObject](#jsonobject) ] |  | Yes |
-| nodes | [ [JsonObject](#jsonobject) ] |  | Yes |
-| viewport | [TrialWorkflowViewport](#trialworkflowviewport) |  | Yes |
-
 #### TrialWorkflowPartial
 
 | Name | Type | Description | Required |
@@ -21683,7 +21675,7 @@ Enum class for tool provider
 | created_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
 | environment_variables | [ [JsonObject](#jsonobject) ] |  | No |
 | features | [JsonObject](#jsonobject) |  | No |
-| graph | [TrialWorkflowGraph](#trialworkflowgraph) |  | Yes |
+| graph | [JsonObject](#jsonobject) |  | Yes |
 | hash | string |  | No |
 | id | string |  | Yes |
 | marked_comment | string |  | No |
@@ -21693,14 +21685,6 @@ Enum class for tool provider
 | updated_at | integer |  | No |
 | updated_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
 | version | string |  | No |
-
-#### TrialWorkflowViewport
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| x | number |  | Yes |
-| y | number |  | Yes |
-| zoom | number |  | Yes |
 
 #### TriggerCreationMethod
 

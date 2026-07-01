@@ -118,7 +118,7 @@ export type TrialWorkflowResponse = {
   created_by?: TrialWorkflowAccount | null
   environment_variables?: Array<JsonObject2>
   features?: JsonObject2
-  graph: TrialWorkflowGraph
+  graph: JsonObject2
   hash?: string | null
   id: string
   marked_comment?: string | null
@@ -265,12 +265,6 @@ export type TrialWorkflowAccount = {
   name?: string | null
 }
 
-export type TrialWorkflowGraph = {
-  edges: Array<JsonObject2>
-  nodes: Array<JsonObject2>
-  viewport: TrialWorkflowViewport
-}
-
 export type TrialAppAgentMode = {
   enabled?: boolean | null
   strategy?: string | null
@@ -282,12 +276,6 @@ export type TrialAppModel = {
   mode?: string | null
   name: string
   provider: string
-}
-
-export type TrialWorkflowViewport = {
-  x: number
-  y: number
-  zoom: number
 }
 
 export type GeneratedAppResponseWritable = JsonValue

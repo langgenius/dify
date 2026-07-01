@@ -395,18 +395,6 @@ class TrialDatasetListResponse(ResponseModel):
     page: int
 
 
-class TrialWorkflowViewport(ResponseModel):
-    x: float
-    y: float
-    zoom: float
-
-
-class TrialWorkflowGraph(ResponseModel):
-    nodes: list[JsonObject]
-    edges: list[JsonObject]
-    viewport: TrialWorkflowViewport
-
-
 class TrialWorkflowAccount(ResponseModel):
     id: str
     name: str | None = None
@@ -415,7 +403,7 @@ class TrialWorkflowAccount(ResponseModel):
 
 class TrialWorkflowResponse(ResponseModel):
     id: str
-    graph: TrialWorkflowGraph = Field(validation_alias=AliasChoices("graph_dict", "graph"))
+    graph: JsonObject = Field(validation_alias=AliasChoices("graph_dict", "graph"))
     features: JsonObject = Field(default_factory=dict, validation_alias=AliasChoices("features_dict", "features"))
     hash: str | None = Field(default=None, validation_alias=AliasChoices("unique_hash", "hash"))
     version: str | None = None

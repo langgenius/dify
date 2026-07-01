@@ -324,24 +324,6 @@ export const zTrialAppDetailResponse = z.object({
 })
 
 /**
- * TrialWorkflowViewport
- */
-export const zTrialWorkflowViewport = z.object({
-  x: z.number(),
-  y: z.number(),
-  zoom: z.number(),
-})
-
-/**
- * TrialWorkflowGraph
- */
-export const zTrialWorkflowGraph = z.object({
-  edges: z.array(zJsonObject2),
-  nodes: z.array(zJsonObject2),
-  viewport: zTrialWorkflowViewport,
-})
-
-/**
  * TrialWorkflowResponse
  */
 export const zTrialWorkflowResponse = z.object({
@@ -350,7 +332,7 @@ export const zTrialWorkflowResponse = z.object({
   created_by: zTrialWorkflowAccount.nullish(),
   environment_variables: z.array(zJsonObject2).optional(),
   features: zJsonObject2.optional(),
-  graph: zTrialWorkflowGraph,
+  graph: zJsonObject2,
   hash: z.string().nullish(),
   id: z.string(),
   marked_comment: z.string().nullish(),

@@ -1,5 +1,5 @@
 'use client'
-import type { TrialWorkflowGraph } from '@dify/contracts/api/console/trial-apps/types.gen'
+import type { JsonObject2 } from '@dify/contracts/api/console/trial-apps/types.gen'
 import type { FC } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -67,6 +67,23 @@ const getPosition = (value: unknown) => {
   }
 }
 
+const getViewport = (value: unknown) => {
+  if (
+    !isRecord(value)
+    || typeof value.x !== 'number'
+    || typeof value.y !== 'number'
+    || typeof value.zoom !== 'number'
+  ) {
+    return { x: 0, y: 0, zoom: 1 }
+  }
+
+  return {
+    x: value.x,
+    y: value.y,
+    zoom: value.zoom,
+  }
+}
+
 const getBlockType = (value: unknown) => {
   if (typeof value !== 'string')
     return null
@@ -74,8 +91,14 @@ const getBlockType = (value: unknown) => {
   return blockTypeMap[value] || null
 }
 
-const normalizeWorkflowPreviewGraph = (graph: TrialWorkflowGraph) => {
-  const nodes: Node[] = graph.nodes.flatMap((node) => {
+const normalizeWorkflowPreviewGraph = (graph: JsonObject2) => {
+  const nodesData = Array.isArray(graph.nodes) ? graph.nodes : []
+  const edgesData = Array.isArray(graph.edges) ? graph.edges : []
+
+  const nodes: Node[] = nodesData.flatMap((node) => {
+    if (!isRecord(node))
+      return []
+
     const id = getString(node.id)
     if (!id)
       return []
@@ -96,7 +119,10 @@ const normalizeWorkflowPreviewGraph = (graph: TrialWorkflowGraph) => {
       },
     }]
   })
-  const edges: Edge[] = graph.edges.flatMap((edge) => {
+  const edges: Edge[] = edgesData.flatMap((edge) => {
+    if (!isRecord(edge))
+      return []
+
     const id = getString(edge.id)
     if (!id)
       return []
@@ -123,7 +149,7 @@ const normalizeWorkflowPreviewGraph = (graph: TrialWorkflowGraph) => {
   return {
     nodes,
     edges,
-    viewport: graph.viewport,
+    viewport: getViewport(graph.viewport),
   }
 }
 
