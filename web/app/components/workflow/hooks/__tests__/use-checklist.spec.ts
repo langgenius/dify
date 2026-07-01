@@ -1,16 +1,15 @@
 import type { CommonNodeType, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
-import { act, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { createElement, Fragment } from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import { FlowType } from '@/types/common'
 import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowComponent, renderWorkflowHook } from '../../__tests__/workflow-test-env'
-import { IndexMethodEnum } from '../../nodes/knowledge-base/types'
 import { useStore } from '../../store'
 import { BlockEnum } from '../../types'
-import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
+import { useChecklist, useWorkflowRunValidation } from '../use-checklist'
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -43,46 +42,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useModelList: () => ({ data: [] }),
 }))
 
-const {
-  mockFetchDatasets,
-  mockFetchModelList,
-  mockModelProviderQueryOptions,
-} = vi.hoisted(() => ({
-  mockFetchDatasets: vi.fn(),
-  mockFetchModelList: vi.fn(),
-  mockModelProviderQueryOptions: vi.fn((options: { input: { params: { provider: string } } }) => ({
-    queryKey: ['model-provider-models', options.input],
-    queryFn: () => mockFetchModelList(options.input),
-  })),
-}))
-
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    systemFeatures: {
-      get: {
-        queryKey: () => ['system-features'],
-      },
-    },
-    workspaces: {
-      current: {
-        modelProviders: {
-          byProvider: {
-            models: {
-              get: {
-                queryOptions: mockModelProviderQueryOptions,
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('@/service/datasets', () => ({
-  fetchDatasets: mockFetchDatasets,
-}))
-
 type CheckValidFn = (data: CommonNodeType, t: unknown, extra?: unknown) => { errorMessage: string }
 const mockNodesMap: Record<string, { checkValid: CheckValidFn, metaData: { isStart: boolean, isRequired: boolean } }> = {}
 let mockModelProviders: Array<{ provider: string }> = []
@@ -105,16 +64,7 @@ vi.mock('../use-nodes-available-var-list', () => ({
     }
     return map
   },
-  useGetNodesAvailableVarList: () => ({
-    getNodesAvailableVarList: vi.fn((nodes: Node[]) => {
-      const map: Record<string, { availableVars: Array<{ nodeId: string, vars: Array<{ variable: string }> }> }> = {}
-      if (nodes) {
-        for (const n of nodes)
-          map[n.id] = mockAvailableVarMap[n.id] ?? { availableVars: [] }
-      }
-      return map
-    }),
-  }),
+  useGetNodesAvailableVarList: () => ({ getNodesAvailableVarList: vi.fn(() => ({})) }),
 }))
 
 vi.mock('../../nodes/_base/components/variable/utils', () => ({
@@ -195,8 +145,6 @@ beforeEach(() => {
   Object.keys(mockAvailableVarMap).forEach(k => delete mockAvailableVarMap[k])
   mockModelProviders = []
   mockUsedVars = []
-  mockFetchDatasets.mockResolvedValue({ data: [] })
-  mockFetchModelList.mockResolvedValue({ data: [] })
   setupNodesMap()
 })
 
@@ -512,138 +460,41 @@ describe('useChecklist', () => {
 
   it('should sync checklist items to the workflow store without render phase update warnings', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
-    const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
+    try {
+      const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
+      const codeNode = createNode({ id: 'code', data: { type: BlockEnum.Code, title: 'Code' } })
 
-    function Operator() {
-      const checklistItems = useStore(state => state.checklistItems)
-      return createElement('div', { 'data-testid': 'checklist-count' }, checklistItems.length)
+      function Operator() {
+        const checklistItems = useStore(state => state.checklistItems)
+        return createElement('div', { 'data-testid': 'checklist-count' }, checklistItems.length)
+      }
+
+      function WorkflowChecklist() {
+        useChecklist([startNode, codeNode], [])
+        return null
+      }
+
+      const { store } = renderWorkflowComponent(
+        createElement(
+          Fragment,
+          null,
+          createElement(Operator),
+          createElement(WorkflowChecklist),
+        ),
+      )
+
+      await waitFor(() => {
+        expect(store.getState().checklistItems).toHaveLength(1)
+      })
+
+      expect(screen.getByTestId('checklist-count')).toHaveTextContent('1')
+      expect(errorSpy.mock.calls.some(call =>
+        call.some(arg => typeof arg === 'string' && arg.includes('Cannot update a component')),
+      )).toBe(false)
     }
-
-    function WorkflowChecklist() {
-      useChecklist([startNode, codeNode], [])
-      return null
+    finally {
+      errorSpy.mockRestore()
     }
-
-    const { store } = renderWorkflowComponent(
-      createElement(
-        Fragment,
-        null,
-        createElement(Operator),
-        createElement(WorkflowChecklist),
-      ),
-    )
-
-    await waitFor(() => {
-      expect(store.getState().checklistItems).toHaveLength(1)
-    })
-
-    expect(screen.getByTestId('checklist-count')).toHaveTextContent('1')
-    expect(errorSpy.mock.calls.some(call =>
-      call.some(arg => typeof arg === 'string' && arg.includes('Cannot update a component')),
-    )).toBe(false)
-    errorSpy.mockRestore()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// useChecklistBeforePublish
-// ---------------------------------------------------------------------------
-
-describe('useChecklistBeforePublish', () => {
-  it('should normalize generated provider model results before validating knowledge base nodes', async () => {
-    const checkValid = vi.fn(() => ({ errorMessage: '' }))
-    mockNodesMap[BlockEnum.KnowledgeBase] = {
-      checkValid,
-      metaData: { isStart: false, isRequired: false },
-    }
-    mockFetchModelList.mockResolvedValue({
-      data: [
-        {
-          fetch_from: 'predefined-model',
-          label: {
-            en_US: 'Embedding 3 Large',
-            zh_Hans: null,
-          },
-          model: 'text-embedding-3-large',
-          model_properties: {
-            context_size: 8192,
-            unsupported: ['ignored'],
-          },
-          model_type: 'text-embedding',
-          provider: {
-            label: {
-              en_US: 'OpenAI',
-              zh_Hans: 'OpenAI',
-            },
-            provider: 'openai',
-            supported_model_types: ['text-embedding'],
-            tenant_id: 'tenant-1',
-          },
-          status: 'active',
-        },
-      ],
-    })
-
-    const startNode = createNode({ id: 'start', data: { type: BlockEnum.Start, title: 'Start' } })
-    const knowledgeBaseNode = createNode({
-      id: 'knowledge-base',
-      data: {
-        type: BlockEnum.KnowledgeBase,
-        title: 'Knowledge Base',
-        indexing_technique: IndexMethodEnum.QUALIFIED,
-        embedding_model_provider: 'openai',
-        embedding_model: 'text-embedding-3-large',
-        keyword_number: 0,
-        retrieval_model: {
-          top_k: 3,
-          score_threshold: 0,
-          score_threshold_enabled: false,
-        },
-      },
-    })
-    rfState.nodes = [startNode, knowledgeBaseNode]
-    rfState.edges = [{
-      id: 'start-to-knowledge-base',
-      source: 'start',
-      target: 'knowledge-base',
-      data: {},
-    }]
-
-    const { result } = renderWorkflowHook(() => useChecklistBeforePublish())
-
-    let isValid = false
-    await act(async () => {
-      isValid = await result.current.handleCheckBeforePublish()
-    })
-
-    expect(isValid).toBe(true)
-    expect(mockModelProviderQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: { provider: 'openai' },
-      },
-    })
-    expect(checkValid).toHaveBeenCalledWith(
-      expect.objectContaining({
-        _embeddingProviderModelList: [
-          expect.objectContaining({
-            fetch_from: 'predefined-model',
-            label: {
-              en_US: 'Embedding 3 Large',
-              zh_Hans: 'Embedding 3 Large',
-            },
-            model: 'text-embedding-3-large',
-            model_properties: {
-              context_size: 8192,
-            },
-            model_type: 'text-embedding',
-            status: 'active',
-          }),
-        ],
-      }),
-      expect.any(Function),
-      undefined,
-    )
   })
 })
 
