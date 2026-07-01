@@ -29,3 +29,14 @@ Feature: Agent v2 Agent Edit page
     And the Agent Builder preseeded Agent "E2E Agent With Dual Retrieval" includes the dual retrieval fixture configuration
     When I open the preseeded Agent v2 configure page for "E2E Agent With Dual Retrieval" from the Agent Roster
     Then I should see the Agent v2 dual retrieval fixture settings
+
+  Scenario: Workflow Agent edit opens the same Agent in Agent Console
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a workflow app with an Agent v2 node has been created via API
+    When I open the app from the app list
+    And I open the Agent v2 workflow node panel
+    And I open the Agent v2 workflow Agent details
+    Then I should see the Agent v2 workflow Agent details for the created Agent
+    When I open the Agent v2 workflow Agent in Agent Console
+    Then the Agent v2 Agent Console should open for the same workflow Agent

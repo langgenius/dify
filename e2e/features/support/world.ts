@@ -53,6 +53,7 @@ export const createAgentBuilderWorldState = () => ({
     workflowReferencePage: undefined as Page | undefined,
   },
   workflow: {
+    agentConsolePage: undefined as Page | undefined,
     outputVariables: [] as AgentV2WorkflowOutputVariable[],
   },
 })
