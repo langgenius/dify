@@ -101,6 +101,31 @@ type SelectTypeFormItem = {
   options: string[]
   hide: boolean
 }
+
+type NumberTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | number
+  max_length?: number
+}
+
+type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: boolean
+}
+
+type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> & Partial<UploadFileSetting> & {
+  max_length?: number
+}
+
+type ExternalDataToolFormItem = ExternalDataTool & {
+  label: string
+  variable: string
+  required: boolean
+  hide?: boolean
+}
+
+type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length'> & {
+  json_schema?: string | Record<string, unknown>
+}
+
 /**
  * User Input Form Item
  */
@@ -110,6 +135,18 @@ export type UserInputFormItem = {
   select: SelectTypeFormItem
 } | {
   paragraph: TextTypeFormItem
+} | {
+  number: NumberTypeFormItem
+} | {
+  checkbox: CheckboxTypeFormItem
+} | {
+  file: FileTypeFormItem
+} | {
+  'file-list': FileTypeFormItem
+} | {
+  external_data_tool: ExternalDataToolFormItem
+} | {
+  json_object: JsonObjectFormItem
 }
 
 export type AgentTool = {
@@ -118,7 +155,7 @@ export type AgentTool = {
   provider_name: string
   tool_name: string
   tool_label: string
-  tool_parameters: Record<string, any>
+  tool_parameters: Record<string, unknown>
   enabled: boolean
   isDeleted?: boolean
   notAuthor?: boolean

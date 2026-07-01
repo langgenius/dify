@@ -1,4 +1,3 @@
-import type { DataSetListResponse } from '@/models/datasets'
 import { useQuery } from '@tanstack/react-query'
 import { consoleQuery } from '@/service/client'
 import { fetchTryAppDatasets, fetchTryAppFlowPreview, fetchTryAppInfo, fetchTryAppParams } from './try-app'
@@ -24,7 +23,7 @@ export const useGetTryAppParams = (appId: string) => {
 }
 
 export const useGetTryAppDataSets = (appId: string, ids: string[]) => {
-  return useQuery<DataSetListResponse>({
+  return useQuery({
     queryKey: consoleQuery.trialApps.byAppId.datasets.get.queryKey({ input: { params: { app_id: appId }, query: { ids } } }),
     queryFn: () => {
       return fetchTryAppDatasets(appId, ids)

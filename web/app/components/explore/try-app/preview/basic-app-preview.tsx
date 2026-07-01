@@ -4,7 +4,8 @@ import type { FC } from 'react'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelConfig } from '@/models/debug'
-import type { ModelConfig as BackendModelConfig, PromptVariable } from '@/types/app'
+import type { TryAppInfo } from '@/service/try-app'
+import type { PromptVariable } from '@/types/app'
 import { noop } from 'es-toolkit/function'
 import { clone } from 'es-toolkit/object'
 import * as React from 'react'
@@ -53,6 +54,62 @@ const defaultModelConfig = {
   dataSets: [],
   agentConfig: DEFAULT_AGENT_SETTING,
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+const getString = (value: unknown) => {
+  return typeof value === 'string' ? value : ''
+}
+
+const getBoolean = (value: unknown) => {
+  return typeof value === 'boolean' ? value : false
+}
+
+const getAgentTools = (agentMode: unknown) => {
+  if (!isRecord(agentMode) || !Array.isArray(agentMode.tools))
+    return []
+
+  return agentMode.tools.filter(isRecord)
+}
+
+const isEnabledDatasetTool = (tool: Record<string, unknown>) => {
+  return isRecord(tool.dataset) && tool.dataset.enabled === true
+}
+
+const getDatasetConfigItems = (datasetConfigs: unknown) => {
+  if (!isRecord(datasetConfigs) || !isRecord(datasetConfigs.datasets) || !Array.isArray(datasetConfigs.datasets.datasets))
+    return []
+
+  return datasetConfigs.datasets.datasets.filter(isRecord)
+}
+
+const getDatasetId = (value: Record<string, unknown>) => {
+  if (typeof value.id === 'string')
+    return value.id
+
+  if (isRecord(value.dataset) && typeof value.dataset.id === 'string')
+    return value.dataset.id
+
+  return null
+}
+
+const normalizeExternalDataToolFormItem = (item: Record<string, unknown>) => {
+  return {
+    external_data_tool: {
+      variable: getString(item.variable),
+      label: getString(item.label),
+      enabled: getBoolean(item.enabled),
+      type: getString(item.type),
+      config: isRecord(item.config) ? item.config : undefined,
+      required: true,
+      icon: getString(item.icon),
+      icon_background: getString(item.icon_background),
+    },
+  }
+}
+
 const BasicAppPreview: FC<Props> = ({
   appId,
 }) => {
@@ -73,16 +130,13 @@ const BasicAppPreview: FC<Props> = ({
     const modelConfig = appDetail?.model_config
     if (!modelConfig)
       return []
-    let datasets: any = null
 
-    if (modelConfig.agent_mode?.tools?.find(({ dataset }: any) => dataset?.enabled))
-      datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
-    // new dataset struct
-    else if (modelConfig.dataset_configs.datasets?.datasets?.length > 0)
-      datasets = modelConfig.dataset_configs?.datasets?.datasets
+    const agentDatasetTools = getAgentTools(modelConfig.agent_mode).filter(isEnabledDatasetTool)
+    const datasetConfigItems = getDatasetConfigItems(modelConfig.dataset_configs)
+    const datasets = agentDatasetTools.length > 0 ? agentDatasetTools : datasetConfigItems
 
     if (datasets?.length && datasets?.length > 0)
-      return datasets.map(({ dataset }: any) => dataset.id)
+      return datasets.map(getDatasetId).filter((id): id is string => !!id)
 
     return []
   })()
@@ -90,41 +144,29 @@ const BasicAppPreview: FC<Props> = ({
   const dataSets = dataSetData?.data || []
   const isLoading = isLoadingAppDetail || isLoadingDatasets || isLoadingToolProviders
 
-  const modelConfig: ModelConfig = ((modelConfig?: BackendModelConfig) => {
-    if (isLoading || !modelConfig)
+  const modelConfig: ModelConfig = ((modelConfig?: TryAppInfo['model_config']) => {
+    if (isLoading || !modelConfig?.model)
       return defaultModelConfig
 
     const model = modelConfig.model
+    const mode = model.mode === ModelModeType.chat || model.mode === ModelModeType.completion ? model.mode : ModelModeType.unset
 
     const newModelConfig = {
       provider: correctModelProvider(model.provider),
       model_id: model.name,
-      mode: model.mode,
+      mode,
       configs: {
         prompt_template: modelConfig.pre_prompt || '',
         prompt_variables: userInputsFormToPromptVariables(
           [
-            ...(modelConfig.user_input_form as any),
+            ...(modelConfig.user_input_form || []),
             ...(
               modelConfig.external_data_tools?.length
-                ? modelConfig.external_data_tools.map((item) => {
-                    return {
-                      external_data_tool: {
-                        variable: item.variable as string,
-                        label: item.label as string,
-                        enabled: item.enabled,
-                        type: item.type as string,
-                        config: item.config,
-                        required: true,
-                        icon: item.icon,
-                        icon_background: item.icon_background,
-                      },
-                    }
-                  })
+                ? modelConfig.external_data_tools.map(normalizeExternalDataToolFormItem)
                 : []
             ),
           ],
-          modelConfig.dataset_query_variable,
+          modelConfig.dataset_query_variable ?? undefined,
         ),
       },
       more_like_this: modelConfig.more_like_this,
@@ -143,21 +185,25 @@ const BasicAppPreview: FC<Props> = ({
         // eslint-disable-next-line style/multiline-ternary
         ? ({
             max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
-            ...modelConfig.agent_mode,
+            ...(isRecord(modelConfig.agent_mode) ? modelConfig.agent_mode : {}),
             // remove dataset
             enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
-            tools: modelConfig.agent_mode?.tools.filter((tool: any) => {
+            tools: getAgentTools(modelConfig.agent_mode).filter((tool) => {
               return !tool.dataset
-            }).map((tool: any) => {
-              const toolInCollectionList = collectionList?.find(c => tool.provider_id === c.id)
+            }).map((tool) => {
+              const providerId = getString(tool.provider_id)
+              const providerName = getString(tool.provider_name)
+              const providerType = getString(tool.provider_type)
+              const toolName = getString(tool.tool_name)
+              const toolInCollectionList = collectionList?.find(c => providerId === c.id)
               return {
                 ...tool,
-                isDeleted: appDetail?.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
+                isDeleted: appDetail?.deleted_tools?.some(deletedTool => deletedTool.provider_id === providerId && deletedTool.tool_name === toolName),
                 notAuthor: toolInCollectionList?.is_team_authorization === false,
-                ...(tool.provider_type === 'builtin'
+                ...(providerType === 'builtin'
                   ? {
-                      provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                      provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                      provider_id: correctToolProvider(providerName, !!toolInCollectionList),
+                      provider_name: correctToolProvider(providerName, !!toolInCollectionList),
                     }
                   : {}),
               }
