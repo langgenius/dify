@@ -54,6 +54,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
+      - name: Bind merge target branch for getattr guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: git show-ref --verify --quiet refs/heads/main || git branch main origin/main
+
       - name: Run No New Getattr Guard
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api python scripts/check_no_new_getattr.py --mode ci --merge-target main

@@ -96,7 +96,7 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert guard_command in job_text
 
     guard_step = re.search(
-        rf"(?ms)^      - name: .*?\n(?P<step>.*?{re.escape(guard_command)}.*?)(?=^      - name: |\Z)",
+        rf"(?ms)^      - name: Run No New Getattr Guard\n(?P<step>.*?{re.escape(guard_command)}.*?)(?=^      - name: |\Z)",
         job_text,
     )
     assert guard_step is not None
