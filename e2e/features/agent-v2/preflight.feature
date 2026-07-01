@@ -1,5 +1,14 @@
 @agent-v2 @authenticated @infra @agent-v2-preflight
 Feature: Agent Builder preseeded environment
+  @agent-lifecycle
+  Scenario: Agent lifecycle permissions are available
+    Given I am signed in as the default E2E admin
+    And an Agent v2 test agent has been created via API
+    And the Agent v2 composer draft uses the normal E2E prompt
+    When I open the Agent v2 configure page
+    And I publish the Agent v2 draft
+    Then the Agent v2 draft should be published and up to date
+
   Scenario: Stable chat model is available
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
