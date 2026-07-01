@@ -910,7 +910,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     ### Response
     - `form_content` (string) 已渲染的表单内容（markdown/plain text）
-    - `inputs` (array[object]) 表单输入项定义
+    - `inputs` (array[object]) 表单输入项定义。支持的 `type` 包括 `paragraph`、`select`、`file` 和 `file-list`；各类型结构见示例。
     - `resolved_default_values` (object) 已解析的默认值（字符串）
     - `user_actions` (array[object]) 操作按钮列表
     - `expiration_time` (timestamp) 表单过期时间（Unix 秒）
@@ -932,18 +932,43 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "form_content": "请确认最终结果：{{#$output.answer#}}",
+      "form_content": "Please upload a file list:\n{{#$output.files#}}\n\nPlease upload a single file:\n{{#$output.a_single_file#}}\n\nPlease select an option:\n{{#$output.my_single_choice#}}\n\nPlease enter a paragraph:\n{{#$output.my_paragraph#}}\n",
       "inputs": [
         {
-          "label": "答案",
-          "type": "text-input",
-          "required": true,
-          "output_variable_name": "answer"
+          "output_variable_name": "files",
+          "allowed_file_types": ["image", "document", "audio", "video"],
+          "allowed_file_extensions": [],
+          "allowed_file_upload_methods": ["local_file", "remote_url"],
+          "type": "file-list",
+          "number_limits": 5
+        },
+        {
+          "output_variable_name": "a_single_file",
+          "allowed_file_types": ["image", "document", "audio", "video"],
+          "allowed_file_extensions": [],
+          "allowed_file_upload_methods": ["local_file", "remote_url"],
+          "type": "file"
+        },
+        {
+          "output_variable_name": "my_single_choice",
+          "type": "select",
+          "option_source": {
+            "type": "constant",
+            "selector": [],
+            "value": ["apple", "orange", "strawberry"]
+          }
+        },
+        {
+          "output_variable_name": "my_paragraph",
+          "type": "paragraph",
+          "default": {
+            "type": "constant",
+            "selector": [],
+            "value": "this is a default value for my paragraph"
+          }
         }
       ],
-      "resolved_default_values": {
-        "answer": "初始值"
-      },
+      "resolved_default_values": {},
       "user_actions": [
         { "id": "approve", "title": "通过", "button_style": "primary" },
         { "id": "reject", "title": "拒绝", "button_style": "warning" }
@@ -975,6 +1000,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `action` (string) 必填，从 `user_actions` 中选择的动作 ID
     - `user` (string) 必填，终端用户标识
 
+    对于文件字段，请先通过 [`POST /files/upload`](#files-upload) 上传本地文件，然后使用返回的文件 `id` 作为 `upload_file_id`。两次请求中的 `user` 必须保持一致。
+
+    - `file-list` 字段提交文件对象数组。
+    - `file` 字段提交单个文件对象。
+    - 提交的每个文件对象都需要设置 `type`，其值必须来自该字段的 `allowed_file_types`：`image`、`document`、`audio` 或 `video`。
+    当允许 `remote_url` 时，也可以直接提交文件 URL：
+
+    <CodeGroup title="远程 URL 文件对象" targetCode={`{
+  "type": "image",
+  "transfer_method": "remote_url",
+  "url": "https://example.com/image.png"
+}`} />
+
     ### Response
     成功时返回空对象。
 
@@ -993,7 +1031,27 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{
-  "inputs": {"answer": "已确认答案"},
+  "inputs": {
+    "files": [
+      {
+        "type": "image",
+        "transfer_method": "local_file",
+        "upload_file_id": "{file_id_1}"
+      },
+      {
+        "type": "document",
+        "transfer_method": "local_file",
+        "upload_file_id": "{file_id_2}"
+      }
+    ],
+    "a_single_file": {
+      "type": "image",
+      "transfer_method": "local_file",
+      "upload_file_id": "{file_id_3}"
+    },
+    "my_single_choice": "apple",
+    "my_paragraph": "hey welcome to Dify!"
+  },
   "action": "approve",
   "user": "abc-123"
 }'`}
