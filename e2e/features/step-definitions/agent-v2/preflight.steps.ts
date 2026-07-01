@@ -24,7 +24,7 @@ Given('the Agent Builder stable chat model is available', async function (this: 
   if (stableModel === 'skipped')
     return stableModel
 
-  this.agentBuilderStableChatModel = stableModel
+  this.agentBuilder.preflight.stableModel = stableModel
 })
 
 Given('the Agent Builder broken chat model is available', async function (this: DifyWorld) {
@@ -32,7 +32,7 @@ Given('the Agent Builder broken chat model is available', async function (this: 
   if (brokenModel === 'skipped')
     return brokenModel
 
-  this.agentBuilderBrokenChatModel = brokenModel
+  this.agentBuilder.preflight.brokenModel = brokenModel
 })
 
 Given(
@@ -42,7 +42,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[resourceName] = resource
+    this.agentBuilder.preflight.preseededResources[resourceName] = resource
   },
 )
 
@@ -53,7 +53,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[resourceName] = resource
+    this.agentBuilder.preflight.preseededResources[resourceName] = resource
   },
 )
 
@@ -64,7 +64,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[resourceName] = resource
+    this.agentBuilder.preflight.preseededResources[resourceName] = resource
   },
 )
 
@@ -75,7 +75,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[resourceName] = resource
+    this.agentBuilder.preflight.preseededResources[resourceName] = resource
   },
 )
 
@@ -86,7 +86,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[resourceName] = resource
+    this.agentBuilder.preflight.preseededResources[resourceName] = resource
   },
 )
 
@@ -97,7 +97,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[resourceName] = resource
+    this.agentBuilder.preflight.preseededResources[resourceName] = resource
   },
 )
 
@@ -108,7 +108,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[`${agentName} / ${skillName}`] = resource
+    this.agentBuilder.preflight.preseededResources[`${agentName} / ${skillName}`] = resource
   },
 )
 
@@ -119,7 +119,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[`${agentName} / core fixture configuration`] = resource
+    this.agentBuilder.preflight.preseededResources[`${agentName} / core fixture configuration`] = resource
   },
 )
 
@@ -130,7 +130,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[`${agentName} / tool state fixture configuration`]
+    this.agentBuilder.preflight.preseededResources[`${agentName} / tool state fixture configuration`]
       = resource
   },
 )
@@ -142,7 +142,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[`${agentName} / dual retrieval fixture configuration`]
+    this.agentBuilder.preflight.preseededResources[`${agentName} / dual retrieval fixture configuration`]
       = resource
   },
 )
@@ -154,7 +154,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[`${agentName} / file tree fixture`] = resource
+    this.agentBuilder.preflight.preseededResources[`${agentName} / file tree fixture`] = resource
   },
 )
 
@@ -165,7 +165,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[`${agentName} / Backend service API key`] = resource
+    this.agentBuilder.preflight.preseededResources[`${agentName} / Backend service API key`] = resource
   },
 )
 
@@ -176,7 +176,7 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[`${agentName} / Web app`] = resource
+    this.agentBuilder.preflight.preseededResources[`${agentName} / Web app`] = resource
   },
 )
 
@@ -187,6 +187,6 @@ Given(
     if (resource === 'skipped')
       return resource
 
-    this.agentBuilderPreseededResources[`${agentName} / ${workflowName}`] = resource
+    this.agentBuilder.preflight.preseededResources[`${agentName} / ${workflowName}`] = resource
   },
 )

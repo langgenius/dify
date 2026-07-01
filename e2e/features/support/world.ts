@@ -37,6 +37,28 @@ export type AgentV2WorkflowOutputVariable = {
   type: string
 }
 
+export const createAgentBuilderWorldState = () => ({
+  preflight: {
+    brokenModel: undefined as AgentBuilderStableChatModel | undefined,
+    preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
+    stableModel: undefined as AgentBuilderStableChatModel | undefined,
+  },
+  accessPoint: {
+    apiReferencePage: undefined as Page | undefined,
+    composerDraftSnapshot: undefined as string | undefined,
+    generatedApiKey: undefined as string | undefined,
+    serviceApiBaseURL: undefined as string | undefined,
+    webAppPage: undefined as Page | undefined,
+    webAppURL: undefined as string | undefined,
+    workflowReferencePage: undefined as Page | undefined,
+  },
+  workflow: {
+    outputVariables: [] as AgentV2WorkflowOutputVariable[],
+  },
+})
+
+export type AgentBuilderWorldState = ReturnType<typeof createAgentBuilderWorldState>
+
 export class DifyWorld extends World {
   context: BrowserContext | undefined
   page: Page | undefined
@@ -47,13 +69,6 @@ export class DifyWorld extends World {
   lastCreatedAppName: string | undefined
   lastCreatedAgentName: string | undefined
   lastCreatedAgentRole: string | undefined
-  lastAgentServiceApiBaseURL: string | undefined
-  lastGeneratedAgentApiKey: string | undefined
-  lastAgentApiReferencePage: Page | undefined
-  lastAgentComposerDraftSnapshot: string | undefined
-  lastAgentWebAppPage: Page | undefined
-  lastAgentWebAppURL: string | undefined
-  lastAgentWorkflowReferencePage: Page | undefined
   createdAppIds: string[] = []
   createdAgentIds: string[] = []
   createdDatasetIds: string[] = []
@@ -61,10 +76,7 @@ export class DifyWorld extends World {
   createdAgentConfigSkills: CreatedAgentConfigSkill[] = []
   createdAgentDriveFiles: CreatedAgentDriveFile[] = []
   createdBuiltinToolCredentials: CreatedBuiltinToolCredential[] = []
-  agentBuilderBrokenChatModel: AgentBuilderStableChatModel | undefined
-  agentBuilderStableChatModel: AgentBuilderStableChatModel | undefined
-  agentBuilderPreseededResources: Record<string, AgentBuilderPreseededResource> = {}
-  agentV2WorkflowOutputVariables: AgentV2WorkflowOutputVariable[] = []
+  agentBuilder: AgentBuilderWorldState = createAgentBuilderWorldState()
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
@@ -80,13 +92,6 @@ export class DifyWorld extends World {
     this.lastCreatedAppName = undefined
     this.lastCreatedAgentName = undefined
     this.lastCreatedAgentRole = undefined
-    this.lastAgentServiceApiBaseURL = undefined
-    this.lastGeneratedAgentApiKey = undefined
-    this.lastAgentApiReferencePage = undefined
-    this.lastAgentComposerDraftSnapshot = undefined
-    this.lastAgentWebAppPage = undefined
-    this.lastAgentWebAppURL = undefined
-    this.lastAgentWorkflowReferencePage = undefined
     this.createdAppIds = []
     this.createdAgentIds = []
     this.createdDatasetIds = []
@@ -94,10 +99,7 @@ export class DifyWorld extends World {
     this.createdAgentConfigSkills = []
     this.createdAgentDriveFiles = []
     this.createdBuiltinToolCredentials = []
-    this.agentBuilderBrokenChatModel = undefined
-    this.agentBuilderStableChatModel = undefined
-    this.agentBuilderPreseededResources = {}
-    this.agentV2WorkflowOutputVariables = []
+    this.agentBuilder = createAgentBuilderWorldState()
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined

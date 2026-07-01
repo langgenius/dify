@@ -18,7 +18,7 @@ const getCurrentAgentId = (world: DifyWorld) => {
 }
 
 const getPreseededResource = (world: DifyWorld, name: string, kind: 'agent' | 'workflow') => {
-  const resource = world.agentBuilderPreseededResources[name]
+  const resource = world.agentBuilder.preflight.preseededResources[name]
   if (!resource || resource.kind !== kind) {
     throw new Error(
       `Preseeded ${kind} "${name}" is not available. Run the matching preflight step first.`,
@@ -46,7 +46,7 @@ Given(
   async function (this: DifyWorld) {
     const apiAccess = await setAgentApiAccess(getCurrentAgentId(this), true)
 
-    this.lastAgentServiceApiBaseURL = apiAccess.service_api_base_url
+    this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
   },
 )
 
@@ -125,7 +125,7 @@ Then(
     const agent = getPreseededResource(this, agentName, 'agent')
     const draft = await getAgentComposerDraft(agent.id)
 
-    this.lastAgentComposerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
+    this.agentBuilder.accessPoint.composerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
   },
 )
 
@@ -148,20 +148,20 @@ When('I launch the Agent v2 Web app', async function (this: DifyWorld) {
     launchLink.click(),
   ])
 
-  this.lastAgentWebAppURL = href
-  this.lastAgentWebAppPage = webAppPage
+  this.agentBuilder.accessPoint.webAppURL = href
+  this.agentBuilder.accessPoint.webAppPage = webAppPage
 })
 
 Then('the Agent v2 Web app should open in a new tab', async function (this: DifyWorld) {
-  const webAppPage = this.lastAgentWebAppPage
-  const webAppURL = this.lastAgentWebAppURL
+  const webAppPage = this.agentBuilder.accessPoint.webAppPage
+  const webAppURL = this.agentBuilder.accessPoint.webAppURL
   if (!webAppPage || !webAppURL)
     throw new Error('No Agent v2 Web app page was opened.')
 
   await expect(webAppPage).toHaveURL(webAppURL)
   await webAppPage.close()
-  this.lastAgentWebAppPage = undefined
-  this.lastAgentWebAppURL = undefined
+  this.agentBuilder.accessPoint.webAppPage = undefined
+  this.agentBuilder.accessPoint.webAppURL = undefined
 })
 
 When('I open Agent v2 Embedded configuration', async function (this: DifyWorld) {
@@ -207,7 +207,7 @@ Then('I should see the Agent v2 Web app settings dialog', async function (this: 
 Then(
   'the Agent v2 orchestration draft for {string} should be unchanged',
   async function (this: DifyWorld, agentName: string) {
-    const snapshot = this.lastAgentComposerDraftSnapshot
+    const snapshot = this.agentBuilder.accessPoint.composerDraftSnapshot
     if (!snapshot)
       throw new Error('No Agent v2 orchestration draft snapshot was recorded.')
 
@@ -265,14 +265,14 @@ When(
       workflowLink.click(),
     ])
 
-    this.lastAgentWorkflowReferencePage = workflowPage
+    this.agentBuilder.accessPoint.workflowReferencePage = workflowPage
   },
 )
 
 Then(
   'the Agent v2 Workflow access reference for {string} should open in Studio',
   async function (this: DifyWorld, workflowName: string) {
-    const workflowPage = this.lastAgentWorkflowReferencePage
+    const workflowPage = this.agentBuilder.accessPoint.workflowReferencePage
     if (!workflowPage)
       throw new Error('No Agent v2 Workflow access reference page was opened.')
 
@@ -280,21 +280,21 @@ Then(
 
     await expect(workflowPage).toHaveURL(new RegExp(`/app/${workflow.id}/workflow(?:\\?.*)?$`))
     await workflowPage.close()
-    this.lastAgentWorkflowReferencePage = undefined
+    this.agentBuilder.accessPoint.workflowReferencePage = undefined
   },
 )
 
 Then('I should see the Agent v2 Backend service API endpoint', async function (this: DifyWorld) {
   const page = this.getPage()
 
-  if (!this.lastAgentServiceApiBaseURL)
+  if (!this.agentBuilder.accessPoint.serviceApiBaseURL)
     throw new Error('No Agent v2 service API endpoint found. Enable Backend service API first.')
 
   await expect(page.getByRole('heading', { name: 'Backend service API' })).toBeVisible({
     timeout: 30_000,
   })
   await expect(page.getByText('Service API Endpoint')).toBeVisible()
-  await expect(page.getByText(this.lastAgentServiceApiBaseURL)).toBeVisible()
+  await expect(page.getByText(this.agentBuilder.accessPoint.serviceApiBaseURL)).toBeVisible()
   await expect(page.getByLabel('Copy service API endpoint')).toBeEnabled()
 })
 
@@ -348,8 +348,8 @@ Then('I should see the newly generated Agent v2 API key once', async function (t
   await expect(generatedKey).toBeVisible()
   await expect(generatedKeyDialog.getByLabel('Copy')).toBeVisible()
 
-  this.lastGeneratedAgentApiKey = (await generatedKey.textContent())?.trim()
-  if (!this.lastGeneratedAgentApiKey)
+  this.agentBuilder.accessPoint.generatedApiKey = (await generatedKey.textContent())?.trim()
+  if (!this.agentBuilder.accessPoint.generatedApiKey)
     throw new Error('Generated Agent v2 API key was empty.')
 })
 
@@ -364,7 +364,7 @@ When('I close the newly generated Agent v2 API key', async function (this: DifyW
 Then(
   'the Agent v2 API key list should not expose the full generated secret',
   async function (this: DifyWorld) {
-    const fullSecret = this.lastGeneratedAgentApiKey
+    const fullSecret = this.agentBuilder.accessPoint.generatedApiKey
     if (!fullSecret)
       throw new Error('No generated Agent v2 API key found.')
 
@@ -395,15 +395,15 @@ When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
     apiReferenceLink.click(),
   ])
 
-  this.lastAgentApiReferencePage = apiReferencePage
+  this.agentBuilder.accessPoint.apiReferencePage = apiReferencePage
 })
 
 Then('the Agent v2 API Reference should open in a new tab', async function (this: DifyWorld) {
-  const apiReferencePage = this.lastAgentApiReferencePage
+  const apiReferencePage = this.agentBuilder.accessPoint.apiReferencePage
   if (!apiReferencePage)
     throw new Error('No Agent v2 API Reference page was opened.')
 
   await expect(apiReferencePage).toHaveURL(/developing-with-apis/)
   await apiReferencePage.close()
-  this.lastAgentApiReferencePage = undefined
+  this.agentBuilder.accessPoint.apiReferencePage = undefined
 })

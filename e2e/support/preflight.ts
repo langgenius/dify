@@ -278,7 +278,7 @@ const hasUnauthorizedToolCredentialState = (item: unknown) => {
 
 const hasKnowledgeDataset = (
   soul: Record<string, unknown>,
-  dataset: NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>,
+  dataset: NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>,
 ) => {
   const knowledge = asRecord(soul.knowledge)
   const sets = asArray(knowledge.sets)
@@ -295,7 +295,7 @@ const hasKnowledgeDataset = (
 
 const hasKnowledgeSet = (
   soul: Record<string, unknown>,
-  dataset: NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>,
+  dataset: NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>,
   {
     queryMode,
     queryValue,
@@ -351,7 +351,7 @@ const getDatasetIndexingStatuses = async (datasetId: string, resourceName: strin
 
 const toDatasetResource = (
   resource: NamedResource,
-): NonNullable<DifyWorld['agentBuilderPreseededResources'][string]> => ({
+): NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]> => ({
   id: resource.id,
   kind: 'dataset',
   name: resource.name,
@@ -377,7 +377,7 @@ const splitToolDisplayName = (resourceName: string) => {
 export async function skipMissingPreseededAgent(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const query = buildQuery({ limit: '20', name: resourceName, page: '1' })
   const resource = await findConsoleResourceByName({
     action: `Check preseeded Agent ${resourceName}`,
@@ -398,7 +398,7 @@ export async function skipMissingPreseededAgent(
 export async function skipMissingPreseededWorkflow(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const query = buildQuery({ limit: '20', mode: 'workflow', name: resourceName, page: '1' })
   const resource = await findConsoleResourceByName({
     action: `Check preseeded workflow ${resourceName}`,
@@ -419,7 +419,7 @@ export async function skipMissingPreseededWorkflow(
 export async function skipMissingPreseededDataset(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const resource = await getPreseededDataset(resourceName)
 
   if (!resource)
@@ -431,7 +431,7 @@ export async function skipMissingPreseededDataset(
 export async function skipMissingReadyPreseededDataset(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const resource = await getPreseededDataset(resourceName)
 
   if (!resource)
@@ -472,7 +472,7 @@ export async function skipMissingReadyPreseededDataset(
 export async function skipMissingIndexingPreseededDataset(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const resource = await getPreseededDataset(resourceName)
 
   if (!resource)
@@ -499,7 +499,7 @@ export async function skipMissingIndexingPreseededDataset(
 export async function skipMissingPreseededTool(
   world: DifyWorld,
   resourceName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const parsed = splitToolDisplayName(resourceName)
   if (!parsed.ok)
     return skipBlockedPrecondition(world, parsed.reason)
@@ -534,7 +534,7 @@ export async function skipMissingPreseededAgentDriveSkill(
   world: DifyWorld,
   agentName: string,
   skillName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
   if (agent === 'skipped')
     return agent
@@ -567,7 +567,7 @@ export async function skipMissingPreseededAgentDriveSkill(
 export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const stableModel = await skipMissingAgentBuilderStableChatModel(world)
   if (stableModel === 'skipped')
     return stableModel
@@ -657,7 +657,7 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
 export async function skipMissingPreseededToolStatesAgentConfiguration(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
   if (agent === 'skipped')
     return agent
@@ -742,7 +742,7 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
 export async function skipMissingPreseededDualRetrievalAgentConfiguration(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
   if (agent === 'skipped')
     return agent
@@ -791,7 +791,7 @@ export async function skipMissingPreseededDualRetrievalAgentConfiguration(
 export async function skipMissingPreseededAgentFileTreeFixture(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
   if (agent === 'skipped')
     return agent
@@ -829,7 +829,7 @@ export async function skipMissingPreseededAgentFileTreeFixture(
 export async function skipMissingPreseededAgentBackendApiKey(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
   if (agent === 'skipped')
     return agent
@@ -871,7 +871,7 @@ export async function skipMissingPreseededAgentBackendApiKey(
 export async function skipMissingPreseededAgentPublishedWebApp(
   world: DifyWorld,
   agentName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
   if (agent === 'skipped')
     return agent
@@ -915,7 +915,7 @@ export async function skipMissingPreseededAgentWorkflowReference(
   world: DifyWorld,
   agentName: string,
   workflowName: string,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['preseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
   if (agent === 'skipped')
     return agent
@@ -1027,7 +1027,7 @@ async function skipMissingAgentBuilderModel(
   }: {
     requireActive: boolean
   },
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['stableModel']>> {
   if (!config.ok)
     return skipBlockedPrecondition(world, config.reason)
 
@@ -1073,7 +1073,7 @@ async function skipMissingAgentBuilderModel(
 
 export async function skipMissingAgentBuilderStableChatModel(
   world: DifyWorld,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['stableModel']>> {
   return skipMissingAgentBuilderModel(world, readAgentBuilderStableChatModelConfig(), {
     requireActive: true,
   })
@@ -1081,7 +1081,7 @@ export async function skipMissingAgentBuilderStableChatModel(
 
 export async function skipMissingAgentBuilderBrokenChatModel(
   world: DifyWorld,
-): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
+): Promise<'skipped' | NonNullable<DifyWorld['agentBuilder']['preflight']['stableModel']>> {
   return skipMissingAgentBuilderModel(world, readAgentBuilderBrokenChatModelConfig(), {
     requireActive: false,
   })

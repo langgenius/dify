@@ -44,13 +44,13 @@ const getOutputVariablesFromDraft = async (appId: string) => {
 Given(
   'a workflow app with an Agent v2 node has been created via API',
   async function (this: DifyWorld) {
-    if (!this.agentBuilderStableChatModel)
+    if (!this.agentBuilder.preflight.stableModel)
       throw new Error('Create an Agent v2 workflow node after stable model preflight.')
 
     const agent = await createConfiguredTestAgent({
       agentSoul: createAgentSoulConfigWithModel(
         normalAgentSoulConfig,
-        this.agentBuilderStableChatModel,
+        this.agentBuilder.preflight.stableModel,
       ),
     })
     this.createdAgentIds.push(agent.id)
@@ -81,7 +81,7 @@ When(
     const page = this.getPage()
     const appId = getCurrentAppId(this)
     const rows = table.hashes() as AgentV2WorkflowOutputVariable[]
-    this.agentV2WorkflowOutputVariables = rows
+    this.agentBuilder.workflow.outputVariables = rows
 
     await page.getByRole('button', { name: 'Output Variables' }).click()
 
@@ -111,7 +111,7 @@ Then(
   'the Agent v2 workflow node output variables should be saved in the workflow draft',
   async function (this: DifyWorld) {
     const appId = getCurrentAppId(this)
-    const expectedOutputVariables = this.agentV2WorkflowOutputVariables
+    const expectedOutputVariables = this.agentBuilder.workflow.outputVariables
     if (expectedOutputVariables.length === 0)
       throw new Error('No Agent v2 workflow output variables were recorded for this scenario.')
 
@@ -137,7 +137,7 @@ Then(
 
 Then('I should see the Agent v2 workflow node output variables', async function (this: DifyWorld) {
   const page = this.getPage()
-  const expectedOutputVariables = this.agentV2WorkflowOutputVariables
+  const expectedOutputVariables = this.agentBuilder.workflow.outputVariables
   if (expectedOutputVariables.length === 0)
     throw new Error('No Agent v2 workflow output variables were recorded for this scenario.')
 

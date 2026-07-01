@@ -43,7 +43,7 @@ const getCurrentAgentId = (world: DifyWorld) => {
 }
 
 const getPreseededAgent = (world: DifyWorld, name: string) => {
-  const resource = world.agentBuilderPreseededResources[name]
+  const resource = world.agentBuilder.preflight.preseededResources[name]
   if (!resource || resource.kind !== 'agent') {
     throw new Error(
       `Preseeded Agent "${name}" is not available. Run the matching preflight step first.`,
@@ -265,13 +265,13 @@ Given(
 )
 
 Given('a runnable Agent v2 test agent has been created via API', async function (this: DifyWorld) {
-  if (!this.agentBuilderStableChatModel)
+  if (!this.agentBuilder.preflight.stableModel)
     throw new Error('Create a runnable Agent v2 test agent after stable model preflight.')
 
   const agent = await createConfiguredTestAgent({
     agentSoul: createAgentSoulConfigWithModel(
       normalAgentSoulConfig,
-      this.agentBuilderStableChatModel,
+      this.agentBuilder.preflight.stableModel,
     ),
   })
   this.createdAgentIds.push(agent.id)
@@ -318,11 +318,11 @@ Given(
       throw new Error('Agent v2 build draft config file fixture did not return a file_id.')
     this.createdAgentConfigFiles.push({ agentId, name: configFile.name })
 
-    const normalConfig = this.agentBuilderStableChatModel
-      ? createAgentSoulConfigWithModel(normalAgentSoulConfig, this.agentBuilderStableChatModel)
+    const normalConfig = this.agentBuilder.preflight.stableModel
+      ? createAgentSoulConfigWithModel(normalAgentSoulConfig, this.agentBuilder.preflight.stableModel)
       : normalAgentSoulConfig
-    const updatedConfig = this.agentBuilderStableChatModel
-      ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilderStableChatModel)
+    const updatedConfig = this.agentBuilder.preflight.stableModel
+      ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilder.preflight.stableModel)
       : updatedAgentSoulConfig
 
     await saveAgentComposerDraft(agentId, normalConfig)
@@ -351,11 +351,11 @@ Given(
   'an Agent v2 Build draft includes the existing e2e-summary-skill Skill',
   async function (this: DifyWorld) {
     const skill = await uploadSummaryConfigSkillForBuildDraft(this)
-    const normalConfig = this.agentBuilderStableChatModel
-      ? createAgentSoulConfigWithModel(normalAgentSoulConfig, this.agentBuilderStableChatModel)
+    const normalConfig = this.agentBuilder.preflight.stableModel
+      ? createAgentSoulConfigWithModel(normalAgentSoulConfig, this.agentBuilder.preflight.stableModel)
       : normalAgentSoulConfig
-    const updatedConfig = this.agentBuilderStableChatModel
-      ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilderStableChatModel)
+    const updatedConfig = this.agentBuilder.preflight.stableModel
+      ? createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilder.preflight.stableModel)
       : updatedAgentSoulConfig
     const configSkills = [{
       ...skill,
@@ -380,12 +380,12 @@ Given('an Agent v2 Build draft uses the updated E2E prompt', async function (thi
 Given(
   'an Agent v2 Build draft uses the updated E2E prompt with the stable E2E model',
   async function (this: DifyWorld) {
-    if (!this.agentBuilderStableChatModel)
+    if (!this.agentBuilder.preflight.stableModel)
       throw new Error('Create an Agent v2 Build draft with a stable model after stable model preflight.')
 
     await saveAgentBuildDraft(
       getCurrentAgentId(this),
-      createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilderStableChatModel),
+      createAgentSoulConfigWithModel(updatedAgentSoulConfig, this.agentBuilder.preflight.stableModel),
     )
   },
 )
@@ -606,7 +606,7 @@ Then('I should see the Agent v2 configure workspace', async function (this: Dify
 
 Then('I should see the Agent v2 full-config fixture sections', async function (this: DifyWorld) {
   const page = this.getPage()
-  const stableModel = this.agentBuilderStableChatModel
+  const stableModel = this.agentBuilder.preflight.stableModel
   if (!stableModel)
     throw new Error('Stable chat model preflight must run before asserting the full-config Agent.')
 
@@ -695,7 +695,7 @@ Then(
 Then(
   'I should see the stable E2E model in the Agent v2 model selector',
   async function (this: DifyWorld) {
-    const stableModel = this.agentBuilderStableChatModel
+    const stableModel = this.agentBuilder.preflight.stableModel
     if (!stableModel)
       throw new Error('Stable chat model preflight must run before asserting the Agent model.')
 
@@ -1125,7 +1125,7 @@ Then(
 Then(
   'the Agent v2 draft should use the stable E2E model',
   async function (this: DifyWorld) {
-    const stableModel = this.agentBuilderStableChatModel
+    const stableModel = this.agentBuilder.preflight.stableModel
     if (!stableModel)
       throw new Error('Stable chat model preflight must run before asserting the Agent model.')
 
