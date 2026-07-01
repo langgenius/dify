@@ -6,6 +6,10 @@ import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
 import { baseURL, defaultLocale } from '../../test-env'
 
 export type ScenarioCleanup = () => Promise<void> | void
+export type CreatedAgentDriveFile = {
+  agentId: string
+  key: string
+}
 
 export class DifyWorld extends World {
   context: BrowserContext | undefined
@@ -22,6 +26,8 @@ export class DifyWorld extends World {
   lastAgentApiReferencePage: Page | undefined
   createdAppIds: string[] = []
   createdAgentIds: string[] = []
+  createdDatasetIds: string[] = []
+  createdAgentDriveFiles: CreatedAgentDriveFile[] = []
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
@@ -42,6 +48,8 @@ export class DifyWorld extends World {
     this.lastAgentApiReferencePage = undefined
     this.createdAppIds = []
     this.createdAgentIds = []
+    this.createdDatasetIds = []
+    this.createdAgentDriveFiles = []
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined

@@ -294,7 +294,7 @@ Use `fixtures/test-materials/` for checked-in files that scenarios upload, previ
 
 Use `support/preflight.ts` for scenarios that require optional external resources such as a stable model provider, plugin/tool credential, or knowledge base seed. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
 
-Use `DifyWorld.registerCleanup(...)` when a scenario creates a resource that is not covered by `createdAppIds` or `createdAgentIds`. Cleanup callbacks run after the built-in App and Agent cleanup, even when the scenario fails.
+Use `DifyWorld.createdDatasetIds` for datasets created by a scenario and `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario. The shared `After` hook deletes Agent drive files before deleting created Agents so file cleanup also works for scenarios that upload into a preseeded Agent. Use `DifyWorld.registerCleanup(...)` when a scenario creates any other resource type that is not covered by the typed cleanup fields. Cleanup callbacks run after the typed cleanup queues, even when the scenario fails.
 
 ## Reusing existing steps
 
@@ -311,7 +311,7 @@ Agent v2 scenarios live under `features/agent-v2/` and use the `@agent-v2` capab
 
 The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true` in `scripts/common.ts`, because `/roster` routes are guarded by that feature flag.
 
-Use `support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
+Use `support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, Agent drive file cleanup, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
 
 Keep Agent v2 step definitions under `features/step-definitions/agent-v2/`. Prefer API setup for prerequisite state, then use Playwright only for user-observable navigation, editing, and assertions.
 

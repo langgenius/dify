@@ -281,3 +281,15 @@ export async function deleteAgentApiKey(agentId: string, apiKeyId: string): Prom
     await ctx.dispose()
   }
 }
+
+export async function deleteAgentDriveFile(agentId: string, key: string): Promise<void> {
+  const ctx = await createApiContext()
+  try {
+    const searchParams = new URLSearchParams({ key })
+    const response = await ctx.delete(`/console/api/agent/${agentId}/files?${searchParams}`)
+    await expectApiResponseOK(response, `Delete Agent v2 drive file ${key} for ${agentId}`)
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
