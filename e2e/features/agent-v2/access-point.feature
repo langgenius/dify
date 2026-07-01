@@ -126,7 +126,7 @@ Feature: Agent v2 Access Point
   Scenario: Backend service API keys are managed without exposing existing secrets
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
-    And Agent v2 Backend service API access has been enabled via API
+    And Agent v2 Backend service API access has been enabled with a key via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
     And I open Agent v2 API key management

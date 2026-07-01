@@ -69,13 +69,15 @@ When('I open Agent v2 API key management', async function (this: DifyWorld) {
 Then('Agent v2 API keys should not expose a secret by default', async function (this: DifyWorld) {
   const page = this.getPage()
   const dialog = page.getByRole('dialog', { name: /API Secret key/i })
+  const existingSecret = this.agentBuilder.accessPoint.generatedApiKey
 
   await expect(dialog).toBeVisible()
   await expect(dialog.getByText('Secret Key', { exact: true })).toBeVisible()
   await expect(dialog.getByText('CREATED', { exact: true })).toBeVisible()
   await expect(dialog.getByText('LAST USED', { exact: true })).toBeVisible()
-  await expect(dialog.getByText('No data', { exact: true })).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Create new Secret key' })).toBeVisible()
+  if (existingSecret)
+    await expect(dialog.getByText(existingSecret, { exact: true })).not.toBeVisible()
   await expect(dialog.getByText(/^app-/)).not.toBeVisible()
   await expect(page.getByRole('dialog', { name: 'Internal Server Error' })).not.toBeVisible()
 })
@@ -143,7 +145,7 @@ Then(
     await expect(apiKeyDialog).toBeVisible()
     await expect(apiKeyDialog.getByText(fullSecret, { exact: true })).not.toBeVisible()
     await expect(apiKeyDialog.getByText(/^app-/)).not.toBeVisible()
-    await expect(apiKeyDialog.getByLabel('Copy')).toBeVisible()
+    await expect(apiKeyDialog.getByLabel('Copy').first()).toBeVisible()
   },
 )
 
