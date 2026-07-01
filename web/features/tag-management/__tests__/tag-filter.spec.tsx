@@ -95,6 +95,11 @@ describe('TagFilter', () => {
       expect(container.querySelector('svg')).not.toBeInTheDocument()
     })
 
+    it('should apply custom trigger class names', () => {
+      render(<TagFilter {...defaultProps} triggerClassName="min-w-0" />)
+      expect(screen.getByRole('combobox', { name: i18n.placeholder })).toHaveClass('min-w-0')
+    })
+
     it('should filter tags by type prop', async () => {
       const user = userEvent.setup()
       render(<TagFilter {...defaultProps} type="knowledge" />)

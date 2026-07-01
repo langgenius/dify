@@ -1,6 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import type { MutationFunctionContext } from '@tanstack/react-query'
+import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -17,6 +17,16 @@ const loadGetBaseURL = async (isClientValue: boolean) => {
 const loadConsoleQuery = async () => {
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const module = await import('./client')
+  warnSpy.mockRestore()
+  return module.consoleQuery
+}
+
+const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) => {
+  vi.resetModules()
+  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  vi.doMock('./base', () => ({ request }))
   const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   const module = await import('./client')
   warnSpy.mockRestore()
@@ -52,6 +62,8 @@ type WorkflowAgentComposerMutationResponse = Parameters<NonNullable<ReturnType<t
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
   active_config_is_published: overrides.active_config_is_published ?? false,
+  debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
+  debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   enable_api: overrides.enable_api ?? true,
   enable_site: overrides.enable_site ?? true,
   description: overrides.description ?? 'Agent description',
@@ -78,6 +90,7 @@ const createComposerState = (overrides: Partial<AgentComposerMutationResponse> =
     status: 'active',
   },
   agent_soul: {
+    config_note: '',
     schema_version: 1,
   },
   hidden_app_backed: false,
@@ -107,8 +120,11 @@ const createWorkflowComposerState = (overrides: Partial<WorkflowAgentComposerMut
     status: 'active',
   },
   agent_soul: {
+    config_note: '',
     schema_version: 1,
   },
+  debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
+  debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   hidden_app_backed: false,
   binding: {
     agent_id: 'agent-1',
@@ -198,6 +214,46 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('https://api.example.com/console/api')
     expect(warnSpy).not.toHaveBeenCalled()
+  })
+})
+
+// Scenario: oRPC operation context controls transport behavior without handwritten REST helpers.
+describe('consoleQuery transport context', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should forward silent context to the base request transport', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+      },
+    }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+      context: {
+        silent: true,
+      },
+    })
+
+    await Promise
+      .resolve(queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext))
+      .catch(() => undefined)
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/agent/agent-1/build-draft'),
+      expect.any(Object),
+      expect.objectContaining({
+        fetchCompat: true,
+        silent: true,
+      }),
+    )
   })
 })
 
@@ -519,7 +575,7 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(queryClient.getQueryData(inviteOptionsQueryKey)).toBeUndefined()
   })
 
-  it('should keep roster and invite option lists stable after saving an agent draft', async () => {
+  it('should invalidate roster list but keep invite options stable after saving an agent draft', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -543,7 +599,7 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(invalidateQueries).not.toHaveBeenCalledWith({
+    expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
     expect(invalidateQueries).not.toHaveBeenCalledWith({
