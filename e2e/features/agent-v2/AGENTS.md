@@ -207,6 +207,8 @@ Blocked messages should be specific enough to route ownership:
 Blocked precondition: <resource> missing <capability>. Owner: seed/product. Remediation: <what to seed or decide>.
 ```
 
+Order blocked steps by the real owner of the first unresolved condition. If a scenario is not automatable yet because the product behavior or test fixture contract is undefined, put that explicit availability step before model/tool/dataset preflights so the report is not masked by an unrelated missing seed. If the scenario is otherwise automatable and only depends on an external seed resource, run the matching resource preflight before creating scenario-owned state.
+
 Use partial coverage only when current product behavior is intentionally narrower than the written requirement and the test still asserts a real user-visible behavior. Example: Files are currently flat in Agent config files, so the flat Files list can be asserted while tree display remains blocked until product support exists.
 
 File format, size, count, and in-progress upload limit cases are feature-gated until the product exposes stable Agent config file restrictions and user-visible recovery/error states. Do not convert `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
