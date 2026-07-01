@@ -27,7 +27,9 @@ vi.mock('@/service/billing', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     billing: {
-      invoices: vi.fn(),
+      invoices: {
+        get: vi.fn(),
+      },
     },
   },
 }))
@@ -45,7 +47,7 @@ vi.mock('../../../assets', () => ({
 const mockUseAppContext = useAppContext as Mock
 const mockUseProviderContext = useProviderContext as Mock
 const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
-const mockBillingInvoices = consoleClient.billing.invoices as Mock
+const mockBillingInvoices = consoleClient.billing.invoices.get as Mock
 const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
 
 let assignedHref = ''

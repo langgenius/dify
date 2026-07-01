@@ -8,6 +8,21 @@ import * as z from 'zod'
 export const zGeneratorResponse = z.unknown()
 
 /**
+ * WorkflowInstructionSuggestionsPayload
+ *
+ * Payload for the workflow-generator instruction-suggestions endpoint.
+ *
+ * Runs before the user picks a model, so the suggestions come from the
+ * tenant's default model. The underlying generator never raises — an empty
+ * ``suggestions`` list is a valid 200 (soft-fail).
+ */
+export const zWorkflowInstructionSuggestionsPayload = z.object({
+  count: z.int().gte(1).lte(6).optional().default(4),
+  language: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'workflow']),
+})
+
+/**
  * LLMMode
  *
  * Enum class for large language model mode.
@@ -37,7 +52,7 @@ export const zWorkflowGeneratePayload = z.object({
   current_graph: z.record(z.string(), z.unknown()).nullish(),
   ideal_output: z.string().optional().default(''),
   instruction: z.string(),
-  mode: z.enum(['advanced-chat', 'workflow']),
+  mode: z.enum(['advanced-chat', 'auto', 'workflow']),
   model_config: zModelConfig,
 })
 
@@ -47,3 +62,17 @@ export const zPostWorkflowGenerateBody = zWorkflowGeneratePayload
  * Workflow graph generated successfully
  */
 export const zPostWorkflowGenerateResponse = zGeneratorResponse
+
+export const zPostWorkflowGenerateStreamBody = zWorkflowGeneratePayload
+
+/**
+ * Server-Sent Events stream of plan/result events
+ */
+export const zPostWorkflowGenerateStreamResponse = z.record(z.string(), z.unknown())
+
+export const zPostWorkflowGenerateSuggestionsBody = zWorkflowInstructionSuggestionsPayload
+
+/**
+ * Suggestions generated successfully
+ */
+export const zPostWorkflowGenerateSuggestionsResponse = zGeneratorResponse

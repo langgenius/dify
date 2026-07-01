@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from flask import request
 from flask_restx import Resource
@@ -9,7 +9,7 @@ from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.common.schema import register_response_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from core.db.session_factory import session_factory
@@ -539,6 +539,20 @@ class _DeleteMemberBindingsRequest(BaseModel):
         return value
 
 
+class _AccessControlLanguageQuery(BaseModel):
+    language: Literal["en", "ja", "zh"] | None = Field(default=None, description="Localized policy label language")
+
+
+register_schema_models(
+    console_ns,
+    _ResourceAccessScopeRequest,
+    _ReplaceBindingsRequest,
+    _DeleteMemberBindingsRequest,
+    _AccessControlLanguageQuery,
+    svc.ReplaceUserAccessPolicies,
+)
+
+
 @console_ns.route("/workspaces/current/rbac/my-permissions")
 class RBACMyPermissionsApi(Resource):
     @login_required
@@ -559,6 +573,7 @@ class RBACMyPermissionsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/access-policy")
 class RBACAppMatrixApi(Resource):
     @login_required
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(200, "Success", console_ns.models[svc.AppAccessMatrix.__name__])
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
@@ -576,6 +591,7 @@ class RBACAppWhitelistApi(Resource):
         return _dump(svc.RBACService.AppAccess.whitelist(tenant_id, account_id, str(app_id)))
 
     @login_required
+    @console_ns.expect(console_ns.models[_ResourceAccessScopeRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
     def put(self, app_id):
         tenant_id, account_id = _current_ids()
@@ -593,6 +609,7 @@ class RBACAppWhitelistApi(Resource):
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/user-access-policies")
 class RBACAppUserAccessPoliciesApi(Resource):
     @login_required
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceUserAccessPoliciesResponse.__name__])
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
@@ -604,6 +621,7 @@ class RBACAppUserAccessPoliciesApi(Resource):
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/users/<uuid:target_account_id>/access-policies")
 class RBACAppUserAccessPolicyAssignmentApi(Resource):
     @login_required
+    @console_ns.expect(console_ns.models[svc.ReplaceUserAccessPolicies.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.ReplaceUserAccessPoliciesResponse.__name__])
     def put(self, app_id, target_account_id):
         tenant_id, account_id = _current_ids()
@@ -637,6 +655,7 @@ class RBACAppMemberBindingsApi(Resource):
         return _dump(svc.RBACService.AppAccess.list_member_bindings(tenant_id, account_id, str(app_id), str(policy_id)))
 
     @login_required
+    @console_ns.expect(console_ns.models[_DeleteMemberBindingsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def delete(self, app_id, policy_id):
         tenant_id, account_id = _current_ids()
@@ -659,6 +678,7 @@ class RBACAppMemberBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/access-policy")
 class RBACDatasetMatrixApi(Resource):
     @login_required
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(200, "Success", console_ns.models[svc.DatasetAccessMatrix.__name__])
     def get(self, dataset_id):
         tenant_id, account_id = _current_ids()
@@ -676,6 +696,7 @@ class RBACDatasetWhitelistApi(Resource):
         return _dump(svc.RBACService.DatasetAccess.whitelist(tenant_id, account_id, str(dataset_id)))
 
     @login_required
+    @console_ns.expect(console_ns.models[_ResourceAccessScopeRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelist.__name__])
     def put(self, dataset_id):
         tenant_id, account_id = _current_ids()
@@ -693,6 +714,7 @@ class RBACDatasetWhitelistApi(Resource):
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/user-access-policies")
 class RBACDatasetUserAccessPoliciesApi(Resource):
     @login_required
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceUserAccessPoliciesResponse.__name__])
     def get(self, dataset_id):
         tenant_id, account_id = _current_ids()
@@ -704,6 +726,7 @@ class RBACDatasetUserAccessPoliciesApi(Resource):
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/users/<uuid:target_account_id>/access-policies")
 class RBACDatasetUserAccessPolicyAssignmentApi(Resource):
     @login_required
+    @console_ns.expect(console_ns.models[svc.ReplaceUserAccessPolicies.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.ReplaceUserAccessPoliciesResponse.__name__])
     def put(self, dataset_id, target_account_id):
         tenant_id, account_id = _current_ids()
@@ -743,6 +766,7 @@ class RBACDatasetMemberBindingsApi(Resource):
         )
 
     @login_required
+    @console_ns.expect(console_ns.models[_DeleteMemberBindingsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.MemberBindingsResponse.__name__])
     def delete(self, dataset_id, policy_id):
         tenant_id, account_id = _current_ids()
@@ -781,6 +805,7 @@ class RBACWorkspaceAppRoleBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policies/<uuid:policy_id>/bindings")
 class RBACWorkspaceAppBindingsApi(Resource):
     @login_required
+    @console_ns.expect(console_ns.models[_ReplaceBindingsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.AccessMatrixItem.__name__])
     def put(self, policy_id):
         tenant_id, account_id = _current_ids()
@@ -828,6 +853,7 @@ class RBACWorkspaceDatasetRoleBindingsApi(Resource):
 @console_ns.route("/workspaces/current/rbac/workspace/datasets/access-policies/<uuid:policy_id>/bindings")
 class RBACWorkspaceDatasetBindingsApi(Resource):
     @login_required
+    @console_ns.expect(console_ns.models[_ReplaceBindingsRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.AccessMatrixItem.__name__])
     def put(self, policy_id):
         tenant_id, account_id = _current_ids()
@@ -869,6 +895,9 @@ class _ReplaceMemberRolesRequest(BaseModel):
         return value
 
 
+register_schema_models(console_ns, _ReplaceMemberRolesRequest)
+
+
 @console_ns.route("/workspaces/current/rbac/members/<uuid:member_id>/rbac-roles")
 class RBACMemberRolesApi(Resource):
     @login_required
@@ -878,6 +907,7 @@ class RBACMemberRolesApi(Resource):
         return _dump(svc.RBACService.MemberRoles.get(tenant_id, account_id, str(member_id), session=db.session))
 
     @login_required
+    @console_ns.expect(console_ns.models[_ReplaceMemberRolesRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[svc.MemberRolesResponse.__name__])
     def put(self, member_id):
         tenant_id, account_id = _current_ids()

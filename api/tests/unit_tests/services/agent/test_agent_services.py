@@ -242,6 +242,62 @@ def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest
     assert result == {"agent": "inline-agent-1", "version": "inline-preview-version"}
 
 
+def test_workflow_inline_debug_conversation_seed(monkeypatch: pytest.MonkeyPatch):
+    captured: dict[str, object] = {}
+
+    class FakeRosterService:
+        def __init__(self, session):
+            captured["session"] = session
+
+        def get_or_create_agent_app_debug_conversation_id(self, **kwargs):
+            captured.update(kwargs)
+            return "debug-conversation-1"
+
+    monkeypatch.setattr(roster_service, "AgentRosterService", FakeRosterService)
+
+    binding = SimpleNamespace(binding_type=WorkflowAgentBindingType.INLINE_AGENT)
+    agent = SimpleNamespace(id="inline-agent-1", scope=AgentScope.WORKFLOW_ONLY)
+
+    debug_conversation_id = AgentComposerService._workflow_inline_debug_conversation_id(
+        tenant_id="tenant-1",
+        binding=binding,
+        agent=agent,
+        account_id="account-1",
+    )
+
+    assert debug_conversation_id == "debug-conversation-1"
+    assert captured["tenant_id"] == "tenant-1"
+    assert captured["agent_id"] == "inline-agent-1"
+    assert captured["account_id"] == "account-1"
+
+
+def test_workflow_inline_debug_conversation_seed_skips_non_inline(monkeypatch: pytest.MonkeyPatch):
+    class UnexpectedRosterService:
+        def __init__(self, session):
+            raise AssertionError("roster service should not be used")
+
+    monkeypatch.setattr(roster_service, "AgentRosterService", UnexpectedRosterService)
+
+    assert (
+        AgentComposerService._workflow_inline_debug_conversation_id(
+            tenant_id="tenant-1",
+            binding=SimpleNamespace(binding_type=WorkflowAgentBindingType.ROSTER_AGENT),
+            agent=SimpleNamespace(id="agent-1", scope=AgentScope.ROSTER),
+            account_id="account-1",
+        )
+        is None
+    )
+    assert (
+        AgentComposerService._workflow_inline_debug_conversation_id(
+            tenant_id="tenant-1",
+            binding=SimpleNamespace(binding_type=WorkflowAgentBindingType.INLINE_AGENT),
+            agent=SimpleNamespace(id="inline-agent-1", scope=AgentScope.WORKFLOW_ONLY),
+            account_id=None,
+        )
+        is None
+    )
+
+
 def test_load_workflow_composer_rejects_preview_without_binding(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
@@ -274,6 +330,7 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
         current_snapshot_id="version-1",
     )
     calls = []
+    serialize_calls = []
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
@@ -289,7 +346,12 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
         "_get_version_if_present",
         lambda **kwargs: SimpleNamespace(id="version-1"),
     )
-    monkeypatch.setattr(AgentComposerService, "_serialize_workflow_state", lambda **kwargs: {"state": "ok"})
+
+    def serialize_workflow_state(**kwargs):
+        serialize_calls.append(kwargs)
+        return {"state": "ok"}
+
+    monkeypatch.setattr(AgentComposerService, "_serialize_workflow_state", serialize_workflow_state)
 
     def save_helper(**kwargs):
         calls.append(kwargs)
@@ -316,6 +378,7 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
     assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"state": "ok"}
     assert calls
+    assert serialize_calls[0]["account_id"] == "account-1"
     assert fake_session.commits == 1
 
 
@@ -461,10 +524,12 @@ def test_save_agent_app_composer_rejects_version_save_strategy():
 def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.MonkeyPatch):
     agent = SimpleNamespace(
         id="agent-1",
+        source=AgentSource.AGENT_APP,
         active_config_snapshot_id="version-1",
         active_config_is_published=True,
         updated_by=None,
     )
+    active_version = SimpleNamespace(config_snapshot_dict=AgentSoulConfig().model_dump(mode="json"))
     fake_session = FakeSession(scalar=[agent])
     saved = {}
 
@@ -475,6 +540,7 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
         "_save_agent_draft",
         lambda **kwargs: saved.update(kwargs) or SimpleNamespace(id="draft-1"),
     )
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
     monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **kwargs: {"loaded": True})
     payload = ComposerSavePayload.model_validate(
         {
@@ -498,6 +564,43 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
     assert saved["agent_soul"].model_dump(mode="json") == _agent_soul_with_model().model_dump(mode="json")
     assert agent.active_config_is_published is False
     assert fake_session._scalar == []
+    assert fake_session.commits == 1
+
+
+def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snapshot(monkeypatch: pytest.MonkeyPatch):
+    agent_soul = _agent_soul_with_model()
+    agent = SimpleNamespace(
+        id="agent-1",
+        source=AgentSource.AGENT_APP,
+        active_config_snapshot_id="version-1",
+        active_config_is_published=False,
+        updated_by=None,
+    )
+    active_version = SimpleNamespace(config_snapshot_dict=agent_soul.model_dump(mode="json"))
+    fake_session = FakeSession(scalar=[agent], scalars=[[AgentConfigRevisionOperation.PUBLISH_DRAFT]])
+
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_save_agent_draft",
+        lambda **_kwargs: SimpleNamespace(id="draft-1"),
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
+    monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **_kwargs: {"loaded": True})
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP.value,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
+            "agent_soul": agent_soul.model_dump(mode="json"),
+        }
+    )
+
+    AgentComposerService.save_agent_app_composer(
+        tenant_id="tenant-1", app_id="app-1", account_id="account-1", payload=payload
+    )
+
+    assert agent.active_config_is_published is True
     assert fake_session.commits == 1
 
 
@@ -595,7 +698,11 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
     assert checked_out["agent_soul"] == normal_draft.config_snapshot_dict
     assert fake_session.commits == 1
 
-    fake_session = FakeSession(scalar=[agent, build_draft, normal_draft])
+    active_version = SimpleNamespace(config_snapshot_dict=build_draft.config_snapshot_dict)
+    fake_session = FakeSession(
+        scalar=[agent, build_draft, normal_draft, active_version],
+        scalars=[[AgentConfigRevisionOperation.PUBLISH_DRAFT]],
+    )
     monkeypatch.setattr(composer_service.db, "session", fake_session)
 
     applied = AgentComposerService.apply_agent_app_build_draft(
@@ -607,6 +714,62 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
 
     assert applied["result"] == "success"
     assert applied["draft"]["id"] == normal_draft.id
+    assert normal_draft.config_snapshot_dict == build_draft.config_snapshot_dict
+    assert agent.active_config_is_published is True
+    assert fake_session.deleted == [build_draft]
+    assert fake_session.commits == 1
+
+
+def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(monkeypatch: pytest.MonkeyPatch):
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+        active_config_is_published=True,
+    )
+    active_agent_soul = _agent_soul_with_model()
+    build_agent_soul = AgentSoulConfig.model_validate(
+        {
+            **active_agent_soul.model_dump(mode="json"),
+            "prompt": {
+                "system_prompt": "Build draft prompt",
+            },
+        }
+    )
+    build_draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="account-1",
+        draft_owner_key="account-1",
+        base_snapshot_id="version-1",
+        config_snapshot=build_agent_soul,
+    )
+    normal_draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=active_agent_soul,
+    )
+    active_version = SimpleNamespace(config_snapshot_dict=active_agent_soul.model_dump(mode="json"))
+    fake_session = FakeSession(scalar=[agent, build_draft, normal_draft, active_version])
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+
+    AgentComposerService.apply_agent_app_build_draft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
     assert normal_draft.config_snapshot_dict == build_draft.config_snapshot_dict
     assert agent.active_config_is_published is False
     assert fake_session.deleted == [build_draft]
@@ -732,6 +895,53 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
     assert [o["name"] for o in effective] == ["summary"]
     assert effective[0]["type"] == "string"
     assert effective[0]["required"] is True
+
+
+def test_serialize_workflow_state_includes_inline_debug_conversation_message_state(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    binding = WorkflowAgentNodeBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="agent-1",
+        current_snapshot_id="version-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        node_job_config='{"workflow_prompt":"work"}',
+    )
+    agent = Agent(
+        id="agent-1",
+        name="Inline Agent",
+        description="",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+        backing_app_id="backing-app-1",
+    )
+    version = AgentConfigSnapshot(id="version-1", version=1, config_snapshot='{"prompt":{"system_prompt":"x"}}')
+    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_workflow_inline_debug_conversation_id",
+        lambda **kwargs: "debug-conversation-1",
+    )
+    monkeypatch.setattr(
+        roster_service.AgentRosterService,
+        "count_agent_app_debug_conversation_messages",
+        lambda self, *, conversation_id: 2,
+    )
+
+    state = AgentComposerService._serialize_workflow_state(
+        binding=binding,
+        agent=agent,
+        version=version,
+        account_id="account-1",
+    )
+
+    assert state["debug_conversation_id"] == "debug-conversation-1"
+    assert state["debug_conversation_has_messages"] is True
+    assert state["debug_conversation_message_count"] == 2
 
 
 def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.MonkeyPatch):
@@ -1271,16 +1481,18 @@ def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(mo
         version=1,
         config_snapshot='{"prompt":{"system_prompt":"inline"}}',
     )
+    serialize_calls = []
     monkeypatch.setattr(composer_service.db, "session", FakeSession())
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: inline_binding)
     monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: inline_agent)
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: inline_version)
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_serialize_workflow_state",
-        lambda **kwargs: {"binding_type": kwargs["binding"].binding_type.value},
-    )
+
+    def serialize_workflow_state(**kwargs):
+        serialize_calls.append(kwargs)
+        return {"binding_type": kwargs["binding"].binding_type.value}
+
+    monkeypatch.setattr(AgentComposerService, "_serialize_workflow_state", serialize_workflow_state)
 
     state = AgentComposerService.copy_workflow_composer_from_roster(
         tenant_id="tenant-1",
@@ -1293,6 +1505,7 @@ def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(mo
     )
 
     assert state == {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value}
+    assert serialize_calls[0]["account_id"] == "account-1"
 
 
 @pytest.mark.parametrize(
@@ -1674,6 +1887,52 @@ def test_composer_create_roster_agent_raises_when_backing_agent_missing(monkeypa
             version_note=None,
             session=composer_service.db.session,
         )
+
+
+def test_agent_app_draft_match_does_not_mark_create_version_as_published(monkeypatch: pytest.MonkeyPatch):
+    agent_soul = AgentSoulConfig()
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        source=AgentSource.AGENT_APP,
+        active_config_snapshot_id="snapshot-1",
+    )
+    snapshot = SimpleNamespace(config_snapshot_dict=agent_soul)
+    fake_session = FakeSession(scalars=[[AgentConfigRevisionOperation.CREATE_VERSION]])
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: snapshot)
+
+    assert (
+        AgentComposerService._agent_soul_matches_active_config(
+            tenant_id="tenant-1",
+            agent=agent,
+            agent_soul=agent_soul,
+        )
+        is False
+    )
+
+
+def test_agent_app_draft_match_marks_publish_visible_revision_as_published(monkeypatch: pytest.MonkeyPatch):
+    agent_soul = AgentSoulConfig()
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        source=AgentSource.AGENT_APP,
+        active_config_snapshot_id="snapshot-1",
+    )
+    snapshot = SimpleNamespace(config_snapshot_dict=agent_soul)
+    fake_session = FakeSession(scalars=[[AgentConfigRevisionOperation.PUBLISH_DRAFT]])
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: snapshot)
+
+    assert (
+        AgentComposerService._agent_soul_matches_active_config(
+            tenant_id="tenant-1",
+            agent=agent,
+            agent_soul=agent_soul,
+        )
+        is True
+    )
 
 
 def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPatch):
@@ -2308,6 +2567,16 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
     assert recreated_id != "deleted-conversation"
     assert any(isinstance(value, Conversation) for value in recreate_session.added)
     assert recreate_session.commits == 1
+
+
+def test_agent_app_debug_conversation_message_count():
+    session = FakeSession(scalar=[3])
+
+    count = AgentRosterService(session).count_agent_app_debug_conversation_messages(
+        conversation_id="debug-conversation-1",
+    )
+
+    assert count == 3
 
 
 def test_agent_app_debug_conversation_requires_app_binding():

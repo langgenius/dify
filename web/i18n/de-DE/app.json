@@ -55,6 +55,8 @@
   "firstEmpty.title": "Noch keine App",
   "gotoAnything.actions.accountDesc": "Gehe zur Kontoseite",
   "gotoAnything.actions.communityDesc": "Offene Discord-Community",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Lassen Sie die KI anhand Ihrer Beschreibung Workflow oder Chatflow auswählen",
   "gotoAnything.actions.createCategoryDesc": "Erstellen Sie einen KI-generierten Workflow oder Chatflow",
   "gotoAnything.actions.createChatflow": "Chatfluss",
   "gotoAnything.actions.createChatflowDesc": "Generieren Sie eine Chatflow-App (erweiterter Chat) aus einer Beschreibung",

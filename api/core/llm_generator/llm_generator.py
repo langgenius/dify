@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from collections.abc import Sequence
-from typing import Any, NotRequired, Protocol, TypedDict, cast
+from typing import Any, Literal, NotRequired, Protocol, TypedDict, cast
 
 import json_repair
 from sqlalchemy import select
@@ -68,6 +68,53 @@ def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[
             normalized_parameters.pop(token_limit_key, None)
 
     return normalized_parameters, stop
+
+
+# ── Workflow instruction-suggestion tuning ────────────────────────────────
+# Suggestions are a soft, pre-model-pick enhancement: short, buildable example
+# instructions proposed from the tenant's DEFAULT model. Every failure path
+# degrades to an empty list, never an error.
+_SUGGESTION_MIN_COUNT = 1
+_SUGGESTION_MAX_COUNT = 6
+_SUGGESTION_MAX_TOKENS = 512
+_SUGGESTION_TEMPERATURE = 0.8
+# Bound the grounding context so the prompt stays small regardless of how many
+# knowledge bases / tools the tenant has installed.
+_SUGGESTION_KB_LIMIT = 10
+_SUGGESTION_TOOL_SAMPLE_LINES = 20
+
+_SUGGESTION_SYSTEM_PROMPT = (
+    "You help a user start building a Dify app by proposing example build instructions. "
+    "Each suggestion must be a SHORT (at most 8 words), concrete, and BUILDABLE instruction "
+    "describing an app to generate for the given app type. Make the suggestions diverse — cover "
+    "different use cases. When the listed knowledge bases or installed tools fit a suggestion, "
+    "prefer them, but NEVER invent tools or knowledge bases that are not listed. "
+    "Reply with ONLY a JSON array of strings and nothing else."
+)
+
+
+def _parse_string_list(text: str) -> list[str]:
+    """Extract a JSON array of strings from a (possibly noisy) LLM response.
+
+    Slices the first ``[...]`` span so surrounding prose / markdown fences are
+    tolerated, parses it with ``json`` and falls back to ``json_repair``, then
+    keeps only ``str`` items. Returns ``[]`` on any failure so callers can
+    treat parsing as best-effort.
+    """
+    match = re.search(r"\[.*\]", text.strip(), re.DOTALL)
+    if not match:
+        return []
+    raw = match.group(0)
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        try:
+            parsed = json_repair.loads(raw)
+        except Exception:
+            return []
+    if not isinstance(parsed, list):
+        return []
+    return [item for item in parsed if isinstance(item, str)]
 
 
 class WorkflowServiceInterface(Protocol):
@@ -239,6 +286,170 @@ class LLMGenerator:
             questions = []
 
         return questions
+
+    @classmethod
+    def generate_workflow_instruction_suggestions(
+        cls,
+        tenant_id: str,
+        *,
+        mode: Literal["workflow", "advanced-chat"],
+        language: str | None = None,
+        count: int = 4,
+    ) -> list[str]:
+        """Propose short, buildable example instructions for the workflow generator.
+
+        Runs BEFORE the user picks a model, so it uses the tenant's DEFAULT LLM
+        only. Suggestions are a soft enhancement, never a blocker: every failure
+        path (no default model, KB / tool lookup error, LLM error, unparseable
+        output) is swallowed and surfaced as an empty list — a valid result the
+        caller renders as "no suggestions". This method NEVER raises.
+        """
+        count = max(_SUGGESTION_MIN_COUNT, min(count, _SUGGESTION_MAX_COUNT))
+
+        try:
+            model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+            )
+        except Exception:
+            logger.info("Workflow instruction suggestions: no default model for tenant %s", tenant_id)
+            return []
+
+        context_block = cls._build_suggestion_context(tenant_id)
+        app_type_label = (
+            "Workflow — single-shot automation" if mode == "workflow" else "Chatflow — conversational multi-turn"
+        )
+
+        user_lines = [
+            f"App type: {app_type_label}",
+            context_block,
+            f"Return exactly {count} distinct ideas as a JSON array of strings.",
+        ]
+        if language:
+            user_lines.append(f"Write every idea in this language: {language}.")
+        user_prompt = "\n".join(line for line in user_lines if line)
+
+        prompt_messages: list[PromptMessage] = [
+            SystemPromptMessage(content=_SUGGESTION_SYSTEM_PROMPT),
+            UserPromptMessage(content=user_prompt),
+        ]
+
+        try:
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters={"max_tokens": _SUGGESTION_MAX_TOKENS, "temperature": _SUGGESTION_TEMPERATURE},
+                stream=False,
+            )
+        except Exception:
+            logger.exception("Workflow instruction suggestions: LLM invocation failed")
+            return []
+
+        raw_suggestions = _parse_string_list(response.message.get_text_content() or "")
+
+        # Strip whitespace + surrounding quotes, drop empties, dedupe
+        # case-insensitively (preserving first-seen casing), cap to ``count``.
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for item in raw_suggestions:
+            idea = item.strip().strip("\"'").strip()
+            if not idea:
+                continue
+            key = idea.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            cleaned.append(idea)
+            if len(cleaned) >= count:
+                break
+        return cleaned
+
+    @staticmethod
+    def _build_suggestion_context(tenant_id: str) -> str:
+        """Assemble an optional grounding block naming the tenant's KBs and tools.
+
+        Best-effort: each section is isolated in its own try/except so a failure
+        enumerating one (DB hiccup, plugin daemon down) never blocks the other
+        or the suggestion call itself. Returns "" when nothing is available.
+        """
+        sections: list[str] = []
+
+        try:
+            from models.dataset import Dataset
+
+            names = db.session.scalars(
+                select(Dataset.name)
+                .where(Dataset.tenant_id == tenant_id)
+                .order_by(Dataset.created_at.desc())
+                .limit(_SUGGESTION_KB_LIMIT)
+            ).all()
+            kb_names = [name for name in names if name]
+            if kb_names:
+                sections.append("Knowledge bases:\n" + "\n".join(f"- {name}" for name in kb_names))
+        except Exception:
+            logger.info("Workflow instruction suggestions: failed to load knowledge bases", exc_info=True)
+
+        try:
+            from core.workflow.generator.tool_catalogue import build_tool_catalogue, format_tool_catalogue
+
+            tool_text = format_tool_catalogue(build_tool_catalogue(tenant_id))
+            if tool_text:
+                sample = "\n".join(tool_text.splitlines()[:_SUGGESTION_TOOL_SAMPLE_LINES])
+                sections.append("Installed tools:\n" + sample)
+        except Exception:
+            logger.info("Workflow instruction suggestions: failed to load tool catalogue", exc_info=True)
+
+        if not sections:
+            return ""
+        return "\n\n".join(sections) + "\n\n"
+
+    @classmethod
+    def classify_workflow_mode(
+        cls,
+        tenant_id: str,
+        instruction: str,
+        model_config: ModelConfig,
+    ) -> Literal["workflow", "advanced-chat"]:
+        """Classify a free-text instruction into a concrete app mode.
+
+        One tiny LLM call using the model the user already picked (so no extra
+        provider setup is needed). Parsed leniently; defaults to
+        ``advanced-chat`` on anything unexpected or any error, so a
+        ``mode="auto"`` request never blocks generation. NEVER raises.
+        """
+        default_mode: Literal["workflow", "advanced-chat"] = "advanced-chat"
+        try:
+            model_instance = ModelManager.for_tenant(tenant_id=tenant_id).get_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+                provider=model_config.provider,
+                model=model_config.name,
+            )
+            prompt_messages: list[PromptMessage] = [
+                UserPromptMessage(
+                    content=(
+                        "Reply with exactly one word: 'workflow' (one-shot automation, no chat) "
+                        "or 'advanced-chat' (conversational multi-turn). "
+                        f"Instruction: {instruction.strip()}"
+                    )
+                ),
+            ]
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters={"max_tokens": 4, "temperature": 0},
+                stream=False,
+            )
+            text = (response.message.get_text_content() or "").strip().lower()
+        except Exception:
+            logger.info("Workflow mode classification failed; defaulting to %s", default_mode, exc_info=True)
+            return default_mode
+
+        # Lenient parse: an affirmative "workflow" wins; everything else
+        # (including a truncated / empty / garbled reply) falls back to the
+        # conversational default. "advanced-chat" needs no positive match
+        # because it IS the default.
+        if "workflow" in text:
+            return "workflow"
+        return default_mode
 
     @classmethod
     def generate_rule_config(cls, tenant_id: str, args: RuleGeneratePayload):

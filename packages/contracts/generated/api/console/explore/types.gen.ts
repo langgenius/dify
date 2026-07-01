@@ -14,7 +14,13 @@ export type LearnDifyAppListResponse = {
 }
 
 export type RecommendedAppDetailResponse = {
-  [key: string]: unknown
+  can_trial?: boolean | null
+  export_data: string
+  icon?: string | null
+  icon_background?: string | null
+  id: string
+  mode: string
+  name: string
 }
 
 export type BannerListResponse = Array<BannerResponse>
