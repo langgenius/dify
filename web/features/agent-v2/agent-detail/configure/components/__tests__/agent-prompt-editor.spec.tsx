@@ -15,6 +15,7 @@ import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockCopy = vi.hoisted(() => vi.fn())
 const mockReset = vi.hoisted(() => vi.fn())
+const mockUseClipboard = vi.hoisted(() => vi.fn())
 const mockBuiltInTools = vi.hoisted(() => [
   {
     id: 'duckduckgo',
@@ -71,11 +72,7 @@ vi.mock('@/app/components/base/infotip', () => ({
 }))
 
 vi.mock('foxact/use-clipboard', () => ({
-  useClipboard: () => ({
-    copied: false,
-    copy: mockCopy,
-    reset: mockReset,
-  }),
+  useClipboard: mockUseClipboard,
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -100,17 +97,16 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('../orchestrate/drive-context', () => ({
-  useAgentDriveSkills: () => ({
+vi.mock('../orchestrate/config-context', () => ({
+  useAgentConfigSkills: () => ({
     skills: [
       {
-        id: 'playwright/SKILL.md',
+        id: 'playwright',
         name: 'Playwright',
-        skillMdKey: 'playwright/SKILL.md',
       },
     ],
   }),
-  useAgentDriveFiles: () => ({ files: [] }),
+  useAgentConfigFiles: () => ({ files: [] }),
 }))
 
 const duckDuckGoSearchAction = {
@@ -171,6 +167,11 @@ const renderAgentPromptEditor = (
 describe('AgentPromptEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseClipboard.mockReturnValue({
+      copied: false,
+      copy: mockCopy,
+      reset: mockReset,
+    })
   })
 
   // Prompt actions should expose the designed copy control and copy the current draft prompt.
@@ -181,6 +182,18 @@ describe('AgentPromptEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
 
       expect(mockCopy).toHaveBeenCalledWith('Review these tenders')
+    })
+
+    it('should let clipboard timeout restore the copied state instead of resetting on mouse leave', () => {
+      renderAgentPromptEditor('Review these tenders')
+
+      expect(mockUseClipboard).toHaveBeenCalledWith(expect.objectContaining({
+        timeout: 2000,
+      }))
+
+      fireEvent.mouseLeave(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
+
+      expect(mockReset).not.toHaveBeenCalled()
     })
 
     it('should update knowledge reference labels when the retrieval title changes', () => {
@@ -293,7 +306,7 @@ describe('AgentPromptEditor', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
 
-      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright%2FSKILL.md:Playwright§]')
+      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
       })
@@ -330,7 +343,7 @@ describe('AgentPromptEditor', () => {
           files={[]}
           tools={[]}
           onToolsChange={vi.fn()}
-          onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One', skillMdKey: 'skills/skill-1/SKILL.md' })}
+          onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One' })}
           retrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
@@ -338,7 +351,7 @@ describe('AgentPromptEditor', () => {
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§skill:skills%2Fskill-1%2FSKILL.md:Skill One§]')
+      expect(onSelect).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -348,7 +361,7 @@ describe('AgentPromptEditor', () => {
           files={[]}
           tools={[]}
           onToolsChange={vi.fn()}
-          onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown', driveKey: 'files/Guide.md' })}
+          onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown', configName: 'Guide.md' })}
           retrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
@@ -356,7 +369,7 @@ describe('AgentPromptEditor', () => {
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§file:files%2FGuide.md:Guide.md§]')
+      expect(onSelect).toHaveBeenCalledWith('[§file:Guide.md:Guide.md§]')
 
       rerender(
         <AgentPromptSlashMenu

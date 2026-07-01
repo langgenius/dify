@@ -36,7 +36,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
-  const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+  const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
     input: {
       params: {
         provider: provider.provider,

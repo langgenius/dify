@@ -30,12 +30,22 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    modelProviders: {
-      models: {
-        queryKey: (options: { input: { params: { provider: string } } }) => mockQueryKey(options),
-      },
-      changePreferredProviderType: {
-        mutationOptions: (options: Record<string, unknown>) => mockMutationOptions(options),
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              get: {
+                queryKey: (options: { input: { params: { provider: string } } }) => mockQueryKey(options),
+              },
+            },
+            preferredProviderType: {
+              post: {
+                mutationOptions: (options: Record<string, unknown>) => mockMutationOptions(options),
+              },
+            },
+          },
+        },
       },
     },
   },
