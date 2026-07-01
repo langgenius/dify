@@ -3,7 +3,7 @@ from typing import Any, TypedDict, override
 import yaml
 from sqlalchemy import select
 
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from libs.login import resolve_tenant_id_fallback
 from models.dataset import PipelineCustomizedTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
@@ -60,11 +60,15 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param language: language
         :return:
         """
-        pipeline_customized_templates = db.session.scalars(
-            select(PipelineCustomizedTemplate)
-            .where(PipelineCustomizedTemplate.tenant_id == tenant_id, PipelineCustomizedTemplate.language == language)
-            .order_by(PipelineCustomizedTemplate.position.asc(), PipelineCustomizedTemplate.created_at.desc())
-        ).all()
+        with session_factory.get_session_maker()() as session:
+            pipeline_customized_templates = session.scalars(
+                select(PipelineCustomizedTemplate)
+                .where(
+                    PipelineCustomizedTemplate.tenant_id == tenant_id,
+                    PipelineCustomizedTemplate.language == language,
+                )
+                .order_by(PipelineCustomizedTemplate.position.asc(), PipelineCustomizedTemplate.created_at.desc())
+            ).all()
         recommended_pipelines_results: list[CustomizedTemplateItemDict] = []
         for pipeline_customized_template in pipeline_customized_templates:
             recommended_pipeline_result: CustomizedTemplateItemDict = {
@@ -86,20 +90,21 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param template_id: Template ID
         :return:
         """
-        pipeline_template = db.session.get(PipelineCustomizedTemplate, template_id)
-        if not pipeline_template:
-            return None
+        with session_factory.get_session_maker()() as session:
+            pipeline_template = session.get(PipelineCustomizedTemplate, template_id)
+            if not pipeline_template:
+                return None
 
-        dsl_data = yaml.safe_load(pipeline_template.yaml_content)
-        graph_data = dsl_data.get("workflow", {}).get("graph", {})
+            dsl_data = yaml.safe_load(pipeline_template.yaml_content)
+            graph_data = dsl_data.get("workflow", {}).get("graph", {})
 
-        return {
-            "id": pipeline_template.id,
-            "name": pipeline_template.name,
-            "icon_info": pipeline_template.icon,
-            "description": pipeline_template.description,
-            "chunk_structure": pipeline_template.chunk_structure,
-            "export_data": pipeline_template.yaml_content,
-            "graph": graph_data,
-            "created_by": pipeline_template.created_user_name,
-        }
+            return {
+                "id": pipeline_template.id,
+                "name": pipeline_template.name,
+                "icon_info": pipeline_template.icon,
+                "description": pipeline_template.description,
+                "chunk_structure": pipeline_template.chunk_structure,
+                "export_data": pipeline_template.yaml_content,
+                "graph": graph_data,
+                "created_by": pipeline_template.created_user_name,
+            }

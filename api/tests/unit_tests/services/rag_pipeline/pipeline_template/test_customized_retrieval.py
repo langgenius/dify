@@ -6,7 +6,7 @@ from services.rag_pipeline.pipeline_template.customized.customized_retrieval imp
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
 
-def test_get_pipeline_templates(mocker: MockerFixture) -> None:
+def test_get_pipeline_templates(mocker: MockerFixture, patch_session_factory) -> None:
     customized_template = SimpleNamespace(
         id="tpl-1",
         name="Custom Template",
@@ -19,10 +19,7 @@ def test_get_pipeline_templates(mocker: MockerFixture) -> None:
     scalars_mock.all.return_value = [customized_template]
     session_mock = mocker.Mock()
     session_mock.scalars.return_value = scalars_mock
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db",
-        new=SimpleNamespace(session=session_mock),
-    )
+    patch_session_factory("services.rag_pipeline.pipeline_template.customized.customized_retrieval", session_mock)
     retrieval = CustomizedPipelineTemplateRetrieval()
 
     result = retrieval.get_pipeline_templates("en-US", "tenant-id")
@@ -42,7 +39,7 @@ def test_get_pipeline_templates(mocker: MockerFixture) -> None:
     }
 
 
-def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> None:
+def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture, patch_session_factory) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = SimpleNamespace(
         id="tpl-1",
@@ -53,10 +50,7 @@ def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> N
         yaml_content="workflow:\n  graph:\n    edges: []",
         created_user_name="creator",
     )
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db",
-        new=SimpleNamespace(session=session_mock),
-    )
+    patch_session_factory("services.rag_pipeline.pipeline_template.customized.customized_retrieval", session_mock)
     retrieval = CustomizedPipelineTemplateRetrieval()
 
     detail = retrieval.get_pipeline_template_detail("tpl-1")
@@ -73,13 +67,10 @@ def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> N
     }
 
 
-def test_get_pipeline_template_detail_returns_none_when_not_found(mocker: MockerFixture) -> None:
+def test_get_pipeline_template_detail_returns_none_when_not_found(mocker: MockerFixture, patch_session_factory) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = None
-    mocker.patch(
-        "services.rag_pipeline.pipeline_template.customized.customized_retrieval.db",
-        new=SimpleNamespace(session=session_mock),
-    )
+    patch_session_factory("services.rag_pipeline.pipeline_template.customized.customized_retrieval", session_mock)
     retrieval = CustomizedPipelineTemplateRetrieval()
 
     result = retrieval.get_pipeline_template_detail("missing")

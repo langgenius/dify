@@ -1,14 +1,29 @@
 import logging
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import cast
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session, sessionmaker
 
-from models.dataset import Dataset
+from models.dataset import Dataset, Pipeline
+from models.enums import DatasetRuntimeMode
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+
+
+@pytest.fixture
+def pipeline_session() -> Iterator[Session]:
+    engine = create_engine("sqlite:///:memory:")
+    Dataset.__table__.create(engine)
+    Pipeline.__table__.create(engine)
+    session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with session_factory() as session:
+        yield session
+    engine.dispose()
 
 
 @pytest.mark.parametrize(
@@ -92,51 +107,33 @@ def test_deal_dependencies_installs_missing_marketplace_plugins(mocker: MockerFi
     install_mock.assert_called_once_with("tenant-1", ["missing-plugin:1.0.0"])
 
 
-def test_transform_to_empty_pipeline_updates_dataset_and_commits(mocker: MockerFixture) -> None:
+def test_transform_to_empty_pipeline_updates_dataset_and_commits(
+    mocker: MockerFixture, pipeline_session: Session
+) -> None:
     service = RagPipelineTransformService()
     mocker.patch(
         "services.rag_pipeline.rag_pipeline_transform_service.current_user",
         SimpleNamespace(id="user-1"),
     )
 
-    class FakePipeline:
-        def __init__(self, **kwargs):
-            self.id = "pipeline-1"
-            self.tenant_id = kwargs["tenant_id"]
-            self.name = kwargs["name"]
-            self.description = kwargs["description"]
-            self.created_by = kwargs["created_by"]
-
-    mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.Pipeline", FakePipeline)
-    session_mock = mocker.Mock()
-    add_mock = session_mock.add
-    flush_mock = session_mock.flush
-    commit_mock = session_mock.commit
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.db",
-        new=SimpleNamespace(session=session_mock),
-    )
-
-    dataset = SimpleNamespace(
-        id="dataset-1",
+    session = pipeline_session
+    dataset = Dataset(
         tenant_id="tenant-1",
         name="Dataset",
         description="desc",
-        pipeline_id=None,
-        runtime_mode="general",
-        updated_by=None,
-        updated_at=None,
+        created_by="user-1",
     )
+    session.add(dataset)
+    session.commit()
 
-    result = service._transform_to_empty_pipeline(cast(Dataset, dataset))
+    result = service._transform_to_empty_pipeline(dataset, session)
+    pipeline = session.scalar(select(Pipeline).where(Pipeline.id == dataset.pipeline_id))
 
-    assert result == {"pipeline_id": "pipeline-1", "dataset_id": "dataset-1", "status": "success"}
-    assert dataset.pipeline_id == "pipeline-1"
-    assert dataset.runtime_mode == "rag_pipeline"
+    assert pipeline is not None
+    assert result == {"pipeline_id": pipeline.id, "dataset_id": dataset.id, "status": "success"}
+    assert dataset.pipeline_id == pipeline.id
+    assert dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE
     assert dataset.updated_by == "user-1"
-    add_mock.assert_called()
-    flush_mock.assert_called_once()
-    commit_mock.assert_called_once()
 
 
 # --- transform_dataset ---
@@ -405,10 +402,6 @@ def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create
     )
     session_mock = mocker.Mock()
     session_mock.get.return_value = dataset
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.db",
-        new=SimpleNamespace(session=session_mock),
-    )
     mocker.patch.object(service, "_get_transform_yaml", return_value={"workflow": {"graph": {"nodes": []}}})
     mocker.patch.object(service, "_deal_dependencies")
     mocker.patch.object(service, "_create_pipeline", return_value=SimpleNamespace(id="p-new"))
@@ -441,11 +434,11 @@ def test_transform_dataset_raises_when_transform_yaml_missing_workflow(mocker: M
         service.transform_dataset("d1", session_mock)
 
 
-def test_create_pipeline_raises_when_workflow_data_missing() -> None:
+def test_create_pipeline_raises_when_workflow_data_missing(pipeline_session: Session) -> None:
     service = RagPipelineTransformService()
 
     with pytest.raises(ValueError, match="Missing workflow data for rag pipeline"):
-        service._create_pipeline({"rag_pipeline": {"name": "N"}})
+        service._create_pipeline({"rag_pipeline": {"name": "N"}}, pipeline_session)
 
 
 def test_deal_document_data_upload_file_with_existing_file(mocker: MockerFixture) -> None:

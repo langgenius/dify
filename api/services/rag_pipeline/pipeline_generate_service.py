@@ -1,10 +1,12 @@
 from collections.abc import Mapping
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.dataset import Document, Pipeline
 from models.enums import IndexingStatus
 from models.model import Account, App, EndUser
@@ -35,7 +37,8 @@ class PipelineGenerateService:
             workflow = cls._get_workflow(pipeline, invoke_from)
             if original_document_id := args.get("original_document_id"):
                 # update document status to waiting
-                cls.update_document_status(original_document_id)
+                with session_factory.get_session_maker().begin() as session:
+                    cls.update_document_status(original_document_id, session)
             return PipelineGenerator.convert_to_event_stream(
                 PipelineGenerator().generate(
                     pipeline=pipeline,
@@ -105,13 +108,12 @@ class PipelineGenerateService:
         return workflow
 
     @classmethod
-    def update_document_status(cls, document_id: str):
+    def update_document_status(cls, document_id: str, session: Session):
         """
         Update document status to waiting
         :param document_id: document id
         """
-        document = db.session.get(Document, document_id)
+        document = session.get(Document, document_id)
         if document:
             document.indexing_status = IndexingStatus.WAITING
-            db.session.add(document)
-            db.session.commit()
+            session.add(document)
