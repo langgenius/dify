@@ -59,13 +59,6 @@ class _FakeCredentialsProvider:
         return {"openai_api_key": "sk-test"}
 
 
-@pytest.fixture(autouse=True)
-def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
-    )
-
-
 class _NoToolsBuilder:
     def build_layers(self, **kwargs):
         del kwargs
@@ -381,6 +374,8 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
         "agent_soul_prompt",
         "agent_app_user_prompt",
         "execution_context",
+        "shell",
+        "config",
         "history",
     ]
 

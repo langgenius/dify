@@ -206,17 +206,14 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        config_layer_config: DifyConfigLayerConfig | None = None
-        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
-        if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            config_layer_config, config_warnings = build_config_layer_config(
-                agent_soul,
-                agent_id=context.agent.id,
-                config_version_id=context.snapshot.id,
-                config_version_kind="snapshot",
-            )
-            append_runtime_warnings(metadata, config_warnings)
-            soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
+        config_layer_config, config_warnings = build_config_layer_config(
+            agent_soul,
+            agent_id=context.agent.id,
+            config_version_id=context.snapshot.id,
+            config_version_kind="snapshot",
+        )
+        append_runtime_warnings(metadata, config_warnings)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
@@ -864,8 +861,13 @@ def build_config_layer_config(
     agent_id: str | None = None,
     config_version_id: str | None = None,
     config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
-) -> tuple[DifyConfigLayerConfig | None, list[dict[str, str]]]:
-    """Derive prompt-mentioned eager-pull names from Agent Soul."""
+) -> tuple[DifyConfigLayerConfig, list[dict[str, str]]]:
+    """Build the always-present Agent config layer from Agent Soul state.
+
+    The ``dify.config`` layer must exist for every Agent v2 runtime request so
+    the backend can expose the config CLI/help surface even when the current
+    Agent Soul has no config assets, note, or prompt mentions.
+    """
 
     ordered_mentions = list(
         dict.fromkeys(
@@ -874,14 +876,6 @@ def build_config_layer_config(
             if mention.kind in {MentionKind.SKILL, MentionKind.FILE} and mention.ref_id
         )
     )
-    if (
-        not agent_soul.config_skills
-        and not agent_soul.config_files
-        and not agent_soul.config_note
-        and not ordered_mentions
-    ):
-        return None, []
-
     skill_names = {skill.name for skill in agent_soul.config_skills}
     file_names = {file_ref.name for file_ref in agent_soul.config_files}
     warnings: list[dict[str, str]] = []
