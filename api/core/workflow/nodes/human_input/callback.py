@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import datetime, timedelta
 from typing import Any
 
+from configs import dify_config
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
 from graphon.variables.factory import build_segment
 from graphon.variables.segments import Segment
@@ -13,7 +14,7 @@ from graphon.variables.segments import Segment
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.human_input_adapter import DeliveryChannelConfig
 from core.workflow.node_runtime import DifyFileReferenceFactory
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 
 from .entities import (
     FileInputConfig,
@@ -111,9 +112,18 @@ class DifyHITLCallback:
             raise AssertionError(msg)
 
         if not form.submitted:
-            if status == HumanInputFormStatus.WAITING.value and self._is_past_deadline(form.expiration_time):
+            if status == HumanInputFormStatus.WAITING.value and self._is_past_global_deadline(form.created_at):
                 msg = f"cannot resume waiting human input form after global timeout, form_id={form.id}"
                 raise AssertionError(msg)
+            if self._is_past_node_deadline(form.expiration_time):
+                return Expired(
+                    selected_handle=self._TIMEOUT_HANDLE,
+                    outputs=self._build_special_outputs(
+                        action_id="",
+                        action_value="",
+                        rendered_content=form.rendered_content,
+                    ),
+                )
             return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=form.id))
 
         selected_action_id = form.selected_action_id
@@ -172,10 +182,17 @@ class DifyHITLCallback:
         return status
 
     @staticmethod
-    def _is_past_deadline(expiration_time: datetime) -> bool:
-        if expiration_time.tzinfo is not None:
-            expiration_time = expiration_time.astimezone(UTC).replace(tzinfo=None)
+    def _is_past_node_deadline(expiration_time: datetime) -> bool:
+        expiration_time = ensure_naive_utc(expiration_time)
         return expiration_time <= naive_utc_now()
+
+    @staticmethod
+    def _is_past_global_deadline(created_at: datetime) -> bool:
+        global_timeout_seconds = dify_config.HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS
+        if global_timeout_seconds <= 0:
+            return False
+        global_deadline = ensure_naive_utc(created_at) + timedelta(seconds=global_timeout_seconds)
+        return global_deadline <= naive_utc_now()
 
     @staticmethod
     def render_form_content_with_outputs(

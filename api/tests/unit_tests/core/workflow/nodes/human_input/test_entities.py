@@ -74,6 +74,7 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     data: Mapping[str, Any] | None = None
     is_submitted: bool = False
     status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
+    created: datetime = field(default_factory=naive_utc_now)
     expiration: datetime = field(default_factory=lambda: naive_utc_now() + timedelta(days=1))
 
     @property
@@ -95,6 +96,10 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     @property
     def selected_action_id(self) -> str | None:
         return self.action_id
+
+    @property
+    def created_at(self) -> datetime:
+        return self.created
 
     @property
     def submitted_data(self) -> Mapping[str, Any] | None:

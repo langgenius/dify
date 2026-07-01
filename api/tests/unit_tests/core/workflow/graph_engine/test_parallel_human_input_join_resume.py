@@ -88,6 +88,7 @@ class StaticForm(HumanInputFormEntity):
     action_id: str | None = None
     data: Mapping[str, Any] | None = None
     status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
+    created: datetime = naive_utc_now()
     expiration: datetime = naive_utc_now() + timedelta(days=1)
 
     @property
@@ -109,6 +110,10 @@ class StaticForm(HumanInputFormEntity):
     @property
     def selected_action_id(self) -> str | None:
         return self.action_id
+
+    @property
+    def created_at(self) -> datetime:
+        return self.created
 
     @property
     def submitted_data(self) -> Mapping[str, Any] | None:

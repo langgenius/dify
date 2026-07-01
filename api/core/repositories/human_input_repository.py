@@ -94,6 +94,9 @@ class HumanInputFormEntity(Protocol):
     def selected_action_id(self) -> str | None: ...
 
     @property
+    def created_at(self) -> datetime: ...
+
+    @property
     def submitted_data(self) -> Mapping[str, Any] | None: ...
 
     @property
@@ -177,6 +180,11 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
     @override
     def selected_action_id(self) -> str | None:
         return self._form_model.selected_action_id
+
+    @property
+    @override
+    def created_at(self) -> datetime:
+        return self._form_model.created_at
 
     @property
     @override

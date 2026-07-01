@@ -94,7 +94,7 @@ def test_dify_hitl_callback_returns_completed_for_submitted_form() -> None:
     }
 
 
-def test_dify_hitl_callback_returns_timeout_for_timeout_form() -> None:
+def test_dify_hitl_callback_returns_timeout_for_explicit_timeout_form() -> None:
     repository = MagicMock(spec=HumanInputFormRepository)
     repository.get_form.return_value = SimpleNamespace(
         id="form-1",
@@ -103,7 +103,37 @@ def test_dify_hitl_callback_returns_timeout_for_timeout_form() -> None:
         submitted_data=None,
         submitted=False,
         status=HumanInputFormStatus.TIMEOUT,
+        created_at=naive_utc_now(),
         expiration_time=naive_utc_now() + timedelta(hours=1),
+    )
+    callback = DifyHITLCallback(
+        form_repository=repository,
+        node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
+        rendered_content="<p>Please approve</p>",
+        resolved_default_values={},
+    )
+
+    decision = callback(_ctx("run-1", "node-1"))
+
+    assert decision.selected_handle == "__timeout__"
+    assert decision.outputs == {
+        "__action_id": build_segment(""),
+        "__action_value": build_segment(""),
+        "__rendered_content": build_segment("<p>Please approve</p>"),
+    }
+
+
+def test_dify_hitl_callback_returns_timeout_for_waiting_form_past_node_deadline() -> None:
+    repository = MagicMock(spec=HumanInputFormRepository)
+    repository.get_form.return_value = SimpleNamespace(
+        id="form-1",
+        rendered_content="<p>Please approve</p>",
+        selected_action_id=None,
+        submitted_data=None,
+        submitted=False,
+        status=HumanInputFormStatus.WAITING,
+        created_at=naive_utc_now(),
+        expiration_time=naive_utc_now() - timedelta(minutes=1),
     )
     callback = DifyHITLCallback(
         form_repository=repository,
@@ -131,6 +161,7 @@ def test_dify_hitl_callback_rejects_expired_form_as_invalid_resume_state() -> No
         submitted_data=None,
         submitted=False,
         status=HumanInputFormStatus.EXPIRED,
+        created_at=naive_utc_now() - timedelta(days=8),
         expiration_time=naive_utc_now() + timedelta(hours=1),
     )
     callback = DifyHITLCallback(
@@ -144,7 +175,7 @@ def test_dify_hitl_callback_rejects_expired_form_as_invalid_resume_state() -> No
         callback(_ctx("run-1", "node-1"))
 
 
-def test_dify_hitl_callback_rejects_waiting_form_past_deadline_as_invalid_resume_state() -> None:
+def test_dify_hitl_callback_rejects_waiting_form_past_global_deadline_as_invalid_resume_state() -> None:
     repository = MagicMock(spec=HumanInputFormRepository)
     repository.get_form.return_value = SimpleNamespace(
         id="form-1",
@@ -153,7 +184,8 @@ def test_dify_hitl_callback_rejects_waiting_form_past_deadline_as_invalid_resume
         submitted_data=None,
         submitted=False,
         status=HumanInputFormStatus.WAITING,
-        expiration_time=naive_utc_now() - timedelta(minutes=1),
+        created_at=naive_utc_now() - timedelta(days=8),
+        expiration_time=naive_utc_now() + timedelta(hours=1),
     )
     callback = DifyHITLCallback(
         form_repository=repository,
