@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test'
 import type { AgentComposerEnvVariable } from '../../../support/agent'
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
@@ -17,6 +18,7 @@ import {
   updatedAgentSoulConfig,
 } from '../../../support/agent'
 import {
+  agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../../../support/agent-builder-resources'
@@ -132,6 +134,25 @@ const expectNormalAgentPromptDraft = async (world: DifyWorld) => {
     async () => (await getAgentComposerDraft(getCurrentAgentId(world))).agent_soul?.prompt,
     { timeout: 30_000 },
   ).toEqual({ system_prompt: normalAgentPrompt })
+}
+
+const expectProviderToolActionVisible = async (
+  toolsSection: Locator,
+  displayName: string,
+) => {
+  const tool = getPreseededToolDisplayParts(displayName)
+  const provider = toolsSection.getByRole('button', {
+    exact: true,
+    name: tool.providerName,
+  })
+  await expect(provider).toBeVisible()
+
+  const action = toolsSection.getByText(tool.actionName, { exact: true })
+  if (!await action.isVisible())
+    await provider.click()
+  await expect(action).toBeVisible()
+
+  return { action, tool }
 }
 
 Given('an Agent v2 test agent has been created via API', async function (this: DifyWorld) {
@@ -373,25 +394,68 @@ Then('I should see the Agent v2 configure workspace', async function (this: Dify
   await expect(page.getByText(this.lastCreatedAgentName!)).toBeVisible()
 })
 
+Then('I should see the Agent v2 full-config fixture sections', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const stableModel = this.agentBuilderStableChatModel
+  if (!stableModel)
+    throw new Error('Stable chat model preflight must run before asserting the full-config Agent.')
+
+  await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(agentBuilderPreseededResources.fullConfigAgent, { exact: true }))
+    .toBeVisible()
+  await expect(page.getByText(stableModel.name, { exact: true })).toBeVisible()
+
+  const promptSection = page.getByRole('region', { name: 'Prompt' })
+  await expect(promptSection).toBeVisible()
+  await expect(promptSection).toContainText(agentBuilderExpectedTokens.agentReply)
+
+  const skillsSection = page.getByRole('region', { name: 'Skills' })
+  await expect(skillsSection).toBeVisible()
+  await expect(skillsSection.getByRole('button', {
+    exact: true,
+    name: agentBuilderPreseededResources.summarySkill,
+  })).toBeVisible()
+
+  const filesSection = page.getByRole('region', { name: 'Files' })
+  await expect(filesSection).toBeVisible()
+  await expect(filesSection.getByRole('button', {
+    exact: true,
+    name: agentBuilderTestMaterials.smallFile,
+  })).toBeVisible()
+  await expect(filesSection.getByRole('button', {
+    exact: true,
+    name: agentBuilderTestMaterials.specialFilename,
+  })).toBeVisible()
+
+  const toolsSection = page.getByRole('region', { name: 'Tools' })
+  await expect(toolsSection).toBeVisible()
+  await expectProviderToolActionVisible(
+    toolsSection,
+    agentBuilderPreseededResources.jsonReplaceTool,
+  )
+
+  const knowledgeSection = page.getByRole('region', { name: 'Knowledge Retrieval' })
+  await expect(knowledgeSection).toBeVisible()
+  await expect(knowledgeSection.getByText('Retrieval 1', { exact: true })).toBeVisible()
+
+  const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
+  await expect(advancedSettings).toBeVisible()
+  await expect(
+    advancedSettings.getByText('For power users. Env vars, sandbox & memory.'),
+  ).toBeVisible()
+})
+
 Then('I should see the Agent v2 tool state fixture tools', async function (this: DifyWorld) {
   const page = this.getPage()
   const toolsSection = page.getByRole('region', { name: 'Tools' })
-  const jsonTool = getPreseededToolDisplayParts(agentBuilderPreseededResources.jsonReplaceTool)
-  const tavilyTool = getPreseededToolDisplayParts(agentBuilderPreseededResources.tavilySearchTool)
 
   await expect(toolsSection).toBeVisible({ timeout: 30_000 })
   await expect(toolsSection.getByRole('button', { exact: true, name: 'Not authorized' })).toBeVisible()
 
-  const jsonProcessProvider = toolsSection.getByRole('button', {
-    exact: true,
-    name: jsonTool.providerName,
-  })
-  await expect(jsonProcessProvider).toBeVisible()
-
-  const jsonReplaceAction = toolsSection.getByText(jsonTool.actionName, { exact: true })
-  if (!await jsonReplaceAction.isVisible())
-    await jsonProcessProvider.click()
-  await expect(jsonReplaceAction).toBeVisible()
+  const { action: jsonReplaceAction, tool: jsonTool } = await expectProviderToolActionVisible(
+    toolsSection,
+    agentBuilderPreseededResources.jsonReplaceTool,
+  )
   await jsonReplaceAction.hover()
   await expect(toolsSection.getByRole('button', {
     exact: true,
@@ -402,16 +466,10 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
     name: `Remove ${jsonTool.actionName}`,
   })).toBeVisible()
 
-  const tavilyProvider = toolsSection.getByRole('button', {
-    exact: true,
-    name: tavilyTool.providerName,
-  })
-  await expect(tavilyProvider).toBeVisible()
-
-  const tavilySearchAction = toolsSection.getByText(tavilyTool.actionName, { exact: true })
-  if (!await tavilySearchAction.isVisible())
-    await tavilyProvider.click()
-  await expect(tavilySearchAction).toBeVisible()
+  await expectProviderToolActionVisible(
+    toolsSection,
+    agentBuilderPreseededResources.tavilySearchTool,
+  )
 })
 
 Then(
