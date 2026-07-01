@@ -548,7 +548,7 @@ class TestDatasetServiceGetDataset:
         )
 
         # Act
-        result = DatasetService.get_dataset(dataset.id)
+        result = DatasetService.get_dataset(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -560,7 +560,7 @@ class TestDatasetServiceGetDataset:
         dataset_id = str(uuid4())
 
         # Act
-        result = DatasetService.get_dataset(dataset_id)
+        result = DatasetService.get_dataset(dataset_id, session=db_session_with_containers)
 
         # Assert
         assert result is None
@@ -639,7 +639,7 @@ class TestDatasetServiceGetProcessRules:
         )
 
         # Act
-        result = DatasetService.get_process_rules(dataset.id)
+        result = DatasetService.get_process_rules(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result["mode"] == "custom"
@@ -654,7 +654,7 @@ class TestDatasetServiceGetProcessRules:
         )
 
         # Act
-        result = DatasetService.get_process_rules(dataset.id)
+        result = DatasetService.get_process_rules(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result["mode"] == DocumentService.DEFAULT_RULES["mode"]
@@ -724,7 +724,7 @@ class TestDatasetServiceGetRelatedApps:
             DatasetRetrievalTestDataFactory.create_app_dataset_join(db_session_with_containers, dataset.id)
 
         # Act
-        result = DatasetService.get_related_apps(dataset.id)
+        result = DatasetService.get_related_apps(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert len(result) == 2
@@ -739,7 +739,7 @@ class TestDatasetServiceGetRelatedApps:
         )
 
         # Act
-        result = DatasetService.get_related_apps(dataset.id)
+        result = DatasetService.get_related_apps(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result == []

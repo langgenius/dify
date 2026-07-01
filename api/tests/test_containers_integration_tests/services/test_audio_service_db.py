@@ -24,6 +24,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import TenantAccountJoin
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, Conversation, Message
+from services.app_ref_service import MessageRef
 from services.audio_service import AudioService
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     create_console_account_and_tenant,
@@ -159,7 +160,12 @@ class TestAudioServiceTranscriptTTSMessageLookup:
             result = AudioService.transcript_tts(
                 app_model=app,
                 session=db_session_with_containers,
-                message_id=message.id,
+                message_ref=MessageRef(
+                    tenant_id=app.tenant_id,
+                    app_id=app.id,
+                    message_id=message.id,
+                    account_id=account_id,
+                ),
                 voice="en-US-Neural",
             )
 
@@ -176,7 +182,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         result = AudioService.transcript_tts(
             app_model=app,
             session=db_session_with_containers,
-            message_id="invalid-uuid",
+            message_ref=MessageRef(tenant_id=app.tenant_id, app_id=app.id, message_id="invalid-uuid"),
         )
 
         assert result is None
@@ -188,7 +194,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         result = AudioService.transcript_tts(
             app_model=app,
             session=db_session_with_containers,
-            message_id=str(uuid4()),
+            message_ref=MessageRef(tenant_id=app.tenant_id, app_id=app.id, message_id=str(uuid4())),
         )
 
         assert result is None
@@ -209,7 +215,12 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         result = AudioService.transcript_tts(
             app_model=app,
             session=db_session_with_containers,
-            message_id=message.id,
+            message_ref=MessageRef(
+                tenant_id=app.tenant_id,
+                app_id=app.id,
+                message_id=message.id,
+                account_id=account_id,
+            ),
         )
 
         assert result is None
