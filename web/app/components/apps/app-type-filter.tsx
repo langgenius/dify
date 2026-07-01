@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { AppModeEnum } from '@/types/app'
 import { isAppListCategory } from './app-type-filter-shared'
 
-const chipClassName = 'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const chipClassName = 'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 type AppTypeFilterProps = {
   value: AppListCategory

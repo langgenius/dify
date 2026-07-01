@@ -1,6 +1,6 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { CollectionType } from '@/app/components/tools/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import type { Tag } from '@/contract/console/tags'
 import type { LanguagesSupported } from '@/i18n-config/language'
 import type { AccessMode } from '@/models/access-control'
 import type { ExternalDataTool } from '@/models/common'
@@ -85,22 +85,47 @@ export type PromptVariable = {
 }
 
 type TextTypeFormItem = {
-  default: string
+  default?: string
   label: string
   variable: string
   required: boolean
-  max_length: number
-  hide: boolean
+  max_length?: number
+  hide?: boolean
 }
 
 type SelectTypeFormItem = {
-  default: string
+  default?: string
   label: string
   variable: string
   required: boolean
-  options: string[]
-  hide: boolean
+  options?: string[]
+  hide?: boolean
 }
+
+type NumberTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | number
+  max_length?: number
+}
+
+type CheckboxTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
+  default?: string | boolean
+}
+
+type FileTypeFormItem = Omit<TextTypeFormItem, 'max_length'> & Partial<UploadFileSetting> & {
+  max_length?: number
+}
+
+type ExternalDataToolFormItem = ExternalDataTool & {
+  label: string
+  variable: string
+  required?: boolean
+  hide?: boolean
+}
+
+type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length'> & {
+  json_schema?: string | Record<string, unknown>
+}
+
 /**
  * User Input Form Item
  */
@@ -110,6 +135,18 @@ export type UserInputFormItem = {
   select: SelectTypeFormItem
 } | {
   paragraph: TextTypeFormItem
+} | {
+  number: NumberTypeFormItem
+} | {
+  checkbox: CheckboxTypeFormItem
+} | {
+  file: FileTypeFormItem
+} | {
+  'file-list': FileTypeFormItem
+} | {
+  external_data_tool: ExternalDataToolFormItem
+} | {
+  json_object: JsonObjectFormItem
 }
 
 export type AgentTool = {
@@ -118,7 +155,7 @@ export type AgentTool = {
   provider_name: string
   tool_name: string
   tool_label: string
-  tool_parameters: Record<string, any>
+  tool_parameters: Record<string, unknown>
   enabled: boolean
   isDeleted?: boolean
   notAuthor?: boolean
@@ -380,7 +417,7 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
-  deleted_tools?: Array<{ id: string, tool_name: string }>
+  deleted_tools?: Array<{ type: string, provider_id: string, tool_name: string }>
   /** access control */
   access_mode: AccessMode
   max_active_requests?: number | null

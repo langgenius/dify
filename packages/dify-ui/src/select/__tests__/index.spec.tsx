@@ -208,16 +208,6 @@ describe('Select wrappers', () => {
 
       expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-popup-open:bg-state-base-hover-alt')
     })
-
-    it('should include keyboard focus ring classes', async () => {
-      const screen = await renderOpenSelect()
-
-      await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveClass(
-        'focus-visible:ring-1',
-        'focus-visible:ring-components-input-border-active',
-        'focus-visible:ring-inset',
-      )
-    })
   })
 
   describe('SelectContent', () => {

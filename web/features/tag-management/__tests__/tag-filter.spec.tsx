@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TagFilter } from '../components/tag-filter'
@@ -22,10 +22,10 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 const mockTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
-  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: 2 },
-  { id: 'tag-4', name: 'API Design', type: 'app', binding_count: 1 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
+  { id: 'tag-3', name: 'Database', type: 'knowledge', binding_count: '' },
+  { id: 'tag-4', name: 'API Design', type: 'app', binding_count: '' },
 ]
 
 const defaultProps = {
@@ -93,6 +93,11 @@ describe('TagFilter', () => {
     it('should hide the leading tag icon when disabled', () => {
       const { container } = render(<TagFilter {...defaultProps} showLeadingIcon={false} />)
       expect(container.querySelector('svg')).not.toBeInTheDocument()
+    })
+
+    it('should apply custom trigger class names', () => {
+      render(<TagFilter {...defaultProps} triggerClassName="min-w-0" />)
+      expect(screen.getByRole('combobox', { name: i18n.placeholder })).toHaveClass('min-w-0')
     })
 
     it('should filter tags by type prop', async () => {

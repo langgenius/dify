@@ -49,7 +49,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
 
   const initialValue = React.useMemo(() => ({
     name: snippet.name,
-    description: snippet.description,
+    description: snippet.description ?? undefined,
   }), [snippet.description, snippet.name])
 
   const handleOpenEditDialog = React.useCallback(() => {
@@ -80,7 +80,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       params: { snippetId: snippet.id },
       body: {
         name,
-        description: description || undefined,
+        description,
       },
     }, {
       onSuccess: () => {

@@ -371,6 +371,9 @@ class WorkflowAgentComposerResponse(ResponseModel):
     backing_app_id: str | None = None
     hidden_app_backed: bool = False
     chat_endpoint: str | None = None
+    debug_conversation_id: str | None = None
+    debug_conversation_has_messages: bool = False
+    debug_conversation_message_count: int = 0
     workflow_id: str | None = None
     node_id: str | None = None
 

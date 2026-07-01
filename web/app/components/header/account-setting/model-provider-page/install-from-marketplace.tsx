@@ -19,11 +19,13 @@ import {
 } from './hooks'
 
 type InstallFromMarketplaceProps = {
+  onOpenMarketplace?: () => void
   providers: ModelProvider[]
   searchText: string
   stepByStepTourTarget?: string
 }
 const InstallFromMarketplace = ({
+  onOpenMarketplace,
   providers,
   searchText,
   stepByStepTourTarget,
@@ -65,15 +67,28 @@ const InstallFromMarketplace = ({
           </button>
           <div className="flex items-center gap-1">
             <span className="system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
-            <Link
-              target="_blank"
-              rel="noopener noreferrer"
-              href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
-              className="inline-flex items-center system-sm-medium text-text-accent"
-            >
-              {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-              <span className="i-ri-arrow-right-up-line size-4" />
-            </Link>
+            {onOpenMarketplace
+              ? (
+                  <button
+                    type="button"
+                    className="inline-flex items-center border-0 bg-transparent p-0 system-sm-medium text-text-accent"
+                    onClick={onOpenMarketplace}
+                  >
+                    {t('marketplace.difyMarketplace', { ns: 'plugin' })}
+                    <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+                  </button>
+                )
+              : (
+                  <Link
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                    className="inline-flex items-center system-sm-medium text-text-accent"
+                  >
+                    {t('marketplace.difyMarketplace', { ns: 'plugin' })}
+                    <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+                  </Link>
+                )}
           </div>
         </div>
         {!collapse && isAllPluginsLoading && <Loading type="area" />}

@@ -92,12 +92,12 @@ def resolve_drive_destination(base_path: Path, drive_key: str) -> Path:
     return destination
 
 
-def extract_skill_archive(archive_path: Path) -> None:
-    """Safely extract one downloaded skill archive into its containing directory."""
+def extract_archive_to_directory(archive_path: Path, *, target_dir: Path) -> None:
+    """Safely extract one downloaded archive into one resolved target directory."""
 
-    target_dir = archive_path.parent.resolve()
+    resolved_target_dir = target_dir.resolve()
     try:
-        with TemporaryDirectory(dir=target_dir, prefix=".dify-skill-extract-") as staging_dir_name:
+        with TemporaryDirectory(dir=resolved_target_dir, prefix=".dify-skill-extract-") as staging_dir_name:
             staging_dir = Path(staging_dir_name).resolve()
             with ZipFile(archive_path) as archive:
                 for zip_info in archive.infolist():
@@ -118,13 +118,19 @@ def extract_skill_archive(archive_path: Path) -> None:
                 if staged_path.is_dir():
                     continue
                 relative_path = staged_path.relative_to(staging_dir)
-                destination = (target_dir / relative_path).resolve()
+                destination = (resolved_target_dir / relative_path).resolve()
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 _ = staged_path.replace(destination)
     except DriveMaterializationValidationError:
         raise
     except (BadZipFile, OSError) as exc:
         raise DriveMaterializationTransferError(f"downloaded skill archive is invalid: {archive_path.name}") from exc
+
+
+def extract_skill_archive(archive_path: Path) -> None:
+    """Safely extract one downloaded skill archive into its containing directory."""
+
+    extract_archive_to_directory(archive_path, target_dir=archive_path.parent.resolve())
 
 
 def _resolve_zip_entry_destination(target_dir: Path, entry_name: str) -> Path:
@@ -163,6 +169,7 @@ __all__ = [
     "DriveMaterializationTransferError",
     "DriveMaterializationValidationError",
     "SKILL_ARCHIVE_FILENAME",
+    "extract_archive_to_directory",
     "extract_skill_archive",
     "materialize_drive_downloads",
     "resolve_drive_destination",

@@ -164,6 +164,9 @@ vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: () => ({
     data: { plugins: [] },
   }),
+  useCheckInstalled: () => ({
+    data: { plugins: [] },
+  }),
   usePluginAutoUpgradeSettings: () => ({
     data: mockReferenceSetting.auto_upgrade
       ? {
@@ -231,25 +234,40 @@ vi.mock('@/app/components/base/date-and-time-picker/time-picker', () => ({
 
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
-  const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>
+  const originalWorkspaces = actual.consoleQuery.workspaces
   return {
     ...actual,
     consoleQuery: new Proxy(actual.consoleQuery, {
       get(target, prop) {
-        if (prop === 'plugins') {
+        if (prop === 'workspaces') {
           return {
-            ...originalPlugins,
-            checkInstalled: {
-              queryOptions: () => ({
-                queryKey: ['plugins', 'checkInstalled'],
-                queryFn: () => new Promise(() => {}),
-              }),
-            },
-            latestVersions: {
-              queryOptions: () => ({
-                queryKey: ['plugins', 'latestVersions'],
-                queryFn: () => new Promise(() => {}),
-              }),
+            ...originalWorkspaces,
+            current: {
+              ...originalWorkspaces.current,
+              plugin: {
+                ...originalWorkspaces.current.plugin,
+                list: {
+                  ...originalWorkspaces.current.plugin.list,
+                  installations: {
+                    ids: {
+                      post: {
+                        queryOptions: () => ({
+                          queryKey: ['workspaces', 'current', 'plugin', 'list', 'installations', 'ids', 'post'],
+                          queryFn: () => new Promise(() => {}),
+                        }),
+                      },
+                    },
+                  },
+                  latestVersions: {
+                    post: {
+                      queryOptions: () => ({
+                        queryKey: ['workspaces', 'current', 'plugin', 'list', 'latestVersions', 'post'],
+                        queryFn: () => new Promise(() => {}),
+                      }),
+                    },
+                  },
+                },
+              },
             },
           }
         }
