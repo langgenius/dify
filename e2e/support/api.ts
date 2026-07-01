@@ -6,12 +6,12 @@ import { apiURL } from '../test-env'
 import { createE2EResourceName } from './naming'
 
 type StorageState = {
-  cookies: Array<{ name: string; value: string }>
+  cookies: Array<{ name: string, value: string }>
 }
 
 export async function createApiContext() {
   const state = JSON.parse(await readFile(authStatePath, 'utf8')) as StorageState
-  const csrfToken = state.cookies.find((c) => c.name.endsWith('csrf_token'))?.value ?? ''
+  const csrfToken = state.cookies.find(c => c.name.endsWith('csrf_token'))?.value ?? ''
 
   return request.newContext({
     baseURL: apiURL,
@@ -21,7 +21,8 @@ export async function createApiContext() {
 }
 
 export async function expectApiResponseOK(response: APIResponse, action: string): Promise<void> {
-  if (response.ok()) return
+  if (response.ok())
+    return
 
   const body = await response.text().catch(() => '')
   throw new Error(`${action} failed with ${response.status()} ${response.statusText()}: ${body}`)
@@ -49,7 +50,8 @@ export async function createTestApp(
     })
     const body = (await response.json()) as AppSeed
     return body
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -76,7 +78,8 @@ export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -85,7 +88,8 @@ export async function deleteTestApp(id: string): Promise<void> {
   const ctx = await createApiContext()
   try {
     await ctx.delete(`/console/api/apps/${id}`)
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -132,7 +136,8 @@ export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -143,14 +148,15 @@ export async function publishWorkflowApp(appId: string): Promise<void> {
     await ctx.post(`/console/api/apps/${appId}/workflows/publish`, {
       data: { marked_name: '', marked_comment: '' },
     })
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
 
 export type AppDetailWithSite = {
   mode?: string
-  site: { access_token: string; app_base_url: string; enable_site: boolean }
+  site: { access_token: string, app_base_url: string, enable_site: boolean }
 }
 
 export function getAppSiteURL({ mode, site }: AppDetailWithSite): string {
@@ -176,7 +182,8 @@ export async function setAppSiteEnabled(
     const detailResponse = await ctx.get(`/console/api/apps/${appId}`)
     await expectApiResponseOK(detailResponse, `Get app site detail for ${appId}`)
     return (await detailResponse.json()) as AppDetailWithSite
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }

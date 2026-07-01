@@ -5,7 +5,8 @@ export async function deleteTestDataset(datasetId: string): Promise<void> {
   try {
     const response = await ctx.delete(`/console/api/datasets/${datasetId}`)
     await expectApiResponseOK(response, `Delete dataset ${datasetId}`)
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }

@@ -58,7 +58,8 @@ const getRemainingTimeout = (deadline: number) => Math.max(deadline - Date.now()
 const encodeField = (value: string) => Buffer.from(value, 'utf8').toString('base64')
 
 const assertAPIResponse = async (response: APIResponse, action: string) => {
-  if (response.ok()) return
+  if (response.ok())
+    return
 
   const body = await response.text().catch(() => '')
   throw new Error(
@@ -89,7 +90,8 @@ const postConsoleAPI = async (
 
 const validateInitPasswordIfNeeded = async (context: BrowserContext, deadline: number) => {
   const initStatus = await getConsoleAPI<InitStatusResponse>(context, '/console/api/init', deadline)
-  if (initStatus.status === 'finished') return false
+  if (initStatus.status === 'finished')
+    return false
 
   console.warn('[e2e] auth bootstrap: validating init password')
   await postConsoleAPI(context, '/console/api/init', deadline, { password: initPassword })
@@ -165,7 +167,8 @@ export const ensureAuthenticatedState = async (browser: Browser, configuredBaseU
     }
 
     await writeFile(authMetadataPath, `${JSON.stringify(metadata, null, 2)}\n`, 'utf8')
-  } finally {
+  }
+  finally {
     await context.close()
   }
 }

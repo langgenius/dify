@@ -40,16 +40,18 @@ const parseArgs = (argv: string[]): RunOptions => {
 }
 
 const hasCustomTags = (forwardArgs: string[]) =>
-  forwardArgs.some((arg) => arg === '--tags' || arg.startsWith('--tags='))
+  forwardArgs.some(arg => arg === '--tags' || arg.startsWith('--tags='))
 
 const main = async () => {
   const { forwardArgs, full, headed } = parseArgs(process.argv.slice(2))
   const startMiddlewareForRun = full
   const resetStateForRun = full
 
-  if (resetStateForRun) await resetState()
+  if (resetStateForRun)
+    await resetState()
 
-  if (startMiddlewareForRun) await startMiddleware()
+  if (startMiddlewareForRun)
+    await startMiddleware()
 
   const cucumberReportDir = path.join(e2eDir, 'cucumber-report')
   const logDir = path.join(e2eDir, '.logs')
@@ -84,7 +86,8 @@ const main = async () => {
         if (startMiddlewareForRun) {
           try {
             await stopMiddleware()
-          } catch {
+          }
+          catch {
             // Cleanup should continue even if middleware shutdown fails.
           }
         }
@@ -106,7 +109,8 @@ const main = async () => {
   try {
     try {
       await waitForUrl(`${apiURL}/health`, 180_000, 1_000)
-    } catch {
+    }
+    catch {
       throw new Error(`API did not become ready at ${apiURL}/health.`)
     }
 
@@ -142,7 +146,8 @@ const main = async () => {
     })
 
     process.exitCode = result.exitCode
-  } finally {
+  }
+  finally {
     process.off('SIGINT', onTerminate)
     process.off('SIGTERM', onTerminate)
     await cleanup()

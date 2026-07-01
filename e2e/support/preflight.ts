@@ -17,22 +17,23 @@ const activeModelStatus = 'active'
 const defaultStableChatModelType = 'llm'
 const defaultBrokenChatModelName = agentBuilderPreseededResources.brokenModel
 
-export type E2EResourcePrecondition =
+export type E2EResourcePrecondition
+  = | {
+    ok: true
+    value: string
+  }
   | {
-      ok: true
-      value: string
-    }
-  | {
-      ok: false
-      reason: string
-    }
+    ok: false
+    reason: string
+  }
 
 export const readRequiredEnvResource = (
   envName: string,
   description: string,
 ): E2EResourcePrecondition => {
   const value = process.env[envName]?.trim()
-  if (value) return { ok: true, value }
+  if (value)
+    return { ok: true, value }
 
   return {
     ok: false,
@@ -53,7 +54,8 @@ export function skipMissingEnvResource(
   description: string,
 ): 'skipped' | string {
   const resource = readRequiredEnvResource(envName, description)
-  if (resource.ok) return resource.value
+  if (resource.ok)
+    return resource.value
 
   return skipBlockedPrecondition(world, resource.reason)
 }
@@ -101,13 +103,13 @@ type NamedResourceListResponse<T extends NamedResource = NamedResource> = {
   data: T[]
 }
 
-type DocumentIndexingStatus =
-  | 'cleaning'
-  | 'completed'
-  | 'indexing'
-  | 'parsing'
-  | 'splitting'
-  | 'waiting'
+type DocumentIndexingStatus
+  = | 'cleaning'
+    | 'completed'
+    | 'indexing'
+    | 'parsing'
+    | 'splitting'
+    | 'waiting'
 
 type DatasetIndexingStatusResponse = {
   data: Array<{
@@ -200,8 +202,9 @@ const findConsoleResourceByName = async <T extends NamedResource = NamedResource
     await expectApiResponseOK(response, action)
     const body = (await response.json()) as NamedResourceListResponse<T>
 
-    return body.data.find((item) => item.name === resourceName)
-  } finally {
+    return body.data.find(item => item.name === resourceName)
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -227,7 +230,7 @@ const hasNamedOrKeyedEntry = (items: unknown[], expectedName: string) =>
       asString,
     )
 
-    return values.some((value) => value === expectedName || value.endsWith(`/${expectedName}`))
+    return values.some(value => value === expectedName || value.endsWith(`/${expectedName}`))
   })
 
 const findToolEntry = (
@@ -252,8 +255,8 @@ const findToolEntry = (
     const toolValues = [record.tool_name, record.name].map(asString)
 
     return (
-      providerValues.some((value) => value === providerName || value === providerDisplayName) &&
-      toolValues.some((value) => value === toolName || value === toolDisplayName)
+      providerValues.some(value => value === providerName || value === providerDisplayName)
+      && toolValues.some(value => value === toolName || value === toolDisplayName)
     )
   })
 
@@ -273,8 +276,8 @@ const hasToolCredentialReference = (item: unknown) => {
   const credentialType = asString(record.credential_type)
 
   return (
-    (credentialType === 'api-key' || credentialType === 'oauth2') &&
-    (Boolean(asString(credentialRef.id)) || Boolean(asString(record.credential_id)))
+    (credentialType === 'api-key' || credentialType === 'oauth2')
+    && (Boolean(asString(credentialRef.id)) || Boolean(asString(record.credential_id)))
   )
 }
 
@@ -318,8 +321,10 @@ const hasKnowledgeSet = (
       return datasetRecord.id === dataset.id || datasetRecord.name === dataset.name
     })
 
-    if (!hasExpectedDataset || query.mode !== queryMode) return false
-    if (queryValue === undefined) return true
+    if (!hasExpectedDataset || query.mode !== queryMode)
+      return false
+    if (queryValue === undefined)
+      return true
 
     return asString(query.value).trim() === queryValue
   })
@@ -343,7 +348,8 @@ const getDatasetIndexingStatuses = async (datasetId: string, resourceName: strin
     const body = (await response.json()) as DatasetIndexingStatusResponse
 
     return body.data
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -357,7 +363,7 @@ const toDatasetResource = (
 })
 
 const splitToolDisplayName = (resourceName: string) => {
-  const [providerName, toolName] = resourceName.split('/').map((item) => item.trim())
+  const [providerName, toolName] = resourceName.split('/').map(item => item.trim())
 
   if (!providerName || !toolName) {
     return {
@@ -456,7 +462,7 @@ export async function skipMissingReadyPreseededDataset(
   }
 
   const incompleteStatus = statuses.find(
-    (item) => item.indexing_status !== completedDocumentIndexingStatus,
+    item => item.indexing_status !== completedDocumentIndexingStatus,
   )
   if (incompleteStatus) {
     return skipBlockedPrecondition(
@@ -478,13 +484,13 @@ export async function skipMissingIndexingPreseededDataset(
     return skipBlockedPrecondition(world, `Preseeded dataset "${resourceName}" was not found.`)
 
   const statuses = await getDatasetIndexingStatuses(resource.id, resourceName)
-  const indexingStatus = statuses.find((item) =>
+  const indexingStatus = statuses.find(item =>
     activeDocumentIndexingStatuses.has(item.indexing_status ?? ''),
   )
 
   if (!indexingStatus) {
-    const actualStatuses =
-      statuses.map((item) => item.indexing_status ?? 'missing').join(', ') || 'none'
+    const actualStatuses
+      = statuses.map(item => item.indexing_status ?? 'missing').join(', ') || 'none'
 
     return skipBlockedPrecondition(
       world,
@@ -500,17 +506,18 @@ export async function skipMissingPreseededTool(
   resourceName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const parsed = splitToolDisplayName(resourceName)
-  if (!parsed.ok) return skipBlockedPrecondition(world, parsed.reason)
+  if (!parsed.ok)
+    return skipBlockedPrecondition(world, parsed.reason)
 
   const ctx = await createApiContext()
   try {
     const response = await ctx.get('/console/api/workspaces/current/tools/builtin')
     await expectApiResponseOK(response, `Check preseeded tool ${resourceName}`)
     const providers = (await response.json()) as BuiltinToolProvider[]
-    const provider = providers.find((item) =>
+    const provider = providers.find(item =>
       matchesNameOrLabel(parsed.providerName, item.name, item.label),
     )
-    const tool = provider?.tools.find((item) =>
+    const tool = provider?.tools.find(item =>
       matchesNameOrLabel(parsed.toolName, item.name, item.label),
     )
 
@@ -522,7 +529,8 @@ export async function skipMissingPreseededTool(
       kind: 'tool',
       name: resourceName,
     }
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -533,14 +541,15 @@ export async function skipMissingPreseededAgentDriveSkill(
   skillName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  if (agent === 'skipped')
+    return agent
 
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/drive/skills`)
     await expectApiResponseOK(response, `Check preseeded Agent skill ${skillName}`)
     const body = (await response.json()) as AgentDriveSkillListResponse
-    const skill = body.items.find((item) => item.name === skillName)
+    const skill = body.items.find(item => item.name === skillName)
 
     if (!skill) {
       return skipBlockedPrecondition(
@@ -554,7 +563,8 @@ export async function skipMissingPreseededAgentDriveSkill(
       kind: 'skill',
       name: skill.name,
     }
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -564,29 +574,34 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
   agentName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const stableModel = await skipMissingAgentBuilderStableChatModel(world)
-  if (stableModel === 'skipped') return stableModel
+  if (stableModel === 'skipped')
+    return stableModel
 
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  if (agent === 'skipped')
+    return agent
 
   const summarySkill = await skipMissingPreseededAgentDriveSkill(
     world,
     agentName,
     agentBuilderPreseededResources.summarySkill,
   )
-  if (summarySkill === 'skipped') return summarySkill
+  if (summarySkill === 'skipped')
+    return summarySkill
 
   const jsonTool = await skipMissingPreseededTool(
     world,
     agentBuilderPreseededResources.jsonReplaceTool,
   )
-  if (jsonTool === 'skipped') return jsonTool
+  if (jsonTool === 'skipped')
+    return jsonTool
 
   const knowledgeBase = await skipMissingReadyPreseededDataset(
     world,
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
-  if (knowledgeBase === 'skipped') return knowledgeBase
+  if (knowledgeBase === 'skipped')
+    return knowledgeBase
 
   const ctx = await createApiContext()
   try {
@@ -609,14 +624,15 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
       agentBuilderTestMaterials.smallFile,
       agentBuilderTestMaterials.specialFilename,
     ]) {
-      if (!hasNamedOrKeyedEntry(files, fileName)) missing.push(`file ${fileName}`)
+      if (!hasNamedOrKeyedEntry(files, fileName))
+        missing.push(`file ${fileName}`)
     }
 
     const [providerName = '', toolName = ''] = jsonTool.id.split('/')
     const parsedTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
     if (
-      parsedTool.ok &&
-      !hasToolEntry(asArray(asRecord(soul.tools).dify_tools), {
+      parsedTool.ok
+      && !hasToolEntry(asArray(asRecord(soul.tools).dify_tools), {
         providerDisplayName: parsedTool.providerName,
         providerName,
         toolDisplayName: parsedTool.toolName,
@@ -637,7 +653,8 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
     }
 
     return agent
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -647,26 +664,30 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
   agentName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  if (agent === 'skipped')
+    return agent
 
   const summarySkill = await skipMissingPreseededAgentDriveSkill(
     world,
     agentName,
     agentBuilderPreseededResources.summarySkill,
   )
-  if (summarySkill === 'skipped') return summarySkill
+  if (summarySkill === 'skipped')
+    return summarySkill
 
   const jsonTool = await skipMissingPreseededTool(
     world,
     agentBuilderPreseededResources.jsonReplaceTool,
   )
-  if (jsonTool === 'skipped') return jsonTool
+  if (jsonTool === 'skipped')
+    return jsonTool
 
   const tavilyTool = await skipMissingPreseededTool(
     world,
     agentBuilderPreseededResources.tavilySearchTool,
   )
-  if (tavilyTool === 'skipped') return tavilyTool
+  if (tavilyTool === 'skipped')
+    return tavilyTool
 
   const ctx = await createApiContext()
   try {
@@ -680,8 +701,8 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     const [jsonProviderName = '', jsonToolName = ''] = jsonTool.id.split('/')
     const parsedJsonTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
     if (
-      parsedJsonTool.ok &&
-      !findToolEntry(toolItems, {
+      parsedJsonTool.ok
+      && !findToolEntry(toolItems, {
         providerDisplayName: parsedJsonTool.providerName,
         providerName: jsonProviderName,
         toolDisplayName: parsedJsonTool.toolName,
@@ -704,7 +725,8 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
 
     if (!tavilyEntry) {
       missing.push(agentBuilderPreseededResources.tavilySearchTool)
-    } else if (!hasToolCredentialReference(tavilyEntry)) {
+    }
+    else if (!hasToolCredentialReference(tavilyEntry)) {
       missing.push(`${agentBuilderPreseededResources.tavilySearchTool} credential reference`)
     }
 
@@ -716,7 +738,8 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     }
 
     return agent
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -726,13 +749,15 @@ export async function skipMissingPreseededDualRetrievalAgentConfiguration(
   agentName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  if (agent === 'skipped')
+    return agent
 
   const knowledgeBase = await skipMissingReadyPreseededDataset(
     world,
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
-  if (knowledgeBase === 'skipped') return knowledgeBase
+  if (knowledgeBase === 'skipped')
+    return knowledgeBase
 
   const ctx = await createApiContext()
   try {
@@ -762,7 +787,8 @@ export async function skipMissingPreseededDualRetrievalAgentConfiguration(
     }
 
     return agent
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -772,7 +798,8 @@ export async function skipMissingPreseededAgentFileTreeFixture(
   agentName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  if (agent === 'skipped')
+    return agent
 
   const ctx = await createApiContext()
   try {
@@ -780,10 +807,10 @@ export async function skipMissingPreseededAgentFileTreeFixture(
     const response = await ctx.get(`/console/api/agent/${agent.id}/drive/files?${query}`)
     await expectApiResponseOK(response, `Check preseeded Agent file tree ${agentName}`)
     const body = (await response.json()) as AgentDriveFileListResponse
-    const keys = (body.items ?? []).map((item) => item.key)
+    const keys = (body.items ?? []).map(item => item.key)
     const missingFiles = agentBuilderFileTreeFixtureFiles.filter(
-      (filePath) =>
-        !keys.some((key) => key === `files/${filePath}` || key.endsWith(`/${filePath}`)),
+      filePath =>
+        !keys.some(key => key === `files/${filePath}` || key.endsWith(`/${filePath}`)),
     )
 
     if (missingFiles.length > 0) {
@@ -798,7 +825,8 @@ export async function skipMissingPreseededAgentFileTreeFixture(
       kind: 'agent',
       name: agent.name,
     }
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -808,7 +836,8 @@ export async function skipMissingPreseededAgentBackendApiKey(
   agentName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  if (agent === 'skipped')
+    return agent
 
   const ctx = await createApiContext()
   try {
@@ -838,7 +867,8 @@ export async function skipMissingPreseededAgentBackendApiKey(
       kind: 'api-key',
       name: `${agentName} Backend service API key`,
     }
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -848,7 +878,8 @@ export async function skipMissingPreseededAgentPublishedWebApp(
   agentName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  if (agent === 'skipped')
+    return agent
 
   const ctx = await createApiContext()
   try {
@@ -879,7 +910,8 @@ export async function skipMissingPreseededAgentPublishedWebApp(
       kind: 'agent',
       name: agent.name,
     }
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
@@ -890,10 +922,12 @@ export async function skipMissingPreseededAgentWorkflowReference(
   workflowName: string,
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderPreseededResources'][string]>> {
   const agent = await skipMissingPreseededAgent(world, agentName)
-  if (agent === 'skipped') return agent
+  if (agent === 'skipped')
+    return agent
 
   const workflow = await skipMissingPreseededWorkflow(world, workflowName)
-  if (workflow === 'skipped') return workflow
+  if (workflow === 'skipped')
+    return workflow
 
   const ctx = await createApiContext()
   try {
@@ -901,7 +935,7 @@ export async function skipMissingPreseededAgentWorkflowReference(
     await expectApiResponseOK(response, `Check preseeded Agent workflow reference ${agentName}`)
     const references = (await response.json()) as AgentReferencingWorkflowsResponse
     const reference = references.data.find(
-      (item) => item.app_id === workflow.id || item.app_name === workflow.name,
+      item => item.app_id === workflow.id || item.app_name === workflow.name,
     )
 
     if (!reference) {
@@ -923,23 +957,24 @@ export async function skipMissingPreseededAgentWorkflowReference(
       kind: 'workflow',
       name: workflow.name,
     }
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }
 
-type ModelPreflightConfig =
+type ModelPreflightConfig
+  = | {
+    ok: true
+    provider: string
+    resourceName: string
+    type: string
+    value: string
+  }
   | {
-      ok: true
-      provider: string
-      resourceName: string
-      type: string
-      value: string
-    }
-  | {
-      ok: false
-      reason: string
-    }
+    ok: false
+    reason: string
+  }
 
 export function readAgentBuilderStableChatModelConfig(): ModelPreflightConfig {
   const provider = process.env[stableChatModelProviderEnv]?.trim()
@@ -947,8 +982,10 @@ export function readAgentBuilderStableChatModelConfig(): ModelPreflightConfig {
   const type = process.env[stableChatModelTypeEnv]?.trim() || defaultStableChatModelType
 
   const missing: string[] = []
-  if (!provider) missing.push(stableChatModelProviderEnv)
-  if (!name) missing.push(stableChatModelNameEnv)
+  if (!provider)
+    missing.push(stableChatModelProviderEnv)
+  if (!name)
+    missing.push(stableChatModelNameEnv)
 
   if (!provider || !name) {
     return {
@@ -996,7 +1033,8 @@ async function skipMissingAgentBuilderModel(
     requireActive: boolean
   },
 ): Promise<'skipped' | NonNullable<DifyWorld['agentBuilderStableChatModel']>> {
-  if (!config.ok) return skipBlockedPrecondition(world, config.reason)
+  if (!config.ok)
+    return skipBlockedPrecondition(world, config.reason)
 
   const ctx = await createApiContext()
   try {
@@ -1005,12 +1043,12 @@ async function skipMissingAgentBuilderModel(
     )
     await expectApiResponseOK(response, `Check ${config.resourceName}`)
     const body = (await response.json()) as ModelTypeListResponse
-    const provider = body.data.find((item) => item.provider === config.provider)
+    const provider = body.data.find(item => item.provider === config.provider)
     const model = provider?.models.find(
-      (item) =>
-        item.model === config.value ||
-        item.label?.en_US === config.value ||
-        item.label?.zh_Hans === config.value,
+      item =>
+        item.model === config.value
+        || item.label?.en_US === config.value
+        || item.label?.zh_Hans === config.value,
     )
 
     if (!provider || !model) {
@@ -1032,7 +1070,8 @@ async function skipMissingAgentBuilderModel(
       provider: provider.provider,
       type: config.type,
     }
-  } finally {
+  }
+  finally {
     await ctx.dispose()
   }
 }

@@ -26,12 +26,16 @@ Install Playwright browsers once:
 ```bash
 pnpm install
 pnpm -C e2e e2e:install
-pnpm -C e2e check
 ```
 
 `pnpm install` is resolved through the repository workspace and uses the shared root lockfile plus `pnpm-workspace.yaml`.
 
-Use `pnpm -C e2e check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs ESLint autofix, linting, and type checks for this package.
+Use root lint plus the package type check as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue:
+
+```bash
+vpr lint --fix
+pnpm -C e2e type-check
+```
 
 Common commands:
 
@@ -174,7 +178,7 @@ open cucumber-report/report.html
 1. Add step definitions under `features/step-definitions/<capability>/`
 1. Reuse existing steps from `common/` and other definition files before writing new ones
 1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
-1. Run `pnpm -C e2e check` before committing
+1. Run `vpr lint --fix` from the repository root and `pnpm -C e2e type-check` before committing
 
 ### Feature file conventions
 
