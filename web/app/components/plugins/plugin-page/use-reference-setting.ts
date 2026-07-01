@@ -25,7 +25,14 @@ const useCanSetPluginSettings = () => {
 
 export const usePluginSettingsAccess = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, workspacePermissionKeys, langGeniusVersionInfo } = useAppContext()
+  const {
+    isCurrentWorkspaceManager,
+    isCurrentWorkspaceOwner,
+    isLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys,
+    langGeniusVersionInfo,
+  } = useAppContext()
   const { data: rbacEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.rbac_enabled,
@@ -66,7 +73,7 @@ export const usePluginSettingsAccess = () => {
     canDebugger: canDebugPlugin,
     canSetPermissions,
     currentDifyVersion: langGeniusVersionInfo?.current_version,
-    isPermissionLoading: permissionQuery.isLoading || permissionQuery.isFetching,
+    isPermissionLoading: permissionQuery.isLoading || permissionQuery.isFetching || !!isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys,
     permissionError: permissionQuery.error,
     isPermissionUpdatePending,
   }
