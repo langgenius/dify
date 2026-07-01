@@ -23,7 +23,7 @@ from .entities import (
     SelectInputConfig,
 )
 from .enums import HumanInputFormStatus
-from .session_binding import SessionBinding
+from .session_binding import default_session_binding
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,6 @@ class DifyHITLCallback:
         self,
         *,
         form_repository: HumanInputFormRepository,
-        session_binding: SessionBinding,
         node_data: HumanInputNodeData,
         rendered_content: RenderedContentProvider,
         resolved_default_values: ResolvedDefaultsProvider,
@@ -72,7 +71,7 @@ class DifyHITLCallback:
         file_reference_factory: DifyFileReferenceFactory | None = None,
     ) -> None:
         self._form_repository = form_repository
-        self._session_binding = session_binding
+        self._session_binding = default_session_binding
         self._node_data = node_data
         self._rendered_content = rendered_content
         self._resolved_default_values = resolved_default_values

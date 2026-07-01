@@ -43,7 +43,6 @@ from core.workflow.node_factory import (
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
-from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -432,7 +431,6 @@ class WorkflowBasedAppRunner:
                 enriched_reasons = enrich_graph_pause_reasons(
                     reasons=event.reasons,
                     form_repository=HumanInputFormSubmissionRepository(),
-                    session_binding=SessionBinding(),
                     variable_pool=runtime_state.variable_pool,
                 )
                 self._enqueue_human_input_notifications(enriched_reasons)

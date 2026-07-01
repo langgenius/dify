@@ -14,7 +14,6 @@ from core.repositories.human_input_repository import HumanInputFormEntity, Human
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.human_input.callback import DifyHITLCallback, render_form_content_before_submission, resolve_default_values
-from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
@@ -118,7 +117,6 @@ def _build_graph(
     )
     hitl_callback = DifyHITLCallback(
         form_repository=form_repository,
-        session_binding=SessionBinding(),
         node_data=human_data,
         rendered_content=lambda ctx: render_form_content_before_submission(human_data, ctx=ctx),
         resolved_default_values=lambda ctx: resolve_default_values(human_data, ctx=ctx),

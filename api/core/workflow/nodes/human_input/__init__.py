@@ -21,7 +21,7 @@ from .enums import (
     ValueSourceType,
 )
 from .pause_reason import HUMAN_INPUT_REQUIRED_REASON_TYPE, HumanInputRequired, PauseReason
-from .session_binding import SessionBinding
+from .session_binding import SessionBinding, default_session_binding
 
 __all__ = [
     "ButtonStyle",
@@ -40,6 +40,7 @@ __all__ = [
     "PauseReason",
     "SelectInputConfig",
     "SessionBinding",
+    "default_session_binding",
     "StringListSource",
     "StringSource",
     "TimeoutUnit",

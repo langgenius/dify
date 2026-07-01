@@ -10,7 +10,6 @@ from core.workflow.nodes.human_input.callback import (
     resolve_default_values,
 )
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
 from graphon.enums import BuiltinNodeTypes
@@ -74,7 +73,6 @@ def _create_human_input_node(
     )
     callback = DifyHITLCallback(
         form_repository=repo,
-        session_binding=SessionBinding(),
         node_data=node_data,
         rendered_content=lambda ctx: render_form_content_before_submission(node_data, ctx=ctx),
         resolved_default_values=lambda ctx: resolve_default_values(node_data, ctx=ctx),

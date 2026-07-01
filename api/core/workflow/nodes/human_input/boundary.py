@@ -9,14 +9,13 @@ from core.repositories.human_input_repository import HumanInputFormSubmissionRep
 from core.workflow.human_input_policy import resolve_variable_select_input_options
 
 from .pause_reason import HumanInputRequired, PauseReason
-from .session_binding import SessionBinding
+from .session_binding import default_session_binding
 
 
 def enrich_graph_pause_reasons(
     *,
     reasons: Sequence[object],
     form_repository: HumanInputFormSubmissionRepository,
-    session_binding: SessionBinding,
     variable_pool: ReadOnlyVariablePool | None,
 ) -> list[PauseReason]:
     enriched: list[PauseReason] = []
@@ -25,7 +24,6 @@ def enrich_graph_pause_reasons(
             enriched_reason = _enrich_hitl_required(
                 reason=reason,
                 form_repository=form_repository,
-                session_binding=session_binding,
                 variable_pool=variable_pool,
             )
             if enriched_reason is not None:
@@ -40,10 +38,9 @@ def _enrich_hitl_required(
     *,
     reason: HitlRequired,
     form_repository: HumanInputFormSubmissionRepository,
-    session_binding: SessionBinding,
     variable_pool: ReadOnlyVariablePool | None,
 ) -> HumanInputRequired | None:
-    form_id = session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+    form_id = default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
     record = form_repository.get_by_form_id(form_id)
     if record is None:
         return None

@@ -34,7 +34,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
-from core.workflow.nodes.human_input.session_binding import SessionBinding
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.nodes.human_input.pause_reason import (
     HUMAN_INPUT_REQUIRED_REASON_TYPE,
     HumanInputRequired,
@@ -65,7 +65,6 @@ from repositories.types import (
 from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 
 logger = logging.getLogger(__name__)
-_SESSION_BINDING = SessionBinding()
 _HITL_REASON_TYPES = frozenset({HUMAN_INPUT_REQUIRED_REASON_TYPE, PauseReasonType.HITL_REQUIRED})
 
 
@@ -1015,7 +1014,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                         pause_reason_model = WorkflowPauseReason(
                             pause_id=pause_model.id,
                             type_=PauseReasonType.HITL_REQUIRED,
-                            form_id=_SESSION_BINDING.resolve_form_id_from_session_id(session_id=reason.session_id),
+                            form_id=default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id),
                             node_id=reason.node_id,
                         )
                     case HumanInputRequired():

@@ -39,7 +39,6 @@ def test_dify_hitl_callback_creates_pause_requested_for_new_form() -> None:
     repository.create_form.return_value = SimpleNamespace(id="form-1")
     callback = DifyHITLCallback(
         form_repository=repository,
-        session_binding=SessionBinding(),
         node_data=HumanInputNodeData(
             title="Approval",
             form_content="Please approve",
@@ -72,7 +71,6 @@ def test_dify_hitl_callback_returns_completed_for_submitted_form() -> None:
     )
     callback = DifyHITLCallback(
         form_repository=repository,
-        session_binding=SessionBinding(),
         node_data=HumanInputNodeData(
             title="Approval",
             form_content="Please approve",
@@ -108,7 +106,6 @@ def test_dify_hitl_callback_returns_expired_for_expired_form() -> None:
     )
     callback = DifyHITLCallback(
         form_repository=repository,
-        session_binding=SessionBinding(),
         node_data=HumanInputNodeData(title="Approval", form_content="Please approve"),
         rendered_content="<p>Please approve</p>",
         resolved_default_values={},

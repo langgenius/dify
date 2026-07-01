@@ -15,7 +15,6 @@ from core.workflow.nodes.human_input.callback import (
     resolve_default_values,
 )
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
-from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.file import File, FileTransferMethod, FileType
@@ -196,7 +195,6 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_a_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_a_callback = DifyHITLCallback(
         form_repository=repo,
-        session_binding=SessionBinding(),
         node_data=human_data,
         rendered_content=lambda ctx: render_form_content_before_submission(human_data, ctx=ctx),
         resolved_default_values=lambda ctx: resolve_default_values(human_data, ctx=ctx),
@@ -215,7 +213,6 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_b_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     human_b_callback = DifyHITLCallback(
         form_repository=repo,
-        session_binding=SessionBinding(),
         node_data=human_data,
         rendered_content=lambda ctx: render_form_content_before_submission(human_data, ctx=ctx),
         resolved_default_values=lambda ctx: resolve_default_values(human_data, ctx=ctx),

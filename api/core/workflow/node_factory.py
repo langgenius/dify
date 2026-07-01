@@ -39,7 +39,6 @@ from core.workflow.nodes.human_input.callback import (
     resolve_default_values,
 )
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
-from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyPresentationProvider,
@@ -529,7 +528,6 @@ class DifyNodeFactory(NodeFactory):
     ) -> DifyHITLCallback:
         return DifyHITLCallback(
             form_repository=self._human_input_runtime.build_form_repository(),
-            session_binding=SessionBinding(),
             node_data=node_data,
             rendered_content=lambda ctx: render_form_content_before_submission(node_data, ctx=ctx),
             resolved_default_values=lambda ctx: resolve_default_values(node_data, ctx=ctx),

@@ -11,3 +11,6 @@ class SessionBinding:
 
     def resolve_form_id_from_session_id(self, *, session_id: str) -> str:
         return session_id
+
+
+default_session_binding = SessionBinding()
