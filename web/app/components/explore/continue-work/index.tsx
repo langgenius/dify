@@ -35,7 +35,7 @@ const ContinueWork = ({
           <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
         </Link>
       </div>
-      <div className="grid grid-cols-1 gap-2.5 pt-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(296px,1fr))] gap-2.5 pt-2">
         {apps.map(app => (
           <ContinueWorkItem key={app.id} app={app} />
         ))}

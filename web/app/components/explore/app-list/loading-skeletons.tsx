@@ -45,7 +45,7 @@ function RecommendationSectionSkeletonBody({
           </div>
           <SkeletonRectangle className="size-8 shrink-0 animate-pulse rounded-lg" />
         </div>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(296px,1fr))] gap-2.5">
           {Array.from({ length: 4 }, (_, index) => (
             <div key={index} className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-4 pt-4 pb-4 shadow-xs">
               <div className="flex flex-col items-start gap-2 pb-1">
@@ -70,7 +70,7 @@ function RecommendationSectionSkeletonBody({
           <SkeletonRectangle className="h-5 w-48 animate-pulse" />
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(296px,1fr))] gap-3">
         {Array.from({ length: 4 }, (_, index) => (
           <div key={index} className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-4 py-3 shadow-md">
             <SkeletonRow>
@@ -110,7 +110,7 @@ function ExploreHeaderSkeletonBody() {
 
 function ExploreAppListSkeletonBody() {
   return (
-    <div className="grid shrink-0 grid-cols-1 content-start gap-3 px-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid shrink-0 grid-cols-[repeat(auto-fit,minmax(296px,1fr))] content-start gap-3 px-8">
       {Array.from({ length: 8 }, (_, index) => (
         <ExploreAppCardSkeleton key={index} />
       ))}

@@ -61,7 +61,7 @@ const Datasets = ({
 
   return (
     <>
-      <nav className="relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-8 pt-2">
+      <nav className="relative grid grow grid-cols-[repeat(auto-fit,minmax(296px,1fr))] content-start gap-3 px-8 pt-2">
         {showDatasetSkeleton
           ? <DatasetCardSkeleton label={t('loading', { ns: 'common' })} />
           : datasets.map(dataset => (

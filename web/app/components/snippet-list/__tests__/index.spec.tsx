@@ -270,6 +270,18 @@ describe('SnippetList', () => {
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
   })
 
+  it('lays out snippet cards with auto-fit grid columns', () => {
+    renderList()
+
+    const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
+    const grid = card?.parentElement
+
+    expect(grid).toHaveClass(
+      'grid',
+      'grid-cols-[repeat(auto-fit,minmax(296px,1fr))]',
+    )
+  })
+
   it('passes creator, tag, and search filters to the snippets list query', () => {
     mockQueryState.tagIDs = ['tag-1', 'tag-2']
     mockQueryState.keywords = 'sales'

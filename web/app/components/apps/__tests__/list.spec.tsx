@@ -452,19 +452,14 @@ describe('List', () => {
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
     })
 
-    it('should lay out app cards with app list container queries', () => {
-      const { container } = renderList()
+    it('should lay out app cards with auto-fit grid columns', () => {
+      renderList()
 
-      const appListContainer = Array.from(container.querySelectorAll('div')).find(element => element.className.includes('@container/app-list'))
       const grid = screen.getByTestId('app-card-app-1').parentElement
 
-      expect(appListContainer).toHaveClass('@container/app-list')
       expect(grid).toHaveClass(
         'grid',
-        'grid-cols-1',
-        '@3xl/app-list:grid-cols-2',
-        '@5xl/app-list:grid-cols-3',
-        '@6xl/app-list:grid-cols-4',
+        'grid-cols-[repeat(auto-fit,minmax(296px,1fr))]',
       )
     })
 

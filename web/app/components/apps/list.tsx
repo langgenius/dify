@@ -235,7 +235,7 @@ function List({
 
   return (
     <>
-      <div ref={containerRef} className="@container/app-list relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
+      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
           <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
           </div>
