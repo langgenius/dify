@@ -9761,7 +9761,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippets retrieved successfully | **application/json**: [SnippetPagination](#snippetpagination)<br> |
+| 200 | Snippets retrieved successfully | **application/json**: [SnippetPaginationResponse](#snippetpaginationresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets
 **Create a new customized snippet**
@@ -9776,7 +9776,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Snippet created successfully | **application/json**: [Snippet](#snippet)<br> |
+| 201 | Snippet created successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request |  |
 
 ### [POST] /workspaces/current/customized-snippets/imports
@@ -9841,7 +9841,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet retrieved successfully | **application/json**: [Snippet](#snippet)<br> |
+| 200 | Snippet retrieved successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 404 | Snippet not found |  |
 
 ### [PATCH] /workspaces/current/customized-snippets/{snippet_id}
@@ -9863,7 +9863,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet updated successfully | **application/json**: [Snippet](#snippet)<br> |
+| 200 | Snippet updated successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request |  |
 | 404 | Snippet not found |  |
 
@@ -20667,31 +20667,19 @@ Validated metadata extracted from a Skill package.
 | inferable | boolean |  | Yes |
 | reason | string |  | No |
 
-#### Snippet
+#### SnippetAccountResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | long |  | No |
-| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| description | string |  | No |
-| graph | object |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| input_fields | object |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
 
 #### SnippetDependencyCheckResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| SnippetDependencyCheckResponse | object |  |  |
+| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | Yes |
 
 #### SnippetDraftConfigResponse
 
@@ -20746,7 +20734,12 @@ Payload for importing snippet from DSL.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| SnippetImportResponse | object |  |  |
+| current_dsl_version | string |  | Yes |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | Yes |
+| snippet_id | string |  | Yes |
+| status | [ImportStatus](#importstatus) |  | Yes |
 
 #### SnippetIterationNodeRunPayload
 
@@ -20756,24 +20749,24 @@ Payload for running an iteration node in snippet draft workflow.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### SnippetList
+#### SnippetListItemResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
+| author_name | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| description | string |  | Yes |
+| icon_info | object |  | Yes |
+| id | string |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
+| type | [SnippetType](#snippettype) |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_count | integer |  | Yes |
+| version | integer |  | Yes |
 
 #### SnippetListQuery
 
@@ -20796,15 +20789,51 @@ Payload for running a loop node in snippet draft workflow.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### SnippetPagination
+#### SnippetPaginationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_744ff9cc03e6](#_anonymousinlinemodel_744ff9cc03e6) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
-| total | integer |  | No |
+| data | [ [SnippetListItemResponse](#snippetlistitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SnippetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| description | string |  | Yes |
+| graph | object |  | Yes |
+| icon_info | object |  | Yes |
+| id | string |  | Yes |
+| input_fields | [ object ] |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
+| type | [SnippetType](#snippettype) |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| use_count | integer |  | Yes |
+| version | integer |  | Yes |
+
+#### SnippetTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### SnippetType
+
+Snippet Type Enum
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SnippetType | string | Snippet Type Enum |  |
 
 #### SnippetUseCountResponse
 
@@ -22861,41 +22890,6 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicy](#accesspolicy) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
-
-#### _AnonymousInlineModel_744ff9cc03e6
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
-
-#### _AnonymousInlineModel_7b8b49ca164e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_b0fd3f86d9d5
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
 
 #### _AnonymousInlineModel_b1954337d565
 

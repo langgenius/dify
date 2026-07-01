@@ -113,6 +113,7 @@ const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListIte
   updated_at: 1_704_153_600,
   updated_by: 'updater-id',
   ...overrides,
+  version: overrides.version ?? 1,
 })
 
 describe('SnippetCard', () => {
@@ -321,7 +322,7 @@ describe('SnippetCard', () => {
         expect(mockUpdateMutate).toHaveBeenCalledWith(expect.objectContaining({
           body: {
             name: 'Updated Snippet',
-            description: undefined,
+            description: '',
           },
         }), expect.any(Object))
         expect(mockToastError).toHaveBeenCalledWith('Update failed')
