@@ -13,6 +13,10 @@ When('I upload the small Agent v2 file from the Files section', async function (
   await uploadAgentConfigFile(this, 'smallFile')
 })
 
+When('I upload the empty Agent v2 file from the Files section', async function (this: DifyWorld) {
+  await uploadAgentConfigFile(this, 'emptyFile')
+})
+
 When('I upload the special-name Agent v2 file from the Files section', async function (this: DifyWorld) {
   await uploadAgentConfigFile(this, 'specialFilename')
 })
@@ -45,6 +49,10 @@ Then('I should see the small Agent v2 file in the Files section', async function
   await expectAgentConfigFileVisible(this, 'smallFile')
 })
 
+Then('I should see the empty Agent v2 file in the Files section', async function (this: DifyWorld) {
+  await expectAgentConfigFileVisible(this, 'emptyFile')
+})
+
 Then('I should not see the small Agent v2 file in the Files section', async function (this: DifyWorld) {
   await expectAgentConfigFileHidden(this, 'smallFile')
 })
@@ -56,6 +64,13 @@ Then(
   'the small Agent v2 file should be saved in the Agent v2 draft',
   async function (this: DifyWorld) {
     await expectAgentConfigFileSaved(this, 'smallFile')
+  },
+)
+
+Then(
+  'the empty Agent v2 file should be saved as a zero-byte file in the Agent v2 draft',
+  async function (this: DifyWorld) {
+    await expectAgentConfigFileSaved(this, 'emptyFile', { size: 0 })
   },
 )
 

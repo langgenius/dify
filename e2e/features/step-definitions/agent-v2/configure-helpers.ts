@@ -112,17 +112,32 @@ export const expectAgentConfigFileHidden = async (
 export const expectAgentConfigFileSaved = async (
   world: DifyWorld,
   material: keyof typeof agentBuilderTestMaterials,
+  options?: {
+    size?: number
+  },
 ) => {
   const agentId = getCurrentAgentId(world)
   const fileName = agentBuilderTestMaterials[material]
 
   await expect
-    .poll(async () => (
-      await getAgentComposerDraft(agentId)
-    ).agent_soul?.config_files?.map(file => file.name) ?? [], {
+    .poll(async () => {
+      const file = (await getAgentComposerDraft(agentId)).agent_soul?.config_files?.find(
+        file => file.name === fileName,
+      )
+
+      return file
+        ? {
+            name: file.name,
+            size: file.size,
+          }
+        : undefined
+    }, {
       timeout: 30_000,
     })
-    .toContain(fileName)
+    .toEqual({
+      name: fileName,
+      size: options?.size ?? expect.anything(),
+    })
 }
 
 export const uploadSummaryConfigSkillForBuildDraft = async (world: DifyWorld) => {

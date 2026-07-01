@@ -12,6 +12,18 @@ Feature: Agent v2 files
     When I refresh the current page
     Then I should see the small Agent v2 file in the Files section
 
+  Scenario: Uploading an empty file keeps a zero-byte file in the Agent configuration
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a runnable Agent v2 test agent has been created via API
+    When I open the Agent v2 configure page
+    And I upload the empty Agent v2 file from the Files section
+    Then I should see the empty Agent v2 file in the Files section
+    And the empty Agent v2 file should be saved as a zero-byte file in the Agent v2 draft
+    And the Agent v2 configuration should be saved automatically
+    When I refresh the current page
+    Then I should see the empty Agent v2 file in the Files section
+
   Scenario: Uploading a special-name file keeps the filename readable
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
