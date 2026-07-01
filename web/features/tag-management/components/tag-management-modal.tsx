@@ -1,5 +1,5 @@
 'use client'
-import type { TagType } from '@/contract/console/tags'
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
@@ -21,7 +21,7 @@ export const TagManagementModal = ({ show, type, onClose, onTagsChange }: TagMan
   const { t } = useTranslation()
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.get.queryOptions({
     input: {
       query: {
         type,
@@ -29,7 +29,7 @@ export const TagManagementModal = ({ show, type, onClose, onTagsChange }: TagMan
     },
     enabled: show && canManageTags,
   }))
-  const createTagMutation = useMutation(consoleQuery.tags.create.mutationOptions())
+  const createTagMutation = useMutation(consoleQuery.tags.post.mutationOptions())
   const [name, setName] = useState<string>('')
 
   const createNewTag = () => {
