@@ -10,6 +10,8 @@ export const fetchSnippetDraftWorkflow = async (snippetId: string) => {
   try {
     return await consoleClient.snippets.bySnippetId.workflows.draft.get({
       params: { snippet_id: snippetId },
+    }, {
+      context: { silent: true },
     })
   }
   catch (error) {

@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import quote
 
 from flask import Response, request
-from flask_restx import Resource
+from flask_restx import Resource, marshal
 from pydantic import Field as PydanticField
 from pydantic import field_validator
 from sqlalchemy.orm import Session, sessionmaker
@@ -35,7 +35,8 @@ from controllers.console.wraps import (
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import dump_response, to_timestamp
+from fields.snippet_fields import snippet_fields, snippet_list_fields
+from libs.helper import to_timestamp
 from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
@@ -223,16 +224,13 @@ class CustomizedSnippetsApi(Resource):
             tag_ids=query.tag_ids,
         )
 
-        return dump_response(
-            SnippetPaginationResponse,
-            {
-                "data": snippets,
-                "page": query.page,
-                "limit": query.limit,
-                "total": total,
-                "has_more": has_more,
-            },
-        ), 200
+        return {
+            "data": marshal(snippets, snippet_list_fields),
+            "page": query.page,
+            "limit": query.limit,
+            "total": total,
+            "has_more": has_more,
+        }, 200
 
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))
@@ -273,7 +271,7 @@ class CustomizedSnippetsApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return dump_response(SnippetResponse, snippet), 201
+        return marshal(snippet, snippet_fields), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
@@ -296,7 +294,7 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return dump_response(SnippetResponse, snippet), 200
+        return marshal(snippet, snippet_fields), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
@@ -345,7 +343,7 @@ class CustomizedSnippetDetailApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return dump_response(SnippetResponse, snippet), 200
+        return marshal(snippet, snippet_fields), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")
@@ -462,10 +460,10 @@ class CustomizedSnippetImportApi(Resource):
         # Return appropriate status code based on result
         status = result.status
         if status == ImportStatus.FAILED:
-            return dump_response(SnippetImportResponse, result), 400
+            return result.model_dump(mode="json"), 400
         elif status == ImportStatus.PENDING:
-            return dump_response(SnippetImportResponse, result), 202
-        return dump_response(SnippetImportResponse, result), 200
+            return result.model_dump(mode="json"), 202
+        return result.model_dump(mode="json"), 200
 
 
 @console_ns.route("/workspaces/current/customized-snippets/imports/<string:import_id>/confirm")
@@ -491,8 +489,8 @@ class CustomizedSnippetImportConfirmApi(Resource):
             session.commit()
 
         if result.status == ImportStatus.FAILED:
-            return dump_response(SnippetImportResponse, result), 400
-        return dump_response(SnippetImportResponse, result), 200
+            return result.model_dump(mode="json"), 400
+        return result.model_dump(mode="json"), 200
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>/check-dependencies")
@@ -529,7 +527,7 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
             import_service = SnippetDslService(session)
             result = import_service.check_dependencies(snippet=snippet)
 
-        return dump_response(SnippetDependencyCheckResponse, result), 200
+        return result.model_dump(mode="json"), 200
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>/use-count/increment")
