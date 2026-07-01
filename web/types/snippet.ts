@@ -4,23 +4,37 @@ type SnippetType = 'node' | 'group'
 
 type SnippetInputField = Record<string, unknown>
 
-export type Snippet = {
+type SnippetTag = Tag
+
+type SnippetAccount = {
   id: string
   name: string
-  description: string
-  type: SnippetType
-  is_published: boolean
-  version: string
-  use_count: number
-  tags: Tag[]
-  input_fields: SnippetInputField[]
-  created_at: number
-  created_by: string
-  updated_at: number
-  updated_by: string
+  email: string
 }
 
-export type SnippetListItem = Omit<Snippet, 'version' | 'input_fields'>
+export type SnippetListItem = {
+  id: string
+  name: string
+  description: string | null
+  type: SnippetType
+  is_published: boolean
+  version: number
+  use_count: number
+  icon_info?: Record<string, unknown> | null
+  tags: SnippetTag[]
+  created_at: number
+  created_by: string | null
+  author_name?: string | null
+  updated_at: number
+  updated_by: string | null
+}
+
+export type Snippet = Omit<SnippetListItem, 'created_by' | 'updated_by' | 'author_name'> & {
+  graph: Record<string, unknown>
+  input_fields: SnippetInputField[]
+  created_by: SnippetAccount | null
+  updated_by: SnippetAccount | null
+}
 
 export type SnippetListResponse = {
   data: SnippetListItem[]
@@ -44,7 +58,7 @@ export type UpdateSnippetPayload = {
 }
 
 export type SnippetImportPayload = {
-  mode?: string
+  mode: string
   yaml_content?: string
   yaml_url?: string
   snippet_id?: string
@@ -55,9 +69,9 @@ export type SnippetImportPayload = {
 export type SnippetDSLImportResponse = {
   id: string
   status: string
-  snippet_id?: string
-  current_dsl_version?: string
-  imported_dsl_version?: string
+  snippet_id: string | null
+  current_dsl_version: string
+  imported_dsl_version: string
   error: string
 }
 
@@ -77,9 +91,8 @@ export type SnippetWorkflow = {
 }
 
 export type SnippetDraftSyncPayload = {
-  graph?: Record<string, unknown>
+  graph: Record<string, unknown>
   hash?: string
-  environment_variables?: Record<string, unknown>[]
   conversation_variables?: Record<string, unknown>[]
   input_fields?: SnippetInputField[]
 }

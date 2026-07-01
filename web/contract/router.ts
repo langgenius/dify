@@ -34,6 +34,7 @@ import { resetPassword } from '@dify/contracts/api/console/reset-password/orpc.g
 import { ruleCodeGenerate } from '@dify/contracts/api/console/rule-code-generate/orpc.gen'
 import { ruleGenerate } from '@dify/contracts/api/console/rule-generate/orpc.gen'
 import { ruleStructuredOutputGenerate } from '@dify/contracts/api/console/rule-structured-output-generate/orpc.gen'
+import { snippets } from '@dify/contracts/api/console/snippets/orpc.gen'
 import { spec } from '@dify/contracts/api/console/spec/orpc.gen'
 import { systemFeatures } from '@dify/contracts/api/console/system-features/orpc.gen'
 import { tagBindings } from '@dify/contracts/api/console/tag-bindings/orpc.gen'
@@ -49,7 +50,6 @@ import { rbacAccessConfigContract } from './console/access-control'
 import { exploreRouterContract } from './console/explore'
 import { modelProvidersRouterContract } from './console/model-providers'
 import { pluginsRouterContract } from './console/plugins'
-import { snippetsRouterContract } from './console/snippets'
 import { triggersRouterContract } from './console/trigger'
 import { trialAppsRouterContract } from './console/try-app'
 
@@ -90,6 +90,7 @@ const communityContract = {
   ruleCodeGenerate,
   ruleGenerate,
   ruleStructuredOutputGenerate,
+  snippets,
   spec,
   systemFeatures,
   tagBindings,
@@ -109,7 +110,6 @@ export const consoleRouterContract = {
   modelProviders: modelProvidersRouterContract,
   plugins: pluginsRouterContract,
   rbacAccessConfig: rbacAccessConfigContract,
-  snippets: snippetsRouterContract,
   triggers: triggersRouterContract,
   trialApps: trialAppsRouterContract,
 }

@@ -27,16 +27,6 @@ export const zSnippetImportPayload = z.object({
 })
 
 /**
- * SnippetImportResponse
- */
-export const zSnippetImportResponse = z.record(z.string(), z.unknown())
-
-/**
- * SnippetDependencyCheckResponse
- */
-export const zSnippetDependencyCheckResponse = z.record(z.string(), z.unknown())
-
-/**
  * TextFileResponse
  */
 export const zTextFileResponse = z.string()
@@ -814,91 +804,98 @@ export const zCreateSnippetPayload = z.object({
   type: z.enum(['group', 'node']).optional().default('node'),
 })
 
-export const zAnonymousInlineModelB0Fd3F86D9D5 = z.object({
-  email: z.string().optional(),
-  id: z.string().optional(),
-  name: z.string().optional(),
+/**
+ * SnippetAccountResponse
+ */
+export const zSnippetAccountResponse = z.object({
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
 })
 
-export const zAnonymousInlineModel7B8B49Ca164e = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  type: z.string().optional(),
+/**
+ * SnippetTagResponse
+ */
+export const zSnippetTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
 })
 
-export const zSnippet = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: zAnonymousInlineModelB0Fd3F86D9D5.optional(),
-  description: z.string().optional(),
-  graph: z.record(z.string(), z.unknown()).optional(),
-  icon_info: z.record(z.string(), z.unknown()).optional(),
-  id: z.string().optional(),
-  input_fields: z.record(z.string(), z.unknown()).optional(),
-  is_published: z.boolean().optional(),
-  name: z.string().optional(),
-  tags: z.array(zAnonymousInlineModel7B8B49Ca164e).optional(),
-  type: z.string().optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: zAnonymousInlineModelB0Fd3F86D9D5.optional(),
-  use_count: z.int().optional(),
-  version: z.int().optional(),
+/**
+ * SnippetType
+ *
+ * Snippet Type Enum
+ */
+export const zSnippetType = z.enum(['group', 'node'])
+
+/**
+ * SnippetResponse
+ */
+export const zSnippetResponse = z.object({
+  created_at: z.int(),
+  created_by: zSnippetAccountResponse.nullable(),
+  description: z.string().nullable(),
+  graph: z.record(z.string(), z.unknown()),
+  icon_info: z.record(z.string(), z.unknown()).nullable(),
+  id: z.string(),
+  input_fields: z.array(z.record(z.string(), z.unknown())),
+  is_published: z.boolean(),
+  name: z.string(),
+  tags: z.array(zSnippetTagResponse),
+  type: zSnippetType,
+  updated_at: z.int(),
+  updated_by: zSnippetAccountResponse.nullable(),
+  use_count: z.int(),
+  version: z.int(),
 })
 
-export const zAnonymousInlineModel744Ff9Cc03E6 = z.object({
-  author_name: z.string().optional(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: z.string().optional(),
-  description: z.string().optional(),
-  icon_info: z.record(z.string(), z.unknown()).optional(),
-  id: z.string().optional(),
-  is_published: z.boolean().optional(),
-  name: z.string().optional(),
-  tags: z.array(zAnonymousInlineModel7B8B49Ca164e).optional(),
-  type: z.string().optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: z.string().optional(),
-  use_count: z.int().optional(),
-  version: z.int().optional(),
+/**
+ * SnippetListItemResponse
+ */
+export const zSnippetListItemResponse = z.object({
+  author_name: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string().nullable(),
+  description: z.string().nullable(),
+  icon_info: z.record(z.string(), z.unknown()).nullable(),
+  id: z.string(),
+  is_published: z.boolean(),
+  name: z.string(),
+  tags: z.array(zSnippetTagResponse),
+  type: zSnippetType,
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  use_count: z.int(),
+  version: z.int(),
 })
 
-export const zSnippetPagination = z.object({
-  data: z.array(zAnonymousInlineModel744Ff9Cc03E6).optional(),
-  has_more: z.boolean().optional(),
-  limit: z.int().optional(),
-  page: z.int().optional(),
-  total: z.int().optional(),
+/**
+ * SnippetPaginationResponse
+ */
+export const zSnippetPaginationResponse = z.object({
+  data: z.array(zSnippetListItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * ImportStatus
+ */
+export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
+
+/**
+ * SnippetImportResponse
+ */
+export const zSnippetImportResponse = z.object({
+  current_dsl_version: z.string(),
+  error: z.string(),
+  id: z.string(),
+  imported_dsl_version: z.string(),
+  snippet_id: z.string().nullable(),
+  status: zImportStatus,
 })
 
 /**
@@ -1505,6 +1502,53 @@ export const zTriggerProviderSubscriptionApiEntity = z.object({
  * TriggerSubscriptionListResponse
  */
 export const zTriggerSubscriptionListResponse = z.array(zTriggerProviderSubscriptionApiEntity)
+
+/**
+ * Type
+ */
+export const zType = z.enum(['github', 'marketplace', 'package'])
+
+/**
+ * Github
+ */
+export const zGithub = z.object({
+  github_plugin_unique_identifier: z.string(),
+  package: z.string(),
+  repo: z.string(),
+  version: z.string(),
+})
+
+/**
+ * Marketplace
+ */
+export const zMarketplace = z.object({
+  marketplace_plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
+ * Package
+ */
+export const zPackage = z.object({
+  plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
+ * PluginDependency
+ */
+export const zPluginDependency = z.object({
+  current_identifier: z.string().nullish(),
+  type: zType,
+  value: z.union([zGithub, zMarketplace, zPackage]),
+})
+
+/**
+ * SnippetDependencyCheckResponse
+ */
+export const zSnippetDependencyCheckResponse = z.object({
+  leaked_dependencies: z.array(zPluginDependency),
+})
 
 /**
  * ConfigurateMethod
@@ -2556,14 +2600,14 @@ export const zGetWorkspacesCurrentCustomizedSnippetsQuery = z.object({
 /**
  * Snippets retrieved successfully
  */
-export const zGetWorkspacesCurrentCustomizedSnippetsResponse = zSnippetPagination
+export const zGetWorkspacesCurrentCustomizedSnippetsResponse = zSnippetPaginationResponse
 
 export const zPostWorkspacesCurrentCustomizedSnippetsBody = zCreateSnippetPayload
 
 /**
  * Snippet created successfully
  */
-export const zPostWorkspacesCurrentCustomizedSnippetsResponse = zSnippet
+export const zPostWorkspacesCurrentCustomizedSnippetsResponse = zSnippetResponse
 
 export const zPostWorkspacesCurrentCustomizedSnippetsImportsBody = zSnippetImportPayload
 
@@ -2598,7 +2642,7 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
 /**
  * Snippet retrieved successfully
  */
-export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippet
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippetResponse
 
 export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdBody = zUpdateSnippetPayload
 
@@ -2609,7 +2653,7 @@ export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object
 /**
  * Snippet updated successfully
  */
-export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippet
+export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippetResponse
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesPath = z.object({
   snippet_id: z.uuid(),

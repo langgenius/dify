@@ -31,12 +31,12 @@ export type AgentProviderListResponse = Array<{
   [key: string]: unknown
 }>
 
-export type SnippetPagination = {
-  data?: Array<AnonymousInlineModel744Ff9Cc03E6>
-  has_more?: boolean
-  limit?: number
-  page?: number
-  total?: number
+export type SnippetPaginationResponse = {
+  data: Array<SnippetListItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type CreateSnippetPayload = {
@@ -50,28 +50,28 @@ export type CreateSnippetPayload = {
   type?: 'group' | 'node'
 }
 
-export type Snippet = {
-  created_at?: number
-  created_by?: AnonymousInlineModelB0Fd3F86D9D5
-  description?: string
-  graph?: {
+export type SnippetResponse = {
+  created_at: number
+  created_by: SnippetAccountResponse | null
+  description: string | null
+  graph: {
     [key: string]: unknown
   }
-  icon_info?: {
+  icon_info: {
     [key: string]: unknown
-  }
-  id?: string
-  input_fields?: {
+  } | null
+  id: string
+  input_fields: Array<{
     [key: string]: unknown
-  }
-  is_published?: boolean
-  name?: string
-  tags?: Array<AnonymousInlineModel7B8B49Ca164e>
-  type?: string
-  updated_at?: number
-  updated_by?: AnonymousInlineModelB0Fd3F86D9D5
-  use_count?: number
-  version?: number
+  }>
+  is_published: boolean
+  name: string
+  tags: Array<SnippetTagResponse>
+  type: SnippetType
+  updated_at: number
+  updated_by: SnippetAccountResponse | null
+  use_count: number
+  version: number
 }
 
 export type SnippetImportPayload = {
@@ -84,7 +84,12 @@ export type SnippetImportPayload = {
 }
 
 export type SnippetImportResponse = {
-  [key: string]: unknown
+  current_dsl_version: string
+  error: string
+  id: string
+  imported_dsl_version: string
+  snippet_id: string | null
+  status: ImportStatus
 }
 
 export type UpdateSnippetPayload = {
@@ -94,7 +99,7 @@ export type UpdateSnippetPayload = {
 }
 
 export type SnippetDependencyCheckResponse = {
-  [key: string]: unknown
+  leaked_dependencies: Array<PluginDependency>
 }
 
 export type TextFileResponse = string
@@ -944,23 +949,23 @@ export type WorkspaceCustomConfigResponse = {
   replace_webapp_logo?: string | null
 }
 
-export type AnonymousInlineModel744Ff9Cc03E6 = {
-  author_name?: string
-  created_at?: number
-  created_by?: string
-  description?: string
-  icon_info?: {
+export type SnippetListItemResponse = {
+  author_name: string | null
+  created_at: number
+  created_by: string | null
+  description: string | null
+  icon_info: {
     [key: string]: unknown
-  }
-  id?: string
-  is_published?: boolean
-  name?: string
-  tags?: Array<AnonymousInlineModel7B8B49Ca164e>
-  type?: string
-  updated_at?: number
-  updated_by?: string
-  use_count?: number
-  version?: number
+  } | null
+  id: string
+  is_published: boolean
+  name: string
+  tags: Array<SnippetTagResponse>
+  type: SnippetType
+  updated_at: number
+  updated_by: string | null
+  use_count: number
+  version: number
 }
 
 export type IconInfo = {
@@ -981,16 +986,26 @@ export type InputFieldDefinition = {
   type?: string | null
 }
 
-export type AnonymousInlineModelB0Fd3F86D9D5 = {
-  email?: string
-  id?: string
-  name?: string
+export type SnippetAccountResponse = {
+  email: string
+  id: string
+  name: string
 }
 
-export type AnonymousInlineModel7B8B49Ca164e = {
-  id?: string
-  name?: string
-  type?: string
+export type SnippetTagResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type SnippetType = 'group' | 'node'
+
+export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type PluginDependency = {
+  current_identifier?: string | null
+  type: Type
+  value: Github | Marketplace | Package
 }
 
 export type AccountWithRole = {
@@ -1370,6 +1385,25 @@ export type TriggerProviderSubscriptionApiEntity = {
   }
   provider: string
   workflows_in_use: number
+}
+
+export type Type = 'github' | 'marketplace' | 'package'
+
+export type Github = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
+export type Marketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type Package = {
+  plugin_unique_identifier: string
+  version?: string | null
 }
 
 export type SimpleProviderEntityResponse = {
@@ -1855,7 +1889,7 @@ export type GetWorkspacesCurrentCustomizedSnippetsData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsResponses = {
-  200: SnippetPagination
+  200: SnippetPaginationResponse
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsResponse
@@ -1873,7 +1907,7 @@ export type PostWorkspacesCurrentCustomizedSnippetsErrors = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsResponses = {
-  201: Snippet
+  201: SnippetResponse
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsResponse
@@ -1952,7 +1986,7 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  200: Snippet
+  200: SnippetResponse
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
@@ -1973,7 +2007,7 @@ export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  200: Snippet
+  200: SnippetResponse
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
