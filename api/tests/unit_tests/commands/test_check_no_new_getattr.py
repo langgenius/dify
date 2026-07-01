@@ -77,9 +77,6 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     )
     assert checkout_step is not None
 
-    checkout_step_text = checkout_step.group("step")
-    assert "fetch-depth: 0" in checkout_step_text
-
     changed_files_step = re.search(
         r"(?ms)^      - name: Check changed files\n.*?^          files: \|\n(?P<files>(?:^            \S[^\n]*\n)+)",
         job_text,
@@ -103,8 +100,28 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert guard_step is not None
 
     pre_guard_text = job_text[: guard_step.start()]
-    assert "refs/heads/main" in pre_guard_text
-    assert "origin/main" in pre_guard_text
+    fetch_step = re.search(
+        r"(?ms)^      - name: .*\n(?P<step>.*?git fetch .*origin.*main.*(?:refs/remotes/origin/main|origin/main).*)(?=^      - name: |\Z)",
+        pre_guard_text,
+    )
+    assert fetch_step is not None
+    fetch_step_text = fetch_step.group("step")
+    assert "git fetch" in fetch_step_text
+    assert "origin" in fetch_step_text
+    assert "main" in fetch_step_text
+    assert (
+        "refs/heads/main:refs/remotes/origin/main" in fetch_step_text
+        or "origin main" in fetch_step_text
+        or "origin/main" in fetch_step_text
+    )
+
+    bind_step = re.search(
+        r"(?ms)^      - name: Bind merge target branch for getattr guard\n(?P<step>.*?)(?=^      - name: |\Z)",
+        pre_guard_text,
+    )
+    assert bind_step is not None
+    bind_step_text = bind_step.group("step")
+    assert "git branch main origin/main" in bind_step_text
 
 
 def test_ci_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
