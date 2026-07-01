@@ -124,6 +124,14 @@ When('I fill the Agent v2 prompt editor with the normal E2E prompt', async funct
   await promptSection.getByRole('textbox', { name: 'Prompt' }).fill(normalAgentPrompt)
 })
 
+When('I fill the Agent v2 prompt editor with the updated E2E prompt', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const promptSection = page.getByRole('region', { name: 'Prompt' })
+
+  await expect(promptSection).toBeVisible({ timeout: 30_000 })
+  await promptSection.getByRole('textbox', { name: 'Prompt' }).fill(updatedAgentPrompt)
+})
+
 Then('I should be on the Agent v2 configure page', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 

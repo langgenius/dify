@@ -6,6 +6,7 @@ import { assertE2EResourceName, createE2EResourceName } from './naming'
 
 export type AgentSeed = {
   active_config_is_published?: boolean
+  active_config_snapshot_id?: string | null
   app_id?: string
   backing_app_id?: string
   description?: string
@@ -78,6 +79,11 @@ export type AgentApiAccess = {
 export type AgentApiKey = {
   id: string
   token?: string
+}
+
+export type AgentConfigSnapshotDetail = {
+  config_snapshot: AgentSoulConfig
+  id: string
 }
 
 export type AgentReferencingWorkflow = {
@@ -347,6 +353,21 @@ export async function getTestAgent(agentId: string): Promise<AgentSeed> {
     const response = await ctx.get(`/console/api/agent/${agentId}`)
     await expectApiResponseOK(response, `Get Agent v2 test agent ${agentId}`)
     return (await response.json()) as AgentSeed
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function getAgentVersionDetail(
+  agentId: string,
+  versionId: string,
+): Promise<AgentConfigSnapshotDetail> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agentId}/versions/${versionId}`)
+    await expectApiResponseOK(response, `Get Agent v2 version ${versionId} for ${agentId}`)
+    return (await response.json()) as AgentConfigSnapshotDetail
   }
   finally {
     await ctx.dispose()
