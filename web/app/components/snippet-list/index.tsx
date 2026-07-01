@@ -189,7 +189,7 @@ const SnippetList = () => {
         </div>
       </StudioListHeader>
       <div className={cn(
-        'relative grid grow grid-cols-1 content-start gap-4 px-8 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+        'relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-4 px-8 pt-2',
         !hasAnySnippet && 'overflow-hidden',
       )}
       >

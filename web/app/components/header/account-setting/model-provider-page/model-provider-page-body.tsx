@@ -21,6 +21,7 @@ type ModelProviderPageBodyProps = {
   enableMarketplace: boolean
   searchText: string
   pluginDetailMap: Map<string, PluginDetail>
+  onOpenMarketplace?: () => void
 }
 
 function ModelProviderCardSkeleton() {
@@ -79,6 +80,7 @@ function EmptyProviderState({
                   marketplace: (
                     <a
                       href="#model-provider-marketplace"
+                      aria-label={t('marketplace.difyMarketplace', { ns: 'plugin' })}
                       className="system-xs-medium text-text-accent hover:underline"
                     />
                   ),
@@ -128,6 +130,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   enableMarketplace,
   searchText,
   pluginDetailMap,
+  onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
 
@@ -165,6 +168,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
           <InstallFromMarketplace
             providers={providers}
             searchText={searchText}
+            onOpenMarketplace={onOpenMarketplace}
           />
         </div>
       )}
