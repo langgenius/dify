@@ -92,7 +92,23 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
     assert "scripts/ast_grep_rules/no_new_getattr.yml\n" in files_block
     assert ".github/workflows/style.yml\n" in files_block
 
-    assert "scripts/check_no_new_getattr.py --mode ci --merge-target main" in job_text
+    bind_step = re.search(
+        r"(?ms)^      - name: Bind merge target ref\n(?P<step>.*?)(?=^      - name: |\Z)",
+        job_text,
+    )
+    assert bind_step is not None
+
+    bind_step_text = bind_step.group("step")
+    assert "git show-ref --verify --quiet refs/heads/main" in bind_step_text
+    assert "git branch main origin/main" in bind_step_text
+
+    guard_command = "scripts/check_no_new_getattr.py --mode ci --merge-target main"
+    guard_step = re.search(
+        rf"(?ms)^      - name: .*?\n(?P<step>.*?{re.escape(guard_command)}.*?)(?=^      - name: |\Z)",
+        job_text,
+    )
+    assert guard_step is not None
+    assert bind_step.start() < guard_step.start()
 
 
 def test_ci_mode_passes_when_only_legacy_getattr_exists(tmp_path: Path) -> None:
