@@ -3164,9 +3164,6 @@
   "web/app/components/datasets/metadata/hooks/use-edit-dataset-metadata.ts": {
     "no-restricted-globals": {
       "count": 2
-    },
-    "react/set-state-in-effect": {
-      "count": 1
     }
   },
   "web/app/components/datasets/metadata/hooks/use-metadata-document.ts": {
