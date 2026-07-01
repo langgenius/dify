@@ -165,11 +165,22 @@ describe('AgentRosterList', () => {
 
   it('renders the Figma-aligned empty roster overlay', () => {
     const { container } = renderList([])
+    const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none'))
+      .find(element => element.className.includes('grid-rows-4'))
+
+    if (!placeholderGrid)
+      throw new Error('Expected agent roster placeholder grid to render')
 
     expect(screen.getByRole('heading', { name: 'agentV2.roster.empty' })).toHaveClass('system-sm-regular', 'text-text-tertiary')
     expect(container.querySelectorAll('.bg-background-default-lighter')).toHaveLength(16)
     expect(container.querySelector('.bg-linear-to-b')).toBeInTheDocument()
     expect(container.querySelector('.i-ri-robot-2-line')).toHaveClass('size-6', 'text-text-tertiary')
+    expect(placeholderGrid).toHaveClass(
+      'grid',
+      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+      'grid-rows-4',
+    )
+    expect(placeholderGrid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4')
   })
 
   it('uses the same overlay treatment for empty search results', () => {
