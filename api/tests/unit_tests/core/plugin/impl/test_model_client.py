@@ -164,6 +164,47 @@ class TestPluginModelClient:
         assert call_kwargs["path"] == "plugin/tenant-1/dispatch/llm/invoke"
         assert call_kwargs["data"]["data"]["stream"] is False
         assert call_kwargs["data"]["data"]["model_parameters"] == {"temperature": 0.1}
+        assert call_kwargs["transformer"] is not None
+
+    def test_invoke_llm_normalizes_object_finish_reason_from_plugin_daemon(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        mocker.patch.object(
+            client,
+            "_stream_request",
+            return_value=iter(
+                [
+                    json.dumps(
+                        {
+                            "code": 0,
+                            "message": "",
+                            "data": {
+                                "model": "qwen3",
+                                "prompt_messages": [],
+                                "delta": {
+                                    "index": 0,
+                                    "message": {"role": "assistant", "content": "done", "name": None},
+                                    "finish_reason": {"type": "length", "length": 512},
+                                },
+                            },
+                        }
+                    )
+                ]
+            ),
+        )
+
+        result = list(
+            client.invoke_llm(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="qwen3",
+                credentials={"api_key": "key"},
+                prompt_messages=[],
+            )
+        )
+
+        assert result[0].delta.finish_reason == "length"
 
     def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()
@@ -449,8 +490,8 @@ class TestPluginModelClient:
             provider="provider-a",
             model="rerank-a",
             credentials={},
-            query={"type": "text", "value": "q"},
-            docs=[{"type": "image", "value": "doc"}],
+            query={"content_type": "text", "content": "q"},
+            docs=[{"content_type": "image", "content": "doc"}],
             score_threshold=0.1,
             top_n=3,
         )
@@ -469,8 +510,8 @@ class TestPluginModelClient:
                 "provider-a",
                 "rerank-a",
                 {},
-                {"type": "text"},
-                [{"type": "image"}],
+                {"content_type": "text", "content": "q"},
+                [{"content_type": "image", "content": "doc"}],
             )
 
     def test_invoke_tts(self, mocker: MockerFixture):

@@ -277,7 +277,7 @@ class BasePluginClient:
             rep = PluginDaemonBasicResponse[type_].model_validate(json_response)  # type: ignore
         except Exception:
             msg = (
-                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type_.__name__)}],"
+                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{type_.__name__}],"
                 f" url: {path}"
             )
             logger.exception(msg)
@@ -305,13 +305,18 @@ class BasePluginClient:
         data: bytes | dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
+        transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
             try:
-                rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
+                if transformer:
+                    line_data = transformer(json.loads(line))
+                    rep = PluginDaemonBasicResponse[type_].model_validate(line_data)  # type: ignore
+                else:
+                    rep = PluginDaemonBasicResponse[type_].model_validate_json(line)  # type: ignore
             except (ValueError, TypeError):
                 # TODO modify this when line_data has code and message
                 try:
