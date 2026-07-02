@@ -14,8 +14,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Union, override
 
-from opentelemetry.trace import get_current_span
-
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.helper.trace_id_helper import ParentTraceContext
 from core.ops.entities.trace_entity import TraceTaskName
@@ -24,7 +22,6 @@ from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeE
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from extensions.otel.semconv import DifySpanAttributes
 from graphon.entities import WorkflowExecution, WorkflowNodeExecution
 from graphon.enums import (
     WorkflowExecutionStatus,
@@ -202,7 +199,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         execution.status = WorkflowExecutionStatus.STOPPED
         execution.error_message = event.reason or "Workflow execution aborted"
         self._populate_completion_statistics(execution)
-        self._record_otel_abort_reason(reason=execution.error_message)
 
         self._fail_running_node_executions(error_message=execution.error_message or "")
         self._workflow_execution_repository.save(execution)
@@ -414,19 +410,6 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
                 execution.finished_at = now
                 execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
                 self._workflow_node_execution_repository.save(execution)
-
-    def _record_otel_abort_reason(self, *, reason: str) -> None:
-        span = get_current_span()
-        if not span.is_recording():
-            return
-
-        span.set_attribute(DifySpanAttributes.WORKFLOW_ABORT_REASON, reason)
-        span.add_event(
-            "dify.workflow.aborted",
-            attributes={
-                DifySpanAttributes.WORKFLOW_ABORT_REASON: reason,
-            },
-        )
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
         if not self._trace_manager:
