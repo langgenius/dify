@@ -5,6 +5,7 @@ from __future__ import annotations
 import builtins
 import importlib
 from contextlib import ExitStack, contextmanager
+from inspect import unwrap
 from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -423,7 +424,8 @@ def test_builtin_provider_credentials_get_reads_repeated_include_ids(
     app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch
 ):
     user = _mock_account("user-tenant-cred")
-    service_mock = MagicMock(return_value=[{"cred": 1}])
+    credential_payload, expected = _credential_response(controller_module)
+    service_mock = MagicMock(return_value=[credential_payload])
     monkeypatch.setattr(
         controller_module.BuiltinToolManageService,
         "get_builtin_tool_provider_credentials",
@@ -434,7 +436,7 @@ def test_builtin_provider_credentials_get_reads_repeated_include_ids(
         api = controller_module.ToolBuiltinProviderGetCredentialsApi()
         resp = unwrap(api.get)(api, "tenant-cred", user, provider="demo")
 
-    assert resp == [{"cred": 1}]
+    assert resp == [expected]
     service_mock.assert_called_once_with(
         tenant_id="tenant-cred",
         provider_name="demo",
