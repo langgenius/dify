@@ -132,9 +132,16 @@ class MyScaleVector(BaseVector):
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        return self._search(f"TextSearch('enable_nlq=false')(text, '{query}')", SortOrder.DESC, **kwargs)
+        return self._search(
+            "TextSearch('enable_nlq=false')(text, {query:String})",
+            SortOrder.DESC,
+            parameters={"query": query},
+            **kwargs,
+        )
 
-    def _search(self, dist: str, order: SortOrder, **kwargs: Any) -> list[Document]:
+    def _search(
+        self, dist: str, order: SortOrder, parameters: dict[str, Any] | None = None, **kwargs: Any
+    ) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         if not isinstance(top_k, int) or top_k <= 0:
             raise ValueError("top_k must be a positive integer")
@@ -159,7 +166,7 @@ class MyScaleVector(BaseVector):
                     vector=r["vector"],
                     metadata=r["metadata"],
                 )
-                for r in self._client.query(sql).named_results()
+                for r in self._client.query(sql, parameters=parameters).named_results()
             ]
         except Exception:
             logger.exception("Vector search operation failed")
