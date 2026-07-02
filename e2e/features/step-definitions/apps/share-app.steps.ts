@@ -7,6 +7,7 @@ import {
   publishWorkflowApp,
   syncRunnableWorkflowDraft,
 } from '../../../support/api'
+import { createE2EResourceName } from '../../../support/naming'
 
 When('I enable the Web App share', async function (this: DifyWorld) {
   const page = this.getPage()
@@ -27,7 +28,7 @@ Then('the Web App should be in service', async function (this: DifyWorld) {
 })
 
 Given('a workflow app has been published and shared via API', async function (this: DifyWorld) {
-  const app = await createTestApp(`E2E Share ${Date.now()}`, 'workflow')
+  const app = await createTestApp(createE2EResourceName('App', 'Share'), 'workflow')
   this.createdAppIds.push(app.id)
   this.lastCreatedAppName = app.name
   await syncRunnableWorkflowDraft(app.id)
