@@ -7,6 +7,7 @@ from celery.signals import worker_shutdown, worker_shutting_down
 
 from core.app.apps.workflow.command_channels import (
     get_celery_signal_command_channel_count,
+    reset_celery_signal_command_channels,
     send_celery_warm_shutdown_abort_commands,
 )
 
@@ -52,6 +53,7 @@ def _on_worker_shutdown(*args: object, **kwargs: object) -> None:
 
 def setup_workflow_warm_shutdown_handler() -> None:
     """Connect Celery worker shutdown handlers for workflow abort and logging."""
+    reset_celery_signal_command_channels()
     worker_shutting_down.connect(
         _on_worker_shutting_down,
         weak=False,

@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 WORKFLOW_WARM_SHUTDOWN_ABORT_REASON = "Workflow stopped because the worker is shutting down."
 _celery_signal_channels: dict[str, "CelerySignalCommandChannel"] = {}
 _celery_signal_channels_lock = threading.RLock()
+_celery_warm_shutdown_abort_reason: str | None = None
 
 
 @final
@@ -80,6 +81,10 @@ def register_celery_signal_command_channel(channel: CelerySignalCommandChannel) 
     """Register a local command channel for Celery warm shutdown notifications."""
     with _celery_signal_channels_lock:
         _celery_signal_channels[channel.task_id] = channel
+        shutdown_reason = _celery_warm_shutdown_abort_reason
+
+    if shutdown_reason:
+        channel.send_abort_command(reason=shutdown_reason)
 
 
 def unregister_celery_signal_command_channel(channel: CelerySignalCommandChannel) -> None:
@@ -94,7 +99,9 @@ def send_celery_warm_shutdown_abort_commands(
     reason: str = WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
 ) -> int:
     """Push abort commands into all active local Celery signal channels."""
+    global _celery_warm_shutdown_abort_reason
     with _celery_signal_channels_lock:
+        _celery_warm_shutdown_abort_reason = reason
         channels = tuple(_celery_signal_channels.values())
 
     return sum(1 for channel in channels if channel.send_abort_command(reason=reason))
@@ -104,3 +111,11 @@ def get_celery_signal_command_channel_count() -> int:
     """Return the number of active local Celery signal command channels."""
     with _celery_signal_channels_lock:
         return len(_celery_signal_channels)
+
+
+def reset_celery_signal_command_channels() -> None:
+    """Reset local Celery signal channel state for worker initialization and tests."""
+    global _celery_warm_shutdown_abort_reason
+    with _celery_signal_channels_lock:
+        _celery_signal_channels.clear()
+        _celery_warm_shutdown_abort_reason = None
