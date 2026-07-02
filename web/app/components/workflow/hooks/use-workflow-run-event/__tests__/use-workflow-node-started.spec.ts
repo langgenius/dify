@@ -77,4 +77,24 @@ describe('useWorkflowNodeStarted', () => {
     expect(tracing).toHaveLength(2)
     expect(tracing[1]!.status).toBe(NodeRunningStatus.Running)
   })
+
+  it('updates the first tracing entry when the match index is 0', () => {
+    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [
+            { node_id: 'n1', status: NodeRunningStatus.Succeeded } as never,
+          ],
+        }),
+      },
+    })
+
+    act(() => {
+      result.current.handleWorkflowNodeStarted(createNodeStartedResponse(), containerParams)
+    })
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing).toHaveLength(1)
+    expect(tracing[0]!.status).toBe(NodeRunningStatus.Running)
+  })
 })
