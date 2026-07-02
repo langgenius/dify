@@ -127,8 +127,8 @@ function AgentFileTreeRows({
   })
 }
 
-const defaultRenderFile: AgentFileTreeRenderFile = ({ selected, children }) => (
-  <FileTreeFile selected={selected}>
+const defaultRenderFile: AgentFileTreeRenderFile = ({ depth, selected, children }) => (
+  <FileTreeFile level={depth} selected={selected}>
     {children}
   </FileTreeFile>
 )

@@ -93,7 +93,7 @@ describe('AgentBuildDraftBar', () => {
   })
 
   it('should show build draft change metadata', () => {
-    const { rerender } = render(
+    const { container, rerender } = render(
       <AgentBuildDraftBar
         changeSummary={changeSummary}
         changesCount={0}
@@ -102,6 +102,8 @@ describe('AgentBuildDraftBar', () => {
       />,
     )
 
+    expect(container.firstElementChild).toHaveClass('w-full')
+    expect(container.firstElementChild).not.toHaveClass('w-fit')
     expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":0}' })).toBeInTheDocument()
     expect(document.querySelector('.i-ri-arrow-right-s-line')).toBeInTheDocument()
