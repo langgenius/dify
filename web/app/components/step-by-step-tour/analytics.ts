@@ -9,10 +9,7 @@ import type {
 import { trackEvent } from '@/app/components/base/amplitude'
 
 export const STEP_BY_STEP_TOUR_ANALYTICS_EVENTS = {
-  cardToggled: 'tour_card_toggled',
   completed: 'tour_completed',
-  dismissed: 'tour_dismissed',
-  learnMoreClicked: 'tour_learn_more_clicked',
   permissionFallbackViewed: 'tour_permission_fallback_viewed',
   shown: 'tour_shown',
   skipped: 'tour_skipped',
@@ -28,8 +25,6 @@ export const STEP_BY_STEP_TOUR_ANALYTICS_EVENTS = {
 
 export type StepByStepTourAnalyticsEventName
   = typeof STEP_BY_STEP_TOUR_ANALYTICS_EVENTS[keyof typeof STEP_BY_STEP_TOUR_ANALYTICS_EVENTS]
-
-export type StepByStepTourStateSource = 'backend' | 'local_storage'
 
 export type StepByStepTourWorkspaceScope
   = | 'disabled_workspace'
@@ -50,6 +45,8 @@ export type StepByStepTourTriggerReason
 
 export type StepByStepTourCardState = 'expanded' | 'minimized'
 
+export type StepByStepTourTourState = StepByStepTourCardState | 'completion_prompt'
+
 export type StepByStepTourGuideInteractionPolicy = 'blocked' | 'target-only'
 
 export type StepByStepTourTaskCompletionSource
@@ -65,7 +62,8 @@ export type StepByStepTourPermissionRestriction
 
 export type StepByStepTourPermissionFallbackBehavior
   = | 'mark_complete'
-    | 'show_no_permission_guide'
+    | 'show_limited_access_guide'
+    | 'show_no_create_guide'
 
 export type StepByStepTourRole
   = | 'admin'
@@ -86,8 +84,9 @@ export type StepByStepTourAnalyticsProperties = Record<string, StepByStepTourAna
 
 export type StepByStepTourWorkspaceProperties = {
   current_workspace_id: string
-  first_workspace_id?: string | null
-  state_source: StepByStepTourStateSource
+}
+
+export type StepByStepTourScopedWorkspaceProperties = StepByStepTourWorkspaceProperties & {
   workspace_scope: StepByStepTourWorkspaceScope
 }
 
@@ -99,11 +98,10 @@ export type StepByStepTourGuideProperties = StepByStepTourTaskProperties & {
   guide_group: StepByStepTourGuideGroup | null
   guide_plan_index: number
   guide_plan_total: number
-  guide_raw_index: number
   guide_target: string
 }
 
-export type StepByStepTourShownProperties = StepByStepTourWorkspaceProperties & {
+export type StepByStepTourShownProperties = StepByStepTourScopedWorkspaceProperties & {
   completed_task_count: number
   initial_state: StepByStepTourCardState
   task_total: number
@@ -119,16 +117,13 @@ export type StepByStepTourTaskCtaClickedProperties = StepByStepTourWorkspaceProp
 
 export type StepByStepTourStepShownProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
   interaction_policy: StepByStepTourGuideInteractionPolicy
-  step_label: string
 }
 
 export type StepByStepTourStepCtaClickedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
-  cta_label: string
-  cta_type: 'complete_guide'
+  cta_type: 'complete_guide' | 'skip_walkthrough'
 }
 
 export type StepByStepTourStepCompletedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
-  completion_type: 'external_action' | 'guide_action'
   next_guide_target: string | null
 }
 
@@ -139,19 +134,17 @@ export type StepByStepTourTaskCompletedProperties = StepByStepTourWorkspacePrope
   task_total: number
 }
 
-export type StepByStepTourCompletedProperties = StepByStepTourWorkspaceProperties & {
+export type StepByStepTourCompletedProperties = StepByStepTourScopedWorkspaceProperties & {
   completed_task_ids: readonly StepByStepTourTaskId[]
-  duration_ms: number
-  steps_done: number
   task_total: number
 }
 
 export type StepByStepTourSkippedProperties = StepByStepTourWorkspaceProperties & {
   active_task_id: StepByStepTourTaskId | null
-  at_state: StepByStepTourCardState
+  at_state: StepByStepTourTourState
   completed_task_count: number
   skip_scope: 'tour'
-  source: 'floating_checklist'
+  source: 'completion_prompt' | 'floating_checklist'
 }
 
 export type StepByStepTourWalkthroughSkippedProperties = StepByStepTourWorkspaceProperties & StepByStepTourGuideProperties & {
@@ -164,13 +157,6 @@ export type StepByStepTourVisibilityToggledProperties = StepByStepTourWorkspaceP
   was_skipped: boolean
 }
 
-export type StepByStepTourCardToggledProperties = StepByStepTourWorkspaceProperties & {
-  active_task_id: StepByStepTourTaskId | null
-  completed_task_count: number
-  source: 'auto_walkthrough_end' | 'auto_walkthrough_start' | 'user'
-  to_state: StepByStepTourCardState
-}
-
 export type StepByStepTourTaskUncompletedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
   completed_task_count_after: number
   completed_task_count_before: number
@@ -179,30 +165,13 @@ export type StepByStepTourTaskUncompletedProperties = StepByStepTourWorkspacePro
 
 export type StepByStepTourPermissionFallbackViewedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
   fallback_behavior: StepByStepTourPermissionFallbackBehavior
-  guide_group: Extract<StepByStepTourGuideGroup, 'integrationLimitedAccess'> | null
+  guide_group: Extract<StepByStepTourGuideGroup, 'homeNoCreate' | 'integrationLimitedAccess' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps'> | null
   restriction: StepByStepTourPermissionRestriction
   role: StepByStepTourRole
 }
 
-export type StepByStepTourLearnMoreClickedProperties = StepByStepTourWorkspaceProperties & StepByStepTourTaskProperties & {
-  doc_path: string
-  guide_group: StepByStepTourGuideGroup | null
-  guide_target: string | null
-  source: 'checklist' | 'coachmark'
-}
-
-export type StepByStepTourDismissedProperties = StepByStepTourWorkspaceProperties & {
-  active_task_id: StepByStepTourTaskId | null
-  completed_task_count: number
-  from_state: 'skip_recovery'
-  source: 'recovery_prompt'
-}
-
 export type StepByStepTourAnalyticsPayloads = {
-  tour_card_toggled: StepByStepTourCardToggledProperties
   tour_completed: StepByStepTourCompletedProperties
-  tour_dismissed: StepByStepTourDismissedProperties
-  tour_learn_more_clicked: StepByStepTourLearnMoreClickedProperties
   tour_permission_fallback_viewed: StepByStepTourPermissionFallbackViewedProperties
   tour_shown: StepByStepTourShownProperties
   tour_skipped: StepByStepTourSkippedProperties
@@ -236,17 +205,21 @@ export const getStepByStepTourWorkspaceScope = ({
 }
 
 export const buildStepByStepTourWorkspaceProperties = ({
+  currentWorkspaceId,
+}: {
+  currentWorkspaceId: string
+}): StepByStepTourWorkspaceProperties => ({
+  current_workspace_id: currentWorkspaceId,
+})
+
+export const buildStepByStepTourScopedWorkspaceProperties = ({
   accountState,
   currentWorkspaceId,
-  stateSource = 'local_storage',
 }: {
   accountState: Pick<StepByStepTourAccountState, 'firstWorkspaceId' | 'manuallyDisabledWorkspaceIds' | 'manuallyEnabledWorkspaceIds'>
   currentWorkspaceId: string
-  stateSource?: StepByStepTourStateSource
-}): StepByStepTourWorkspaceProperties => ({
-  current_workspace_id: currentWorkspaceId,
-  first_workspace_id: accountState.firstWorkspaceId ?? null,
-  state_source: stateSource,
+}): StepByStepTourScopedWorkspaceProperties => ({
+  ...buildStepByStepTourWorkspaceProperties({ currentWorkspaceId }),
   workspace_scope: getStepByStepTourWorkspaceScope({
     accountState,
     currentWorkspaceId,
@@ -264,7 +237,7 @@ export const getStepByStepTourPermissionVariant = ({
   hasKnowledgeWalkthroughPermissions: boolean
   taskId: StepByStepTourTaskId
 }): StepByStepTourPermissionVariant => {
-  if (taskId === 'studio' && !canCreateApp)
+  if ((taskId === 'home' || taskId === 'studio') && !canCreateApp)
     return 'no_create'
 
   if (taskId === 'knowledge' && !hasKnowledgeWalkthroughPermissions)

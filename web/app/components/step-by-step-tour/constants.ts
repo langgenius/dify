@@ -1,8 +1,6 @@
-import type { StepByStepTourAccountState, StepByStepTourTaskDefinition } from './types'
+import type { StepByStepTourTaskDefinition, StepByStepTourUiState } from './types'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { STEP_BY_STEP_TOUR_TARGETS } from './target-registry'
-
-export const STEP_BY_STEP_TOUR_STORAGE_KEY = 'step-by-step-tour-account-state'
 
 export const STEP_BY_STEP_TOUR_TASKS = [
   {
@@ -45,10 +43,10 @@ export const STEP_BY_STEP_TOUR_TASKS = [
   },
 ] as const satisfies readonly StepByStepTourTaskDefinition[]
 
-export const createDefaultStepByStepTourAccountState = (): StepByStepTourAccountState => ({
-  manuallyEnabledWorkspaceIds: [],
-  manuallyDisabledWorkspaceIds: [],
+export const createDefaultStepByStepTourUiState = (): StepByStepTourUiState => ({
+  activeTaskId: undefined,
+  activeGuideIndex: undefined,
+  activeGuideGroup: undefined,
+  activeGuideIndexes: undefined,
   minimized: false,
-  completedTaskIds: [],
-  skipped: false,
 })

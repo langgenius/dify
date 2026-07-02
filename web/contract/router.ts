@@ -27,6 +27,7 @@ import { logout } from '@dify/contracts/api/console/logout/orpc.gen'
 import { notification } from '@dify/contracts/api/console/notification/orpc.gen'
 import { notion } from '@dify/contracts/api/console/notion/orpc.gen'
 import { oauth } from '@dify/contracts/api/console/oauth/orpc.gen'
+import { onboarding } from '@dify/contracts/api/console/onboarding/orpc.gen'
 import { rag } from '@dify/contracts/api/console/rag/orpc.gen'
 import { refreshToken } from '@dify/contracts/api/console/refresh-token/orpc.gen'
 import { remoteFiles } from '@dify/contracts/api/console/remote-files/orpc.gen'
@@ -81,6 +82,7 @@ const communityContract = {
   logout,
   notification,
   notion,
+  onboarding,
   oauth,
   rag,
   refreshToken,

@@ -1,7 +1,7 @@
 'use client'
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
+import type { StepByStepTourPersistentState, StepByStepTourTaskId } from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
@@ -19,8 +19,17 @@ import AppCard from '@/app/components/explore/app-card'
 import Banner from '@/app/components/explore/banner/banner'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import {
+  buildStepByStepTourScopedWorkspaceProperties,
+  buildStepByStepTourWorkspaceProperties,
+  getStepByStepTourPermissionVariant,
+  STEP_BY_STEP_TOUR_ANALYTICS_EVENTS,
+  trackStepByStepTourEvent,
+} from '@/app/components/step-by-step-tour/analytics'
+import { STEP_BY_STEP_TOUR_TASKS } from '@/app/components/step-by-step-tour/constants'
+import {
   useSetStepByStepTourAccountState,
   useStepByStepTourAccountStateValue,
+  useStepByStepTourStateActions,
 } from '@/app/components/step-by-step-tour/storage'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useAppContext } from '@/context/app-context'
@@ -56,13 +65,6 @@ const homeContinueWorkAppsInput = {
 
 const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled'] as const
 const HOME_STEP_BY_STEP_TOUR_TASK_ID = 'home' satisfies StepByStepTourTaskId
-
-const addHomeStepByStepTourTask = (completedTaskIds: StepByStepTourTaskId[]): StepByStepTourTaskId[] => {
-  if (completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID))
-    return completedTaskIds
-
-  return [...completedTaskIds, HOME_STEP_BY_STEP_TOUR_TASK_ID]
-}
 
 function getLocaleQueryInput(locale?: string) {
   return locale
@@ -115,7 +117,7 @@ function getDisabledBannersQueryOptions() {
 const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const { t } = useTranslation()
   const locale = useLocale()
-  const { workspacePermissionKeys } = useAppContext()
+  const { currentWorkspace, workspacePermissionKeys } = useAppContext()
   const { data: systemFeatures } = useSuspenseQuery(
     systemFeaturesQueryOptions(),
   )
@@ -141,6 +143,35 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
   // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
   const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour state actions are not React useState calls.
+  const stepByStepTourActions = useStepByStepTourStateActions()
+  const currentWorkspaceId = currentWorkspace.id
+  const trackHomeTourCompleted = useCallback((state: StepByStepTourPersistentState) => {
+    trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.taskCompleted, {
+      ...buildStepByStepTourWorkspaceProperties({ currentWorkspaceId }),
+      task_id: HOME_STEP_BY_STEP_TOUR_TASK_ID,
+      completed_task_count: state.completedTaskIds.length,
+      completion_source: 'external_action',
+      permission_variant: getStepByStepTourPermissionVariant({
+        canCreateApp,
+        hasIntegrationWalkthroughPermissions: true,
+        hasKnowledgeWalkthroughPermissions: true,
+        taskId: HOME_STEP_BY_STEP_TOUR_TASK_ID,
+      }),
+      task_total: STEP_BY_STEP_TOUR_TASKS.length,
+    })
+
+    if (STEP_BY_STEP_TOUR_TASKS.every(task => state.completedTaskIds.includes(task.id))) {
+      trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.completed, {
+        ...buildStepByStepTourScopedWorkspaceProperties({
+          accountState: state,
+          currentWorkspaceId,
+        }),
+        completed_task_ids: state.completedTaskIds,
+        task_total: STEP_BY_STEP_TOUR_TASKS.length,
+      })
+    }
+  }, [canCreateApp, currentWorkspaceId])
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -246,13 +277,15 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       activeTaskId: undefined,
       activeGuideIndex: undefined,
       activeGuideGroup: undefined,
-      completedTaskIds: addHomeStepByStepTourTask(stepByStepTourAccountState.completedTaskIds),
       minimized: false,
+    })
+    stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {
+      onSuccess: trackHomeTourCompleted,
     })
     isCurrentTryAppFromLearnDifyRef.current = false
     shouldCompleteHomeTourOnCreateRef.current = false
     isSubmittingHomeTourCreateRef.current = false
-  }, [setStepByStepTourAccountState, stepByStepTourAccountState])
+  }, [setStepByStepTourAccountState, stepByStepTourAccountState, stepByStepTourActions, trackHomeTourCompleted])
 
   const completeHomeTourAfterOpenDetails = useCallback(() => {
     if (
@@ -268,10 +301,12 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
       activeTaskId: undefined,
       activeGuideIndex: undefined,
       activeGuideGroup: undefined,
-      completedTaskIds: addHomeStepByStepTourTask(stepByStepTourAccountState.completedTaskIds),
       minimized: false,
     })
-  }, [setStepByStepTourAccountState, stepByStepTourAccountState])
+    stepByStepTourActions.completeTask(HOME_STEP_BY_STEP_TOUR_TASK_ID, {
+      onSuccess: trackHomeTourCompleted,
+    })
+  }, [setStepByStepTourAccountState, stepByStepTourAccountState, stepByStepTourActions, trackHomeTourCompleted])
 
   const abandonHomeTourCreate = useCallback(() => {
     if (!isCurrentTryAppFromLearnDifyRef.current || isSubmittingHomeTourCreateRef.current)

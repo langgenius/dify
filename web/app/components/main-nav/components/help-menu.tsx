@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { StepByStepTourPersistentState } from '@/app/components/step-by-step-tour/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -21,10 +22,16 @@ import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import {
+  buildStepByStepTourScopedWorkspaceProperties,
+  STEP_BY_STEP_TOUR_ANALYTICS_EVENTS,
+  trackStepByStepTourEvent,
+} from '@/app/components/step-by-step-tour/analytics'
 import { useSetStepByStepTourSkipRecoveryVisible, useStepByStepTourSkipRecoveryVisible } from '@/app/components/step-by-step-tour/atoms'
 import {
-  useSetStepByStepTourAccountState,
+  getStepByStepTourEnabledForCurrentWorkspace,
   useStepByStepTourAccountStateValue,
+  useStepByStepTourStateActions,
 } from '@/app/components/step-by-step-tour/storage'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -50,16 +57,6 @@ const defaultTriggerIcon = (
     <path d="M11.9665 13.2485C11.9665 11.1995 14.4665 11.9134 14.4665 9.49854C14.4665 8.11782 13.3473 6.99854 11.9665 6.99854C11.0412 6.99854 10.2333 7.50129 9.80103 8.24854" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
-
-const addWorkspaceId = (workspaceIds: string[], workspaceId: string) => {
-  if (workspaceIds.includes(workspaceId))
-    return workspaceIds
-
-  return [...workspaceIds, workspaceId]
-}
-
-const removeWorkspaceId = (workspaceIds: string[], workspaceId: string) =>
-  workspaceIds.filter(id => id !== workspaceId)
 
 const MenuSwitchIndicator = ({
   checked,
@@ -87,33 +84,38 @@ const HelpMenu = ({
   const setLearnDifyHidden = useSetLearnDifyHidden()
   // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
   const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
-  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
-  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour state actions are not React useState calls.
+  const stepByStepTourActions = useStepByStepTourStateActions()
   const skipRecoveryVisible = useStepByStepTourSkipRecoveryVisible()
   const setSkipRecoveryVisible = useSetStepByStepTourSkipRecoveryVisible()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
   const currentWorkspaceId = currentWorkspace.id
-  const stepByStepTourEnabled = !stepByStepTourAccountState.skipped
-    && !stepByStepTourAccountState.manuallyDisabledWorkspaceIds.includes(currentWorkspaceId)
-    && (
-      stepByStepTourAccountState.firstWorkspaceId === currentWorkspaceId
-      || stepByStepTourAccountState.manuallyEnabledWorkspaceIds.includes(currentWorkspaceId)
-    )
+  const stepByStepTourEnabled = getStepByStepTourEnabledForCurrentWorkspace(
+    stepByStepTourAccountState,
+    currentWorkspaceId,
+  )
 
   const handleStepByStepTourCheckedChange = (checked: boolean) => {
     setSkipRecoveryVisible(false)
-    setStepByStepTourAccountState({
-      ...stepByStepTourAccountState,
-      skipped: checked ? false : stepByStepTourAccountState.skipped,
-      manuallyEnabledWorkspaceIds: checked
-        ? addWorkspaceId(stepByStepTourAccountState.manuallyEnabledWorkspaceIds, currentWorkspaceId)
-        : removeWorkspaceId(stepByStepTourAccountState.manuallyEnabledWorkspaceIds, currentWorkspaceId),
-      manuallyDisabledWorkspaceIds: checked
-        ? removeWorkspaceId(stepByStepTourAccountState.manuallyDisabledWorkspaceIds, currentWorkspaceId)
-        : addWorkspaceId(stepByStepTourAccountState.manuallyDisabledWorkspaceIds, currentWorkspaceId),
-    })
+    const wasSkipped = stepByStepTourAccountState.skipped
+    const trackVisibilityToggled = (state: StepByStepTourPersistentState) => {
+      trackStepByStepTourEvent(STEP_BY_STEP_TOUR_ANALYTICS_EVENTS.visibilityToggled, {
+        ...buildStepByStepTourScopedWorkspaceProperties({
+          accountState: state,
+          currentWorkspaceId,
+        }),
+        source: 'help_menu',
+        to_state: checked ? 'on' : 'off',
+        was_skipped: wasSkipped,
+      })
+    }
+
+    if (checked)
+      stepByStepTourActions.enableCurrentWorkspace(currentWorkspaceId, { onSuccess: trackVisibilityToggled })
+    else
+      stepByStepTourActions.disableCurrentWorkspace(currentWorkspaceId, { onSuccess: trackVisibilityToggled })
 
     if (checked)
       setOpen(false)
@@ -179,7 +181,7 @@ const HelpMenu = ({
                   <MenuSwitchIndicator checked={!learnDifyHidden} />
                 </DropdownMenuCheckboxItem>
               )}
-              {IS_CLOUD_EDITION && (
+              {IS_CLOUD_EDITION && stepByStepTourAccountState.eligible && (
                 <DropdownMenuCheckboxItem
                   checked={stepByStepTourEnabled}
                   closeOnClick={false}

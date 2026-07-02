@@ -17,16 +17,31 @@ export type StepByStepTourGuideGroup
     | 'integrationLimitedAccess'
 
 export type StepByStepTourAccountState = {
+  eligible: boolean
   firstWorkspaceId?: string
+  updatedAt?: string | null
+  manuallyEnabledWorkspaceIds: string[]
+  manuallyDisabledWorkspaceIds: string[]
+  completedTaskIds: StepByStepTourTaskId[]
+  skipped: boolean
+} & StepByStepTourUiState
+
+export type StepByStepTourPersistentState = {
+  eligible: boolean
+  firstWorkspaceId?: string
+  updatedAt?: string | null
+  manuallyEnabledWorkspaceIds: string[]
+  manuallyDisabledWorkspaceIds: string[]
+  completedTaskIds: StepByStepTourTaskId[]
+  skipped: boolean
+}
+
+export type StepByStepTourUiState = {
   activeTaskId?: StepByStepTourTaskId
   activeGuideIndex?: number
   activeGuideGroup?: StepByStepTourGuideGroup
   activeGuideIndexes?: number[]
-  manuallyEnabledWorkspaceIds: string[]
-  manuallyDisabledWorkspaceIds: string[]
   minimized: boolean
-  completedTaskIds: StepByStepTourTaskId[]
-  skipped: boolean
 }
 
 export type StepByStepTourPermissionFallback
