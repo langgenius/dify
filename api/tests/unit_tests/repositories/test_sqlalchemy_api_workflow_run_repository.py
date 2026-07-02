@@ -10,8 +10,8 @@ from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from models.human_input import RecipientType
 from models.workflow import WorkflowPauseReason
 from repositories.sqlalchemy_api_workflow_run_repository import (
-    _PrivateWorkflowPauseEntity,
     _build_human_input_required_reason,
+    _PrivateWorkflowPauseEntity,
 )
 
 
