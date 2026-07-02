@@ -15,6 +15,7 @@ class AgentNodeData(BaseNodeData):
     agent_strategy_name: str
     agent_strategy_label: str
     memory: MemoryConfig | None = None
+    reasoning_format: Literal["tagged", "separated"] = "tagged"
     # The version of the tool parameter.
     # If this value is None, it indicates this is a previous version
     # and requires using the legacy parameter parsing rules.

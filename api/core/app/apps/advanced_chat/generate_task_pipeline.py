@@ -475,11 +475,11 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
 
-        # Collect terminal reasoning (separated mode) per LLM node id for persistence. This is the
+        # Collect terminal reasoning for nodes that expose reasoning_content. This is the
         # authoritative source (outputs.reasoning_content), decoupled from the live delta stream.
         # Accumulate across iteration/loop passes (same node_id) to match the live stream, which
         # appends every pass under the same key — overwriting would keep only the last pass.
-        if event.node_type == BuiltinNodeTypes.LLM:
+        if event.node_type in {BuiltinNodeTypes.LLM, BuiltinNodeTypes.AGENT}:
             reasoning_content = (event.outputs or {}).get("reasoning_content")
             if isinstance(reasoning_content, str) and reasoning_content:
                 self._task_state.metadata.reasoning[event.node_id] = (
