@@ -21691,7 +21691,7 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | No |
-| id | string |  | No |
+| id | string |  | Yes |
 | name | string |  | No |
 
 #### TrialSite
@@ -21789,14 +21789,6 @@ Enum class for tool provider
 | updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | version | string |  | No |
 
-#### TrialWorkflowAccount
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | Yes |
-| name | string |  | No |
-
 #### TrialWorkflowPartial
 
 | Name | Type | Description | Required |
@@ -21823,7 +21815,7 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [JsonObject](#jsonobject) ] |  | No |
 | created_at | integer |  | No |
-| created_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
+| created_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | environment_variables | [ [JsonObject](#jsonobject) ] |  | No |
 | features | [JsonObject](#jsonobject) |  | No |
 | graph | [JsonObject](#jsonobject) |  | Yes |
@@ -21834,7 +21826,7 @@ Enum class for tool provider
 | rag_pipeline_variables | [ [JsonObject](#jsonobject) ] |  | No |
 | tool_published | boolean |  | No |
 | updated_at | integer |  | No |
-| updated_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
+| updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | version | string |  | No |
 
 #### TriggerCreationMethod
