@@ -279,7 +279,7 @@ class DocumentResource(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        document = DocumentService.get_document(dataset_id, document_id)
+        document = DocumentService.get_document(dataset_id, document_id, session=db.session)
 
         if not document:
             raise NotFound("Document not found.")
