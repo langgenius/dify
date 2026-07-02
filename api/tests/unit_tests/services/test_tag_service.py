@@ -57,7 +57,7 @@ def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(
     assert bindings[0].created_by == account.id
 
 
-def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(
+def test_delete_tag_binding_preserves_wrong_type_and_other_tenant_snippet_bindings(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
     account, tenant = _create_account_with_tenant(db_session_with_containers)
@@ -104,7 +104,7 @@ def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(
     assert remaining_tag_ids == {app_tag.id, other_tenant_tag.id}
 
 
-def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(
+def test_delete_tag_binding_succeeds_when_no_snippet_rows_match(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
     account, tenant = _create_account_with_tenant(db_session_with_containers)
@@ -121,7 +121,7 @@ def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(
     assert bindings == []
 
 
-def test_update_tags_scopes_lookup_to_current_tenant_and_type(
+def test_update_tags_requires_current_tenant_and_type(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
     account, tenant = _create_account_with_tenant(db_session_with_containers)
@@ -153,7 +153,7 @@ def test_update_tags_scopes_lookup_to_current_tenant_and_type(
     assert other_tenant_tag.name == other_tenant_tag_name
 
 
-def test_get_tag_binding_count_scopes_lookup_to_current_tenant_and_type(
+def test_get_tag_binding_count_scopes_to_current_tenant_and_type(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
     account, tenant = _create_account_with_tenant(db_session_with_containers)
@@ -192,7 +192,7 @@ def test_get_tag_binding_count_scopes_lookup_to_current_tenant_and_type(
     )
 
 
-def test_delete_tag_scopes_lookup_and_bindings_to_current_tenant(
+def test_delete_tag_requires_current_tenant_and_type(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
     account, tenant = _create_account_with_tenant(db_session_with_containers)
@@ -219,7 +219,7 @@ def test_delete_tag_scopes_lookup_and_bindings_to_current_tenant(
     assert db_session_with_containers.scalar(select(Tag).where(Tag.id == other_tenant_tag.id)) is not None
 
 
-def test_get_target_ids_by_tag_ids_returns_empty_without_query_for_empty_input(
+def test_get_target_ids_by_tag_ids_empty_snippet_tag_ids(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
     account, tenant = _create_account_with_tenant(db_session_with_containers)
@@ -230,7 +230,7 @@ def test_get_target_ids_by_tag_ids_returns_empty_without_query_for_empty_input(
     assert result == []
 
 
-def test_check_target_exists_accepts_existing_snippet(
+def test_check_target_exists_snippet_success(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
     account, tenant = _create_account_with_tenant(db_session_with_containers)
@@ -241,7 +241,7 @@ def test_check_target_exists_accepts_existing_snippet(
     TagService.check_target_exists(TagType.SNIPPET, snippet.id, db_session_with_containers)
 
 
-def test_check_target_exists_raises_when_snippet_missing(
+def test_check_target_exists_snippet_not_found_for_missing_id(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
     account, tenant = _create_account_with_tenant(db_session_with_containers)
@@ -265,6 +265,6 @@ def test_check_target_exists_snippet_not_found_for_other_tenant(
         TagService.check_target_exists(TagType.SNIPPET, other_tenant_snippet.id, db_session_with_containers)
 
 
-def test_check_target_exists_raises_for_invalid_binding_type(db_session_with_containers: Session) -> None:
+def test_check_target_exists_invalid_type(db_session_with_containers: Session) -> None:
     with pytest.raises(NotFound, match="Invalid binding type"):
         TagService.check_target_exists("invalid_type", "target-id", db_session_with_containers)
