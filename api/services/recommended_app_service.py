@@ -29,9 +29,9 @@ class RecommendedAppService:
 
         if FeatureService.get_system_features().enable_trial_app:
             apps = result["recommended_apps"]
+            trialable_ids = cls._collect_trialable_app_ids(session, [app["app_id"] for app in apps])
             for app in apps:
-                app_id = app["app_id"]
-                app["can_trial"] = cls._can_trial_app(session, app_id)
+                app["can_trial"] = app["app_id"] in trialable_ids
         return result
 
     @classmethod
@@ -46,8 +46,10 @@ class RecommendedAppService:
         result = retrieval_instance.get_learn_dify_apps(language)
 
         if FeatureService.get_system_features().enable_trial_app:
-            for app in result["recommended_apps"]:
-                app["can_trial"] = cls._can_trial_app(session, app["app_id"])
+            apps = result["recommended_apps"]
+            trialable_ids = cls._collect_trialable_app_ids(session, [app["app_id"] for app in apps])
+            for app in apps:
+                app["can_trial"] = app["app_id"] in trialable_ids
 
         return {"recommended_apps": result["recommended_apps"]}
 
@@ -91,3 +93,16 @@ class RecommendedAppService:
     def _can_trial_app(session: scoped_session, app_id: str) -> bool:
         trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
         return trial_app_model is not None
+
+    @staticmethod
+    def _collect_trialable_app_ids(session: scoped_session, app_ids: list[str]) -> set[str]:
+        """Return the subset of app_ids that have a TrialApp row.
+
+        Resolves a per-app can_trial flag in a single SELECT instead of
+        issuing one query per row (N+1 avoidance).
+        """
+        if not app_ids:
+            return set()
+        unique_ids = list(dict.fromkeys(app_ids))
+        rows = session.scalars(select(TrialApp.app_id).where(TrialApp.app_id.in_(unique_ids))).all()
+        return set(rows)
