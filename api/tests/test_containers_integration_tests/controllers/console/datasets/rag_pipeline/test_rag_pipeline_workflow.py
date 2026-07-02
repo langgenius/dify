@@ -470,7 +470,7 @@ class TestPipelineRunApis:
                 return_value={"ok": True},
             ),
         ):
-            assert method(api, user, pipeline) == {"ok": True}
+            assert method(api, MagicMock(spec=Session), user, pipeline) == {"ok": True}
 
     def test_draft_run_rate_limit(self, app: Flask) -> None:
         api = DraftRagPipelineRunApi()
@@ -498,7 +498,7 @@ class TestPipelineRunApis:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, pipeline)
+                method(api, MagicMock(spec=Session), user, pipeline)
 
 
 class TestDraftNodeRun:
@@ -655,7 +655,7 @@ class TestPublishedRagPipelineRunApi:
                 return_value={"ok": True},
             ),
         ):
-            result = method(api, user, pipeline)
+            result = method(api, MagicMock(spec=Session), user, pipeline)
             assert result == {"ok": True}
 
     def test_published_run_rate_limit(self, app: Flask) -> None:
@@ -681,7 +681,7 @@ class TestPublishedRagPipelineRunApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, pipeline)
+                method(api, MagicMock(spec=Session), user, pipeline)
 
 
 class TestDefaultBlockConfigApi:
