@@ -4,6 +4,7 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Union
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -31,7 +32,6 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
-    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -48,7 +48,6 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
-    ReasoningChunkStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
     WorkflowAppBlockingResponse,
@@ -66,10 +65,11 @@ from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState
+from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
-from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
+from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
@@ -552,6 +552,17 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             error=error,
             exceptions_count=exceptions_count,
         )
+
+        # Persist STOPPED status to the database so the workflow run does not remain RUNNING in logs
+        if isinstance(event, QueueStopEvent) and self._workflow_execution_id:
+            with self._database_session() as session:
+                workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == self._workflow_execution_id))
+                if workflow_run is not None:
+                    workflow_run.status = WorkflowExecutionStatus.STOPPED
+                    workflow_run.error = error
+                    workflow_run.finished_at = naive_utc_now()
+                    session.commit()
+
         yield workflow_finish_resp
 
     def _handle_text_chunk_event(
@@ -572,22 +583,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tts_publisher.publish(queue_message)
 
         yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
-
-    def _handle_reasoning_chunk_event(
-        self, event: QueueReasoningChunkEvent, **kwargs
-    ) -> Generator[StreamResponse, None, None]:
-        """Handle reasoning chunk events."""
-        # is_final with empty reasoning is still forwarded as the "thinking finished" signal
-        if not event.reasoning and not event.is_final:
-            return
-        yield ReasoningChunkStreamResponse(
-            task_id=self._application_generate_entity.task_id,
-            data=ReasoningChunkStreamResponse.Data(
-                reasoning=event.reasoning,
-                node_id=event.from_node_id,
-                is_final=event.is_final,
-            ),
-        )
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
@@ -618,7 +613,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueuePingEvent: self._handle_ping_event,
             QueueErrorEvent: self._handle_error_event,
             QueueTextChunkEvent: self._handle_text_chunk_event,
-            QueueReasoningChunkEvent: self._handle_reasoning_chunk_event,
             # Workflow events
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,

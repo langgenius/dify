@@ -37,9 +37,6 @@
  *   DIFY_E2E_HITL_EXTERNAL_APP_ID
  *   DIFY_E2E_HITL_SINGLE_ACTION_APP_ID
  *   DIFY_E2E_HITL_MULTI_NODE_APP_ID
- *   DIFY_E2E_REASONING_APP_ID  Override separated-reasoning chatflow app ID
- *   DIFY_E2E_REASONING_PROVISION=1  Opt in to auto-provisioning reasoning-chat.yml
- *                                   (needs a workspace default chat model)
  */
 
 /** Supported edition values. */
@@ -77,11 +74,7 @@ export type E2EEnv = {
   fileAppId: string
   /** Chat app (advanced-chat) with a file input variable */
   fileChatAppId: string
-  /**
-   * Chatflow whose LLM node uses reasoning_format=separated. Empty unless
-   * DIFY_E2E_REASONING_APP_ID is set or the fixture is auto-provisioned; the
-   * run-app-reasoning suite is skipped when empty.
-   */
+  /** Chat app with separated reasoning (needs real model) */
   reasoningAppId: string
   /**
    * Secondary workspace ID — EE only ("auto_test1").
@@ -127,7 +120,6 @@ export type E2ECapabilities = {
   workflowAppId: string
   fileAppId: string
   fileChatAppId: string
-  reasoningAppId: string
   hitlAppId: string
   hitlExternalAppId: string
   hitlSingleActionAppId: string
@@ -217,7 +209,6 @@ export function resolveEnv(caps: E2ECapabilities | undefined): E2EEnv {
     workflowAppId: caps.workflowAppId || env.workflowAppId,
     fileAppId: caps.fileAppId || env.fileAppId,
     fileChatAppId: caps.fileChatAppId || env.fileChatAppId,
-    reasoningAppId: caps.reasoningAppId || env.reasoningAppId,
     hitlAppId: caps.hitlAppId || env.hitlAppId,
     hitlExternalAppId: caps.hitlExternalAppId || env.hitlExternalAppId,
     hitlSingleActionAppId: caps.hitlSingleActionAppId || env.hitlSingleActionAppId,

@@ -87,7 +87,7 @@ from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole, MessageFileBelongsTo, MessageStatus
 from models.execution_extra_content import HumanInputContent
 from models.model import AppMode
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowRun
 
 logger = logging.getLogger(__name__)
 
@@ -774,6 +774,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             with self._database_session() as session:
                 # Save message
                 self._save_message(session=session, graph_runtime_state=resolved_state)
+                # Update workflow run status to STOPPED so it does not remain RUNNING in logs
+                workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == self._workflow_run_id))
+                if workflow_run is not None:
+                    workflow_run.status = WorkflowExecutionStatus.STOPPED
+                    workflow_run.error = event.get_stop_reason()
+                    workflow_run.finished_at = naive_utc_now()
+                    session.commit()
 
             yield workflow_finish_resp
         elif event.stopped_by in (

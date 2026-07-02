@@ -29,7 +29,7 @@ export default class ResumeApp extends DifyCommand {
     'workspace': Flags.string({ description: 'workspace id override' }),
     'with-history': Flags.boolean({ description: 'Replay executed-node history before attaching to live stream.', default: false }),
     'stream': Flags.boolean({ description: 'Print output live as tokens/events arrive. Default: collect and print at end.', default: false }),
-    'think': Flags.boolean({ description: 'Show model thinking/reasoning when available — both inline <think>...</think> blocks and separated reasoning streams. Hidden by default; with --think, thinking is printed to stderr.', default: false }),
+    'think': Flags.boolean({ description: 'Show model thinking/reasoning when available. Strips <think>...</think> blocks silently by default; with --think, thinking is printed to stderr.', default: false }),
     'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.TEXT], default: '' }),
     'http-retry': httpRetryFlag,
   }

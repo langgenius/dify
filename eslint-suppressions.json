@@ -4809,11 +4809,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/hooks/use-workflow-run-event/index.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 19
-    }
-  },
   "web/app/components/workflow/hooks/use-workflow-run-event/use-workflow-agent-log.ts": {
     "ts/no-explicit-any": {
       "count": 1
