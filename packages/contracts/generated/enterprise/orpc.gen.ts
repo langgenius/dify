@@ -118,7 +118,9 @@ export const listAppInstanceSummaries = oc
       tags: ['AppInstanceService'],
     }),
   )
-  .input(z.object({ query: zAppInstanceServiceListAppInstanceSummariesQuery.optional() }))
+  .input(
+    z.object({ query: zAppInstanceServiceListAppInstanceSummariesQuery.optional() }).optional(),
+  )
   .output(zAppInstanceServiceListAppInstanceSummariesResponse)
 
 export const listAppInstances = oc
@@ -131,7 +133,7 @@ export const listAppInstances = oc
       tags: ['AppInstanceService'],
     }),
   )
-  .input(z.object({ query: zAppInstanceServiceListAppInstancesQuery.optional() }))
+  .input(z.object({ query: zAppInstanceServiceListAppInstancesQuery.optional() }).optional())
   .output(zAppInstanceServiceListAppInstancesResponse)
 
 export const createAppInstance = oc
@@ -667,7 +669,7 @@ export const listEnvironments = oc
       tags: ['EnvironmentService'],
     }),
   )
-  .input(z.object({ query: zEnvironmentServiceListEnvironmentsQuery.optional() }))
+  .input(z.object({ query: zEnvironmentServiceListEnvironmentsQuery.optional() }).optional())
   .output(zEnvironmentServiceListEnvironmentsResponse)
 
 export const environmentService = {
@@ -726,7 +728,7 @@ export const getWebAppAccessMode = oc
       tags: ['WebAppAuth'],
     }),
   )
-  .input(z.object({ query: zWebAppAuthGetWebAppAccessModeQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthGetWebAppAccessModeQuery.optional() }).optional())
   .output(zWebAppAuthGetWebAppAccessModeResponse)
 
 export const updateWebAppWhitelistSubjects = oc
@@ -752,7 +754,7 @@ export const searchForWhilteListCandidates = oc
       tags: ['WebAppAuth'],
     }),
   )
-  .input(z.object({ query: zWebAppAuthSearchForWhilteListCandidatesQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthSearchForWhilteListCandidatesQuery.optional() }).optional())
   .output(zWebAppAuthSearchForWhilteListCandidatesResponse)
 
 export const getWebAppWhitelistSubjects = oc
@@ -765,7 +767,7 @@ export const getWebAppWhitelistSubjects = oc
       tags: ['WebAppAuth'],
     }),
   )
-  .input(z.object({ query: zWebAppAuthGetWebAppWhitelistSubjectsQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthGetWebAppWhitelistSubjectsQuery.optional() }).optional())
   .output(zWebAppAuthGetWebAppWhitelistSubjectsResponse)
 
 export const getGroupSubjects = oc
@@ -778,7 +780,7 @@ export const getGroupSubjects = oc
       tags: ['WebAppAuth'],
     }),
   )
-  .input(z.object({ query: zWebAppAuthGetGroupSubjectsQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthGetGroupSubjectsQuery.optional() }).optional())
   .output(zWebAppAuthGetGroupSubjectsResponse)
 
 export const isUserAllowedToAccessWebApp = oc
@@ -791,7 +793,7 @@ export const isUserAllowedToAccessWebApp = oc
       tags: ['WebAppAuth'],
     }),
   )
-  .input(z.object({ query: zWebAppAuthIsUserAllowedToAccessWebAppQuery.optional() }))
+  .input(z.object({ query: zWebAppAuthIsUserAllowedToAccessWebAppQuery.optional() }).optional())
   .output(zWebAppAuthIsUserAllowedToAccessWebAppResponse)
 
 export const webAppAuth = {

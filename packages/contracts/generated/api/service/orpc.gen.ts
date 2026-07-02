@@ -254,7 +254,7 @@ export const get2 = oc
       tags: ['Feedback'],
     }),
   )
-  .input(z.object({ query: zGetAppFeedbacksQuery.optional() }))
+  .input(z.object({ query: zGetAppFeedbacksQuery.optional() }).optional())
   .output(zGetAppFeedbacksResponse)
 
 export const feedbacks = {
@@ -398,7 +398,7 @@ export const get4 = oc
       tags: ['Annotations'],
     }),
   )
-  .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }))
+  .input(z.object({ query: zGetAppsAnnotationsQuery.optional() }).optional())
   .output(zGetAppsAnnotationsResponse)
 
 /**
@@ -708,7 +708,7 @@ export const get6 = oc
       tags: ['Conversations'],
     }),
   )
-  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
 
 export const conversations = {
@@ -1364,9 +1364,7 @@ export const get12 = oc
       method: 'GET',
       operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
       path: '/datasets/{dataset_id}/documents/{document_id}/segments',
-      queryStyles: {
-        status: 'array',
-      },
+      queryStyles: { status: 'array' },
       summary: 'List Chunks',
       tags: ['Chunks'],
     }),
@@ -2083,14 +2081,12 @@ export const get20 = oc
       method: 'GET',
       operationId: 'getDatasets',
       path: '/datasets',
-      queryStyles: {
-        tag_ids: 'array',
-      },
+      queryStyles: { tag_ids: 'array' },
       summary: 'List Knowledge Bases',
       tags: ['Knowledge Bases'],
     }),
   )
-  .input(z.object({ query: zGetDatasetsQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsQuery.optional() }).optional())
   .output(zGetDatasetsResponse)
 
 /**
@@ -2538,7 +2534,7 @@ export const get31 = oc
       tags: ['Chatflows', 'Workflows'],
     }),
   )
-  .input(z.object({ query: zGetWorkflowsLogsQuery.optional() }))
+  .input(z.object({ query: zGetWorkflowsLogsQuery.optional() }).optional())
   .output(zGetWorkflowsLogsResponse)
 
 export const logs = {

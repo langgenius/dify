@@ -419,7 +419,7 @@ export const get6 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }).optional())
   .output(zGetDatasetsExternalKnowledgeApiResponse)
 
 export const post4 = oc
@@ -536,7 +536,7 @@ export const get8 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }).optional())
   .output(zGetDatasetsProcessRuleResponse)
 
 export const processRule = {
@@ -1007,9 +1007,7 @@ export const patch6 = oc
       method: 'PATCH',
       operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByAction',
       path: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}',
-      queryStyles: {
-        segment_id: 'array',
-      },
+      queryStyles: { segment_id: 'array' },
       tags: ['console'],
     }),
   )
@@ -1242,9 +1240,7 @@ export const delete5 = oc
       method: 'DELETE',
       operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegments',
       path: '/datasets/{dataset_id}/documents/{document_id}/segments',
-      queryStyles: {
-        segment_id: 'array',
-      },
+      queryStyles: { segment_id: 'array' },
       successStatus: 204,
       tags: ['console'],
     }),
@@ -1264,9 +1260,7 @@ export const get21 = oc
       method: 'GET',
       operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
       path: '/datasets/{dataset_id}/documents/{document_id}/segments',
-      queryStyles: {
-        status: 'array',
-      },
+      queryStyles: { status: 'array' },
       tags: ['console'],
     }),
   )
@@ -1937,13 +1931,11 @@ export const get36 = oc
       method: 'GET',
       operationId: 'getDatasets',
       path: '/datasets',
-      queryStyles: {
-        tag_ids: 'array',
-      },
+      queryStyles: { ids: 'array', tag_ids: 'array' },
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetDatasetsQuery.optional() }))
+  .input(z.object({ query: zGetDatasetsQuery.optional() }).optional())
   .output(zGetDatasetsResponse)
 
 /**

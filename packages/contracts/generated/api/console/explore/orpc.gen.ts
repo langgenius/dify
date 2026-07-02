@@ -25,7 +25,7 @@ export const get = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }))
+  .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }).optional())
   .output(zGetExploreAppsLearnDifyResponse)
 
 export const learnDify = {
@@ -59,7 +59,7 @@ export const get3 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetExploreAppsQuery.optional() }))
+  .input(z.object({ query: zGetExploreAppsQuery.optional() }).optional())
   .output(zGetExploreAppsResponse)
 
 export const apps = {
@@ -82,7 +82,7 @@ export const get4 = oc
       tags: ['default'],
     }),
   )
-  .input(z.object({ query: zGetExploreBannersQuery.optional() }))
+  .input(z.object({ query: zGetExploreBannersQuery.optional() }).optional())
   .output(zGetExploreBannersResponse)
 
 export const banners = {

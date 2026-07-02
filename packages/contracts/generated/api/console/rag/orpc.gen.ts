@@ -262,7 +262,7 @@ export const get2 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }))
+  .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }).optional())
   .output(zGetRagPipelineTemplatesResponse)
 
 export const templates2 = {
@@ -364,7 +364,7 @@ export const get5 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }))
+  .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }).optional())
   .output(zGetRagPipelinesRecommendedPluginsResponse)
 
 export const recommendedPlugins = {

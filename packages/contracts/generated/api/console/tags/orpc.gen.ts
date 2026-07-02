@@ -58,7 +58,7 @@ export const get = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetTagsQuery.optional() }))
+  .input(z.object({ query: zGetTagsQuery.optional() }).optional())
   .output(zGetTagsResponse)
 
 export const post = oc

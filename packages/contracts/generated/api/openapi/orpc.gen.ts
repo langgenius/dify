@@ -151,7 +151,7 @@ export const get3 = oc
       tags: ['openapi'],
     }),
   )
-  .input(z.object({ query: zGetAccountSessionsQuery.optional() }))
+  .input(z.object({ query: zGetAccountSessionsQuery.optional() }).optional())
   .output(zGetAccountSessionsResponse)
 
 export const sessions = {
@@ -387,10 +387,6 @@ export const get10 = oc
       method: 'GET',
       operationId: 'getApps',
       path: '/apps',
-      queryStyles: {
-        creator_ids: 'array',
-        tag_ids: 'array',
-      },
       tags: ['openapi'],
     }),
   )
@@ -535,7 +531,7 @@ export const get13 = oc
       tags: ['openapi'],
     }),
   )
-  .input(z.object({ query: zGetPermittedExternalAppsQuery.optional() }))
+  .input(z.object({ query: zGetPermittedExternalAppsQuery.optional() }).optional())
   .output(zGetPermittedExternalAppsResponse)
 
 export const permittedExternalApps = {

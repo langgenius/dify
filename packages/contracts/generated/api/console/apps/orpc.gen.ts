@@ -568,14 +568,11 @@ export const get2 = oc
       method: 'GET',
       operationId: 'getAppsStarred',
       path: '/apps/starred',
-      queryStyles: {
-        creator_ids: 'array',
-        tag_ids: 'array',
-      },
+      queryStyles: { creator_ids: 'array', tag_ids: 'array' },
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetAppsStarredQuery.optional() }))
+  .input(z.object({ query: zGetAppsStarredQuery.optional() }).optional())
   .output(zGetAppsStarredResponse)
 
 export const starred = {
@@ -5296,15 +5293,12 @@ export const get93 = oc
       method: 'GET',
       operationId: 'getApps',
       path: '/apps',
-      queryStyles: {
-        creator_ids: 'array',
-        tag_ids: 'array',
-      },
+      queryStyles: { creator_ids: 'array', tag_ids: 'array' },
       summary: 'Get app list',
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetAppsQuery.optional() }))
+  .input(z.object({ query: zGetAppsQuery.optional() }).optional())
   .output(zGetAppsResponse)
 
 /**

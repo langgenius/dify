@@ -302,10 +302,6 @@ export default defineConfig({
     },
     postProcess: [
       {
-        command: 'node',
-        args: ['scripts/patch-orpc-v2-generated.mjs', '{{path}}'],
-      },
-      {
         command: 'vp',
         args: ['fmt', '{{path}}'],
       },
@@ -330,6 +326,7 @@ export default defineConfig({
     },
     'zod',
     {
+      compatibilityVersion: 2,
       name: 'orpc',
       contracts: {
         strategy: 'single',

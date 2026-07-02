@@ -317,7 +317,7 @@ export const get = oc
       tags: ['web'],
     }),
   )
-  .input(z.object({ query: zGetConversationsQuery.optional() }))
+  .input(z.object({ query: zGetConversationsQuery.optional() }).optional())
   .output(zGetConversationsResponse)
 
 export const conversations = {
@@ -614,7 +614,7 @@ export const get3 = oc
       tags: ['web'],
     }),
   )
-  .input(z.object({ query: zGetLoginStatusQuery.optional() }))
+  .input(z.object({ query: zGetLoginStatusQuery.optional() }).optional())
   .output(zGetLoginStatusResponse)
 
 export const status = {
@@ -829,7 +829,7 @@ export const get9 = oc
       tags: ['web'],
     }),
   )
-  .input(z.object({ query: zGetPassportQuery.optional() }))
+  .input(z.object({ query: zGetPassportQuery.optional() }).optional())
   .output(zGetPassportResponse)
 
 export const passport = {
@@ -959,7 +959,7 @@ export const get11 = oc
       tags: ['web'],
     }),
   )
-  .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
+  .input(z.object({ query: zGetSavedMessagesQuery.optional() }).optional())
   .output(zGetSavedMessagesResponse)
 
 /**
@@ -1085,7 +1085,7 @@ export const get14 = oc
       tags: ['web'],
     }),
   )
-  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
+  .input(z.object({ query: zGetWebappAccessModeQuery.optional() }).optional())
   .output(zGetWebappAccessModeResponse)
 
 export const accessMode = {

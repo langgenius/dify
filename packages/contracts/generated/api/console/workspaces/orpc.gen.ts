@@ -683,15 +683,12 @@ export const get6 = oc
       method: 'GET',
       operationId: 'getWorkspacesCurrentCustomizedSnippets',
       path: '/workspaces/current/customized-snippets',
-      queryStyles: {
-        creators: 'array',
-        tag_ids: 'array',
-      },
+      queryStyles: { creators: 'array', tag_ids: 'array' },
       summary: 'List customized snippets with pagination and search',
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentCustomizedSnippetsResponse)
 
 /**
@@ -1631,7 +1628,7 @@ export const get17 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentModelProvidersResponse)
 
 export const modelProviders = {
@@ -1917,7 +1914,7 @@ export const get25 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginListResponse)
 
 export const list2 = {
@@ -2126,7 +2123,7 @@ export const get31 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentPluginTasksResponse)
 
 export const tasks = {
@@ -3454,9 +3451,7 @@ export const get64 = oc
       method: 'GET',
       operationId: 'getWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfo',
       path: '/workspaces/current/tool-provider/builtin/{provider}/credential/info',
-      queryStyles: {
-        include_credential_ids: 'array',
-      },
+      queryStyles: { include_credential_ids: 'array' },
       tags: ['console'],
     }),
   )
@@ -3513,9 +3508,7 @@ export const get66 = oc
       method: 'GET',
       operationId: 'getWorkspacesCurrentToolProviderBuiltinByProviderCredentials',
       path: '/workspaces/current/tool-provider/builtin/{provider}/credentials',
-      queryStyles: {
-        include_credential_ids: 'array',
-      },
+      queryStyles: { include_credential_ids: 'array' },
       tags: ['console'],
     }),
   )
@@ -3896,7 +3889,9 @@ export const get74 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
+  .input(
+    z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }).optional(),
+  )
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
 
 export const get75 = {
@@ -3962,7 +3957,7 @@ export const get77 = oc
       tags: ['console'],
     }),
   )
-  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }))
+  .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }).optional())
   .output(zGetWorkspacesCurrentToolProvidersResponse)
 
 export const toolProviders = {

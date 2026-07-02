@@ -104,9 +104,7 @@ export const get = oc
       method: 'GET',
       operationId: 'getTrialAppsByAppIdDatasets',
       path: '/trial-apps/{app_id}/datasets',
-      queryStyles: {
-        ids: 'array',
-      },
+      queryStyles: { ids: 'array' },
       tags: ['console'],
     }),
   )
