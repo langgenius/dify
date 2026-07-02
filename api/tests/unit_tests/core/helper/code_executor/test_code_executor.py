@@ -14,6 +14,11 @@ def test_execute_workflow_code_template_raises_for_unsupported_language() -> Non
         code_executor_module.CodeExecutor.execute_workflow_code_template(cast(Any, "ruby"), "print(1)", {})
 
 
+def test_execute_code_raises_for_unsupported_language() -> None:
+    with pytest.raises(code_executor_module.CodeExecutionError, match="Unsupported language"):
+        code_executor_module.CodeExecutor.execute_code(cast(Any, "ruby"), preload="", code="print(1)")
+
+
 def test_execute_workflow_code_template_uses_transformer(mocker: MockerFixture) -> None:
     transformer = MagicMock()
     transformer.transform_caller.return_value = ("runner-script", "preload-script")
