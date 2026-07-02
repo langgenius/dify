@@ -114,10 +114,14 @@ vi.mock('@/service/client', () => ({
     },
     explore: {
       apps: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', 'get', input],
+        },
       },
       banners: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', 'get', input],
+        },
       },
     },
   },
@@ -291,8 +295,8 @@ type RenderOptions = {
 }
 
 const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
-const exploreBannersQueryKey = ['console', 'explore', 'banners', localeInput, 'en']
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
+const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput, 'en']
 
 const renderAppList = (
   hasEditPermission = false,
