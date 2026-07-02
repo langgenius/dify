@@ -1,15 +1,18 @@
 'use client'
 
 import type { RosterFilterValue } from './roster-filter'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { CreateAgentDialog } from './create-agent-dialog'
 
 type RosterToolbarProps = {
+  createdByMe: boolean
   draftAgents: number
   filter: RosterFilterValue
   keyword: string
+  onCreatedByMeChange: (value: boolean) => void
   onFilterChange: (value: RosterFilterValue) => void
   onKeywordChange: (value: string) => void
   publishedAgents: number
@@ -44,9 +47,11 @@ function RosterFilterItem({
 }
 
 export function RosterToolbar({
+  createdByMe,
   draftAgents,
   filter,
   keyword,
+  onCreatedByMeChange,
   onFilterChange,
   onKeywordChange,
   publishedAgents,
@@ -87,6 +92,16 @@ export function RosterToolbar({
         value={keyword}
         onValueChange={onKeywordChange}
       />
+      <div className="flex h-4 shrink-0 px-1" aria-hidden="true">
+        <div className="h-full w-px bg-divider-regular" />
+      </div>
+      <label className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-components-input-bg-normal px-2 py-1">
+        <Checkbox
+          checked={createdByMe}
+          onCheckedChange={checked => onCreatedByMeChange(checked === true)}
+        />
+        <span className="p-1 system-sm-regular text-text-tertiary">{t('roster.filters.createdByMe')}</span>
+      </label>
       <div className="ml-auto flex min-w-0 items-center gap-2">
         <CreateAgentDialog />
       </div>

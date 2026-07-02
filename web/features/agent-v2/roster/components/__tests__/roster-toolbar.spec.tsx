@@ -11,10 +11,14 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const renderToolbar = ({
+  createdByMe = false,
   filter = 'all',
+  onCreatedByMeChange = vi.fn(),
   onFilterChange = vi.fn(),
 }: {
+  createdByMe?: boolean
   filter?: RosterFilterValue
+  onCreatedByMeChange?: (value: boolean) => void
   onFilterChange?: (value: RosterFilterValue) => void
 } = {}) => {
   const queryClient = new QueryClient()
@@ -22,9 +26,11 @@ const renderToolbar = ({
   render(
     <QueryClientProvider client={queryClient}>
       <RosterToolbar
+        createdByMe={createdByMe}
         draftAgents={2}
         filter={filter}
         keyword=""
+        onCreatedByMeChange={onCreatedByMeChange}
         onFilterChange={onFilterChange}
         onKeywordChange={vi.fn()}
         publishedAgents={1}
@@ -32,7 +38,7 @@ const renderToolbar = ({
     </QueryClientProvider>,
   )
 
-  return { onFilterChange }
+  return { onCreatedByMeChange, onFilterChange }
 }
 
 describe('RosterToolbar', () => {
@@ -61,5 +67,18 @@ describe('RosterToolbar', () => {
     expect(allFilter).not.toHaveTextContent('3')
     expect(within(publishedFilter).getByText('1')).toBeInTheDocument()
     expect(within(draftsFilter).getByText('2')).toBeInTheDocument()
+  })
+
+  it('renders created-by-me filtering and emits checked state', async () => {
+    const user = userEvent.setup()
+    const { onCreatedByMeChange } = renderToolbar()
+
+    const createdByMeFilter = screen.getByRole('checkbox', { name: 'agentV2.roster.filters.createdByMe' })
+
+    expect(createdByMeFilter).toHaveAttribute('aria-checked', 'false')
+
+    await user.click(createdByMeFilter)
+
+    expect(onCreatedByMeChange).toHaveBeenCalledWith(true)
   })
 })

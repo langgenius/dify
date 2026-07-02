@@ -358,6 +358,7 @@
   "roster.empty": "Belum ada agen",
   "roster.emptySearch": "Tidak ada agen yang cocok",
   "roster.filters.all": "Semua",
+  "roster.filters.createdByMe": "Dibuat oleh saya",
   "roster.filters.drafts": "Draf",
   "roster.filters.label": "Filter agen",
   "roster.filters.published": "Diterbitkan",

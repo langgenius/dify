@@ -358,6 +358,7 @@
   "roster.empty": "Brak agentów",
   "roster.emptySearch": "Brak pasujących agentów",
   "roster.filters.all": "Wszyscy",
+  "roster.filters.createdByMe": "Utworzone przeze mnie",
   "roster.filters.drafts": "Wersje robocze",
   "roster.filters.label": "Filtry agentów",
   "roster.filters.published": "Opublikowani",

@@ -358,6 +358,7 @@
   "roster.empty": "Noch kein Agent",
   "roster.emptySearch": "Keine passenden Agenten",
   "roster.filters.all": "Alle",
+  "roster.filters.createdByMe": "Von mir erstellt",
   "roster.filters.drafts": "Entwürfe",
   "roster.filters.label": "Agentenfilter",
   "roster.filters.published": "Veröffentlicht",

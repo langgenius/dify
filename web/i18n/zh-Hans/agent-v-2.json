@@ -360,6 +360,7 @@
   "roster.empty": "暂无 Agent",
   "roster.emptySearch": "没有匹配的 Agent",
   "roster.filters.all": "全部",
+  "roster.filters.createdByMe": "我创建的",
   "roster.filters.drafts": "草稿",
   "roster.filters.label": "Agent 筛选",
   "roster.filters.published": "已发布",

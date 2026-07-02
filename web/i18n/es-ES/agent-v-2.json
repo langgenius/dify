@@ -358,6 +358,7 @@
   "roster.empty": "Aún no hay agentes",
   "roster.emptySearch": "No hay agentes coincidentes",
   "roster.filters.all": "Todos",
+  "roster.filters.createdByMe": "Creado por mí",
   "roster.filters.drafts": "Borradores",
   "roster.filters.label": "Filtros de agente",
   "roster.filters.published": "Publicados",

@@ -358,6 +358,7 @@
   "roster.empty": "Поки що немає агентів",
   "roster.emptySearch": "Немає відповідних агентів",
   "roster.filters.all": "Усі",
+  "roster.filters.createdByMe": "Створені мною",
   "roster.filters.drafts": "Чернетки",
   "roster.filters.label": "Фільтри агентів",
   "roster.filters.published": "Опубліковані",

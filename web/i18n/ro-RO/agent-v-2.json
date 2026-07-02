@@ -358,6 +358,7 @@
   "roster.empty": "Niciun agent încă",
   "roster.emptySearch": "Niciun agent corespunzător",
   "roster.filters.all": "Toți",
+  "roster.filters.createdByMe": "Create de mine",
   "roster.filters.drafts": "Ciorne",
   "roster.filters.label": "Filtre agent",
   "roster.filters.published": "Publicați",

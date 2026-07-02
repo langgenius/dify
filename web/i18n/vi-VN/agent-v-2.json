@@ -358,6 +358,7 @@
   "roster.empty": "Chưa có tác nhân nào",
   "roster.emptySearch": "Không có tác nhân phù hợp",
   "roster.filters.all": "Tất cả",
+  "roster.filters.createdByMe": "Do tôi tạo",
   "roster.filters.drafts": "Bản nháp",
   "roster.filters.label": "Bộ lọc tác nhân",
   "roster.filters.published": "Đã xuất bản",

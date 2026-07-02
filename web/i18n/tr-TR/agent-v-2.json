@@ -358,6 +358,7 @@
   "roster.empty": "Henüz ajan yok",
   "roster.emptySearch": "Eşleşen ajan yok",
   "roster.filters.all": "Tümü",
+  "roster.filters.createdByMe": "Benim oluşturduklarım",
   "roster.filters.drafts": "Taslaklar",
   "roster.filters.label": "Ajan filtreleri",
   "roster.filters.published": "Yayınlandı",

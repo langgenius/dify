@@ -358,6 +358,7 @@
   "roster.empty": "아직 에이전트가 없습니다",
   "roster.emptySearch": "일치하는 에이전트가 없습니다",
   "roster.filters.all": "전체",
+  "roster.filters.createdByMe": "내가 만든 항목",
   "roster.filters.drafts": "초안",
   "roster.filters.label": "에이전트 필터",
   "roster.filters.published": "게시됨",

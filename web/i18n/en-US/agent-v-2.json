@@ -360,6 +360,7 @@
   "roster.empty": "No agent yet",
   "roster.emptySearch": "No matching agents",
   "roster.filters.all": "All",
+  "roster.filters.createdByMe": "Created by me",
   "roster.filters.drafts": "Drafts",
   "roster.filters.label": "Agent filters",
   "roster.filters.published": "Published",

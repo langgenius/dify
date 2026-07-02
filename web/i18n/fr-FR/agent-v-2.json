@@ -358,6 +358,7 @@
   "roster.empty": "Pas encore d’agent",
   "roster.emptySearch": "Aucun agent correspondant",
   "roster.filters.all": "Tous",
+  "roster.filters.createdByMe": "Créés par moi",
   "roster.filters.drafts": "Brouillons",
   "roster.filters.label": "Filtres d’agent",
   "roster.filters.published": "Publiés",

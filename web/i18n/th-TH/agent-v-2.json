@@ -358,6 +358,7 @@
   "roster.empty": "ยังไม่มีตัวแทน",
   "roster.emptySearch": "ไม่มีตัวแทนที่ตรงกัน",
   "roster.filters.all": "ทั้งหมด",
+  "roster.filters.createdByMe": "สร้างโดยฉัน",
   "roster.filters.drafts": "ฉบับร่าง",
   "roster.filters.label": "ตัวกรองตัวแทน",
   "roster.filters.published": "เผยแพร่แล้ว",

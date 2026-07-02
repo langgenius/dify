@@ -358,6 +358,7 @@
   "roster.empty": "エージェントはまだありません",
   "roster.emptySearch": "一致するエージェントがありません",
   "roster.filters.all": "すべて",
+  "roster.filters.createdByMe": "自分が作成",
   "roster.filters.drafts": "ドラフト",
   "roster.filters.label": "エージェントフィルター",
   "roster.filters.published": "公開済み",

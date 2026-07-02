@@ -358,6 +358,7 @@
   "roster.empty": "अभी तक कोई एजेंट नहीं",
   "roster.emptySearch": "कोई मेल खाते एजेंट नहीं",
   "roster.filters.all": "सभी",
+  "roster.filters.createdByMe": "मेरे द्वारा बनाए गए",
   "roster.filters.drafts": "ड्राफ्ट",
   "roster.filters.label": "एजेंट फ़िल्टर",
   "roster.filters.published": "प्रकाशित",

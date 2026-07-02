@@ -358,6 +358,7 @@
   "roster.empty": "لا يوجد وكيل بعد",
   "roster.emptySearch": "لا يوجد وكلاء مطابقون",
   "roster.filters.all": "الكل",
+  "roster.filters.createdByMe": "أنشأتها أنا",
   "roster.filters.drafts": "مسودات",
   "roster.filters.label": "مرشحات الوكيل",
   "roster.filters.published": "منشور",

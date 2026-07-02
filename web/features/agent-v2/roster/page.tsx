@@ -12,7 +12,7 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
+import { debounce, parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
@@ -47,11 +47,16 @@ export default function RosterPage() {
     'filter',
     parseAsStringLiteral(ROSTER_FILTER_VALUES).withDefault('all'),
   )
+  const [createdByMe, setCreatedByMe] = useQueryState(
+    'created_by_me',
+    parseAsBoolean.withDefault(false),
+  )
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
 
   const rosterQueryInput = {
     limit: ROSTER_PAGE_SIZE,
     ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
+    ...(createdByMe ? { is_created_by_me: true } : {}),
   }
 
   const {
@@ -108,9 +113,13 @@ export default function RosterPage() {
           </div>
           <div className="mt-3.5">
             <RosterToolbar
+              createdByMe={createdByMe}
               draftAgents={draftAgents}
               filter={rosterFilter}
               keyword={keyword}
+              onCreatedByMeChange={(value) => {
+                void setCreatedByMe(value)
+              }}
               onFilterChange={(value) => {
                 void setRosterFilter(value)
               }}

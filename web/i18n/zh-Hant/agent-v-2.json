@@ -358,6 +358,7 @@
   "roster.empty": "暫無 Agent",
   "roster.emptySearch": "沒有符合的 Agent",
   "roster.filters.all": "全部",
+  "roster.filters.createdByMe": "我建立的",
   "roster.filters.drafts": "草稿",
   "roster.filters.label": "Agent 篩選",
   "roster.filters.published": "已發佈",

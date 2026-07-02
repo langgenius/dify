@@ -358,6 +358,7 @@
   "roster.empty": "Še ni agentov",
   "roster.emptySearch": "Ni ujemajočih se agentov",
   "roster.filters.all": "Vsi",
+  "roster.filters.createdByMe": "Ustvaril sem",
   "roster.filters.drafts": "Osnutki",
   "roster.filters.label": "Filtri agentov",
   "roster.filters.published": "Objavljeni",

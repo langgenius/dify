@@ -358,6 +358,7 @@
   "roster.empty": "Nessun agente al momento",
   "roster.emptySearch": "Nessun agente corrispondente",
   "roster.filters.all": "Tutti",
+  "roster.filters.createdByMe": "Creati da me",
   "roster.filters.drafts": "Bozze",
   "roster.filters.label": "Filtri agente",
   "roster.filters.published": "Pubblicati",

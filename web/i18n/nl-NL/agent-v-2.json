@@ -358,6 +358,7 @@
   "roster.empty": "Nog geen agent",
   "roster.emptySearch": "Geen overeenkomende agents",
   "roster.filters.all": "Alle",
+  "roster.filters.createdByMe": "Door mij gemaakt",
   "roster.filters.drafts": "Concepten",
   "roster.filters.label": "Agentfilters",
   "roster.filters.published": "Gepubliceerd",
