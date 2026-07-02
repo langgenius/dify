@@ -269,6 +269,7 @@ class SnippetPublishedWorkflowApi(Resource):
         return response
 
     @console_ns.doc("publish_snippet_workflow")
+    @console_ns.expect(console_ns.models.get(PublishWorkflowPayload.__name__))
     @console_ns.response(200, "Workflow published successfully", console_ns.models[PublishWorkflowResponse.__name__])
     @console_ns.response(400, "No draft workflow found")
     @setup_required

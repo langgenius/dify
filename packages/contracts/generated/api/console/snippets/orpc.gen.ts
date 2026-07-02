@@ -68,6 +68,7 @@ import {
   zPostSnippetsBySnippetIdWorkflowsDraftRunBody,
   zPostSnippetsBySnippetIdWorkflowsDraftRunPath,
   zPostSnippetsBySnippetIdWorkflowsDraftRunResponse,
+  zPostSnippetsBySnippetIdWorkflowsPublishBody,
   zPostSnippetsBySnippetIdWorkflowsPublishPath,
   zPostSnippetsBySnippetIdWorkflowsPublishResponse,
   zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetPath,
@@ -677,7 +678,12 @@ export const post7 = oc
     summary: 'Publish snippet workflow',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostSnippetsBySnippetIdWorkflowsPublishPath }))
+  .input(
+    z.object({
+      body: zPostSnippetsBySnippetIdWorkflowsPublishBody,
+      params: zPostSnippetsBySnippetIdWorkflowsPublishPath,
+    }),
+  )
   .output(zPostSnippetsBySnippetIdWorkflowsPublishResponse)
 
 export const publish = {
