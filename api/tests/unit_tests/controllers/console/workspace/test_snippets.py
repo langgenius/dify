@@ -91,9 +91,7 @@ def test_snippet_list_query_reads_creator_ids_alias(app: Flask):
 
 def test_snippet_list_query_ignores_indexed_values(app: Flask):
     tag_id = "11111111-1111-1111-1111-111111111111"
-    with app.test_request_context(
-        f"/workspaces/current/customized-snippets?tag_ids[0]={tag_id}&creators[0]=account-a"
-    ):
+    with app.test_request_context(f"/workspaces/current/customized-snippets?tag_ids[0]={tag_id}&creators[0]=account-a"):
         query = snippets_module._snippet_list_query_from_request()
 
     assert query.tag_ids is None
