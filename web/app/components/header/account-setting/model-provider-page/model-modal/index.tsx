@@ -147,17 +147,35 @@ const ModelModal: FC<ModelModalProps> = ({
       modelNameAndTypeValues = formResult.values
     }
 
-    if (mode === ModelModalModeEnum.configModelCredential && model) {
+    if (mode === ModelModalModeEnum.configModelCredential) {
+      const modelContext = model ?? (currentCustomConfigurationModelFixedFields
+        ? {
+            model: currentCustomConfigurationModelFixedFields.__model_name,
+            model_type: currentCustomConfigurationModelFixedFields.__model_type,
+          }
+        : undefined)
+      if (!modelContext)
+        return
+
       modelNameAndTypeValues = {
-        __model_name: model.model,
-        __model_type: model.model_type,
+        __model_name: modelContext.model,
+        __model_type: modelContext.model_type,
       }
     }
 
-    if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential && model) {
+    if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential) {
+      const modelContext = model ?? (currentCustomConfigurationModelFixedFields
+        ? {
+            model: currentCustomConfigurationModelFixedFields.__model_name,
+            model_type: currentCustomConfigurationModelFixedFields.__model_type,
+          }
+        : undefined)
+      if (!modelContext)
+        return
+
       modelNameAndTypeValues = {
-        __model_name: model.model,
-        __model_type: model.model_type,
+        __model_name: modelContext.model,
+        __model_type: modelContext.model_type,
       }
     }
     const {
@@ -178,7 +196,13 @@ const ModelModal: FC<ModelModalProps> = ({
       __authorization_name__,
       ...rest
     } = values
-    if (__model_name && __model_type) {
+    const shouldSaveModelCredential = mode === ModelModalModeEnum.configCustomModel
+      || mode === ModelModalModeEnum.configModelCredential
+      || (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential)
+    if (shouldSaveModelCredential) {
+      if (!__model_name || !__model_type)
+        return
+
       await handleSaveCredential({
         credential_id: credential?.credential_id,
         credentials: rest,
@@ -195,7 +219,7 @@ const ModelModal: FC<ModelModalProps> = ({
       })
     }
     onSave(values)
-  }, [mode, selectedCredential, model, canUseCredential, canCreateCredential, canManageCredential, onSave, handleActiveCredential, onCancel, handleSaveCredential, credential])
+  }, [mode, selectedCredential, model, currentCustomConfigurationModelFixedFields, canUseCredential, canCreateCredential, canManageCredential, onSave, handleActiveCredential, onCancel, handleSaveCredential, credential])
 
   const modalTitle = useMemo(() => {
     let label = t('modelProvider.auth.apiKeyModal.title', { ns: 'common' })
