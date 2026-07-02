@@ -1,5 +1,4 @@
-import type { PluginsSearchParams } from './types'
-import type { MarketPlaceInputs } from '@/contract/marketplace'
+import type { MarketPlaceInputs, PluginsSearchParams } from '@dify/contracts/marketplace'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { marketplaceQuery } from '@/service/client'
 import { getMarketplaceCollectionsAndPlugins, getMarketplacePlugins } from './utils'

@@ -21,13 +21,10 @@ const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
 const workspaceSwitchI18nKey = (key: string) => key as 'mainNav.workspace.settings'
 type WorkspaceSort = 'lastOpened' | 'createdAt'
-type WorkspaceListItem = TenantListItemResponse & {
-  last_opened_at?: number | null
-}
 
-const getWorkspaceName = (workspace: WorkspaceListItem) => workspace.name || workspace.id
-const getWorkspaceCreatedAt = (workspace: WorkspaceListItem) => workspace.created_at ?? 0
-const getWorkspaceLastOpenedAt = (workspace: WorkspaceListItem) => workspace.last_opened_at ?? 0
+const getWorkspaceName = (workspace: TenantListItemResponse) => workspace.name || workspace.id
+const getWorkspaceCreatedAt = (workspace: TenantListItemResponse) => workspace.created_at ?? 0
+const getWorkspaceLastOpenedAt = (workspace: TenantListItemResponse) => workspace.last_opened_at ?? 0
 
 function WorkspaceSwitchControls({
   searchText,
@@ -123,7 +120,7 @@ function WorkspaceSwitchControls({
 }
 
 type WorkspaceSwitcherProps = {
-  workspaces: WorkspaceListItem[]
+  workspaces: TenantListItemResponse[]
   onSwitchWorkspace: (workspaceId: string) => void
 }
 

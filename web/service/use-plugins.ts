@@ -1,4 +1,9 @@
 import type { PluginInstallationItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  PluginInfoFromMarketPlace,
+  PluginsFromMarketplaceByInfoResponse,
+  PluginsFromMarketplaceResponse,
+} from '@dify/contracts/marketplace'
 import type { MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
@@ -21,9 +26,6 @@ import type {
   Plugin,
   PluginDeclaration,
   PluginDetail,
-  PluginInfoFromMarketPlace,
-  PluginsFromMarketplaceByInfoResponse,
-  PluginsFromMarketplaceResponse,
   PluginTask,
   PluginTaskStart,
   ReferenceSetting,
