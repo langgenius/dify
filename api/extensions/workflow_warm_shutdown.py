@@ -10,17 +10,32 @@ from core.app.apps.workflow.active_workflow_tasks import (
     reset_active_workflow_tasks,
 )
 from core.app.apps.workflow.command_channels import (
-    reset_celery_warm_shutdown_state,
-    send_celery_warm_shutdown_abort_commands,
+    reset_abort_command,
+    set_abort_command,
 )
+from graphon.graph_engine.entities.commands import AbortCommand
 
 logger = logging.getLogger(__name__)
+WORKFLOW_WARM_SHUTDOWN_ABORT_REASON = "Workflow stopped because the worker is shutting down."
 _WORKER_SHUTTING_DOWN_DISPATCH_UID = "dify.workflow_warm_shutdown.shutting_down"
 _WORKER_SHUTDOWN_DISPATCH_UID = "dify.workflow_warm_shutdown.shutdown"
 
 
 def _is_warm_shutdown(how: Any) -> bool:
     return str(how).strip().lower() == "warm"
+
+
+def set_celery_warm_shutdown_abort_command(
+    *,
+    reason: str = WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
+) -> None:
+    """Set the process-wide abort command."""
+    set_abort_command(AbortCommand(reason=reason))
+
+
+def reset_celery_warm_shutdown_state() -> None:
+    """Reset local Celery warm shutdown abort state for worker initialization and tests."""
+    reset_abort_command()
 
 
 def _on_worker_shutting_down(*args: object, **kwargs: object) -> None:
@@ -30,7 +45,8 @@ def _on_worker_shutting_down(*args: object, **kwargs: object) -> None:
         logger.debug("Skip workflow abort during non-warm Celery shutdown: how=%s", how)
         return
 
-    abort_count = send_celery_warm_shutdown_abort_commands()
+    set_celery_warm_shutdown_abort_command()
+    abort_count = get_active_workflow_task_count()
     if abort_count == 0:
         logger.info("No active workflow runs found during Celery warm shutdown")
         return

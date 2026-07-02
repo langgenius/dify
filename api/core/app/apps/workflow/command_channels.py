@@ -4,14 +4,11 @@ import logging
 from collections.abc import Sequence
 from typing import final, override
 
-from core.app.apps.workflow.active_workflow_tasks import get_active_workflow_task_count
 from graphon.graph_engine.command_channels import CommandChannel
 from graphon.graph_engine.entities.commands import AbortCommand, GraphEngineCommand
 
 logger = logging.getLogger(__name__)
-
-WORKFLOW_WARM_SHUTDOWN_ABORT_REASON = "Workflow stopped because the worker is shutting down."
-_celery_warm_shutdown_abort_reason: str | None = None
+_abort_command: AbortCommand | None = None
 
 
 @final
@@ -41,31 +38,26 @@ class CombinedCommandChannel:
 
 @final
 class CelerySignalCommandChannel(CommandChannel):
-    """Expose the process-wide Celery warm shutdown command to one GraphEngine instance."""
+    """Expose process-local commands set by Celery signal handlers to one GraphEngine instance."""
 
     @override
     def fetch_commands(self) -> list[GraphEngineCommand]:
-        if _celery_warm_shutdown_abort_reason is None:
+        if _abort_command is None:
             return []
-        return [AbortCommand(reason=_celery_warm_shutdown_abort_reason)]
+        return [_abort_command]
 
     @override
     def send_command(self, command: GraphEngineCommand) -> None:
         _ = command
 
 
-def send_celery_warm_shutdown_abort_commands(
-    *,
-    reason: str = WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
-) -> int:
-    """Set the process-wide abort command and return the current active workflow run count."""
-    global _celery_warm_shutdown_abort_reason
-    _celery_warm_shutdown_abort_reason = reason
-
-    return get_active_workflow_task_count()
+def set_abort_command(command: AbortCommand) -> None:
+    """Set the process-local abort command used by Celery signal command channels."""
+    global _abort_command
+    _abort_command = command
 
 
-def reset_celery_warm_shutdown_state() -> None:
-    """Reset local Celery warm shutdown abort state for worker initialization and tests."""
-    global _celery_warm_shutdown_abort_reason
-    _celery_warm_shutdown_abort_reason = None
+def reset_abort_command() -> None:
+    """Reset the process-local abort command used by Celery signal command channels."""
+    global _abort_command
+    _abort_command = None

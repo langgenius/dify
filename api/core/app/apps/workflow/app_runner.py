@@ -194,5 +194,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             workflow_entry.graph_engine.layer(layer)
 
         generator = workflow_entry.run()
+
         for event in generator:
             self._handle_event(workflow_entry, event)
