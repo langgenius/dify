@@ -1,4 +1,5 @@
 import array
+import errno
 import importlib
 import sys
 import types
@@ -282,11 +283,77 @@ def test_get_connection_drops_closed_connections(oracle_module):
     pool.release.assert_not_called()
 
 
+def test_closed_connection_error_recognizes_broken_pipe_only(oracle_module):
+    assert oracle_module.is_closed_connection_error(BrokenPipeError(errno.EPIPE, "Broken pipe")) is True
+    assert oracle_module.is_closed_connection_error(OSError(errno.EINVAL, "Invalid argument")) is False
+
+
+def test_get_connection_drops_broken_pipe_connections(oracle_module):
+    pool = MagicMock()
+    connection = MagicMock()
+    pool.acquire.return_value = connection
+
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.pool = pool
+
+    with pytest.raises(BrokenPipeError):
+        with vector._get_connection():
+            raise BrokenPipeError(errno.EPIPE, "Broken pipe")
+
+    connection.rollback.assert_not_called()
+    pool.drop.assert_called_once_with(connection)
+    pool.release.assert_not_called()
+
+
+def test_read_operation_retries_broken_pipe_once(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    operation = MagicMock(side_effect=[BrokenPipeError(errno.EPIPE, "Broken pipe"), "success"])
+
+    assert vector._run_read_operation(operation) == "success"
+    assert operation.call_count == 2
+
+
+def test_read_operation_does_not_retry_other_errors(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    operation = MagicMock(side_effect=RuntimeError("boom"))
+
+    with pytest.raises(RuntimeError, match="boom"):
+        vector._run_read_operation(operation)
+
+    operation.assert_called_once_with()
+
+
+def test_read_operation_propagates_second_broken_pipe(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    operation = MagicMock(side_effect=BrokenPipeError(errno.EPIPE, "Broken pipe"))
+
+    with pytest.raises(BrokenPipeError):
+        vector._run_read_operation(operation)
+
+    assert operation.call_count == 2
+
+
 def test_get_connection_drops_connection_when_release_reports_it_closed(oracle_module):
     pool = MagicMock()
     connection = MagicMock()
     pool.acquire.return_value = connection
     pool.release.side_effect = RuntimeError("DPY-4011: the database or network closed the connection")
+
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.pool = pool
+
+    with vector._get_connection() as conn:
+        assert conn is connection
+
+    pool.release.assert_called_once_with(connection)
+    pool.drop.assert_called_once_with(connection)
+
+
+def test_get_connection_drops_connection_when_release_hits_broken_pipe(oracle_module):
+    pool = MagicMock()
+    connection = MagicMock()
+    pool.acquire.return_value = connection
+    pool.release.side_effect = BrokenPipeError(errno.EPIPE, "Broken pipe")
 
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector.pool = pool
@@ -579,6 +646,59 @@ def test_text_exists_and_get_by_ids(oracle_module):
     assert vector.get_by_ids([]) == []
 
 
+def test_text_exists_retries_acquire_time_broken_pipe(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+
+    cursor = MagicMock()
+    cursor.fetchone.return_value = ("id-1",)
+    connection = _connection_with_cursor(cursor)
+    pool = MagicMock()
+    pool.acquire.side_effect = [BrokenPipeError(errno.EPIPE, "Broken pipe"), connection]
+    vector.pool = pool
+
+    assert vector.text_exists("id-1") is True
+    assert pool.acquire.call_count == 2
+    pool.release.assert_called_once_with(connection)
+
+
+def test_get_by_ids_retries_without_retaining_partial_results(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+
+    first_cursor = MagicMock()
+    first_cursor.execute.side_effect = [None, BrokenPipeError(errno.EPIPE, "Broken pipe")]
+    first_cursor.__iter__.side_effect = [iter([('{"doc_id": "partial"}', "partial")])]
+    second_cursor = MagicMock()
+    second_cursor.__iter__.side_effect = [
+        iter([('{"doc_id": "complete-a"}', "complete-a")]),
+        iter([('{"doc_id": "complete-b"}', "complete-b")]),
+    ]
+    vector._get_connection = MagicMock(
+        side_effect=[
+            _connection_with_cursor(first_cursor),
+            _connection_with_cursor(second_cursor),
+        ]
+    )
+
+    ids = [f"id-{index}" for index in range(oracle_module.ORACLE_IN_CLAUSE_BATCH_SIZE + 1)]
+    docs = vector.get_by_ids(ids)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["complete-a", "complete-b"]
+    assert vector._get_connection.call_count == 2
+
+
+def test_delete_by_ids_does_not_retry_broken_pipe(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    vector._get_connection = MagicMock(side_effect=BrokenPipeError(errno.EPIPE, "Broken pipe"))
+
+    with pytest.raises(BrokenPipeError):
+        vector.delete_by_ids(["id-1"])
+
+    vector._get_connection.assert_called_once_with()
+
+
 def test_delete_methods(oracle_module, monkeypatch: pytest.MonkeyPatch):
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     vector._collection_name = "collection_1"
@@ -692,6 +812,34 @@ def test_search_by_vector_merges_global_top_k_across_document_filter_batches(ora
     docs = vector.search_by_vector([0.1, 0.2], top_k=1, document_ids_filter=document_ids)
 
     assert [doc.metadata["doc_id"] for doc in docs] == ["second"]
+
+
+def test_search_by_vector_retries_broken_pipe_without_retaining_partial_results(oracle_module):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+    vector.input_type_handler = MagicMock()
+    vector.output_type_handler = MagicMock()
+
+    first_cursor = MagicMock()
+    first_cursor.execute.side_effect = [None, BrokenPipeError(errno.EPIPE, "Broken pipe")]
+    first_cursor.__iter__.side_effect = [iter([('{"doc_id": "partial"}', "partial", 0.1)])]
+    second_cursor = MagicMock()
+    second_cursor.__iter__.side_effect = [
+        iter([('{"doc_id": "complete-a"}', "complete-a", 0.2)]),
+        iter([('{"doc_id": "complete-b"}', "complete-b", 0.3)]),
+    ]
+    vector._get_connection = MagicMock(
+        side_effect=[
+            _connection_with_cursor(first_cursor),
+            _connection_with_cursor(second_cursor),
+        ]
+    )
+    document_ids = [f"doc-{index}" for index in range(oracle_module.ORACLE_IN_CLAUSE_BATCH_SIZE + 1)]
+
+    docs = vector.search_by_vector([0.1, 0.2], top_k=3, document_ids_filter=document_ids)
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["complete-a", "complete-b"]
+    assert vector._get_connection.call_count == 2
 
 
 def test_search_by_vector_applies_metadata_conditions(oracle_module):
@@ -1159,6 +1307,30 @@ def test_search_by_full_text_chinese_and_english_paths(oracle_module, monkeypatc
     assert en_params["doc_id_0"] == "d-1"
     assert en_params["metadata_filter_2"] == "eng"
     assert en_params["metadata_filter_3"] == 4.5
+
+
+def test_search_by_full_text_retries_broken_pipe(oracle_module, monkeypatch: pytest.MonkeyPatch):
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.table_name = "embedding_collection_1"
+
+    first_cursor = MagicMock()
+    first_cursor.execute.side_effect = BrokenPipeError(errno.EPIPE, "Broken pipe")
+    second_cursor = MagicMock()
+    second_cursor.__iter__.return_value = iter([('{"doc_id": "complete"}', "complete", [0.1], 90)])
+    vector._get_connection = MagicMock(
+        side_effect=[
+            _connection_with_cursor(first_cursor),
+            _connection_with_cursor(second_cursor),
+        ]
+    )
+    nltk, nltk_corpus = _fake_nltk_module(missing_data=False)
+    monkeypatch.setitem(sys.modules, "nltk", nltk)
+    monkeypatch.setitem(sys.modules, "nltk.corpus", nltk_corpus)
+
+    docs = vector.search_by_full_text("oracle")
+
+    assert [doc.metadata["doc_id"] for doc in docs] == ["complete"]
+    assert vector._get_connection.call_count == 2
 
 
 def test_search_by_full_text_batches_large_document_filters(oracle_module, monkeypatch: pytest.MonkeyPatch):

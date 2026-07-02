@@ -1,15 +1,16 @@
 import array
+import errno
 import hashlib
 import heapq
 import json
 import logging
 import re
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from operator import itemgetter
 from threading import Lock
-from typing import Any, TypedDict, cast, override
+from typing import Any, TypedDict, TypeVar, cast, override
 
 import jieba.posseg as pseg  # type: ignore
 import numpy
@@ -136,6 +137,7 @@ class OracleVectorConfig(BaseModel):
 
 
 OraclePoolKey = tuple[str, str, str, str | None, str | None, str | None, bool, int, int, int, int]
+ReadResult = TypeVar("ReadResult")
 _ORACLE_POOL_LOCK = Lock()
 _ORACLE_POOLS: dict[OraclePoolKey, Any] = {}
 
@@ -159,6 +161,8 @@ def oracle_pool_key(config: OracleVectorConfig) -> OraclePoolKey:
 def is_closed_connection_error(exc: Exception) -> bool:
     candidates = (exc, *getattr(exc, "args", ()))
     for candidate in candidates:
+        if isinstance(candidate, OSError) and candidate.errno == errno.EPIPE:
+            return True
         full_code = str(getattr(candidate, "full_code", ""))
         message = str(candidate)
         if any(code == full_code or code in message for code in ORACLE_CLOSED_CONNECTION_ERROR_CODES):
@@ -463,6 +467,20 @@ class OracleVector(BaseVector):
                     except Exception:
                         logger.exception("Failed to drop an Oracle connection after release failed")
 
+    def _run_read_operation(self, operation: Callable[[], ReadResult]) -> ReadResult:
+        """Retry one idempotent read after a closed Oracle transport.
+
+        Write operations must not use this helper because their transaction outcome may be unknown after a
+        connection failure.
+        """
+        try:
+            return operation()
+        except Exception as exc:
+            if not is_closed_connection_error(exc):
+                raise
+            logger.warning("Retrying Oracle read once after a closed connection: %s", exc)
+            return operation()
+
     def _get_or_create_connection_pool(self, config: OracleVectorConfig):
         key = oracle_pool_key(config)
         with _ORACLE_POOL_LOCK:
@@ -557,23 +575,30 @@ class OracleVector(BaseVector):
 
     @override
     def text_exists(self, id: str) -> bool:
-        with self._get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(f"SELECT id FROM {self.table_name} WHERE id = :1", (id,))
-                return cur.fetchone() is not None
+        def read() -> bool:
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(f"SELECT id FROM {self.table_name} WHERE id = :1", (id,))
+                    return cur.fetchone() is not None
+
+        return self._run_read_operation(read)
 
     def get_by_ids(self, ids: list[str]) -> list[Document]:
         if not ids:
             return []
-        docs = []
-        with self._get_connection() as conn:
-            with conn.cursor() as cur:
-                for batch in iter_batches(ids):
-                    placeholders = ", ".join(f":{i + 1}" for i in range(len(batch)))
-                    cur.execute(f"SELECT meta, text FROM {self.table_name} WHERE id IN ({placeholders})", batch)
-                    for record in cur:
-                        docs.append(Document(page_content=record[1], metadata=parse_metadata_json(record[0])))
-        return docs
+
+        def read() -> list[Document]:
+            docs = []
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    for batch in iter_batches(ids):
+                        placeholders = ", ".join(f":{i + 1}" for i in range(len(batch)))
+                        cur.execute(f"SELECT meta, text FROM {self.table_name} WHERE id IN ({placeholders})", batch)
+                        for record in cur:
+                            docs.append(Document(page_content=record[1], metadata=parse_metadata_json(record[0])))
+            return docs
+
+        return self._run_read_operation(read)
 
     @override
     def delete_by_ids(self, ids: list[str]):
@@ -609,41 +634,44 @@ class OracleVector(BaseVector):
         metadata_condition = kwargs.get("metadata_condition") or kwargs.get("metadata_filtering_conditions")
         build_metadata_condition_filter(metadata_condition, {})
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
-        top_documents: list[tuple[float, int, Document]] = []
-        sequence = 0
 
-        with self._get_connection() as conn:
-            conn.inputtypehandler = self.input_type_handler
-            conn.outputtypehandler = self.output_type_handler
-            with conn.cursor() as cur:
-                for document_batch in document_batches:
-                    params: dict[str, Any] = {"query_vector": query_array}
-                    document_filter = build_document_ids_filter(document_batch, params)
-                    metadata_filter = build_metadata_condition_filter(metadata_condition, params)
-                    where_clause = build_where_clause([document_filter, metadata_filter])
-                    cur.execute(
-                        f"""SELECT meta, text, vector_distance(embedding,
-                        (select to_vector(:query_vector) from dual),cosine)
-                        AS distance FROM {self.table_name}
-                        {where_clause} ORDER BY distance fetch first {top_k} rows only""",
-                        params,
-                    )
-                    for record in cur:
-                        metadata, text, distance = record
-                        score = 1 - distance
-                        if score < score_threshold:
-                            continue
-                        metadata = parse_metadata_json(metadata)
-                        metadata["score"] = score
-                        add_top_document(
-                            top_documents,
-                            Document(page_content=text, metadata=metadata),
-                            score,
-                            sequence,
-                            top_k,
+        def read() -> list[Document]:
+            top_documents: list[tuple[float, int, Document]] = []
+            sequence = 0
+            with self._get_connection() as conn:
+                conn.inputtypehandler = self.input_type_handler
+                conn.outputtypehandler = self.output_type_handler
+                with conn.cursor() as cur:
+                    for document_batch in document_batches:
+                        params: dict[str, Any] = {"query_vector": query_array}
+                        document_filter = build_document_ids_filter(document_batch, params)
+                        metadata_filter = build_metadata_condition_filter(metadata_condition, params)
+                        where_clause = build_where_clause([document_filter, metadata_filter])
+                        cur.execute(
+                            f"""SELECT meta, text, vector_distance(embedding,
+                            (select to_vector(:query_vector) from dual),cosine)
+                            AS distance FROM {self.table_name}
+                            {where_clause} ORDER BY distance fetch first {top_k} rows only""",
+                            params,
                         )
-                        sequence += 1
-        return documents_by_descending_score(top_documents)
+                        for record in cur:
+                            metadata, text, distance = record
+                            score = 1 - distance
+                            if score < score_threshold:
+                                continue
+                            metadata = parse_metadata_json(metadata)
+                            metadata["score"] = score
+                            add_top_document(
+                                top_documents,
+                                Document(page_content=text, metadata=metadata),
+                                score,
+                                sequence,
+                                top_k,
+                            )
+                            sequence += 1
+            return documents_by_descending_score(top_documents)
+
+        return self._run_read_operation(read)
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -679,43 +707,48 @@ class OracleVector(BaseVector):
         document_batches = document_id_filter_batches(kwargs.get("document_ids_filter"))
         metadata_condition = kwargs.get("metadata_condition") or kwargs.get("metadata_filtering_conditions")
         build_metadata_condition_filter(metadata_condition, {})
-        top_documents: list[tuple[float, int, Document]] = []
-        sequence = 0
 
-        with self._get_connection() as conn:
-            with conn.cursor() as cur:
-                for document_batch in document_batches:
-                    params: dict[str, Any] = {"kk": text_query}
-                    document_filter = build_document_ids_filter(document_batch, params)
-                    metadata_filter = build_metadata_condition_filter(metadata_condition, params)
-                    and_clause = build_and_clause([document_filter, metadata_filter])
+        def read() -> list[Document]:
+            top_documents: list[tuple[float, int, Document]] = []
+            sequence = 0
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    for document_batch in document_batches:
+                        params: dict[str, Any] = {"kk": text_query}
+                        document_filter = build_document_ids_filter(document_batch, params)
+                        metadata_filter = build_metadata_condition_filter(metadata_condition, params)
+                        and_clause = build_and_clause([document_filter, metadata_filter])
 
-                    try:
-                        cur.execute(
-                            f"""select meta, text, embedding, score(1) FROM {self.table_name}
-                        WHERE CONTAINS(text, :kk, 1) > 0 {and_clause}
-                        order by score(1) desc fetch first {top_k} rows only""",
-                            params,
-                        )
-                    except Exception as exc:
-                        if is_oracle_text_parser_error(exc):
-                            logger.warning("Oracle Text rejected query %r for %s: %s", text_query, self.table_name, exc)
-                            return []
-                        raise
-                    for record in cur:
-                        metadata, text, embedding, text_score = record
-                        score = float(text_score or 0.0) / 100.0
-                        metadata = parse_metadata_json(metadata)
-                        metadata["score"] = score
-                        add_top_document(
-                            top_documents,
-                            Document(page_content=text, vector=embedding, metadata=metadata),
-                            score,
-                            sequence,
-                            top_k,
-                        )
-                        sequence += 1
-        return documents_by_descending_score(top_documents)
+                        try:
+                            cur.execute(
+                                f"""select meta, text, embedding, score(1) FROM {self.table_name}
+                            WHERE CONTAINS(text, :kk, 1) > 0 {and_clause}
+                            order by score(1) desc fetch first {top_k} rows only""",
+                                params,
+                            )
+                        except Exception as exc:
+                            if is_oracle_text_parser_error(exc):
+                                logger.warning(
+                                    "Oracle Text rejected query %r for %s: %s", text_query, self.table_name, exc
+                                )
+                                return []
+                            raise
+                        for record in cur:
+                            metadata, text, embedding, text_score = record
+                            score = float(text_score or 0.0) / 100.0
+                            metadata = parse_metadata_json(metadata)
+                            metadata["score"] = score
+                            add_top_document(
+                                top_documents,
+                                Document(page_content=text, vector=embedding, metadata=metadata),
+                                score,
+                                sequence,
+                                top_k,
+                            )
+                            sequence += 1
+            return documents_by_descending_score(top_documents)
+
+        return self._run_read_operation(read)
 
     @override
     def delete(self):
