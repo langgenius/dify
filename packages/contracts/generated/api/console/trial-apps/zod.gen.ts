@@ -236,9 +236,9 @@ export const zParameters = z.object({
 export const zJsonObject2 = z.record(z.string(), z.unknown())
 
 /**
- * TrialWorkflowAccount
+ * TrialSimpleAccount
  */
-export const zTrialWorkflowAccount = z.object({
+export const zTrialSimpleAccount = z.object({
   email: z.string().nullish(),
   id: z.string(),
   name: z.string().nullish(),
@@ -250,7 +250,7 @@ export const zTrialWorkflowAccount = z.object({
 export const zTrialWorkflowResponse = z.object({
   conversation_variables: z.array(zJsonObject2).optional(),
   created_at: z.int().nullish(),
-  created_by: zTrialWorkflowAccount.nullish(),
+  created_by: zTrialSimpleAccount.nullish(),
   environment_variables: z.array(zJsonObject2).optional(),
   features: zJsonObject2.optional(),
   graph: zJsonObject2,
@@ -261,7 +261,7 @@ export const zTrialWorkflowResponse = z.object({
   rag_pipeline_variables: z.array(zJsonObject2).optional(),
   tool_published: z.boolean().nullish(),
   updated_at: z.int().nullish(),
-  updated_by: zTrialWorkflowAccount.nullish(),
+  updated_by: zTrialSimpleAccount.nullish(),
   version: z.string().nullish(),
 })
 

@@ -115,7 +115,7 @@ export type AudioBinaryResponse = Blob | File
 export type TrialWorkflowResponse = {
   conversation_variables?: Array<JsonObject2>
   created_at?: number | null
-  created_by?: TrialWorkflowAccount | null
+  created_by?: TrialSimpleAccount | null
   environment_variables?: Array<JsonObject2>
   features?: JsonObject2
   graph: JsonObject2
@@ -126,7 +126,7 @@ export type TrialWorkflowResponse = {
   rag_pipeline_variables?: Array<JsonObject2>
   tool_published?: boolean | null
   updated_at?: number | null
-  updated_by?: TrialWorkflowAccount | null
+  updated_by?: TrialSimpleAccount | null
   version?: string | null
 }
 
@@ -259,7 +259,7 @@ export type JsonObject2 = {
   [key: string]: unknown
 }
 
-export type TrialWorkflowAccount = {
+export type TrialSimpleAccount = {
   email?: string | null
   id: string
   name?: string | null
