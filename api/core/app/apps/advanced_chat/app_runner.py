@@ -93,8 +93,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
+        from core.app.app_context import reset_current_app_id, set_current_app_id
+
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
+
+        _app_id_token = set_current_app_id(app_config.app_id)
 
         system_inputs = build_system_variables(
             query=self.application_generate_entity.query,
@@ -257,6 +261,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         for event in generator:
             self._handle_event(workflow_entry, event)
+
+        reset_current_app_id(_app_id_token)
 
     def handle_input_moderation(
         self,

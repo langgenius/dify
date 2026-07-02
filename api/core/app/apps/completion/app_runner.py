@@ -182,12 +182,18 @@ class CompletionAppRunner(AppRunner):
         # is not held for the lifetime of the provider response.
         db.session.close()
 
-        invoke_result = model_instance.invoke_llm(
-            prompt_messages=prompt_messages,
-            model_parameters=application_generate_entity.model_conf.parameters,
-            stop=stop,
-            stream=application_generate_entity.stream,
-        )
+        from core.app.app_context import reset_current_app_id, set_current_app_id
+
+        _app_id_token = set_current_app_id(app_config.app_id)
+        try:
+            invoke_result = model_instance.invoke_llm(
+                prompt_messages=prompt_messages,
+                model_parameters=application_generate_entity.model_conf.parameters,
+                stop=stop,
+                stream=application_generate_entity.stream,
+            )
+        finally:
+            reset_current_app_id(_app_id_token)
 
         # handle invoke result
         self._handle_invoke_result(

@@ -27,10 +27,12 @@ _POLLING_UNSUPPORTED_ERROR_MESSAGE = "does not support polling"
 
 class PluginModelClient(BasePluginClient):
     @staticmethod
-    def _dispatch_payload(*, user_id: str | None, data: dict[str, Any]) -> dict[str, Any]:
+    def _dispatch_payload(*, user_id: str | None, data: dict[str, Any], app_id: str | None = None) -> dict[str, Any]:
         payload: dict[str, Any] = {"data": data}
         if user_id is not None:
             payload["user_id"] = user_id
+        if app_id is not None:
+            payload["app_id"] = app_id
         return payload
 
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
@@ -166,6 +168,7 @@ class PluginModelClient(BasePluginClient):
         tools: list[PromptMessageTool] | None = None,
         stop: list[str] | None = None,
         stream: bool = True,
+        app_id: str | None = None,
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke llm
@@ -177,6 +180,7 @@ class PluginModelClient(BasePluginClient):
             data=jsonable_encoder(
                 self._dispatch_payload(
                     user_id=user_id,
+                    app_id=app_id,
                     data={
                         "provider": provider,
                         "model_type": "llm",

@@ -314,7 +314,10 @@ class PluginModelRuntime(ModelRuntime):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+        from core.app.app_context import get_current_app_id
+
         plugin_id, provider_name = self._split_provider(provider)
+        app_id = get_current_app_id()
         result = self.client.invoke_llm(
             tenant_id=self.tenant_id,
             user_id=self.user_id,
@@ -327,6 +330,7 @@ class PluginModelRuntime(ModelRuntime):
             tools=tools,
             stop=list(stop) if stop else None,
             stream=stream,
+            app_id=app_id,
         )
         if stream:
             return result

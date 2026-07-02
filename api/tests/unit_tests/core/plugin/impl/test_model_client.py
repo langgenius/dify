@@ -165,6 +165,58 @@ class TestPluginModelClient:
         assert call_kwargs["data"]["data"]["stream"] is False
         assert call_kwargs["data"]["data"]["model_parameters"] == {"temperature": 0.1}
 
+    def test_invoke_llm_with_app_id(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        stream_mock = mocker.patch.object(
+            client, "_request_with_plugin_daemon_response_stream", return_value=iter(["chunk-1"])
+        )
+
+        list(
+            client.invoke_llm(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={"api_key": "key"},
+                prompt_messages=[],
+                app_id="app-123",
+            )
+        )
+
+        call_kwargs = stream_mock.call_args.kwargs
+        assert call_kwargs["data"]["app_id"] == "app-123"
+
+    def test_invoke_llm_without_app_id_omits_field(self, mocker: MockerFixture):
+        client = PluginModelClient()
+        stream_mock = mocker.patch.object(
+            client, "_request_with_plugin_daemon_response_stream", return_value=iter(["chunk-1"])
+        )
+
+        list(
+            client.invoke_llm(
+                tenant_id="tenant-1",
+                user_id="user-1",
+                plugin_id="org/plugin:1",
+                provider="provider-a",
+                model="gpt-test",
+                credentials={"api_key": "key"},
+                prompt_messages=[],
+            )
+        )
+
+        call_kwargs = stream_mock.call_args.kwargs
+        assert "app_id" not in call_kwargs["data"]
+
+    def test_dispatch_payload_includes_app_id_when_provided(self):
+        payload = PluginModelClient._dispatch_payload(user_id="u1", data={"k": "v"}, app_id="app-456")
+        assert payload["app_id"] == "app-456"
+        assert payload["user_id"] == "u1"
+
+    def test_dispatch_payload_omits_app_id_when_none(self):
+        payload = PluginModelClient._dispatch_payload(user_id="u1", data={"k": "v"})
+        assert "app_id" not in payload
+
     def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
         client = PluginModelClient()
 
