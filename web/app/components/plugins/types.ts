@@ -450,18 +450,6 @@ export type InstalledPluginCategoryListResponse = {
   has_more: boolean
 }
 
-export type InstalledLatestVersionResponse = {
-  versions: {
-    [plugin_id: string]: {
-      unique_identifier: string
-      version: string
-      status: 'active' | 'deleted'
-      deprecated_reason: string
-      alternative_plugin_id: string
-    } | null
-  }
-}
-
 export type UninstallPluginResponse = {
   success: boolean
 }

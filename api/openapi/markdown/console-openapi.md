@@ -9385,7 +9385,7 @@ Bedrock retrieval test (internal use only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialAppDetailWithSite](#trialappdetailwithsite)<br> |
+| 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
@@ -9452,7 +9452,7 @@ Bedrock retrieval test (internal use only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialDatasetList](#trialdatasetlist)<br> |
+| 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/messages/{message_id}/suggested-questions
 #### Parameters
@@ -9532,7 +9532,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialWorkflow](#trialworkflow)<br> |
+| 200 | Success | **application/json**: [TrialWorkflowResponse](#trialworkflowresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/run
 **Run workflow**
@@ -9761,7 +9761,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippets retrieved successfully | **application/json**: [SnippetPagination](#snippetpagination)<br> |
+| 200 | Snippets retrieved successfully | **application/json**: [SnippetPaginationResponse](#snippetpaginationresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets
 **Create a new customized snippet**
@@ -9776,7 +9776,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Snippet created successfully | **application/json**: [Snippet](#snippet)<br> |
+| 201 | Snippet created successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request |  |
 
 ### [POST] /workspaces/current/customized-snippets/imports
@@ -9841,7 +9841,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet retrieved successfully | **application/json**: [Snippet](#snippet)<br> |
+| 200 | Snippet retrieved successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 404 | Snippet not found |  |
 
 ### [PATCH] /workspaces/current/customized-snippets/{snippet_id}
@@ -9863,7 +9863,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet updated successfully | **application/json**: [Snippet](#snippet)<br> |
+| 200 | Snippet updated successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request |  |
 | 404 | Snippet not found |  |
 
@@ -18048,6 +18048,12 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | JSONValueType |  |  |  |
 
+#### JsonObject
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JsonObject | object |  |  |
+
 #### JsonValue
 
 | Name | Type | Description | Required |
@@ -18093,7 +18099,7 @@ Enum class for large language model mode.
 | alternative_plugin_id | string |  | Yes |
 | deprecated_reason | string |  | Yes |
 | plugin_id | string |  | Yes |
-| status | string |  | Yes |
+| status | string, <br>**Available values:** "active", "deleted" | *Enum:* `"active"`, `"deleted"` | Yes |
 | unique_identifier | string |  | Yes |
 | version | string |  | Yes |
 
@@ -19590,7 +19596,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | checksum | string |  | Yes |
 | created_at | dateTime |  | Yes |
-| declaration | object |  | Yes |
+| declaration | [PluginDeclarationResponse](#plugindeclarationresponse) |  | Yes |
 | endpoints_active | integer |  | Yes |
 | endpoints_setups | integer |  | Yes |
 | id | string |  | Yes |
@@ -20667,31 +20673,19 @@ Validated metadata extracted from a Skill package.
 | inferable | boolean |  | Yes |
 | reason | string |  | No |
 
-#### Snippet
+#### SnippetAccountResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | long |  | No |
-| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| description | string |  | No |
-| graph | object |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| input_fields | object |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
 
 #### SnippetDependencyCheckResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| SnippetDependencyCheckResponse | object |  |  |
+| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | Yes |
 
 #### SnippetDraftConfigResponse
 
@@ -20746,7 +20740,12 @@ Payload for importing snippet from DSL.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| SnippetImportResponse | object |  |  |
+| current_dsl_version | string |  | Yes |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | Yes |
+| snippet_id | string |  | Yes |
+| status | [ImportStatus](#importstatus) |  | Yes |
 
 #### SnippetIterationNodeRunPayload
 
@@ -20756,24 +20755,24 @@ Payload for running an iteration node in snippet draft workflow.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### SnippetList
+#### SnippetListItemResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
+| author_name | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| description | string |  | Yes |
+| icon_info | object |  | Yes |
+| id | string |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
+| type | [SnippetType](#snippettype) |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_count | integer |  | Yes |
+| version | integer |  | Yes |
 
 #### SnippetListQuery
 
@@ -20796,15 +20795,51 @@ Payload for running a loop node in snippet draft workflow.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### SnippetPagination
+#### SnippetPaginationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_744ff9cc03e6](#_anonymousinlinemodel_744ff9cc03e6) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
-| total | integer |  | No |
+| data | [ [SnippetListItemResponse](#snippetlistitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SnippetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| description | string |  | Yes |
+| graph | object |  | Yes |
+| icon_info | object |  | Yes |
+| id | string |  | Yes |
+| input_fields | [ object ] |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
+| type | [SnippetType](#snippettype) |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| use_count | integer |  | Yes |
+| version | integer |  | Yes |
+
+#### SnippetTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### SnippetType
+
+Snippet Type Enum
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SnippetType | string | Snippet Type Enum |  |
 
 #### SnippetUseCountResponse
 
@@ -21277,6 +21312,43 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | tracing_provider | string | Tracing provider name | Yes |
 
+#### TrialAppAgentMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| strategy | string |  | No |
+| tools | [ [JsonObject](#jsonobject) ] |  | No |
+
+#### TrialAppDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| api_base_url | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| deleted_tools | [ [TrialDeletedToolResponse](#trialdeletedtoolresponse) ] |  | No |
+| description | string |  | No |
+| enable_api | boolean |  | Yes |
+| enable_site | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [TrialIconType](#trialicontype) |  | No |
+| icon_url | string |  | No |
+| id | string |  | Yes |
+| max_active_requests | integer |  | No |
+| mode | [TrialAppMode](#trialappmode) |  | Yes |
+| model_config | [TrialAppModelConfigResponse](#trialappmodelconfigresponse) |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| site | [TrialSiteResponse](#trialsiteresponse) |  | Yes |
+| tags | [ [TrialTagResponse](#trialtagresponse) ] |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [TrialWorkflowPartialResponse](#trialworkflowpartialresponse) |  | No |
+
 #### TrialAppDetailWithSite
 
 | Name | Type | Description | Required |
@@ -21306,6 +21378,21 @@ Enum class for tool provider
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [TrialWorkflowPartial](#trialworkflowpartial) |  | No |
 
+#### TrialAppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TrialAppMode | string |  |  |
+
+#### TrialAppModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | [JsonObject](#jsonobject) |  | No |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+
 #### TrialAppModelConfig
 
 | Name | Type | Description | Required |
@@ -21334,6 +21421,35 @@ Enum class for tool provider
 | updated_at | long |  | No |
 | updated_by | string |  | No |
 | user_input_form | [ object ] |  | No |
+
+#### TrialAppModelConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode | [TrialAppAgentMode](#trialappagentmode) |  | No |
+| annotation_reply | [JsonObject](#jsonobject) |  | No |
+| chat_prompt_config | [JsonObject](#jsonobject) |  | No |
+| completion_prompt_config | [JsonObject](#jsonobject) |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| dataset_configs | [JsonObject](#jsonobject) |  | No |
+| dataset_query_variable | string |  | No |
+| external_data_tools | [ [JsonObject](#jsonobject) ] |  | No |
+| file_upload | [JsonObject](#jsonobject) |  | No |
+| model | [TrialAppModel](#trialappmodel) |  | No |
+| more_like_this | [JsonObject](#jsonobject) |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| prompt_type | string |  | No |
+| retriever_resource | [JsonObject](#jsonobject) |  | No |
+| sensitive_word_avoidance | [JsonObject](#jsonobject) |  | No |
+| speech_to_text | [JsonObject](#jsonobject) |  | No |
+| suggested_questions | [ string ] |  | No |
+| suggested_questions_after_answer | [JsonObject](#jsonobject) |  | No |
+| text_to_speech | [JsonObject](#jsonobject) |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| user_input_form | [ [JsonObject](#jsonobject) ] |  | No |
 
 #### TrialConversationVariable
 
@@ -21377,6 +21493,30 @@ Enum class for tool provider
 | limit | integer, <br>**Default:** 20 | Number of items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 
+#### TrialDatasetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [TrialDatasetResponse](#trialdatasetresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### TrialDatasetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| data_source_type | string |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| indexing_technique | string |  | No |
+| name | string |  | Yes |
+| permission | string |  | No |
+| permission_keys | [ string ] |  | No |
+
 #### TrialDeletedTool
 
 | Name | Type | Description | Required |
@@ -21384,6 +21524,20 @@ Enum class for tool provider
 | provider_id | string |  | No |
 | tool_name | string |  | No |
 | type | string |  | No |
+
+#### TrialDeletedToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| provider_id | string |  | Yes |
+| tool_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### TrialIconType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TrialIconType | string |  |  |
 
 #### TrialModelsResponse
 
@@ -21447,6 +21601,36 @@ Enum class for tool provider
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
+#### TrialSiteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | No |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| code | string |  | No |
+| copyright | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| custom_disclaimer | string |  | No |
+| customize_domain | string |  | No |
+| customize_token_strategy | string |  | No |
+| default_language | string |  | Yes |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [TrialIconType](#trialicontype) |  | No |
+| icon_url | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| prompt_public | boolean |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
 #### TrialTag
 
 | Name | Type | Description | Required |
@@ -21454,6 +21638,14 @@ Enum class for tool provider
 | id | string |  | No |
 | name | string |  | No |
 | type | string |  | No |
+
+#### TrialTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### TrialWorkflow
 
@@ -21475,6 +21667,14 @@ Enum class for tool provider
 | updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | version | string |  | No |
 
+#### TrialWorkflowAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | Yes |
+| name | string |  | No |
+
 #### TrialWorkflowPartial
 
 | Name | Type | Description | Required |
@@ -21484,6 +21684,36 @@ Enum class for tool provider
 | id | string |  | No |
 | updated_at | long |  | No |
 | updated_by | string |  | No |
+
+#### TrialWorkflowPartialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| id | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+
+#### TrialWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| created_at | integer |  | No |
+| created_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
+| environment_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| features | [JsonObject](#jsonobject) |  | No |
+| graph | [JsonObject](#jsonobject) |  | Yes |
+| hash | string |  | No |
+| id | string |  | Yes |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+| rag_pipeline_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| tool_published | boolean |  | No |
+| updated_at | integer |  | No |
+| updated_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
+| version | string |  | No |
 
 #### TriggerCreationMethod
 
@@ -22861,41 +23091,6 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicy](#accesspolicy) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
-
-#### _AnonymousInlineModel_744ff9cc03e6
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
-
-#### _AnonymousInlineModel_7b8b49ca164e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_b0fd3f86d9d5
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
 
 #### _AnonymousInlineModel_b1954337d565
 

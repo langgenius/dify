@@ -255,6 +255,43 @@ describe('consoleQuery transport context', () => {
       }),
     )
   })
+
+  it('should serialize trial app dataset ids as repeated query params', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: [],
+      has_more: false,
+      limit: 20,
+      page: 1,
+      total: 0,
+    }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+      },
+    }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.trialApps.byAppId.datasets.get.queryOptions({
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+        query: {
+          ids: ['id-1', 'id-2'],
+        },
+      },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/trial-apps/app-1/datasets?ids=id-1&ids=id-2'),
+      expect.any(Object),
+      expect.objectContaining({
+        fetchCompat: true,
+      }),
+    )
+    expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
+  })
 })
 
 // Scenario: oRPC mutation defaults own shared Agent roster cache behavior.
