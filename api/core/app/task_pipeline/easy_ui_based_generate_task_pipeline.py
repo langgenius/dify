@@ -74,7 +74,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
     """
 
     _task_state: EasyUITaskState
-    _precomputed_event_type: StreamEvent | None = None
 
     def __init__(
         self,
@@ -350,15 +349,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
                     match event:
                         case QueueLLMChunkEvent():
-                            # Determine the event type once, on first LLM chunk, and reuse for subsequent chunks
-                            if not hasattr(self, "_precomputed_event_type") or self._precomputed_event_type is None:
-                                self._precomputed_event_type = self._message_cycle_manager.get_message_event_type(
-                                    message_id=self._message_id
-                                )
                             yield self._message_cycle_manager.message_to_stream_response(
                                 answer=delta_text,
                                 message_id=self._message_id,
-                                event_type=self._precomputed_event_type,
+                                event_type=StreamEvent.MESSAGE,
                             )
                         case _:
                             yield self._agent_message_to_stream_response(
