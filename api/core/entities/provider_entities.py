@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import builtins
 from enum import StrEnum, auto
-from typing import Any, ClassVar, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -193,9 +192,6 @@ class BasicProviderConfig(BaseModel):
     """
     Base model class for common provider settings like credentials
     """
-
-    # Preserve the existing ProviderConfig.Type API while giving OpenAPI a stable schema name.
-    Type: ClassVar[builtins.type[ProviderConfigType]] = ProviderConfigType
 
     type: ProviderConfigType = Field(..., description="The type of the credentials")
     name: str = Field(..., description="The name of the credentials")
