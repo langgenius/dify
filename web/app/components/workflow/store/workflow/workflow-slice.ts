@@ -13,6 +13,8 @@ type PreviewRunningData = WorkflowRunningData & {
   resultTextSelectorKey?: string
   // human input form schema or data cached when node is in 'Paused' status
   extraContentAndFormData?: Record<string, unknown>
+  reasoningContent?: Record<string, string>
+  reasoningFinished?: boolean
 }
 
 type MousePosition = {
