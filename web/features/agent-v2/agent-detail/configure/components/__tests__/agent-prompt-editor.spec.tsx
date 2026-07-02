@@ -176,6 +176,14 @@ describe('AgentPromptEditor', () => {
 
   // Prompt actions should expose the designed copy control and copy the current draft prompt.
   describe('Prompt Actions', () => {
+    it('should label the editable prompt with the visible prompt heading', () => {
+      renderAgentPromptEditor('Review these tenders')
+
+      expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
+        'aria-labelledby': 'agent-configure-prompt-label',
+      }))
+    })
+
     it('should copy the current prompt when the copy button is clicked', () => {
       renderAgentPromptEditor('Review these tenders')
 

@@ -39,9 +39,11 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.agent_fields import (
+    AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
+    AgentConfigSnapshotSummaryResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
     AgentLogMessageListResponse,
@@ -50,11 +52,13 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
+from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.agent import Agent, AgentStatus
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
@@ -264,21 +268,21 @@ class AgentPublishPayload(BaseModel):
     version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
 
 
-class AgentPublishResponse(BaseModel):
+class AgentPublishResponse(ResponseModel):
     result: str
     active_config_snapshot_id: str
-    active_config_snapshot: dict[str, object] | None = None
-    draft: dict[str, object] | None = None
+    active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    draft: AgentConfigDraftSummaryResponse | None = None
 
 
 class AgentBuildDraftCheckoutPayload(BaseModel):
     force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
 
 
-class AgentBuildDraftResponse(BaseModel):
+class AgentBuildDraftResponse(ResponseModel):
     variant: str
-    draft: dict[str, object]
-    agent_soul: dict[str, object]
+    draft: AgentConfigDraftSummaryResponse
+    agent_soul: AgentSoulConfig
 
 
 class AgentBuildDraftApplyResponse(BaseModel):
