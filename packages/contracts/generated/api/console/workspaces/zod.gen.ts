@@ -773,7 +773,7 @@ export const zSnippetType = z.enum(['group', 'node'])
  */
 export const zSnippetResponse = z.object({
   created_at: z.int(),
-  created_by: zSimpleAccountResponse.nullish(),
+  created_by: zSimpleAccountResponse.nullable(),
   description: z.string().nullable(),
   graph: z.record(z.string(), z.unknown()),
   icon_info: z.record(z.string(), z.unknown()).nullable(),
@@ -784,7 +784,7 @@ export const zSnippetResponse = z.object({
   tags: z.array(zSnippetTagResponse),
   type: zSnippetType,
   updated_at: z.int(),
-  updated_by: zSimpleAccountResponse.nullish(),
+  updated_by: zSimpleAccountResponse.nullable(),
   use_count: z.int(),
   version: z.int(),
 })
