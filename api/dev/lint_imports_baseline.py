@@ -85,8 +85,7 @@ def snapshot_from_report(report: Any) -> Snapshot:
 
         if imports_by_importer:
             snapshot[ContractName(contract.name)] = {
-                importer: sorted(imported_modules)
-                for importer, imported_modules in sorted(imports_by_importer.items())
+                importer: sorted(imported_modules) for importer, imported_modules in sorted(imports_by_importer.items())
             }
 
     return {contract_name: snapshot[contract_name] for contract_name in sorted(snapshot)}
@@ -167,10 +166,7 @@ def write_baseline(path: Path, snapshot: Snapshot) -> None:
     payload: BaselineFile = {
         "version": BASELINE_VERSION,
         "contracts": {
-            contract_name: {
-                importer: list(imported_modules)
-                for importer, imported_modules in importers.items()
-            }
+            contract_name: {importer: list(imported_modules) for importer, imported_modules in importers.items()}
             for contract_name, importers in snapshot.items()
         },
     }
