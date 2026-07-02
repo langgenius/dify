@@ -34,6 +34,8 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from sqlalchemy.orm import Session
+
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -43,6 +45,8 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
 from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -92,8 +96,9 @@ def _translate_service_errors() -> Generator[None, None, None]:
         raise CompletionRequestError(e.description)
 
 
-def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool):
+def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool, session: Session):
     return AppGenerateService.generate(
+        session=session,
         app_model=app,
         user=caller,
         args=args,
@@ -102,31 +107,31 @@ def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool):
     )
 
 
-def _run_chat(app: App, caller: Any, payload: AppRunRequest):
+def _run_chat(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if not payload.query or not payload.query.strip():
         raise UnprocessableEntity("query_required_for_chat")
     args = payload.model_dump(exclude_none=True)
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True)
+        return _generate(app, caller, args, streaming=True, session=session)
 
 
-def _run_completion(app: App, caller: Any, payload: AppRunRequest):
+def _run_completion(app: App, caller: Any, payload: AppRunRequest, session: Session):
     args = payload.model_dump(exclude_none=True)
     args["auto_generate_name"] = False
     args.setdefault("query", "")
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True)
+        return _generate(app, caller, args, streaming=True, session=session)
 
 
-def _run_workflow(app: App, caller: Any, payload: AppRunRequest):
+def _run_workflow(app: App, caller: Any, payload: AppRunRequest, session: Session):
     if payload.query is not None:
         raise UnprocessableEntity("query_not_supported_for_workflow")
     args = payload.model_dump(exclude={"query", "conversation_id", "auto_generate_name"}, exclude_none=True)
     with _translate_service_errors():
-        return _generate(app, caller, args, streaming=True)
+        return _generate(app, caller, args, streaming=True, session=session)
 
 
-_DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
+_DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
     AppMode.CHAT: _run_chat,
     AppMode.AGENT_CHAT: _run_chat,
     AppMode.ADVANCED_CHAT: _run_chat,
@@ -143,7 +148,8 @@ class AppRunApi(Resource):
     )
     @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
     @accepts(body=AppRunRequest)
-    def post(self, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
+    @with_session
+    def post(self, session: Session, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
         app_model, caller, caller_kind = auth_data.require_app_context()
 
         handler = _DISPATCH.get(app_model.mode)
@@ -151,7 +157,7 @@ class AppRunApi(Resource):
             raise UnprocessableEntity("mode_not_runnable")
 
         try:
-            stream_obj = handler(app_model, caller, body)
+            stream_obj = handler(app_model, caller, body, session)
         except HTTPException:
             raise
         except Exception:

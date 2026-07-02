@@ -35,6 +35,8 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from controllers.console.app.wraps import with_session
+from sqlalchemy.orm import Session
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
@@ -203,7 +205,8 @@ class CompletionApi(Resource):
         service_api_ns.models[GeneratedAppResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Create a completion for the given prompt.
 
         This endpoint generates a completion based on the provided inputs and query.
@@ -229,6 +232,7 @@ class CompletionApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model,
                 user=end_user,
                 args=args,
@@ -352,7 +356,8 @@ class ChatApi(Resource):
         service_api_ns.models[GeneratedAppResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Send a message in a chat conversation.
 
         This endpoint handles chat messages for chat, agent chat, and advanced chat applications.
@@ -376,7 +381,7 @@ class ChatApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+                session=session, app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
 
             return helper.compact_generate_response(response)

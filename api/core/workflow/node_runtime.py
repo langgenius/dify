@@ -535,6 +535,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     def invoke(
         self,
         *,
+        session: Session,
         tool_runtime: ToolRuntimeHandle,
         tool_parameters: Mapping[str, Any],
         workflow_call_depth: int,
@@ -557,6 +558,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
         try:
             messages = ToolEngine.generic_invoke(
+                session=session,
                 tool=tool,
                 tool_parameters=dict(tool_parameters),
                 user_id=self._run_context.user_id,

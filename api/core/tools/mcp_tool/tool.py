@@ -5,6 +5,7 @@ import json
 import logging
 from collections.abc import Generator, Mapping
 from typing import Any, cast, override
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.entities.mcp_provider import IdentityMode
@@ -65,6 +66,7 @@ class MCPTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

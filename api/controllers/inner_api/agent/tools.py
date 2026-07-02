@@ -12,6 +12,9 @@ from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest, AgentToolInvokeResponse
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
 
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
+
 
 class AgentToolInvokeHttpError(BaseHTTPException):
     error_code = "agent_tool_invoke_failed"
@@ -46,7 +49,8 @@ class AgentToolInvokeApi(Resource):
     @inner_api_ns.doc("inner_agent_tool_invoke")
     @inner_api_ns.expect(inner_api_ns.models[AgentToolInvokeRequest.__name__])
     @inner_api_ns.response(200, "Tool invoked successfully", inner_api_ns.models[AgentToolInvokeResponse.__name__])
-    def post(self) -> dict[str, object]:
+    @with_session
+    def post(self, session: Session) -> dict[str, object]:
         try:
             payload = AgentToolInvokeRequest.model_validate(inner_api_ns.payload or {})
         except ValidationError as exc:
@@ -57,7 +61,7 @@ class AgentToolInvokeApi(Resource):
             ) from exc
 
         try:
-            response = AgentToolInnerService().invoke(payload, session=db.session())
+            response = AgentToolInnerService().invoke(session=session, request=payload)
         except AgentToolInnerServiceError as exc:
             raise AgentToolInvokeHttpError(
                 error_code=exc.error_code,

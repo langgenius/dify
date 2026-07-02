@@ -56,6 +56,9 @@ from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
+
 logger = logging.getLogger(__name__)
 
 
@@ -155,7 +158,8 @@ class CompletionMessageApi(Resource):
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -164,6 +168,7 @@ class CompletionMessageApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
 
@@ -230,8 +235,9 @@ class ChatMessageApi(Resource):
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
-    def post(self, current_tenant_id: str, current_user: Account, app_model: App):
-        return _create_chat_message(current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model)
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
+        return _create_chat_message(session=session, current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -250,9 +256,11 @@ class AgentChatMessageApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _create_chat_message(
+            session=session,
             current_tenant_id=current_tenant_id,
             current_user=current_user,
             app_model=app_model,
@@ -275,9 +283,11 @@ class AgentBuildChatFinalizeApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _create_build_chat_finalization_message(
+            session=session,
             current_tenant_id=current_tenant_id,
             current_user=current_user,
             app_model=app_model,
@@ -339,6 +349,7 @@ def _resolve_current_user_agent_debug_conversation_id(
 
 def _create_chat_message(
     *,
+    session: Session,
     current_user: Account,
     app_model: App,
     current_tenant_id: str | None = None,
@@ -373,6 +384,7 @@ def _create_chat_message(
         args["external_trace_id"] = external_trace_id
 
     return _generate_chat_message_response(
+        session=session,
         current_user=current_user,
         app_model=app_model,
         args=args,
@@ -381,7 +393,7 @@ def _create_chat_message(
 
 
 def _create_build_chat_finalization_message(
-    *, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
+        *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
     debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
         current_tenant_id=current_tenant_id,
@@ -402,6 +414,7 @@ def _create_build_chat_finalization_message(
         args["external_trace_id"] = external_trace_id
 
     response = _generate_chat_message(
+        session=session,
         current_user=current_user,
         app_model=app_model,
         args=args,
@@ -457,6 +470,7 @@ def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[
 
 def _generate_chat_message(
     *,
+    session: Session,
     current_user: Account,
     app_model: App,
     args: dict[str, Any],
@@ -464,6 +478,7 @@ def _generate_chat_message(
 ):
     try:
         return AppGenerateService.generate(
+            session=session,
             app_model=app_model,
             user=current_user,
             args=args,
@@ -498,12 +513,14 @@ def _generate_chat_message(
 
 def _generate_chat_message_response(
     *,
+    session: Session,
     current_user: Account,
     app_model: App,
     args: dict[str, Any],
     streaming: bool,
 ):
     response = _generate_chat_message(
+        session=session,
         current_user=current_user,
         app_model=app_model,
         args=args,

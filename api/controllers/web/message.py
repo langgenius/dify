@@ -21,6 +21,9 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
 )
 from controllers.web.wraps import WebApiResource
+from controllers.console.app.wraps import with_session
+from sqlalchemy.orm import Session
+
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from fields.conversation_fields import ResultResponse
@@ -162,7 +165,8 @@ class MessageMoreLikeThisApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
+    @with_session
+    def get(self, session: Session, app_model: App, end_user: EndUser, message_id: UUID):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -175,6 +179,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate_more_like_this(
+                session=session,
                 app_model=app_model,
                 user=end_user,
                 message_id=message_id_str,

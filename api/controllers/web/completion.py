@@ -18,6 +18,8 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import with_session
+from sqlalchemy.orm import Session
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -107,7 +109,8 @@ class CompletionApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -119,6 +122,7 @@ class CompletionApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
             )
 
@@ -191,7 +195,8 @@ class ChatApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
@@ -210,6 +215,7 @@ class ChatApi(WebApiResource):
                 )
 
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
             )
 

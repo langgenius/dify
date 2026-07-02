@@ -19,6 +19,8 @@ from libs.exception import BaseHTTPException
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveResponse
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError, InnerKnowledgeRetrievalServiceError
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
 
 
 class InnerKnowledgeRetrievalHttpError(BaseHTTPException):
@@ -70,7 +72,8 @@ class InnerKnowledgeRetrieveApi(Resource):
             500: "Unexpected knowledge retrieval failure",
         }
     )
-    def post(self) -> dict[str, object]:
+    @with_session
+    def post(self, session: Session) -> dict[str, object]:
         """Validate the payload, run retrieval, and return workflow-style sources."""
         try:
             payload = InnerKnowledgeRetrieveRequest.model_validate(inner_api_ns.payload or {})
@@ -82,7 +85,7 @@ class InnerKnowledgeRetrieveApi(Resource):
             ) from exc
 
         try:
-            response = InnerKnowledgeRetrievalService().retrieve(payload, session=db.session)
+            response = InnerKnowledgeRetrievalService().retrieve(payload, session=session)
         except InnerKnowledgeRetrievalServiceError as exc:
             raise InnerKnowledgeRetrievalHttpError(
                 error_code=exc.error_code,

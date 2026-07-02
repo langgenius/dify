@@ -21,6 +21,9 @@ from ..wraps import (
     with_current_user,
 )
 
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
+
 register_schema_models(console_ns, HitTestingPayload)
 register_response_schema_models(console_ns, HitTestingResponse)
 
@@ -45,7 +48,8 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @with_current_tenant_id
     @with_current_user
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
-    def post(self, current_user: Account, current_tenant_id: str, dataset_id: UUID) -> dict[str, object]:
+    @with_session
+    def post(self, session: Session, current_user: Account, current_tenant_id: str, dataset_id: UUID) -> dict[str, object]:
         dataset_id_str = str(dataset_id)
 
         dataset = self.get_and_validate_dataset(dataset_id_str, current_user, current_tenant_id)
@@ -54,5 +58,5 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
 
         return dump_response(
             HitTestingResponse,
-            self.perform_hit_testing(dataset, args, current_user, current_tenant_id),
+            self.perform_hit_testing(session, dataset, args, current_user, current_tenant_id),
         )

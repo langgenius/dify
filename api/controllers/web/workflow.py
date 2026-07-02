@@ -15,6 +15,8 @@ from controllers.web.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
+from controllers.console.app.wraps import with_session
+from sqlalchemy.orm import Session
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -52,7 +54,8 @@ class WorkflowRunApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """
         Run workflow
         """
@@ -65,6 +68,7 @@ class WorkflowRunApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=True
             )
 

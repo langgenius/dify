@@ -30,6 +30,8 @@ from models import Account
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
 
 from .. import console_ns
 
@@ -44,7 +46,8 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
+    @with_session
+    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         """
         Run workflow
         """
@@ -59,6 +62,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         args = payload.model_dump(exclude_none=True)
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
 

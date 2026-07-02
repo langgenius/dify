@@ -81,6 +81,9 @@ from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
+
 logger = logging.getLogger(__name__)
 
 _file_access_controller = DatabaseFileAccessController()
@@ -631,7 +634,8 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
@@ -644,6 +648,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=True
             )
 
@@ -1045,7 +1050,8 @@ class DraftWorkflowRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
@@ -1057,6 +1063,7 @@ class DraftWorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model,
                 user=current_user,
                 args=args,
@@ -1590,7 +1597,8 @@ class DraftWorkflowTriggerRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
         """
@@ -1618,6 +1626,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
+                    session=session,
                     app_model=app_model,
                     user=current_user,
                     args=workflow_args,
@@ -1740,7 +1749,8 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Full workflow debug when the start node is a trigger
         """
@@ -1772,6 +1782,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model,
                 user=current_user,
                 args=workflow_args,
@@ -1822,7 +1833,7 @@ class WorkflowOnlineUsersApi(Resource):
         users_json_by_app_id: dict[str, Any] = {}
         for start_index in range(0, len(ordered_accessible_app_ids), WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE):
             app_id_batch = ordered_accessible_app_ids[
-                start_index : start_index + WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
+                start_index: start_index + WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
             ]
             pipe = redis_client.pipeline(transaction=False)
             for app_id in app_id_batch:

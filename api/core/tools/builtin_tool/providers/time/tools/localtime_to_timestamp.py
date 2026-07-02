@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from datetime import datetime, tzinfo
 from typing import Any, cast, override
+from sqlalchemy.orm import Session
 
 import pytz  # type: ignore[import-untyped]
 
@@ -13,6 +14,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

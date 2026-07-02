@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from datetime import UTC, datetime
 from typing import Any, override
+from sqlalchemy.orm import Session
 
 from pytz import timezone as pytz_timezone  # type: ignore[import-untyped]
 
@@ -12,6 +13,7 @@ class CurrentTimeTool(BuiltinTool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

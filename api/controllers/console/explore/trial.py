@@ -100,6 +100,9 @@ from services.errors.message import (
 from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
 
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
+
 logger = logging.getLogger(__name__)
 
 
@@ -205,7 +208,8 @@ class TrialAppWorkflowRunApi(TrialAppResource):
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         """
         Run workflow
         """
@@ -222,6 +226,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             app_id = app_model.id
             user_id = current_user.id
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
@@ -272,7 +277,8 @@ class TrialChatApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @trial_feature_enable
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -295,6 +301,7 @@ class TrialChatApi(TrialAppResource):
             user_id = current_user.id
 
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
@@ -468,7 +475,8 @@ class TrialCompletionApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @trial_feature_enable
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -485,6 +493,7 @@ class TrialCompletionApi(TrialAppResource):
             user_id = current_user.id
 
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
             )
 

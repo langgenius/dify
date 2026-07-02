@@ -22,6 +22,8 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
 from controllers.service_api.schema import (
     expect_user_json,
     expect_with_user,
@@ -341,7 +343,8 @@ class WorkflowRunApi(Resource):
         service_api_ns.models[GeneratedAppResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """Execute a workflow.
 
         Runs a workflow with the provided inputs and returns the results.
@@ -363,6 +366,7 @@ class WorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
 
@@ -448,7 +452,8 @@ class WorkflowRunByIdApi(Resource):
         service_api_ns.models[GeneratedAppResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
-    def post(self, app_model: App, end_user: EndUser, workflow_id: str):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser, workflow_id: str):
         """Run specific workflow by ID.
 
         Executes a specific workflow version identified by its ID.
@@ -473,6 +478,7 @@ class WorkflowRunByIdApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
 

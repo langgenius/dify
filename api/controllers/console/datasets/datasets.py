@@ -28,6 +28,9 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+
+from controllers.console.app.wraps import with_session
+from sqlalchemy.orm import Session
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -538,7 +541,8 @@ class DatasetListApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account):
         payload = DatasetCreatePayload.model_validate(console_ns.payload or {})
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
@@ -552,6 +556,7 @@ class DatasetListApi(Resource):
 
         try:
             dataset = DatasetService.create_empty_dataset(
+                session=session,
                 tenant_id=current_tenant_id,
                 name=payload.name,
                 description=payload.description,
@@ -561,21 +566,20 @@ class DatasetListApi(Resource):
                 provider=payload.provider,
                 external_knowledge_api_id=payload.external_knowledge_api_id,
                 external_knowledge_id=payload.external_knowledge_id,
-                session=db.session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
-            [str(dataset.id)],
+            [dataset.id],
         )
 
         item = DatasetDetailWithPartialMembersResponse.model_validate(dataset, from_attributes=True).model_dump(
             mode="json"
         )
-        item["permission_keys"] = permission_keys_map.get(str(dataset.id), [])
+        item["permission_keys"] = permission_keys_map.get(dataset.id, [])
         return item, 201
 
 
@@ -607,7 +611,7 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             dataset_id=dataset_id_str,
         )
@@ -660,7 +664,8 @@ class DatasetApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
-    def patch(self, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+    @with_session
+    def patch(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
@@ -681,16 +686,16 @@ class DatasetApi(Resource):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not dify_config.RBAC_ENABLED:
             DatasetPermissionService.check_permission(
-                current_user, dataset, payload.permission, payload.partial_member_list, db.session
+                session, current_user, dataset, payload.permission, payload.partial_member_list
             )
 
-        dataset = DatasetService.update_dataset(dataset_id_str, payload_data, current_user, db.session)
+        dataset = DatasetService.update_dataset(session, dataset_id_str, payload_data, current_user)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
 
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             [dataset_id_str],
         )

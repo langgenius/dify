@@ -24,6 +24,8 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console.wraps import edit_permission_required
+from controllers.console.app.wraps import with_session
+from sqlalchemy.orm import Session
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import (
@@ -481,7 +483,8 @@ class DatasetListApi(DatasetApiResource):
         service_api_ns.models[DatasetDetailResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id):
+    @with_session
+    def post(self, session: Session, tenant_id):
         """Resource for creating datasets."""
         payload = DatasetCreatePayload.model_validate(service_api_ns.payload or {})
 
@@ -506,6 +509,7 @@ class DatasetListApi(DatasetApiResource):
         try:
             assert isinstance(current_user, Account)
             dataset = DatasetService.create_empty_dataset(
+                session=session,
                 tenant_id=tenant_id,
                 name=payload.name,
                 description=payload.description,
@@ -519,7 +523,6 @@ class DatasetListApi(DatasetApiResource):
                 embedding_model_name=payload.embedding_model,
                 retrieval_model=payload.retrieval_model,
                 summary_index_setting=payload.summary_index_setting,
-                session=db.session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -634,7 +637,8 @@ class DatasetApi(DatasetApiResource):
         service_api_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def patch(self, _, dataset_id: UUID):
+    @with_session
+    def patch(self, session: Session, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
@@ -680,7 +684,7 @@ class DatasetApi(DatasetApiResource):
                 db.session,
             )
 
-        dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user, db.session)
+        dataset = DatasetService.update_dataset(session, dataset_id_str, update_data, current_user)
 
         if dataset is None:
             raise NotFound("Dataset not found.")

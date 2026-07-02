@@ -4,6 +4,8 @@ from typing import override
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
@@ -48,7 +50,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         )
 
     @override
-    def _run(self, query: str) -> str:
+    def _run(self, session: Session, query: str) -> str:
         threads = []
         all_documents: list[RagDocument] = []
         for dataset_id in self.dataset_ids:
@@ -147,7 +149,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(context_list)
 
-            return str("\n".join(document_context_list))
+            return "\n".join(document_context_list)
         return ""
 
     def _retriever(

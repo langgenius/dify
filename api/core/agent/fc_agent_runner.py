@@ -4,6 +4,8 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import Any, Union
 
+from sqlalchemy.orm import Session
+
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.errors import AgentMaxIterationError
 from core.app.apps.base_app_queue_manager import PublishFrom
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class FunctionCallAgentRunner(BaseAgentRunner):
-    def run(self, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk, None, None]:
+    def run(self, session: Session, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk, None, None]:
         """
         Run FunctionCall agent application
         """
@@ -167,7 +169,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         for content in result.message.content:
                             response += content.data
                     else:
-                        response += str(result.message.content)
+                        response += result.message.content
 
                 if not result.message.content:
                     result.message.content = ""
@@ -238,6 +240,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 else:
                     # invoke tool
                     tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                        session=session,
                         tool=tool_instance,
                         tool_parameters=tool_call_args,
                         user_id=self.user_id,

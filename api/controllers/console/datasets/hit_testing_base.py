@@ -26,6 +26,9 @@ from models.dataset import Dataset
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import ExternalRetrievalModel, RetrievalModel
 from services.hit_testing_service import HitTestingService
+from sqlalchemy.orm import Session
+from controllers.console.app.wraps import with_session
+
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +111,7 @@ class DatasetsHitTestingBase:
 
     @staticmethod
     def perform_hit_testing(
+        session: Session,
         dataset: Dataset,
         args: dict[str, Any],
         current_user: Account | None = None,
@@ -116,7 +120,7 @@ class DatasetsHitTestingBase:
         try:
             current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
-                session=db.session,
+                session=session,
                 dataset=dataset,
                 query=cast(str, args.get("query")),
                 account=current_user,

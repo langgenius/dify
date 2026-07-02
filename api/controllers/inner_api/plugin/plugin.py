@@ -36,6 +36,8 @@ from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
+from controllers.console.app.wraps import with_session
+from sqlalchemy.orm import Session
 
 
 @inner_api_ns.route("/invoke/llm")
@@ -236,10 +238,12 @@ class PluginInvokeToolApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
+    @with_session
+    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
+                    session=session,
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
                     tool_type=ToolProviderType.value_of(payload.tool_type),
@@ -334,8 +338,10 @@ class PluginInvokeAppApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
+    @with_session
+    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
+            session=session,
             app_id=payload.app_id,
             user_id=user_model.id,
             tenant_id=tenant_model.id,
