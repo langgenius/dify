@@ -362,6 +362,7 @@ class TestHitlServiceApi:
             user=user,
             args={"workflow_id": None, "query": "hi", "inputs": {}},
             invoke_from=InvokeFrom.SERVICE_API,
+            session=MagicMock(),
             streaming=False,
         )
 

@@ -8,7 +8,6 @@ from typing import Any
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
-from core.db import session_factory
 from core.workflow.node_factory import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from graphon.enums import BuiltinNodeTypes, NodeType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -59,9 +58,8 @@ class SnippetService:
             session_maker = None
         if session is not None:
             session_maker = sessionmaker(bind=session.get_bind(), expire_on_commit=False)
-        elif session_maker is None:
-            session_maker = session_factory.get_session_maker()
-        assert session_maker is not None
+        if session_maker is None:
+            raise ValueError("SnippetService requires a session or session_maker.")
         self._session = session
         self._session_maker = session_maker
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(

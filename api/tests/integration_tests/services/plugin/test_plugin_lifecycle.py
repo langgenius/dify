@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
+from extensions.ext_database import db
 from models import Tenant
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
@@ -31,17 +32,18 @@ def tenant(flask_req_ctx):
 
 class TestPluginPermissionLifecycle:
     def test_get_returns_none_for_new_tenant(self, tenant):
-        assert PluginPermissionService.get_permission(tenant) is None
+        assert PluginPermissionService.get_permission(tenant, session=db.session) is None
 
     def test_change_creates_row(self, tenant):
         result = PluginPermissionService.change_permission(
             tenant,
             TenantPluginPermission.InstallPermission.ADMINS,
             TenantPluginPermission.DebugPermission.EVERYONE,
+            session=db.session,
         )
         assert result is True
 
-        perm = PluginPermissionService.get_permission(tenant)
+        perm = PluginPermissionService.get_permission(tenant, session=db.session)
         assert perm is not None
         assert perm.install_permission == TenantPluginPermission.InstallPermission.ADMINS
         assert perm.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE
@@ -51,13 +53,15 @@ class TestPluginPermissionLifecycle:
             tenant,
             TenantPluginPermission.InstallPermission.ADMINS,
             TenantPluginPermission.DebugPermission.NOBODY,
+            session=db.session,
         )
         PluginPermissionService.change_permission(
             tenant,
             TenantPluginPermission.InstallPermission.EVERYONE,
             TenantPluginPermission.DebugPermission.ADMINS,
+            session=db.session,
         )
-        perm = PluginPermissionService.get_permission(tenant)
+        perm = PluginPermissionService.get_permission(tenant, session=db.session)
         assert perm is not None
         assert perm.install_permission == TenantPluginPermission.InstallPermission.EVERYONE
         assert perm.debug_permission == TenantPluginPermission.DebugPermission.ADMINS
@@ -73,7 +77,7 @@ class TestPluginPermissionLifecycle:
 
 class TestPluginAutoUpgradeLifecycle:
     def test_get_returns_none_for_new_tenant(self, tenant):
-        assert PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY) is None
+        assert PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY, session=db.session) is None
 
     def test_change_creates_row(self, tenant):
         result = PluginAutoUpgradeService.change_strategy(
@@ -84,10 +88,11 @@ class TestPluginAutoUpgradeLifecycle:
             exclude_plugins=[],
             include_plugins=[],
             category=PLUGIN_CATEGORY,
+            session=db.session,
         )
         assert result is True
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY, session=db.session)
         assert strategy is not None
         assert strategy.strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST
         assert strategy.upgrade_time_of_day == 3
@@ -101,6 +106,7 @@ class TestPluginAutoUpgradeLifecycle:
             exclude_plugins=[],
             include_plugins=[],
             category=PLUGIN_CATEGORY,
+            session=db.session,
         )
         PluginAutoUpgradeService.change_strategy(
             tenant,
@@ -110,9 +116,10 @@ class TestPluginAutoUpgradeLifecycle:
             exclude_plugins=[],
             include_plugins=["plugin-a"],
             category=PLUGIN_CATEGORY,
+            session=db.session,
         )
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY, session=db.session)
         assert strategy is not None
         assert strategy.strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST
         assert strategy.upgrade_time_of_day == 12
@@ -120,9 +127,9 @@ class TestPluginAutoUpgradeLifecycle:
         assert strategy.include_plugins == ["plugin-a"]
 
     def test_exclude_plugin_creates_strategy_when_none_exists(self, tenant):
-        PluginAutoUpgradeService.exclude_plugin(tenant, "my-plugin", PLUGIN_CATEGORY)
+        PluginAutoUpgradeService.exclude_plugin(tenant, "my-plugin", PLUGIN_CATEGORY, session=db.session)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY, session=db.session)
         assert strategy is not None
         assert strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
         assert "my-plugin" in strategy.exclude_plugins
@@ -136,10 +143,11 @@ class TestPluginAutoUpgradeLifecycle:
             exclude_plugins=["existing"],
             include_plugins=[],
             category=PLUGIN_CATEGORY,
+            session=db.session,
         )
-        PluginAutoUpgradeService.exclude_plugin(tenant, "new-plugin", PLUGIN_CATEGORY)
+        PluginAutoUpgradeService.exclude_plugin(tenant, "new-plugin", PLUGIN_CATEGORY, session=db.session)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY, session=db.session)
         assert strategy is not None
         assert "existing" in strategy.exclude_plugins
         assert "new-plugin" in strategy.exclude_plugins
@@ -153,10 +161,11 @@ class TestPluginAutoUpgradeLifecycle:
             exclude_plugins=["same-plugin"],
             include_plugins=[],
             category=PLUGIN_CATEGORY,
+            session=db.session,
         )
-        PluginAutoUpgradeService.exclude_plugin(tenant, "same-plugin", PLUGIN_CATEGORY)
+        PluginAutoUpgradeService.exclude_plugin(tenant, "same-plugin", PLUGIN_CATEGORY, session=db.session)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY, session=db.session)
         assert strategy is not None
         assert strategy.exclude_plugins.count("same-plugin") == 1
 
@@ -169,10 +178,11 @@ class TestPluginAutoUpgradeLifecycle:
             exclude_plugins=[],
             include_plugins=["p1", "p2"],
             category=PLUGIN_CATEGORY,
+            session=db.session,
         )
-        PluginAutoUpgradeService.exclude_plugin(tenant, "p1", PLUGIN_CATEGORY)
+        PluginAutoUpgradeService.exclude_plugin(tenant, "p1", PLUGIN_CATEGORY, session=db.session)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY, session=db.session)
         assert strategy is not None
         assert "p1" not in strategy.include_plugins
         assert "p2" in strategy.include_plugins
@@ -186,10 +196,11 @@ class TestPluginAutoUpgradeLifecycle:
             exclude_plugins=[],
             include_plugins=[],
             category=PLUGIN_CATEGORY,
+            session=db.session,
         )
-        PluginAutoUpgradeService.exclude_plugin(tenant, "excluded-plugin", PLUGIN_CATEGORY)
+        PluginAutoUpgradeService.exclude_plugin(tenant, "excluded-plugin", PLUGIN_CATEGORY, session=db.session)
 
-        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY)
+        strategy = PluginAutoUpgradeService.get_strategy(tenant, PLUGIN_CATEGORY, session=db.session)
         assert strategy is not None
         assert strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
         assert "excluded-plugin" in strategy.exclude_plugins

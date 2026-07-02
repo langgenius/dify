@@ -108,7 +108,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
+                app_model=app_model, conversation_id=conversation_id, user=user, session=db.session
             )
 
         # Build the EasyUI-shaped config from the Agent Soul so the chat pipeline
@@ -287,7 +287,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         out of scope here — the message is persisted and can be re-fetched.
         """
         conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user
+            app_model=app_model, conversation_id=conversation_id, user=user, session=db.session
         )
         agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,

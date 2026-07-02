@@ -155,7 +155,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         if conversation_id:
             try:
                 conversation = ConversationService.get_conversation(
-                    app_model=app_model, conversation_id=conversation_id, user=user
+                    app_model=app_model, conversation_id=conversation_id, user=user, session=db.session
                 )
             except ConversationNotExistsError:
                 if invoke_from == InvokeFrom.SERVICE_API:

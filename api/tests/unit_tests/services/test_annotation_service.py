@@ -103,7 +103,7 @@ class TestAppAnnotationServiceUpInsert:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, "app-1")
+                AppAnnotationService.up_insert_app_annotation_from_message(args, "app-1", session=mock_db.session)
 
     def test_up_insert_app_annotation_from_message_should_raise_value_error_when_answer_missing(self) -> None:
         """Test missing answer and content raises ValueError."""
@@ -121,7 +121,7 @@ class TestAppAnnotationServiceUpInsert:
 
             # Act & Assert
             with pytest.raises(ValueError):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
+                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
 
     def test_up_insert_app_annotation_from_message_should_raise_not_found_when_message_missing(self) -> None:
         """Test missing message raises NotFound."""
@@ -139,7 +139,7 @@ class TestAppAnnotationServiceUpInsert:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
+                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
 
     def test_up_insert_app_annotation_from_message_should_update_existing_annotation_when_found(self) -> None:
         """Test existing annotation is updated and indexed."""
@@ -161,7 +161,7 @@ class TestAppAnnotationServiceUpInsert:
             mock_db.session.scalar.side_effect = [app, message, setting]
 
             # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
+            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
 
             # Assert
             assert result == annotation
@@ -199,7 +199,7 @@ class TestAppAnnotationServiceUpInsert:
             mock_db.session.scalar.side_effect = [app, message, None]
 
             # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
+            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
 
             # Assert
             assert result == annotation_instance
@@ -231,7 +231,7 @@ class TestAppAnnotationServiceUpInsert:
 
             # Act & Assert
             with pytest.raises(ValueError):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
+                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
 
     def test_up_insert_app_annotation_from_message_should_create_annotation_when_message_missing(self) -> None:
         """Test annotation is created when message_id is not provided."""
@@ -252,7 +252,7 @@ class TestAppAnnotationServiceUpInsert:
             mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id)
+            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
 
             # Assert
             assert result == annotation_instance
@@ -383,7 +383,7 @@ class TestAppAnnotationServiceListAndExport:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.get_annotation_list_by_app_id("app-1", 1, 10, "")
+                AppAnnotationService.get_annotation_list_by_app_id("app-1", 1, 10, "", session=mock_db.session)
 
     def test_get_annotation_list_by_app_id_should_return_items_with_keyword(self) -> None:
         """Test keyword search returns items and total."""
@@ -401,7 +401,9 @@ class TestAppAnnotationServiceListAndExport:
             mock_db.paginate.return_value = pagination
 
             # Act
-            items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "keyword")
+            items, total = AppAnnotationService.get_annotation_list_by_app_id(
+                app.id, 1, 10, "keyword", session=mock_db.session
+            )
 
             # Assert
             assert items == ["a1"]
@@ -422,7 +424,9 @@ class TestAppAnnotationServiceListAndExport:
             mock_db.paginate.return_value = pagination
 
             # Act
-            items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "")
+            items, total = AppAnnotationService.get_annotation_list_by_app_id(
+                app.id, 1, 10, "", session=mock_db.session
+            )
 
             # Assert
             assert items == ["a1", "a2"]
@@ -449,7 +453,7 @@ class TestAppAnnotationServiceListAndExport:
             mock_db.session.scalars.return_value.all.return_value = [annotation1, annotation2]
 
             # Act
-            result = AppAnnotationService.export_annotation_list_by_app_id(app.id)
+            result = AppAnnotationService.export_annotation_list_by_app_id(app.id, session=mock_db.session)
 
             # Assert
             assert result == [annotation1, annotation2]
@@ -471,7 +475,7 @@ class TestAppAnnotationServiceListAndExport:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.export_annotation_list_by_app_id("app-1")
+                AppAnnotationService.export_annotation_list_by_app_id("app-1", session=mock_db.session)
 
 
 class TestAppAnnotationServiceDirectManipulation:
@@ -491,7 +495,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.insert_app_annotation_directly(args, "app-1")
+                AppAnnotationService.insert_app_annotation_directly(args, "app-1", session=mock_db.session)
 
     def test_insert_app_annotation_directly_should_raise_value_error_when_question_missing(self) -> None:
         """Test missing question raises ValueError."""
@@ -508,7 +512,7 @@ class TestAppAnnotationServiceDirectManipulation:
 
             # Act & Assert
             with pytest.raises(ValueError):
-                AppAnnotationService.insert_app_annotation_directly(args, app.id)
+                AppAnnotationService.insert_app_annotation_directly(args, app.id, session=mock_db.session)
 
     def test_insert_app_annotation_directly_should_create_annotation_and_index(self) -> None:
         """Test insert creates annotation and triggers index task."""
@@ -529,7 +533,7 @@ class TestAppAnnotationServiceDirectManipulation:
             mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
-            result = AppAnnotationService.insert_app_annotation_directly(args, app.id)
+            result = AppAnnotationService.insert_app_annotation_directly(args, app.id, session=mock_db.session)
 
             # Assert
             assert result == annotation_instance
@@ -694,7 +698,9 @@ class TestAppAnnotationServiceDirectManipulation:
             mock_db.session.execute.return_value.all.return_value = []
 
             # Act
-            result = AppAnnotationService.delete_app_annotations_in_batch(_make_app_ref(app), ["ann-1"])
+            result = AppAnnotationService.delete_app_annotations_in_batch(
+                _make_app_ref(app), ["ann-1"], session=mock_db.session
+            )
 
             # Assert
             assert result == {"deleted_count": 0}
@@ -721,7 +727,9 @@ class TestAppAnnotationServiceDirectManipulation:
             mock_db.session.execute.side_effect = [execute_result_multi, MagicMock(), execute_result_delete]
 
             # Act
-            result = AppAnnotationService.delete_app_annotations_in_batch(_make_app_ref(app), ["ann-1", "ann-2"])
+            result = AppAnnotationService.delete_app_annotations_in_batch(
+                _make_app_ref(app), ["ann-1", "ann-2"], session=mock_db.session
+            )
 
             # Assert
             assert result == {"deleted_count": 2}
@@ -753,7 +761,7 @@ class TestAppAnnotationServiceBatchImport:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.batch_import_app_annotations("app-1", file)
+                AppAnnotationService.batch_import_app_annotations("app-1", file, session=mock_db.session)
 
     def test_batch_import_app_annotations_should_return_error_when_columns_invalid(self) -> None:
         """Test invalid column count returns error message."""
@@ -775,7 +783,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -799,7 +807,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -827,7 +835,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -853,7 +861,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -883,7 +891,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -909,7 +917,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -935,7 +943,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -961,7 +969,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -992,7 +1000,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             error_msg = cast(str, result["error_msg"])
@@ -1025,7 +1033,7 @@ class TestAppAnnotationServiceBatchImport:
             mock_db.session.scalar.return_value = app
 
             # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             assert result == {"job_id": "uuid-3", "job_status": "waiting", "record_count": 1}
@@ -1065,7 +1073,7 @@ class TestAppAnnotationServiceBatchImport:
 
             # Act
             with caplog.at_level(logging.DEBUG):
-                result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+                result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
 
             # Assert
             assert result["error_msg"] == "An error occurred while processing the file: boom"
@@ -1088,7 +1096,9 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.get_annotation_hit_histories(_make_annotation_ref(app, "ann-1"), 1, 10)
+                AppAnnotationService.get_annotation_hit_histories(
+                    _make_annotation_ref(app, "ann-1"), 1, 10, session=mock_db.session
+                )
 
     def test_get_annotation_hit_histories_should_return_items_and_total(self) -> None:
         """Test hit histories pagination returns items and total."""
@@ -1110,6 +1120,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
                 _make_annotation_ref(app, annotation.id),
                 1,
                 10,
+                session=mock_db.session,
             )
 
             # Assert
@@ -1125,7 +1136,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             mock_db.session.get.return_value = None
 
             # Act
-            result = AppAnnotationService.get_annotation_by_id("ann-1")
+            result = AppAnnotationService.get_annotation_by_id("ann-1", session=mock_db.session)
 
             # Assert
             assert result is None
@@ -1138,7 +1149,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             mock_db.session.get.return_value = annotation
 
             # Act
-            result = AppAnnotationService.get_annotation_by_id("ann-1")
+            result = AppAnnotationService.get_annotation_by_id("ann-1", session=mock_db.session)
 
             # Assert
             assert result == annotation
@@ -1161,6 +1172,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
                 message_id="msg-1",
                 from_source="chat",
                 score=0.8,
+                session=mock_db.session,
             )
 
             # Assert
@@ -1183,7 +1195,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id)
+            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
 
             # Assert
             assert result["enabled"] is True
@@ -1204,7 +1216,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.get_app_annotation_setting_by_app_id("app-1")
+                AppAnnotationService.get_app_annotation_setting_by_app_id("app-1", session=mock_db.session)
 
     def test_get_app_annotation_setting_by_app_id_should_return_empty_embedding_model_when_no_detail(self) -> None:
         """Test setting without detail returns empty embedding model."""
@@ -1220,7 +1232,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id)
+            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
 
             # Assert
             assert result["enabled"] is True
@@ -1239,7 +1251,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             mock_db.session.scalar.side_effect = [app, None]
 
             # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id)
+            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
 
             # Assert
             assert result == {"enabled": False}
@@ -1261,7 +1273,9 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
-            result = AppAnnotationService.update_app_annotation_setting(app.id, setting.id, args)
+            result = AppAnnotationService.update_app_annotation_setting(
+                app.id, setting.id, args, session=mock_db.session
+            )
 
             # Assert
             assert result["enabled"] is True
@@ -1288,7 +1302,9 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             mock_db.session.scalar.side_effect = [app, setting]
 
             # Act
-            result = AppAnnotationService.update_app_annotation_setting(app.id, setting.id, args)
+            result = AppAnnotationService.update_app_annotation_setting(
+                app.id, setting.id, args, session=mock_db.session
+            )
 
             # Assert
             assert result["enabled"] is True
@@ -1308,7 +1324,9 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.update_app_annotation_setting("app-1", "setting-1", {"score_threshold": 0.5})
+                AppAnnotationService.update_app_annotation_setting(
+                    "app-1", "setting-1", {"score_threshold": 0.5}, session=mock_db.session
+                )
 
     def test_update_app_annotation_setting_should_raise_not_found_when_setting_missing(self) -> None:
         """Test update raises NotFound when setting is missing."""
@@ -1324,7 +1342,9 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.update_app_annotation_setting(app.id, "setting-1", {"score_threshold": 0.5})
+                AppAnnotationService.update_app_annotation_setting(
+                    app.id, "setting-1", {"score_threshold": 0.5}, session=mock_db.session
+                )
 
 
 class TestAppAnnotationServiceClearAll:
@@ -1357,7 +1377,7 @@ class TestAppAnnotationServiceClearAll:
             mock_db.session.scalars.side_effect = [annotations_scalars, histories_scalars_1, histories_scalars_2]
 
             # Act
-            result = AppAnnotationService.clear_all_annotations(app.id)
+            result = AppAnnotationService.clear_all_annotations(app.id, session=mock_db.session)
 
             # Assert
             assert result == {"result": "success"}
@@ -1381,4 +1401,4 @@ class TestAppAnnotationServiceClearAll:
 
             # Act & Assert
             with pytest.raises(NotFound):
-                AppAnnotationService.clear_all_annotations("app-1")
+                AppAnnotationService.clear_all_annotations("app-1", session=mock_db.session)

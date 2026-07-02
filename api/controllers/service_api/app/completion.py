@@ -36,6 +36,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import UUIDStrOrEmpty
@@ -233,6 +234,7 @@ class CompletionApi(Resource):
                 user=end_user,
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
+                session=db.session,
                 streaming=streaming,
             )
 
@@ -376,7 +378,12 @@ class ChatApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                session=db.session,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)

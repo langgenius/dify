@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 from core.db.session_factory import session_factory
 from core.indexing_runner import IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant
@@ -101,7 +102,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     session.commit()
 
                     if dataset.runtime_mode == "rag_pipeline":
-                        rag_pipeline_service = RagPipelineService()
+                        rag_pipeline_service = RagPipelineService(db.session)
                         rag_pipeline_service.retry_error_document(dataset, document, user)
                     else:
                         indexing_runner = IndexingRunner()

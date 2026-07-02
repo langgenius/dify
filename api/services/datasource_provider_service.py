@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from models.account import Account
 
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from configs import dify_config
 from constants import HIDDEN_VALUE, UNKNOWN_VALUE
@@ -446,12 +446,14 @@ class DatasourceProviderService:
                 is not None
             )
 
-    def is_tenant_oauth_params_enabled(self, tenant_id: str, datasource_provider_id: DatasourceProviderID) -> bool:
+    def is_tenant_oauth_params_enabled(
+        self, tenant_id: str, datasource_provider_id: DatasourceProviderID, *, session: Session | scoped_session
+    ) -> bool:
         """
         check if tenant oauth params is enabled
         """
         return (
-            db.session.scalar(
+            session.scalar(
                 select(func.count(DatasourceOauthTenantParamConfig.id)).where(
                     DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
                     DatasourceOauthTenantParamConfig.provider == datasource_provider_id.provider_name,
@@ -463,12 +465,17 @@ class DatasourceProviderService:
         ) > 0
 
     def get_tenant_oauth_client(
-        self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
+        self,
+        tenant_id: str,
+        datasource_provider_id: DatasourceProviderID,
+        mask: bool = False,
+        *,
+        session: Session | scoped_session,
     ) -> Mapping[str, Any] | None:
         """
         get tenant oauth client
         """
-        tenant_oauth_client_params = db.session.scalar(
+        tenant_oauth_client_params = session.scalar(
             select(DatasourceOauthTenantParamConfig)
             .where(
                 DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
@@ -800,6 +807,8 @@ class DatasourceProviderService:
         provider: str,
         plugin_id: str,
         user: "Account | None" = None,
+        *,
+        session: Session | scoped_session,
     ) -> list[dict]:
         """
         list datasource credentials with obfuscated sensitive fields,
@@ -829,11 +838,11 @@ class DatasourceProviderService:
                 credential_type=CredPermType.DATASOURCE_PROVIDER,
                 user=user,
             )
-        datasource_providers: list[DatasourceProvider] = list(db.session.scalars(query).all())
+        datasource_providers: list[DatasourceProvider] = list(session.scalars(query).all())
         if not datasource_providers:
             return []
         copy_credentials_list = []
-        default_provider = db.session.execute(
+        default_provider = session.execute(
             select(DatasourceProvider.id)
             .where(
                 DatasourceProvider.tenant_id == tenant_id,
@@ -870,7 +879,7 @@ class DatasourceProviderService:
 
         return copy_credentials_list
 
-    def get_all_datasource_credentials(self, tenant_id: str) -> list[dict]:
+    def get_all_datasource_credentials(self, tenant_id: str, *, session: Session | scoped_session) -> list[dict]:
         """
         get datasource credentials.
 
@@ -883,7 +892,10 @@ class DatasourceProviderService:
         for datasource in datasources:
             datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
             credentials = self.list_datasource_credentials(
-                tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
+                tenant_id=tenant_id,
+                provider=datasource.provider,
+                plugin_id=datasource.plugin_id,
+                session=session,
             )
             redirect_uri = (
                 f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{datasource_provider_id}/datasource/callback"
@@ -912,10 +924,10 @@ class DatasourceProviderService:
                             for credential_schema in datasource.declaration.oauth_schema.credentials_schema
                         ],
                         "oauth_custom_client_params": self.get_tenant_oauth_client(
-                            tenant_id, datasource_provider_id, mask=True
+                            tenant_id, datasource_provider_id, mask=True, session=session
                         ),
                         "is_oauth_custom_client_enabled": self.is_tenant_oauth_params_enabled(
-                            tenant_id, datasource_provider_id
+                            tenant_id, datasource_provider_id, session=session
                         ),
                         "is_system_oauth_params_exists": self.is_system_oauth_params_exist(datasource_provider_id),
                         "redirect_uri": redirect_uri,
@@ -926,7 +938,7 @@ class DatasourceProviderService:
             )
         return datasource_credentials
 
-    def get_hard_code_datasource_credentials(self, tenant_id: str) -> list[dict]:
+    def get_hard_code_datasource_credentials(self, tenant_id: str, *, session: Session | scoped_session) -> list[dict]:
         """
         get hard code datasource credentials.
 
@@ -945,7 +957,10 @@ class DatasourceProviderService:
             ]:
                 datasource_provider_id = DatasourceProviderID(f"{datasource.plugin_id}/{datasource.provider}")
                 credentials = self.list_datasource_credentials(
-                    tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
+                    tenant_id=tenant_id,
+                    provider=datasource.provider,
+                    plugin_id=datasource.plugin_id,
+                    session=session,
                 )
                 redirect_uri = "{}/console/api/oauth/plugin/{}/datasource/callback".format(
                     dify_config.CONSOLE_API_URL, datasource_provider_id
@@ -974,10 +989,10 @@ class DatasourceProviderService:
                                 for credential_schema in datasource.declaration.oauth_schema.credentials_schema
                             ],
                             "oauth_custom_client_params": self.get_tenant_oauth_client(
-                                tenant_id, datasource_provider_id, mask=True
+                                tenant_id, datasource_provider_id, mask=True, session=session
                             ),
                             "is_oauth_custom_client_enabled": self.is_tenant_oauth_params_enabled(
-                                tenant_id, datasource_provider_id
+                                tenant_id, datasource_provider_id, session=session
                             ),
                             "is_system_oauth_params_exists": self.is_system_oauth_params_exist(datasource_provider_id),
                             "redirect_uri": redirect_uri,
@@ -988,7 +1003,9 @@ class DatasourceProviderService:
                 )
         return datasource_credentials
 
-    def get_real_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> list[dict]:
+    def get_real_datasource_credentials(
+        self, tenant_id: str, provider: str, plugin_id: str, *, session: Session | scoped_session
+    ) -> list[dict]:
         """
         get datasource credentials.
 
@@ -998,7 +1015,7 @@ class DatasourceProviderService:
         """
         # Get all provider configurations of the current workspace
         datasource_providers: list[DatasourceProvider] = list(
-            db.session.scalars(
+            session.scalars(
                 select(DatasourceProvider).where(
                     DatasourceProvider.tenant_id == tenant_id,
                     DatasourceProvider.provider == provider,
@@ -1110,7 +1127,9 @@ class DatasourceProviderService:
 
                 datasource_provider.encrypted_credentials = encrypted_credentials
 
-    def remove_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str) -> None:
+    def remove_datasource_credentials(
+        self, tenant_id: str, auth_id: str, provider: str, plugin_id: str, *, session: Session | scoped_session
+    ) -> None:
         """
         remove datasource credentials.
 
@@ -1119,7 +1138,7 @@ class DatasourceProviderService:
         :param plugin_id: plugin id
         :return:
         """
-        datasource_provider = db.session.scalar(
+        datasource_provider = session.scalar(
             select(DatasourceProvider)
             .where(
                 DatasourceProvider.tenant_id == tenant_id,
@@ -1130,5 +1149,5 @@ class DatasourceProviderService:
             .limit(1)
         )
         if datasource_provider:
-            db.session.delete(datasource_provider)
-            db.session.commit()
+            session.delete(datasource_provider)
+            session.commit()

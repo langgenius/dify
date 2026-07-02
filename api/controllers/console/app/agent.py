@@ -172,7 +172,7 @@ register_response_schema_models(
 def _resolve_agent_id(app_model: App, node_id: str | None) -> str | None:
     if node_id and app_model.mode != AppMode.AGENT:
         return AgentComposerService.resolve_workflow_node_agent_id(
-            tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id
+            tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id, session=db.session
         )
     return app_model.bound_agent_id
 
@@ -202,6 +202,7 @@ def _upload_skill_for_app(*, current_user: Account, app_model: App):
             tenant_id=app_model.tenant_id,
             user_id=current_user.id,
             agent_id=agent_id,
+            session=db.session,
         )
     except (SkillPackageError, AgentDriveError) as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -240,6 +241,7 @@ def _commit_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
                     value_owned_by_drive=True,
                 )
             ],
+            session=db.session,
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -273,6 +275,7 @@ def _delete_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
             user_id=current_user.id,
             agent_id=agent_id,
             items=[DriveCommitItem(key=key, file_ref=None)],
+            session=db.session,
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -298,6 +301,7 @@ def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, a
                 DriveCommitItem(key=f"{slug}/SKILL.md", file_ref=None),
                 DriveCommitItem(key=f"{slug}/.DIFY-SKILL-FULL.zip", file_ref=None),
             ],
+            session=db.session,
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
@@ -313,7 +317,9 @@ def _infer_skill_tools_for_app(*, app_model: App, slug: str):
     if "/" in slug or not slug.strip():
         return {"code": "drive_key_invalid", "message": "skill slug must be a single path segment"}, 400
     try:
-        return SkillToolInferenceService().infer(tenant_id=app_model.tenant_id, agent_id=agent_id, slug=slug)
+        return SkillToolInferenceService().infer(
+            tenant_id=app_model.tenant_id, agent_id=agent_id, slug=slug, session=db.session
+        )
     except SkillToolInferenceError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
 
@@ -335,7 +341,7 @@ class AgentLogApi(Resource):
         """Get agent logs"""
         args = AgentLogQuery.model_validate(request.args.to_dict(flat=True))
 
-        return AgentService.get_agent_logs(app_model, args.conversation_id, args.message_id)
+        return AgentService.get_agent_logs(app_model, args.conversation_id, args.message_id, db.session)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/skills/upload")

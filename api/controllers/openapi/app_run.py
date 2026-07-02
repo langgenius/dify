@@ -43,6 +43,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -98,6 +99,7 @@ def _generate(app: App, caller: Any, args: dict[str, Any], streaming: bool):
         user=caller,
         args=args,
         invoke_from=InvokeFrom.OPENAPI,
+        session=db.session,
         streaming=streaming,
     )
 

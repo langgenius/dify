@@ -10,6 +10,7 @@ from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, AppMode, EndUser
@@ -111,7 +112,7 @@ class AppMeta(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[AppMetaResponse.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Get app meta"""
-        return AppService().get_app_meta(app_model)
+        return AppService().get_app_meta(app_model, session=db.session)
 
 
 @web_ns.route("/webapp/access-mode")
@@ -137,7 +138,7 @@ class AppAccessMode(Resource):
 
         app_id = args.app_id
         if args.app_code:
-            app_id = AppService.get_app_id_by_code(args.app_code)
+            app_id = AppService.get_app_id_by_code(args.app_code, session=db.session)
 
         if not app_id:
             raise ValueError("appId or appCode must be provided")
@@ -168,7 +169,7 @@ class AppWebAuthPermission(Resource):
         if not app_id or not app_code:
             raise ValueError("appId must be provided")
 
-        require_permission_check = WebAppAuthService.is_app_require_permission_check(app_id=app_id)
+        require_permission_check = WebAppAuthService.is_app_require_permission_check(db.session(), app_id=app_id)
         if not require_permission_check:
             return {"result": True}
 
@@ -189,6 +190,6 @@ class AppWebAuthPermission(Resource):
             return {"result": True}
 
         res = True
-        if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
+        if WebAppAuthService.is_app_require_permission_check(db.session(), app_id=app_id):
             res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_id)
         return {"result": res}

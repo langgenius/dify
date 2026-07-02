@@ -250,7 +250,12 @@ class TestAppGenerateService:
         mock_generate.return_value = expected
 
         result = AppGenerateService.generate(
-            app_model=Mock(spec=App), user=Mock(spec=EndUser), args={"query": "Hi"}, invoke_from=Mock(), streaming=False
+            app_model=Mock(spec=App),
+            user=Mock(spec=EndUser),
+            args={"query": "Hi"},
+            invoke_from=Mock(),
+            session=Mock(),
+            streaming=False,
         )
 
         assert result == expected
@@ -262,7 +267,12 @@ class TestAppGenerateService:
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
@@ -272,7 +282,12 @@ class TestAppGenerateService:
 
         with pytest.raises(QuotaExceededError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
@@ -282,7 +297,12 @@ class TestAppGenerateService:
 
         with pytest.raises(InvokeError):
             AppGenerateService.generate(
-                app_model=Mock(spec=App), user=Mock(spec=EndUser), args={}, invoke_from=Mock(), streaming=False
+                app_model=Mock(spec=App),
+                user=Mock(spec=EndUser),
+                args={},
+                invoke_from=Mock(),
+                session=Mock(),
+                streaming=False,
             )
 
 

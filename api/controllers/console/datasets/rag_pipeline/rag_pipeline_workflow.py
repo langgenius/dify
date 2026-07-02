@@ -196,7 +196,7 @@ class DraftRagPipelineApi(Resource):
         Get draft rag pipeline's workflow
         """
         # fetch draft workflow by app_model
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
 
         if not workflow:
@@ -230,7 +230,7 @@ class DraftRagPipelineApi(Resource):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
 
         try:
             environment_variables_list = Workflow.normalize_environment_variable_mappings(
@@ -282,7 +282,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_iteration(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, streaming=True
+                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
             )
 
             return helper.compact_generate_response(response)
@@ -317,7 +317,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_loop(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, streaming=True
+                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
             )
 
             return helper.compact_generate_response(response)
@@ -357,6 +357,7 @@ class DraftRagPipelineRunApi(Resource):
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
+                session=db.session,
             )
 
             return helper.compact_generate_response(response)
@@ -390,6 +391,7 @@ class PublishedRagPipelineRunApi(Resource):
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED_PIPELINE,
                 streaming=streaming,
+                session=db.session,
             )
 
             return helper.compact_generate_response(response)
@@ -414,7 +416,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         """
         payload = DatasourceNodeRunPayload.model_validate(console_ns.payload or {})
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         return helper.compact_generate_response(
             PipelineGenerator.convert_to_event_stream(
                 rag_pipeline_service.run_datasource_workflow_node(
@@ -447,7 +449,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         """
         payload = DatasourceNodeRunPayload.model_validate(console_ns.payload or {})
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         return helper.compact_generate_response(
             PipelineGenerator.convert_to_event_stream(
                 rag_pipeline_service.run_datasource_workflow_node(
@@ -485,7 +487,7 @@ class RagPipelineDraftNodeRunApi(Resource):
         payload = NodeRunRequiredPayload.model_validate(console_ns.payload or {})
         inputs = payload.inputs
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         workflow_node_execution = rag_pipeline_service.run_draft_workflow_node(
             pipeline=pipeline, node_id=node_id, user_inputs=inputs, account=current_user
         )
@@ -538,7 +540,7 @@ class PublishedRagPipelineApi(Resource):
         if not pipeline.is_published:
             return None
         # fetch published workflow by pipeline
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         workflow = rag_pipeline_service.get_published_workflow(pipeline=pipeline)
 
         # return workflow, if not found, return None
@@ -559,7 +561,7 @@ class PublishedRagPipelineApi(Resource):
         """
         Publish workflow
         """
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         workflow = rag_pipeline_service.publish_workflow(
             session=db.session,  # type: ignore[reportArgumentType,arg-type]
             pipeline=pipeline,
@@ -594,7 +596,7 @@ class DefaultRagPipelineBlockConfigsApi(Resource):
         Get default block config
         """
         # Get default block configs
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         return rag_pipeline_service.get_default_block_configs()
 
 
@@ -626,7 +628,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
                 raise ValueError("Invalid filters")
 
         # Get default block configs
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         return rag_pipeline_service.get_default_block_config(node_type=block_type, filters=filters)
 
 
@@ -661,7 +663,7 @@ class PublishedAllRagPipelineApi(Resource):
             if user_id != current_user.id:
                 raise Forbidden()
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         with sessionmaker(db.engine).begin() as session:
             workflows, has_more = rag_pipeline_service.get_all_published_workflow(
                 session=session,
@@ -693,7 +695,7 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
     @with_current_user
     @get_rag_pipeline
     def post(self, current_user: Account, pipeline: Pipeline, workflow_id: str):
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
 
         try:
             workflow = rag_pipeline_service.restore_published_workflow_to_draft(
@@ -738,7 +740,7 @@ class RagPipelineByIdApi(Resource):
         if not update_data:
             return {"message": "No valid fields to update"}, 400
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         workflow_ref = WorkflowRefService.create_pipeline_workflow_ref(pipeline, workflow_id)
 
         # Create a session and manage the transaction
@@ -804,7 +806,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         """
         query = NodeIdQuery.model_validate(request.args.to_dict())
         node_id = query.node_id
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         variables = rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=False)
         return {
             "variables": variables,
@@ -827,7 +829,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         """
         query = NodeIdQuery.model_validate(request.args.to_dict())
         node_id = query.node_id
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         variables = rag_pipeline_service.get_first_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=False)
         return {
             "variables": variables,
@@ -850,7 +852,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         """
         query = NodeIdQuery.model_validate(request.args.to_dict())
         node_id = query.node_id
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         variables = rag_pipeline_service.get_first_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=True)
         return {
             "variables": variables,
@@ -874,7 +876,7 @@ class DraftRagPipelineSecondStepApi(Resource):
         query = NodeIdQuery.model_validate(request.args.to_dict())
         node_id = query.node_id
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         variables = rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=True)
         return {
             "variables": variables,
@@ -908,7 +910,7 @@ class RagPipelineWorkflowRunListApi(Resource):
             "limit": query.limit,
         }
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline=pipeline, args=args)
 
         return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
@@ -931,7 +933,7 @@ class RagPipelineWorkflowRunDetailApi(Resource):
         """
         run_id_str = str(run_id)
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id_str)
         if workflow_run is None:
             raise NotFound("Workflow run not found")
@@ -957,7 +959,7 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
         """
         run_id_str = str(run_id)
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         user = cast("Account | EndUser", current_user)
         node_executions = rag_pipeline_service.get_rag_pipeline_workflow_run_node_executions(
             pipeline=pipeline,
@@ -993,7 +995,7 @@ class RagPipelineWorkflowLastRunApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     def get(self, pipeline: Pipeline, node_id: str):
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
         if not workflow:
             raise NotFound("Workflow not found")
@@ -1045,7 +1047,7 @@ class RagPipelineDatasourceVariableApi(Resource):
         """
         args = DatasourceVariablesPayload.model_validate(console_ns.payload or {}).model_dump()
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         workflow_node_execution = rag_pipeline_service.set_datasource_variables(
             pipeline=pipeline,
             args=args,
@@ -1068,6 +1070,6 @@ class RagPipelineRecommendedPluginApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account):
         query = RagPipelineRecommendedPluginQuery.model_validate(request.args.to_dict())
 
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         recommended_plugins = rag_pipeline_service.get_recommended_plugins(query.type, current_user, current_tenant_id)
         return recommended_plugins

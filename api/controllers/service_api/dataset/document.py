@@ -954,6 +954,7 @@ class DocumentListApi(DatasetApiResource):
             documents=documents,
             dataset=dataset,
             tenant_id=tenant_id,
+            session=db.session,
         )
 
         response = {
@@ -1215,6 +1216,7 @@ class DocumentApi(DatasetApiResource):
                 document_id=document_id_str,
                 dataset_id=dataset_id_str,
                 tenant_id=tenant_id,
+                session=db.session,
             )
 
         if metadata == "only":

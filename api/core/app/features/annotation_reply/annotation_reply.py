@@ -66,7 +66,7 @@ class AnnotationReplyFeature:
             if documents and documents[0].metadata:
                 annotation_id = documents[0].metadata["annotation_id"]
                 score = documents[0].metadata["score"]
-                annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
+                annotation = AppAnnotationService.get_annotation_by_id(annotation_id, session=db.session)
                 if annotation:
                     if invoke_from in {InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP}:
                         from_source = ConversationFromSource.API
@@ -84,6 +84,7 @@ class AnnotationReplyFeature:
                         message.id,
                         from_source,
                         score,
+                        session=db.session,
                     )
 
                     return annotation

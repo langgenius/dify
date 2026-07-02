@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from faker import Faker
@@ -86,7 +86,7 @@ class TestSavedMessageService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         return app, account
 
@@ -372,7 +372,7 @@ class TestSavedMessageService:
 
         # Verify MessageService.get_message was called
         mock_external_service_dependencies["message_service"].get_message.assert_called_once_with(
-            app_model=app, user=account, message_id=message.id
+            app_model=app, user=account, message_id=message.id, session=ANY
         )
 
         # Verify database state

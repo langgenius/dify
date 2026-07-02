@@ -10,6 +10,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -69,6 +70,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
                 model=payload.model,
                 model_type=payload.model_type,
                 credentials=payload.credentials,
+                session=db.session,
             )
         except CredentialsValidateFailedError as ex:
             result = False
@@ -118,6 +120,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
                 model=payload.model,
                 model_type=payload.model_type,
                 credentials=payload.credentials,
+                session=db.session,
                 config_id=config_id,
             )
         except CredentialsValidateFailedError as ex:

@@ -472,6 +472,7 @@ def backfill_plugin_auto_upgrade(
         try:
             result = PluginAutoUpgradeService.backfill_strategy_categories(
                 current_tenant_id,
+                session=db.session,
             )
         except Exception as e:
             failed_count += 1

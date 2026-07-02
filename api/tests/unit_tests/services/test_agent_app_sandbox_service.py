@@ -207,6 +207,7 @@ def test_workflow_sandbox_service_resolves_locator_and_proxies() -> None:
         node_id="node-1",
         node_execution_id="node-exec-1",
         path="report.txt",
+        session=session_factory.create_session(),
     )
 
     assert result.file.reference == "dify-file-ref:file-1"
@@ -237,6 +238,7 @@ def test_workflow_sandbox_service_filters_by_node_execution_id() -> None:
         node_id="node-1",
         node_execution_id="node-exec-2",
         path="out.txt",
+        session=session_factory.create_session(),
     )
 
     assert result.text == "hello"
@@ -270,6 +272,7 @@ def test_workflow_sandbox_service_uses_latest_active_session_when_execution_id_o
         node_id="node-1",
         node_execution_id=None,
         path=".",
+        session=session_factory.create_session(),
     )
 
     assert result.path == "."
@@ -289,6 +292,7 @@ def test_workflow_sandbox_service_raises_when_no_active_session() -> None:
             node_id="node-1",
             node_execution_id=None,
             path=".",
+            session=session_factory.create_session(),
         )
 
     assert exc_info.value.code == "no_active_session"
@@ -308,6 +312,7 @@ def test_workflow_sandbox_service_raises_when_runtime_specs_missing() -> None:
             node_id="node-1",
             node_execution_id=None,
             path=".",
+            session=session_factory.create_session(),
         )
 
     assert exc_info.value.code == "no_sandbox"

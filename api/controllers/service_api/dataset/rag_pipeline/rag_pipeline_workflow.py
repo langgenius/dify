@@ -153,7 +153,7 @@ class DatasourcePluginsApi(DatasetApiResource):
         # Get query parameter to determine published or draft
         is_published: bool = request.args.get("is_published", default=True, type=bool)
 
-        rag_pipeline_service: RagPipelineService = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         datasource_plugins: list[dict[Any, Any]] = rag_pipeline_service.get_datasource_plugins(
             tenant_id=tenant_id, dataset_id=dataset_id_str, is_published=is_published
         )
@@ -203,7 +203,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
 
         payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
         assert isinstance(current_user, Account)
-        rag_pipeline_service: RagPipelineService = RagPipelineService()
+        rag_pipeline_service: RagPipelineService = RagPipelineService(db.session)
         pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(
             {
@@ -278,8 +278,8 @@ class PipelineRunApi(DatasetApiResource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        rag_pipeline_service: RagPipelineService = RagPipelineService()
-        pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
+        rag_pipeline_service = RagPipelineService(db.session)
+        pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
                 pipeline=pipeline,
@@ -287,6 +287,7 @@ class PipelineRunApi(DatasetApiResource):
                 args=payload.model_dump(),
                 invoke_from=InvokeFrom.PUBLISHED_PIPELINE if payload.is_published else InvokeFrom.DEBUGGER,
                 streaming=payload.response_mode == "streaming",
+                session=db.session,
             )
 
             return helper.compact_generate_response(response)

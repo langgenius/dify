@@ -184,12 +184,16 @@ class AccountService:
         raise ValueError(f"Builtin RBAC role not found for {role.value} in tenant {tenant_id}")
 
     @staticmethod
-    def get_workspace_permission_keys(tenant_id: str, account_id: str) -> set[str]:
-        permissions = RBACService.MyPermissions.get(tenant_id, account_id)
+    def get_workspace_permission_keys(
+        tenant_id: str, account_id: str, *, session: scoped_session | Session
+    ) -> set[str]:
+        permissions = RBACService.MyPermissions.get(tenant_id, account_id, session=session)
         return set(getattr(getattr(permissions, "workspace", None), "permission_keys", []) or [])
 
     @staticmethod
-    def get_rbac_workspace_owner_account_id(tenant_id: str, actor_account_id: str) -> str:
+    def get_rbac_workspace_owner_account_id(
+        tenant_id: str, actor_account_id: str, *, session: scoped_session | Session
+    ) -> str:
         """Return the account id bound to the workspace owner RBAC role."""
         owner_role_id = AccountService._resolve_legacy_role_id(
             tenant_id=tenant_id,
@@ -207,11 +211,14 @@ class AccountService:
         return owner_members[0].account_id
 
     @staticmethod
-    def is_rbac_workspace_owner(tenant_id: str, actor_account_id: str, member_account_id: str) -> bool:
+    def is_rbac_workspace_owner(
+        tenant_id: str, actor_account_id: str, member_account_id: str, *, session: scoped_session | Session
+    ) -> bool:
         roles = RBACService.MemberRoles.get(
             tenant_id=tenant_id,
             account_id=actor_account_id,
             member_account_id=member_account_id,
+            session=session,
         ).roles
         return any(
             role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner" for role in roles
@@ -540,12 +547,12 @@ class AccountService:
         return True
 
     @staticmethod
-    def delete_account(account: Account):
+    def delete_account(account: Account, *, session: scoped_session | Session):
         """Delete account. This method only adds a task to the queue for deletion."""
         # Queue account deletion sync tasks for all workspaces BEFORE account deletion (enterprise only)
         from services.enterprise.account_deletion_sync import sync_account_deletion
 
-        sync_success = sync_account_deletion(account_id=account.id, source="account_deleted")
+        sync_success = sync_account_deletion(account_id=account.id, source="account_deleted", session=session)
         if not sync_success:
             logger.warning(
                 "Enterprise account deletion sync failed for account %s; proceeding with local deletion.",
@@ -1275,7 +1282,7 @@ class TenantService:
 
         from services.credit_pool_service import CreditPoolService
 
-        CreditPoolService.create_default_pool(tenant.id)
+        CreditPoolService.create_default_pool(tenant.id, session=session)
 
         return tenant
 
@@ -1314,6 +1321,7 @@ class TenantService:
                 account_id=account.id,
                 member_account_id=account.id,
                 role_ids=[owner_role_id],
+                session=session,
             )
         account.current_tenant = tenant
         session.commit()
@@ -1647,6 +1655,7 @@ class TenantService:
             workspace_permission_keys = AccountService.get_workspace_permission_keys(
                 str(tenant.id),
                 str(operator.id),
+                session=session,
             )
             required_permission_key = (
                 "workspace.member.manage" if action in {"add", "remove"} else "workspace.role.manage"
@@ -1657,7 +1666,9 @@ class TenantService:
             if (
                 action == "remove"
                 and member
-                and AccountService.is_rbac_workspace_owner(str(tenant.id), str(operator.id), str(member.id))
+                and AccountService.is_rbac_workspace_owner(
+                    str(tenant.id), str(operator.id), str(member.id), session=session
+                )
             ):
                 raise NoPermissionError(f"No permission to {action} member.")
             return
@@ -1718,7 +1729,9 @@ class TenantService:
 
         owner_id: str | None
         if dify_config.RBAC_ENABLED:
-            owner_id = AccountService.get_rbac_workspace_owner_account_id(str(tenant.id), str(operator.id))
+            owner_id = AccountService.get_rbac_workspace_owner_account_id(
+                str(tenant.id), str(operator.id), session=session
+            )
         else:
             owner_id = session.scalar(
                 select(TenantAccountJoin.account_id)
@@ -1837,6 +1850,7 @@ class TenantService:
                     account_id=operator.id,
                     member_account_id=str(current_owner_join.account_id),
                     role_ids=[admin_role_id],
+                    session=session,
                 )
 
         # Update the role of the target member
@@ -1851,6 +1865,7 @@ class TenantService:
                 account_id=operator.id,
                 member_account_id=member.id,
                 role_ids=[resolved_role_id],
+                session=session,
             )
         else:
             target_member_join.role = new_tenant_role
@@ -2015,7 +2030,7 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
+        account = AccountService.get_account_by_email_with_case_fallback(session, email)
 
         requires_setup = False
         if not account:
@@ -2053,6 +2068,7 @@ class RegisterService:
                         account_id=inviter.id,
                         member_account_id=account.id,
                         role_ids=[role],
+                        session=session,
                     )
                 if ta or dify_config.RBAC_ENABLED:
                     raise AccountAlreadyInTenantError("Account already in tenant.")
@@ -2064,6 +2080,7 @@ class RegisterService:
                 account_id=inviter.id,
                 member_account_id=account.id,
                 role_ids=[role],
+                session=session,
             )
 
         token = cls.generate_invite_token(tenant, account, role, requires_setup=requires_setup)

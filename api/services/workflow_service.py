@@ -132,7 +132,7 @@ class WorkflowService:
             node_id=node_id,
         )
 
-    def is_workflow_exist(self, app_model: App) -> bool:
+    def is_workflow_exist(self, app_model: App, *, session: Session | scoped_session) -> bool:
         stmt = select(
             exists().where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -140,23 +140,21 @@ class WorkflowService:
                 Workflow.version == Workflow.VERSION_DRAFT,
             )
         )
-        return db.session.execute(stmt).scalar_one()
+        return session.execute(stmt).scalar_one()
 
     def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, session: Session | scoped_session | None = None
+        self, app_model: App, workflow_id: str | None = None, *, session: Session | scoped_session
     ) -> Workflow | None:
         """
         Get draft workflow
 
-        When ``session`` is provided, reuse it so callers that already hold a
-        Session avoid checking out an extra request-scoped ``db.session``
-        connection. Falls back to ``db.session`` for backward compatibility.
+        Reuses the caller's active session so workflow reads stay in the same
+        transaction as the surrounding request or task.
         """
         if workflow_id:
             return self.get_published_workflow_by_id(app_model, workflow_id, session=session)
         # fetch draft workflow by app_model
-        bind = session if session is not None else db.session
-        workflow = bind.scalar(
+        workflow = session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -170,17 +168,15 @@ class WorkflowService:
         return workflow
 
     def get_published_workflow_by_id(
-        self, app_model: App, workflow_id: str, session: Session | scoped_session | None = None
+        self, app_model: App, workflow_id: str, *, session: Session | scoped_session
     ) -> Workflow | None:
         """
         fetch published workflow by workflow_id
 
-        When ``session`` is provided, reuse it so callers that already hold a
-        Session avoid checking out an extra request-scoped ``db.session``
-        connection. Falls back to ``db.session`` for backward compatibility.
+        Reuses the caller's active session so workflow reads stay in the same
+        transaction as the surrounding request or task.
         """
-        bind = session if session is not None else db.session
-        workflow = bind.scalar(
+        workflow = session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -198,20 +194,18 @@ class WorkflowService:
             )
         return workflow
 
-    def get_published_workflow(self, app_model: App, session: Session | None = None) -> Workflow | None:
+    def get_published_workflow(self, app_model: App, *, session: Session | scoped_session) -> Workflow | None:
         """
         Get published workflow
 
-        When ``session`` is provided, reuse it so callers that already hold a
-        Session avoid checking out an extra request-scoped ``db.session``
-        connection. Falls back to ``db.session`` for backward compatibility.
+        Reuses the caller's active session so workflow reads stay in the same
+        transaction as the surrounding request or task.
         """
 
         if not app_model.workflow_id:
             return None
 
-        bind = session if session is not None else db.session
-        workflow = bind.scalar(
+        workflow = session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -223,7 +217,9 @@ class WorkflowService:
 
         return workflow
 
-    def get_accessible_app_ids(self, app_ids: Sequence[str], tenant_id: str) -> set[str]:
+    def get_accessible_app_ids(
+        self, app_ids: Sequence[str], tenant_id: str, *, session: Session | scoped_session
+    ) -> set[str]:
         """
         Return app IDs that belong to the given tenant.
         """
@@ -231,12 +227,12 @@ class WorkflowService:
             return set()
 
         stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
-        return {str(app_id) for app_id in db.session.scalars(stmt).all()}
+        return {str(app_id) for app_id in session.scalars(stmt).all()}
 
     def get_all_published_workflow(
         self,
         *,
-        session: Session,
+        session: Session | scoped_session,
         app_model: App,
         page: int,
         limit: int,
@@ -281,13 +277,14 @@ class WorkflowService:
         account: Account,
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
+        session: Session | scoped_session,
     ) -> Workflow:
         """
         Sync draft workflow
         :raises WorkflowHashNotEqualError
         """
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(app_model=app_model)
+        workflow = self.get_draft_workflow(app_model=app_model, session=session)
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -311,7 +308,7 @@ class WorkflowService:
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
             )
-            db.session.add(workflow)
+            session.add(workflow)
         # update draft workflow if found
         else:
             workflow.graph = json.dumps(graph)
@@ -323,19 +320,19 @@ class WorkflowService:
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
-        db.session.flush()
+        session.flush()
         WorkflowAgentPublishService.sync_agent_bindings_for_draft(
-            session=cast(Session, db.session),
+            session=cast(Session, session),
             draft_workflow=workflow,
             account_id=account.id,
         )
         WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
-            session=cast(Session, db.session),
+            session=cast(Session, session),
             draft_workflow=workflow,
         )
 
         # commit db session changes
-        db.session.commit()
+        session.commit()
 
         # trigger app workflow events
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=workflow)
@@ -349,12 +346,13 @@ class WorkflowService:
         app_model: App,
         environment_variables: Sequence[VariableBase],
         account: Account,
+        session: Session | scoped_session,
     ):
         """
         Update draft workflow environment variables
         """
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(app_model=app_model)
+        workflow = self.get_draft_workflow(app_model=app_model, session=session)
 
         if not workflow:
             raise ValueError("No draft workflow found.")
@@ -364,7 +362,7 @@ class WorkflowService:
         workflow.updated_at = naive_utc_now()
 
         # commit db session changes
-        db.session.commit()
+        session.commit()
 
     def update_draft_workflow_conversation_variables(
         self,
@@ -372,12 +370,13 @@ class WorkflowService:
         app_model: App,
         conversation_variables: Sequence[VariableBase],
         account: Account,
+        session: Session | scoped_session,
     ):
         """
         Update draft workflow conversation variables
         """
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(app_model=app_model)
+        workflow = self.get_draft_workflow(app_model=app_model, session=session)
 
         if not workflow:
             raise ValueError("No draft workflow found.")
@@ -387,7 +386,7 @@ class WorkflowService:
         workflow.updated_at = naive_utc_now()
 
         # commit db session changes
-        db.session.commit()
+        session.commit()
 
     def update_draft_workflow_features(
         self,
@@ -395,12 +394,13 @@ class WorkflowService:
         app_model: App,
         features: dict,
         account: Account,
+        session: Session | scoped_session,
     ):
         """
         Update draft workflow features
         """
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(app_model=app_model)
+        workflow = self.get_draft_workflow(app_model=app_model, session=session)
 
         if not workflow:
             raise ValueError("No draft workflow found.")
@@ -413,7 +413,7 @@ class WorkflowService:
         workflow.updated_at = naive_utc_now()
 
         # commit db session changes
-        db.session.commit()
+        session.commit()
 
     def restore_published_workflow_to_draft(
         self,
@@ -421,20 +421,23 @@ class WorkflowService:
         app_model: App,
         workflow_id: str,
         account: Account,
+        session: Session | scoped_session,
     ) -> Workflow:
         """Restore a published workflow snapshot into the draft workflow.
 
         Secret environment variables are copied server-side from the selected
         published workflow so the normal draft sync flow stays stateless.
         """
-        source_workflow = self.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)
+        source_workflow = self.get_published_workflow_by_id(
+            app_model=app_model, workflow_id=workflow_id, session=session
+        )
         if not source_workflow:
             raise WorkflowNotFoundError("Workflow not found.")
 
         self.validate_features_structure(app_model=app_model, features=source_workflow.normalized_features_dict)
         self.validate_graph_structure(graph=source_workflow.graph_dict)
 
-        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
         draft_workflow, is_new_draft = apply_published_workflow_snapshot_to_draft(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -445,9 +448,9 @@ class WorkflowService:
         )
 
         if is_new_draft:
-            db.session.add(draft_workflow)
+            session.add(draft_workflow)
 
-        db.session.commit()
+        session.commit()
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
 
         return draft_workflow
@@ -474,7 +477,7 @@ class WorkflowService:
         from services.feature_service import FeatureService
 
         if FeatureService.get_system_features().plugin_manager.enabled:
-            self._validate_workflow_credentials(draft_workflow)
+            self._validate_workflow_credentials(draft_workflow, session=session)
 
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
@@ -531,7 +534,7 @@ class WorkflowService:
         # return new workflow
         return workflow
 
-    def _validate_workflow_credentials(self, workflow: Workflow) -> None:
+    def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session | scoped_session) -> None:
         """
         Validate all credentials in workflow nodes before publishing.
 
@@ -563,7 +566,7 @@ class WorkflowService:
                             )
                         else:
                             # Check default workspace credential for this provider
-                            self._check_default_tool_credential(workflow.tenant_id, provider)
+                            self._check_default_tool_credential(workflow.tenant_id, provider, session=session)
 
                 elif node_type == "agent":
                     agent_params = node_data.get("agent_parameters", {})
@@ -576,7 +579,9 @@ class WorkflowService:
 
                         # Validate load balancing credentials for agent model if load balancing is enabled
                         agent_model_node_data = {"model": model_config}
-                        self._validate_load_balancing_credentials(workflow, agent_model_node_data, node_id)
+                        self._validate_load_balancing_credentials(
+                            workflow, agent_model_node_data, node_id, session=session
+                        )
 
                     # Validate agent tools
                     tools = agent_params.get("tools", {}).get("value", [])
@@ -590,7 +595,7 @@ class WorkflowService:
 
                                 check_credential_policy_compliance(credential_id, provider, PluginCredentialType.TOOL)
                             else:
-                                self._check_default_tool_credential(workflow.tenant_id, provider)
+                                self._check_default_tool_credential(workflow.tenant_id, provider, session=session)
 
                 elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
                     model_config = node_data.get("model", {})
@@ -601,7 +606,7 @@ class WorkflowService:
                         # Validate that the provider+model combination can fetch valid credentials
                         self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
                         # Validate load balancing credentials if load balancing is enabled
-                        self._validate_load_balancing_credentials(workflow, node_data, node_id)
+                        self._validate_load_balancing_credentials(workflow, node_data, node_id, session=session)
                     else:
                         raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
 
@@ -664,7 +669,9 @@ class WorkflowService:
                 f"Failed to validate LLM model configuration (provider: {provider}, model: {model_name}): {str(e)}"
             )
 
-    def _check_default_tool_credential(self, tenant_id: str, provider: str) -> None:
+    def _check_default_tool_credential(
+        self, tenant_id: str, provider: str, *, session: Session | scoped_session
+    ) -> None:
         """
         Check credential policy compliance for the default workspace credential of a tool provider.
 
@@ -680,7 +687,7 @@ class WorkflowService:
 
             # Use the same fallback logic as runtime: get the first available credential
             # ordered by is_default DESC, created_at ASC (same as tool_manager.py)
-            default_provider = db.session.scalar(
+            default_provider = session.scalar(
                 select(BuiltinToolProvider)
                 .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
@@ -707,7 +714,9 @@ class WorkflowService:
         except Exception as e:
             raise ValueError(f"Failed to validate default credential for tool provider {provider}: {str(e)}")
 
-    def _validate_load_balancing_credentials(self, workflow: Workflow, node_data: dict[str, Any], node_id: str) -> None:
+    def _validate_load_balancing_credentials(
+        self, workflow: Workflow, node_data: dict[str, Any], node_id: str, *, session: Session | scoped_session
+    ) -> None:
         """
         Validate load balancing credentials for a workflow node.
 
@@ -727,7 +736,9 @@ class WorkflowService:
         # Check if this model has load balancing enabled
         if self._is_load_balancing_enabled(workflow.tenant_id, provider, model_name):
             # Get all load balancing configurations for this model
-            load_balancing_configs = self._get_load_balancing_configs(workflow.tenant_id, provider, model_name)
+            load_balancing_configs = self._get_load_balancing_configs(
+                workflow.tenant_id, provider, model_name, session=session
+            )
             # Validate each load balancing configuration
             try:
                 for config in load_balancing_configs:
@@ -771,7 +782,9 @@ class WorkflowService:
             # If we can't determine the status, assume load balancing is not enabled
             return False
 
-    def _get_load_balancing_configs(self, tenant_id: str, provider: str, model_name: str) -> list[dict[str, Any]]:
+    def _get_load_balancing_configs(
+        self, tenant_id: str, provider: str, model_name: str, *, session: Session | scoped_session
+    ) -> list[dict[str, Any]]:
         """
         Get all load balancing configurations for a model.
 
@@ -789,11 +802,17 @@ class WorkflowService:
                 provider=provider,
                 model=model_name,
                 model_type="llm",  # Load balancing is primarily used for LLM models
+                session=session,
                 config_from="predefined-model",  # Check both predefined and custom models
             )
 
             _, custom_configs = model_load_balancing_service.get_load_balancing_configs(
-                tenant_id=tenant_id, provider=provider, model=model_name, model_type="llm", config_from="custom-model"
+                tenant_id=tenant_id,
+                provider=provider,
+                model=model_name,
+                model_type="llm",
+                session=session,
+                config_from="custom-model",
             )
             all_configs = cast(list[dict[str, Any]], configs) + cast(list[dict[str, Any]], custom_configs)
 
@@ -1001,6 +1020,7 @@ class WorkflowService:
         account: Account,
         node_id: str,
         inputs: Mapping[str, Any] | None = None,
+        session: Session | scoped_session,
     ) -> Mapping[str, Any]:
         """
         Build a human input form preview for a draft workflow.
@@ -1011,7 +1031,7 @@ class WorkflowService:
             node_id: Human input node ID.
             inputs: Values used to fill missing upstream variables referenced in form_content.
         """
-        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
 
@@ -1058,6 +1078,7 @@ class WorkflowService:
         form_inputs: Mapping[str, Any],
         inputs: Mapping[str, Any] | None = None,
         action: str,
+        session: Session | scoped_session,
     ) -> Mapping[str, Any]:
         """
         Submit a human input form preview for a draft workflow.
@@ -1070,7 +1091,7 @@ class WorkflowService:
             inputs: Values used to fill missing upstream variables referenced in form_content.
             action: Selected action ID.
         """
-        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
 
@@ -1143,8 +1164,9 @@ class WorkflowService:
         node_id: str,
         delivery_method_id: str,
         inputs: Mapping[str, Any] | None = None,
+        session: Session | scoped_session,
     ) -> None:
-        draft_workflow = self.get_draft_workflow(app_model=app_model)
+        draft_workflow = self.get_draft_workflow(app_model=app_model, session=session)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
 
@@ -1503,7 +1525,9 @@ class WorkflowService:
             node_execution.status = WorkflowNodeExecutionStatus.FAILED
             node_execution.error = error
 
-    def convert_to_workflow(self, app_model: App, account: Account, args: dict[str, Any]) -> App:
+    def convert_to_workflow(
+        self, app_model: App, account: Account, args: dict[str, Any], *, session: Session | scoped_session
+    ) -> App:
         """
         Basic mode of chatbot app(expert mode) to workflow
         Completion App to Workflow App
@@ -1527,6 +1551,7 @@ class WorkflowService:
             icon_type=args.get("icon_type", "emoji"),
             icon=args.get("icon", "🤖"),
             icon_background=args.get("icon_background", "#FFEAD5"),
+            session=session,
         )
 
         return new_app

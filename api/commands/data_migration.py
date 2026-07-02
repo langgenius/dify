@@ -9,6 +9,7 @@ from uuid import UUID
 import click
 import sqlalchemy as sa
 import yaml
+from sqlalchemy.orm import Session, scoped_session
 
 from extensions.ext_database import db
 from models import Tenant
@@ -106,7 +107,7 @@ def export_migration_data(input_file: str | None, output_file: str | None, overw
         assert output_file is not None
         raw_config = _load_json_object(input_file, "Export config")
         selection = ExportConfigParser().parse(raw_config)
-        result = MigrationExportService().export(selection)
+        result = MigrationExportService().export(selection, session=db.session)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _render_report(result.report_items, context=_with_output_path(result.report_context, output_file))
@@ -164,7 +165,8 @@ def import_migration_data(
                     conflict_strategy=conflict_strategy,
                     create_app_api_token_on_import=create_app_api_token_on_import,
                 ),
-            )
+            ),
+            session=db.session,
         )
         _render_report(result.report_items, context=result.report_context)
     except MigrationDataError as exc:
@@ -213,7 +215,9 @@ def migration_data_wizard() -> None:
             default=True,
             show_default=False,
         )
-        auto_tools = _discover_auto_tools([app for app in apps if app.id in set(app_ids)], include_referenced_tools)
+        auto_tools = _discover_auto_tools(
+            [app for app in apps if app.id in set(app_ids)], include_referenced_tools, session=db.session
+        )
         auto_tools = _resolve_auto_tool_names(tenant.id, auto_tools)
         _print_auto_tools(auto_tools)
         additional_tools = _prompt_additional_tools(tenant.id, auto_tools)
@@ -248,7 +252,7 @@ def migration_data_wizard() -> None:
             conflict_strategy=conflict_strategy,
             output_file=output_file,
         )
-        result = MigrationExportService().export(selection)
+        result = MigrationExportService().export(selection, session=db.session)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _print_wizard_step("Report")
@@ -389,13 +393,15 @@ def _prompt_import_options() -> tuple[bool, bool, str, str]:
     return include_secrets, create_tokens, id_strategy, conflict_strategy
 
 
-def _discover_auto_tools(apps: list[App], include_referenced_tools: bool) -> WizardToolMap:
+def _discover_auto_tools(
+    apps: list[App], include_referenced_tools: bool, *, session: Session | scoped_session
+) -> WizardToolMap:
     auto_tools: WizardToolMap = {"api_tools": {}, "workflow_tools": {}, "mcp_tools": {}}
     if not include_referenced_tools:
         return auto_tools
     discovery_service = DependencyDiscoveryService()
     for app in apps:
-        dsl_content = AppDslService.export_dsl(app_model=app, include_secret=False)
+        dsl_content = AppDslService.export_dsl(app_model=app, session=session, include_secret=False)
         raw_dsl = yaml.safe_load(dsl_content) if dsl_content else {}
         dsl = raw_dsl if isinstance(raw_dsl, dict) else {}
         for dependency in discovery_service.discover_from_dsl(dsl):

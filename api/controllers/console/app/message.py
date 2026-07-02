@@ -406,6 +406,7 @@ def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
                 app_model=app_model,
                 conversation_id=args.conversation_id,
                 user=current_user,
+                session=db.session,
             )
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -517,7 +518,11 @@ def _get_message_suggested_questions(*, current_user: Account, app_model: App, m
 
     try:
         questions = MessageService.get_suggested_questions_after_answer(
-            app_model=app_model, message_id=message_id_str, user=current_user, invoke_from=InvokeFrom.DEBUGGER
+            app_model=app_model,
+            message_id=message_id_str,
+            user=current_user,
+            invoke_from=InvokeFrom.DEBUGGER,
+            session=db.session,
         )
     except MessageNotExistsError:
         raise NotFound("Message not found")

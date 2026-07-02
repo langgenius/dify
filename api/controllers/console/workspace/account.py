@@ -529,7 +529,7 @@ class AccountDeleteApi(Resource):
         if not AccountService.verify_account_deletion_code(args.token, args.code):
             raise InvalidAccountDeletionCodeError()
 
-        AccountService.delete_account(account)
+        AccountService.delete_account(account, session=db.session)
 
         return {"result": "success"}
 

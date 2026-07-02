@@ -145,6 +145,7 @@ class AppDslExportApi(Resource):
         try:
             data = AppDslService.export_dsl(
                 app_model=app,
+                session=db.session,
                 include_secret=query.include_secret,
                 workflow_id=query.workflow_id,
             )

@@ -169,10 +169,12 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     ).all()
                     segment_ids = [segment.id for segment in segments]
                     if segment_ids:
-                        SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids)
+                        SummaryIndexService.delete_summaries_for_segments(
+                            dataset=dataset, session=session, segment_ids=segment_ids
+                        )
             else:
                 # Delete all summaries for the dataset
-                SummaryIndexService.delete_summaries_for_segments(dataset, None)
+                SummaryIndexService.delete_summaries_for_segments(dataset=dataset, session=db.session, segment_ids=None)
 
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             delete_child_chunks = kwargs.get("delete_child_chunks") or False

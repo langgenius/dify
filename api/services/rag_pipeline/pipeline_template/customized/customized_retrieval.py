@@ -2,8 +2,8 @@ from typing import Any, TypedDict, override
 
 import yaml
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
-from extensions.ext_database import db
 from libs.login import resolve_tenant_id_fallback
 from models.dataset import PipelineCustomizedTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
@@ -40,27 +40,35 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     @override
-    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+    def get_pipeline_templates(
+        self, language: str, current_tenant_id: str | None = None, *, session: scoped_session | Session
+    ) -> dict[str, Any]:
         current_tenant_id = resolve_tenant_id_fallback(current_tenant_id)
-        return self.fetch_pipeline_templates_from_customized(tenant_id=current_tenant_id, language=language)
+        return self.fetch_pipeline_templates_from_customized(
+            tenant_id=current_tenant_id, language=language, session=session
+        )
 
     @override
-    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
-        return self.fetch_pipeline_template_detail_from_db(template_id)
+    def get_pipeline_template_detail(
+        self, template_id: str, *, session: scoped_session | Session
+    ) -> dict[str, Any] | None:
+        return self.fetch_pipeline_template_detail_from_db(template_id, session=session)
 
     @override
     def get_type(self) -> str:
         return PipelineTemplateType.CUSTOMIZED
 
     @classmethod
-    def fetch_pipeline_templates_from_customized(cls, tenant_id: str, language: str) -> dict[str, Any]:
+    def fetch_pipeline_templates_from_customized(
+        cls, tenant_id: str, language: str, *, session: scoped_session | Session
+    ) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param tenant_id: tenant id
         :param language: language
         :return:
         """
-        pipeline_customized_templates = db.session.scalars(
+        pipeline_customized_templates = session.scalars(
             select(PipelineCustomizedTemplate)
             .where(PipelineCustomizedTemplate.tenant_id == tenant_id, PipelineCustomizedTemplate.language == language)
             .order_by(PipelineCustomizedTemplate.position.asc(), PipelineCustomizedTemplate.created_at.desc())
@@ -80,13 +88,15 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict[str, Any] | None:
+    def fetch_pipeline_template_detail_from_db(
+        cls, template_id: str, *, session: scoped_session | Session
+    ) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param template_id: Template ID
         :return:
         """
-        pipeline_template = db.session.get(PipelineCustomizedTemplate, template_id)
+        pipeline_template = session.get(PipelineCustomizedTemplate, template_id)
         if not pipeline_template:
             return None
 

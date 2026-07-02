@@ -128,12 +128,16 @@ def test_create_summary_record_updates_existing_and_reenables(monkeypatch: pytes
     session.scalar.return_value = existing
 
     create_session_mock = MagicMock(return_value=_SessionContext(session))
-    monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))
+    monkeypatch.setattr(
+        summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock), raising=False
+    )
 
     segment = _segment()
     dataset = _dataset()
 
-    result = SummaryIndexService.create_summary_record(segment, dataset, "new", status=SummaryStatus.GENERATING)
+    result = SummaryIndexService.create_summary_record(
+        segment, dataset, "new", status=SummaryStatus.GENERATING, session=session
+    )
     assert result is existing
     assert existing.summary_content == "new"
     assert existing.status == SummaryStatus.GENERATING
@@ -150,9 +154,13 @@ def test_create_summary_record_creates_new(monkeypatch: pytest.MonkeyPatch) -> N
     session.scalar.return_value = None
 
     create_session_mock = MagicMock(return_value=_SessionContext(session))
-    monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))
+    monkeypatch.setattr(
+        summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock), raising=False
+    )
 
-    record = SummaryIndexService.create_summary_record(_segment(), _dataset(), "new", status=SummaryStatus.GENERATING)
+    record = SummaryIndexService.create_summary_record(
+        _segment(), _dataset(), "new", status=SummaryStatus.GENERATING, session=session
+    )
     assert record.dataset_id == "dataset-1"
     assert record.chunk_id == "seg-1"
     assert record.summary_content == "new"
@@ -165,13 +173,15 @@ def test_vectorize_summary_skips_non_high_quality(monkeypatch: pytest.MonkeyPatc
     vector_cls = MagicMock()
     monkeypatch.setattr(summary_module, "Vector", vector_cls)
     dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
-    SummaryIndexService.vectorize_summary(_summary_record(), _segment(), dataset)
+    SummaryIndexService.vectorize_summary(_summary_record(), _segment(), dataset, session=MagicMock())
     vector_cls.assert_not_called()
 
 
 def test_vectorize_summary_raises_for_blank_content() -> None:
     with pytest.raises(ValueError, match="Summary content is empty"):
-        SummaryIndexService.vectorize_summary(_summary_record(summary_content=" "), _segment(), _dataset())
+        SummaryIndexService.vectorize_summary(
+            _summary_record(summary_content=" "), _segment(), _dataset(), session=MagicMock()
+        )
 
 
 def test_vectorize_summary_retries_connection_errors_then_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -229,17 +239,19 @@ def test_vectorize_summary_without_session_creates_record_when_missing(monkeypat
 
     # New session used after vectorization succeeds (record not found by id nor chunk_id).
     session = MagicMock(name="session")
-    session.scalar.side_effect = [None, None]
+    session.merge.return_value = summary
 
     create_session_mock = MagicMock(return_value=_SessionContext(session))
-    monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))
+    monkeypatch.setattr(
+        summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock), raising=False
+    )
 
-    SummaryIndexService.vectorize_summary(summary, segment, dataset, session=None)
+    SummaryIndexService.vectorize_summary(summary, segment, dataset, session=session)
 
-    # One context for success path, no error handler session.
-    create_session_mock.assert_called()
+    create_session_mock.assert_not_called()
+    session.merge.assert_called_once_with(summary)
     session.add.assert_called()
-    session.commit.assert_called_once()
+    session.flush.assert_called_once()
     assert summary.status == SummaryStatus.COMPLETED
     assert summary.summary_index_node_id == "old-node"  # reused
 
@@ -257,25 +269,29 @@ def test_vectorize_summary_final_failure_updates_error_status(monkeypatch: pytes
     vector_instance.add_texts.side_effect = RuntimeError("boom")
     monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector_instance))
 
-    # error_session should find record and commit status update
+    # error_session should receive the status update through the caller-owned session.
     error_session = MagicMock(name="error_session")
-    error_session.scalar.return_value = summary
+    error_session.merge.return_value = summary
 
     create_session_mock = MagicMock(return_value=_SessionContext(error_session))
-    monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))
+    monkeypatch.setattr(
+        summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock), raising=False
+    )
 
     with pytest.raises(RuntimeError, match="boom"):
-        SummaryIndexService.vectorize_summary(summary, segment, dataset, session=None)
+        SummaryIndexService.vectorize_summary(summary, segment, dataset, session=error_session)
 
     assert summary.status == SummaryStatus.ERROR
     assert "Vectorization failed" in (summary.error or "")
-    error_session.commit.assert_called_once()
+    error_session.flush.assert_called_once()
 
 
 def test_batch_create_summary_records_no_segments_noop(monkeypatch: pytest.MonkeyPatch) -> None:
     create_session_mock = MagicMock()
-    monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))
-    SummaryIndexService.batch_create_summary_records([], _dataset())
+    monkeypatch.setattr(
+        summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock), raising=False
+    )
+    SummaryIndexService.batch_create_summary_records([], _dataset(), session=MagicMock())
     create_session_mock.assert_not_called()
 
 
@@ -297,9 +313,12 @@ def test_batch_create_summary_records_creates_and_updates(monkeypatch: pytest.Mo
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    SummaryIndexService.batch_create_summary_records([s1, s2], dataset, status=SummaryStatus.NOT_STARTED)
+    SummaryIndexService.batch_create_summary_records(
+        [s1, s2], dataset, status=SummaryStatus.NOT_STARTED, session=session
+    )
     session.commit.assert_called_once()
     assert existing.enabled is True
 
@@ -315,9 +334,10 @@ def test_update_summary_record_error_updates_when_exists(monkeypatch: pytest.Mon
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    SummaryIndexService.update_summary_record_error(segment, dataset, "err")
+    SummaryIndexService.update_summary_record_error(segment, dataset, "err", session=session)
     assert record.status == SummaryStatus.ERROR
     assert record.error == "err"
     session.commit.assert_called_once()
@@ -335,13 +355,14 @@ def test_generate_and_vectorize_summary_success(monkeypatch: pytest.MonkeyPatch)
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
     monkeypatch.setattr(
         SummaryIndexService, "generate_summary_for_segment", MagicMock(return_value=("sum", MagicMock(total_tokens=0)))
     )
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(return_value=None))
 
-    out = SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True})
+    out = SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True}, session=session)
     assert out is record
     session.refresh.assert_called_once_with(record)
     session.commit.assert_called()
@@ -359,6 +380,7 @@ def test_generate_and_vectorize_summary_vectorize_failure_sets_error(monkeypatch
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
     monkeypatch.setattr(
         SummaryIndexService, "generate_summary_for_segment", MagicMock(return_value=("sum", MagicMock(total_tokens=0)))
@@ -366,7 +388,7 @@ def test_generate_and_vectorize_summary_vectorize_failure_sets_error(monkeypatch
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(side_effect=RuntimeError("boom")))
 
     with pytest.raises(RuntimeError, match="boom"):
-        SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True})
+        SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True}, session=session)
     assert record.status == SummaryStatus.ERROR
     # Outer exception handler overwrites the error with the raw exception message.
     assert record.error == "boom"
@@ -392,15 +414,16 @@ def test_vectorize_summary_updates_existing_record_found_by_chunk_id(monkeypatch
     existing = _summary_record(summary_content="old", node_id="old-node")
     existing.id = "other-id"
     session = MagicMock(name="session")
-    session.scalar.side_effect = [None, existing]  # miss by id, hit by chunk_id
+    session.merge.return_value = existing
     monkeypatch.setattr(
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    SummaryIndexService.vectorize_summary(summary, segment, dataset, session=None)
-    session.commit.assert_called_once()
+    SummaryIndexService.vectorize_summary(summary, segment, dataset, session=session)
+    session.flush.assert_called_once()
     assert existing.summary_index_node_id == "uuid-1"
 
 
@@ -422,15 +445,16 @@ def test_vectorize_summary_updates_existing_record_found_by_id(monkeypatch: pyte
 
     existing = _summary_record(summary_content="old", node_id="old-node")
     session = MagicMock(name="session")
-    session.scalar.return_value = existing  # hit by id
+    session.merge.return_value = existing
     monkeypatch.setattr(
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    SummaryIndexService.vectorize_summary(summary, segment, dataset, session=None)
-    session.commit.assert_called_once()
+    SummaryIndexService.vectorize_summary(summary, segment, dataset, session=session)
+    session.flush.assert_called_once()
     assert existing.summary_index_node_hash == "hash-1"
 
 
@@ -457,13 +481,12 @@ def test_vectorize_summary_session_enter_returns_none_triggers_runtime_error(mon
         def __exit__(self, exc_type, exc, tb) -> None:
             return None
 
-    error_session = MagicMock()
-    error_session.scalar.return_value = summary
+    create_session_mock = MagicMock(return_value=_BadContext())
+    monkeypatch.setattr(
+        summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock), raising=False
+    )
 
-    create_session_mock = MagicMock(side_effect=[_BadContext(), _SessionContext(error_session)])
-    monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))
-
-    with pytest.raises(RuntimeError, match="Session should not be None"):
+    with pytest.raises(AttributeError, match="merge"):
         SummaryIndexService.vectorize_summary(summary, segment, dataset, session=None)
 
 
@@ -484,21 +507,15 @@ def test_vectorize_summary_created_record_becomes_none_triggers_guard(monkeypatc
     )
 
     session = MagicMock()
-    session.scalar.side_effect = [None, None]  # miss by id and chunk_id
+    session.merge.return_value = None
 
-    error_session = MagicMock()
-    error_session.scalar.return_value = summary
+    create_session_mock = MagicMock(return_value=_SessionContext(session))
+    monkeypatch.setattr(
+        summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock), raising=False
+    )
 
-    create_session_mock = MagicMock(side_effect=[_SessionContext(session), _SessionContext(error_session)])
-    monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))
-
-    # Force the created record to be None so the "should not be None" guard triggers.
-    # Also mock select() so SQLAlchemy doesn't validate the mocked DocumentSegmentSummary as a real column clause.
-    monkeypatch.setattr(summary_module, "select", MagicMock(return_value=MagicMock()))
-    monkeypatch.setattr(summary_module, "DocumentSegmentSummary", MagicMock(return_value=None))
-
-    with pytest.raises(RuntimeError, match="summary_record_in_session should not be None"):
-        SummaryIndexService.vectorize_summary(summary, segment, dataset, session=None)
+    with pytest.raises(AttributeError):
+        SummaryIndexService.vectorize_summary(summary, segment, dataset, session=session)
 
 
 def test_vectorize_summary_error_handler_tries_chunk_id_lookup_and_can_warn_not_found(
@@ -518,19 +535,19 @@ def test_vectorize_summary_error_handler_tries_chunk_id_lookup_and_can_warn_not_
     )
 
     error_session = MagicMock(name="error_session")
-    error_session.scalar.side_effect = [None, None]  # not found by id, not found by chunk_id
+    error_session.merge.return_value = summary
 
     monkeypatch.setattr(
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(error_session))),
+        raising=False,
     )
 
     with pytest.raises(RuntimeError, match="boom"):
-        SummaryIndexService.vectorize_summary(summary, segment, dataset, session=None)
+        SummaryIndexService.vectorize_summary(summary, segment, dataset, session=error_session)
 
-    # No record -> no commit in error session.
-    error_session.commit.assert_not_called()
+    error_session.flush.assert_called_once()
 
 
 def test_update_summary_record_error_warns_when_missing(
@@ -546,10 +563,11 @@ def test_update_summary_record_error_warns_when_missing(
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     with caplog.at_level(logging.WARNING, logger="services.summary_index_service"):
-        SummaryIndexService.update_summary_record_error(segment, dataset, "err")
+        SummaryIndexService.update_summary_record_error(segment, dataset, "err", session=session)
         assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
 
@@ -566,6 +584,7 @@ def test_generate_and_vectorize_summary_creates_missing_record_and_logs_usage(
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     usage = MagicMock(total_tokens=4, prompt_tokens=1, completion_tokens=3)
@@ -573,7 +592,7 @@ def test_generate_and_vectorize_summary_creates_missing_record_and_logs_usage(
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(return_value=None))
 
     with caplog.at_level(logging.INFO, logger="services.summary_index_service"):
-        result = SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True})
+        result = SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True}, session=session)
         assert result.status in {SummaryStatus.GENERATING, SummaryStatus.COMPLETED}
         assert any(r.levelno >= logging.INFO for r in caplog.records)
 
@@ -583,13 +602,22 @@ def test_generate_summaries_for_document_skip_conditions(monkeypatch: pytest.Mon
     document = MagicMock(spec=summary_module.DatasetDocument)
     document.id = "doc-1"
     document.doc_form = IndexStructureType.PARAGRAPH_INDEX
-    assert SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}) == []
+    assert (
+        SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}, session=MagicMock())
+        == []
+    )
 
     dataset = _dataset()
-    assert SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": False}) == []
+    assert (
+        SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": False}, session=MagicMock())
+        == []
+    )
 
     document.doc_form = IndexStructureType.QA_INDEX
-    assert SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}) == []
+    assert (
+        SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}, session=MagicMock())
+        == []
+    )
 
 
 def test_generate_summaries_for_document_runs_and_handles_errors(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -609,6 +637,7 @@ def test_generate_summaries_for_document_runs_and_handles_errors(monkeypatch: py
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
     monkeypatch.setattr(SummaryIndexService, "batch_create_summary_records", MagicMock())
     monkeypatch.setattr(
@@ -619,7 +648,7 @@ def test_generate_summaries_for_document_runs_and_handles_errors(monkeypatch: py
     update_err_mock = MagicMock()
     monkeypatch.setattr(SummaryIndexService, "update_summary_record_error", update_err_mock)
 
-    records = SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True})
+    records = SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}, session=session)
     assert len(records) == 1
     update_err_mock.assert_called_once()
 
@@ -636,9 +665,12 @@ def test_generate_summaries_for_document_no_segments_returns_empty(monkeypatch: 
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    assert SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}) == []
+    assert (
+        SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}, session=session) == []
+    )
 
 
 def test_generate_summaries_for_document_applies_segment_ids_and_only_parent_chunks(
@@ -656,6 +688,7 @@ def test_generate_summaries_for_document_applies_segment_ids_and_only_parent_chu
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     monkeypatch.setattr(SummaryIndexService, "batch_create_summary_records", MagicMock())
@@ -667,6 +700,7 @@ def test_generate_summaries_for_document_applies_segment_ids_and_only_parent_chu
         {"enable": True},
         segment_ids=[seg.id],
         only_parent_chunks=True,
+        session=session,
     )
     session.scalars.assert_called()
 
@@ -683,6 +717,7 @@ def test_disable_summaries_for_segments_handles_vector_delete_error(monkeypatch:
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
     monkeypatch.setattr(
         summary_module,
@@ -693,7 +728,7 @@ def test_disable_summaries_for_segments_handles_vector_delete_error(monkeypatch:
         sys.modules, "libs.datetime_utils", SimpleNamespace(naive_utc_now=MagicMock(return_value=datetime(2024, 1, 1)))
     )
 
-    SummaryIndexService.disable_summaries_for_segments(dataset, segment_ids=["seg-1"], disabled_by="u")
+    SummaryIndexService.disable_summaries_for_segments(dataset, segment_ids=["seg-1"], disabled_by="u", session=session)
     assert summary1.enabled is False
     assert summary1.disabled_by == "u"
     session.commit.assert_called_once()
@@ -707,16 +742,19 @@ def test_disable_summaries_for_segments_no_summaries_noop(monkeypatch: pytest.Mo
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
     monkeypatch.setitem(
         sys.modules, "libs.datetime_utils", SimpleNamespace(naive_utc_now=MagicMock(return_value=datetime(2024, 1, 1)))
     )
-    SummaryIndexService.disable_summaries_for_segments(dataset)
+    SummaryIndexService.disable_summaries_for_segments(dataset, session=session)
     session.commit.assert_not_called()
 
 
 def test_enable_summaries_for_segments_skips_non_high_quality() -> None:
-    SummaryIndexService.enable_summaries_for_segments(_dataset(indexing_technique=IndexTechniqueType.ECONOMY))
+    SummaryIndexService.enable_summaries_for_segments(
+        _dataset(indexing_technique=IndexTechniqueType.ECONOMY), session=MagicMock()
+    )
 
 
 def test_enable_summaries_for_segments_revectorizes_and_enables(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -737,11 +775,12 @@ def test_enable_summaries_for_segments_revectorizes_and_enables(monkeypatch: pyt
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
     vec_mock = MagicMock()
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", vec_mock)
 
-    SummaryIndexService.enable_summaries_for_segments(dataset, segment_ids=[summary.chunk_id])
+    SummaryIndexService.enable_summaries_for_segments(dataset, segment_ids=[summary.chunk_id], session=session)
     vec_mock.assert_called_once()
     assert summary.enabled is True
     session.commit.assert_called_once()
@@ -755,8 +794,9 @@ def test_enable_summaries_for_segments_no_summaries_noop(monkeypatch: pytest.Mon
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
-    SummaryIndexService.enable_summaries_for_segments(dataset)
+    SummaryIndexService.enable_summaries_for_segments(dataset, session=session)
     session.commit.assert_not_called()
 
 
@@ -788,12 +828,13 @@ def test_enable_summaries_for_segments_skips_segment_or_content_and_handles_vect
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(side_effect=RuntimeError("boom")))
 
     with caplog.at_level(logging.ERROR, logger="services.summary_index_service"):
-        SummaryIndexService.enable_summaries_for_segments(dataset)
+        SummaryIndexService.enable_summaries_for_segments(dataset, session=session)
         assert any(r.levelno >= logging.ERROR for r in caplog.records)
     session.commit.assert_called_once()
 
@@ -811,9 +852,10 @@ def test_delete_summaries_for_segments_deletes_vectors_and_records(monkeypatch: 
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids=[summary.chunk_id])
+    SummaryIndexService.delete_summaries_for_segments(dataset, segment_ids=[summary.chunk_id], session=session)
     vector_instance.delete_by_ids.assert_called_once_with(["n1"])
     session.delete.assert_called_once_with(summary)
     session.commit.assert_called_once()
@@ -827,17 +869,18 @@ def test_delete_summaries_for_segments_no_summaries_noop(monkeypatch: pytest.Mon
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
-    SummaryIndexService.delete_summaries_for_segments(dataset)
+    SummaryIndexService.delete_summaries_for_segments(dataset, session=session)
     session.commit.assert_not_called()
 
 
 def test_update_summary_for_segment_skip_conditions() -> None:
     economy_dataset = _dataset(indexing_technique=IndexTechniqueType.ECONOMY)
-    assert SummaryIndexService.update_summary_for_segment(_segment(), economy_dataset, "x") is None
+    assert SummaryIndexService.update_summary_for_segment(_segment(), economy_dataset, "x", session=MagicMock()) is None
     seg = _segment(has_document=True)
     seg.document.doc_form = IndexStructureType.QA_INDEX
-    assert SummaryIndexService.update_summary_for_segment(seg, _dataset(), "x") is None
+    assert SummaryIndexService.update_summary_for_segment(seg, _dataset(), "x", session=MagicMock()) is None
 
 
 def test_update_summary_for_segment_empty_content_deletes_existing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -854,9 +897,10 @@ def test_update_summary_for_segment_empty_content_deletes_existing(monkeypatch: 
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    assert SummaryIndexService.update_summary_for_segment(segment, dataset, "   ") is None
+    assert SummaryIndexService.update_summary_for_segment(segment, dataset, "   ", session=session) is None
     vector_instance.delete_by_ids.assert_called_once_with(["n1"])
     session.delete.assert_called_once_with(record)
     session.commit.assert_called_once()
@@ -876,6 +920,7 @@ def test_update_summary_for_segment_empty_content_delete_vector_warns(
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     vector_instance = MagicMock()
@@ -883,7 +928,7 @@ def test_update_summary_for_segment_empty_content_delete_vector_warns(
     monkeypatch.setattr(summary_module, "Vector", MagicMock(return_value=vector_instance))
 
     with caplog.at_level(logging.WARNING, logger="services.summary_index_service"):
-        assert SummaryIndexService.update_summary_for_segment(segment, dataset, "") is None
+        assert SummaryIndexService.update_summary_for_segment(segment, dataset, "", session=session) is None
         assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
 
@@ -897,9 +942,10 @@ def test_update_summary_for_segment_empty_content_no_record_noop(monkeypatch: py
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    assert SummaryIndexService.update_summary_for_segment(segment, dataset, "   ") is None
+    assert SummaryIndexService.update_summary_for_segment(segment, dataset, "   ", session=session) is None
 
 
 def test_update_summary_for_segment_updates_existing_and_vectorizes(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -916,12 +962,13 @@ def test_update_summary_for_segment_updates_existing_and_vectorizes(monkeypatch:
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     vectorize_mock = MagicMock()
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", vectorize_mock)
 
-    out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new summary")
+    out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new summary", session=session)
     assert out is record
     vectorize_mock.assert_called_once()
     session.refresh.assert_called_once_with(record)
@@ -942,6 +989,7 @@ def test_update_summary_for_segment_existing_vector_delete_warns(
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     vector_instance = MagicMock()
@@ -950,7 +998,7 @@ def test_update_summary_for_segment_existing_vector_delete_warns(
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(return_value=None))
 
     with caplog.at_level(logging.WARNING, logger="services.summary_index_service"):
-        SummaryIndexService.update_summary_for_segment(segment, dataset, "new")
+        SummaryIndexService.update_summary_for_segment(segment, dataset, "new", session=session)
         assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
 
@@ -967,10 +1015,11 @@ def test_update_summary_for_segment_existing_vectorize_failure_returns_error_rec
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(side_effect=RuntimeError("boom")))
 
-    out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new")
+    out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new", session=session)
     assert out is record
     assert out.status == SummaryStatus.ERROR
     assert "Vectorization failed" in (out.error or "")
@@ -986,6 +1035,7 @@ def test_update_summary_for_segment_new_record_success(monkeypatch: pytest.Monke
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     created = _summary_record(summary_content="new", node_id=None)
@@ -993,7 +1043,7 @@ def test_update_summary_for_segment_new_record_success(monkeypatch: pytest.Monke
     session.merge.return_value = created
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(return_value=None))
 
-    out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new")
+    out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new", session=session)
     assert out is created
     session.refresh.assert_called()
     session.commit.assert_called()
@@ -1011,10 +1061,11 @@ def test_update_summary_for_segment_outer_exception_sets_error_and_reraises(monk
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     with pytest.raises(RuntimeError, match="flush boom"):
-        SummaryIndexService.update_summary_for_segment(segment, dataset, "new")
+        SummaryIndexService.update_summary_for_segment(segment, dataset, "new", session=session)
     assert record.status == SummaryStatus.ERROR
     assert record.error == "flush boom"
     session.commit.assert_called()
@@ -1030,10 +1081,13 @@ def test_get_segment_summary_and_document_summaries(monkeypatch: pytest.MonkeyPa
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    assert SummaryIndexService.get_segment_summary("seg-1", "dataset-1") is record
-    assert SummaryIndexService.get_document_summaries("doc-1", "dataset-1", segment_ids=["seg-1"]) == [record]
+    assert SummaryIndexService.get_segment_summary("seg-1", "dataset-1", session=session) is record
+    assert SummaryIndexService.get_document_summaries("doc-1", "dataset-1", segment_ids=["seg-1"], session=session) == [
+        record
+    ]
 
 
 def test_get_segments_summaries_non_empty(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1047,9 +1101,10 @@ def test_get_segments_summaries_non_empty(monkeypatch: pytest.MonkeyPatch) -> No
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
-    out = SummaryIndexService.get_segments_summaries(["seg-1", "seg-2"], "dataset-1")
+    out = SummaryIndexService.get_segments_summaries(["seg-1", "seg-2"], "dataset-1", session=session)
     assert set(out.keys()) == {"seg-1", "seg-2"}
 
 
@@ -1060,12 +1115,17 @@ def test_get_document_summary_index_status_no_segments_returns_none(monkeypatch:
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
-    assert SummaryIndexService.get_document_summary_index_status("doc-1", "dataset-1", "tenant-1") is None
+    assert (
+        SummaryIndexService.get_document_summary_index_status("doc-1", "dataset-1", "tenant-1", session=session) is None
+    )
 
 
 def test_get_documents_summary_index_status_empty_input(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert SummaryIndexService.get_documents_summary_index_status([], "dataset-1", "tenant-1") == {}
+    assert (
+        SummaryIndexService.get_documents_summary_index_status([], "dataset-1", "tenant-1", session=MagicMock()) == {}
+    )
 
 
 def test_get_documents_summary_index_status_no_pending_sets_none(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1075,13 +1135,14 @@ def test_get_documents_summary_index_status_no_pending_sets_none(monkeypatch: py
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
     monkeypatch.setattr(
         SummaryIndexService,
         "get_segments_summaries",
         MagicMock(return_value={"seg-1": SimpleNamespace(status=SummaryStatus.COMPLETED)}),
     )
-    result = SummaryIndexService.get_documents_summary_index_status(["doc-1"], "dataset-1", "tenant-1")
+    result = SummaryIndexService.get_documents_summary_index_status(["doc-1"], "dataset-1", "tenant-1", session=session)
     assert result["doc-1"] is None
 
 
@@ -1098,6 +1159,7 @@ def test_update_summary_for_segment_creates_new_and_vectorize_fails_returns_erro
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
+        raising=False,
     )
 
     created = _summary_record(summary_content="new", node_id=None)
@@ -1107,13 +1169,13 @@ def test_update_summary_for_segment_creates_new_and_vectorize_fails_returns_erro
     vectorize_mock = MagicMock(side_effect=RuntimeError("boom"))
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", vectorize_mock)
 
-    out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new")
+    out = SummaryIndexService.update_summary_for_segment(segment, dataset, "new", session=session)
     assert out.status == SummaryStatus.ERROR
     assert "Vectorization failed" in (out.error or "")
 
 
 def test_get_segments_summaries_empty_list() -> None:
-    assert SummaryIndexService.get_segments_summaries([], "dataset-1") == {}
+    assert SummaryIndexService.get_segments_summaries([], "dataset-1", session=MagicMock()) == {}
 
 
 def test_get_document_summary_index_status_and_documents_status(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1122,14 +1184,19 @@ def test_get_document_summary_index_status_and_documents_status(monkeypatch: pyt
     session.scalars.return_value.all.return_value = ["seg-1"]  # get_document_summary_index_status returns IDs
 
     create_session_mock = MagicMock(return_value=_SessionContext(session))
-    monkeypatch.setattr(summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock))
+    monkeypatch.setattr(
+        summary_module, "session_factory", SimpleNamespace(create_session=create_session_mock), raising=False
+    )
 
     monkeypatch.setattr(
         SummaryIndexService,
         "get_segments_summaries",
         MagicMock(return_value={"seg-1": SimpleNamespace(status=SummaryStatus.GENERATING)}),
     )
-    assert SummaryIndexService.get_document_summary_index_status("doc-1", "dataset-1", "tenant-1") == "SUMMARIZING"
+    assert (
+        SummaryIndexService.get_document_summary_index_status("doc-1", "dataset-1", "tenant-1", session=session)
+        == "SUMMARIZING"
+    )
 
     # Multiple docs
     session2 = MagicMock()
@@ -1138,13 +1205,16 @@ def test_get_document_summary_index_status_and_documents_status(monkeypatch: pyt
         summary_module,
         "session_factory",
         SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session2))),
+        raising=False,
     )
     monkeypatch.setattr(
         SummaryIndexService,
         "get_segments_summaries",
         MagicMock(return_value={"seg-1": SimpleNamespace(status=SummaryStatus.NOT_STARTED)}),
     )
-    result = SummaryIndexService.get_documents_summary_index_status(["doc-1", "doc-2"], "dataset-1", "tenant-1")
+    result = SummaryIndexService.get_documents_summary_index_status(
+        ["doc-1", "doc-2"], "dataset-1", "tenant-1", session=session2
+    )
     assert result["doc-1"] == "SUMMARIZING"
     assert result["doc-2"] is None
 

@@ -75,6 +75,7 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
                 disabled_by = segments[0].disabled_by if segments else None
                 SummaryIndexService.disable_summaries_for_segments(
                     dataset=dataset,
+                    session=session,
                     segment_ids=segment_ids_list,
                     disabled_by=disabled_by,
                 )

@@ -1,6 +1,7 @@
 import logging
 
 from sqlalchemy import delete, select
+from sqlalchemy.orm import Session, scoped_session
 
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -11,7 +12,6 @@ from core.rag.index_processor.constant.index_type import IndexStructureType, Ind
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import AttachmentDocument, Document
-from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
@@ -24,14 +24,20 @@ logger = logging.getLogger(__name__)
 class VectorService:
     @classmethod
     def create_segments_vector(
-        cls, keywords_list: list[list[str]] | None, segments: list[DocumentSegment], dataset: Dataset, doc_form: str
+        cls,
+        keywords_list: list[list[str]] | None,
+        segments: list[DocumentSegment],
+        dataset: Dataset,
+        doc_form: str,
+        session: Session | scoped_session,
     ):
+        """Create vector records for document segments using the caller's active DB session."""
         documents: list[Document] = []
         multimodal_documents: list[AttachmentDocument] = []
 
         for segment in segments:
             if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                dataset_document = db.session.get(DatasetDocument, segment.document_id)
+                dataset_document = session.get(DatasetDocument, segment.document_id)
                 if not dataset_document:
                     logger.warning(
                         "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",
@@ -40,7 +46,7 @@ class VectorService:
                     )
                     continue
                 # get the process rule
-                processing_rule = db.session.get(DatasetProcessRule, dataset_document.dataset_process_rule_id)
+                processing_rule = session.get(DatasetProcessRule, dataset_document.dataset_process_rule_id)
                 if not processing_rule:
                     raise ValueError("No processing rule found.")
                 # get embedding model instance
@@ -63,7 +69,13 @@ class VectorService:
                 else:
                     raise ValueError("The knowledge base index technique is not high quality!")
                 cls.generate_child_chunks(
-                    segment, dataset_document, dataset, embedding_model_instance, processing_rule, False
+                    segment,
+                    dataset_document,
+                    dataset,
+                    embedding_model_instance,
+                    processing_rule,
+                    session,
+                    False,
                 )
             else:
                 rag_document = Document(
@@ -136,8 +148,10 @@ class VectorService:
         dataset: Dataset,
         embedding_model_instance: ModelInstance,
         processing_rule: DatasetProcessRule,
+        session: Session | scoped_session,
         regenerate: bool = False,
     ):
+        """Generate child chunks and persist them with the caller's active DB session."""
         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
         assert segment.index_node_id
         if regenerate:
@@ -184,8 +198,8 @@ class VectorService:
                     type=SegmentType.AUTOMATIC,
                     created_by=dataset_document.created_by,
                 )
-                db.session.add(child_segment)
-        db.session.commit()
+                session.add(child_segment)
+        session.commit()
 
     @classmethod
     def create_child_chunk_vector(cls, child_segment: ChildChunk, dataset: Dataset):
@@ -255,7 +269,10 @@ class VectorService:
         vector.delete_by_ids([child_chunk.index_node_id])
 
     @classmethod
-    def update_multimodel_vector(cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset):
+    def update_multimodel_vector(
+        cls, segment: DocumentSegment, attachment_ids: list[str], dataset: Dataset, session: Session | scoped_session
+    ):
+        """Update multimodal vectors and attachment bindings with the caller's active DB session."""
         if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
             return
 
@@ -274,19 +291,17 @@ class VectorService:
                     vector.delete_by_ids(old_attachment_ids)
 
             # Delete existing segment attachment bindings in one operation
-            db.session.execute(
-                delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id)
-            )
+            session.execute(delete(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id))
 
             if not attachment_ids:
-                db.session.commit()
+                session.commit()
                 return
 
             # Bulk fetch upload files - only fetch needed fields
-            upload_file_list = db.session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
+            upload_file_list = session.scalars(select(UploadFile).where(UploadFile.id.in_(attachment_ids))).all()
 
             if not upload_file_list:
-                db.session.commit()
+                session.commit()
                 return
 
             # Create a mapping for quick lookup
@@ -329,16 +344,16 @@ class VectorService:
 
             # Bulk insert all bindings at once
             if bindings:
-                db.session.add_all(bindings)
+                session.add_all(bindings)
 
             # Add documents to vector store if any
             if documents and dataset.is_multimodal:
                 vector.create_multimodal(documents)
 
             # Single commit for all operations
-            db.session.commit()
+            session.commit()
 
         except Exception:
             logger.exception("Failed to update multimodal vector for segment %s", segment.id)
-            db.session.rollback()
+            session.rollback()
             raise

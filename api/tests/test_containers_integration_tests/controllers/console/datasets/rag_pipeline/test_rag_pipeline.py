@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from inspect import unwrap
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -186,7 +186,7 @@ class TestCustomizedPipelineTemplateApi:
         ):
             response, status = method(api, tenant_id, "tpl-1")
 
-        delete_mock.assert_called_once_with("tpl-1", tenant_id)
+        delete_mock.assert_called_once_with("tpl-1", tenant_id, session=ANY)
         assert status == 204
         assert response == ""
 

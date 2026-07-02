@@ -26,6 +26,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -119,7 +120,12 @@ class CompletionApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                session=db.session,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -206,11 +212,19 @@ class ChatApi(WebApiResource):
             # Eagerly validate conversation to avoid hanging on invalid conversation_id
             if payload.conversation_id:
                 ConversationService.get_conversation(
-                    app_model=app_model, conversation_id=payload.conversation_id, user=end_user
+                    app_model=app_model,
+                    conversation_id=payload.conversation_id,
+                    user=end_user,
+                    session=db.session(),
                 )
 
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                session=db.session,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)

@@ -22,6 +22,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
@@ -59,7 +60,12 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         args = payload.model_dump(exclude_none=True)
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                session=db.session,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)

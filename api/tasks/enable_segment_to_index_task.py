@@ -114,6 +114,7 @@ def enable_segment_to_index_task(segment_id: str):
             try:
                 SummaryIndexService.enable_summaries_for_segments(
                     dataset=dataset,
+                    session=session,
                     segment_ids=[segment.id],
                 )
             except Exception as e:

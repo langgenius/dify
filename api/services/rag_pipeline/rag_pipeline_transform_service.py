@@ -16,7 +16,6 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType
@@ -45,11 +44,11 @@ class RagPipelineTransformService:
         indexing_technique = dataset.indexing_technique
 
         if not datasource_type and not indexing_technique:
-            return self._transform_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset, session=session)
 
         doc_form = dataset.doc_form
         if not doc_form:
-            return self._transform_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset, session=session)
         retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
@@ -81,7 +80,7 @@ class RagPipelineTransformService:
             workflow_data["graph"] = graph
             pipeline_yaml["workflow"] = workflow_data
         # create pipeline
-        pipeline = self._create_pipeline(pipeline_yaml)
+        pipeline = self._create_pipeline(pipeline_yaml, session=session)
 
         # save chunk structure to dataset
         if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
@@ -195,6 +194,8 @@ class RagPipelineTransformService:
     def _create_pipeline(
         self,
         data: dict[str, Any],
+        *,
+        session: scoped_session,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         pipeline_data = data.get("rag_pipeline", {})
@@ -227,8 +228,8 @@ class RagPipelineTransformService:
         )
         pipeline.id = str(uuid4())
 
-        db.session.add(pipeline)
-        db.session.flush()
+        session.add(pipeline)
+        session.flush()
         # create draft workflow
         draft_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
@@ -254,11 +255,11 @@ class RagPipelineTransformService:
             conversation_variables=conversation_variables,
             rag_pipeline_variables=rag_pipeline_variables_list,
         )
-        db.session.add(draft_workflow)
-        db.session.add(published_workflow)
-        db.session.flush()
+        session.add(draft_workflow)
+        session.add(published_workflow)
+        session.flush()
         pipeline.workflow_id = published_workflow.id
-        db.session.add(pipeline)
+        session.add(pipeline)
         return pipeline
 
     def _deal_dependencies(self, pipeline_yaml: dict[str, Any], tenant_id: str):
@@ -289,22 +290,22 @@ class RagPipelineTransformService:
             logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
-    def _transform_to_empty_pipeline(self, dataset: Dataset):
+    def _transform_to_empty_pipeline(self, dataset: Dataset, *, session: scoped_session):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
             description=dataset.description,
             created_by=current_user.id,
         )
-        db.session.add(pipeline)
-        db.session.flush()
+        session.add(pipeline)
+        session.flush()
 
         dataset.pipeline_id = pipeline.id
         dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
         dataset.updated_by = current_user.id
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
-        db.session.add(dataset)
-        db.session.commit()
+        session.add(dataset)
+        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset.id,

@@ -21,6 +21,7 @@ from controllers.console.wraps import (
 )
 from core.plugin.entities.plugin_daemon import PluginOAuthAuthorizationUrlResponse
 from core.plugin.impl.oauth import OAuthHandler
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -255,6 +256,7 @@ class DatasourceAuth(Resource):
             provider=datasource_provider_id.provider_name,
             plugin_id=datasource_provider_id.plugin_id,
             user=user,
+            session=db.session,
         )
         return {"result": datasources}, 200
 
@@ -281,6 +283,7 @@ class DatasourceAuthDeleteApi(Resource):
             auth_id=payload.credential_id,
             provider=provider_name,
             plugin_id=plugin_id,
+            session=db.session,
         )
         return {"result": "success"}, 200
 
@@ -320,7 +323,9 @@ class DatasourceAuthListApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         datasource_provider_service = DatasourceProviderService()
-        datasources = datasource_provider_service.get_all_datasource_credentials(tenant_id=current_tenant_id)
+        datasources = datasource_provider_service.get_all_datasource_credentials(
+            tenant_id=current_tenant_id, session=db.session
+        )
         return {"result": jsonable_encoder(datasources)}, 200
 
 
@@ -333,7 +338,9 @@ class DatasourceHardCodeAuthListApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         datasource_provider_service = DatasourceProviderService()
-        datasources = datasource_provider_service.get_hard_code_datasource_credentials(tenant_id=current_tenant_id)
+        datasources = datasource_provider_service.get_hard_code_datasource_credentials(
+            tenant_id=current_tenant_id, session=db.session
+        )
         return {"result": jsonable_encoder(datasources)}, 200
 
 

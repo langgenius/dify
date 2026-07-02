@@ -15,6 +15,7 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
@@ -109,7 +110,7 @@ class MessageListApi(Resource):
 
         try:
             pagination = MessageService.pagination_by_first_id(
-                app_model, end_user, conversation_id, first_id, query_args.limit
+                app_model, end_user, conversation_id, first_id, query_args.limit, session=db.session
             )
             adapter = TypeAdapter(MessageListItem)
             items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
@@ -167,6 +168,7 @@ class MessageFeedbackApi(Resource):
                 user=end_user,
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
+                session=db.session,
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
@@ -208,7 +210,9 @@ class AppGetFeedbacksApi(Resource):
         Returns paginated list of all feedback submitted for messages in this app.
         """
         query_args = FeedbackListQuery.model_validate(request.args.to_dict())
-        feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=query_args.page, limit=query_args.limit)
+        feedbacks = MessageService.get_all_messages_feedbacks(
+            app_model, page=query_args.page, limit=query_args.limit, session=db.session
+        )
         return {"data": feedbacks}
 
 
@@ -258,7 +262,11 @@ class MessageSuggestedApi(Resource):
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=end_user, message_id=message_id_str, invoke_from=InvokeFrom.SERVICE_API
+                app_model=app_model,
+                user=end_user,
+                message_id=message_id_str,
+                invoke_from=InvokeFrom.SERVICE_API,
+                session=db.session,
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")

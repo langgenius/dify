@@ -26,6 +26,7 @@ from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import with_current_user
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import (
     ExploreMessageInfiniteScrollPagination,
@@ -91,6 +92,7 @@ class MessageListApi(InstalledAppResource):
                 str(args.conversation_id),
                 str(args.first_id) if args.first_id else None,
                 args.limit,
+                session=db.session,
             )
             adapter = TypeAdapter(ExploreMessageListItem)
             items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
@@ -129,6 +131,7 @@ class MessageFeedbackApi(InstalledAppResource):
                 user=current_user,
                 rating=FeedbackRating(payload.rating) if payload.rating else None,
                 content=payload.content,
+                session=db.session,
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
@@ -204,7 +207,11 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=current_user, message_id=message_id_str, invoke_from=InvokeFrom.EXPLORE
+                app_model=app_model,
+                user=current_user,
+                message_id=message_id_str,
+                invoke_from=InvokeFrom.EXPLORE,
+                session=db.session,
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")

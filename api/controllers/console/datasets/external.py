@@ -218,7 +218,7 @@ class ExternalApiTemplateListApi(Resource):
 
         try:
             external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
-                tenant_id=current_tenant_id, user_id=current_user.id, args=payload.model_dump()
+                tenant_id=current_tenant_id, user_id=current_user.id, args=payload.model_dump(), session=db.session
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -244,7 +244,7 @@ class ExternalApiTemplateApi(Resource):
     def get(self, current_tenant_id: str, external_knowledge_api_id: UUID):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
         external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-            external_knowledge_api_id_str, current_tenant_id
+            external_knowledge_api_id_str, current_tenant_id, session=db.session
         )
         if external_knowledge_api is None:
             raise NotFound("API template not found.")
@@ -273,6 +273,7 @@ class ExternalApiTemplateApi(Resource):
             user_id=current_user.id,
             external_knowledge_api_id=external_knowledge_api_id_str,
             args=payload.model_dump(),
+            session=db.session,
         )
 
         return external_knowledge_api.to_dict(), 200
@@ -289,7 +290,9 @@ class ExternalApiTemplateApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
-        ExternalDatasetService.delete_external_knowledge_api(current_tenant_id, external_knowledge_api_id_str)
+        ExternalDatasetService.delete_external_knowledge_api(
+            current_tenant_id, external_knowledge_api_id_str, session=db.session
+        )
         return "", 204
 
 
@@ -307,7 +310,7 @@ class ExternalApiUseCheckApi(Resource):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
-            external_knowledge_api_id_str, current_tenant_id
+            external_knowledge_api_id_str, current_tenant_id, session=db.session
         )
         return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 
@@ -341,6 +344,7 @@ class ExternalDatasetCreateApi(Resource):
                 tenant_id=current_tenant_id,
                 user_id=current_user.id,
                 args=args,
+                session=db.session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -351,6 +355,7 @@ class ExternalDatasetCreateApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [dataset_id_str],
+            session=db.session,
         )
         item["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
 
