@@ -283,7 +283,7 @@ def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
                 "import json",
                 "import sys",
                 'if sys.argv[1:] != ["file", "upload", "../shared/notes.txt"]:',
-                '    raise SystemExit(f\"unexpected args: {sys.argv[1:]!r}\")',
+                '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
                 'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
             ]
         )
