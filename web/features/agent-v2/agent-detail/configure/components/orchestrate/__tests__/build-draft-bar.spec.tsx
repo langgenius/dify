@@ -1,6 +1,26 @@
+import type { AgentBuildDraftChangeSummary } from '../build-draft-changes-context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentBuildDraftBar } from '../build-draft-bar'
+
+const changeSummary: AgentBuildDraftChangeSummary = {
+  changedKeys: ['skills', 'files'],
+  changesCount: 4,
+  skills: [
+    { id: 'skill-1', name: 'tender-analyzer', operation: 'added' },
+    { id: 'skill-2', name: 'figma-code-connect', operation: 'removed' },
+  ],
+  files: [
+    {
+      id: '__agent_config_build_note__',
+      name: 'build_note.md',
+      operation: 'updated',
+      icon: 'markdown',
+      descriptionKey: 'agentDetail.configure.buildDraft.buildNoteDescription',
+    },
+    { id: 'file-1', name: 'index.json', operation: 'added', icon: 'json' },
+  ],
+}
 
 describe('AgentBuildDraftBar', () => {
   it('should disable both build draft actions when the bar is disabled', async () => {
@@ -72,9 +92,10 @@ describe('AgentBuildDraftBar', () => {
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })).toBeDisabled()
   })
 
-  it('should not show build draft change metadata', () => {
+  it('should show build draft change metadata', () => {
     const { rerender } = render(
       <AgentBuildDraftBar
+        changeSummary={changeSummary}
         changesCount={0}
         onApply={vi.fn()}
         onDiscard={vi.fn()}
@@ -82,10 +103,12 @@ describe('AgentBuildDraftBar', () => {
     )
 
     expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
-    expect(screen.getAllByText(/^agentV2\.agentDetail\.configure\.buildDraft\./)).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":0}' })).toBeInTheDocument()
+    expect(document.querySelector('.i-ri-arrow-right-s-line')).toBeInTheDocument()
 
     rerender(
       <AgentBuildDraftBar
+        changeSummary={changeSummary}
         changesCount={2}
         onApply={vi.fn()}
         onDiscard={vi.fn()}
@@ -93,7 +116,38 @@ describe('AgentBuildDraftBar', () => {
     )
 
     expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
-    expect(screen.getAllByText(/^agentV2\.agentDetail\.configure\.buildDraft\./)).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":2}' })).toBeInTheDocument()
+  })
+
+  it('should open build draft change details from the metadata trigger', async () => {
+    const user = userEvent.setup()
+    const onApply = vi.fn()
+    const onDiscard = vi.fn()
+
+    render(
+      <AgentBuildDraftBar
+        changeSummary={changeSummary}
+        changesCount={4}
+        onApply={onApply}
+        onDiscard={onDiscard}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":4}' }))
+
+    expect(screen.getByText('agentV2.agentDetail.configure.skills.label')).toBeInTheDocument()
+    expect(screen.getByText('tender-analyzer')).toBeInTheDocument()
+    expect(screen.getByText('figma-code-connect')).toBeInTheDocument()
+    expect(screen.getByText('build_note.md')).toBeInTheDocument()
+    expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.buildNoteDescription')).toBeInTheDocument()
+    expect(screen.getByText('index.json')).toBeInTheDocument()
+    expect(document.querySelector('.text-text-accent')).toHaveClass('i-ri-add-circle-fill')
+
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' }))
+    await user.click(screen.getByRole('button', { name: 'custom.apply' }))
+
+    expect(onDiscard).toHaveBeenCalledTimes(1)
+    expect(onApply).toHaveBeenCalledTimes(1)
   })
 
   it('should keep both actions enabled when there are no build draft changes', async () => {
@@ -111,10 +165,7 @@ describe('AgentBuildDraftBar', () => {
 
     const discardButton = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })
     const applyButton = screen.getByRole('button', { name: 'custom.apply' })
-    const buttons = screen.getAllByRole('button')
 
-    expect(buttons[0]).toBe(discardButton)
-    expect(buttons[1]).toBe(applyButton)
     expect(discardButton).toBeEnabled()
     expect(applyButton).toBeEnabled()
 
