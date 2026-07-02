@@ -11,8 +11,8 @@ import type {
   ExploreAppMetaResponse,
   InstalledAppInfoResponse,
   InstalledAppListResponse,
+  Parameters as InstalledAppParametersResponse,
   InstalledAppResponse,
-  Parameters,
 } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { Banner } from '@/models/app'
@@ -51,7 +51,7 @@ type AppAccessModeResponse = {
   accessMode: AccessMode
 }
 
-type InstalledAppParameters = Parameters
+type InstalledAppParametersViewModel = ChatConfig
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -66,57 +66,9 @@ const getStringProperty = (source: object, key: string, fallback = '') => {
   return typeof value === 'string' ? value : fallback
 }
 
-const getOptionalStringProperty = (source: object, key: string) => {
-  const value = getValue(source, key)
-  return typeof value === 'string' ? value : undefined
-}
-
-const getNullableStringProperty = (source: object, key: string) => {
-  const value = getValue(source, key)
-  return typeof value === 'string' ? value : null
-}
-
 const getBooleanProperty = (source: object, key: string, fallback = false) => {
   const value = getValue(source, key)
   return typeof value === 'boolean' ? value : fallback
-}
-
-const getOptionalBooleanProperty = (source: object, key: string) => {
-  const value = getValue(source, key)
-  return typeof value === 'boolean' ? value : undefined
-}
-
-const getNumberProperty = (source: object, key: string, fallback = 0) => {
-  const value = getValue(source, key)
-  return typeof value === 'number' ? value : fallback
-}
-
-const getOptionalNumberProperty = (source: object, key: string) => {
-  const value = getValue(source, key)
-  return typeof value === 'number' ? value : undefined
-}
-
-const getStringArrayProperty = (source: object, key: string) => {
-  const value = getValue(source, key)
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
-}
-
-const getArrayProperty = <T>(
-  source: object,
-  key: string,
-  isItem: (value: unknown) => value is T,
-) => {
-  const value = getValue(source, key)
-  return Array.isArray(value) ? value.filter(isItem) : []
-}
-
-const getOptionalArrayProperty = <T>(
-  source: object,
-  key: string,
-  isItem: (value: unknown) => value is T,
-) => {
-  const value = getValue(source, key)
-  return Array.isArray(value) ? value.filter(isItem) : undefined
 }
 
 const isAppMode = (value: unknown): value is AppModeEnum => {
@@ -154,18 +106,25 @@ const normalizeAppBasicInfo = (
   source: RecommendedAppInfoResponse | InstalledAppInfoResponse | null | undefined,
   fallbackId: string,
 ): App['app'] => {
-  const record = source && isRecord(source) ? source : null
+  const description = source && 'description' in source && typeof source.description === 'string'
+    ? source.description
+    : ''
+  const useIconAsAnswerIcon = source
+    && 'use_icon_as_answer_icon' in source
+    && typeof source.use_icon_as_answer_icon === 'boolean'
+    ? source.use_icon_as_answer_icon
+    : false
 
   return {
-    id: record ? getStringProperty(record, 'id', fallbackId) : fallbackId,
-    mode: record ? normalizeAppMode(getValue(record, 'mode')) : AppModeEnum.CHAT,
-    icon_type: record ? normalizeAppIconType(getValue(record, 'icon_type')) : null,
-    icon: record ? getStringProperty(record, 'icon') : '',
-    icon_background: record ? getStringProperty(record, 'icon_background') : '',
-    icon_url: record ? getStringProperty(record, 'icon_url') : '',
-    name: record ? getStringProperty(record, 'name') : '',
-    description: record ? getStringProperty(record, 'description') : '',
-    use_icon_as_answer_icon: record ? getBooleanProperty(record, 'use_icon_as_answer_icon') : false,
+    id: source?.id ?? fallbackId,
+    mode: normalizeAppMode(source?.mode),
+    icon_type: normalizeAppIconType(source?.icon_type),
+    icon: source?.icon ?? '',
+    icon_background: source?.icon_background ?? '',
+    icon_url: source?.icon_url ?? '',
+    name: source?.name ?? '',
+    description,
+    use_icon_as_answer_icon: useIconAsAnswerIcon,
   }
 }
 
@@ -173,18 +132,18 @@ const normalizeRecommendedApp = (app: RecommendedAppResponse): App => {
   return {
     app: normalizeAppBasicInfo(app.app, app.app_id),
     app_id: app.app_id,
-    description: getStringProperty(app, 'description'),
-    copyright: getStringProperty(app, 'copyright'),
-    privacy_policy: getNullableStringProperty(app, 'privacy_policy'),
-    custom_disclaimer: getNullableStringProperty(app, 'custom_disclaimer'),
-    categories: getStringArrayProperty(app, 'categories'),
-    position: getNumberProperty(app, 'position'),
-    is_listed: getBooleanProperty(app, 'is_listed'),
-    install_count: getNumberProperty(app, 'install_count'),
-    installed: getBooleanProperty(app, 'installed'),
-    editable: getBooleanProperty(app, 'editable'),
-    is_agent: getBooleanProperty(app, 'is_agent'),
-    can_trial: getBooleanProperty(app, 'can_trial'),
+    description: app.description ?? '',
+    copyright: app.copyright ?? '',
+    privacy_policy: app.privacy_policy ?? null,
+    custom_disclaimer: app.custom_disclaimer ?? null,
+    categories: app.categories ?? [],
+    position: app.position ?? 0,
+    is_listed: app.is_listed ?? false,
+    install_count: 0,
+    installed: false,
+    editable: false,
+    is_agent: false,
+    can_trial: app.can_trial ?? false,
   }
 }
 
@@ -272,24 +231,8 @@ const normalizeAppMeta = (response: ExploreAppMetaResponse): AppMeta => {
   }
 }
 
-const isPromptMode = (value: unknown): value is PromptMode => {
-  return value === PromptMode.simple || value === PromptMode.advanced
-}
-
-const normalizePromptMode = (value: unknown) => {
-  return isPromptMode(value) ? value : PromptMode.simple
-}
-
 const isTtsAutoPlay = (value: unknown): value is TtsAutoPlay => {
   return value === TtsAutoPlay.enabled || value === TtsAutoPlay.disabled
-}
-
-const isChatPromptConfig = (value: unknown): value is NonNullable<ChatConfig['chat_prompt_config']> => {
-  return isRecord(value)
-}
-
-const isCompletionPromptConfig = (value: unknown): value is NonNullable<ChatConfig['completion_prompt_config']> => {
-  return isRecord(value)
 }
 
 const isUserInputFormItem = (value: unknown): value is ChatConfig['user_input_form'][number] => {
@@ -304,23 +247,7 @@ const isAnnotationReplyConfig = (value: unknown): value is NonNullable<ChatConfi
   return isRecord(value)
 }
 
-const isToolItem = (value: unknown): value is ChatConfig['agent_mode']['tools'][number] => {
-  return isRecord(value)
-}
-
-const isExternalDataTool = (value: unknown): value is NonNullable<ChatConfig['external_data_tools']>[number] => {
-  return isRecord(value)
-}
-
-const isDatasetConfigs = (value: unknown): value is ChatConfig['dataset_configs'] => {
-  return isRecord(value)
-}
-
 const isFileUploadConfig = (value: unknown): value is NonNullable<ChatConfig['file_upload']> => {
-  return isRecord(value)
-}
-
-const isVisionFile = (value: unknown): value is NonNullable<ChatConfig['files']>[number] => {
   return isRecord(value)
 }
 
@@ -352,7 +279,7 @@ const normalizeSuggestedQuestionsAfterAnswer = (
 ): ChatConfig['suggested_questions_after_answer'] => {
   const record = isRecord(value) ? value : {}
   const model = getValue(record, 'model')
-  const prompt = getOptionalStringProperty(record, 'prompt')
+  const prompt = getStringProperty(record, 'prompt')
 
   return {
     enabled: getBooleanProperty(record, 'enabled'),
@@ -369,24 +296,14 @@ const normalizeTextToSpeech = (value: unknown): ChatConfig['text_to_speech'] => 
   return {
     ...record,
     enabled: getBooleanProperty(record, 'enabled'),
-    voice: getOptionalStringProperty(record, 'voice'),
-    language: getOptionalStringProperty(record, 'language'),
+    voice: getStringProperty(record, 'voice') || undefined,
+    language: getStringProperty(record, 'language') || undefined,
     ...(normalizedAutoPlay ? { autoPlay: normalizedAutoPlay } : {}),
   }
 }
 
-const normalizeAgentMode = (value: unknown): ChatConfig['agent_mode'] => {
-  const record = isRecord(value) ? value : {}
-
-  return {
-    ...record,
-    enabled: getBooleanProperty(record, 'enabled'),
-    tools: getArrayProperty(record, 'tools', isToolItem),
-  }
-}
-
 const normalizeSystemParameters = (
-  systemParameters: InstalledAppParameters['system_parameters'],
+  systemParameters: InstalledAppParametersResponse['system_parameters'],
 ): ChatConfig['system_parameters'] => {
   return {
     audio_file_size_limit: systemParameters.audio_file_size_limit,
@@ -397,53 +314,29 @@ const normalizeSystemParameters = (
   }
 }
 
-const normalizeInstalledAppParameters = (response: InstalledAppParameters): ChatConfig => {
-  const chatPromptConfig = getValue(response, 'chat_prompt_config')
-  const completionPromptConfig = getValue(response, 'completion_prompt_config')
-  const annotationReply = getValue(response, 'annotation_reply')
-  const datasetConfigs = getValue(response, 'dataset_configs')
-  const fileUpload = getValue(response, 'file_upload')
-  const suggestedQuestions = getStringArrayProperty(response, 'suggested_questions')
-  const datasetQueryVariable = getOptionalStringProperty(response, 'dataset_query_variable')
-  const createdAt = getOptionalNumberProperty(response, 'created_at')
-  const updatedAt = getOptionalNumberProperty(response, 'updated_at')
-  const externalDataTools = getOptionalArrayProperty(response, 'external_data_tools', isExternalDataTool)
-  const files = getOptionalArrayProperty(response, 'files', isVisionFile)
-  const supportAnnotation = getOptionalBooleanProperty(response, 'supportAnnotation')
-  const questionEditEnable = getOptionalBooleanProperty(response, 'questionEditEnable')
-  const supportFeedback = getOptionalBooleanProperty(response, 'supportFeedback')
-  const supportCitationHitInfo = getOptionalBooleanProperty(response, 'supportCitationHitInfo')
-  const appId = getOptionalStringProperty(response, 'appId')
-
+const normalizeInstalledAppParametersViewModel = (
+  response: InstalledAppParametersResponse,
+): InstalledAppParametersViewModel => {
   return {
     opening_statement: response.opening_statement ?? '',
-    suggested_questions: suggestedQuestions,
-    pre_prompt: getStringProperty(response, 'pre_prompt'),
-    prompt_type: normalizePromptMode(getValue(response, 'prompt_type')),
-    ...(isChatPromptConfig(chatPromptConfig) ? { chat_prompt_config: chatPromptConfig } : {}),
-    ...(isCompletionPromptConfig(completionPromptConfig) ? { completion_prompt_config: completionPromptConfig } : {}),
-    user_input_form: getArrayProperty(response, 'user_input_form', isUserInputFormItem),
-    ...(datasetQueryVariable ? { dataset_query_variable: datasetQueryVariable } : {}),
+    suggested_questions: response.suggested_questions,
+    pre_prompt: '',
+    prompt_type: PromptMode.simple,
+    user_input_form: response.user_input_form.filter(isUserInputFormItem),
     more_like_this: normalizeEnabledConfig(response.more_like_this),
     suggested_questions_after_answer: normalizeSuggestedQuestionsAfterAnswer(response.suggested_questions_after_answer),
     speech_to_text: normalizeEnabledConfig(response.speech_to_text),
     text_to_speech: normalizeTextToSpeech(response.text_to_speech),
     retriever_resource: normalizeEnabledConfig(response.retriever_resource),
     sensitive_word_avoidance: normalizeEnabledConfig(response.sensitive_word_avoidance),
-    ...(isAnnotationReplyConfig(annotationReply) ? { annotation_reply: annotationReply } : {}),
-    agent_mode: normalizeAgentMode(getValue(response, 'agent_mode')),
-    ...(externalDataTools ? { external_data_tools: externalDataTools } : {}),
-    dataset_configs: isDatasetConfigs(datasetConfigs) ? datasetConfigs : defaultDatasetConfigs(),
-    ...(isFileUploadConfig(fileUpload) ? { file_upload: fileUpload } : {}),
-    ...(files ? { files } : {}),
+    ...(isAnnotationReplyConfig(response.annotation_reply) ? { annotation_reply: response.annotation_reply } : {}),
+    agent_mode: {
+      enabled: false,
+      tools: [],
+    },
+    dataset_configs: defaultDatasetConfigs(),
+    ...(isFileUploadConfig(response.file_upload) ? { file_upload: response.file_upload } : {}),
     system_parameters: normalizeSystemParameters(response.system_parameters),
-    ...(createdAt !== undefined ? { created_at: createdAt } : {}),
-    ...(updatedAt !== undefined ? { updated_at: updatedAt } : {}),
-    ...(supportAnnotation !== undefined ? { supportAnnotation } : {}),
-    ...(questionEditEnable !== undefined ? { questionEditEnable } : {}),
-    ...(supportFeedback !== undefined ? { supportFeedback } : {}),
-    ...(supportCitationHitInfo !== undefined ? { supportCitationHitInfo } : {}),
-    ...(appId ? { appId } : {}),
   }
 }
 
@@ -509,7 +402,7 @@ export const getAppAccessModeByAppId = (appId: string) => {
 export const fetchInstalledAppParams = (appId: string) => {
   return consoleClient.installedApps.byInstalledAppId.parameters.get({
     params: { installed_app_id: appId },
-  }).then(normalizeInstalledAppParameters)
+  }).then(normalizeInstalledAppParametersViewModel)
 }
 
 export const fetchInstalledAppMeta = (appId: string) => {
