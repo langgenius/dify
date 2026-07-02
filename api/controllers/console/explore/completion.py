@@ -3,6 +3,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -18,6 +19,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import with_current_user, with_current_user_id
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -84,8 +86,9 @@ register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultRe
 class CompletionApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @with_session(write=True)
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
+    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -99,7 +102,6 @@ class CompletionApi(InstalledAppResource):
         args["auto_generate_name"] = False
 
         installed_app.last_used_at = naive_utc_now()
-        db.session.commit()
 
         try:
             response = AppGenerateService.generate(
@@ -160,8 +162,9 @@ class CompletionStopApi(InstalledAppResource):
 class ChatApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @with_session(write=True)
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
+    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -175,7 +178,6 @@ class ChatApi(InstalledAppResource):
         args["auto_generate_name"] = False
 
         installed_app.last_used_at = naive_utc_now()
-        db.session.commit()
 
         try:
             response = AppGenerateService.generate(

@@ -1,6 +1,8 @@
 from uuid import UUID
 
 from flask import request
+from sqlalchemy.orm import Session
+
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
@@ -10,6 +12,7 @@ from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import with_current_user
 from extensions.ext_database import db
 from fields.conversation_fields import ResultResponse
@@ -27,8 +30,9 @@ register_response_schema_models(console_ns, ResultResponse, SavedMessageInfinite
 class SavedMessageListApi(InstalledAppResource):
     @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
     @console_ns.response(200, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
+    @with_session(write=False)
     @with_current_user
-    def get(self, current_user: Account, installed_app: InstalledApp):
+    def get(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -38,7 +42,7 @@ class SavedMessageListApi(InstalledAppResource):
         args = SavedMessageListQuery.model_validate(request.args.to_dict())
 
         pagination = SavedMessageService.pagination_by_last_id(
-            db.session(),
+            session,
             app_model,
             current_user,
             str(args.last_id) if args.last_id else None,
@@ -54,8 +58,9 @@ class SavedMessageListApi(InstalledAppResource):
 
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
+    @with_session(write=True)
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
+    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -65,7 +70,7 @@ class SavedMessageListApi(InstalledAppResource):
         payload = SavedMessageCreatePayload.model_validate(console_ns.payload or {})
 
         try:
-            SavedMessageService.save(db.session(), app_model, current_user, str(payload.message_id))
+            SavedMessageService.save(session, app_model, current_user, str(payload.message_id))
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
@@ -77,8 +82,9 @@ class SavedMessageListApi(InstalledAppResource):
 )
 class SavedMessageApi(InstalledAppResource):
     @console_ns.response(204, "Saved message deleted successfully")
+    @with_session(write=True)
     @with_current_user
-    def delete(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
+    def delete(self, session: Session, current_user: Account, installed_app: InstalledApp, message_id: UUID):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -88,6 +94,6 @@ class SavedMessageApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(db.session(), app_model, current_user, message_id_str)
+        SavedMessageService.delete(session, app_model, current_user, message_id_str)
 
         return "", 204

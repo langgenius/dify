@@ -6,11 +6,12 @@ from uuid import UUID
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -88,9 +89,10 @@ class AppMCPServerController(Resource):
     @account_initialization_required
     @setup_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
     @get_app_model
-    def get(self, app_model: App):
-        server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
+    def get(self, session: Session, app_model: App):
+        server = session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
         if server is None:
             return {}
         return dump_response(AppMCPServerResponse, server)
@@ -109,8 +111,9 @@ class AppMCPServerController(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_tenant_id
+    @with_session(write=True)
     @get_app_model
-    def post(self, current_tenant_id: str, app_model: App):
+    def post(self, session: Session, current_tenant_id: str, app_model: App):
         payload = MCPServerCreatePayload.model_validate(console_ns.payload or {})
 
         description = payload.description
@@ -126,8 +129,8 @@ class AppMCPServerController(Resource):
             tenant_id=current_tenant_id,
             server_code=AppMCPServer.generate_server_code(16),
         )
-        db.session.add(server)
-        db.session.commit()
+        session.add(server)
+
         return dump_response(AppMCPServerResponse, server), 201
 
     @console_ns.doc("update_app_mcp_server")
@@ -144,12 +147,13 @@ class AppMCPServerController(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @with_session(write=True)
     @get_app_model
-    def put(self, app_model: App):
+    def put(self, session: Session, app_model: App):
         payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
         app_ref = AppRefService.create_app_ref(app_model)
         server_ref = AppRefService.create_mcp_server_ref(app_ref, payload.id)
-        server = db.session.scalar(
+        server = session.scalar(
             select(AppMCPServer)
             .where(
                 AppMCPServer.id == server_ref.server_id,
@@ -175,7 +179,7 @@ class AppMCPServerController(Resource):
                 server.status = AppMCPServerStatus(payload.status)
             except ValueError:
                 raise ValueError("Invalid status")
-        db.session.commit()
+
         return dump_response(AppMCPServerResponse, server)
 
 
@@ -192,9 +196,10 @@ class AppMCPServerRefreshController(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=True)
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, server_id: UUID):
-        server = db.session.scalar(
+    def get(self, session: Session, current_tenant_id: str, server_id: UUID):
+        server = session.scalar(
             select(AppMCPServer)
             .where(AppMCPServer.id == server_id, AppMCPServer.tenant_id == current_tenant_id)
             .limit(1)
@@ -202,5 +207,5 @@ class AppMCPServerRefreshController(Resource):
         if not server:
             raise NotFound()
         server.server_code = AppMCPServer.generate_server_code(16)
-        db.session.commit()
+
         return dump_response(AppMCPServerResponse, server)
