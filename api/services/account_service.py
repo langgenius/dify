@@ -2042,7 +2042,11 @@ class RegisterService:
             )
             requires_setup = account.status == AccountStatus.PENDING
 
-            if not ta and (account.status == AccountStatus.PENDING or dify_config.RBAC_ENABLED):
+            # Re-create the workspace membership whenever the invited account has no
+            # join row for this tenant. Previously this only ran for PENDING accounts
+            # (or when RBAC was enabled), so re-inviting a removed ACTIVE member never
+            # re-added them — the invite link then failed with "workspace not found".
+            if not ta:
                 TenantService.create_tenant_member(tenant, account, session, tenant_join_role)
 
             # Support resend invitation email when the account is pending status
