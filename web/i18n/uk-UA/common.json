@@ -202,6 +202,7 @@
   "mainNav.integrations": "Інтеграції",
   "mainNav.marketplace": "Маркетплейс",
   "mainNav.webApps.noResults": "Вебзастосунки не знайдено",
+  "mainNav.webApps.openApp": "Відкрити вебзастосунок {{name}}",
   "mainNav.webApps.searchPlaceholder": "Пошук вебзастосунків",
   "mainNav.workspace.credits": "{{count}} кредитів",
   "mainNav.workspace.creditsUnit": "кредити",

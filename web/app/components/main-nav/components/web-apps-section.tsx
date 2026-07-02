@@ -148,8 +148,8 @@ const WebAppsSectionContent = () => {
     <AppNavItem
       key={id}
       variant="mainNav"
-      isMobile={false}
       name={app.name}
+      ariaLabel={t('mainNav.webApps.openApp', { ns: 'common', name: app.name })}
       icon_type={app.icon_type}
       icon={app.icon}
       icon_background={app.icon_background}

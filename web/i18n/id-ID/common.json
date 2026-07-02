@@ -202,6 +202,7 @@
   "mainNav.integrations": "Integrasi",
   "mainNav.marketplace": "Marketplace",
   "mainNav.webApps.noResults": "Tidak ada aplikasi web ditemukan",
+  "mainNav.webApps.openApp": "Buka aplikasi web {{name}}",
   "mainNav.webApps.searchPlaceholder": "Cari aplikasi web",
   "mainNav.workspace.credits": "{{count}} kredit",
   "mainNav.workspace.creditsUnit": "kredit",

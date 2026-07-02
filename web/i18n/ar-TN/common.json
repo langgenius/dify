@@ -202,6 +202,7 @@
   "mainNav.integrations": "التكاملات",
   "mainNav.marketplace": "سوق الإضافات",
   "mainNav.webApps.noResults": "لم يتم العثور على تطبيقات ويب",
+  "mainNav.webApps.openApp": "فتح تطبيق الويب {{name}}",
   "mainNav.webApps.searchPlaceholder": "البحث في تطبيقات الويب",
   "mainNav.workspace.credits": "{{count}} رصيد",
   "mainNav.workspace.creditsUnit": "أرصدة",
