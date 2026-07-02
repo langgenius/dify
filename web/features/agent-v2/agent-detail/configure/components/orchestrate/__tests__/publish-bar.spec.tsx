@@ -186,14 +186,16 @@ function renderPublishBar({
   setupStore?.(store)
 
   const renderPublishBarTree = (nextProps?: {
+    activeConfigIsPublished?: boolean
+    activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
     isPublishing?: boolean
   }) => (
     <QueryClientProvider client={queryClient}>
       <JotaiProvider store={store}>
         <AgentConfigurePublishBar
           agentId="agent-1"
-          activeConfigIsPublished={activeConfigIsPublished}
-          activeConfigSnapshot={activeConfigSnapshot}
+          activeConfigIsPublished={nextProps && 'activeConfigIsPublished' in nextProps ? nextProps.activeConfigIsPublished : activeConfigIsPublished}
+          activeConfigSnapshot={nextProps && 'activeConfigSnapshot' in nextProps ? nextProps.activeConfigSnapshot : activeConfigSnapshot}
           draftSavedAt={draftSavedAt}
           agentName="Iris"
           isPublishing={nextProps?.isPublishing ?? isPublishing}
@@ -334,10 +336,15 @@ describe('AgentConfigurePublishBar', () => {
   })
 
   it('should keep published state when the published detail updates before the active snapshot is refreshed', () => {
-    renderPublishBar({
+    const { rerender, rerenderPublishBar } = renderPublishBar({
       activeConfigIsPublished: true,
       activeConfigSnapshot: null,
     })
+
+    rerender(rerenderPublishBar({
+      activeConfigIsPublished: undefined,
+      activeConfigSnapshot: undefined,
+    }))
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
@@ -346,17 +353,17 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
-  it('should keep published state from active config status even when local draft differs', () => {
+  it('should show unpublished state from local draft changes even when active config is published', () => {
     renderPublishBar({
       activeConfigIsPublished: true,
       activeConfigSnapshot: null,
       prompt: 'Updated system prompt',
     })
 
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
     )
   })
 
@@ -435,6 +442,31 @@ describe('AgentConfigurePublishBar', () => {
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
+  })
+
+  it('should trust backend published state after autosave confirms the draft matches the active snapshot', () => {
+    const stalePublishedDraftBaseline = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Old unpublished normal draft',
+    }
+    const savedDraftMatchingActiveSnapshot = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Published prompt',
+    }
+
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot,
+      setupStore: (store) => {
+        store.set(agentComposerPublishedDraftAtom, stalePublishedDraftBaseline)
+        store.set(agentComposerOriginalDraftAtom, savedDraftMatchingActiveSnapshot)
+        store.set(agentComposerDraftAtom, savedDraftMatchingActiveSnapshot)
+      },
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).not.toBeInTheDocument()
   })
 
   it('should render publishing as a single disabled action state', () => {

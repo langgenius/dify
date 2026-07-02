@@ -22,6 +22,7 @@ from controllers.web.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
+from services.app_ref_service import MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -121,6 +122,24 @@ class TestTextApi:
 
         assert result == "audio-bytes"
         mock_tts.assert_called_once()
+
+    @patch("controllers.web.audio.AudioService.transcript_tts", return_value="audio-bytes")
+    @patch("controllers.web.audio.web_ns")
+    def test_happy_path_with_message_ref(self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask) -> None:
+        message_id = "550e8400-e29b-41d4-a716-446655440000"
+        mock_ns.payload = {"text": "hello", "message_id": message_id}
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="chat")
+
+        with app.test_request_context("/text-to-audio", method="POST"):
+            result = TextApi().post(app_model, _end_user())
+
+        assert result == "audio-bytes"
+        assert mock_tts.call_args.kwargs["message_ref"] == MessageRef(
+            "tenant-1",
+            "app-1",
+            message_id,
+            end_user_id="eu-1",
+        )
 
     @patch(
         "controllers.web.audio.AudioService.transcript_tts",

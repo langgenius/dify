@@ -29,6 +29,7 @@ type AgentOutputBlockComponentProps = {
   isEditing: boolean
   outputs: DeclaredOutputConfig[]
   onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
+  onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 }
 
 function upsertOutput(
@@ -61,6 +62,7 @@ const AgentOutputBlockComponent = ({
   isEditing,
   outputs,
   onChange,
+  onEdit,
 }: AgentOutputBlockComponentProps) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -92,7 +94,7 @@ const AgentOutputBlockComponent = ({
         return
 
       const nextOutputType = inferAgentOutputType(trimmedName, nextType)
-      const nextNode = node.replace($createAgentOutputBlockNode(trimmedName, nextOutputType, false, nextOutputs, onChange))
+      const nextNode = node.replace($createAgentOutputBlockNode(trimmedName, nextOutputType, false, nextOutputs, onChange, onEdit))
       if (selectAfterCommit)
         nextNode.selectNext()
       nextPrompt = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
@@ -111,9 +113,11 @@ const AgentOutputBlockComponent = ({
     return (
       <span
         contentEditable={false}
-        className="inline-flex min-w-[18px] items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
+        className="group/agent-output inline-flex min-w-[18px] items-center gap-1 rounded-[5px] border border-util-colors-violet-violet-100 bg-util-colors-violet-violet-50 px-1 py-0.5 align-middle shadow-xs"
+        onMouseEnter={() => onEdit?.(name, outputType)}
       >
-        <span aria-hidden="true" className="i-custom-vender-workflow-variable-x size-3.5 shrink-0 text-util-colors-violet-violet-700" />
+        <span aria-hidden="true" className="i-custom-vender-workflow-variable-x size-3.5 shrink-0 text-util-colors-violet-violet-700 group-hover/agent-output:hidden" />
+        <span aria-hidden="true" className="i-ri-edit-2-line hidden size-3.5 shrink-0 text-util-colors-violet-violet-700 group-hover/agent-output:inline-block" />
         <span className="system-xs-medium whitespace-nowrap text-util-colors-violet-violet-700">
           {name}
         </span>

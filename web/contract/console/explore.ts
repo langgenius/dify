@@ -5,6 +5,7 @@ import type { Banner } from '@/models/app'
 import type { App, AppCategory, InstalledApp } from '@/models/explore'
 import type { AppMeta } from '@/models/share'
 import type { AppModeEnum } from '@/types/app'
+import { explore } from '@dify/contracts/api/console/explore/orpc.gen'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -142,3 +143,22 @@ export const exploreBannersContract = base
   })
   .input(type<{ query?: { language?: string } }>())
   .output(type<Banner[]>())
+
+export const exploreRouterContract = {
+  ...explore,
+  apps: exploreAppsContract,
+  learnDifyApps: learnDifyAppsContract,
+  appDetail: exploreAppDetailContract,
+  installedApps: exploreInstalledAppsContract,
+  uninstallInstalledApp: exploreInstalledAppUninstallContract,
+  updateInstalledApp: exploreInstalledAppPinContract,
+  appAccessMode: exploreInstalledAppAccessModeContract,
+  updateAppAccessMode: exploreInstalledAppAccessModeUpdateContract,
+  installedAppParameters: exploreInstalledAppParametersContract,
+  installedAppMeta: exploreInstalledAppMetaContract,
+  banners: exploreBannersContract,
+}
+
+export const exploreConsoleRouterContract = {
+  explore: exploreRouterContract,
+}

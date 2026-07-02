@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 from pytest_mock import MockerFixture
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account
 from models.human_input import HumanInputForm
 from models.model import App, Conversation, EndUser
@@ -45,7 +46,7 @@ def _wire_db(
 
 
 def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixture):
-    conversation = MagicMock(from_account_id="acct-1", from_end_user_id=None)
+    conversation = MagicMock(from_account_id="acct-1", from_end_user_id=None, invoke_from=InvokeFrom.WEB_APP)
     account = MagicMock()
     app = MagicMock(tenant_id="tenant-1")
     _wire_db(mocker, form=_form(), app=app, conversation=conversation, account=account)
@@ -59,10 +60,11 @@ def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixtu
     assert kwargs["conversation_id"] == "conv-1"
     assert kwargs["user"] is account
     assert kwargs["app_model"] is app
+    assert kwargs["invoke_from"] == InvokeFrom.WEB_APP
 
 
 def test_resume_end_user_path(mocker: MockerFixture):
-    conversation = MagicMock(from_account_id=None, from_end_user_id="eu-1")
+    conversation = MagicMock(from_account_id=None, from_end_user_id="eu-1", invoke_from=InvokeFrom.WEB_APP)
     end_user = MagicMock()
     _wire_db(mocker, form=_form(), app=MagicMock(tenant_id="t"), conversation=conversation, end_user=end_user)
     gen = mocker.patch(f"{MODULE}.AgentAppGenerator")
@@ -70,6 +72,18 @@ def test_resume_end_user_path(mocker: MockerFixture):
     mod.resume_agent_app_execution(conversation_id="conv-1", form_id="form-1")
 
     assert gen.return_value.resume_after_form_submission.call_args.kwargs["user"] is end_user
+
+
+def test_resume_preserves_debugger_invoke_from(mocker: MockerFixture):
+    conversation = MagicMock(from_account_id="acct-1", from_end_user_id=None, invoke_from=InvokeFrom.DEBUGGER)
+    account = MagicMock()
+    app = MagicMock(tenant_id="tenant-1")
+    _wire_db(mocker, form=_form(), app=app, conversation=conversation, account=account)
+    gen = mocker.patch(f"{MODULE}.AgentAppGenerator")
+
+    mod.resume_agent_app_execution(conversation_id="conv-1", form_id="form-1")
+
+    assert gen.return_value.resume_after_form_submission.call_args.kwargs["invoke_from"] == InvokeFrom.DEBUGGER
 
 
 def test_resume_returns_when_form_missing(mocker: MockerFixture):
@@ -109,7 +123,7 @@ def test_resume_returns_when_conversation_missing(mocker: MockerFixture):
 
 
 def test_resume_returns_when_no_user_resolvable(mocker: MockerFixture):
-    conversation = MagicMock(from_account_id=None, from_end_user_id=None)
+    conversation = MagicMock(from_account_id=None, from_end_user_id=None, invoke_from=InvokeFrom.WEB_APP)
     _wire_db(mocker, form=_form(), app=MagicMock(), conversation=conversation)
     gen = mocker.patch(f"{MODULE}.AgentAppGenerator")
 
@@ -119,7 +133,7 @@ def test_resume_returns_when_no_user_resolvable(mocker: MockerFixture):
 
 
 def test_resume_returns_when_account_id_set_but_account_gone(mocker: MockerFixture):
-    conversation = MagicMock(from_account_id="acct-x", from_end_user_id=None)
+    conversation = MagicMock(from_account_id="acct-x", from_end_user_id=None, invoke_from=InvokeFrom.WEB_APP)
     _wire_db(mocker, form=_form(), app=MagicMock(), conversation=conversation, account=None)
     gen = mocker.patch(f"{MODULE}.AgentAppGenerator")
 
@@ -129,7 +143,7 @@ def test_resume_returns_when_account_id_set_but_account_gone(mocker: MockerFixtu
 
 
 def test_resume_swallows_generator_exception(mocker: MockerFixture):
-    conversation = MagicMock(from_account_id="acct-1", from_end_user_id=None)
+    conversation = MagicMock(from_account_id="acct-1", from_end_user_id=None, invoke_from=InvokeFrom.WEB_APP)
     _wire_db(mocker, form=_form(), app=MagicMock(tenant_id="t"), conversation=conversation, account=MagicMock())
     gen = mocker.patch(f"{MODULE}.AgentAppGenerator")
     gen.return_value.resume_after_form_submission.side_effect = RuntimeError("boom")

@@ -5,6 +5,7 @@ from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
 from agenton_collections.layers.plain import PromptLayerConfig
+from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID
 from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LLM_LAYER_TYPE_ID
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
@@ -165,5 +166,13 @@ def test_build_sandbox_locator_from_layer_specs_rejects_sensitive_runtime_specs(
     with pytest.raises(ValueError, match="sensitive"):
         build_sandbox_locator_from_layer_specs(
             layer_specs=[RuntimeLayerSpec(name="llm", type=DIFY_PLUGIN_LLM_LAYER_TYPE_ID)],
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+        )
+
+
+def test_build_sandbox_locator_from_layer_specs_rejects_sensitive_core_tool_runtime_specs() -> None:
+    with pytest.raises(ValueError, match="sensitive"):
+        build_sandbox_locator_from_layer_specs(
+            layer_specs=[RuntimeLayerSpec(name="core_tools", type=DIFY_CORE_TOOLS_LAYER_TYPE_ID)],
             session_snapshot=CompositorSessionSnapshot(layers=[]),
         )

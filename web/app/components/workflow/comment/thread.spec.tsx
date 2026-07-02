@@ -1,4 +1,4 @@
-import type { WorkflowCommentDetail } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentDetail } from '@/app/components/workflow/comment/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CommentThread } from './thread'
 

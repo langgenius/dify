@@ -122,20 +122,22 @@ const waitForProcessExit = (childProcess: ChildProcess, timeoutMs: number) =>
       return
     }
 
-    const timeout = setTimeout(() => {
-      cleanup()
-      resolve()
-    }, timeoutMs)
+    let timeout: ReturnType<typeof setTimeout>
 
-    const onExit = () => {
-      cleanup()
-      resolve()
-    }
-
-    const cleanup = () => {
+    function cleanup() {
       clearTimeout(timeout)
       childProcess.off('exit', onExit)
     }
+
+    function onExit() {
+      cleanup()
+      resolve()
+    }
+
+    timeout = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, timeoutMs)
 
     childProcess.once('exit', onExit)
   })
