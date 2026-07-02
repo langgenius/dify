@@ -3,6 +3,7 @@ from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
@@ -28,7 +29,11 @@ class CompletionAppRunner(AppRunner):
     """
 
     def run(
-            self, session: Session, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
+        self,
+        session: Session,
+        application_generate_entity: CompletionAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        message: Message,
     ):
         """
         Run application

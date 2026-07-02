@@ -8,12 +8,13 @@ from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 from pydantic.json_schema import SkipJsonSchema
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     CompletionRequestError,
@@ -22,8 +23,6 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from sqlalchemy.orm import Session
-from controllers.console.app.wraps import with_session
 from controllers.service_api.schema import (
     expect_user_json,
     expect_with_user,
@@ -367,7 +366,11 @@ class WorkflowRunApi(Resource):
         try:
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -479,7 +482,11 @@ class WorkflowRunByIdApi(Resource):
         try:
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)

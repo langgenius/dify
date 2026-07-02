@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from mimetypes import guess_type
 from typing import Any, Union, cast
 
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom

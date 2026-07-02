@@ -8,7 +8,6 @@ from urllib.parse import urlencode
 import httpx
 from sqlalchemy.orm import Session
 
-
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime

@@ -6,6 +6,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -15,6 +16,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.apikey import ApiKeyItem, ApiKeyList
 from controllers.console.app.error import ProviderNotInitializeError
+from controllers.console.app.wraps import with_session
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
     RBACPermission,
@@ -28,9 +30,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-
-from controllers.console.app.wraps import with_session
-from sqlalchemy.orm import Session
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager

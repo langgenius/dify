@@ -5,6 +5,7 @@ import threading
 import uuid
 from collections.abc import Callable, Generator, Mapping
 from typing import TYPE_CHECKING, Any
+
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -207,7 +208,11 @@ class AppGenerateService:
                     CompletionAppGenerator.convert_to_event_stream(
                         CompletionAppGenerator().generate(
                             session=session,
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id=request_id,
@@ -235,7 +240,11 @@ class AppGenerateService:
                     ChatAppGenerator.convert_to_event_stream(
                         ChatAppGenerator().generate(
                             session=session,
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id=request_id,
@@ -465,7 +474,11 @@ class AppGenerateService:
         """
         return CompletionAppGenerator().generate_more_like_this(
             session=session,
-            app_model=app_model, message_id=message_id, user=user, invoke_from=invoke_from, stream=streaming
+            app_model=app_model,
+            message_id=message_id,
+            user=user,
+            invoke_from=invoke_from,
+            stream=streaming,
         )
 
     @classmethod

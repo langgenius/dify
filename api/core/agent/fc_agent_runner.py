@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 class FunctionCallAgentRunner(BaseAgentRunner):
-    def run(self, session: Session, message: Message, query: str, **kwargs: Any) -> Generator[LLMResultChunk, None, None]:
+    def run(
+        self, session: Session, message: Message, query: str, **kwargs: Any
+    ) -> Generator[LLMResultChunk, None, None]:
         """
         Run FunctionCall agent application
         """

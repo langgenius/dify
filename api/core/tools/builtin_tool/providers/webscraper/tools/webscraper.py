@@ -1,5 +1,6 @@
 from collections.abc import Generator
 from typing import Any, override
+
 from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool

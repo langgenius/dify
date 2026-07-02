@@ -1,10 +1,11 @@
 from collections.abc import Generator
 from typing import Any, override
 
+from sqlalchemy.orm import Session
+
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from sqlalchemy.orm import Session
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime

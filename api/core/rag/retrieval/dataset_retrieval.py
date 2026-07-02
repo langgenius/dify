@@ -10,7 +10,7 @@ from typing import Any, Union, cast
 
 from flask import Flask, current_app
 from sqlalchemy import and_, func, literal, or_, select, update
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -18,7 +18,6 @@ from core.app.app_config.entities import (
     MetadataFilteringCondition,
     ModelConfig,
 )
-from sqlalchemy.orm import Session
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -1461,7 +1460,13 @@ class DatasetRetrieval:
         return output
 
     def _automatic_metadata_filter_func(
-            self, session: Session, dataset_ids: list[str], query: str, tenant_id: str, user_id: str, metadata_model_config: ModelConfig
+        self,
+        session: Session,
+        dataset_ids: list[str],
+        query: str,
+        tenant_id: str,
+        user_id: str,
+        metadata_model_config: ModelConfig,
     ) -> list[dict[str, Any]] | None:
         # get all metadata field
         metadata_stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))

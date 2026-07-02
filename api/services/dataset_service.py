@@ -472,8 +472,7 @@ class DatasetService:
 
         if provider == "external" and external_knowledge_api_id:
             external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-                session,
-                external_knowledge_api_id, tenant_id
+                session, external_knowledge_api_id, tenant_id
             )
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
@@ -3647,8 +3646,7 @@ class SegmentService:
                     # calc embedding use tokens
                     if document.doc_form == IndexStructureType.QA_INDEX:
                         segment.answer = args.answer
-                        tokens = embedding_model.get_text_embedding_num_tokens(
-                            texts=[content + segment.answer])[0]  # type: ignore
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])[0]  # type: ignore
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment.content = content
@@ -4316,9 +4314,7 @@ class DatasetPermissionService:
             raise e
 
     @classmethod
-    def check_permission(
-            cls, session: Session, user, dataset, requested_permission, requested_partial_member_list
-    ):
+    def check_permission(cls, session: Session, user, dataset, requested_permission, requested_partial_member_list):
         if not user.is_dataset_editor:
             raise NoPermissionError("User does not have permission to edit this dataset.")
 

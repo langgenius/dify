@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
+
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:  # pragma: no cover

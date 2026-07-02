@@ -5,6 +5,7 @@ from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -36,7 +37,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.app.wraps import get_app_model_with_trial
+from controllers.console.app.wraps import get_app_model_with_trial, with_session
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -99,9 +100,6 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
-
-from sqlalchemy.orm import Session
-from controllers.console.app.wraps import with_session
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +225,11 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             user_id = current_user.id
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
@@ -302,7 +304,11 @@ class TrialChatApi(TrialAppResource):
 
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
@@ -494,7 +500,11 @@ class TrialCompletionApi(TrialAppResource):
 
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
             )
 
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)

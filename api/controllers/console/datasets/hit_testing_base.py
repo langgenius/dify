@@ -2,6 +2,7 @@ import logging
 from typing import Any, cast
 
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -26,9 +27,6 @@ from models.dataset import Dataset
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import ExternalRetrievalModel, RetrievalModel
 from services.hit_testing_service import HitTestingService
-from sqlalchemy.orm import Session
-from controllers.console.app.wraps import with_session
-
 
 logger = logging.getLogger(__name__)
 

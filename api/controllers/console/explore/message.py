@@ -4,6 +4,7 @@ from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, TypeAdapter
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
@@ -17,6 +18,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -46,9 +48,6 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
-from sqlalchemy.orm import Session
-from controllers.console.app.wraps import with_session
-
 
 from .. import console_ns
 
@@ -92,7 +91,7 @@ class MessageListApi(InstalledAppResource):
                 app_model,
                 current_user,
                 args.conversation_id,
-                args.first_id if args.first_id else None,
+                args.first_id or None,
                 args.limit,
             )
             adapter = TypeAdapter(ExploreMessageListItem)

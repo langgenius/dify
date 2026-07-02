@@ -1,10 +1,12 @@
 import logging
 
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import WorkflowRunPayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
@@ -15,8 +17,6 @@ from controllers.web.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
-from controllers.console.app.wraps import with_session
-from sqlalchemy.orm import Session
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -69,7 +69,11 @@ class WorkflowRunApi(WebApiResource):
         try:
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=True
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)

@@ -1,5 +1,7 @@
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
@@ -36,8 +38,6 @@ from libs.helper import length_prefixed_response
 from models import Account, Tenant
 from models.model import EndUser
 from services.file_request_service import FileRequestService
-from controllers.console.app.wraps import with_session
-from sqlalchemy.orm import Session
 
 
 @inner_api_ns.route("/invoke/llm")

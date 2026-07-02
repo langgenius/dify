@@ -9,18 +9,17 @@ app/dataset validation remains in the service layer.
 
 from flask_restx import Resource
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.workflow.nodes.knowledge_retrieval import exc as retrieval_exc
-from extensions.ext_database import db
 from libs.exception import BaseHTTPException
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveResponse
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError, InnerKnowledgeRetrievalServiceError
 from services.knowledge_retrieval_inner_service import InnerKnowledgeRetrievalService
-from sqlalchemy.orm import Session
-from controllers.console.app.wraps import with_session
 
 
 class InnerKnowledgeRetrievalHttpError(BaseHTTPException):

@@ -7,11 +7,12 @@ the workflow node registry.
 import logging
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, override
+
 from sqlalchemy.orm import Session
 
-from core.db.session_factory import session_factory
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.db.session_factory import session_factory
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.file_reference import parse_file_reference
@@ -136,7 +137,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         try:
             with self._session_maker() as session:
                 results, usage = self._fetch_dataset_retriever(
-                    session=session, node_data=self._node_data, variables=variables)
+                    session=session, node_data=self._node_data, variables=variables
+                )
                 outputs = {"result": ArrayObjectSegment(value=[item.model_dump(by_alias=True) for item in results])}
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -180,7 +182,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             )
 
     def _fetch_dataset_retriever(
-            self, session: Session, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
+        self, session: Session, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         dataset_ids = node_data.dataset_ids
@@ -220,7 +222,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
                     query=query,
-                )
+                ),
             )
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
@@ -285,7 +287,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     ]
                     if attachments
                     else None,
-                )
+                ),
             )
 
         usage = self._rag_retrieval.llm_usage

@@ -9,7 +9,6 @@ from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-
 from configs import dify_config
 from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter

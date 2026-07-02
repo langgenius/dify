@@ -4,6 +4,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, RootModel
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -15,8 +16,8 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.app.wraps import with_session
+from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -27,7 +28,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from sqlalchemy.orm import Session
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.dataset_fields import (
@@ -221,7 +221,10 @@ class ExternalApiTemplateListApi(Resource):
 
         try:
             external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
-                tenant_id=current_tenant_id, user_id=current_user.id, args=payload.model_dump(), session=session,
+                tenant_id=current_tenant_id,
+                user_id=current_user.id,
+                args=payload.model_dump(),
+                session=session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()

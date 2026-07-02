@@ -27,7 +27,7 @@ from controllers.console.app.error import (
     DraftWorkflowNotSync,
 )
 from controllers.console.app.permission_keys import get_app_permission_keys
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -80,9 +80,6 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
-
-from sqlalchemy.orm import Session
-from controllers.console.app.wraps import with_session
 
 logger = logging.getLogger(__name__)
 
@@ -649,7 +646,11 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         try:
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=True
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -1833,7 +1834,7 @@ class WorkflowOnlineUsersApi(Resource):
         users_json_by_app_id: dict[str, Any] = {}
         for start_index in range(0, len(ordered_accessible_app_ids), WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE):
             app_id_batch = ordered_accessible_app_ids[
-                start_index: start_index + WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
+                start_index : start_index + WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE
             ]
             pipe = redis_client.pipeline(transaction=False)
             for app_id in app_id_batch:

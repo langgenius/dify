@@ -8,7 +8,6 @@ from typing import Any, cast, override
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import (

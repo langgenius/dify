@@ -7,6 +7,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -22,7 +23,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -55,9 +56,6 @@ from services.agent.roster_service import AgentRosterService
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
-
-from sqlalchemy.orm import Session
-from controllers.console.app.wraps import with_session
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +167,11 @@ class CompletionMessageApi(Resource):
         try:
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -237,7 +239,9 @@ class ChatMessageApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @with_session
     def post(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
-        return _create_chat_message(session=session, current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model)
+        return _create_chat_message(
+            session=session, current_tenant_id=current_tenant_id, current_user=current_user, app_model=app_model
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -393,7 +397,7 @@ def _create_chat_message(
 
 
 def _create_build_chat_finalization_message(
-        *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
+    *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
     debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
         current_tenant_id=current_tenant_id,

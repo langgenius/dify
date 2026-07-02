@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from typing import Any, override
+
 from sqlalchemy.orm import Session
 
 from core.plugin.impl.tool import PluginToolManager

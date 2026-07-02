@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelManager
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService

@@ -2,11 +2,13 @@ import logging
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -18,8 +20,6 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.app.wraps import with_session
-from sqlalchemy.orm import Session
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -123,7 +123,11 @@ class CompletionApi(WebApiResource):
         try:
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -216,7 +220,11 @@ class ChatApi(WebApiResource):
 
             response = AppGenerateService.generate(
                 session=session,
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)

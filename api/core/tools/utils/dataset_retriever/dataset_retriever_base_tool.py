@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy.orm import Session
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from sqlalchemy.orm import Session
 
 
 class DatasetRetrieverBaseTool(BaseModel, ABC):

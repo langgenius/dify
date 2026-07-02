@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
@@ -12,7 +13,6 @@ from core.rag.entities import MetadataFilteringCondition
 from extensions.ext_database import db
 from graphon.nodes.http_request.exc import InvalidHttpMethodError
 from libs.datetime_utils import naive_utc_now
-from sqlalchemy.orm import Session
 from models.dataset import (
     Dataset,
     ExternalKnowledgeApis,
@@ -58,7 +58,9 @@ class ExternalDatasetService:
             raise ValueError("api_key is required")
 
     @staticmethod
-    def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict[str, Any], session: Session) -> ExternalKnowledgeApis:
+    def create_external_knowledge_api(
+        tenant_id: str, user_id: str, args: dict[str, Any], session: Session
+    ) -> ExternalKnowledgeApis:
         settings = args.get("settings")
         if settings is None:
             raise ValueError("settings is required")
@@ -104,7 +106,9 @@ class ExternalDatasetService:
             raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
 
     @staticmethod
-    def get_external_knowledge_api(session: Session, external_knowledge_api_id: str, tenant_id: str) -> ExternalKnowledgeApis:
+    def get_external_knowledge_api(
+        session: Session, external_knowledge_api_id: str, tenant_id: str
+    ) -> ExternalKnowledgeApis:
         external_knowledge_api: ExternalKnowledgeApis | None = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
@@ -115,7 +119,9 @@ class ExternalDatasetService:
         return external_knowledge_api
 
     @staticmethod
-    def update_external_knowledge_api(session: Session, tenant_id: str, user_id: str, external_knowledge_api_id: str, args) -> ExternalKnowledgeApis:
+    def update_external_knowledge_api(
+        session: Session, tenant_id: str, user_id: str, external_knowledge_api_id: str, args
+    ) -> ExternalKnowledgeApis:
         external_knowledge_api: ExternalKnowledgeApis | None = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
@@ -150,7 +156,9 @@ class ExternalDatasetService:
         session.commit()
 
     @staticmethod
-    def external_knowledge_api_use_check(session: Session, external_knowledge_api_id: str, tenant_id: str) -> tuple[bool, int]:
+    def external_knowledge_api_use_check(
+        session: Session, external_knowledge_api_id: str, tenant_id: str
+    ) -> tuple[bool, int]:
         """
         Return usage for an external knowledge API within a single tenant.
 
@@ -169,7 +177,9 @@ class ExternalDatasetService:
         return count > 0, count
 
     @staticmethod
-    def get_external_knowledge_binding_with_dataset_id(session: Session, tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
+    def get_external_knowledge_binding_with_dataset_id(
+        session: Session, tenant_id: str, dataset_id: str
+    ) -> ExternalKnowledgeBindings:
         external_knowledge_binding: ExternalKnowledgeBindings | None = session.scalar(
             select(ExternalKnowledgeBindings)
             .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
@@ -181,7 +191,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def document_create_args_validate(
-            session:    Session, tenant_id: str, external_knowledge_api_id: str, process_parameter: dict[str, Any]
+        session: Session, tenant_id: str, external_knowledge_api_id: str, process_parameter: dict[str, Any]
     ):
         external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)

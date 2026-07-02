@@ -6,11 +6,13 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from pydantic.json_schema import SkipJsonSchema
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -35,8 +37,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from controllers.console.app.wraps import with_session
-from sqlalchemy.orm import Session
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
@@ -381,7 +381,12 @@ class ChatApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                session=session, app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.SERVICE_API,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)

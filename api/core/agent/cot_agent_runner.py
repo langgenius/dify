@@ -3,6 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, TypedDict
+
 from sqlalchemy.orm import Session
 
 from core.agent.base_agent_runner import BaseAgentRunner
