@@ -7,36 +7,36 @@ import * as z from 'zod'
  */
 export const zGeneratorResponse = z.unknown()
 
-export const zJsonValue = z.unknown()
+/**
+ * WorkflowInstructionSuggestionsPayload
+ *
+ * Payload for the workflow-generator instruction-suggestions endpoint.
+ *
+ * Runs before the user picks a model, so the suggestions come from the
+ * tenant's default model. The underlying generator never raises — an empty
+ * ``suggestions`` list is a valid 200 (soft-fail).
+ */
+export const zWorkflowInstructionSuggestionsPayload = z.object({
+  count: z.int().gte(1).lte(6).optional().default(4),
+  language: z.string().nullish(),
+  mode: z.enum(['advanced-chat', 'workflow']),
+})
+
+/**
+ * LLMMode
+ *
+ * Enum class for large language model mode.
+ */
+export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * ModelConfig
  */
 export const zModelConfig = z.object({
-  agent_mode: zJsonValue.nullish(),
-  annotation_reply: zJsonValue.nullish(),
-  chat_prompt_config: zJsonValue.nullish(),
-  completion_prompt_config: zJsonValue.nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  dataset_configs: zJsonValue.nullish(),
-  dataset_query_variable: z.string().nullish(),
-  external_data_tools: zJsonValue.nullish(),
-  file_upload: zJsonValue.nullish(),
-  model: zJsonValue.nullish(),
-  more_like_this: zJsonValue.nullish(),
-  opening_statement: z.string().nullish(),
-  pre_prompt: z.string().nullish(),
-  prompt_type: z.string().nullish(),
-  retriever_resource: zJsonValue.nullish(),
-  sensitive_word_avoidance: zJsonValue.nullish(),
-  speech_to_text: zJsonValue.nullish(),
-  suggested_questions: zJsonValue.nullish(),
-  suggested_questions_after_answer: zJsonValue.nullish(),
-  text_to_speech: zJsonValue.nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  user_input_form: zJsonValue.nullish(),
+  completion_params: z.record(z.string(), z.unknown()).optional(),
+  mode: zLlmMode,
+  name: z.string(),
+  provider: z.string(),
 })
 
 /**
@@ -52,7 +52,7 @@ export const zWorkflowGeneratePayload = z.object({
   current_graph: z.record(z.string(), z.unknown()).nullish(),
   ideal_output: z.string().optional().default(''),
   instruction: z.string(),
-  mode: z.enum(['advanced-chat', 'workflow']),
+  mode: z.enum(['advanced-chat', 'auto', 'workflow']),
   model_config: zModelConfig,
 })
 
@@ -62,3 +62,17 @@ export const zPostWorkflowGenerateBody = zWorkflowGeneratePayload
  * Workflow graph generated successfully
  */
 export const zPostWorkflowGenerateResponse = zGeneratorResponse
+
+export const zPostWorkflowGenerateStreamBody = zWorkflowGeneratePayload
+
+/**
+ * Server-Sent Events stream of plan/result events
+ */
+export const zPostWorkflowGenerateStreamResponse = z.record(z.string(), z.unknown())
+
+export const zPostWorkflowGenerateSuggestionsBody = zWorkflowInstructionSuggestionsPayload
+
+/**
+ * Suggestions generated successfully
+ */
+export const zPostWorkflowGenerateSuggestionsResponse = zGeneratorResponse

@@ -125,6 +125,14 @@ export const zPublishWorkflowResponse = z.object({
 })
 
 /**
+ * WorkflowUpdatePayload
+ */
+export const zWorkflowUpdatePayload = z.object({
+  marked_comment: z.string().max(100).nullish(),
+  marked_name: z.string().max(20).nullish(),
+})
+
+/**
  * SimpleAccountResponse
  */
 export const zSimpleAccountResponse = z.object({
@@ -641,6 +649,18 @@ export const zPostSnippetsBySnippetIdWorkflowsPublishPath = z.object({
  * Workflow published successfully
  */
 export const zPostSnippetsBySnippetIdWorkflowsPublishResponse = zPublishWorkflowResponse
+
+export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
+
+export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdPath = z.object({
+  snippet_id: z.uuid(),
+  workflow_id: z.string(),
+})
+
+/**
+ * Workflow updated successfully
+ */
+export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse = zSnippetWorkflowResponse
 
 export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestorePath = z.object({
   snippet_id: z.uuid(),

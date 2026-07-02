@@ -91,59 +91,68 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
- * DeletedTool
+ * TrialDeletedToolResponse
  */
-export const zDeletedTool = z.object({
+export const zTrialDeletedToolResponse = z.object({
   provider_id: z.string(),
   tool_name: z.string(),
   type: z.string(),
 })
 
+export const zTrialIconType = z.enum(['emoji', 'image', 'link'])
+
+export const zTrialAppMode = z.enum([
+  'advanced-chat',
+  'agent-chat',
+  'chat',
+  'completion',
+  'workflow',
+])
+
 /**
- * Tag
+ * TrialSiteResponse
  */
-export const zTag = z.object({
+export const zTrialSiteResponse = z.object({
+  access_token: z.string().nullish(),
+  app_base_url: z.string().nullish(),
+  chat_color_theme: z.string().nullish(),
+  chat_color_theme_inverted: z.boolean().nullish(),
+  code: z.string().nullish(),
+  copyright: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  customize_domain: z.string().nullish(),
+  customize_token_strategy: z.string().nullish(),
+  default_language: z.string(),
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: zTrialIconType.nullish(),
+  icon_url: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
+  privacy_policy: z.string().nullish(),
+  prompt_public: z.boolean().nullish(),
+  show_workflow_steps: z.boolean().nullish(),
+  title: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+})
+
+/**
+ * TrialTagResponse
+ */
+export const zTrialTagResponse = z.object({
   id: z.string(),
   name: z.string(),
   type: z.string(),
 })
 
-export const zJsonValue = z.unknown()
-
 /**
- * ModelConfig
+ * TrialWorkflowPartialResponse
  */
-export const zModelConfig = z.object({
-  agent_mode: zJsonValue.nullish(),
-  annotation_reply: zJsonValue.nullish(),
-  chat_prompt_config: zJsonValue.nullish(),
-  completion_prompt_config: zJsonValue.nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  dataset_configs: zJsonValue.nullish(),
-  dataset_query_variable: z.string().nullish(),
-  external_data_tools: zJsonValue.nullish(),
-  file_upload: zJsonValue.nullish(),
-  model: zJsonValue.nullish(),
-  more_like_this: zJsonValue.nullish(),
-  opening_statement: z.string().nullish(),
-  pre_prompt: z.string().nullish(),
-  prompt_type: z.string().nullish(),
-  retriever_resource: zJsonValue.nullish(),
-  sensitive_word_avoidance: zJsonValue.nullish(),
-  speech_to_text: zJsonValue.nullish(),
-  suggested_questions: zJsonValue.nullish(),
-  suggested_questions_after_answer: zJsonValue.nullish(),
-  text_to_speech: zJsonValue.nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  user_input_form: zJsonValue.nullish(),
-})
-
-/**
- * WorkflowPartial
- */
-export const zWorkflowPartial = z.object({
+export const zTrialWorkflowPartialResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   id: z.string(),
@@ -152,17 +161,17 @@ export const zWorkflowPartial = z.object({
 })
 
 /**
- * TrialDatasetListItemResponse
+ * TrialDatasetResponse
  */
-export const zTrialDatasetListItemResponse = z.object({
-  created_at: z.int().nullable(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
+export const zTrialDatasetResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  data_source_type: z.string().nullish(),
+  description: z.string().nullish(),
   id: z.string(),
-  indexing_technique: z.string().nullable(),
+  indexing_technique: z.string().nullish(),
   name: z.string(),
-  permission: z.string(),
+  permission: z.string().nullish(),
   permission_keys: z.array(z.string()).optional(),
 })
 
@@ -170,7 +179,7 @@ export const zTrialDatasetListItemResponse = z.object({
  * TrialDatasetListResponse
  */
 export const zTrialDatasetListResponse = z.object({
-  data: z.array(zTrialDatasetListItemResponse),
+  data: z.array(zTrialDatasetResponse),
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
@@ -208,146 +217,115 @@ export const zParameters = z.object({
   user_input_form: z.array(zJsonObject),
 })
 
+export const zJsonObject2 = z.record(z.string(), z.unknown())
+
 /**
- * WorkflowConversationVariableResponse
+ * TrialWorkflowAccount
  */
-export const zWorkflowConversationVariableResponse = z.object({
-  description: z.string(),
+export const zTrialWorkflowAccount = z.object({
+  email: z.string().nullish(),
   id: z.string(),
+  name: z.string().nullish(),
+})
+
+/**
+ * TrialWorkflowResponse
+ */
+export const zTrialWorkflowResponse = z.object({
+  conversation_variables: z.array(zJsonObject2).optional(),
+  created_at: z.int().nullish(),
+  created_by: zTrialWorkflowAccount.nullish(),
+  environment_variables: z.array(zJsonObject2).optional(),
+  features: zJsonObject2.optional(),
+  graph: zJsonObject2,
+  hash: z.string().nullish(),
+  id: z.string(),
+  marked_comment: z.string().nullish(),
+  marked_name: z.string().nullish(),
+  rag_pipeline_variables: z.array(zJsonObject2).optional(),
+  tool_published: z.boolean().nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: zTrialWorkflowAccount.nullish(),
+  version: z.string().nullish(),
+})
+
+/**
+ * TrialAppAgentMode
+ */
+export const zTrialAppAgentMode = z.object({
+  enabled: z.boolean().nullish(),
+  strategy: z.string().nullish(),
+  tools: z.array(zJsonObject2).optional(),
+})
+
+/**
+ * TrialAppModel
+ */
+export const zTrialAppModel = z.object({
+  completion_params: zJsonObject2.optional(),
+  mode: z.string().nullish(),
   name: z.string(),
-  value: z.unknown(),
-  value_type: z.string(),
+  provider: z.string(),
 })
 
 /**
- * SimpleAccountResponse
+ * TrialAppModelConfigResponse
  */
-export const zSimpleAccountResponse = z.object({
-  email: z.string(),
-  id: z.string(),
-  name: z.string(),
-})
-
-/**
- * WorkflowEnvironmentVariableResponse
- */
-export const zWorkflowEnvironmentVariableResponse = z.object({
-  description: z.string(),
-  id: z.string(),
-  name: z.string(),
-  value: z.unknown(),
-  value_type: z.string(),
-})
-
-/**
- * PipelineVariableResponse
- */
-export const zPipelineVariableResponse = z.object({
-  allowed_file_extensions: z.array(z.string()).nullish(),
-  allowed_file_types: z.array(z.string()).nullish(),
-  allowed_file_upload_methods: z.array(z.string()).nullish(),
-  belong_to_node_id: z.string(),
-  default_value: z.unknown().optional(),
-  label: z.string(),
-  max_length: z.int().nullish(),
-  options: z.array(z.string()).nullish(),
-  placeholder: z.string().nullish(),
-  required: z.boolean(),
-  tooltips: z.string().nullish(),
-  type: z.string(),
-  unit: z.string().nullish(),
-  variable: z.string(),
-})
-
-/**
- * WorkflowResponse
- */
-export const zWorkflowResponse = z.object({
-  conversation_variables: z.array(zWorkflowConversationVariableResponse),
-  created_at: z.int(),
-  created_by: zSimpleAccountResponse.nullish(),
-  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
-  features: z.record(z.string(), z.unknown()),
-  graph: z.record(z.string(), z.unknown()),
-  hash: z.string(),
-  id: z.string(),
-  marked_comment: z.string(),
-  marked_name: z.string(),
-  rag_pipeline_variables: z.array(zPipelineVariableResponse),
-  tool_published: z.boolean(),
-  updated_at: z.int(),
-  updated_by: zSimpleAccountResponse.nullish(),
-  version: z.string(),
-})
-
-/**
- * IconType
- */
-export const zIconType = z.enum(['emoji', 'image', 'link'])
-
-/**
- * AppDetailSiteResponse
- */
-export const zAppDetailSiteResponse = z.object({
-  access_token: z.string().nullish(),
-  app_base_url: z.string().nullish(),
-  chat_color_theme: z.string().nullish(),
-  chat_color_theme_inverted: z.boolean().nullish(),
-  code: z.string().nullish(),
-  copyright: z.string().nullish(),
+export const zTrialAppModelConfigResponse = z.object({
+  agent_mode: zTrialAppAgentMode.nullish(),
+  annotation_reply: zJsonObject2.nullish(),
+  chat_prompt_config: zJsonObject2.nullish(),
+  completion_prompt_config: zJsonObject2.nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  customize_domain: z.string().nullish(),
-  customize_token_strategy: z.string().nullish(),
-  default_language: z.string().nullish(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.union([z.string(), zIconType]).nullish(),
-  icon_url: z.string().nullable(),
-  input_placeholder: z.string().nullish(),
-  privacy_policy: z.string().nullish(),
-  prompt_public: z.boolean().nullish(),
-  show_workflow_steps: z.boolean().nullish(),
-  title: z.string().nullish(),
+  dataset_configs: zJsonObject2.nullish(),
+  dataset_query_variable: z.string().nullish(),
+  external_data_tools: z.array(zJsonObject2).optional(),
+  file_upload: zJsonObject2.nullish(),
+  model: zTrialAppModel.nullish(),
+  more_like_this: zJsonObject2.nullish(),
+  opening_statement: z.string().nullish(),
+  pre_prompt: z.string().nullish(),
+  prompt_type: z.string().nullish(),
+  retriever_resource: zJsonObject2.nullish(),
+  sensitive_word_avoidance: zJsonObject2.nullish(),
+  speech_to_text: zJsonObject2.nullish(),
+  suggested_questions: z.array(z.string()).optional(),
+  suggested_questions_after_answer: zJsonObject2.nullish(),
+  text_to_speech: zJsonObject2.nullish(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
+  user_input_form: z.array(zJsonObject2).optional(),
 })
 
 /**
- * AppDetailWithSite
+ * TrialAppDetailResponse
  */
-export const zAppDetailWithSite = z.object({
+export const zTrialAppDetailResponse = z.object({
   access_mode: z.string().nullish(),
   api_base_url: z.string().nullish(),
-  app_id: z.string().nullish(),
-  bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
-  deleted_tools: z.array(zDeletedTool).optional(),
+  deleted_tools: z.array(zTrialDeletedToolResponse).optional(),
   description: z.string().nullish(),
   enable_api: z.boolean(),
   enable_site: z.boolean(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullable(),
+  icon_type: zTrialIconType.nullish(),
+  icon_url: z.string().nullish(),
   id: z.string(),
-  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
-  mode: z.string(),
-  model_config: zModelConfig.nullish(),
+  mode: zTrialAppMode,
+  model_config: zTrialAppModelConfigResponse.nullish(),
   name: z.string(),
   permission_keys: z.array(z.string()).optional(),
-  site: zAppDetailSiteResponse.nullish(),
-  tags: z.array(zTag).optional(),
-  tracing: zJsonValue.nullish(),
+  site: zTrialSiteResponse,
+  tags: z.array(zTrialTagResponse).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
-  workflow: zWorkflowPartial.nullish(),
+  workflow: zTrialWorkflowPartialResponse.nullish(),
 })
 
 /**
@@ -370,77 +348,14 @@ export const zSiteWritable = z.object({
   use_icon_as_answer_icon: z.boolean(),
 })
 
-/**
- * AppDetailSiteResponse
- */
-export const zAppDetailSiteResponseWritable = z.object({
-  access_token: z.string().nullish(),
-  app_base_url: z.string().nullish(),
-  chat_color_theme: z.string().nullish(),
-  chat_color_theme_inverted: z.boolean().nullish(),
-  code: z.string().nullish(),
-  copyright: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  customize_domain: z.string().nullish(),
-  customize_token_strategy: z.string().nullish(),
-  default_language: z.string().nullish(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.union([z.string(), zIconType]).nullish(),
-  input_placeholder: z.string().nullish(),
-  privacy_policy: z.string().nullish(),
-  prompt_public: z.boolean().nullish(),
-  show_workflow_steps: z.boolean().nullish(),
-  title: z.string().nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-})
-
-/**
- * AppDetailWithSite
- */
-export const zAppDetailWithSiteWritable = z.object({
-  access_mode: z.string().nullish(),
-  api_base_url: z.string().nullish(),
-  app_id: z.string().nullish(),
-  bound_agent_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  deleted_tools: z.array(zDeletedTool).optional(),
-  description: z.string().nullish(),
-  enable_api: z.boolean(),
-  enable_site: z.boolean(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  id: z.string(),
-  maintainer: z.string().nullish(),
-  max_active_requests: z.int().nullish(),
-  mode: z.string(),
-  model_config: zModelConfig.nullish(),
-  name: z.string(),
-  permission_keys: z.array(z.string()).optional(),
-  site: zAppDetailSiteResponseWritable.nullish(),
-  tags: z.array(zTag).optional(),
-  tracing: zJsonValue.nullish(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-  workflow: zWorkflowPartial.nullish(),
-})
-
 export const zGetTrialAppsByAppIdPath = z.object({
   app_id: z.uuid(),
 })
 
 /**
- * App detail retrieved successfully
+ * Success
  */
-export const zGetTrialAppsByAppIdResponse = zAppDetailWithSite
+export const zGetTrialAppsByAppIdResponse = zTrialAppDetailResponse
 
 export const zPostTrialAppsByAppIdAudioToTextPath = z.object({
   app_id: z.uuid(),
@@ -533,9 +448,9 @@ export const zGetTrialAppsByAppIdWorkflowsPath = z.object({
 })
 
 /**
- * Workflow detail retrieved successfully
+ * Success
  */
-export const zGetTrialAppsByAppIdWorkflowsResponse = zWorkflowResponse
+export const zGetTrialAppsByAppIdWorkflowsResponse = zTrialWorkflowResponse
 
 export const zPostTrialAppsByAppIdWorkflowsRunBody = zWorkflowRunRequest
 
