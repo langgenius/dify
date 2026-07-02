@@ -102,6 +102,7 @@ class TenantListItemResponse(ResponseModel):
     plan: str | None = None
     status: str | None = None
     created_at: int | None = None
+    last_opened_at: int | None = None
     current: bool
 
     @field_validator("plan", "status", mode="before")
@@ -113,9 +114,9 @@ class TenantListItemResponse(ResponseModel):
             return value
         return str(getattr(value, "value", value))
 
-    @field_validator("created_at", mode="before")
+    @field_validator("created_at", "last_opened_at", mode="before")
     @classmethod
-    def _normalize_created_at(cls, value: datetime | int | None):
+    def _normalize_timestamp(cls, value: datetime | int | None):
         return to_timestamp(value)
 
 

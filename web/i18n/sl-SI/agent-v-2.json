@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Za prikaz skritih datotek .env v izbirniku datotek pritisnite Command + Shift + .",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Če je datoteka .env skrita, v sistemskem izbirniku datotek omogočite prikaz skritih datotek.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Za prikaz skritih datotek .env v Raziskovalcu omogočite »Skriti elementi«.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "{{count}} neveljavna vrstica .env je bila preskočena.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "{{count}} neveljavnih vrstic .env je bilo preskočenih.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",
