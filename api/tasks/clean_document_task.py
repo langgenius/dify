@@ -55,6 +55,19 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
 
             index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             segment_contents = [segment.content for segment in segments]
+
+            # Calculate vector space usage before deletion
+            vector_size_mb = 0
+            from configs import dify_config
+
+            if dify_config.BILLING_ENABLED and segments and dataset.indexing_technique == "high_quality":
+                total_words_size = sum(segment.word_count * 3 for segment in segments if segment.word_count)
+                total_vector_size = 1536 * 4 * len(segments)
+                vector_size_mb = int((total_words_size + total_vector_size) / 1024 / 1024)
+                if vector_size_mb < 1 and (total_words_size + total_vector_size) > 0:
+                    vector_size_mb = 1
+            tenant_id = dataset.tenant_id
+
         except Exception:
             logger.exception("Cleaned document when document deleted failed")
             return
@@ -148,6 +161,14 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 DatasetMetadataBinding.document_id == document_id,
             )
         )
+
+    try:
+        if vector_size_mb > 0:
+            from services.billing_service import BillingService
+
+            BillingService.update_tenant_feature_plan_usage(tenant_id, "vector_space", -vector_size_mb)
+    except Exception:
+        logger.exception("Failed to update vector_space billing usage for document %s", document_id)
 
     end_at = time.perf_counter()
     logger.info(

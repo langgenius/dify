@@ -74,6 +74,17 @@ def clean_dataset_task(
                 )
             ).all()
 
+            # Calculate vector space usage before deletion
+            vector_size_mb = 0
+            from configs import dify_config
+
+            if dify_config.BILLING_ENABLED and segments and indexing_technique == "high_quality":
+                total_words_size = sum(segment.word_count * 3 for segment in segments if segment.word_count)
+                total_vector_size = 1536 * 4 * len(segments)
+                vector_size_mb = int((total_words_size + total_vector_size) / 1024 / 1024)
+                if vector_size_mb < 1 and (total_words_size + total_vector_size) > 0:
+                    vector_size_mb = 1
+
             # Enhanced validation: Check if doc_form is None, empty string, or contains only whitespace
             # This ensures all invalid doc_form values are properly handled
             if doc_form is None or (isinstance(doc_form, str) and not doc_form.strip()):
@@ -186,6 +197,15 @@ def clean_dataset_task(
                 session.execute(file_delete_stmt)
 
             session.commit()
+
+            try:
+                if vector_size_mb > 0:
+                    from services.billing_service import BillingService
+
+                    BillingService.update_tenant_feature_plan_usage(tenant_id, "vector_space", -vector_size_mb)
+            except Exception:
+                logger.exception("Failed to update vector_space billing usage for dataset %s", dataset_id)
+
             end_at = time.perf_counter()
             logger.info(
                 click.style(
