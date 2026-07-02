@@ -97,64 +97,64 @@ def mock_document(mock_dataset: Dataset) -> Document:
 
 
 def make_dataset(**overrides: object) -> Dataset:
-    dataset = Dataset(
-        id=str(uuid.uuid4()),
-        tenant_id=str(uuid.uuid4()),
-        name="Test Dataset",
-        data_source_type=DataSourceType.WEBSITE_CRAWL,
-        indexing_technique="economy",
-        created_by="user-1",
-        maintainer="user-1",
-        provider="vendor",
-        summary_index_setting=None,
-    )
-    for name, value in overrides.items():
-        setattr(dataset, name, value)
-    return dataset
+    attrs = {
+        "id": str(uuid.uuid4()),
+        "tenant_id": str(uuid.uuid4()),
+        "name": "Test Dataset",
+        "data_source_type": DataSourceType.WEBSITE_CRAWL,
+        "indexing_technique": "economy",
+        "created_by": "user-1",
+        "maintainer": "user-1",
+        "provider": "vendor",
+        "summary_index_setting": None,
+    }
+    attrs.update(overrides)
+    return Dataset(**attrs)
 
 
 def make_serializable_document(**overrides: object) -> Document:
     data_source_info = overrides.pop("data_source_info", _document_data_source_info())
-    document = Document(
-        id=str(uuid.uuid4()),
-        tenant_id=str(uuid.uuid4()),
-        dataset_id=str(uuid.uuid4()),
-        position=1,
-        data_source_type=DataSourceType.WEBSITE_CRAWL,
-        data_source_info=json.dumps(data_source_info),
-        dataset_process_rule_id=None,
-        batch="batch-1",
-        name="Test Document",
-        created_from=DocumentCreatedFrom.API,
-        created_by="user-1",
-        created_at=datetime(2021, 1, 1, tzinfo=UTC),
-        tokens=100,
-        indexing_status=IndexingStatus.COMPLETED,
-        completed_at=datetime(2021, 1, 1, 0, 0, 1, tzinfo=UTC),
-        updated_at=datetime(2021, 1, 1, 0, 0, 2, tzinfo=UTC),
-        indexing_latency=0.5,
-        error=None,
-        enabled=True,
-        disabled_at=None,
-        disabled_by=None,
-        archived=False,
-        doc_type=DocumentDocType.BOOK,
-        doc_metadata=None,
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
-        doc_language="English",
-        need_summary=False,
-        is_paused=False,
-        processing_started_at=datetime(2021, 1, 1, tzinfo=UTC),
-        parsing_completed_at=datetime(2021, 1, 1, 0, 0, 1, tzinfo=UTC),
-        cleaning_completed_at=datetime(2021, 1, 1, 0, 0, 2, tzinfo=UTC),
-        splitting_completed_at=datetime(2021, 1, 1, 0, 0, 3, tzinfo=UTC),
-        paused_at=None,
-        stopped_at=None,
-        word_count=None,
-    )
-    document.summary_index_status = None  # type: ignore[attr-defined]
-    for name, value in overrides.items():
-        setattr(document, name, value)
+    summary_index_status = overrides.pop("summary_index_status", None)
+    attrs = {
+        "id": str(uuid.uuid4()),
+        "tenant_id": str(uuid.uuid4()),
+        "dataset_id": str(uuid.uuid4()),
+        "position": 1,
+        "data_source_type": DataSourceType.WEBSITE_CRAWL,
+        "data_source_info": json.dumps(data_source_info),
+        "dataset_process_rule_id": None,
+        "batch": "batch-1",
+        "name": "Test Document",
+        "created_from": DocumentCreatedFrom.API,
+        "created_by": "user-1",
+        "created_at": datetime(2021, 1, 1, tzinfo=UTC),
+        "tokens": 100,
+        "indexing_status": IndexingStatus.COMPLETED,
+        "completed_at": datetime(2021, 1, 1, 0, 0, 1, tzinfo=UTC),
+        "updated_at": datetime(2021, 1, 1, 0, 0, 2, tzinfo=UTC),
+        "indexing_latency": 0.5,
+        "error": None,
+        "enabled": True,
+        "disabled_at": None,
+        "disabled_by": None,
+        "archived": False,
+        "doc_type": DocumentDocType.BOOK,
+        "doc_metadata": None,
+        "doc_form": IndexStructureType.PARAGRAPH_INDEX,
+        "doc_language": "English",
+        "need_summary": False,
+        "is_paused": False,
+        "processing_started_at": datetime(2021, 1, 1, tzinfo=UTC),
+        "parsing_completed_at": datetime(2021, 1, 1, 0, 0, 1, tzinfo=UTC),
+        "cleaning_completed_at": datetime(2021, 1, 1, 0, 0, 2, tzinfo=UTC),
+        "splitting_completed_at": datetime(2021, 1, 1, 0, 0, 3, tzinfo=UTC),
+        "paused_at": None,
+        "stopped_at": None,
+        "word_count": None,
+    }
+    attrs.update(overrides)
+    document = Document(**attrs)
+    document.summary_index_status = summary_index_status  # type: ignore[attr-defined]
     return document
 
 
@@ -182,7 +182,7 @@ def _expected_document_response(document: Document) -> dict[str, object]:
         "hit_count": 0,
         "doc_form": document.doc_form,
         "doc_metadata": [],
-        "summary_index_status": getattr(document, "summary_index_status", None),
+        "summary_index_status": document.summary_index_status,
         "need_summary": document.need_summary,
     }
 

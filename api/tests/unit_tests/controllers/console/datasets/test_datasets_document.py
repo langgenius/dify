@@ -74,8 +74,7 @@ def make_serializable_document(**overrides):
     }
     attrs.update(overrides)
     document = MagicMock(spec_set=list(attrs))
-    for name, value in attrs.items():
-        setattr(document, name, value)
+    document.configure_mock(**attrs)
     return document
 
 
@@ -114,8 +113,7 @@ def make_document_detail(**overrides):
     }
     attrs.update(overrides)
     document = MagicMock(spec_set=list(attrs))
-    for name, value in attrs.items():
-        setattr(document, name, value)
+    document.configure_mock(**attrs)
     return document
 
 
