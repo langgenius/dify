@@ -142,7 +142,7 @@ def _snippet_service() -> SnippetService:
 
 
 def _snippet_list_query_from_request() -> SnippetListQuery:
-    query_data: dict[str, str | list[str]] = request.args.to_dict()
+    query_data: dict[str, str | list[str]] = dict(request.args.to_dict())
     query_data["tag_ids"] = request.args.getlist("tag_ids")
 
     creator_ids = request.args.getlist("creators") or request.args.getlist("creator_ids")
