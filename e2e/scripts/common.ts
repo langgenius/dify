@@ -109,6 +109,23 @@ export const runCommandOrThrow = async (options: RunCommandOptions) => {
   return result
 }
 
+export const getTcpPortListenerDescription = async (port: number) => {
+  if (process.platform === 'win32')
+    return ''
+
+  const result = await runCommand({
+    command: 'lsof',
+    args: ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'],
+    cwd: rootDir,
+    stdio: 'pipe',
+  })
+
+  if (result.exitCode !== 0)
+    return ''
+
+  return result.stdout.trim()
+}
+
 const forwardSignalsToChild = (childProcess: ChildProcess) => {
   const handleSignal = (signal: NodeJS.Signals) => {
     if (childProcess.exitCode === null)
