@@ -40,14 +40,14 @@ Create a chat message for conversational applications.
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+| 400 | Bad Request |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | App Not Found |
+| 500 | Internal Server Error |
 
 ### [POST] /chat-messages/{task_id}/stop
 Stop a running chat message task.
@@ -80,14 +80,14 @@ Create a completion message for text generation applications.
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+| 400 | Bad Request |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | App Not Found |
+| 500 | Internal Server Error |
 
 ### [POST] /completion-messages/{task_id}/stop
 Stop a running completion message task.
@@ -526,14 +526,14 @@ Generate a new completion similar to an existing message (completion apps only).
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request - Not a completion app or feature disabled |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | Message Not Found |  |
-| 500 | Internal Server Error |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+| 400 | Bad Request - Not a completion app or feature disabled |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | Message Not Found |
+| 500 | Internal Server Error |
 
 ### [GET] /messages/{message_id}/suggested-questions
 Get suggested follow-up questions after a message (chat apps only).
@@ -856,14 +856,14 @@ Execute a workflow with provided inputs and files.
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 404 | App Not Found |  |
-| 500 | Internal Server Error |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+| 400 | Bad Request |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 404 | App Not Found |
+| 500 | Internal Server Error |
 
 ### [POST] /workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -1217,12 +1217,6 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
-#### GeneratedAppResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| GeneratedAppResponse |  |  |  |
-
 #### HumanInputContent
 
 | Name | Type | Description | Required |
@@ -1307,7 +1301,7 @@ Parsed multipart form fields for HITL uploads.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+| JSONValue |  |  |  |
 
 #### JSONValueType
 

@@ -510,6 +510,7 @@ def _generate_chat_message_response(
         args=args,
         streaming=streaming,
     )
+    # response-contract:ignore compact_generate_response
     return helper.compact_generate_response(response)
 
 

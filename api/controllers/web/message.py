@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
-from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -51,7 +50,6 @@ class MessageMoreLikeThisQuery(BaseModel):
 register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
 register_response_schema_models(
     web_ns,
-    GeneratedAppResponse,
     ResultResponse,
     SuggestedQuestionsResponse,
     WebMessageInfiniteScrollPagination,
@@ -161,7 +159,7 @@ class MessageMoreLikeThisApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
+    @web_ns.response(200, "Success")
     def get(self, app_model: App, end_user: EndUser, message_id: UUID):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -182,6 +180,7 @@ class MessageMoreLikeThisApi(WebApiResource):
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
