@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Generic, TypeVar
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, scoped_session
 
-T = TypeVar("T")
-
 
 @dataclass
-class PaginatedResult(Generic[T]):
+class PaginatedResult[T]:
     """Minimal pagination container backed by plain SQLAlchemy queries.
 
     Drop-in replacement for Flask-SQLAlchemy's ``db.paginate`` return value.
