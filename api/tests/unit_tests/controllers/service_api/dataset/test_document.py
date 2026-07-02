@@ -561,24 +561,24 @@ class TestDocumentDisplayStatusLogic:
 class TestDocumentServiceBatchMethods:
     """Test DocumentService batch operations."""
 
-    @patch("services.dataset_service.db.session.scalars")
-    def test_get_documents_by_ids(self, mock_scalars):
+    def test_get_documents_by_ids(self):
         """Test batch retrieval of documents by IDs."""
         dataset_id = str(uuid.uuid4())
         doc_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
+        session = Mock()
         mock_result = Mock()
         mock_result.all.return_value = [Mock(id=doc_ids[0]), Mock(id=doc_ids[1])]
-        mock_scalars.return_value = mock_result
+        session.scalars.return_value = mock_result
 
-        documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids)
+        documents = DocumentService.get_documents_by_ids(dataset_id, doc_ids, session)
 
         assert len(documents) == 2
-        mock_scalars.assert_called_once()
+        session.scalars.assert_called_once()
 
     def test_get_documents_by_ids_empty(self):
         """Test batch retrieval with empty list returns empty."""
-        assert DocumentService.get_documents_by_ids("ds_id", []) == []
+        assert DocumentService.get_documents_by_ids("ds_id", [], Mock()) == []
 
 
 class TestDocumentServiceFileOperations:
@@ -625,7 +625,7 @@ class TestDocumentServiceSaveValidation:
         # Skip actual logic by mocking dependent calls or raising error to stop early
         with pytest.raises(TestStopError):
             # We just want to check check_doc_form is called early
-            DocumentService.save_document_with_dataset_id(dataset, config, Mock())
+            DocumentService.save_document_with_dataset_id(dataset, config, Mock(), session=Mock())
 
         # This will fail if we raise exception before check_doc_form,
         # but check_doc_form is the first thing called.
@@ -933,7 +933,7 @@ class TestDocumentApiDelete:
 
         # Assert
         assert response == ("", 204)
-        mock_doc_svc.delete_document.assert_called_once_with(mock_document)
+        mock_doc_svc.delete_document.assert_called_once_with(mock_document, mock_db.session)
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.db")

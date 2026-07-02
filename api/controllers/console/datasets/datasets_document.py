@@ -533,7 +533,9 @@ class DatasetDocumentListApi(Resource):
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:
-            documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, current_user)
+            documents, batch = DocumentService.save_document_with_dataset_id(
+                dataset, knowledge_config, current_user, session=db.session
+            )
             dataset = DatasetService.get_dataset(dataset_id_str)
 
         except ProviderTokenNotInitError as ex:
@@ -1115,6 +1117,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
             document_ids=document_ids,
             tenant_id=current_tenant_id,
             current_user=current_user,
+            session=db.session,
         )
 
         # Delegate ZIP packing to FileService, but keep Flask response+cleanup in the route.
@@ -1382,7 +1385,7 @@ class DocumentRetryApi(DocumentResource):
             raise NotFound("Dataset not found.")
         for document_id in payload.document_ids:
             try:
-                document = DocumentService.get_document(dataset.id, document_id)
+                document = DocumentService.get_document(dataset.id, document_id, session=db.session)
 
                 # 404 if document not found
                 if document is None:
@@ -1400,7 +1403,7 @@ class DocumentRetryApi(DocumentResource):
                 logger.exception("Failed to retry document, document id: %s", document_id)
                 continue
         # retry document
-        DocumentService.retry_document(dataset_id_str, retry_documents)
+        DocumentService.retry_document(dataset_id_str, retry_documents, db.session)
 
         return "", 204
 
@@ -1568,7 +1571,7 @@ class DocumentGenerateSummaryApi(Resource):
             raise ValueError("Summary index is not enabled for this dataset. Please enable it in the dataset settings.")
 
         # Verify all documents exist and belong to the dataset
-        documents = DocumentService.get_documents_by_ids(dataset_id_str, document_list)
+        documents = DocumentService.get_documents_by_ids(dataset_id_str, document_list, db.session)
 
         if len(documents) != len(document_list):
             found_ids = {doc.id for doc in documents}
