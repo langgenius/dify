@@ -335,6 +335,27 @@ describe('ChatInputArea', () => {
       expect(screen.getByRole('button', { name: 'Start build' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.operation.send' })).not.toBeInTheDocument()
     })
+
+    it('should render the send button loading state when provided', async () => {
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn()
+      render(
+        <ChatInputArea
+          visionConfig={mockVisionConfig}
+          onSend={onSend}
+          sendButtonLabel="Start build"
+          sendButtonLoading
+        />,
+      )
+
+      await user.type(getTextarea()!, 'Build an agent')
+      const startBuildButton = screen.getByRole('button', { name: 'Start build' })
+
+      expect(startBuildButton).toHaveAttribute('aria-disabled', 'true')
+      expect(startBuildButton.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+      await user.click(startBuildButton)
+      expect(onSend).not.toHaveBeenCalled()
+    })
   })
 
   // -------------------------------------------------------------------------

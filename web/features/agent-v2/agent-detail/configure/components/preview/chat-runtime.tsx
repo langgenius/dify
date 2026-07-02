@@ -598,6 +598,7 @@ function AgentPreviewChatSession({
   const inputsForm = useMemo(() => getAgentSoulInputsForm(agentSoulConfig), [agentSoulConfig])
   const inputs = useMemo(() => getAgentSoulInputs(inputsForm), [inputsForm])
   const sendInterruptedRef = useRef(false)
+  const [isSendPending, setIsSendPending] = useState(false)
   const notifySendInterrupted = useCallback(() => {
     if (sendInterruptedRef.current)
       return
@@ -635,6 +636,8 @@ function AgentPreviewChatSession({
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     sendInterruptedRef.current = false
+    setIsSendPending(true)
+    let sendStarted = false
 
     try {
       const preparedAgentSoulConfig = await onSaveDraftBeforeRun?.()
@@ -691,14 +694,20 @@ function AgentPreviewChatSession({
             onConversationComplete?.(completedConversationId, workflowRunId)
           },
           onSendSettled: (hasError) => {
+            setIsSendPending(false)
             if (hasError)
               notifySendInterrupted()
           },
         },
       )
+      sendStarted = true
     }
     catch {
       return false
+    }
+    finally {
+      if (!sendStarted)
+        setIsSendPending(false)
     }
   }, [agentId, agentSoulConfig, chatList, config, conversationId, draftType, handleSend, inputs, inputsForm, notifySendInterrupted, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, queryClient, textGenerationModelList])
 
@@ -728,6 +737,7 @@ function AgentPreviewChatSession({
         botName={agentName || 'Agent'}
         customPlaceholder={inputPlaceholder}
         disabled={isResponding}
+        sendButtonLoading={isSendPending || isResponding}
         showFileUpload={false}
         visionConfig={config.file_upload}
         speechToTextConfig={config.speech_to_text}
@@ -744,6 +754,7 @@ function AgentPreviewChatSession({
       config={config}
       chatList={chatList}
       isResponding={isResponding}
+      sendButtonLoading={isSendPending || isResponding}
       chatNode={isEmptyChat
         ? renderEmptyState({
             agentIcon,
@@ -760,7 +771,7 @@ function AgentPreviewChatSession({
         isEmptyChat ? 'hidden' : 'px-3 pt-10',
       )}
       inputPlaceholder={inputPlaceholder}
-      sendButtonLabel={sendButtonLabel}
+      sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       showFileUpload={false}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}

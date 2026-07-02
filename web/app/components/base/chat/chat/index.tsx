@@ -72,6 +72,7 @@ export type ChatProps = {
   inputPlaceholder?: string
   inputPlaceholderBotName?: string
   sendButtonLabel?: string
+  sendButtonLoading?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
@@ -121,6 +122,7 @@ const Chat: FC<ChatProps> = ({
   inputPlaceholder,
   inputPlaceholderBotName,
   sendButtonLabel,
+  sendButtonLoading,
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
@@ -264,6 +266,7 @@ const Chat: FC<ChatProps> = ({
                   isResponding={isResponding}
                   readonly={readonly}
                   sendButtonLabel={sendButtonLabel}
+                  sendButtonLoading={sendButtonLoading}
                   sendOnEnter={sendOnEnter}
                 />
               )

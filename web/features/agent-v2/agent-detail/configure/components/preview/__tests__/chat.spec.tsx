@@ -29,11 +29,17 @@ vi.mock('@/next/dynamic', async () => {
     default: () => function MockChat(props: {
       onSend: (message: string) => unknown
       onStopResponding: () => void
+      sendButtonLabel?: string
+      sendButtonLoading?: boolean
     }) {
       const [sent, setSent] = useState(false)
 
       return (
-        <div>
+        <div
+          data-testid="mock-chat"
+          data-send-button-label={props.sendButtonLabel ?? ''}
+          data-send-button-loading={String(!!props.sendButtonLoading)}
+        >
           <span>{`sessionSent:${sent ? 'yes' : 'no'}`}</span>
           <button
             type="button"
@@ -385,6 +391,70 @@ describe('AgentPreviewChat', () => {
         task_id: 'task-1',
       },
     })
+  })
+
+  it('should show the send button loading state while preparing a build run', async () => {
+    let resolveSaveDraftBeforeRun: () => void = () => {}
+    const saveDraftBeforeRun = vi.fn(() => new Promise<void>((resolve) => {
+      resolveSaveDraftBeforeRun = resolve
+    }))
+    renderPreviewChat({
+      sendButtonLabel: 'Start build',
+      renderEmptyState: ({ inputNode }) => <div>{inputNode}</div>,
+      onSaveDraftBeforeRun: saveDraftBeforeRun,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-send-button-loading', 'true')
+    })
+    expect(handleSendMock).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveSaveDraftBeforeRun()
+    })
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+  })
+
+  it('should use the default send button after the first build message', async () => {
+    useChatMock.mockImplementationOnce((
+      _config: unknown,
+      _formSettings: unknown,
+      _chatList: unknown[],
+      stopCallback: (taskId: string) => void,
+    ) => {
+      stopCallbackRef.current = stopCallback
+
+      return {
+        chatList: [
+          {
+            id: 'question-1',
+            content: 'Build an agent',
+            isAnswer: false,
+          },
+          {
+            id: 'answer-1',
+            content: 'Done',
+            isAnswer: true,
+          },
+        ],
+        setTargetMessageId: vi.fn(),
+        isResponding: false,
+        handleSend: handleSendMock,
+        suggestedQuestions: [],
+        handleStop: () => stopCallback('task-1'),
+        handleAnnotationAdded: vi.fn(),
+        handleAnnotationEdited: vi.fn(),
+        handleAnnotationRemoved: vi.fn(),
+      }
+    })
+    renderPreviewChat({
+      sendButtonLabel: 'Start build',
+    })
+
+    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-send-button-label', '')
   })
 
   it('should sync the completed conversation history into the query cache', async () => {

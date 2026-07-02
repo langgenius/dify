@@ -56,6 +56,7 @@
   "agentDetail.configure.advancedSettings.envEditor.scopePlain": "Plain",
   "agentDetail.configure.advancedSettings.envEditor.scopeSecret": "Secret",
   "agentDetail.configure.advancedSettings.envEditor.scopeSelector": "Select environment variable scope",
+  "agentDetail.configure.advancedSettings.envEditor.shortLabel": "Env",
   "agentDetail.configure.advancedSettings.envEditor.tip": "Your agent runs in a Linux environment. You can preset configs or secrets by defining environmental variables here. Alternatively, you can always have things set up via a Build chat. Refer to docs.",
   "agentDetail.configure.advancedSettings.envEditor.toggle": "Toggle env editor",
   "agentDetail.configure.advancedSettings.envEditor.valueColumn": "Value",
