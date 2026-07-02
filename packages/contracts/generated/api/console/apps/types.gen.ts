@@ -45,7 +45,7 @@ export type AppDetailWithSite = {
   permission_keys?: Array<string>
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -417,7 +417,7 @@ export type AppDetail = {
   name: string
   permission_keys?: Array<string>
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -524,6 +524,16 @@ export type CopyAppPayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name?: string | null
+}
+
+export type AppImportResponse = {
+  app_id?: string | null
+  app_mode?: string | null
+  current_dsl_version: string
+  error?: string
+  id: string
+  imported_dsl_version?: string
+  status: ImportStatus
 }
 
 export type AppExportResponse = {
@@ -733,7 +743,7 @@ export type TextToSpeechVoiceListResponse = Array<{
 }>
 
 export type AppTraceResponse = {
-  enabled: boolean
+  enabled?: boolean
   tracing_provider?: string | null
 }
 
@@ -1343,17 +1353,6 @@ export type Tag = {
   type: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -1390,6 +1389,17 @@ export type AdvancedChatWorkflowRunForListResponse = {
   total_tokens?: number | null
   version?: string | null
 }
+
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
 
 export type AgentConfigVersionResponse = {
   id: string
@@ -2156,7 +2166,7 @@ export type WorkflowDraftVariableWithoutValue = {
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
-  model?: JsonValue | null
+  model?: unknown | null
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
@@ -3003,7 +3013,7 @@ export type AppDetailWithSiteWritable = {
   permission_keys?: Array<string>
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -4623,6 +4633,7 @@ export type PostAppsByAppIdCopyErrors = {
 
 export type PostAppsByAppIdCopyResponses = {
   201: AppDetailWithSite
+  202: AppImportResponse
 }
 
 export type PostAppsByAppIdCopyResponse

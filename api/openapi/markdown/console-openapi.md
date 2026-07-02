@@ -2903,6 +2903,7 @@ Create a copy of an existing application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | App copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 202 | App copy requires confirmation | **application/json**: [AppImportResponse](#appimportresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/export
@@ -6801,7 +6802,7 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
+| 200 | Success | **application/json**: [RecommendedAppDetailNullableResponse](#recommendedappdetailnullableresponse)<br> |
 
 ### [GET] /features
 **Get feature configuration for current tenant**
@@ -12954,7 +12955,7 @@ Default namespace
 | role | string |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
-| tracing | [JSONValue](#jsonvalue) |  | No |
+| tracing |  |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
@@ -14890,7 +14891,7 @@ Enum class for api provider schema type.
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
-| tracing | [JSONValue](#jsonvalue) |  | No |
+| tracing |  |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
@@ -14953,7 +14954,7 @@ Enum class for api provider schema type.
 | permission_keys | [ string ] |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
-| tracing | [JSONValue](#jsonvalue) |  | No |
+| tracing |  |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
@@ -14999,6 +15000,18 @@ Enum class for api provider schema type.
 | name | string |  | No |
 | yaml_content | string |  | No |
 | yaml_url | string |  | No |
+
+#### AppImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| app_mode | string |  | No |
+| current_dsl_version | string |  | Yes |
+| error | string |  | No |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | No |
+| status | [ImportStatus](#importstatus) |  | Yes |
 
 #### AppListQuery
 
@@ -15147,7 +15160,7 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
+| enabled | boolean |  | No |
 | tracing_provider | string |  | No |
 
 #### AppVariableConfig
@@ -17274,6 +17287,10 @@ The type of the parameter
 
 #### ExploreAppMetaResponse
 
+Metadata consumed by the installed-app chat UI.
+
+Built-in tool icons are URL strings; API-based tool icons are provider-defined payload objects.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
@@ -17971,6 +17988,7 @@ Input field definition for snippet parameters.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | mode | string |  | No |
 | name | string |  | No |
@@ -18467,7 +18485,7 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| model | [JSONValue](#jsonvalue) |  | No |
+| model |  |  | No |
 | pre_prompt | string |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -20067,6 +20085,12 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
 
+#### RecommendedAppDetailNullableResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RecommendedAppDetailNullableResponse | [RecommendedAppDetailResponse](#recommendedappdetailresponse) |  |  |
+
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -20086,6 +20110,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | mode | string |  | No |
 | name | string |  | No |

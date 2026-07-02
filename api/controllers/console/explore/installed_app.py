@@ -147,11 +147,15 @@ register_schema_models(
     InstalledAppCreatePayload,
     InstalledAppUpdatePayload,
     InstalledAppsListQuery,
+)
+register_response_schema_models(
+    console_ns,
     InstalledAppInfoResponse,
     InstalledAppResponse,
     InstalledAppListResponse,
+    SimpleMessageResponse,
+    SimpleResultMessageResponse,
 )
-register_response_schema_models(console_ns, SimpleMessageResponse, SimpleResultMessageResponse)
 
 
 @console_ns.route("/installed-apps")
