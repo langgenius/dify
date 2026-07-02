@@ -26,6 +26,7 @@ from libs.helper import to_timestamp
 from libs.login import login_required
 from models.enums import AppMCPServerStatus
 from models.model import App, AppMCPServer
+from services.app_ref_service import AppRefService
 
 
 class MCPServerCreatePayload(BaseModel):
@@ -146,7 +147,17 @@ class AppMCPServerController(Resource):
     @get_app_model
     def put(self, app_model: App):
         payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
-        server = db.session.get(AppMCPServer, payload.id)
+        app_ref = AppRefService.create_app_ref(app_model)
+        server_ref = AppRefService.create_mcp_server_ref(app_ref, payload.id)
+        server = db.session.scalar(
+            select(AppMCPServer)
+            .where(
+                AppMCPServer.id == server_ref.server_id,
+                AppMCPServer.tenant_id == server_ref.tenant_id,
+                AppMCPServer.app_id == server_ref.app_id,
+            )
+            .limit(1)
+        )
         if not server:
             raise NotFound()
 

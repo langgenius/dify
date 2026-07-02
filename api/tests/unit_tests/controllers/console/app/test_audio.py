@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 from inspect import unwrap
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -23,6 +24,7 @@ from controllers.console.app.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
+from services.app_ref_service import MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
@@ -101,6 +103,32 @@ def test_console_text_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -
         response = handler(api, app_model=app_model)
 
     assert response == {"audio": "ok"}
+
+
+def test_console_text_api_builds_message_ref(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    api = ChatMessageTextApi()
+    handler = unwrap(api.post)
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    calls = {}
+
+    def fake_transcript_tts(**kwargs):
+        calls.update(kwargs)
+        return {"audio": "ok"}
+
+    monkeypatch.setattr(AudioService, "transcript_tts", fake_transcript_tts)
+
+    with (
+        app.test_request_context(
+            "/console/api/apps/app-1/text-to-audio",
+            method="POST",
+            json={"text": "hello", "message_id": "message-1"},
+        ),
+        patch("controllers.console.app.audio.current_user", SimpleNamespace(id="account-1")),
+    ):
+        response = handler(api, app_model=app_model)
+
+    assert response == {"audio": "ok"}
+    assert calls["message_ref"] == MessageRef("tenant-1", "app-1", "message-1", account_id="account-1")
 
 
 def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

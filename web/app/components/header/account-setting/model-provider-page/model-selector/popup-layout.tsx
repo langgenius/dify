@@ -93,7 +93,7 @@ export function ModelSelectorScrollBody({
       >
         <ScrollAreaContent className="min-w-0 overflow-x-hidden">{children}</ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="z-2 data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+      <ScrollAreaScrollbar className="z-2">
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollAreaRoot>
@@ -110,6 +110,32 @@ export function CompatibleModelsNotice() {
     >
       {t('modelProvider.selector.onlyCompatibleModelsShown', { ns: 'common' })}
     </div>
+  )
+}
+
+type ShowIncompatibleModelsButtonProps = {
+  showIncompatibleModels: boolean
+  onClick: () => void
+}
+
+export function ShowIncompatibleModelsButton({
+  showIncompatibleModels,
+  onClick,
+}: ShowIncompatibleModelsButtonProps) {
+  const { t } = useTranslation()
+
+  return (
+    <button
+      type="button"
+      className="flex h-10 w-full cursor-pointer items-center px-4 text-left system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+      onClick={onClick}
+    >
+      <span className="min-w-0 truncate">
+        {showIncompatibleModels
+          ? t('modelProvider.selector.hideIncompatibleModels', { ns: 'common' })
+          : t('modelProvider.selector.showIncompatibleModels', { ns: 'common' })}
+      </span>
+    </button>
   )
 }
 

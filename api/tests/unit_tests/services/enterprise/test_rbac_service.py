@@ -299,7 +299,7 @@ class TestResourceAccess:
 
     def test_app_user_access_policies(self, mock_send: MagicMock):
         mock_send.return_value = {
-            "scope": "app",
+            "scope": "specific",
             "data": [
                 {
                     "account": {"account_id": "acct-1", "account_name": "Alice"},
@@ -633,6 +633,8 @@ class TestMyPermissions:
             assert "dataset.acl.preview" in out.workspace.permission_keys
             assert "app.acl.preview" in out.app.default_permission_keys
             assert "dataset.acl.preview" in out.dataset.default_permission_keys
+        if role == "editor":
+            assert "app.acl.log_and_annotation" in out.app.default_permission_keys
 
     @pytest.mark.parametrize(
         ("role", "expected_snippet_keys"),

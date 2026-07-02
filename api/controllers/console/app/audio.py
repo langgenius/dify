@@ -33,7 +33,9 @@ from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import dump_response
 from libs.login import login_required
+from libs.login import current_user, login_required
 from models import App, AppMode
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -148,6 +150,14 @@ class ChatMessageTextApi(Resource):
     def post(self, app_model: App):
         try:
             payload = TextToSpeechPayload.model_validate(console_ns.payload)
+            message_ref = None
+            if payload.message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    payload.message_id,
+                    account_id=current_user.id,
+                )
 
             # response-contract:ignore
             return AudioService.transcript_tts(
@@ -155,7 +165,7 @@ class ChatMessageTextApi(Resource):
                 session=db.session,
                 text=payload.text,
                 voice=payload.voice,
-                message_id=payload.message_id,
+                message_ref=message_ref,
                 is_draft=True,
             )
         except services.errors.app_model_config.AppModelConfigBrokenError:
