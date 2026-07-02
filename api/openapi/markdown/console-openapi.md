@@ -17274,6 +17274,10 @@ The type of the parameter
 
 #### ExploreAppMetaResponse
 
+Metadata consumed by the installed-app chat UI.
+
+Built-in tool icons are URL strings; API-based tool icons are emoji payloads.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
@@ -21240,6 +21244,13 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [TokensPerSecondStatisticItem](#tokenspersecondstatisticitem) ] |  | Yes |
+
+#### ToolIconResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | Yes |
+| content | string |  | Yes |
 
 #### ToolOAuthClientSchemaResponse
 
