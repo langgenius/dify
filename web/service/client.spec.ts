@@ -1,7 +1,7 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { MutationFunctionContext } from '@tanstack/react-query'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
-import type { Tag } from '@/contract/console/tags'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,6 +23,16 @@ const loadConsoleQuery = async () => {
   return module.consoleQuery
 }
 
+const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) => {
+  vi.resetModules()
+  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  vi.doMock('./base', () => ({ request }))
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const module = await import('./client')
+  warnSpy.mockRestore()
+  return module.consoleQuery
+}
+
 const createMutationContext = (queryClient: QueryClient): MutationFunctionContext => ({
   client: queryClient,
   meta: undefined,
@@ -32,7 +42,7 @@ const createTag = (overrides: Partial<Tag> = {}): Tag => ({
   id: 'tag-1',
   name: 'Frontend',
   type: 'app',
-  binding_count: 1,
+  binding_count: '1',
   ...overrides,
 })
 
@@ -46,13 +56,18 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
 
 type AgentMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.post.mutationOptions>['onSuccess']>>[0]
 type AgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.composer.put.mutationOptions>['onSuccess']>>[0]
+type AgentPublishMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.publish.post.mutationOptions>['onSuccess']>>[0]
+type WorkflowAgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions>['onSuccess']>>[0]
 
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
   active_config_is_published: overrides.active_config_is_published ?? false,
+  debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
+  debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   enable_api: overrides.enable_api ?? true,
   enable_site: overrides.enable_site ?? true,
   description: overrides.description ?? 'Agent description',
+  hidden_app_backed: overrides.hidden_app_backed ?? false,
   id: overrides.id ?? 'agent-1',
   icon_url: overrides.icon_url ?? null,
   mode: overrides.mode ?? 'agent',
@@ -68,16 +83,68 @@ const createComposerState = (overrides: Partial<AgentComposerMutationResponse> =
   agent: {
     active_config_snapshot_id: 'snapshot-1',
     description: 'Agent description',
+    hidden_app_backed: false,
     id: 'agent-1',
     name: 'Agent',
     scope: 'roster',
     status: 'active',
   },
   agent_soul: {
+    config_note: '',
     schema_version: 1,
   },
+  hidden_app_backed: false,
   save_options: ['save_to_current_version', 'save_as_new_version'],
   variant: 'agent_app',
+  ...overrides,
+})
+
+const createAgentPublishResponse = (overrides: Partial<AgentPublishMutationResponse> = {}): AgentPublishMutationResponse => ({
+  active_config_snapshot: {
+    id: 'snapshot-1',
+    version: 1,
+  },
+  active_config_snapshot_id: 'snapshot-1',
+  result: 'success',
+  ...overrides,
+})
+
+const createWorkflowComposerState = (overrides: Partial<WorkflowAgentComposerMutationResponse> = {}): WorkflowAgentComposerMutationResponse => ({
+  agent: {
+    active_config_snapshot_id: 'snapshot-1',
+    description: 'Agent description',
+    hidden_app_backed: false,
+    id: 'agent-1',
+    name: 'Agent',
+    scope: 'roster',
+    status: 'active',
+  },
+  agent_soul: {
+    config_note: '',
+    schema_version: 1,
+  },
+  debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
+  debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
+  hidden_app_backed: false,
+  binding: {
+    agent_id: 'agent-1',
+    binding_type: 'roster_agent',
+    current_snapshot_id: 'snapshot-1',
+    id: 'binding-1',
+    node_id: 'node-1',
+    workflow_id: 'workflow-1',
+  },
+  node_job: {
+    mode: 'tell_agent_what_to_do',
+    schema_version: 1,
+    workflow_prompt: '',
+  },
+  save_options: ['node_job_only', 'save_as_new_agent'],
+  soul_lock: {
+    can_unlock: false,
+    locked: true,
+  },
+  variant: 'workflow',
   ...overrides,
 })
 
@@ -147,6 +214,83 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('https://api.example.com/console/api')
     expect(warnSpy).not.toHaveBeenCalled()
+  })
+})
+
+// Scenario: oRPC operation context controls transport behavior without handwritten REST helpers.
+describe('consoleQuery transport context', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should forward silent context to the base request transport', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+      },
+    }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+      context: {
+        silent: true,
+      },
+    })
+
+    await Promise
+      .resolve(queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext))
+      .catch(() => undefined)
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/agent/agent-1/build-draft'),
+      expect.any(Object),
+      expect.objectContaining({
+        fetchCompat: true,
+        silent: true,
+      }),
+    )
+  })
+
+  it('should serialize trial app dataset ids as repeated query params', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data: [],
+      has_more: false,
+      limit: 20,
+      page: 1,
+      total: 0,
+    }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+      },
+    }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.trialApps.byAppId.datasets.get.queryOptions({
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+        query: {
+          ids: ['id-1', 'id-2'],
+        },
+      },
+    })
+
+    await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/trial-apps/app-1/datasets?ids=id-1&ids=id-2'),
+      expect.any(Object),
+      expect.objectContaining({
+        fetchCompat: true,
+      }),
+    )
+    expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
   })
 })
 
@@ -222,6 +366,145 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
+  it('should cache workflow composer state after copying a roster agent into an inline agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const composerState = createWorkflowComposerState({
+      binding: {
+        agent_id: 'inline-agent-1',
+        binding_type: 'inline_agent',
+        current_snapshot_id: 'inline-snapshot-1',
+        id: 'binding-1',
+        node_id: 'node-1',
+        workflow_id: 'workflow-1',
+      },
+    })
+
+    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+        body: {
+          source_agent_id: 'roster-agent-1',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+      input: {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+      },
+    }))).toEqual(composerState)
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+
+  it('should cache workflow composer state after saving workflow node composer', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const composerState = createWorkflowComposerState({
+      binding: {
+        agent_id: 'inline-agent-1',
+        binding_type: 'inline_agent',
+        current_snapshot_id: 'inline-snapshot-1',
+        id: 'binding-1',
+        node_id: 'node-1',
+        workflow_id: 'workflow-1',
+      },
+    })
+
+    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+      input: {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+      },
+    }))).toEqual(composerState)
+  })
+
+  it('should cache workflow composer state and invalidate roster lists after saving inline agent to roster', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const composerState = createWorkflowComposerState()
+
+    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'save_to_roster',
+          new_agent_name: 'Saved Agent',
+          description: 'Agent description',
+          role: 'Assistant',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+      input: {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+      },
+    }))).toEqual(composerState)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+        input: {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+      }),
+    })
+  })
+
   it('should invalidate invite option lists after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -277,6 +560,7 @@ describe('consoleQuery agent mutation defaults', () => {
           created_by: null,
           description: 'Agent description',
           existing_node_ids: [],
+          hidden_app_backed: false,
           icon: null,
           icon_background: null,
           icon_type: null,
@@ -303,20 +587,14 @@ describe('consoleQuery agent mutation defaults', () => {
       total: 1,
     })
 
-    const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
+    const mutationOptions = consoleQuery.agent.byAgentId.publish.post.mutationOptions()
     await mutationOptions.onSuccess?.(
-      createComposerState(),
+      createAgentPublishResponse(),
       {
         params: {
           agent_id: 'agent-1',
         },
-        body: {
-          variant: 'agent_app',
-          save_strategy: 'save_as_new_version',
-          agent_soul: {
-            schema_version: 1,
-          },
-        },
+        body: {},
       },
       undefined,
       createMutationContext(queryClient),
@@ -334,7 +612,7 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(queryClient.getQueryData(inviteOptionsQueryKey)).toBeUndefined()
   })
 
-  it('should keep roster and invite option lists stable after saving an agent draft', async () => {
+  it('should invalidate roster list but keep invite options stable after saving an agent draft', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -358,7 +636,7 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(invalidateQueries).not.toHaveBeenCalledWith({
+    expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
     expect(invalidateQueries).not.toHaveBeenCalledWith({
@@ -403,14 +681,14 @@ describe('consoleQuery tag mutation defaults', () => {
   it('should add created tags to the matching list query cache', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
-    const appListKey = consoleQuery.tags.list.queryKey({
+    const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'app',
         },
       },
     })
-    const knowledgeListKey = consoleQuery.tags.list.queryKey({
+    const knowledgeListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'knowledge',
@@ -428,13 +706,13 @@ describe('consoleQuery tag mutation defaults', () => {
     queryClient.setQueryData(appListKey, [existingAppTag])
     queryClient.setQueryData(knowledgeListKey, [existingKnowledgeTag])
 
-    const mutationOptions = consoleQuery.tags.create.mutationOptions()
+    const mutationOptions = consoleQuery.tags.post.mutationOptions()
     await mutationOptions.onSuccess?.(
       createdTag,
       {
         body: {
           name: createdTag.name,
-          type: createdTag.type,
+          type: 'app',
         },
       },
       undefined,
@@ -448,14 +726,14 @@ describe('consoleQuery tag mutation defaults', () => {
   it('should update matching tags across cached list queries', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
-    const appListKey = consoleQuery.tags.list.queryKey({
+    const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'app',
         },
       },
     })
-    const knowledgeListKey = consoleQuery.tags.list.queryKey({
+    const knowledgeListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'knowledge',
@@ -476,14 +754,14 @@ describe('consoleQuery tag mutation defaults', () => {
     const updatedTag = createTag({
       ...targetTag,
       name: 'After',
-      binding_count: 5,
+      binding_count: '5',
     })
-    const mutationOptions = consoleQuery.tags.update.mutationOptions()
+    const mutationOptions = consoleQuery.tags.byTagId.patch.mutationOptions()
     await mutationOptions.onSuccess?.(
       updatedTag,
       {
         params: {
-          tagId: targetTag.id,
+          tag_id: targetTag.id,
         },
         body: {
           name: 'Ignored Client Name',
@@ -503,14 +781,14 @@ describe('consoleQuery tag mutation defaults', () => {
   it('should remove deleted tags across cached list queries', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
-    const appListKey = consoleQuery.tags.list.queryKey({
+    const appListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'app',
         },
       },
     })
-    const knowledgeListKey = consoleQuery.tags.list.queryKey({
+    const knowledgeListKey = consoleQuery.tags.get.queryKey({
       input: {
         query: {
           type: 'knowledge',
@@ -528,12 +806,12 @@ describe('consoleQuery tag mutation defaults', () => {
     queryClient.setQueryData(appListKey, [deletedTag, remainingTag])
     queryClient.setQueryData(knowledgeListKey, [knowledgeTag])
 
-    const mutationOptions = consoleQuery.tags.delete.mutationOptions()
+    const mutationOptions = consoleQuery.tags.byTagId.delete.mutationOptions()
     await mutationOptions.onSuccess?.(
       undefined,
       {
         params: {
-          tagId: deletedTag.id,
+          tag_id: deletedTag.id,
         },
       },
       undefined,

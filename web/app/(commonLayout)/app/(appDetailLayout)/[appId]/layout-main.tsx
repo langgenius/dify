@@ -108,8 +108,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const isAccessConfigPath = pathname.endsWith('access-config')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout)
-      || (isLogsPath && !appACLCapabilities.canMonitor)
-      || (isAnnotationsPath && !appACLCapabilities.canEdit)
+      || (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation)
+      || (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation)
       || (isOverviewPath && !appACLCapabilities.canMonitor)
       || (isAccessConfigPath && !appACLCapabilities.canAccessConfig)
     ) {
@@ -133,29 +133,32 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       setAppDetail({ ...appDetailRes, enable_sso: false })
   }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, isRbacEnabled, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
 
-  if (!appDetail) {
-    return (
-      <div className="flex h-full items-center justify-center bg-background-body">
-        <Loading />
-      </div>
-    )
-  }
-
   const isWorkflowPage = pathname.endsWith('/workflow')
+  const content = !appDetail
+    ? (
+        <div className="flex min-w-0 grow items-center justify-center bg-background-body">
+          <Loading />
+        </div>
+      )
+    : (
+        <div className={cn(
+          'relative flex h-0 min-h-0 min-w-0 grow overflow-hidden',
+          !isWorkflowPage && 'pt-1 pr-1 pb-1',
+        )}
+        >
+          <div className={cn(
+            'min-w-0 grow overflow-hidden bg-components-panel-bg',
+            !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
+          )}
+          >
+            {children}
+          </div>
+        </div>
+      )
 
   return (
-    <div className={cn(
-      'relative flex h-0 grow overflow-hidden',
-      !isWorkflowPage && 'pt-1 pr-1 pb-1',
-    )}
-    >
-      <div className={cn(
-        'grow overflow-hidden bg-components-panel-bg',
-        !isWorkflowPage && 'rounded-lg shadow-xs shadow-shadow-shadow-3',
-      )}
-      >
-        {children}
-      </div>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body">
+      {content}
     </div>
   )
 }

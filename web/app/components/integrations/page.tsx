@@ -107,11 +107,11 @@ export default function IntegrationsPage({
   const {
     canDebugger,
     canInstallPlugin,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
     handlePermissionChange,
     isPluginCategory,
+    isReferenceSettingLoading,
     permission,
     showPermissionQuickPanel,
     showPluginCategorySetting,
@@ -163,7 +163,7 @@ export default function IntegrationsPage({
       return
     }
 
-    window.open(getMarketplaceUrl(marketplaceUrlPath), '_blank', 'noopener,noreferrer')
+    window.open(getMarketplaceUrl(marketplaceUrlPath, undefined, { source: window.location.origin }), '_blank', 'noopener,noreferrer')
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
@@ -285,9 +285,9 @@ export default function IntegrationsPage({
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
                   canUpdatePlugin={canUpdatePlugin}
-                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </div>
@@ -299,7 +299,6 @@ export default function IntegrationsPage({
                 slotClassNames={{
                   viewport: 'overscroll-contain',
                   content: 'min-h-full',
-                  scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
                 }}
               >
                 <IntegrationSectionRenderer
@@ -311,9 +310,9 @@ export default function IntegrationsPage({
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
                   canUpdatePlugin={canUpdatePlugin}
-                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </ScrollArea>

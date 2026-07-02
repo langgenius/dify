@@ -28,6 +28,7 @@ import ProviderIcon from '../provider-icon'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelTypeFormat,
+  normalizeModelProviderModelsResponse,
 } from '../utils'
 import CredentialPanel from './credential-panel'
 import ModelList from './model-list'
@@ -59,21 +60,21 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     isFetching: loading,
     isSuccess: hasFetchedModelList,
     refetch: refetchModelList,
-  } = useQuery(consoleQuery.modelProviders.models.queryOptions({
+  } = useQuery(consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
     input: { params: { provider: currentProviderName } },
     enabled: expanded,
     refetchOnWindowFocus: false,
-    select: response => response.data,
+    select: normalizeModelProviderModelsResponse,
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
   const showCollapsedSection = !expanded || !hasFetchedModelList
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
-  const canManagePlugins = hasPermission(workspacePermissionKeys, 'plugin.manage')
+  const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canAccessCredentials = canUseCredential || canCreateCredential || canManageCredential
   const showCredential = supportsPredefinedModel && canAccessCredentials
-  const showCustomModelActions = supportsCustomizableModel && canManagePlugins
+  const showCustomModelActions = supportsCustomizableModel && canConfigureModels
 
   const refreshModelList = useCallback((targetProviderName: string) => {
     if (targetProviderName !== currentProviderName)

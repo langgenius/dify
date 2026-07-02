@@ -5,6 +5,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useState } from 'react'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
+import InstallFromMarketplaceQuery from '@/app/components/plugins/install-plugin/install-from-marketplace-query'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import { PluginPageContextProvider } from '@/app/components/plugins/plugin-page/context-provider'
 import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
@@ -15,9 +16,9 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type PluginCategoryPageProps = {
   canInstall?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
+  isInstallPermissionLoading?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
   category: PluginCategoryEnum
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
   onSwitchToMarketplace?: () => void
@@ -28,9 +29,9 @@ const supportedLocalPackageExtensions = SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS.sp
 
 const PluginCategoryPageContent = ({
   canInstall = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
+  isInstallPermissionLoading = false,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   category,
   layout,
   onSwitchToMarketplace,
@@ -73,9 +74,8 @@ const PluginCategoryPageContent = ({
     <div ref={containerRef} className="relative flex h-0 grow flex-col overflow-hidden bg-components-panel-bg">
       <PluginsPanel
         canInstall={canInstall}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
-        canViewInstalledPlugins={canViewInstalledPlugins}
         contentInset="compact"
         fixedCategory={category}
         layout={layout}
@@ -96,6 +96,11 @@ const PluginCategoryPageContent = ({
           onSuccess={noop}
         />
       )}
+      <InstallFromMarketplaceQuery
+        canInstallPlugin={canInstall}
+        isPermissionLoading={isInstallPermissionLoading}
+        installContextCategory={category}
+      />
       <input
         ref={fileUploader}
         className="hidden"
@@ -110,9 +115,9 @@ const PluginCategoryPageContent = ({
 
 const PluginCategoryPage = ({
   canInstall = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
+  isInstallPermissionLoading = false,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   category,
   layout,
   onSwitchToMarketplace,
@@ -128,9 +133,9 @@ const PluginCategoryPage = ({
     <PluginPageContextProvider key={category} initialFilters={initialFilters}>
       <PluginCategoryPageContent
         canInstall={canInstall}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
+        isInstallPermissionLoading={isInstallPermissionLoading}
         canUpdatePlugin={canUpdatePlugin}
-        canViewInstalledPlugins={canViewInstalledPlugins}
         category={category}
         layout={layout}
         onSwitchToMarketplace={onSwitchToMarketplace}

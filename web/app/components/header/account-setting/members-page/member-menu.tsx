@@ -10,7 +10,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -108,26 +107,17 @@ const MemberMenu = ({
     onTransferOwnership?.()
   }, [onTransferOwnership])
 
-  const stopPropagationOnClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-  }, [])
-
-  const stopPropagationOnKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ')
-      e.stopPropagation()
-  }, [])
-
   if (!canAssignRoles && !canRemove && !showTransferOwnership)
     return null
 
   return (
-    <div role="presentation" onClick={stopPropagationOnClick} onKeyDown={stopPropagationOnKeyDown}>
+    <div role="presentation">
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={(
             <ActionButton
               size="l"
-              className={cn(open && 'bg-state-base-hover')}
+              className="data-popup-open:bg-state-base-hover"
               aria-label={t('members.memberActions', { ns: 'common', defaultValue: 'Member actions' })}
             />
           )}

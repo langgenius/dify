@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Geen beschrijving",
   "accessRule.noRules": "Geen toegangsregels",
   "accessRule.noUserAccessSettings": "Geen individuele rechteninstellingen",
+  "accessRule.onlyMe": "Alleen ik",
+  "accessRule.onlyMeDescription": "Alleen jij kunt toegang krijgen tot deze resource.",
   "accessRule.permission": "Recht",
   "accessRule.resourceOpenScope": "Toegangsbereik van resource",
   "accessRule.resourceOpenScopeDescription": "Kies voor wie deze resource toegankelijk is. Rolrechten bepalen nog steeds wat elk lid kan doen.",

@@ -35,7 +35,7 @@ export const useWorkflowOnlineUsers = ({
   enabled,
 }: UseWorkflowOnlineUsersParams) => {
   const shouldFetch = enabled && appIds.length > 0
-  const { data: onlineUsersMap = {} } = useQuery(consoleQuery.apps.workflowOnlineUsers.queryOptions({
+  const { data: onlineUsersMap = {} } = useQuery(consoleQuery.apps.workflows.onlineUsers.post.queryOptions({
     input: { body: { app_ids: appIds } },
     enabled: shouldFetch,
     select: normalizeWorkflowOnlineUsers,

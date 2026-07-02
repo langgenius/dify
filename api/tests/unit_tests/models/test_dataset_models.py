@@ -12,7 +12,6 @@ This test suite covers:
 import json
 import pickle
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
@@ -20,6 +19,7 @@ from uuid import uuid4
 import pytest
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.storage.storage_type import StorageType
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -32,12 +32,14 @@ from models.dataset import (
     ExternalKnowledgeBindings,
 )
 from models.enums import (
+    CreatorUserRole,
     DataSourceType,
     DocumentCreatedFrom,
     IndexingStatus,
     ProcessRuleMode,
     SegmentStatus,
 )
+from models.model import UploadFile
 
 
 class TestDatasetModelValidation:
@@ -719,13 +721,20 @@ class TestDocumentSegmentIndexing:
             created_by="user-1",
         )
         segment.id = "segment-1"
-        attachment = SimpleNamespace(
-            id="upload-1",
+        attachment = UploadFile(
+            tenant_id="tenant-1",
+            storage_type=StorageType.LOCAL,
+            key="upload-1-key",
             name="image.png",
             size=128,
             extension="png",
             mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="user-1",
+            created_at=datetime(2023, 11, 14, tzinfo=UTC),
+            used=False,
         )
+        attachment.id = "upload-1"
 
         monkeypatch.setattr("models.dataset.time.time", lambda: 1700000000)
         monkeypatch.setattr("models.dataset.os.urandom", lambda _: b"\x01" * 16)

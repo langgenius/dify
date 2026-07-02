@@ -10,9 +10,9 @@ import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
 import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
-import { CreateAppAttributionBootstrap } from './components/create-app-attribution-bootstrap'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
+import ExternalAttributionRecorder from './components/external-attribution-recorder'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
@@ -48,7 +48,6 @@ const LocaleLayout = async ({
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
-        <CreateAppAttributionBootstrap />
         <ReactScanLoader />
       </head>
       <body
@@ -69,6 +68,7 @@ const LocaleLayout = async ({
                   <I18nServerProvider>
                     <ToastHost timeout={5000} limit={3} />
                     <PartnerStackCookieRecorder />
+                    <ExternalAttributionRecorder />
                     <TooltipProvider delay={300} closeDelay={200}>
                       {children}
                     </TooltipProvider>

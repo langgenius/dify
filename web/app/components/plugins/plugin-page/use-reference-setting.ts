@@ -9,8 +9,6 @@ import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, us
 import { hasPermission } from '@/utils/permission'
 import { hasLegacyPluginPermissionAccess } from '../plugin-permissions'
 
-const pluginReadAndUpdatePermissionKeys = ['plugin.install', 'plugin.manage']
-
 const useCanSetPluginSettings = () => {
   const { workspacePermissionKeys } = useAppContext()
   const { data: rbacEnabled } = useSuspenseQuery({
@@ -27,7 +25,14 @@ const useCanSetPluginSettings = () => {
 
 export const usePluginSettingsAccess = () => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner, workspacePermissionKeys, langGeniusVersionInfo } = useAppContext()
+  const {
+    isCurrentWorkspaceManager,
+    isCurrentWorkspaceOwner,
+    isLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys,
+    langGeniusVersionInfo,
+  } = useAppContext()
   const { data: rbacEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.rbac_enabled,
@@ -52,25 +57,25 @@ export const usePluginSettingsAccess = () => {
     rbacEnabled,
   })
   const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
-  const canUpdatePlugin = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys) && legacyCanInstallPlugin
-  const canViewInstalledPlugins = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys)
-  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage') && legacyCanInstallPlugin
-  const canDebugPlugin = hasPermission(workspacePermissionKeys, 'plugin.debug') && legacyCanDebugPlugin
+  const canUpdatePlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
+  const canDeletePlugin = hasPermission(workspacePermissionKeys, 'plugin.delete') && legacyCanInstallPlugin
+  const canDebugPlugin = rbacEnabled
+    ? hasPermission(workspacePermissionKeys, 'plugin.debug')
+    : legacyCanDebugPlugin
 
   return {
     permission: permissions,
     setPluginPermissionSettings,
     canInstallPlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
-    canManagePlugin,
+    canDeletePlugin,
     canDebugPlugin,
     canSetPluginPreferences,
     canManagement: canInstallPlugin,
     canDebugger: canDebugPlugin,
     canSetPermissions,
     currentDifyVersion: langGeniusVersionInfo?.current_version,
-    isPermissionLoading: permissionQuery.isLoading || permissionQuery.isFetching,
+    isPermissionLoading: permissionQuery.isLoading || permissionQuery.isFetching || !!isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys,
     permissionError: permissionQuery.error,
     isPermissionUpdatePending,
   }
@@ -103,8 +108,7 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
     canDebugger: permissionAccess.canDebugger,
     canInstallPlugin: permissionAccess.canInstallPlugin,
     canUpdatePlugin: permissionAccess.canUpdatePlugin,
-    canViewInstalledPlugins: permissionAccess.canViewInstalledPlugins,
-    canManagePlugin: permissionAccess.canManagePlugin,
+    canDeletePlugin: permissionAccess.canDeletePlugin,
     canDebugPlugin: permissionAccess.canDebugPlugin,
     canSetPermissions: permissionAccess.canSetPermissions,
     canSetPluginPreferences: permissionAccess.canSetPluginPreferences,

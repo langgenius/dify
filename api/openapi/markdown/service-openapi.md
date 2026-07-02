@@ -3999,6 +3999,7 @@ Model class for provider with models response.
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | icon_url | string |  | Yes |
+| input_placeholder | string |  | No |
 | privacy_policy | string |  | No |
 | show_workflow_steps | boolean |  | Yes |
 | title | string |  | Yes |

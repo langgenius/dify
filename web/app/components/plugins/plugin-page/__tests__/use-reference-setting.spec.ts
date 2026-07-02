@@ -74,6 +74,12 @@ describe('useReferenceSetting Hook', () => {
   })
 
   describe('permission key access', () => {
+    it('should not expose installed plugin list viewing as a permission capability', () => {
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect('canViewInstalledPlugins' in result.current).toBe(false)
+    })
+
     it('should return false without plugin permission keys', () => {
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
@@ -122,7 +128,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should ignore legacy admin permission for managers without plugin keys', () => {
+    it('should allow debug for managers with legacy admin permission when RBAC is disabled', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
@@ -140,10 +146,10 @@ describe('useReferenceSetting Hook', () => {
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       expect(result.current.canManagement).toBe(false)
-      expect(result.current.canDebugger).toBe(false)
+      expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should ignore legacy admin permission for owners without plugin keys', () => {
+    it('should allow debug for owners with legacy admin permission when RBAC is disabled', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
@@ -161,7 +167,30 @@ describe('useReferenceSetting Hook', () => {
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       expect(result.current.canManagement).toBe(false)
-      expect(result.current.canDebugger).toBe(false)
+      expect(result.current.canDebugger).toBe(true)
+    })
+
+    it('should allow debug for normal users when legacy debug permission is everyone and RBAC is disabled', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install'],
+      } as ReturnType<typeof useAppContext>)
+
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.everyone,
+          debug_permission: PermissionType.everyone,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: false },
+      })
+
+      expect(result.current.canDebugPlugin).toBe(true)
+      expect(result.current.canDebugger).toBe(true)
     })
 
     it('should use plugin keys even when legacy admin permission is configured and RBAC is enabled', () => {
@@ -192,7 +221,7 @@ describe('useReferenceSetting Hook', () => {
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
-        workspacePermissionKeys: ['plugin.install', 'plugin.manage', 'plugin.debug'],
+        workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug'],
       } as ReturnType<typeof useAppContext>)
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
@@ -208,8 +237,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canInstallPlugin).toBe(false)
       expect(result.current.canManagement).toBe(false)
       expect(result.current.canUpdatePlugin).toBe(false)
-      expect(result.current.canViewInstalledPlugins).toBe(true)
-      expect(result.current.canManagePlugin).toBe(false)
+      expect(result.current.canDeletePlugin).toBe(false)
       expect(result.current.canDebugPlugin).toBe(false)
       expect(result.current.canDebugger).toBe(false)
     })
@@ -341,6 +369,35 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
     })
+
+    it('should keep permission state loading while workspace permission keys are loading', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isLoadingWorkspacePermissionKeys: true,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: [] as string[],
+      } as ReturnType<typeof useAppContext>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.isPermissionLoading).toBe(true)
+      expect(result.current.canInstallPlugin).toBe(false)
+    })
+
+    it('should keep permission state loading while current workspace is loading', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isLoadingCurrentWorkspace: true,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install'],
+      } as ReturnType<typeof useAppContext>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.isPermissionLoading).toBe(true)
+    })
   })
 
   describe('RBAC permissions', () => {
@@ -351,7 +408,7 @@ describe('useReferenceSetting Hook', () => {
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: [
           'plugin.install',
-          'plugin.manage',
+          'plugin.delete',
           'plugin.debug',
           'plugin.plugin_preferences',
         ],
@@ -370,8 +427,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canInstallPlugin).toBe(true)
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canUpdatePlugin).toBe(true)
-      expect(result.current.canViewInstalledPlugins).toBe(true)
-      expect(result.current.canManagePlugin).toBe(true)
+      expect(result.current.canDeletePlugin).toBe(true)
       expect(result.current.canDebugPlugin).toBe(true)
       expect(result.current.canDebugger).toBe(true)
       expect(result.current.canSetPermissions).toBe(false)
@@ -393,8 +449,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canInstallPlugin).toBe(false)
       expect(result.current.canManagement).toBe(false)
       expect(result.current.canUpdatePlugin).toBe(false)
-      expect(result.current.canViewInstalledPlugins).toBe(false)
-      expect(result.current.canManagePlugin).toBe(false)
+      expect(result.current.canDeletePlugin).toBe(false)
       expect(result.current.canDebugPlugin).toBe(false)
       expect(result.current.canDebugger).toBe(false)
       expect(result.current.canSetPermissions).toBe(false)

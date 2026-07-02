@@ -43,19 +43,21 @@ function AgentRosterSkeleton() {
       {skeletonRows.map(row => (
         <div key={row} className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3">
           <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
-            <SkeletonRectangle className="my-0 size-12 shrink-0 animate-pulse rounded-full" />
-            <div className="min-w-0 flex-1 space-y-2.5 py-px">
-              <SkeletonRectangle className="my-0 h-4 w-36 max-w-full animate-pulse rounded-md" />
-              <SkeletonRectangle className="my-0 h-3 w-20 max-w-full animate-pulse rounded-md" />
+            <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1">
+              <SkeletonRectangle className="my-0 h-3 w-36 max-w-full rounded-md opacity-20" />
+              <SkeletonRectangle className="my-0 h-2 w-20 max-w-full rounded-md opacity-12" />
             </div>
           </div>
           <div className="px-4 py-1">
-            <SkeletonRectangle className="my-0 h-3 w-full animate-pulse rounded-md" />
-            <SkeletonRectangle className="mt-2 mb-0 h-3 w-3/4 animate-pulse rounded-md" />
+            <div className="flex min-h-8 flex-col gap-2 py-0.5">
+              <SkeletonRectangle className="my-0 h-2 w-full rounded-md opacity-12" />
+              <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
+            </div>
           </div>
           <div className="flex items-center pt-2 pr-3 pb-3 pl-4">
-            <SkeletonRectangle className="my-0 h-4 w-6 animate-pulse rounded-md" />
-            <SkeletonRectangle className="my-0 ml-2.5 h-4 w-28 animate-pulse rounded-md" />
+            <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />
+            <SkeletonRectangle className="my-0 ml-2.5 h-3 w-28 rounded-md opacity-10" />
           </div>
         </div>
       ))}
@@ -69,7 +71,7 @@ function AgentRosterPlaceholderState({ title }: { title: string }) {
       aria-labelledby="agent-roster-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
         {emptyPlaceholderCardIds.map(id => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
@@ -133,7 +135,7 @@ function AgentRosterItem({
           href={`/roster/agent/${agent.id}/configure`}
           aria-labelledby={nameId}
           aria-describedby={agent.description ? descriptionId : undefined}
-          className="relative block shrink-0 cursor-pointer touch-manipulation rounded-xl outline-hidden after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-state-accent-solid focus-visible:after:ring-inset"
+          className="relative block shrink-0 cursor-pointer touch-manipulation rounded-xl outline-hidden after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:after:inset-ring-2 focus-visible:after:inset-ring-state-accent-solid"
         >
           <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
             <span aria-hidden className="shrink-0">
@@ -180,7 +182,7 @@ function AgentRosterItem({
                   />
                 )
               : (
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex h-4 shrink-0 items-center gap-1">
                     <span aria-hidden className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary" />
                     <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
                   </div>
@@ -260,7 +262,7 @@ export function AgentRosterList({
   const { t } = useTranslation('agentV2')
 
   return (
-    <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,294px),1fr))] gap-2.5" aria-busy={isFetching || undefined}>
+    <section aria-label={label} className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5" aria-busy={isFetching || undefined}>
       {isPending && <AgentRosterSkeleton />}
       {!isPending && isError && (
         <AgentRosterPlaceholderState title={t('roster.loadingError')} />

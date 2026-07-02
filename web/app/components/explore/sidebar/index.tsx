@@ -23,12 +23,6 @@ import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/s
 import Item from './app-nav-item'
 import NoApps from './no-apps'
 
-const expandedSidebarScrollAreaClassNames = {
-  content: 'space-y-0.5',
-  scrollbar: 'data-[orientation=vertical]:my-2 data-[orientation=vertical]:-me-3',
-  viewport: 'overscroll-contain',
-} as const
-
 const SideBar = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -116,7 +110,10 @@ const SideBar = () => {
                 <div className="min-h-0 flex-1">
                   <ScrollArea
                     className="h-full"
-                    slotClassNames={expandedSidebarScrollAreaClassNames}
+                    slotClassNames={{
+                      viewport: 'overscroll-contain',
+                      content: 'space-y-0.5 pr-3',
+                    }}
                     labelledBy={webAppsLabelId}
                   >
                     {installedAppItems}
@@ -138,7 +135,7 @@ const SideBar = () => {
           <button
             type="button"
             aria-label={isFold ? t('sidebar.expandSidebar', { ns: 'layout' }) : t('sidebar.collapseSidebar', { ns: 'layout' })}
-            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset"
+            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-hover focus-visible:outline-hidden"
             onClick={toggleIsFold}
           >
             {isFold

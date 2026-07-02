@@ -1,8 +1,9 @@
 'use client'
 
-import type { PostAgentByAgentIdSkillsUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { PostAppsByAppIdAgentSkillsUploadResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { AgentDriveApiContext } from '../drive-context'
+import type { PostAgentByAgentIdConfigSkillsUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { PostAppsByAppIdAgentConfigSkillsUploadResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { ChangeEvent, DragEvent } from 'react'
+import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -21,23 +22,19 @@ const skillPackageExtensions = ['.zip', '.skill']
 const getSkillNameFromFile = (file: File) => file.name.replace(/\.(?:skill|zip)$/iu, '') || file.name
 
 const toUploadedSkill = (
-  response: PostAgentByAgentIdSkillsUploadResponse | PostAppsByAppIdAgentSkillsUploadResponse,
+  response: PostAgentByAgentIdConfigSkillsUploadResponse | PostAppsByAppIdAgentConfigSkillsUploadResponse,
   file: File,
 ): AgentSkill => {
-  const name = response.skill?.name
-    ?? response.manifest?.name
-    ?? getSkillNameFromFile(file)
-  const id = response.skill?.skill_md_key
-    ?? response.skill?.path
-    ?? name
+  const name = response.skill?.name ?? getSkillNameFromFile(file)
 
   return {
-    description: response.skill?.description ?? response.manifest?.description ?? undefined,
-    archiveKey: response.skill?.archive_key ?? undefined,
-    id,
+    description: response.skill?.description ?? undefined,
+    fileId: response.skill?.file_id ?? undefined,
+    hash: response.skill?.hash ?? undefined,
+    id: name,
+    mimeType: response.skill?.mime_type ?? undefined,
     name,
-    path: response.skill?.path ?? undefined,
-    skillMdKey: response.skill?.skill_md_key ?? undefined,
+    size: response.skill?.size ?? undefined,
   }
 }
 
@@ -45,6 +42,10 @@ function isSupportedSkillPackage(file: File) {
   const fileName = file.name.toLowerCase()
 
   return skillPackageExtensions.some(extension => fileName.endsWith(extension))
+}
+
+function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
+  return Array.from(event.dataTransfer.types).includes('Files')
 }
 
 function AgentSkillPackageUploader({
@@ -56,6 +57,7 @@ function AgentSkillPackageUploader({
 }) {
   const { t } = useTranslation('agentV2')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)
 
   const setUploadFiles = (files: File[]) => {
@@ -68,22 +70,63 @@ function AgentSkillPackageUploader({
     onChange(uploadFile)
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
     setUploadFiles(files)
   }
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return
+
     event.preventDefault()
     event.stopPropagation()
+    dragDepthRef.current += 1
+    setDragging(true)
+  }
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return
+
+    event.preventDefault()
+    event.stopPropagation()
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+    if (dragDepthRef.current === 0)
+      setDragging(false)
+  }
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return
+
+    event.preventDefault()
+    event.stopPropagation()
+    dragDepthRef.current = 0
     setDragging(false)
 
     setUploadFiles(Array.from(event.dataTransfer.files))
   }
 
   return (
-    <div className="mt-6">
+    <div
+      className="mt-6"
+      role="group"
+      aria-label={t('agentDetail.configure.skills.upload.title')}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <input
         ref={fileInputRef}
         className="hidden"
@@ -97,13 +140,6 @@ function AgentSkillPackageUploader({
             'relative flex h-16 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal',
             dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
           )}
-          onDragEnter={(event) => {
-            event.preventDefault()
-            setDragging(true)
-          }}
-          onDragOver={event => event.preventDefault()}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
         >
           <div className="flex w-full items-center justify-center space-x-2">
             <span aria-hidden className="i-ri-upload-cloud-2-line size-6 text-text-tertiary" />
@@ -151,7 +187,7 @@ export function AgentSkillUploadDialog({
   open,
   onOpenChange,
 }: {
-  apiContext: AgentDriveApiContext
+  apiContext: AgentConfigApiContext
   onUploaded?: (skill: AgentSkill) => void
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -159,8 +195,8 @@ export function AgentSkillUploadDialog({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const [file, setFile] = useState<File>()
-  const uploadAgentSkillMutation = useMutation(consoleQuery.agent.byAgentId.skills.upload.post.mutationOptions())
-  const uploadWorkflowSkillMutation = useMutation(consoleQuery.apps.byAppId.agent.skills.upload.post.mutationOptions())
+  const uploadAgentSkillMutation = useMutation(consoleQuery.agent.byAgentId.config.skills.upload.post.mutationOptions())
+  const uploadWorkflowSkillMutation = useMutation(consoleQuery.apps.byAppId.agent.config.skills.upload.post.mutationOptions())
   const uploadSkillMutation = apiContext.workflow ? uploadWorkflowSkillMutation : uploadAgentSkillMutation
 
   const handleUpload = () => {
@@ -168,7 +204,9 @@ export function AgentSkillUploadDialog({
       return
 
     const options = {
-      onSuccess: (response: PostAgentByAgentIdSkillsUploadResponse | PostAppsByAppIdAgentSkillsUploadResponse) => {
+      onSuccess: (
+        response: PostAgentByAgentIdConfigSkillsUploadResponse | PostAppsByAppIdAgentConfigSkillsUploadResponse,
+      ) => {
         toast.success(t('agentDetail.configure.skills.upload.success'))
         onUploaded?.(toUploadedSkill(response, file))
         setFile(undefined)
@@ -186,6 +224,8 @@ export function AgentSkillUploadDialog({
         },
         query: {
           node_id: apiContext.workflow.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
         body: {
           file,
@@ -197,6 +237,10 @@ export function AgentSkillUploadDialog({
     uploadAgentSkillMutation.mutate({
       params: {
         agent_id: apiContext.agentId,
+      },
+      query: {
+        draft_type: apiContext.draftType,
+        version_id: apiContext.versionId,
       },
       body: {
         file,

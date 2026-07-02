@@ -16,6 +16,7 @@ import {
   useLanguage,
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import { consoleQuery } from '@/service/client'
 import { useEmbeddingModelStatus } from './hooks/use-embedding-model-status'
 import { useSettingsDisplay } from './hooks/use-settings-display'
@@ -82,11 +83,11 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
   const retrievalRerankingEnable = retrievalModel?.reranking_enable
   const embeddingModelProvider = data.embedding_model_provider
   const { data: embeddingProviderModelList } = useQuery(
-    consoleQuery.modelProviders.models.queryOptions({
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
       input: { params: { provider: embeddingModelProvider || '' } },
       enabled: indexingTechnique === IndexMethodEnum.QUALIFIED && !!embeddingModelProvider,
       refetchOnWindowFocus: false,
-      select: response => response.data,
+      select: normalizeModelProviderModelsResponse,
     }),
   )
 

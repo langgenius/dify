@@ -14,6 +14,7 @@ import pytest
 
 from core.app.apps.agent_app import app_generator as gen_mod
 from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError
+from core.app.entities.app_invoke_entities import InvokeFrom
 
 _SOUL_DICT = {
     "model": {
@@ -84,14 +85,25 @@ class TestResolveAgent:
         _patch_session(monkeypatch, [bound_agent, inner_agent, snapshot])
         app_model = SimpleNamespace(id="app-1", tenant_id="t1")
 
-        agent, snap, soul = AgentAppGenerator()._resolve_agent(app_model)  # type: ignore[arg-type]
+        agent, config_id, config_version_kind, soul = AgentAppGenerator()._resolve_agent(
+            app_model,
+            invoke_from=InvokeFrom.WEB_APP,
+            draft_type=None,
+            user=SimpleNamespace(id="user-1"),
+        )  # type: ignore[arg-type]
 
-        assert agent is inner_agent
-        assert snap is snapshot
+        assert agent is bound_agent
+        assert config_id == snapshot.id
+        assert config_version_kind == "snapshot"
         assert soul.model is not None
 
     def test_unbound_app_raises(self, monkeypatch: pytest.MonkeyPatch):
         _patch_session(monkeypatch, [None])
         app_model = SimpleNamespace(id="app-1", tenant_id="t1")
         with pytest.raises(AgentAppGeneratorError, match="has no bound Agent"):
-            AgentAppGenerator()._resolve_agent(app_model)  # type: ignore[arg-type]
+            AgentAppGenerator()._resolve_agent(
+                app_model,
+                invoke_from=InvokeFrom.WEB_APP,
+                draft_type=None,
+                user=SimpleNamespace(id="user-1"),
+            )  # type: ignore[arg-type]

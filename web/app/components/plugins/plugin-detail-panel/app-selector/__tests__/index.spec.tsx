@@ -34,7 +34,7 @@ const apps: App[] = [
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
-      list: {
+      get: {
         infiniteOptions: ({
           input,
           getNextPageParam,
@@ -70,6 +70,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: <T,>(response: T) => response,
   useAppDetail: (appId: string) => ({
     data: apps.find(app => app.id === appId),
   }),

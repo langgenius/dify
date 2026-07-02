@@ -9,13 +9,14 @@ import { debounce, useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { StudioListHeader } from '@/app/components/apps/studio-list-header'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import { useInfiniteScroll } from '../../shared/hooks/use-infinite-scroll'
 import {
   deploymentsListHasFilterAtom,
   deploymentsListQueryAtom,
   deploymentsListRowsAtom,
   deploymentsListShowEmptyStateAtom,
+  deploymentsListShowErrorStateAtom,
   deploymentsListShowSkeletonAtom,
   envFilterQueryState,
   keywordsQueryState,
@@ -34,10 +35,9 @@ function DeploymentsListState({ children }: {
 
 function DeploymentsListEmpty() {
   const { t } = useTranslation('deployments')
-  const hasAtomFilter = useAtomValue(deploymentsListHasFilterAtom)
-  const [keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
-  const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const hasFilter = hasAtomFilter || Boolean(keywords.trim()) || Boolean(envFilter)
+  const hasFilter = useAtomValue(deploymentsListHasFilterAtom)
+  const [_keywords, setKeywords] = useQueryState('keywords', keywordsQueryState)
+  const [_envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
 
   function clearFilters() {
     void setKeywords(null)
@@ -160,11 +160,8 @@ export function DeploymentsListShell() {
   const deploymentsListQuery = useAtomValue(deploymentsListQueryAtom)
   const appInstanceSummaries = useAtomValue(deploymentsListRowsAtom)
   const showSkeleton = useAtomValue(deploymentsListShowSkeletonAtom)
+  const showErrorState = useAtomValue(deploymentsListShowErrorStateAtom)
   const showEmptyState = useAtomValue(deploymentsListShowEmptyStateAtom)
-  const {
-    isError,
-    isFetchingNextPage,
-  } = deploymentsListQuery
 
   const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(deploymentsListQuery)
 
@@ -178,9 +175,9 @@ export function DeploymentsListShell() {
       >
         {showSkeleton
           ? <DeploymentsListSkeleton />
-          : isError
+          : showErrorState
             ? <DeploymentsListState>{t('common.loadFailed')}</DeploymentsListState>
-            : appInstanceSummaries.length === 0
+            : showEmptyState
               ? <DeploymentsListEmpty />
               : appInstanceSummaries.map(summary => (
                   <InstanceCard
@@ -188,7 +185,7 @@ export function DeploymentsListShell() {
                     summary={summary}
                   />
                 ))}
-        {isFetchingNextPage && <DeploymentsListSkeleton />}
+        {deploymentsListQuery.isFetchingNextPage && <DeploymentsListSkeleton />}
         <div ref={sentinelRef} aria-hidden="true" className="col-span-full h-px" />
       </div>
     </div>

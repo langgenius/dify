@@ -302,11 +302,28 @@ class PluginListResponse(ResponseModel):
 
 
 class PluginVersionsResponse(ResponseModel):
-    versions: Any
+    versions: Mapping[str, PluginService.LatestPluginCache | None]
+
+
+class PluginInstallationItemResponse(ResponseModel):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    tenant_id: str
+    endpoints_setups: int
+    endpoints_active: int
+    runtime_type: str
+    source: PluginInstallationSource
+    meta: Mapping[str, Any]
+    plugin_id: str
+    plugin_unique_identifier: str
+    version: str
+    checksum: str
+    declaration: PluginDeclarationResponse
 
 
 class PluginInstallationsResponse(ResponseModel):
-    plugins: Any
+    plugins: list[PluginInstallationItemResponse]
 
 
 class PluginManifestResponse(ResponseModel):
@@ -793,7 +810,6 @@ class PluginFetchInstallTasksApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def get(self, tenant_id: str):
@@ -811,7 +827,6 @@ class PluginFetchInstallTaskApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def get(self, tenant_id: str, task_id: str):
@@ -827,7 +842,6 @@ class PluginDeleteInstallTaskApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str, task_id: str):
@@ -843,7 +857,6 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -859,7 +872,6 @@ class PluginDeleteInstallTaskItemApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str, task_id: str, identifier: str):
@@ -876,7 +888,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -899,7 +911,7 @@ class PluginUpgradeFromGithubApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -927,7 +939,7 @@ class PluginUninstallApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_INSTALL, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_DELETE, resource_required=False)
     @plugin_permission_required(install_required=True)
     @with_current_tenant_id
     def post(self, tenant_id: str):
@@ -995,7 +1007,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MANAGE, resource_required=False)
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id

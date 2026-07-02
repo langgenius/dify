@@ -89,7 +89,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
-  AccessControl: ({
+  default: ({
     onConfirm,
     onClose,
   }: {

@@ -142,9 +142,8 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     canSetPermissions: mockCanSetPermissions(),
     canSetPluginPreferences: mockCanSetPermissions(),
-    canManagePlugin: true,
+    canDeletePlugin: true,
     canUpdatePlugin: true,
-    canViewInstalledPlugins: true,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
@@ -467,18 +466,6 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap', 'md:grid-cols-3')
       expect(screen.getByTestId('card-google-search').parentElement).toHaveClass('min-w-0')
       expect(screen.getByTestId('card-google-search').parentElement).not.toHaveClass('flex-1')
-    })
-
-    it('keeps the default plugin card border visible until a card is selected', () => {
-      renderProviderList(undefined, 'builtin', 'compact')
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('cursor-pointer')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-transparent')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-[1.5px]')
-
-      fireEvent.click(screen.getByTestId('card-google-search'))
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('outline-[1.5px]', 'outline-components-option-card-option-selected-border')
     })
   })
 

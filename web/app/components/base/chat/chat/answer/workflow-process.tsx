@@ -31,6 +31,10 @@ const WorkflowProcessItem = ({
   const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
   const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
+  const fallbackTitle = t('common.workflowProcess', { ns: 'workflow' })
+  const collapsedTitle = failed
+    ? data.error || latestNode?.error || latestNode?.title || fallbackTitle
+    : latestNode?.title || fallbackTitle
 
   useEffect(() => {
     setCollapse(!expand)
@@ -50,7 +54,7 @@ const WorkflowProcessItem = ({
         paused && !collapse && 'bg-state-warning-hover',
         collapse && !failed && !paused && 'bg-workflow-process-bg',
         collapse && paused && 'bg-workflow-process-paused-bg',
-        collapse && failed && 'bg-workflow-process-failed-bg',
+        collapse && failed && 'bg-[var(--color-workflow-process-failed-bg)]',
       )}
       data-testid="workflow-process-item"
     >
@@ -92,21 +96,38 @@ const WorkflowProcessItem = ({
           )
         }
         <div
-          className="min-w-0 grow truncate system-xs-medium text-text-secondary"
+          className={cn(
+            'min-w-0 grow truncate system-xs-medium',
+            collapse && failed && data.error ? 'text-text-destructive' : 'text-text-secondary',
+          )}
           data-testid="workflow-process-title"
         >
-          {!collapse ? t('common.workflowProcess', { ns: 'workflow' }) : latestNode?.title}
+          {!collapse ? fallbackTitle : collapsedTitle}
         </div>
         <div className={cn('ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary', !collapse && 'rotate-90')} />
       </div>
       {
         !collapse && (
           <div className="mt-1.5">
-            <TracingPanel
-              list={data.tracing}
-              hideNodeInfo={hideInfo}
-              hideNodeProcessDetail={hideProcessDetail}
-            />
+            {
+              failed && data.error && (
+                <div
+                  className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive"
+                  data-testid="workflow-process-error"
+                >
+                  {data.error}
+                </div>
+              )
+            }
+            {
+              data.tracing.length > 0 && (
+                <TracingPanel
+                  list={data.tracing}
+                  hideNodeInfo={hideInfo}
+                  hideNodeProcessDetail={hideProcessDetail}
+                />
+              )
+            }
           </div>
         )
       }
