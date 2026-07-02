@@ -55,6 +55,7 @@ class SnapshotFailure:
     current_count: int
     extra_imports: tuple[ModuleName, ...]
 
+
 def load_report(config_path: str | None = None, contract_ids: tuple[str, ...] = ()) -> Any:
     """Build and return an import-linter report using the same path setup as the CLI."""
 
