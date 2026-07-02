@@ -378,16 +378,16 @@ export type AgentLogMessageListResponse = {
 }
 
 export type MessageDetailResponse = {
-  agent_thoughts?: Array<AgentThought>
+  agent_thoughts: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
-  answer_tokens?: number | null
+  answer_tokens: number
   conversation_id: string
   created_at?: number | null
   error?: string | null
   extra_contents?: Array<HumanInputContent>
-  feedbacks?: Array<Feedback>
+  feedbacks: Array<Feedback>
   from_account_id?: string | null
   from_end_user_id?: string | null
   from_source: string
@@ -395,12 +395,12 @@ export type MessageDetailResponse = {
   inputs: {
     [key: string]: JsonValue
   }
-  message?: JsonValue | null
-  message_files?: Array<MessageFile>
-  message_tokens?: number | null
-  metadata?: JsonValue | null
+  message: JsonValue
+  message_files: Array<MessageFile>
+  message_tokens: number
+  metadata: JsonValue
   parent_message_id?: string | null
-  provider_response_latency?: number | null
+  provider_response_latency: number
   query: string
   status: string
   workflow_run_id?: string | null

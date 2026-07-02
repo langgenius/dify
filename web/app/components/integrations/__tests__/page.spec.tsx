@@ -649,13 +649,13 @@ describe('IntegrationsPage', () => {
     expect(screen.getAllByText('common.settings.customEndpoint')).toHaveLength(2)
     expect(screen.getByText('common.apiBasedExtensionPage.description')).toBeInTheDocument()
     expect(screen.getByTestId('api-extension-toolbar')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/api-extension/api-extension')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/endpoint')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
   it.each([
     ['trigger', 'plugin.categorySingle.trigger', 'common.triggerPage.description', 'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin'],
-    ['extension', 'plugin.categorySingle.extension', 'common.extensionPage.description', 'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/endpoint'],
+    ['extension', 'plugin.categorySingle.extension', 'common.extensionPage.description', 'https://docs.dify.ai/en/self-host/use-dify/workspace/api-extension/api-extension'],
     ['agent-strategy', 'plugin.categorySingle.agent', 'common.agentStrategyPage.description', 'https://docs.dify.ai/en/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin'],
   ] as const)('renders the %s header with a docs link', (section, title, description, href) => {
     renderIntegrationsPage({ section })
