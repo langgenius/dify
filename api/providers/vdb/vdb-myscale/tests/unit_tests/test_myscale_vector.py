@@ -199,6 +199,28 @@ def test_search_delegation_methods(myscale_module):
     assert result_vector == ["result"]
     assert result_text == ["result"]
     assert vector._search.call_count == 2
+    vector._search.assert_any_call(
+        "TextSearch('enable_nlq=false')(text, {query:String})",
+        myscale_module.SortOrder.DESC,
+        parameters={"query": "hello"},
+        top_k=2,
+    )
+
+
+def test_search_by_full_text_uses_query_parameters(myscale_module):
+    vector = myscale_module.MyScaleVector("collection_1", _config(myscale_module))
+    vector._client.query.return_value = SimpleNamespace(
+        named_results=lambda: [{"text": "doc", "vector": [0.1], "metadata": {"doc_id": "1"}}]
+    )
+    payload = "x') AS dist FROM dify.collection_1 UNION ALL SELECT secret FROM users --"
+
+    docs = vector.search_by_full_text(payload, top_k=2)
+
+    assert len(docs) == 1
+    sql = vector._client.query.call_args.args[0]
+    assert payload not in sql
+    assert "TextSearch('enable_nlq=false')(text, {query:String})" in sql
+    assert vector._client.query.call_args.kwargs["parameters"] == {"query": payload}
 
 
 def test_search_with_document_filter_and_exception(myscale_module):
