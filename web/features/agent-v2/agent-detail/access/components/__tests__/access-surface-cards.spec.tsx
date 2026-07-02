@@ -251,6 +251,23 @@ describe('Agent access surface cards', () => {
       })
     })
 
+    it('should close the embedded dialog from the close button', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }))
+      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' })
+
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' })).not.toBeInTheDocument()
+      })
+    })
+
     it('should save settings through the backing app id and update the agent detail cache', async () => {
       const user = userEvent.setup()
       const agent = createAgent()
