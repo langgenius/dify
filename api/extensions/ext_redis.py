@@ -168,6 +168,12 @@ class RedisClientWrapper:
     def hgetall(self, name: str | bytes) -> Any:
         return self._require_client().hgetall(_serialize_redis_name_arg(name, self._get_prefix()))
 
+    def hkeys(self, name: str | bytes) -> Any:
+        return self._require_client().hkeys(_serialize_redis_name_arg(name, self._get_prefix()))
+
+    def hexists(self, name: str | bytes, key: str | bytes) -> Any:
+        return self._require_client().hexists(_serialize_redis_name_arg(name, self._get_prefix()), key)
+
     def hdel(self, name: str | bytes, *keys: str | bytes) -> Any:
         return self._require_client().hdel(_serialize_redis_name_arg(name, self._get_prefix()), *keys)
 

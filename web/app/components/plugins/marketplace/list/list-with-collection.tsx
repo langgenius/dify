@@ -1,6 +1,6 @@
 'use client'
 
-import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
+import type { MarketplaceCollection, SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
