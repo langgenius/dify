@@ -689,6 +689,18 @@ export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdPath = z.object({
  */
 export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse = zSnippetWorkflowResponse
 
+export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
+
+export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdPath = z.object({
+  snippet_id: z.uuid(),
+  workflow_id: z.string(),
+})
+
+/**
+ * Workflow updated successfully
+ */
+export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse = zSnippetWorkflowResponse
+
 export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestorePath = z.object({
   snippet_id: z.uuid(),
   workflow_id: z.string(),
