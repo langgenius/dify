@@ -120,12 +120,8 @@ export type AgentSimpleResultResponse = {
 }
 
 export type AgentBuildDraftResponse = {
-  agent_soul: {
-    [key: string]: unknown
-  }
-  draft: {
-    [key: string]: unknown
-  }
+  agent_soul: AgentSoulConfig
+  draft: AgentConfigDraftSummaryResponse
   variant: string
 }
 
@@ -411,13 +407,9 @@ export type AgentPublishPayload = {
 }
 
 export type AgentPublishResponse = {
-  active_config_snapshot?: {
-    [key: string]: unknown
-  } | null
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   active_config_snapshot_id: string
-  draft?: {
-    [key: string]: unknown
-  } | null
+  draft?: AgentConfigDraftSummaryResponse | null
   result: string
 }
 
@@ -639,6 +631,18 @@ export type AgentSoulConfig = {
   tools?: AgentSoulToolsConfig
 }
 
+export type AgentConfigDraftSummaryResponse = {
+  account_id?: string | null
+  agent_id: string
+  base_snapshot_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  draft_type: AgentConfigDraftType
+  id: string
+  updated_at?: number | null
+  updated_by?: string | null
+}
+
 export type ComposerBindingPayload = {
   agent_id?: string | null
   binding_type: 'inline_agent' | 'roster_agent'
@@ -698,18 +702,6 @@ export type AgentComposerAgentResponse = {
   scope: AgentScope
   source?: AgentSource | null
   status: AgentStatus
-}
-
-export type AgentConfigDraftSummaryResponse = {
-  account_id?: string | null
-  agent_id: string
-  base_snapshot_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  draft_type: AgentConfigDraftType
-  id: string
-  updated_at?: number | null
-  updated_by?: string | null
 }
 
 export type ComposerValidationFindingsResponse = {
@@ -1202,6 +1194,8 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
+export type AgentConfigDraftType = 'debug_build' | 'draft'
+
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
@@ -1267,8 +1261,6 @@ export type WorkflowPreviousNodeOutputRef = {
   variable_selector?: Array<string | number | number | boolean | null> | null
   [key: string]: unknown
 }
-
-export type AgentConfigDraftType = 'debug_build' | 'draft'
 
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
