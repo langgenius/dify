@@ -1,7 +1,6 @@
 'use client'
 import { useCountDown } from 'ahooks'
-import { useIsClient } from 'foxact/use-is-client'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { COUNT_DOWN_TIME_MS, useCountdownLeftTimeValue, useSetCountdownLeftTime } from './storage'
 
@@ -9,8 +8,16 @@ type CountdownProps = {
   onResend?: () => void
 }
 
+const subscribeHydrationState = () => () => {}
+
+const useIsHydrated = () => useSyncExternalStore(
+  subscribeHydrationState,
+  () => true,
+  () => false,
+)
+
 export default function Countdown({ onResend }: CountdownProps) {
-  const isClient = useIsClient()
+  const isClient = useIsHydrated()
 
   if (!isClient)
     return <CountdownFallback />
