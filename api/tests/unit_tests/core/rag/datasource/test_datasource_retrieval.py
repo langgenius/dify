@@ -233,8 +233,10 @@ class TestRetrievalServiceInternals:
         mock_validate.return_value = "validated-condition"
         expected_documents = [create_mock_document("external-doc", "external-1", 0.8, provider="external")]
         mock_fetch.return_value = expected_documents
+        session = MagicMock()
 
         results = RetrievalService.external_retrieve(
+            session=session,
             dataset_id="dataset-1",
             query="test query",
             external_retrieval_model={"top_k": 3},
@@ -244,6 +246,7 @@ class TestRetrievalServiceInternals:
         assert results == expected_documents
         mock_validate.assert_called_once()
         mock_fetch.assert_called_once_with(
+            session,
             "tenant-1",
             "dataset-1",
             "test query",
@@ -255,7 +258,7 @@ class TestRetrievalServiceInternals:
     def test_external_retrieve_returns_empty_when_dataset_not_found(self, mock_scalar):
         mock_scalar.return_value = None
 
-        results = RetrievalService.external_retrieve(dataset_id="missing", query="q")
+        results = RetrievalService.external_retrieve(session=MagicMock(), dataset_id="missing", query="q")
 
         assert results == []
 

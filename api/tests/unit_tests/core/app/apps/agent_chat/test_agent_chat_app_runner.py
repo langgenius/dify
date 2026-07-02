@@ -33,7 +33,7 @@ class TestAgentChatAppRunnerRun:
         patch_create_session(mocker, return_value=None)
 
         with pytest.raises(ValueError):
-            runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+            runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
 
     def test_run_moderation_error_direct_output(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
@@ -54,7 +54,7 @@ class TestAgentChatAppRunnerRun:
         mocker.patch.object(runner, "moderation_for_inputs", side_effect=ModerationError("bad"))
         mocker.patch.object(runner, "direct_output")
 
-        runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+        runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
 
         runner.direct_output.assert_called_once()
 
@@ -82,7 +82,7 @@ class TestAgentChatAppRunnerRun:
         mocker.patch.object(runner, "direct_output")
 
         queue_manager = mocker.MagicMock()
-        runner.run(generate_entity, queue_manager, mocker.MagicMock(), mocker.MagicMock())
+        runner.run(mocker.MagicMock(), generate_entity, queue_manager, mocker.MagicMock(), mocker.MagicMock())
 
         queue_manager.publish.assert_called_once()
         runner.direct_output.assert_called_once()
@@ -109,7 +109,7 @@ class TestAgentChatAppRunnerRun:
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
         mocker.patch.object(runner, "check_hosting_moderation", return_value=True)
 
-        runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+        runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
 
     def test_run_model_schema_missing(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
@@ -144,7 +144,7 @@ class TestAgentChatAppRunnerRun:
         mocker.patch("core.app.apps.agent_chat.app_runner.ModelInstance", return_value=llm_instance)
 
         with pytest.raises(ValueError):
-            runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
+            runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
 
     @pytest.mark.parametrize(
         ("mode", "expected_runner"),
@@ -201,7 +201,7 @@ class TestAgentChatAppRunnerRun:
         runner_instance.run.return_value = []
         mocker.patch.object(runner, "_handle_invoke_result")
 
-        runner.run(generate_entity, mocker.MagicMock(), conversation, message)
+        runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), conversation, message)
 
         runner_instance.run.assert_called_once()
         runner._handle_invoke_result.assert_called_once()
@@ -247,7 +247,7 @@ class TestAgentChatAppRunnerRun:
         patch_create_session(mocker, side_effect=[app_record, conversation, message])
 
         with pytest.raises(ValueError):
-            runner.run(generate_entity, mocker.MagicMock(), conversation, message)
+            runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), conversation, message)
 
     def test_run_function_calling_strategy_selected_by_features(
         self, runner: AgentChatAppRunner, mocker: MockerFixture
@@ -299,7 +299,7 @@ class TestAgentChatAppRunnerRun:
         runner_instance.run.return_value = []
         mocker.patch.object(runner, "_handle_invoke_result")
 
-        runner.run(generate_entity, mocker.MagicMock(), conversation, message)
+        runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), conversation, message)
 
         assert app_config.agent.strategy == AgentEntity.Strategy.FUNCTION_CALLING
         runner_instance.run.assert_called_once()
@@ -333,7 +333,7 @@ class TestAgentChatAppRunnerRun:
         mocker.patch.object(runner, "check_hosting_moderation", return_value=False)
 
         with pytest.raises(ValueError):
-            runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
+            runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
 
     def test_run_message_not_found(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
@@ -364,7 +364,7 @@ class TestAgentChatAppRunnerRun:
         mocker.patch.object(runner, "check_hosting_moderation", return_value=False)
 
         with pytest.raises(ValueError):
-            runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
+            runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
 
     def test_run_invalid_agent_strategy_raises(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
@@ -407,4 +407,4 @@ class TestAgentChatAppRunnerRun:
         patch_create_session(mocker, side_effect=[app_record, conversation, message])
 
         with pytest.raises(ValueError):
-            runner.run(generate_entity, mocker.MagicMock(), conversation, message)
+            runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), conversation, message)

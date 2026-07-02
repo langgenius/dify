@@ -51,7 +51,7 @@ class TestHandleMCPRequest:
         request_type = Mock(return_value=types.PingRequest)
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
+            result = handle_mcp_request(Mock(), 
                 self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
@@ -67,7 +67,7 @@ class TestHandleMCPRequest:
         request_type = Mock(return_value=types.InitializeRequest)
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
+            result = handle_mcp_request(Mock(), 
                 self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
@@ -83,7 +83,7 @@ class TestHandleMCPRequest:
         request_type = Mock(return_value=types.ListToolsRequest)
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
+            result = handle_mcp_request(Mock(), 
                 self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
@@ -108,7 +108,7 @@ class TestHandleMCPRequest:
         mock_app_generate.generate.return_value = mock_response
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
+            result = handle_mcp_request(Mock(), 
                 self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
@@ -131,7 +131,7 @@ class TestHandleMCPRequest:
         request_type = Mock(return_value=UnknownRequest)
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(
+            result = handle_mcp_request(Mock(), 
                 self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
@@ -151,7 +151,7 @@ class TestHandleMCPRequest:
 
         # Don't provide end_user to cause ValueError
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(self.app, self.mock_request, self.user_input_form, self.mcp_server, None, 123)
+            result = handle_mcp_request(Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, None, 123)
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INVALID_PARAMS
@@ -165,7 +165,7 @@ class TestHandleMCPRequest:
         # Patch handle_ping to raise exception instead of type
         with patch("core.mcp.server.streamable_http.handle_ping", side_effect=Exception("Test error")):
             with patch("core.mcp.server.streamable_http.type", return_value=types.PingRequest):
-                result = handle_mcp_request(
+                result = handle_mcp_request(Mock(), 
                     self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
                 )
 
@@ -228,7 +228,7 @@ class TestIndividualHandlers:
         mock_response = {"answer": "test answer"}
         mock_app_generate.generate.return_value = mock_response
 
-        result = handle_call_tool(app, mock_request, user_input_form, end_user)
+        result = handle_call_tool(Mock(), app, mock_request, user_input_form, end_user)
 
         assert isinstance(result, types.CallToolResult)
         assert len(result.content) == 1
@@ -244,7 +244,7 @@ class TestIndividualHandlers:
         user_input_form: list[VariableEntity] = []
 
         with pytest.raises(ValueError, match="End user not found"):
-            handle_call_tool(app, mock_request, user_input_form, None)
+            handle_call_tool(Mock(), app, mock_request, user_input_form, None)
 
 
 class TestUtilityFunctions:
