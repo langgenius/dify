@@ -87,6 +87,7 @@ class CompletionApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_session(write=True)
     @with_current_user
+    @with_session
     def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
@@ -104,7 +105,12 @@ class CompletionApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -163,6 +169,7 @@ class ChatApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_session(write=True)
     @with_current_user
+    @with_session
     def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
@@ -180,7 +187,12 @@ class ChatApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)

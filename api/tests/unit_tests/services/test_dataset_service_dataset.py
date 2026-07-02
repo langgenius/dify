@@ -344,9 +344,7 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.scalar.return_value = object()
 
             with pytest.raises(DatasetNameDuplicateError, match="Dataset with name Dataset already exists"):
-                DatasetService.create_empty_dataset(
-                    "tenant-1", "Dataset", None, "economy", account, session=mock_db.session
-                )
+                DatasetService.create_empty_dataset(mock_db.session, "tenant-1", "Dataset", None, "economy", account)
 
     def test_create_empty_dataset_uses_default_embedding_model_for_high_quality_dataset(self):
         account = SimpleNamespace(id="user-1")
@@ -514,7 +512,7 @@ class TestDatasetServiceCreationAndUpdate:
         session = MagicMock()
         with patch.object(DatasetService, "get_dataset", return_value=None):
             with pytest.raises(ValueError, match="Dataset not found"):
-                DatasetService.update_dataset("dataset-1", {}, SimpleNamespace(id="user-1"), session)
+                DatasetService.update_dataset(session, "dataset-1", {}, SimpleNamespace(id="user-1"))
 
     def test_update_dataset_raises_when_new_name_conflicts(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1", tenant_id="tenant-1")
@@ -526,10 +524,10 @@ class TestDatasetServiceCreationAndUpdate:
         ):
             with pytest.raises(ValueError, match="Dataset name already exists"):
                 DatasetService.update_dataset(
+                    MagicMock(),
                     "dataset-1",
                     {"name": "New Dataset"},
                     SimpleNamespace(id="user-1"),
-                    MagicMock(),
                 )
 
     def test_update_dataset_routes_external_datasets_to_external_helper(self):
@@ -543,7 +541,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch.object(DatasetService, "_update_external_dataset", return_value="updated") as update_external,
         ):
             session = MagicMock()
-            result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user, session)
+            result = DatasetService.update_dataset(session, "dataset-1", {"name": dataset.name}, user)
 
         assert result == "updated"
         check_permission.assert_called_once()
@@ -562,7 +560,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch.object(DatasetService, "_update_internal_dataset", return_value="updated") as update_internal,
         ):
             session = MagicMock()
-            result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user, session)
+            result = DatasetService.update_dataset(session, "dataset-1", {"name": dataset.name}, user)
 
         assert result == "updated"
         check_permission.assert_called_once()
@@ -614,7 +612,7 @@ class TestDatasetServiceCreationAndUpdate:
         assert dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM
         assert dataset.updated_by == "user-1"
         assert dataset.updated_at is now
-        get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id)
+        get_external_knowledge_api.assert_called_once_with(mock_db.session, "api-1", dataset.tenant_id)
         update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1", mock_db.session)
         mock_db.session.add.assert_called_once_with(dataset)
         mock_db.session.commit.assert_called_once()
@@ -654,7 +652,7 @@ class TestDatasetServiceCreationAndUpdate:
                     mock_db.session,
                 )
 
-        get_external_knowledge_api.assert_called_once_with("foreign-api", dataset.tenant_id)
+        get_external_knowledge_api.assert_called_once_with(mock_db.session, "foreign-api", dataset.tenant_id)
         update_binding.assert_not_called()
         mock_db.session.commit.assert_not_called()
 
@@ -1459,7 +1457,7 @@ class TestDatasetPermissionService:
         session = MagicMock()
 
         with pytest.raises(NoPermissionError, match="does not have permission"):
-            DatasetPermissionService.check_permission(user, dataset, "all_team", [], session)
+            DatasetPermissionService.check_permission(session, user, dataset, "all_team", [])
 
     def test_check_permission_prevents_dataset_operator_from_changing_permission_mode(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
@@ -1467,7 +1465,7 @@ class TestDatasetPermissionService:
         session = MagicMock()
 
         with pytest.raises(NoPermissionError, match="cannot change the dataset permissions"):
-            DatasetPermissionService.check_permission(user, dataset, "only_me", [], session)
+            DatasetPermissionService.check_permission(session, user, dataset, "only_me", [])
 
     def test_check_permission_requires_partial_member_list_for_partial_members_mode(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
@@ -1475,7 +1473,7 @@ class TestDatasetPermissionService:
         session = MagicMock()
 
         with pytest.raises(ValueError, match="Partial member list is required"):
-            DatasetPermissionService.check_permission(user, dataset, "partial_members", [], session)
+            DatasetPermissionService.check_permission(session, user, dataset, "partial_members", [])
 
     def test_check_permission_rejects_dataset_operator_member_list_changes(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
@@ -1487,11 +1485,11 @@ class TestDatasetPermissionService:
         with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
             with pytest.raises(ValueError, match="cannot change the dataset permissions"):
                 DatasetPermissionService.check_permission(
+                    session,
                     user,
                     dataset,
                     "partial_members",
                     [{"user_id": "user-2"}],
-                    session,
                 )
 
     def test_check_permission_allows_dataset_operator_when_member_list_is_unchanged(self):
@@ -1503,11 +1501,11 @@ class TestDatasetPermissionService:
 
         with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
             DatasetPermissionService.check_permission(
+                session,
                 user,
                 dataset,
                 "partial_members",
                 [{"user_id": "user-1"}],
-                session,
             )
 
     def test_clear_partial_member_list_rolls_back_on_exception(self):
