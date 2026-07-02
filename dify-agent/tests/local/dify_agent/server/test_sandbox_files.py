@@ -338,8 +338,7 @@ def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
 
     assert list_payload["path"] == "../shared"
     assert any(
-        isinstance(entry, dict) and entry.get("name") == "notes.txt"
-        for entry in _sandbox_list_entries(list_payload)
+        isinstance(entry, dict) and entry.get("name") == "notes.txt" for entry in _sandbox_list_entries(list_payload)
     )
     assert read_payload == {
         "path": "../shared/notes.txt",
@@ -389,8 +388,7 @@ def test_embedded_scripts_expand_home_relative_paths(tmp_path: Path) -> None:
 
     assert list_payload["path"] == "~/shared"
     assert any(
-        isinstance(entry, dict) and entry.get("name") == "notes.txt"
-        for entry in _sandbox_list_entries(list_payload)
+        isinstance(entry, dict) and entry.get("name") == "notes.txt" for entry in _sandbox_list_entries(list_payload)
     )
     assert read_payload == {
         "path": "~/shared/notes.txt",

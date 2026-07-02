@@ -312,9 +312,7 @@ def _normalize_sandbox_path(path: str, *, allow_current_directory: bool) -> str:
             "invalid_sandbox_path", "path must be relative to the sandbox workspace", status_code=400
         )
     if normalized.startswith("~") and normalized != "~" and not normalized.startswith("~/"):
-        raise SandboxFileError(
-            "invalid_sandbox_path", "path must use ~ or ~/ for the sandbox home", status_code=400
-        )
+        raise SandboxFileError("invalid_sandbox_path", "path must use ~ or ~/ for the sandbox home", status_code=400)
     if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
         raise SandboxFileError("invalid_sandbox_path", "path contains unsupported control characters", status_code=400)
     return normalized
