@@ -319,7 +319,7 @@ class PluginInstallationItemResponse(ResponseModel):
     plugin_unique_identifier: str
     version: str
     checksum: str
-    declaration: Mapping[str, Any]
+    declaration: PluginDeclarationResponse
 
 
 class PluginInstallationsResponse(ResponseModel):
