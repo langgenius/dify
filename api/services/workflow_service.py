@@ -36,7 +36,7 @@ from core.workflow.nodes.human_input.callback import (
     render_form_content_before_submission,
     resolve_default_values,
 )
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.entities import FormInputConfig, HumanInputNodeData
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
@@ -109,13 +109,13 @@ class _DebugHumanInputNode:
         form_content: str,
         outputs: Mapping[str, Any],
         field_names: Sequence[str],
-        form_inputs: Sequence[object] | None = None,
+        form_inputs: Sequence[FormInputConfig] | None = None,
     ) -> str:
         return DifyHITLCallback.render_form_content_with_outputs(
             form_content=form_content,
             outputs=outputs,  # type: ignore[arg-type]
             field_names=field_names,
-            form_inputs=form_inputs,  # type: ignore[arg-type]
+            form_inputs=form_inputs,
         )
 
     @property

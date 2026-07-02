@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import pytest
 from dify_agent.layers.ask_human import AskHumanToolResult
 
 from core.workflow.nodes.agent_v2.ask_human_resume import (
@@ -64,18 +65,17 @@ def test_map_timeout_form_to_timeout_result() -> None:
     assert outcome.deferred_result.action is None
 
 
-def test_map_expired_form_to_timeout_result() -> None:
-    outcome = map_form_to_outcome(
-        status=HumanInputFormStatus.EXPIRED,
-        selected_action_id=None,
-        submitted_data=None,
-        rendered_content="x",
-        form_definition=_form_definition_json(),
-        form_id="form-1",
-        node_id="node-1",
-    )
-    assert outcome.deferred_result is not None
-    assert outcome.deferred_result.status == "timeout"
+def test_map_expired_form_rejects_invalid_resume_state() -> None:
+    with pytest.raises(AssertionError, match="globally expired ask_human form"):
+        map_form_to_outcome(
+            status=HumanInputFormStatus.EXPIRED,
+            selected_action_id=None,
+            submitted_data=None,
+            rendered_content="x",
+            form_definition=_form_definition_json(),
+            form_id="form-1",
+            node_id="node-1",
+        )
 
 
 def test_map_waiting_form_rebuilds_pause() -> None:
