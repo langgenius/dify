@@ -9,7 +9,6 @@ import ItemOperation from '@/app/components/explore/item-operation'
 import Link from '@/next/link'
 
 type IAppNavItemProps = {
-  isMobile: boolean
   variant?: 'default' | 'mainNav'
   name: string
   id: string
@@ -25,7 +24,6 @@ type IAppNavItemProps = {
 }
 
 export default function AppNavItem({
-  isMobile,
   variant = 'default',
   name,
   id,
@@ -47,43 +45,32 @@ export default function AppNavItem({
       key={id}
       className={cn(
         isMainNav
-          ? 'group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid'
-          : 'group flex h-8 items-center justify-between rounded-lg px-2 system-sm-medium text-sm font-normal text-components-menu-item-text has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid mobile:justify-center mobile:px-1',
-        isMainNav
-          ? (isSelected ? 'bg-state-base-hover' : 'hover:bg-state-base-hover')
-          : (isSelected ? 'bg-state-base-active text-components-menu-item-text-active' : 'hover:bg-state-base-hover hover:text-components-menu-item-text-hover'),
+          ? 'group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors not-has-[>a[aria-current=page]]:hover:bg-state-base-hover has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid has-[>a[aria-current=page]]:bg-state-base-active'
+          : 'group flex h-8 items-center justify-between rounded-lg px-2 system-sm-medium text-sm font-normal text-components-menu-item-text group-data-folded/explore-sidebar:justify-center group-data-folded/explore-sidebar:px-1 not-has-[>a[aria-current=page]]:hover:bg-state-base-hover not-has-[>a[aria-current=page]]:hover:text-components-menu-item-text-hover has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid has-[>a[aria-current=page]]:bg-state-base-active has-[>a[aria-current=page]]:text-components-menu-item-text-active mobile:justify-center mobile:px-1 pc:w-full pc:justify-start',
       )}
     >
-      {isMobile && (
-        <Link
-          href={url}
-          aria-label={name}
-          title={name}
-          className="flex min-w-0 flex-1 items-center justify-center outline-hidden"
-        >
-          <AppIcon size="tiny" iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
-        </Link>
-      )}
-      {!isMobile && (
-        <>
-          <Link
-            href={url}
-            title={name}
-            className={cn(isMainNav ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden' : 'flex w-0 grow items-center space-x-2 outline-hidden')}
-          >
-            <AppIcon size="tiny" className={cn(isMainNav && 'size-5 rounded-md text-sm')} iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
-            <div className={cn(isMainNav ? 'min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular' : 'truncate system-sm-regular text-components-menu-item-text')} title={name}>{name}</div>
-          </Link>
-          <div className="h-6 shrink-0" onClick={e => e.stopPropagation()}>
-            <ItemOperation
-              isPinned={isPinned}
-              togglePin={togglePin}
-              isShowDelete={!uninstallable && !isSelected}
-              onDelete={() => onDelete(id)}
-            />
-          </div>
-        </>
-      )}
+      <Link
+        href={url}
+        aria-current={isSelected ? 'page' : undefined}
+        aria-label={name}
+        title={name}
+        className={cn(
+          isMainNav
+            ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden'
+            : 'flex min-w-0 flex-1 items-center justify-center outline-hidden group-data-folded/explore-sidebar:w-auto group-data-folded/explore-sidebar:flex-none group-data-folded/explore-sidebar:justify-center pc:w-0 pc:grow pc:justify-start pc:space-x-2',
+        )}
+      >
+        <AppIcon size="tiny" className={cn(isMainNav && 'size-5 rounded-md text-sm')} iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
+        <div className={cn(isMainNav ? 'min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular' : 'hidden truncate system-sm-regular text-components-menu-item-text group-data-folded/explore-sidebar:hidden pc:block')} title={name}>{name}</div>
+      </Link>
+      <div className={cn(isMainNav ? 'h-6 shrink-0' : 'hidden h-6 shrink-0 group-data-folded/explore-sidebar:hidden pc:block')}>
+        <ItemOperation
+          isPinned={isPinned}
+          togglePin={togglePin}
+          isShowDelete={!uninstallable && !isSelected}
+          onDelete={() => onDelete(id)}
+        />
+      </div>
     </div>
   )
 }

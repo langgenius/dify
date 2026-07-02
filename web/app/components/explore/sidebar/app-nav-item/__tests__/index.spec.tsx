@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import AppNavItem from '../index'
 
 const baseProps = {
-  isMobile: false,
   name: 'My App',
   id: 'app-123',
   icon_type: 'emoji' as const,
@@ -29,10 +28,11 @@ describe('AppNavItem', () => {
       expect(screen.getByTestId('item-operation-trigger')).toBeInTheDocument()
     })
 
-    it('should hide name on mobile', () => {
-      render(<AppNavItem {...baseProps} isMobile />)
+    it('should use responsive selectors for compact sidebar content', () => {
+      render(<AppNavItem {...baseProps} />)
 
-      expect(screen.queryByText('My App')).not.toBeInTheDocument()
+      expect(screen.getByText('My App')).toHaveClass('hidden', 'pc:block', 'group-data-folded/explore-sidebar:hidden')
+      expect(screen.getByTestId('item-operation-trigger').parentElement).toHaveClass('hidden', 'pc:block', 'group-data-folded/explore-sidebar:hidden')
     })
   })
 
@@ -43,6 +43,15 @@ describe('AppNavItem', () => {
       const link = screen.getByRole('link', { name: 'My App' })
 
       expect(link).toHaveAttribute('href', '/installed/app-123')
+      expect(link).not.toHaveAttribute('aria-current')
+    })
+
+    it('should expose selected state through the current link', () => {
+      render(<AppNavItem {...baseProps} isSelected />)
+
+      const link = screen.getByRole('link', { name: 'My App' })
+
+      expect(link).toHaveAttribute('aria-current', 'page')
     })
 
     it('should call onDelete with app id when delete action is clicked', async () => {

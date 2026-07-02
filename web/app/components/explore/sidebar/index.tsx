@@ -60,7 +60,6 @@ const SideBar = () => {
   const installedAppItems = installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
     <React.Fragment key={id}>
       <Item
-        isMobile={isMobile || isFold}
         name={name}
         icon_type={icon_type}
         icon={icon}
@@ -81,7 +80,7 @@ const SideBar = () => {
   ))
 
   return (
-    <div className={cn('flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
+    <div data-folded={isFold || undefined} className={cn('group/explore-sidebar flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
           href="/"
