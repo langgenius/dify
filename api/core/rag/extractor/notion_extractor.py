@@ -303,9 +303,15 @@ class NotionExtractor(BaseExtractor):
                 params=query_dict,
             )
             data = res.json()
+            results = data.get("results") or []
+            if not results:
+                if data.get("next_cursor"):
+                    start_cursor = data["next_cursor"]
+                    continue
+                break
             # get table headers text
             table_header_cell_texts = []
-            table_header_cells = data["results"][0]["table_row"]["cells"]
+            table_header_cells = results[0]["table_row"]["cells"]
             for table_header_cell in table_header_cells:
                 if table_header_cell:
                     for table_header_cell_text in table_header_cell:
@@ -318,10 +324,9 @@ class NotionExtractor(BaseExtractor):
             markdown_table += "| " + " | ".join(["---"] * len(table_header_cell_texts)) + " |\n"
 
             # Process data to format each row in Markdown table format
-            results = data["results"]
             for i in range(len(results) - 1):
                 column_texts = []
-                table_column_cells = data["results"][i + 1]["table_row"]["cells"]
+                table_column_cells = results[i + 1]["table_row"]["cells"]
                 for j in range(len(table_column_cells)):
                     if table_column_cells[j]:
                         for table_column_cell_text in table_column_cells[j]:
