@@ -144,7 +144,10 @@ class TestExternalDatasetServiceGetAPIs:
     """Test get_external_knowledge_apis operations - comprehensive coverage."""
 
     @patch("services.external_knowledge_service.db")
-    def test_get_external_knowledge_apis_success_basic(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    @patch("services.external_knowledge_service.paginate_query")
+    def test_get_external_knowledge_apis_success_basic(
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+    ):
         """Test successful retrieval of external knowledge APIs with pagination."""
         # Arrange
         tenant_id = "tenant-123"
@@ -156,7 +159,7 @@ class TestExternalDatasetServiceGetAPIs:
         mock_pagination = MagicMock()
         mock_pagination.items = apis
         mock_pagination.total = 5
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
@@ -168,11 +171,12 @@ class TestExternalDatasetServiceGetAPIs:
         assert result_total == 5
         assert result_items[0].id == "api-0"
         assert result_items[4].id == "api-4"
-        mock_db.paginate.assert_called_once()
+        mock_paginate.assert_called_once()
 
     @patch("services.external_knowledge_service.db")
+    @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_with_search_filter(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test retrieval with search filter."""
         # Arrange
@@ -184,7 +188,7 @@ class TestExternalDatasetServiceGetAPIs:
         mock_pagination = MagicMock()
         mock_pagination.items = apis
         mock_pagination.total = 1
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
@@ -197,13 +201,16 @@ class TestExternalDatasetServiceGetAPIs:
         assert result_items[0].name == "Production API"
 
     @patch("services.external_knowledge_service.db")
-    def test_get_external_knowledge_apis_empty_results(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    @patch("services.external_knowledge_service.paginate_query")
+    def test_get_external_knowledge_apis_empty_results(
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+    ):
         """Test retrieval with no results."""
         # Arrange
         mock_pagination = MagicMock()
         mock_pagination.items = []
         mock_pagination.total = 0
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
@@ -215,8 +222,9 @@ class TestExternalDatasetServiceGetAPIs:
         assert result_total == 0
 
     @patch("services.external_knowledge_service.db")
+    @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_large_result_set(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test retrieval with large result set."""
         # Arrange
@@ -225,7 +233,7 @@ class TestExternalDatasetServiceGetAPIs:
         mock_pagination = MagicMock()
         mock_pagination.items = apis[:10]
         mock_pagination.total = 100
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
@@ -237,8 +245,9 @@ class TestExternalDatasetServiceGetAPIs:
         assert result_total == 100
 
     @patch("services.external_knowledge_service.db")
+    @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_pagination_last_page(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test last page pagination with partial results."""
         # Arrange
@@ -247,7 +256,7 @@ class TestExternalDatasetServiceGetAPIs:
         mock_pagination = MagicMock()
         mock_pagination.items = apis
         mock_pagination.total = 100
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
@@ -259,8 +268,9 @@ class TestExternalDatasetServiceGetAPIs:
         assert result_total == 100
 
     @patch("services.external_knowledge_service.db")
+    @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_case_insensitive_search(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test case-insensitive search functionality."""
         # Arrange
@@ -272,7 +282,7 @@ class TestExternalDatasetServiceGetAPIs:
         mock_pagination = MagicMock()
         mock_pagination.items = apis
         mock_pagination.total = 2
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
@@ -284,8 +294,9 @@ class TestExternalDatasetServiceGetAPIs:
         assert result_total == 2
 
     @patch("services.external_knowledge_service.db")
+    @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_special_characters_search(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test search with special characters."""
         # Arrange
@@ -294,7 +305,7 @@ class TestExternalDatasetServiceGetAPIs:
         mock_pagination = MagicMock()
         mock_pagination.items = apis
         mock_pagination.total = 1
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
@@ -305,8 +316,9 @@ class TestExternalDatasetServiceGetAPIs:
         assert len(result_items) == 1
 
     @patch("services.external_knowledge_service.db")
+    @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_max_per_page_limit(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test that max_per_page limit is enforced."""
         # Arrange
@@ -315,7 +327,7 @@ class TestExternalDatasetServiceGetAPIs:
         mock_pagination = MagicMock()
         mock_pagination.items = apis
         mock_pagination.total = 1000
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
@@ -323,12 +335,13 @@ class TestExternalDatasetServiceGetAPIs:
         )
 
         # Assert
-        call_args = mock_db.paginate.call_args
+        call_args = mock_paginate.call_args
         assert call_args.kwargs["max_per_page"] == 100
 
     @patch("services.external_knowledge_service.db")
+    @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_ordered_by_created_at_desc(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test that results are ordered by created_at descending."""
         # Arrange
@@ -340,7 +353,7 @@ class TestExternalDatasetServiceGetAPIs:
         mock_pagination = MagicMock()
         mock_pagination.items = apis[::-1]  # Reversed to simulate DESC order
         mock_pagination.total = 5
-        mock_db.paginate.return_value = mock_pagination
+        mock_paginate.return_value = mock_pagination
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(

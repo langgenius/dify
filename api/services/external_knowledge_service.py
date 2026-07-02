@@ -12,6 +12,7 @@ from core.rag.entities import MetadataFilteringCondition
 from extensions.ext_database import db
 from graphon.nodes.http_request.exc import InvalidHttpMethodError
 from libs.datetime_utils import naive_utc_now
+from libs.pagination import paginate_query
 from models.dataset import (
     Dataset,
     ExternalKnowledgeApis,
@@ -41,9 +42,7 @@ class ExternalDatasetService:
             escaped_search = escape_like_pattern(search)
             query = query.where(ExternalKnowledgeApis.name.ilike(f"%{escaped_search}%", escape="\\"))
 
-        external_knowledge_apis = db.paginate(
-            select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
-        )
+        external_knowledge_apis = paginate_query(query, page=page, per_page=per_page, max_per_page=100)
 
         return external_knowledge_apis.items, external_knowledge_apis.total
 
