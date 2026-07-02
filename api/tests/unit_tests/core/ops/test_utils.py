@@ -223,19 +223,18 @@ class TestFilterNoneValues:
 class TestGetMessageData:
     """Test cases for get_message_data function"""
 
-    @patch("core.ops.utils.db")
     @patch("core.ops.utils.Message")
     @patch("core.ops.utils.select")
-    def test_get_message_data(self, mock_select, mock_message, mock_db):
-        mock_scalar = mock_db.session.scalar
+    def test_get_message_data(self, mock_select, mock_message):
+        mock_session = MagicMock()
         mock_msg_instance = MagicMock()
-        mock_scalar.return_value = mock_msg_instance
+        mock_session.scalar.return_value = mock_msg_instance
 
-        result = get_message_data("message-id")
+        result = get_message_data("message-id", mock_session)
 
         assert result == mock_msg_instance
         mock_select.assert_called_once()
-        mock_scalar.assert_called_once()
+        mock_session.scalar.assert_called_once()
 
 
 class TestMeasureTime:
