@@ -148,7 +148,6 @@ const WebAppsSectionContent = () => {
     <AppNavItem
       key={id}
       variant="mainNav"
-      isMobile={false}
       name={app.name}
       icon_type={app.icon_type}
       icon={app.icon}
