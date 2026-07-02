@@ -12,10 +12,9 @@ import type {
 } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { InputForm } from './type'
-import type { Emoji } from '@/app/components/tools/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { Node } from '@/app/components/workflow/types'
-import type { AppData } from '@/models/share'
+import type { AppData, ToolIcon } from '@/models/share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
@@ -52,7 +51,7 @@ export type ChatProps = {
   showPromptLog?: boolean
   questionIcon?: ReactNode
   answerIcon?: ReactNode
-  allToolIcons?: Record<string, string | Emoji>
+  allToolIcons?: Record<string, ToolIcon>
   onAnnotationEdited?: (question: string, answer: string, index: number) => void
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
   onAnnotationRemoved?: (index: number) => void
