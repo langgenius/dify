@@ -1,12 +1,12 @@
 import type {
-  Plugin,
-} from '../types'
-import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
+  PluginsFromMarketplaceResponse,
   PluginsSearchParams,
-} from './types'
-import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
+} from '@dify/contracts/marketplace'
+import type {
+  Plugin,
+} from '../types'
 import {
   useInfiniteQuery,
   useQuery,
