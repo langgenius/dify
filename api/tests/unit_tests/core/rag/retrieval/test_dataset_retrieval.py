@@ -466,7 +466,8 @@ class TestRetrievalService:
         # 4. Submit _retrieve task
         # 5. Wait for completion
         # 6. Return all_documents list
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id=mock_dataset.id,
             query=query,
             top_k=top_k,
@@ -523,7 +524,8 @@ class TestRetrievalService:
         document_ids_filter = [sample_documents[0].metadata["document_id"]]
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id=mock_dataset.id,
             query="test query",
             top_k=5,
@@ -553,7 +555,8 @@ class TestRetrievalService:
         mock_retrieve.side_effect = lambda *args, **kwargs: None
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id=mock_dataset.id,
             query="nonexistent query",
             top_k=5,
@@ -602,7 +605,8 @@ class TestRetrievalService:
         top_k = 3
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
             dataset_id=mock_dataset.id,
             query=query,
             top_k=top_k,
@@ -630,7 +634,8 @@ class TestRetrievalService:
         query = 'Python "programming" language'
 
         # Act
-        RetrievalService.retrieve(retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
+        RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
             dataset_id=mock_dataset.id,
             query=query,
             top_k=5,
@@ -668,7 +673,8 @@ class TestRetrievalService:
         document_ids_filter = [sample_documents[1].metadata["document_id"]]
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.KEYWORD_SEARCH,
             dataset_id=mock_dataset.id,
             query="JavaScript",
             top_k=5,
@@ -745,7 +751,8 @@ class TestRetrievalService:
         mock_data_processor_class.return_value = mock_processor_instance
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.HYBRID_SEARCH,
             dataset_id=mock_dataset.id,
             query="Python programming",
             top_k=3,
@@ -873,7 +880,8 @@ class TestRetrievalService:
         # 3. Call _deduplicate_documents to remove duplicate (keeps higher score)
         # 4. Pass deduplicated results to DataPostProcessor
         # 5. Return final results
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.HYBRID_SEARCH,
             dataset_id=mock_dataset.id,
             query="test",
             top_k=5,
@@ -960,7 +968,8 @@ class TestRetrievalService:
         }
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.HYBRID_SEARCH,
             dataset_id=mock_dataset.id,
             query="test query",
             top_k=3,
@@ -1027,7 +1036,8 @@ class TestRetrievalService:
         mock_data_processor_class.return_value = mock_processor_instance
 
         # Act: call retrieve with attachment_ids only, no text query
-        RetrievalService.retrieve(retrieval_method=RetrievalMethod.HYBRID_SEARCH,
+        RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.HYBRID_SEARCH,
             dataset_id=mock_dataset.id,
             query=empty_query,
             top_k=3,
@@ -1077,7 +1087,8 @@ class TestRetrievalService:
         mock_fulltext_search.side_effect = side_effect_fulltext
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.FULL_TEXT_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.FULL_TEXT_SEARCH,
             dataset_id=mock_dataset.id,
             query="programming language",
             top_k=3,
@@ -1326,7 +1337,8 @@ class TestRetrievalService:
         mock_retrieve.side_effect = side_effect_retrieve
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id=mock_dataset.id,
             query="Python",
             top_k=5,
@@ -1352,7 +1364,8 @@ class TestRetrievalService:
         mock_get_dataset.return_value = mock_dataset
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id=mock_dataset.id,
             query="",
             top_k=5,
@@ -1374,7 +1387,8 @@ class TestRetrievalService:
         mock_get_dataset.return_value = None
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id="nonexistent_id",
             query="test query",
             top_k=5,
@@ -1419,7 +1433,8 @@ class TestRetrievalService:
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+            RetrievalService.retrieve(
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
                 dataset_id=mock_dataset.id,
                 query="test query",
                 top_k=5,
@@ -1472,7 +1487,8 @@ class TestRetrievalService:
         score_threshold = 0.8
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id=mock_dataset.id,
             query="test query",
             top_k=5,
@@ -1532,7 +1548,8 @@ class TestRetrievalService:
         top_k = 3
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id=mock_dataset.id,
             query="test query",
             top_k=top_k,
@@ -1613,7 +1630,8 @@ class TestRetrievalService:
         }
 
         # Act
-        results = RetrievalService.retrieve(retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+        results = RetrievalService.retrieve(
+            retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
             dataset_id=mock_dataset.id,
             query="test query",
             top_k=3,
@@ -4442,7 +4460,8 @@ class TestRetrieveCoverage:
                 retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
             ),
         )
-        result = retrieval.retrieve(MagicMock(), 
+        result = retrieval.retrieve(
+            MagicMock(),
             app_id="app-1",
             user_id="user-1",
             tenant_id="tenant-1",
@@ -4471,7 +4490,8 @@ class TestRetrieveCoverage:
         model_instance.model_type_instance.get_model_schema.return_value = None
         with patch("core.rag.retrieval.dataset_retrieval.ModelManager.for_tenant") as mock_model_manager:
             mock_model_manager.return_value.get_model_instance.return_value = model_instance
-            result = retrieval.retrieve(MagicMock(), 
+            result = retrieval.retrieve(
+                MagicMock(),
                 app_id="app-1",
                 user_id="user-1",
                 tenant_id="tenant-1",
@@ -4513,7 +4533,8 @@ class TestRetrieveCoverage:
             patch.object(retrieval, "single_retrieve", return_value=[]) as mock_single_retrieve,
         ):
             mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
-            context, files = retrieval.retrieve(MagicMock(), 
+            context, files = retrieval.retrieve(
+                MagicMock(),
                 app_id="app-1",
                 user_id="user-1",
                 tenant_id="tenant-1",
@@ -4562,7 +4583,8 @@ class TestRetrieveCoverage:
             bound_model_instance.provider_model_bundle = Mock()
             bound_model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
             mock_model_manager.return_value.get_model_instance.return_value = bound_model_instance
-            context, files = retrieval.retrieve(MagicMock(), 
+            context, files = retrieval.retrieve(
+                MagicMock(),
                 app_id="app-1",
                 user_id="user-1",
                 tenant_id="tenant-1",
@@ -4796,7 +4818,8 @@ class TestSingleAndMultipleRetrieveCoverage:
     def test_single_retrieve_returns_empty_when_no_dataset_selected(self, retrieval: DatasetRetrieval) -> None:
         with patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls:
             mock_router_cls.return_value.invoke.return_value = (None, LLMUsage.empty_usage())
-            results = retrieval.single_retrieve(MagicMock(), 
+            results = retrieval.single_retrieve(
+                MagicMock(),
                 app_id="app-1",
                 tenant_id="tenant-1",
                 user_id="user-1",
@@ -4860,7 +4883,8 @@ class TestSingleAndMultipleRetrieveCoverage:
 
     def test_multiple_retrieve_validation_paths(self, retrieval: DatasetRetrieval) -> None:
         assert (
-            retrieval.multiple_retrieve(app_id="app-1",
+            retrieval.multiple_retrieve(
+                app_id="app-1",
                 tenant_id="tenant-1",
                 user_id="user-1",
                 user_from="workflow",
@@ -4878,7 +4902,8 @@ class TestSingleAndMultipleRetrieveCoverage:
             _dataset(id="d2", indexing_technique="economy"),
         ]
         with pytest.raises(ValueError, match="different indexing technique"):
-            retrieval.multiple_retrieve(app_id="app-1",
+            retrieval.multiple_retrieve(
+                app_id="app-1",
                 tenant_id="tenant-1",
                 user_id="user-1",
                 user_from="workflow",
@@ -4905,7 +4930,8 @@ class TestSingleAndMultipleRetrieveCoverage:
             ),
         ]
         with pytest.raises(ValueError, match="different embedding model"):
-            retrieval.multiple_retrieve(app_id="app-1",
+            retrieval.multiple_retrieve(
+                app_id="app-1",
                 tenant_id="tenant-1",
                 user_id="user-1",
                 user_from="workflow",
@@ -4962,7 +4988,8 @@ class TestSingleAndMultipleRetrieveCoverage:
                 patch.object(retrieval, "_on_query") as mock_on_query,
                 patch.object(retrieval, "_on_retrieval_end") as mock_end,
             ):
-                result = retrieval.multiple_retrieve(app_id="app-1",
+                result = retrieval.multiple_retrieve(
+                    app_id="app-1",
                     tenant_id="tenant-1",
                     user_id="user-1",
                     user_from="workflow",
@@ -5005,7 +5032,8 @@ class TestSingleAndMultipleRetrieveCoverage:
                 patch.object(retrieval, "_multiple_retrieve_thread", side_effect=failing_thread),
             ):
                 with pytest.raises(RuntimeError, match="thread boom"):
-                    retrieval.multiple_retrieve(app_id="app-1",
+                    retrieval.multiple_retrieve(
+                        app_id="app-1",
                         tenant_id="tenant-1",
                         user_id="user-1",
                         user_from="workflow",
@@ -5277,7 +5305,8 @@ class TestInternalHooksCoverage:
         with patch("core.rag.retrieval.dataset_retrieval.db.session.scalars") as mock_scalars:
             mock_scalars.return_value.all.return_value = []
             with pytest.raises(ValueError):
-                retrieval._automatic_metadata_filter_func(MagicMock(), 
+                retrieval._automatic_metadata_filter_func(
+                    MagicMock(),
                     dataset_ids=["d1"],
                     query="python",
                     tenant_id="tenant-1",
@@ -5297,7 +5326,8 @@ class TestInternalHooksCoverage:
             model_instance.invoke_llm.side_effect = RuntimeError("nope")
             with patch.object(retrieval, "_fetch_model_config", return_value=(model_instance, Mock())):
                 assert (
-                    retrieval._automatic_metadata_filter_func(MagicMock(), 
+                    retrieval._automatic_metadata_filter_func(
+                        MagicMock(),
                         dataset_ids=["d1"],
                         query="python",
                         tenant_id="tenant-1",

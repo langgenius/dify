@@ -237,7 +237,9 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(monkeypat
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
     list(
-        tool.invoke(MagicMock(), "test_user",
+        tool.invoke(
+            MagicMock(),
+            "test_user",
             {
                 "outer_workflow_run_id": "user-workflow-input",
                 "outer_node_execution_id": "user-node-input",

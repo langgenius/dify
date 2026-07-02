@@ -908,7 +908,9 @@ class TestExternalDatasetServiceUpdateAPI:
         mock_db.session.scalar.return_value = existing_api
 
         # Act
-        result = ExternalDatasetService.update_external_knowledge_api(mock_db.session, tenant_id, "user-123", api_id, args)
+        result = ExternalDatasetService.update_external_knowledge_api(
+            mock_db.session, tenant_id, "user-123", api_id, args
+        )
 
         # Assert
         settings = json.loads(result.settings)
@@ -924,7 +926,9 @@ class TestExternalDatasetServiceUpdateAPI:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.update_external_knowledge_api(mock_db.session, "tenant-123", "user-123", "api-123", args)
+            ExternalDatasetService.update_external_knowledge_api(
+                mock_db.session, "tenant-123", "user-123", "api-123", args
+            )
 
     @patch("services.external_knowledge_service.db")
     def test_update_external_knowledge_api_tenant_mismatch(
@@ -938,7 +942,9 @@ class TestExternalDatasetServiceUpdateAPI:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.update_external_knowledge_api(mock_db.session, "wrong-tenant", "user-123", "api-123", args)
+            ExternalDatasetService.update_external_knowledge_api(
+                mock_db.session, "wrong-tenant", "user-123", "api-123", args
+            )
 
     @patch("services.external_knowledge_service.db")
     def test_update_external_knowledge_api_name_only(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
@@ -954,7 +960,9 @@ class TestExternalDatasetServiceUpdateAPI:
         mock_db.session.scalar.return_value = existing_api
 
         # Act
-        result = ExternalDatasetService.update_external_knowledge_api(mock_db.session, "tenant-123", "user-123", "api-123", args)
+        result = ExternalDatasetService.update_external_knowledge_api(
+            mock_db.session, "tenant-123", "user-123", "api-123", args
+        )
 
         # Assert
         assert result.name == "New Name Only"
@@ -1076,7 +1084,9 @@ class TestExternalDatasetServiceGetBinding:
         mock_db.session.scalar.return_value = expected_binding
 
         # Act
-        result = ExternalDatasetService.get_external_knowledge_binding_with_dataset_id(mock_db.session, tenant_id, dataset_id)
+        result = ExternalDatasetService.get_external_knowledge_binding_with_dataset_id(
+            mock_db.session, tenant_id, dataset_id
+        )
 
         # Assert
         assert result.dataset_id == dataset_id
@@ -1090,7 +1100,9 @@ class TestExternalDatasetServiceGetBinding:
 
         # Act & Assert
         with pytest.raises(ValueError, match="external knowledge binding not found"):
-            ExternalDatasetService.get_external_knowledge_binding_with_dataset_id(mock_db.session, "tenant-123", "dataset-123")
+            ExternalDatasetService.get_external_knowledge_binding_with_dataset_id(
+                mock_db.session, "tenant-123", "dataset-123"
+            )
 
 
 class TestExternalDatasetServiceDocumentValidate:
@@ -1187,7 +1199,9 @@ class TestExternalDatasetServiceDocumentValidate:
         process_parameter = {"required_param": "value"}
 
         # Act & Assert - should not raise
-        ExternalDatasetService.document_create_args_validate(mock_db.session, "tenant-123", "api-123", process_parameter)
+        ExternalDatasetService.document_create_args_validate(
+            mock_db.session, "tenant-123", "api-123", process_parameter
+        )
 
 
 class TestExternalDatasetServiceProcessAPI:
@@ -1601,8 +1615,8 @@ class TestExternalDatasetServiceFetchRetrieval:
         external_retrieval_parameters = {"top_k": 5, "score_threshold_enabled": False}
 
         # Act
-        result = ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-            tenant_id, dataset_id, query, external_retrieval_parameters
+        result = ExternalDatasetService.fetch_external_knowledge_retrieval(
+            mock_db.session, tenant_id, dataset_id, query, external_retrieval_parameters
         )
 
         # Assert
@@ -1620,7 +1634,9 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match="external knowledge binding not found"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, "tenant-123", "dataset-123", "query", {})
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, "tenant-123", "dataset-123", "query", {}
+            )
 
     @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_cross_tenant_api_template_error(
@@ -1633,7 +1649,9 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match="external api template not found"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, "tenant-123", "dataset-123", "query", {})
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, "tenant-123", "dataset-123", "query", {}
+            )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
     @patch("services.external_knowledge_service.db")
@@ -1653,8 +1671,8 @@ class TestExternalDatasetServiceFetchRetrieval:
         mock_process.return_value = mock_response
 
         # Act
-        result = ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-            "tenant-123", "dataset-123", "query", {"top_k": 5}
+        result = ExternalDatasetService.fetch_external_knowledge_retrieval(
+            mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
         )
 
         # Assert
@@ -1684,8 +1702,8 @@ class TestExternalDatasetServiceFetchRetrieval:
         }
 
         # Act
-        result = ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-            "tenant-123", "dataset-123", "query", external_retrieval_parameters
+        result = ExternalDatasetService.fetch_external_knowledge_retrieval(
+            mock_db.session, "tenant-123", "dataset-123", "query", external_retrieval_parameters
         )
 
         # Assert
@@ -1713,8 +1731,8 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match="Internal Server Error: Database connection failed"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-                "tenant-123", "dataset-123", "query", {"top_k": 5}
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @pytest.mark.parametrize(
@@ -1754,7 +1772,9 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match=re.escape(error_message)):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, tenant_id, dataset_id, "query", {"top_k": 5})
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, tenant_id, dataset_id, "query", {"top_k": 5}
+            )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
     @patch("services.external_knowledge_service.db")
@@ -1775,8 +1795,8 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-                "tenant-123", "dataset-123", "query", {"top_k": 5}
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
@@ -1794,8 +1814,8 @@ class TestExternalDatasetServiceFetchRetrieval:
         mock_process.return_value = mock_response
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-                "tenant-123", "dataset-123", "query", {"top_k": 5}
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
@@ -1813,8 +1833,8 @@ class TestExternalDatasetServiceFetchRetrieval:
         mock_process.return_value = mock_response
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-                "tenant-123", "dataset-123", "query", {"top_k": 5}
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
@@ -1832,8 +1852,8 @@ class TestExternalDatasetServiceFetchRetrieval:
         mock_process.return_value = mock_response
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-                "tenant-123", "dataset-123", "query", {"top_k": 5}
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
@@ -1847,6 +1867,6 @@ class TestExternalDatasetServiceFetchRetrieval:
         mock_process.side_effect = RuntimeError("connection reset by peer")
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="connection reset by peer"):
-            ExternalDatasetService.fetch_external_knowledge_retrieval(mock_db.session, 
-                "tenant-123", "dataset-123", "query", {"top_k": 5}
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )

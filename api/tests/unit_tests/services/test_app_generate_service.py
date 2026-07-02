@@ -234,7 +234,8 @@ class TestGenerate:
             "services.app_generate_service.CompletionAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
         )
-        result = AppGenerateService.generate(MagicMock(), 
+        result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -254,7 +255,8 @@ class TestGenerate:
             "services.app_generate_service.AgentChatAppGenerator.convert_to_event_stream",
             side_effect=lambda x: x,
         )
-        result = AppGenerateService.generate(MagicMock(), 
+        result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.AGENT_CHAT),
             user=_make_user(),
             args={"inputs": {}},
@@ -275,7 +277,8 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
         app = _make_app(AppMode.CHAT, is_agent=True)
-        result = AppGenerateService.generate(MagicMock(), 
+        result = AppGenerateService.generate(
+            MagicMock(),
             app_model=app,
             user=_make_user(),
             args={"inputs": {}},
@@ -296,7 +299,8 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
         app = _make_app(AppMode.CHAT, is_agent=False)
-        result = AppGenerateService.generate(MagicMock(), 
+        result = AppGenerateService.generate(
+            MagicMock(),
             app_model=app,
             user=_make_user(),
             args={"inputs": {}},
@@ -337,7 +341,8 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
 
-        result = AppGenerateService.generate(MagicMock(), 
+        result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -369,7 +374,8 @@ class TestGenerate:
             return_value=gen_instance,
         )
 
-        result = AppGenerateService.generate(MagicMock(), 
+        result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.ADVANCED_CHAT),
             user=_make_user(),
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -394,7 +400,8 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
 
-        result = AppGenerateService.generate(MagicMock(), 
+        result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -427,7 +434,8 @@ class TestGenerate:
             side_effect=lambda x: x,
         )
 
-        result = AppGenerateService.generate(MagicMock(), 
+        result = AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.WORKFLOW),
             user=_make_user(),
             args={"inputs": {}},
@@ -442,7 +450,8 @@ class TestGenerate:
     def test_invalid_mode_raises(self, mocker: MockerFixture):
         app = _make_app("invalid-mode", is_agent=False)
         with pytest.raises(ValueError, match="Invalid app mode"):
-            AppGenerateService.generate(MagicMock(), 
+            AppGenerateService.generate(
+                MagicMock(),
                 app_model=app,
                 user=_make_user(),
                 args={},
@@ -479,7 +488,8 @@ class TestGenerateBilling:
             side_effect=lambda x: x,
         )
 
-        AppGenerateService.generate(MagicMock(), 
+        AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -502,7 +512,8 @@ class TestGenerateBilling:
         )
 
         with pytest.raises(InvokeRateLimitError):
-            AppGenerateService.generate(MagicMock(), 
+            AppGenerateService.generate(
+                MagicMock(),
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -527,7 +538,8 @@ class TestGenerateBilling:
         )
 
         with pytest.raises(RuntimeError, match="boom"):
-            AppGenerateService.generate(MagicMock(), 
+            AppGenerateService.generate(
+                MagicMock(),
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -558,7 +570,8 @@ class TestGenerateBilling:
             side_effect=lambda x: x,
         )
 
-        AppGenerateService.generate(MagicMock(), 
+        AppGenerateService.generate(
+            MagicMock(),
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             args={"inputs": {}},
@@ -655,7 +668,8 @@ class TestGenerateBilling:
         )
 
         with pytest.raises(RuntimeError, match="boom"):
-            AppGenerateService.generate(MagicMock(), 
+            AppGenerateService.generate(
+                MagicMock(),
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -686,7 +700,8 @@ class TestGenerateBilling:
         )
 
         with pytest.raises(RuntimeError, match="boom"):
-            AppGenerateService.generate(MagicMock(), 
+            AppGenerateService.generate(
+                MagicMock(),
                 app_model=_make_app(AppMode.COMPLETION),
                 user=_make_user(),
                 args={"inputs": {}},
@@ -873,7 +888,8 @@ class TestGenerateMoreLikeThis:
             "services.app_generate_service.CompletionAppGenerator.generate_more_like_this",
             return_value={"result": "similar"},
         )
-        result = AppGenerateService.generate_more_like_this(MagicMock(), 
+        result = AppGenerateService.generate_more_like_this(
+            MagicMock(),
             app_model=_make_app(AppMode.COMPLETION),
             user=_make_user(),
             message_id="msg-1",

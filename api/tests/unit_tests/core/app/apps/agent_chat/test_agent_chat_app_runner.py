@@ -333,7 +333,13 @@ class TestAgentChatAppRunnerRun:
         mocker.patch.object(runner, "check_hosting_moderation", return_value=False)
 
         with pytest.raises(ValueError):
-            runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
+            runner.run(
+                mocker.MagicMock(),
+                generate_entity,
+                mocker.MagicMock(),
+                mocker.MagicMock(id="conv"),
+                mocker.MagicMock(id="msg"),
+            )
 
     def test_run_message_not_found(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
@@ -364,7 +370,13 @@ class TestAgentChatAppRunnerRun:
         mocker.patch.object(runner, "check_hosting_moderation", return_value=False)
 
         with pytest.raises(ValueError):
-            runner.run(mocker.MagicMock(), generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
+            runner.run(
+                mocker.MagicMock(),
+                generate_entity,
+                mocker.MagicMock(),
+                mocker.MagicMock(id="conv"),
+                mocker.MagicMock(id="msg"),
+            )
 
     def test_run_invalid_agent_strategy_raises(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")

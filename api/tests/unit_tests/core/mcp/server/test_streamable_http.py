@@ -51,8 +51,8 @@ class TestHandleMCPRequest:
         request_type = Mock(return_value=types.PingRequest)
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(Mock(), 
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+            result = handle_mcp_request(
+                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -67,8 +67,8 @@ class TestHandleMCPRequest:
         request_type = Mock(return_value=types.InitializeRequest)
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(Mock(), 
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+            result = handle_mcp_request(
+                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -83,8 +83,8 @@ class TestHandleMCPRequest:
         request_type = Mock(return_value=types.ListToolsRequest)
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(Mock(), 
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+            result = handle_mcp_request(
+                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -108,8 +108,8 @@ class TestHandleMCPRequest:
         mock_app_generate.generate.return_value = mock_response
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(Mock(), 
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+            result = handle_mcp_request(
+                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -131,8 +131,8 @@ class TestHandleMCPRequest:
         request_type = Mock(return_value=UnknownRequest)
 
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(Mock(), 
-                self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+            result = handle_mcp_request(
+                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
             )
 
         assert isinstance(result, types.JSONRPCError)
@@ -151,7 +151,9 @@ class TestHandleMCPRequest:
 
         # Don't provide end_user to cause ValueError
         with patch("core.mcp.server.streamable_http.type", request_type):
-            result = handle_mcp_request(Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, None, 123)
+            result = handle_mcp_request(
+                Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, None, 123
+            )
 
         assert isinstance(result, types.JSONRPCError)
         assert result.error.code == types.INVALID_PARAMS
@@ -165,8 +167,8 @@ class TestHandleMCPRequest:
         # Patch handle_ping to raise exception instead of type
         with patch("core.mcp.server.streamable_http.handle_ping", side_effect=Exception("Test error")):
             with patch("core.mcp.server.streamable_http.type", return_value=types.PingRequest):
-                result = handle_mcp_request(Mock(), 
-                    self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
+                result = handle_mcp_request(
+                    Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123
                 )
 
         assert isinstance(result, types.JSONRPCError)

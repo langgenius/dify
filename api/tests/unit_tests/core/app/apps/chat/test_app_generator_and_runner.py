@@ -188,7 +188,9 @@ class TestChatAppRunner:
 
         with patched_create_session(return_value=None):
             with pytest.raises(ValueError):
-                runner.run(MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
+                runner.run(
+                    MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1")
+                )
 
     def test_run_moderation_error_direct_output(self):
         runner = ChatAppRunner()
@@ -219,7 +221,9 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "moderation_for_inputs", side_effect=ModerationError("blocked")),
             patch.object(ChatAppRunner, "direct_output") as mock_direct,
         ):
-            runner.run(MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
+            runner.run(
+                MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1")
+            )
 
         mock_direct.assert_called_once()
 
@@ -291,7 +295,9 @@ class TestChatAppRunner:
             patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
             patch.object(ChatAppRunner, "check_hosting_moderation", return_value=True),
         ):
-            runner.run(MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1"))
+            runner.run(
+                MagicMock(), app_generate_entity, DummyQueueManager(), SimpleNamespace(), SimpleNamespace(id="m1")
+            )
 
     def test_run_closes_scoped_session_before_stream_consumption(self):
         runner = ChatAppRunner()

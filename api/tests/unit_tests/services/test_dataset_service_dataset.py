@@ -344,9 +344,7 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.scalar.return_value = object()
 
             with pytest.raises(DatasetNameDuplicateError, match="Dataset with name Dataset already exists"):
-                DatasetService.create_empty_dataset(
-                    mock_db.session, "tenant-1", "Dataset", None, "economy", account
-                )
+                DatasetService.create_empty_dataset(mock_db.session, "tenant-1", "Dataset", None, "economy", account)
 
     def test_create_empty_dataset_uses_default_embedding_model_for_high_quality_dataset(self):
         account = SimpleNamespace(id="user-1")
