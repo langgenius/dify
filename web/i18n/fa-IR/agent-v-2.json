@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "نام الزامی است.",
   "roster.createForm.roleLabel": "نقش",
   "roster.createForm.rolePlaceholder": "مثلاً دستیار پژوهش",
-  "roster.createForm.roleRequired": "نقش الزامی است.",
   "roster.createSuccess": "عامل ایجاد شد.",
   "roster.dateTimeFormat": "YYYY/MM/DD HH:mm:ss",
   "roster.deleteDialog.description": "این عامل از فهرست Roster فعال حذف خواهد شد.",

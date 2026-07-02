@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "이름을 입력하세요.",
   "roster.createForm.roleLabel": "역할",
   "roster.createForm.rolePlaceholder": "예: 리서치 어시스턴트",
-  "roster.createForm.roleRequired": "역할을 입력하세요.",
   "roster.createSuccess": "에이전트가 생성되었습니다.",
   "roster.dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
   "roster.deleteDialog.description": "이 에이전트가 활성 Roster 목록에서 제거됩니다.",

@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Cần có tên.",
   "roster.createForm.roleLabel": "Vai trò",
   "roster.createForm.rolePlaceholder": "ví dụ: Trợ lý nghiên cứu",
-  "roster.createForm.roleRequired": "Cần có vai trò.",
   "roster.createSuccess": "Đã tạo tác nhân.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Tác nhân này sẽ bị xóa khỏi danh sách Roster đang hoạt động.",

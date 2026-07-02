@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Ime je obvezno.",
   "roster.createForm.roleLabel": "Vloga",
   "roster.createForm.rolePlaceholder": "npr. Raziskovalni asistent",
-  "roster.createForm.roleRequired": "Vloga je obvezna.",
   "roster.createSuccess": "Agent ustvarjen.",
   "roster.dateTimeFormat": "DD. MM. YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Ta agent bo odstranjen iz aktivnega seznama Roster.",

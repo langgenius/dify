@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "名前を入力してください。",
   "roster.createForm.roleLabel": "ロール",
   "roster.createForm.rolePlaceholder": "例: リサーチアシスタント",
-  "roster.createForm.roleRequired": "ロールを入力してください。",
   "roster.createSuccess": "エージェントを作成しました。",
   "roster.dateTimeFormat": "YYYY/MM/DD HH:mm:ss",
   "roster.deleteDialog.description": "このエージェントはアクティブな Roster リストから削除されます。",

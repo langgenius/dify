@@ -343,7 +343,6 @@
   "roster.createForm.nameRequired": "请输入名称。",
   "roster.createForm.roleLabel": "角色",
   "roster.createForm.rolePlaceholder": "例如：研究助理",
-  "roster.createForm.roleRequired": "请输入角色。",
   "roster.createSuccess": "Agent 已创建。",
   "roster.dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
   "roster.deleteDialog.description": "此 Agent 将从当前活跃 Roster 列表中移除。",

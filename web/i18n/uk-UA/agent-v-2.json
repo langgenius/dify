@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Ім'я обов'язкове.",
   "roster.createForm.roleLabel": "Роль",
   "roster.createForm.rolePlaceholder": "напр. Помічник з досліджень",
-  "roster.createForm.roleRequired": "Роль обов'язкова.",
   "roster.createSuccess": "Агента створено.",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Цього агента буде видалено з активного списку Roster.",

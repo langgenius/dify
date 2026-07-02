@@ -123,8 +123,8 @@ describe('EditAgentDialog', () => {
     renderDialog()
 
     const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
-    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }))
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), ' Market Analyst ')
+    await user.clear(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }))
+    await user.type(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }), ' Market Analyst ')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
     expect(mutationMock.mutate).toHaveBeenCalledWith({
@@ -190,37 +190,45 @@ describe('EditAgentDialog', () => {
     expect(mutationMock.mutate).not.toHaveBeenCalled()
   })
 
-  it('shows a field error when saving with an empty role', async () => {
-    const user = userEvent.setup()
+  it('marks role and description as optional', () => {
     renderDialog()
 
     const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
-    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }))
 
-    const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
-    expect(saveButton).not.toBeDisabled()
-    await user.click(saveButton)
-
-    expect(await within(dialog).findByText('agentV2.roster.createForm.roleRequired')).toBeInTheDocument()
-    expect(toastMock.error).not.toHaveBeenCalled()
-    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    expect(within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.roleLabel.*common\.label\.optional/,
+    })).not.toBeRequired()
+    expect(within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
+    })).not.toBeRequired()
   })
 
-  it('shows a field error when saving with a blank role', async () => {
+  it('submits an empty role when the role is cleared', async () => {
     const user = userEvent.setup()
     renderDialog()
 
     const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
-    await user.clear(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }))
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), '   ')
+    await user.clear(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }))
 
     const saveButton = within(dialog).getByRole('button', { name: 'common.operation.save' })
     expect(saveButton).not.toBeDisabled()
     await user.click(saveButton)
 
-    expect(await within(dialog).findByText('agentV2.roster.createForm.roleRequired')).toBeInTheDocument()
-    expect(toastMock.error).not.toHaveBeenCalled()
-    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    expect(mutationMock.mutate).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: {
+        name: 'Research Agent',
+        description: 'Find and summarize market materials.',
+        role: '',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      },
+    }, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
   })
 
   it('keeps the form open when the backdrop is clicked', async () => {
