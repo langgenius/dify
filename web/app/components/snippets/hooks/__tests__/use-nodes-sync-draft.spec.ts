@@ -61,7 +61,13 @@ vi.mock('@/app/components/workflow/store', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     snippets: {
-      syncDraftWorkflow: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
+          },
+        },
+      },
     },
   },
 }))
@@ -123,7 +129,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: {
         graph: {
           nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Start' } }],
@@ -168,7 +174,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: {
         graph: {
           nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Start' } }],
@@ -190,7 +196,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: {
         graph: {
           nodes: [{ id: 'node-1', position: { x: 0, y: 0 }, data: { title: 'Start' } }],
@@ -225,13 +231,13 @@ describe('snippet/use-nodes-sync-draft', () => {
     })
 
     expect(mockSyncDraftWorkflow).toHaveBeenNthCalledWith(1, {
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: expect.objectContaining({
         hash: 'draft-hash',
       }),
     })
     expect(mockSyncDraftWorkflow).toHaveBeenNthCalledWith(2, {
-      params: { snippetId: 'snippet-1' },
+      params: { snippet_id: 'snippet-1' },
       body: expect.objectContaining({
         hash: 'hash-after-first-sync',
       }),
