@@ -1,7 +1,7 @@
 import datetime
 from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Any
+from typing import Any, ClassVar
 
 from packaging.version import InvalidVersion, Version
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -21,6 +21,12 @@ class PluginInstallationSource(StrEnum):
     Marketplace = auto()
     Package = auto()
     Remote = auto()
+
+
+class PluginDependencyType(StrEnum):
+    Github = PluginInstallationSource.Github
+    Marketplace = PluginInstallationSource.Marketplace
+    Package = PluginInstallationSource.Package
 
 
 class PluginResourceRequirements(BaseModel):
@@ -167,10 +173,7 @@ class PluginEntity(PluginInstallation):
 
 
 class PluginDependency(BaseModel):
-    class Type(StrEnum):
-        Github = PluginInstallationSource.Github
-        Marketplace = PluginInstallationSource.Marketplace
-        Package = PluginInstallationSource.Package
+    Type: ClassVar[type[PluginDependencyType]] = PluginDependencyType
 
     class Github(BaseModel):
         repo: str
@@ -194,7 +197,7 @@ class PluginDependency(BaseModel):
         plugin_unique_identifier: str
         version: str | None = None
 
-    type: Type
+    type: PluginDependencyType
     value: Github | Marketplace | Package
     current_identifier: str | None = None
 

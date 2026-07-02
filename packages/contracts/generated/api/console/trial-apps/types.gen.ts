@@ -46,8 +46,6 @@ export type ChatRequest = {
   retriever_from?: string
 }
 
-export type GeneratedAppResponse = JsonValue
-
 export type CompletionRequest = {
   files?: Array<unknown> | null
   inputs: {
@@ -220,17 +218,6 @@ export type TrialWorkflowPartialResponse = {
   updated_by?: string | null
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type TrialDatasetResponse = {
   created_at?: number | null
   created_by?: string | null
@@ -277,8 +264,6 @@ export type TrialAppModel = {
   name: string
   provider: string
 }
-
-export type GeneratedAppResponseWritable = JsonValue
 
 export type SiteWritable = {
   chat_color_theme?: string | null
@@ -339,7 +324,9 @@ export type PostTrialAppsByAppIdChatMessagesData = {
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponse
@@ -355,7 +342,9 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponse
@@ -472,7 +461,9 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponse
