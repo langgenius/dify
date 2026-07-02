@@ -382,6 +382,79 @@ describe('agent composer store conversions', () => {
     ])
   })
 
+  it('should preserve oauth2 credential references when saving tool config', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+            credential_ref: {
+              id: 'credential-oauth',
+              provider: 'google',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: 'credential-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'oauth2',
+        credential_ref: {
+          id: 'credential-oauth',
+          provider: 'google',
+          type: 'provider',
+        },
+      }),
+    ])
+  })
+
+  it('should not save credentialed tool config without a credential reference', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: undefined,
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'unauthorized',
+        credential_ref: undefined,
+      }),
+    ])
+  })
+
   it('should derive model plugin_id from the selected provider when publishing', () => {
     const publishConfig = formStateToAgentSoulConfig({
       baseConfig: {
