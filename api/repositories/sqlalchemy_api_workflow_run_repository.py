@@ -355,7 +355,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             result = cast(CursorResult, session.execute(stmt))
             session.commit()
 
-            deleted_count = result.rowcount
+            deleted_count = result.rowcount or 0
             logger.info("Deleted %s workflow runs by IDs", deleted_count)
             return deleted_count
 
@@ -392,7 +392,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()
 
-                batch_deleted = result.rowcount
+                batch_deleted = result.rowcount or 0
                 total_deleted += batch_deleted
 
                 logger.info("Deleted batch of %s workflow runs for app %s", batch_deleted, app_id)
