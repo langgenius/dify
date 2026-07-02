@@ -34,8 +34,6 @@ from fields.annotation_fields import (
 )
 from fields.base import ResponseModel
 from libs.helper import dump_response, uuid_value
-from libs.login import login_required
-from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
 from services.annotation_service import (

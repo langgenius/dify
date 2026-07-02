@@ -32,7 +32,6 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import dump_response
-from libs.login import login_required
 from libs.login import current_user, login_required
 from models import App, AppMode
 from services.app_ref_service import AppRefService
