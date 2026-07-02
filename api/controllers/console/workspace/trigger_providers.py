@@ -3,7 +3,7 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, model_validator
+from pydantic import BaseModel, RootModel, model_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -107,7 +107,7 @@ class TriggerOAuthClientResponse(ResponseModel):
     oauth_client_schema: list[ProviderConfig]
     custom_enabled: bool
     redirect_uri: str
-    params: dict[str, Any] = Field(default_factory=dict)
+    params: dict[str, Any]
 
 
 class TriggerProviderErrorResponse(ResponseModel):
