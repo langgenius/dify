@@ -171,6 +171,7 @@
   "agentDetail.configure.rightPanel.learnMore": "詳しく見る",
   "agentDetail.configure.rightPanel.modeLabel": "エージェント設定モード",
   "agentDetail.configure.rightPanel.preview": "プレビュー",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Community エディションでは Preview 機能を利用できません。Preview を使用するには、SaaS または Enterprise エディションをご利用ください。",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview は完成したエージェントをユーザーに見える形で実行し、整った返信とチャット機能を確認できます。",
   "agentDetail.configure.rightPanel.previewTipTitle": "エージェントをプレビュー",
   "agentDetail.configure.skills.add": "スキルを追加",

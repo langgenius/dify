@@ -171,6 +171,7 @@
   "agentDetail.configure.rightPanel.learnMore": "Află mai multe",
   "agentDetail.configure.rightPanel.modeLabel": "Mod de configurare agent",
   "agentDetail.configure.rightPanel.preview": "Previzualizare",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview nu este disponibil în ediția Community. Pentru a folosi Preview, utilizați SaaS sau ediția Enterprise.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview rulează agentul finalizat așa cum îl vor vedea utilizatorii, cu răspunsuri clare și funcții de chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Previzualizează agentul",
   "agentDetail.configure.skills.add": "Adaugă abilitate",
