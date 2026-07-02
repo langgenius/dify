@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from yaml import YAMLError
@@ -159,7 +159,7 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources():
                 "fetch_external_knowledge_retrieval",
                 return_value=external_documents,
             ) as fetch_mock:
-                result = tool.run(query="hello")
+                result = tool.run(session=MagicMock(), query="hello")
 
     assert result == "first\nsecond"
     assert callback.queries == [("hello", "dataset-1")]
@@ -197,7 +197,7 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
     with patch.object(single_retriever_module, "db", SimpleNamespace(session=db_session)):
         with patch.object(single_retriever_module, "DatasetRetrieval", return_value=dataset_retrieval):
             with patch.object(single_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
-                result = tool.run(query="hello")
+                result = tool.run(session=MagicMock(), query="hello")
 
     assert result == ""
     retrieve_mock.assert_not_called()
@@ -284,7 +284,7 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources():
                     "format_retrieval_documents",
                     return_value=records,
                 ):
-                    result = tool.run(query="hello")
+                    result = tool.run(session=MagicMock(), query="hello")
 
     assert result == "signed high\nsummary low\nquestion:signed low answer:low answer"
     assert callback.documents == documents
@@ -464,7 +464,7 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources():
                 with patch.object(multi_retriever_module, "ModelManager", return_value=model_manager):
                     with patch.object(multi_retriever_module, "RerankModelRunner", return_value=rerank_runner):
                         with patch.object(multi_retriever_module, "db", SimpleNamespace(session=db_session)):
-                            result = tool.run(query="hello")
+                            result = tool.run(session=MagicMock(), query="hello")
 
     assert result == "signed one\nquestion:signed two answer:answer two"
     assert retriever_mock.call_count == 2

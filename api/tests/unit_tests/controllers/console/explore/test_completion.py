@@ -67,7 +67,7 @@ class TestCompletionApi:
                 return_value=("ok", 200),
             ),
         ):
-            result = method(api, user, completion_app)
+            result = method(api, MagicMock(), user, completion_app)
 
         assert result == ("ok", 200)
 
@@ -78,7 +78,7 @@ class TestCompletionApi:
         installed_app = MagicMock(app=MagicMock(mode=AppMode.CHAT))
 
         with pytest.raises(NotCompletionAppError):
-            method(api, user, installed_app)
+            method(api, MagicMock(), user, installed_app)
 
     def test_conversation_completed(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
@@ -94,7 +94,7 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(ConversationCompletedError):
-                method(api, user, completion_app)
+                method(api, MagicMock(), user, completion_app)
 
     def test_internal_error(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
@@ -110,7 +110,7 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(api, user, completion_app)
+                method(api, MagicMock(), user, completion_app)
 
     def test_conversation_not_exists(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
@@ -126,7 +126,7 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.NotFound):
-                method(api, user, completion_app)
+                method(api, MagicMock(), user, completion_app)
 
     def test_app_unavailable(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
@@ -142,7 +142,7 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.AppUnavailableError):
-                method(api, user, completion_app)
+                method(api, MagicMock(), user, completion_app)
 
     def test_provider_not_initialized(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
@@ -158,7 +158,7 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(api, user, completion_app)
+                method(api, MagicMock(), user, completion_app)
 
     def test_quota_exceeded(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
@@ -174,7 +174,7 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(api, user, completion_app)
+                method(api, MagicMock(), user, completion_app)
 
     def test_model_not_supported(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
@@ -190,7 +190,7 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError):
-                method(api, user, completion_app)
+                method(api, MagicMock(), user, completion_app)
 
     def test_invoke_error(self, app: Flask, completion_app, user, payload_patch):
         api = completion_module.CompletionApi()
@@ -206,7 +206,7 @@ class TestCompletionApi:
             ),
         ):
             with pytest.raises(completion_module.CompletionRequestError):
-                method(api, user, completion_app)
+                method(api, MagicMock(), user, completion_app)
 
 
 class TestCompletionStopApi:
@@ -249,7 +249,7 @@ class TestChatApi:
                 return_value=("ok", 200),
             ),
         ):
-            result = method(api, user, chat_app)
+            result = method(api, MagicMock(), user, chat_app)
 
         assert result == ("ok", 200)
 
@@ -260,7 +260,7 @@ class TestChatApi:
         installed_app = MagicMock(app=MagicMock(mode=AppMode.COMPLETION))
 
         with pytest.raises(NotChatAppError):
-            method(api, user, installed_app)
+            method(api, MagicMock(), user, installed_app)
 
     def test_rate_limit_error(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -276,7 +276,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
     def test_conversation_completed_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -292,7 +292,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(ConversationCompletedError):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
     def test_conversation_not_exists_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -308,7 +308,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.NotFound):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
     def test_app_unavailable_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -324,7 +324,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.AppUnavailableError):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
     def test_provider_not_initialized_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -340,7 +340,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
     def test_quota_exceeded_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -356,7 +356,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
     def test_model_not_supported_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -372,7 +372,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.ProviderModelCurrentlyNotSupportError):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
     def test_invoke_error_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -388,7 +388,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(completion_module.CompletionRequestError):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
     def test_internal_error_chat(self, app: Flask, chat_app, user, payload_patch):
         api = completion_module.ChatApi()
@@ -404,7 +404,7 @@ class TestChatApi:
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(api, user, chat_app)
+                method(api, MagicMock(), user, chat_app)
 
 
 class TestChatStopApi:

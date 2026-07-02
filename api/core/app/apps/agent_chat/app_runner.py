@@ -2,6 +2,7 @@ import logging
 from typing import cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
@@ -31,6 +32,7 @@ class AgentChatAppRunner(AppRunner):
 
     def run(
         self,
+        session: Session,
         application_generate_entity: AgentChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation: Conversation,
@@ -217,6 +219,7 @@ class AgentChatAppRunner(AppRunner):
             raise ValueError(f"Invalid agent strategy: {agent_entity.strategy}")
 
         runner = runner_cls(
+            session=session,
             tenant_id=app_config.tenant_id,
             application_generate_entity=application_generate_entity,
             conversation=conversation_result,
@@ -232,6 +235,7 @@ class AgentChatAppRunner(AppRunner):
         )
 
         invoke_result = runner.run(
+            session=session,
             message=message,
             query=query,
             inputs=inputs,
