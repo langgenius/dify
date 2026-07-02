@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "छुपी हुई .env फ़ाइलें दिखाने के लिए, फ़ाइल पिकर में Command + Shift + . दबाएँ।",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "यदि आपकी .env फ़ाइल छुपी हुई है, तो अपने सिस्टम फ़ाइल पिकर में छुपी हुई फ़ाइलें सक्षम करें।",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "छुपी हुई .env फ़ाइलें दिखाने के लिए, File Explorer में “छिपे हुए आइटम” सक्षम करें।",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "{{count}} अमान्य .env पंक्ति को छोड़ दिया गया।",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "{{count}} अमान्य .env पंक्तियों को छोड़ दिया गया।",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

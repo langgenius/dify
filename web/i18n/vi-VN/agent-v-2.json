@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Để hiển thị các tệp .env ẩn, nhấn Command + Shift + . trong cửa sổ chọn tệp.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Nếu tệp .env của bạn bị ẩn, hãy bật hiển thị tệp ẩn trong cửa sổ chọn tệp hệ thống.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Để hiển thị các tệp .env ẩn, bật Mục ẩn trong File Explorer.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "Đã bỏ qua {{count}} dòng .env không hợp lệ.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "Đã bỏ qua {{count}} dòng .env không hợp lệ.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",
