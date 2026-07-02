@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DialogCloseButton,
   DialogContent,
@@ -26,6 +27,10 @@ type AgentSkillDetailSection = {
 export type AgentSkillDetail = {
   description: string
   fileCount?: number
+  fileListHeader?: ReactNode
+  fileListPanelClassName?: string
+  fileListTreeClassName?: string
+  fileListTreeListClassName?: string
   fileListTitle?: string
   files: AgentSkillFileNode[]
   folderOpenState?: (context: { file: AgentSkillFileNode, depth: number }) => boolean
@@ -41,6 +46,7 @@ export type AgentSkillDetail = {
     isLoading?: boolean
   }
   onFolderOpenChange?: (context: { file: AgentSkillFileNode, depth: number, open: boolean }) => void
+  onFolderDoubleClick?: (context: { file: AgentSkillFileNode, depth: number }) => void
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: (context: { file: AgentSkillFileNode, depth: number }) => ReactNode
   selectedFileId?: string
@@ -50,18 +56,26 @@ export type AgentSkillDetail = {
 const keepSkillFoldersClosed = () => false
 
 function AgentSkillFileList({
+  fileListHeader,
+  fileListTreeClassName,
+  fileListTreeListClassName,
   fileListTitle,
   files,
   folderOpenState,
   onFolderOpenChange,
+  onFolderDoubleClick,
   onSelectFile,
   renderFolderSuffix,
   selectedFileId,
 }: {
+  fileListHeader?: ReactNode
+  fileListTreeClassName?: string
+  fileListTreeListClassName?: string
   fileListTitle?: string
   files: AgentSkillFileNode[]
   folderOpenState?: AgentSkillDetail['folderOpenState']
   onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
+  onFolderDoubleClick?: AgentSkillDetail['onFolderDoubleClick']
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
@@ -73,25 +87,27 @@ function AgentSkillFileList({
       files={files}
       selectedFileId={selectedFileId}
       labelledBy="agent-skill-detail-files-heading"
-      className="h-full bg-background-section p-1"
+      className={cn('h-full bg-background-section p-1', fileListTreeClassName)}
+      listClassName={fileListTreeListClassName}
       scrollAreaClassName="flex-1"
       folderOpenStrategy={keepSkillFoldersClosed}
       folderOpenState={folderOpenState}
       onFolderOpenChange={onFolderOpenChange}
+      onFolderDoubleClick={onFolderDoubleClick}
       renderFile={onSelectFile
-        ? ({ file, selected, children }) => (
-            <FileTreeFile selected={selected} onClick={() => onSelectFile(file)}>
+        ? ({ depth, file, selected, children }) => (
+            <FileTreeFile level={depth} selected={selected} onClick={() => onSelectFile(file)}>
               {children}
             </FileTreeFile>
           )
         : undefined}
       renderFolderSuffix={renderFolderSuffix}
       header={(
-        <>
+        fileListHeader ?? (
           <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
             {fileListTitle ?? t('agentDetail.configure.skills.detail.files')}
           </h3>
-        </>
+        )
       )}
     />
   )
@@ -239,7 +255,7 @@ export function AgentSkillDetailDialog({
 
   return (
     <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed" className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0">
-      <div className="flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section">
+      <div className={cn('flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section', detail.fileListPanelClassName)}>
         <DialogDescription className="sr-only">
           {detail.description}
         </DialogDescription>
@@ -248,10 +264,14 @@ export function AgentSkillDetailDialog({
         </DialogTitle>
         <div className="min-h-0 w-full">
           <AgentSkillFileList
+            fileListHeader={detail.fileListHeader}
+            fileListTreeClassName={detail.fileListTreeClassName}
+            fileListTreeListClassName={detail.fileListTreeListClassName}
             fileListTitle={detail.fileListTitle}
             files={detail.files}
             folderOpenState={detail.folderOpenState}
             onFolderOpenChange={detail.onFolderOpenChange}
+            onFolderDoubleClick={detail.onFolderDoubleClick}
             selectedFileId={detail.selectedFileId}
             onSelectFile={detail.onSelectFile}
             renderFolderSuffix={detail.renderFolderSuffix}

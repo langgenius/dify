@@ -288,7 +288,7 @@ export function FileTreeIcon({
             ? (
                 <React.Fragment>
                   <span className="size-4 i-ri-folder-line group-data-panel-open/file-tree-row:hidden" />
-                  <span className="hidden size-4 text-text-accent i-ri-folder-open-line group-data-panel-open/file-tree-row:block" />
+                  <span className="hidden size-4 text-text-secondary i-ri-folder-open-line group-data-panel-open/file-tree-row:block" />
                 </React.Fragment>
               )
             : <span className={cn('size-4', fileTreeIconClassNames[type])} />

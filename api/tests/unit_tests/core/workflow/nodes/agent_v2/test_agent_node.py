@@ -2,7 +2,6 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
-import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
@@ -49,13 +48,6 @@ class FakeCredentialsProvider:
         assert provider_name == "openai"
         assert model_name == "gpt-test"
         return {"api_key": "secret-key"}
-
-
-@pytest.fixture(autouse=True)
-def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
-    )
 
 
 def _restored_file(*, transfer_method: FileTransferMethod, reference: str) -> File:
@@ -281,7 +273,8 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert agent_log["agent_backend"]["run_id"] == "fake-run-1"
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
-    assert result.inputs["agent_backend_request"]["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
+    assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
 
 
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():

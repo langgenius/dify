@@ -86,33 +86,31 @@ class AgentIdPath(BaseModel):
 class AgentAppCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, description="Agent name")
     description: str | None = Field(default=None, description="Agent description (max 400 chars)", max_length=400)
-    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
+    role: str | None = Field(default=None, description="Agent role", max_length=255)
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, value: str) -> str:
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required.")
-        return role
+    def validate_role(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
 
 # Keep agent-app roster DTOs agent-specific instead of reusing the shared
 # /apps response/request models. The roster surface needs Agent-only fields such
 # as `role`, while the generic console/apps contracts must stay unchanged.
 class AgentAppUpdatePayload(GenericUpdateAppPayload):
-    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
+    role: str | None = Field(default=None, description="Agent role", max_length=255)
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, value: str) -> str:
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required.")
-        return role
+    def validate_role(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
 
 class AgentAppCopyPayload(BaseModel):
@@ -128,10 +126,7 @@ class AgentAppCopyPayload(BaseModel):
     def validate_role(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required when provided.")
-        return role
+        return value.strip()
 
 
 class AgentApiStatusPayload(BaseModel):
@@ -533,6 +528,7 @@ class AgentAppListApi(Resource):
             page=args.page,
             limit=args.limit,
             mode="agent",
+            sort_by=args.sort_by,
             name=args.name,
             tag_ids=args.tag_ids,
             creator_ids=args.creator_ids,
@@ -567,7 +563,7 @@ class AgentAppListApi(Resource):
             name=args.name,
             description=args.description,
             mode="agent",
-            agent_role=args.role,
+            agent_role=args.role or "",
             icon_type=args.icon_type,
             icon=args.icon,
             icon_background=args.icon_background,

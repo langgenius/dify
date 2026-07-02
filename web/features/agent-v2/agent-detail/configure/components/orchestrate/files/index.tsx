@@ -4,13 +4,18 @@ import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import {
+  FileTreeBadge,
   FileTreeGuide,
+  FileTreeIcon,
+  FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
@@ -91,6 +96,7 @@ function AgentFileItem({
   const selectedFile = selectedFileId ? findAgentFileNode(files, selectedFileId) : undefined
   const selectedPreviewFile = selectedFile ?? file
   const isVirtualPreviewFile = selectedPreviewFile.virtualContent !== undefined
+  const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
   const previewFileId = isVirtualPreviewFile ? undefined : getAgentFilePreviewKey(selectedPreviewFile)
   const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.files.byName.preview.get.queryOptions({
@@ -176,7 +182,10 @@ function AgentFileItem({
               type="button"
               data-selected={selected || undefined}
               aria-current={selected ? 'true' : undefined}
-              className="group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pr-7 pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active"
+              className={cn(
+                'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
+                isBuildNoteFile ? 'pr-1' : 'pr-7',
+              )}
             />
           )}
         >
@@ -221,6 +230,44 @@ function AgentFileItem({
         </button>
       )}
     </li>
+  )
+}
+
+function AgentBuildNoteFileRow() {
+  const { t } = useTranslation('agentV2')
+  const tooltip = t('agentDetail.configure.files.buildNote.tooltip')
+
+  return (
+    <>
+      <FileTreeIcon type="markdown" />
+      <FileTreeLabel className="shrink-0" title={BUILD_NOTE_FILE_NAME}>
+        {BUILD_NOTE_FILE_NAME}
+      </FileTreeLabel>
+      <FileTreeBadge className="ml-0.5 gap-0.5 px-1 py-0.5">
+        <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
+        <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
+      </FileTreeBadge>
+      <Tooltip>
+        <TooltipTrigger
+          render={(
+            <span
+              aria-label={tooltip}
+              className="ml-auto flex size-5 shrink-0 items-center justify-center p-0.5 text-text-quaternary"
+            >
+              <span aria-hidden className="i-ri-question-line size-4" />
+            </span>
+          )}
+        />
+        <TooltipContent className="w-[230px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
+          <div className="title-xs-semi-bold text-text-primary">
+            {BUILD_NOTE_FILE_NAME}
+          </div>
+          <p className="mt-1 body-xs-regular text-text-secondary">
+            {tooltip}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </>
   )
 }
 
@@ -324,18 +371,22 @@ export function AgentFiles() {
                 treeLabel={t('agentDetail.configure.files.treeLabel')}
                 className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
                 scrollAreaClassName="max-h-[250px] flex-none"
-                renderFile={({ depth, file, selected, children }) => (
-                  <AgentFileItem
-                    depth={depth}
-                    file={file}
-                    files={visibleFiles}
-                    apiContext={apiContext}
-                    selected={selected}
-                    onRemove={removeFile}
-                  >
-                    {children}
-                  </AgentFileItem>
-                )}
+                renderFile={({ depth, file, selected, children }) => {
+                  const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
+
+                  return (
+                    <AgentFileItem
+                      depth={depth}
+                      file={file}
+                      files={visibleFiles}
+                      apiContext={apiContext}
+                      selected={selected}
+                      onRemove={removeFile}
+                    >
+                      {isBuildNoteFile ? <AgentBuildNoteFileRow /> : children}
+                    </AgentFileItem>
+                  )
+                }}
               />
             )}
       </ConfigureSection>

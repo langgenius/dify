@@ -18,7 +18,7 @@ export type AgentAppCreatePayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name: string
-  role: string
+  role?: string | null
 }
 
 export type AgentAppDetailWithSite = {
@@ -74,7 +74,7 @@ export type AgentAppUpdatePayload = {
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
-  role: string
+  role?: string | null
   use_icon_as_answer_icon?: boolean | null
 }
 

@@ -423,6 +423,48 @@ describe('agent composer store conversions', () => {
     ])
   })
 
+  it('should hydrate oauth tool authorization state from credential refs', () => {
+    const formState = agentSoulConfigToFormState({
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+          {
+            provider: 'slack',
+            provider_id: 'slack',
+            provider_type: 'builtin',
+            tool_name: 'post_message',
+            credential_type: 'oauth2',
+            credential_ref: {
+              id: 'slack-oauth',
+              provider: 'slack',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'google',
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+      expect.objectContaining({
+        id: 'slack',
+        credentialId: 'slack-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      }),
+    ])
+  })
+
   it('should not save credentialed tool config without a credential reference', () => {
     const baseConfig = {
       tools: {

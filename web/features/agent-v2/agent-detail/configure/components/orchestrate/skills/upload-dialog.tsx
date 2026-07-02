@@ -212,9 +212,6 @@ export function AgentSkillUploadDialog({
         setFile(undefined)
         onOpenChange(false)
       },
-      onError: () => {
-        toast.error(t('agentDetail.configure.skills.upload.failed'))
-      },
     }
 
     if (apiContext.workflow) {

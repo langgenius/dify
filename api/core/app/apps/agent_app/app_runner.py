@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -74,12 +75,23 @@ def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
     return [UserPromptMessage(content=user_query)]
 
 
+def _llm_usage_from_agent_backend(usage: Mapping[str, Any] | None) -> LLMUsage | None:
+    if usage is None:
+        return None
+    try:
+        return LLMUsage.from_metadata(usage)
+    except (TypeError, ValueError):
+        logger.warning("Failed to parse Agent backend usage metadata: %s", usage, exc_info=True)
+        return None
+
+
 def publish_text_answer(
     *,
     queue_manager: AppQueueManager,
     model_name: str,
     answer: str,
     user_query: str | None = None,
+    usage: LLMUsage | None = None,
 ) -> None:
     """Publish a complete assistant answer as one chunk + message-end.
 
@@ -99,6 +111,7 @@ def publish_text_answer(
         model_name=model_name,
         answer=answer,
         user_query=user_query,
+        usage=usage,
     )
 
 
@@ -127,6 +140,7 @@ def publish_message_end(
     model_name: str,
     answer: str,
     user_query: str | None = None,
+    usage: LLMUsage | None = None,
 ) -> None:
     """Publish the terminal assistant result without emitting another delta."""
     prompt_messages = _prompt_messages_from_query(user_query)
@@ -136,7 +150,7 @@ def publish_message_end(
                 model=model_name,
                 prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(content=answer),
-                usage=LLMUsage.empty_usage(),
+                usage=usage or LLMUsage.empty_usage(),
             ),
         ),
         PublishFrom.APPLICATION_MANAGER,
@@ -512,6 +526,7 @@ class AgentAppRunner:
             answer=answer,
             query=query,
             streamed_answer=streamed_answer,
+            usage=_llm_usage_from_agent_backend(terminal.usage),
         )
         self._save_session(
             scope=scope,
@@ -793,10 +808,20 @@ class AgentAppRunner:
         answer: str,
         query: str | None,
         streamed_answer: str,
+        usage: LLMUsage | None,
     ) -> None:
         """Finish a successful streamed turn without duplicating the final text."""
+        if not answer and streamed_answer:
+            answer = streamed_answer
+
         if not streamed_answer:
-            self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, query=query)
+            publish_text_answer(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                answer=answer,
+                user_query=query,
+                usage=usage,
+            )
             return
 
         if answer.startswith(streamed_answer):
@@ -812,7 +837,13 @@ class AgentAppRunner:
                 "using terminal output for message persistence."
             )
 
-        publish_message_end(queue_manager=queue_manager, model_name=model_name, answer=answer, user_query=query)
+        publish_message_end(
+            queue_manager=queue_manager,
+            model_name=model_name,
+            answer=answer,
+            user_query=query,
+            usage=usage,
+        )
 
     def _save_session(
         self,
@@ -852,6 +883,8 @@ class AgentAppRunner:
         configured the value is a JSON object, which we serialize so the chat
         message always has a string body.
         """
+        if output is None:
+            return ""
         if isinstance(output, str):
             return output
         if isinstance(output, dict):

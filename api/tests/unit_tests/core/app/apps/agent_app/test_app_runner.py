@@ -14,6 +14,7 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
+    AgentRunUsage,
     CancelRunRequest,
     CancelRunResponse,
     PydanticAIStreamRunEvent,
@@ -57,13 +58,6 @@ from models.model import MessageAgentThought
 class _FakeCredentialsProvider:
     def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]:
         return {"openai_api_key": "sk-test"}
-
-
-@pytest.fixture(autouse=True)
-def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
-    )
 
 
 class _NoToolsBuilder:
@@ -143,6 +137,7 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             data=RunSucceededEventData(
                 output={"text": "hello agent"},
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
+                usage=AgentRunUsage(prompt_tokens=3, completion_tokens=5),
             ),
         )
 
@@ -165,6 +160,46 @@ class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             created_at=created_at,
             data=RunSucceededEventData(
                 output={"text": "hello agent"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _NullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield RunSucceededEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output=None,
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _StreamingTextNullOutputFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="streamed answer")),
+        )
+        yield RunSucceededEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output=None,
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
             ),
         )
@@ -381,6 +416,8 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
         "agent_soul_prompt",
         "agent_app_user_prompt",
         "execution_context",
+        "shell",
+        "config",
         "history",
     ]
 
@@ -397,6 +434,9 @@ def test_successful_turn_forwards_agent_backend_stream_text_deltas_without_dupli
     assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
+    assert end_events[0].llm_result.usage.prompt_tokens == 3
+    assert end_events[0].llm_result.usage.completion_tokens == 5
+    assert end_events[0].llm_result.usage.total_tokens == 8
     assert store.saved
 
 
@@ -412,6 +452,34 @@ def test_successful_turn_forwards_part_start_text_and_publishes_missing_terminal
     assert [event.chunk.delta.message.content for event in chunk_events] == ["hello", " agent"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
+
+
+def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null():
+    client = _NullOutputFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert chunk_events == []
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == ""
+
+
+def test_successful_turn_with_streamed_text_and_null_terminal_output_keeps_streamed_answer():
+    client = _StreamingTextNullOutputFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["streamed answer"]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "streamed answer"
 
 
 def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
@@ -611,6 +679,7 @@ def test_stopped_task_cancels_agent_backend_run_and_skips_session_save():
 
 
 def test_extract_answer_handles_plain_string_and_dict():
+    assert AgentAppRunner._extract_answer(None) == ""
     assert AgentAppRunner._extract_answer("plain text") == "plain text"
     assert AgentAppRunner._extract_answer({"text": "hi"}) == "hi"
     assert AgentAppRunner._extract_answer({"a": 1}) == '{"a": 1}'
