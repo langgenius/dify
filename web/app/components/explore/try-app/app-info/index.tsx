@@ -68,9 +68,9 @@ const AppInfo: FC<Props> = ({
           <AppIcon
             size="large"
             iconType={appDetail.site.icon_type}
-            icon={appDetail.site.icon}
-            background={appDetail.site.icon_background}
-            imageUrl={appDetail.site.icon_url}
+            icon={appDetail.site.icon ?? undefined}
+            background={appDetail.site.icon_background ?? undefined}
+            imageUrl={appDetail.site.icon_url ?? undefined}
           />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
