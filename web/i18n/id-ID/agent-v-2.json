@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Untuk menampilkan file .env tersembunyi, tekan Command + Shift + . di pemilih file.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Jika file .env Anda tersembunyi, aktifkan file tersembunyi di pemilih file sistem.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Untuk menampilkan file .env tersembunyi, aktifkan Item tersembunyi di File Explorer.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "{{count}} baris .env tidak valid dilewati.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "{{count}} baris .env tidak valid dilewati.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",
