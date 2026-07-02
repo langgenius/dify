@@ -28,7 +28,7 @@ export function RosterSortSelect() {
     >
       <SelectTrigger
         aria-label={t('roster.sort.label')}
-        className="h-8 w-fit max-w-full shrink-0 gap-0 py-1 pr-2.5 pl-2"
+        className="h-8 w-fit max-w-45 min-w-0 gap-0 py-1 pr-2.5 pl-2"
       >
         <span className="flex min-w-0 items-center gap-1 px-1">
           <span className="shrink-0 system-sm-regular text-text-tertiary">

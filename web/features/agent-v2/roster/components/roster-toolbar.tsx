@@ -58,6 +58,7 @@ function RosterStatusFilter({
   return (
     <SegmentedControl
       aria-label={t('roster.filters.label')}
+      className="shrink-0"
       value={[filter]}
       onValueChange={(value) => {
         const nextFilter = value[0]
@@ -91,7 +92,7 @@ function RosterSearchFilter() {
   return (
     <SearchInput
       aria-label={t('roster.searchLabel')}
-      className="h-8 w-50 max-w-full"
+      className="h-8 w-50 min-w-0 shrink"
       placeholder={t('roster.searchPlaceholder')}
       value={keyword}
       onValueChange={(value) => {
@@ -106,7 +107,7 @@ function RosterCreatedByMeFilter() {
   const [createdByMe, setCreatedByMe] = useQueryState(rosterQueryParamNames.createdByMe, rosterCreatedByMeQueryParser)
 
   return (
-    <label className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-components-input-bg-normal px-2 py-1">
+    <label className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-components-input-bg-normal px-2 py-1 whitespace-nowrap">
       <Checkbox
         checked={createdByMe}
         onCheckedChange={(checked) => {
@@ -123,7 +124,7 @@ export function RosterToolbar({
   publishedAgents,
 }: RosterToolbarProps) {
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       <RosterStatusFilter
         draftAgents={draftAgents}
         publishedAgents={publishedAgents}
@@ -133,7 +134,7 @@ export function RosterToolbar({
         <div className="h-full w-px bg-divider-regular" />
       </div>
       <RosterCreatedByMeFilter />
-      <div className="ml-auto flex min-w-0 items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         <RosterSortSelect />
         <CreateAgentDialog />
       </div>
