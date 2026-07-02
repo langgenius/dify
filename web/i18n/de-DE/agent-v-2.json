@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Name ist erforderlich.",
   "roster.createForm.roleLabel": "Rolle",
   "roster.createForm.rolePlaceholder": "z. B. Research Assistant",
-  "roster.createForm.roleRequired": "Rolle ist erforderlich.",
   "roster.createSuccess": "Agent erstellt.",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Dieser Agent wird aus der aktiven Roster-Liste entfernt.",

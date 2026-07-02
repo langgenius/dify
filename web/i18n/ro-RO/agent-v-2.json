@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Numele este obligatoriu.",
   "roster.createForm.roleLabel": "Rol",
   "roster.createForm.rolePlaceholder": "de ex. Asistent de cercetare",
-  "roster.createForm.roleRequired": "Rolul este obligatoriu.",
   "roster.createSuccess": "Agent creat.",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Acest agent va fi eliminat din lista activă a roster-ului.",

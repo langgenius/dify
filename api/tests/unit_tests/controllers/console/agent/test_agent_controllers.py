@@ -369,20 +369,54 @@ def test_agent_app_list_and_create_use_agent_route(
     assert create_params.agent_role == "Coordinator"
 
 
-def test_agent_app_create_requires_role(app: Flask, account_id: str) -> None:
-    with app.test_request_context(
-        "/console/api/agent",
-        json={"name": "Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"},
-    ):
-        with pytest.raises(ValueError, match="Field required"):
-            unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
+def test_agent_app_create_payload_allows_optional_role() -> None:
+    omitted = roster_controller.AgentAppCreatePayload.model_validate(
+        {"name": "Iris", "description": "Agent app", "icon_type": "emoji", "icon": "robot"}
+    )
+    blank = roster_controller.AgentAppCreatePayload.model_validate(
+        {"name": "Iris", "description": "Agent app", "role": "   ", "icon_type": "emoji", "icon": "robot"}
+    )
 
+    assert omitted.role is None
+    assert blank.role == ""
+
+
+def test_agent_app_create_omits_optional_role_as_empty_string(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeAppService:
+        def create_app(self, tenant_id: str, params: object, account: object) -> object:
+            captured["create"] = {"tenant_id": tenant_id, "params": params, "account": account}
+            return _app_detail_obj(id="app-created", bound_agent_id="agent-created")
+
+    monkeypatch.setattr(roster_controller, "AppService", FakeAppService)
+    monkeypatch.setattr(
+        roster_controller,
+        "_serialize_agent_app_detail",
+        lambda app_model, **_kwargs: {"id": "agent-created", "app_id": app_model.id},
+    )
+
+    current_user = SimpleNamespace(id=account_id)
     with app.test_request_context(
         "/console/api/agent",
-        json={"name": "Iris", "description": "Agent app", "role": "   ", "icon_type": "emoji", "icon": "robot"},
+        json={
+            "name": "No-role Iris",
+            "description": "Agent app",
+            "icon_type": "emoji",
+            "icon": "robot",
+        },
     ):
-        with pytest.raises(ValueError, match="Agent role is required"):
-            unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
+        created, status = unwrap(AgentAppListApi.post)(AgentAppListApi(), "tenant-1", current_user)
+
+    assert status == 201
+    assert created == {"id": "agent-created", "app_id": "app-created"}
+    create_call = cast(dict[str, object], captured["create"])
+    create_params = cast(Any, create_call["params"])
+    assert create_call["tenant_id"] == "tenant-1"
+    assert create_call["account"] is current_user
+    assert create_params.agent_role == ""
 
 
 def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
@@ -804,7 +838,7 @@ def test_agent_api_status_and_key_routes_resolve_backing_app(
     }
 
 
-def test_agent_app_update_rejects_empty_role(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_agent_app_update_allows_empty_role(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
     captured: dict[str, object] = {}
@@ -819,10 +853,27 @@ def test_agent_app_update_rejects_empty_role(app: Flask, monkeypatch: pytest.Mon
         "get_app_backing_agent",
         lambda _self, **kwargs: SimpleNamespace(
             id=agent_id,
+            app_id="app-1",
+            backing_app_id=None,
             role="",
             debug_conversation_id="debug-conversation-detail",
             active_config_snapshot_id=None,
         ),
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "get_or_create_agent_app_debug_conversation_id",
+        lambda _self, **kwargs: "debug-conversation-detail",
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "count_agent_app_debug_conversation_messages",
+        lambda _self, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "active_config_is_published",
+        lambda _self, **kwargs: False,
     )
     monkeypatch.setattr(
         roster_controller.FeatureService,
@@ -844,8 +895,11 @@ def test_agent_app_update_rejects_empty_role(app: Flask, monkeypatch: pytest.Mon
         "/console/api/agent/00000000-0000-0000-0000-000000000001",
         json={"name": "Renamed", "description": "", "role": "", "icon_type": "emoji", "icon": "R"},
     ):
-        with pytest.raises(ValueError, match="String should have at least 1 character"):
-            unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", SimpleNamespace(id="account-1"), agent_id)
+        updated = unwrap(AgentAppApi.put)(AgentAppApi(), "tenant-1", SimpleNamespace(id="account-1"), agent_id)
+
+    assert updated["role"] == ""
+    update_call = cast(dict[str, object], captured["update"])
+    assert cast(dict[str, object], update_call["args"])["role"] == ""
 
 
 def test_invite_options_get_parses_app_id(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

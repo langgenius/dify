@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "ต้องระบุชื่อ",
   "roster.createForm.roleLabel": "บทบาท",
   "roster.createForm.rolePlaceholder": "เช่น ผู้ช่วยวิจัย",
-  "roster.createForm.roleRequired": "ต้องระบุบทบาท",
   "roster.createSuccess": "สร้างตัวแทนแล้ว",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "ตัวแทนนี้จะถูกลบออกจากรายการ Roster ที่ใช้งานอยู่",

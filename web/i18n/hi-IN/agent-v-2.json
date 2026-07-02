@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "नाम आवश्यक है।",
   "roster.createForm.roleLabel": "भूमिका",
   "roster.createForm.rolePlaceholder": "उदा. शोध सहायक",
-  "roster.createForm.roleRequired": "भूमिका आवश्यक है।",
   "roster.createSuccess": "एजेंट बन गया।",
   "roster.dateTimeFormat": "DD/MM/YYYY hh:mm:ss A",
   "roster.deleteDialog.description": "इस एजेंट को सक्रिय Roster सूची से हटा दिया जाएगा।",

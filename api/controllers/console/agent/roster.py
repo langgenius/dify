@@ -39,9 +39,11 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.agent_fields import (
+    AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
+    AgentConfigSnapshotSummaryResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
     AgentLogMessageListResponse,
@@ -50,11 +52,13 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
+from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.agent import Agent, AgentStatus
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
@@ -82,33 +86,31 @@ class AgentIdPath(BaseModel):
 class AgentAppCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, description="Agent name")
     description: str | None = Field(default=None, description="Agent description (max 400 chars)", max_length=400)
-    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
+    role: str | None = Field(default=None, description="Agent role", max_length=255)
     icon_type: IconType | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, value: str) -> str:
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required.")
-        return role
+    def validate_role(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
 
 # Keep agent-app roster DTOs agent-specific instead of reusing the shared
 # /apps response/request models. The roster surface needs Agent-only fields such
 # as `role`, while the generic console/apps contracts must stay unchanged.
 class AgentAppUpdatePayload(GenericUpdateAppPayload):
-    role: str = Field(..., min_length=1, description="Agent role", max_length=255)
+    role: str | None = Field(default=None, description="Agent role", max_length=255)
 
     @field_validator("role")
     @classmethod
-    def validate_role(cls, value: str) -> str:
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required.")
-        return role
+    def validate_role(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip()
 
 
 class AgentAppCopyPayload(BaseModel):
@@ -124,10 +126,7 @@ class AgentAppCopyPayload(BaseModel):
     def validate_role(cls, value: str | None) -> str | None:
         if value is None:
             return None
-        role = value.strip()
-        if not role:
-            raise ValueError("Agent role is required when provided.")
-        return role
+        return value.strip()
 
 
 class AgentApiStatusPayload(BaseModel):
@@ -264,21 +263,21 @@ class AgentPublishPayload(BaseModel):
     version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
 
 
-class AgentPublishResponse(BaseModel):
+class AgentPublishResponse(ResponseModel):
     result: str
     active_config_snapshot_id: str
-    active_config_snapshot: dict[str, object] | None = None
-    draft: dict[str, object] | None = None
+    active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    draft: AgentConfigDraftSummaryResponse | None = None
 
 
 class AgentBuildDraftCheckoutPayload(BaseModel):
     force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
 
 
-class AgentBuildDraftResponse(BaseModel):
+class AgentBuildDraftResponse(ResponseModel):
     variant: str
-    draft: dict[str, object]
-    agent_soul: dict[str, object]
+    draft: AgentConfigDraftSummaryResponse
+    agent_soul: AgentSoulConfig
 
 
 class AgentBuildDraftApplyResponse(BaseModel):
@@ -563,7 +562,7 @@ class AgentAppListApi(Resource):
             name=args.name,
             description=args.description,
             mode="agent",
-            agent_role=args.role,
+            agent_role=args.role or "",
             icon_type=args.icon_type,
             icon=args.icon,
             icon_background=args.icon_background,

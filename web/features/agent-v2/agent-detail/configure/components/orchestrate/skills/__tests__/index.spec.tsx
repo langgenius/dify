@@ -308,6 +308,29 @@ describe('AgentSkills', () => {
     expect(toast.success).toHaveBeenCalled()
   })
 
+  it('should not show the frontend fallback error when skill upload fails', async () => {
+    const user = userEvent.setup()
+    mocks.uploadSkillMutationFn.mockRejectedValueOnce(new Error('Backend upload error'))
+    renderAgentSkills({ initialDraft: defaultAgentSoulConfigFormState })
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }))
+
+    const input = await waitFor(() => {
+      const element = document.querySelector('input[type="file"]')
+      expect(element).not.toBeNull()
+      return element as HTMLInputElement
+    })
+    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
+    await user.upload(input, file)
+    await user.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.upload\.action/i }))
+
+    await waitFor(() => {
+      expect(mocks.uploadSkillMutationFn).toHaveBeenCalled()
+    })
+
+    expect(toast.error).not.toHaveBeenCalledWith('agentV2.agentDetail.configure.skills.upload.failed')
+  })
+
   it('should use workflow config skill endpoints with node_id for uploads and skill member queries', async () => {
     const user = userEvent.setup()
     renderAgentSkills({

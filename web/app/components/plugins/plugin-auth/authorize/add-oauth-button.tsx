@@ -73,8 +73,8 @@ const AddOAuthButton = ({
   }, [oAuthData, data])
   const {
     schema = [],
-    is_oauth_custom_client_enabled,
-    is_system_oauth_params_exists,
+    is_oauth_custom_client_enabled = false,
+    is_system_oauth_params_exists = false,
     client_params = {},
     redirect_uri,
   } = mergedOAuthData

@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Nome é obrigatório.",
   "roster.createForm.roleLabel": "Função",
   "roster.createForm.rolePlaceholder": "ex.: Assistente de pesquisa",
-  "roster.createForm.roleRequired": "Função é obrigatória.",
   "roster.createSuccess": "Agente criado.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Este agente será removido da lista do roster ativo.",

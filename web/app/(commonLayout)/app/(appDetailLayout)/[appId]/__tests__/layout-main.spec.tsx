@@ -31,6 +31,7 @@ vi.mock('@/service/apps', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     currentWorkspace: { id: 'workspace-1' },
+    isCurrentWorkspaceDatasetOperator: false,
     isLoadingCurrentWorkspace: false,
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
     userProfile: { id: 'user-1' },
@@ -109,6 +110,34 @@ describe('AppDetailLayout', () => {
     await waitForAppContent()
     expect(mockFetchAppDetailDirect).toHaveBeenCalledTimes(1)
     expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('should render app detail content without owning the main skip target', async () => {
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
+  })
+
+  it('should preserve the column flex context for full-height workflow content', async () => {
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitForAppContent()
+
+    const contentSurface = screen.getByText('App page content').parentElement
+    const appDetailContent = contentSurface?.parentElement
+    const appDetailRoot = appDetailContent?.parentElement
+
+    expect(appDetailRoot).toHaveClass('flex-col')
   })
 
   it('should redirect restricted app pages before exposing app detail content', async () => {

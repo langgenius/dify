@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Nama diperlukan.",
   "roster.createForm.roleLabel": "Peran",
   "roster.createForm.rolePlaceholder": "mis. Asisten Riset",
-  "roster.createForm.roleRequired": "Peran diperlukan.",
   "roster.createSuccess": "Agen dibuat.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Agen ini akan dihapus dari daftar Roster aktif.",

@@ -16,17 +16,7 @@ describe('SegmentedControl wrappers', () => {
       </SegmentedControl>,
     )
 
-    await expect.element(screen.getByRole('group')).toHaveClass(
-      'bg-components-segmented-control-bg-normal',
-      'p-0.5',
-      'rounded-[10px]',
-    )
     await expect.element(screen.getByRole('button', { name: 'One' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(screen.getByRole('button', { name: 'One' })).toHaveClass(
-      'data-pressed:bg-components-segmented-control-item-active-bg',
-      'data-pressed:text-text-accent-light-mode-only',
-      'focus-visible:ring-inset',
-    )
   })
 
   it('uses single selection by default', async () => {

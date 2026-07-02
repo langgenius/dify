@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "請輸入名稱。",
   "roster.createForm.roleLabel": "角色",
   "roster.createForm.rolePlaceholder": "例如：研究助理",
-  "roster.createForm.roleRequired": "請輸入角色。",
   "roster.createSuccess": "Agent 已建立。",
   "roster.dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
   "roster.deleteDialog.description": "此 Agent 將從目前活躍 Roster 清單中移除。",

@@ -125,13 +125,57 @@ def test_message_detail_response_normalizes_aliases_and_timestamp(app: Flask, mo
             "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
             "inputs": {"foo": "bar"},
             "query": "hello",
-            "re_sign_file_url_answer": "world",
+            "message": [{"text": "hello"}],
+            "message_tokens": 7,
+            "answer": "world",
+            "answer_tokens": 11,
+            "provider_response_latency": 1.25,
             "from_source": "user",
+            "from_end_user_id": None,
+            "from_account_id": "550e8400-e29b-41d4-a716-446655440002",
+            "feedbacks": [],
+            "workflow_run_id": None,
+            "annotation": None,
+            "annotation_hit_history": None,
             "status": "normal",
             "created_at": created_at,
+            "agent_thoughts": [],
+            "message_files": [],
             "message_metadata_dict": {"token_usage": 3},
+            "error": None,
+            "parent_message_id": None,
+            "extra_contents": [],
         }
     )
     assert response.answer == "world"
+    assert response.message_tokens == 7
+    assert response.answer_tokens == 11
+    assert response.provider_response_latency == 1.25
     assert response.metadata == {"token_usage": 3}
     assert response.created_at == int(created_at.timestamp())
+    assert response.model_dump(mode="json") == {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
+        "inputs": {"foo": "bar"},
+        "query": "hello",
+        "message": [{"text": "hello"}],
+        "message_tokens": 7,
+        "answer": "world",
+        "answer_tokens": 11,
+        "provider_response_latency": 1.25,
+        "from_source": "user",
+        "from_end_user_id": None,
+        "from_account_id": "550e8400-e29b-41d4-a716-446655440002",
+        "feedbacks": [],
+        "workflow_run_id": None,
+        "annotation": None,
+        "annotation_hit_history": None,
+        "created_at": int(created_at.timestamp()),
+        "agent_thoughts": [],
+        "message_files": [],
+        "metadata": {"token_usage": 3},
+        "status": "normal",
+        "error": None,
+        "parent_message_id": None,
+        "extra_contents": [],
+    }

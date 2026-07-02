@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Ad gereklidir.",
   "roster.createForm.roleLabel": "Rol",
   "roster.createForm.rolePlaceholder": "örn. Araştırma Asistanı",
-  "roster.createForm.roleRequired": "Rol gereklidir.",
   "roster.createSuccess": "Ajan oluşturuldu.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Bu ajan, aktif Roster listesinden kaldırılacak.",

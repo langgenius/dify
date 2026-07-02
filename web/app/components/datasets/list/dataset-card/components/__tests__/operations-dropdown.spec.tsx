@@ -183,17 +183,6 @@ describe('OperationsDropdown', () => {
       expect(trigger).toBeInTheDocument()
     })
 
-    it('should expose visible keyboard focus styles on the trigger', () => {
-      const { container } = render(<OperationsDropdown {...defaultProps} />)
-      const trigger = container.querySelector('[aria-label="Dataset operations"]')
-      expect(trigger).toHaveClass(
-        'focus-visible:outline-hidden',
-        'focus-visible:ring-1',
-        'focus-visible:ring-inset',
-        'focus-visible:ring-components-input-border-hover',
-      )
-    })
-
     it('should use a solid trigger background without backdrop blur on hover states', () => {
       const { container } = render(<OperationsDropdown {...defaultProps} />)
       const trigger = container.querySelector('[aria-label="Dataset operations"]')

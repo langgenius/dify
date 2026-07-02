@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "Naam is verplicht.",
   "roster.createForm.roleLabel": "Rol",
   "roster.createForm.rolePlaceholder": "bv. Research Assistant",
-  "roster.createForm.roleRequired": "Rol is verplicht.",
   "roster.createSuccess": "Agent aangemaakt.",
   "roster.dateTimeFormat": "DD-MM-YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Deze agent wordt uit de actieve rosterlijst verwijderd.",

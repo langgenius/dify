@@ -341,7 +341,6 @@
   "roster.createForm.nameRequired": "الاسم مطلوب.",
   "roster.createForm.roleLabel": "الدور",
   "roster.createForm.rolePlaceholder": "مثلاً مساعد بحث",
-  "roster.createForm.roleRequired": "الدور مطلوب.",
   "roster.createSuccess": "تم إنشاء الوكيل.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "ستتم إزالة هذا الوكيل من قائمة Roster النشطة.",
