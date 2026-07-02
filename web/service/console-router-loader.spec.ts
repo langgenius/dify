@@ -5,11 +5,9 @@ import { installedApps } from '@dify/contracts/api/console/installed-apps/orpc.g
 import { notification } from '@dify/contracts/api/console/notification/orpc.gen'
 import { tags } from '@dify/contracts/api/console/tags/orpc.gen'
 import { workspaces } from '@dify/contracts/api/console/workspaces/orpc.gen'
-import { contract } from '@dify/contracts/enterprise/orpc.gen'
+import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import { describe, expect, it } from 'vitest'
 import { loadConsoleContractForSegment } from './console-router-loader'
-
-const enterpriseContract = contract
 
 describe('loadConsoleContractForSegment', () => {
   it.each([
@@ -20,7 +18,7 @@ describe('loadConsoleContractForSegment', () => {
     ['notification', 'notification', notification],
     ['tags', 'tags', tags],
     ['workspaces', 'workspaces', workspaces],
-  ])('loads the generated %s contract when generated types are usable', async (segment, contractKey, generatedContract) => {
+  ] as const)('loads the generated %s contract when generated types are usable', async (segment, contractKey, generatedContract) => {
     const contract = await loadConsoleContractForSegment(segment)
 
     expect(contract).toHaveProperty(contractKey, generatedContract)

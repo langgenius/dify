@@ -3,9 +3,9 @@ import type { App } from '@/types/app'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '../client'
 import {
-  useAppWhiteListSubjectsBase,
-  useGetUserCanAccessAppBase,
-  useSearchForWhiteListCandidatesBase,
+  useAppWhiteListSubjects as useAppWhiteListSubjectsBase,
+  useGetUserCanAccessApp as useGetUserCanAccessAppBase,
+  useSearchForWhiteListCandidates as useSearchForWhiteListCandidatesBase,
 } from './use-app-access-control'
 
 const NAME_SPACE = 'access-control'

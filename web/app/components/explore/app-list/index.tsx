@@ -1,14 +1,17 @@
 'use client'
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
+import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppCard from '@/app/components/explore/app-card'
@@ -32,9 +35,6 @@ import s from './style.module.css'
 
 const TryApp = dynamic(() => import('../try-app'), { ssr: false })
 
-type BannerType = import('@/models/app').Banner
-type WorkspaceApp = import('@/types/app').App
-
 type ExploreAppListData = {
   categories: string[]
   allList: App[]
@@ -48,7 +48,7 @@ const homeContinueWorkAppsInput = {
   },
 }
 
-const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled']
+const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled'] as const
 
 function getLocaleQueryInput(locale?: string) {
   return locale
@@ -375,4 +375,4 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   )
 }
 
-export default memo(Apps)
+export default React.memo(Apps)
