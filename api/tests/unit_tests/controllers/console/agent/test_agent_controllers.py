@@ -317,7 +317,9 @@ def test_agent_app_list_and_create_use_agent_route(
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
     )
 
-    with app.test_request_context("/console/api/agent?page=1&limit=10&mode=workflow"):
+    with app.test_request_context(
+        "/console/api/agent?page=1&limit=10&mode=workflow&sort_by=recently_created&is_created_by_me=true"
+    ):
         listed = unwrap(AgentAppListApi.get)(AgentAppListApi(), "tenant-1", SimpleNamespace(id=account_id))
 
     assert listed["page"] == 1
@@ -342,6 +344,8 @@ def test_agent_app_list_and_create_use_agent_route(
     list_call = cast(dict[str, object], captured["list"])
     list_params = cast(Any, list_call["params"])
     assert list_params.mode == "agent"
+    assert list_params.sort_by == "recently_created"
+    assert list_params.is_created_by_me is True
     assert list_params.status == "normal"
 
     with app.test_request_context(

@@ -528,6 +528,7 @@ class AgentAppListApi(Resource):
             page=args.page,
             limit=args.limit,
             mode="agent",
+            sort_by=args.sort_by,
             name=args.name,
             tag_ids=args.tag_ids,
             creator_ids=args.creator_ids,

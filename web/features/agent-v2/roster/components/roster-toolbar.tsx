@@ -1,20 +1,24 @@
 'use client'
 
 import type { RosterFilterValue } from './roster-filter'
+import type { RosterSortBy } from './roster-sort'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { CreateAgentDialog } from './create-agent-dialog'
+import { RosterSortSelect } from './roster-sort-select'
 
 type RosterToolbarProps = {
   createdByMe: boolean
   draftAgents: number
   filter: RosterFilterValue
   keyword: string
+  sortBy: RosterSortBy
   onCreatedByMeChange: (value: boolean) => void
   onFilterChange: (value: RosterFilterValue) => void
   onKeywordChange: (value: string) => void
+  onSortByChange: (value: RosterSortBy) => void
   publishedAgents: number
 }
 
@@ -51,9 +55,11 @@ export function RosterToolbar({
   draftAgents,
   filter,
   keyword,
+  sortBy,
   onCreatedByMeChange,
   onFilterChange,
   onKeywordChange,
+  onSortByChange,
   publishedAgents,
 }: RosterToolbarProps) {
   const { t } = useTranslation('agentV2')
@@ -103,6 +109,10 @@ export function RosterToolbar({
         <span className="p-1 system-sm-regular text-text-tertiary">{t('roster.filters.createdByMe')}</span>
       </label>
       <div className="ml-auto flex min-w-0 items-center gap-2">
+        <RosterSortSelect
+          value={sortBy}
+          onValueChange={onSortByChange}
+        />
         <CreateAgentDialog />
       </div>
     </div>
