@@ -139,6 +139,8 @@ class WorkflowRunData(BaseModel):
     error: str | None = None
     elapsed_time: float | None = None
     total_tokens: int | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
     total_steps: int | None = None
     created_at: int | None = None
     finished_at: int | None = None

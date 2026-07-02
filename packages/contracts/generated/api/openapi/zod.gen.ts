@@ -609,12 +609,14 @@ export const zMessageMetadata = z.object({
  * WorkflowRunData
  */
 export const zWorkflowRunData = z.object({
+  completion_tokens: z.int().nullish(),
   created_at: z.int().nullish(),
   elapsed_time: z.number().nullish(),
   error: z.string().nullish(),
   finished_at: z.int().nullish(),
   id: z.string(),
   outputs: z.record(z.string(), z.unknown()).optional(),
+  prompt_tokens: z.int().nullish(),
   status: z.string(),
   total_steps: z.int().nullish(),
   total_tokens: z.int().nullish(),

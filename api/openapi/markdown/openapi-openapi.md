@@ -1042,12 +1042,14 @@ types it as a required `'success'` rather than an optional field.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| completion_tokens | integer |  | No |
 | created_at | integer |  | No |
 | elapsed_time | number |  | No |
 | error | string |  | No |
 | finished_at | integer |  | No |
 | id | string |  | Yes |
 | outputs | object |  | No |
+| prompt_tokens | integer |  | No |
 | status | string |  | Yes |
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
