@@ -47,8 +47,8 @@ export default function AppNavItem({
       key={id}
       className={cn(
         isMainNav
-          ? 'group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors has-[>a:focus-visible]:ring-2 has-[>a:focus-visible]:ring-state-accent-solid has-[>a:focus-visible]:ring-inset'
-          : 'group flex h-8 items-center justify-between rounded-lg px-2 system-sm-medium text-sm font-normal text-components-menu-item-text has-[>a:focus-visible]:ring-2 has-[>a:focus-visible]:ring-state-accent-solid has-[>a:focus-visible]:ring-inset mobile:justify-center mobile:px-1',
+          ? 'group flex h-8 items-center justify-between gap-2 rounded-lg py-0.5 pr-0.5 pl-2 transition-colors has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid'
+          : 'group flex h-8 items-center justify-between rounded-lg px-2 system-sm-medium text-sm font-normal text-components-menu-item-text has-[>a:focus-visible]:inset-ring-2 has-[>a:focus-visible]:inset-ring-state-accent-solid mobile:justify-center mobile:px-1',
         isMainNav
           ? (isSelected ? 'bg-state-base-hover' : 'hover:bg-state-base-hover')
           : (isSelected ? 'bg-state-base-active text-components-menu-item-text-active' : 'hover:bg-state-base-hover hover:text-components-menu-item-text-hover'),

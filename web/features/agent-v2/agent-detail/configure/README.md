@@ -39,7 +39,7 @@ Owns the Agent V2 configure runtime used by the Agent App configure page and wor
 - context/app-context
 - context/i18n
 - context/modal-context
-- contract/router
+- @dify/contracts/api/console/router.gen
 - hooks/use-format-time-from-now
 - hooks/use-theme
 - hooks/use-timestamp

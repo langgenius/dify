@@ -144,6 +144,8 @@ describe('SnippetSidebarContent', () => {
     expect(screen.queryByRole('link', { name: /snippet\.management/i })).not.toBeInTheDocument()
     expect(screen.getByText(snippet.name)).toHaveAttribute('title', snippet.name)
     expect(screen.getByText(snippet.name)).toHaveClass('truncate')
+    if (!snippet.description)
+      throw new Error('snippet.description is required for this test')
     expect(screen.getByText(snippet.description)).toHaveAttribute('title', snippet.description)
     expect(screen.getByText(snippet.description)).toHaveClass('truncate')
     expect(screen.queryByRole('button', { name: /common\.operation\.add/i })).not.toBeInTheDocument()

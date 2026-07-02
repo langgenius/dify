@@ -1,5 +1,6 @@
 import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type {
   GetReleaseResponse,
@@ -11,7 +12,6 @@ import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
-import type { consoleRouterContract } from '@/contract/router'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
@@ -44,6 +44,38 @@ function isURL(path: string) {
   }
 }
 
+const trialAppDatasetsPathPattern = /\/trial-apps\/[^/]+\/datasets$/
+const indexedIdsQueryParamPattern = /^ids\[(\d+)\]$/
+
+function normalizeConsoleOpenAPIURL(url: string | URL) {
+  const normalizedUrl = new URL(url)
+
+  if (!trialAppDatasetsPathPattern.test(normalizedUrl.pathname))
+    return normalizedUrl.href
+
+  const ids: Array<{ index: number, value: string }> = []
+  const indexedKeys = new Set<string>()
+
+  normalizedUrl.searchParams.forEach((value, key) => {
+    const match = indexedIdsQueryParamPattern.exec(key)
+    if (!match)
+      return
+
+    indexedKeys.add(key)
+    ids.push({ index: Number(match[1]), value })
+  })
+
+  if (!ids.length)
+    return normalizedUrl.href
+
+  indexedKeys.forEach(key => normalizedUrl.searchParams.delete(key))
+  ids
+    .sort((a, b) => a.index - b.index)
+    .forEach(({ value }) => normalizedUrl.searchParams.append('ids', value))
+
+  return normalizedUrl.href
+}
+
 export function getBaseURL(path: string) {
   const url = new URL(path, isURL(path) ? undefined : isClient ? window.location.origin : 'http://localhost')
 
@@ -69,7 +101,7 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
     url: getBaseURL(API_PREFIX),
     fetch: (input, init, options) => {
       return request(
-        input.url,
+        normalizeConsoleOpenAPIURL(input.url),
         init,
         {
           fetchCompat: true,
@@ -616,22 +648,6 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                 queryKey: consoleQuery.agent.inviteOptions.get.key(),
               })
             },
-          },
-        },
-      },
-    },
-    explore: {
-      updateAppAccessMode: {
-        mutationOptions: {
-          onSuccess: (_data, _variables, _onMutateResult, context) => {
-            return Promise.all([
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.explore.appAccessMode.key({ type: 'query' }),
-              }),
-              context.client.invalidateQueries({
-                queryKey: ['access-control', 'app-whitelist-subjects'],
-              }),
-            ])
           },
         },
       },

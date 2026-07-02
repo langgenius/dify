@@ -3,24 +3,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from flask_restx import fields
 from pydantic import field_validator
 
 from fields.base import ResponseModel
 from graphon.variables.types import SegmentType
-from libs.helper import TimestampField, to_timestamp
+from libs.helper import to_timestamp
 
 from ._value_type_serializer import serialize_value_type
-
-conversation_variable_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "value_type": fields.String(attribute=serialize_value_type),
-    "value": fields.String,
-    "description": fields.String,
-    "created_at": TimestampField,
-    "updated_at": TimestampField,
-}
 
 
 class ConversationVariableResponse(ResponseModel):

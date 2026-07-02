@@ -167,7 +167,7 @@ export function WorkspaceSwitcher({
               aria-current={workspace.current ? 'true' : undefined}
               title={workspaceName}
               className={cn(
-                'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+                'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
                 workspace.current && 'bg-state-base-hover',
               )}
               onClick={() => {
