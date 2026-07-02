@@ -248,6 +248,7 @@ export const buildPublishBody = ({
     file_upload: fileUpload as never,
     suggested_questions_after_answer: features?.suggested as never,
     retriever_resource: features?.citation as never,
+    engram: features?.engram as never,
     agent_mode: {
       ...modelConfig.agentConfig,
       strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,

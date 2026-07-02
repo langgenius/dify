@@ -1509,6 +1509,14 @@ class EngramConfig(BaseSettings):
         default=5,
     )
 
+    ENGRAM_CONVERSATION_SCOPE_ENABLED: bool = Field(
+        description="Scope Engram memories by conversation_id on both store and recall. Only enable this when "
+        "the target Engram project/group has 'conversation_id' configured as a scope property on a topic; "
+        "otherwise Engram rejects the write. Default off, so memories are scoped by user_id alone and work "
+        "against any Engram group out of the box.",
+        default=False,
+    )
+
 
 class FeatureConfig(
     # place the configs in alphabet order

@@ -5,6 +5,7 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from constants import HIDDEN_VALUE
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -20,6 +21,7 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.agent.entities import AgentToolEntity
+from core.helper.encrypter import encrypt_token
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated
@@ -67,10 +69,37 @@ class ModelConfigRequest(BaseModel):
         default=None,
         description="Agent mode configuration",
     )
+    engram: dict[str, Any] | None = Field(
+        default=None,
+        description="Weaviate Engram long-term memory configuration (enabled, api_key, endpoint)",
+    )
 
 
 register_schema_models(console_ns, ModelConfigRequest)
 register_response_schema_models(console_ns, SimpleResultResponse)
+
+
+def _encrypt_engram_api_key(*, tenant_id: str, previous_config_id: str | None, new_app_model_config: AppModelConfig):
+    """
+    Encrypt the per-app Engram API key before persistence.
+
+    The console sends the key as plaintext when edited, the hidden sentinel when left unchanged, or
+    empty when cleared. An unchanged key preserves the previously stored (already encrypted) value;
+    a new key is encrypted with the tenant key; an empty key is stored empty (the app then inherits
+    the deployment-wide credentials).
+    """
+    engram = new_app_model_config.engram_dict
+    api_key = (engram.get("api_key") or "").strip()
+
+    if api_key == HIDDEN_VALUE:
+        previous = db.session.get(AppModelConfig, previous_config_id) if previous_config_id else None
+        engram["api_key"] = (previous.engram_dict.get("api_key") if previous else "") or ""
+    elif api_key:
+        engram["api_key"] = encrypt_token(tenant_id, api_key)
+    else:
+        engram["api_key"] = ""
+
+    new_app_model_config.engram = json.dumps(engram)
 
 
 @console_ns.route("/apps/<uuid:app_id>/model-config")
@@ -109,6 +138,14 @@ class ModelConfigResource(Resource):
             updated_by=current_user_id,
         )
         new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
+
+        # Encrypt the per-app Engram API key (secret). Preserve the previously stored key when the
+        # client sends the hidden sentinel (i.e. the key was not edited).
+        _encrypt_engram_api_key(
+            tenant_id=current_tenant_id,
+            previous_config_id=app_model.app_model_config_id,
+            new_app_model_config=new_app_model_config,
+        )
 
         if app_model.mode == AppMode.AGENT_CHAT or app_model.is_agent:
             # get original app model config

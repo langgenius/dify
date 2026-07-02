@@ -234,6 +234,11 @@ export type ModelConfig = {
   sensitive_word_avoidance: {
     enabled: boolean
   }
+  engram?: {
+    enabled: boolean
+    api_key?: string
+    endpoint?: string
+  }
   annotation_reply?: AnnotationReplyConfig
   agent_mode: {
     enabled: boolean

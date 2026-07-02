@@ -8,6 +8,7 @@ import AnnotationReply from '@/app/components/base/features/new-feature-panel/an
 
 import Citation from '@/app/components/base/features/new-feature-panel/citation'
 import ConversationOpener from '@/app/components/base/features/new-feature-panel/conversation-opener'
+import Engram from '@/app/components/base/features/new-feature-panel/engram'
 import { FeaturePanelDrawer } from '@/app/components/base/features/new-feature-panel/feature-panel-drawer'
 import FileUpload from '@/app/components/base/features/new-feature-panel/file-upload'
 import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
@@ -108,6 +109,9 @@ const NewFeaturePanel = ({
           {showModeration && (isChatMode || !inWorkflow) && <Moderation disabled={disabled} onChange={onChange} />}
           {showAnnotationReply && !inWorkflow && isChatMode && (
             <AnnotationReply disabled={disabled} onChange={onChange} />
+          )}
+          {!inWorkflow && isChatMode && (
+            <Engram disabled={disabled} onChange={onChange} />
           )}
         </div>
       </div>

@@ -73,6 +73,7 @@ model_config_fields = {
     "completion_prompt_config": OpaqueRawField(attribute="completion_prompt_config_dict"),
     "dataset_configs": OpaqueRawField(attribute="dataset_configs_dict"),
     "file_upload": OpaqueRawField(attribute="file_upload_dict"),
+    "engram": OpaqueRawField(attribute="engram_dict_masked"),
     "created_by": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,

@@ -122,6 +122,11 @@ export type AgentConfig = {
   tools: ToolItem[]
 }
 // frontend use. Not the same as backend
+export type EngramConfig = {
+  enabled: boolean
+  api_key?: string
+  endpoint?: string
+}
 export type ModelConfig = {
   provider: string // LLM Provider: for example "OPENAI"
   model_id: string
@@ -140,6 +145,7 @@ export type ModelConfig = {
   retriever_resource: RetrieverResourceConfig | null
   sensitive_word_avoidance: ModerationConfig | null
   annotation_reply: AnnotationReplyConfig | null
+  engram?: EngramConfig | null
   external_data_tools?: ExternalDataTool[] | null
   system_parameters: {
     audio_file_size_limit: number

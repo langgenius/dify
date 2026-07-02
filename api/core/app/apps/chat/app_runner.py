@@ -12,7 +12,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import create_session
-from core.memory.engram import EngramMemory, is_engram_enabled
+from core.memory.engram import build_engram_memory
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
@@ -186,14 +186,20 @@ class ChatAppRunner(AppRunner):
             )
             context_files = retrieved_files or []
 
-        # augment context with Weaviate Engram long-term memory (optional, config-gated)
-        if is_engram_enabled() and application_generate_entity.conversation_id and query:
-            engram_memory = EngramMemory(
+        # augment context with the app's Weaviate Engram long-term memory (per-bot, opt-in)
+        engram_config = getattr(app_config, "engram", None)
+        if query and engram_config and engram_config.enabled:
+            engram_memory = build_engram_memory(
                 user_id=application_generate_entity.user_id,
+                tenant_id=app_config.tenant_id,
                 conversation_id=application_generate_entity.conversation_id,
-            ).recall(query)
-            if engram_memory:
-                memory_block = f"Relevant long-term memory about the user:\n{engram_memory}"
+                enabled=engram_config.enabled,
+                api_key_encrypted=engram_config.api_key,
+                endpoint=engram_config.endpoint,
+            )
+            recalled = engram_memory.recall(query) if engram_memory else None
+            if recalled:
+                memory_block = f"Relevant long-term memory about the user:\n{recalled}"
                 context = f"{memory_block}\n\n{context}" if context else memory_block
 
         # reorganize all inputs and template to prompt messages
