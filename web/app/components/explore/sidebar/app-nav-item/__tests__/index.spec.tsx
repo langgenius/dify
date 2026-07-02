@@ -21,26 +21,17 @@ describe('AppNavItem', () => {
   })
 
   describe('Rendering', () => {
-    it('should render name and item operation on desktop', () => {
+    it('should render name and item operation when expanded', () => {
       render(<AppNavItem {...baseProps} />)
 
       expect(screen.getByText('My App')).toBeInTheDocument()
       expect(screen.getByTestId('item-operation-trigger')).toBeInTheDocument()
     })
 
-    it('should use responsive selectors for mobile content', () => {
-      render(<AppNavItem {...baseProps} />)
-
-      expect(screen.getByText('My App')).toHaveClass('hidden', 'pc:block')
-      expect(screen.getByTestId('item-operation-trigger').parentElement).toHaveClass('hidden', 'pc:block')
-    })
-
     it('should render icon-only content when folded', () => {
       render(<AppNavItem {...baseProps} isFolded />)
 
       expect(screen.getByRole('link', { name: 'My App' })).toBeInTheDocument()
-      expect(screen.queryByText('My App')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('item-operation-trigger')).not.toBeInTheDocument()
     })
   })
 
