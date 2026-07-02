@@ -27,9 +27,9 @@ ContractName = NewType("ContractName", str)
 ModuleName = NewType("ModuleName", str)
 type ImportedModuleList = list[ModuleName]
 type ImportedModuleSet = set[ModuleName]
-type SnapshotModulesByImporter = dict[ModuleName, ImportedModuleList]
-type MutableSnapshotModulesByImporter = dict[ModuleName, ImportedModuleSet]
-type Snapshot = dict[ContractName, SnapshotModulesByImporter]
+type ModulesByImporter = dict[ModuleName, ImportedModuleList]
+type MutableModulesByImporter = dict[ModuleName, ImportedModuleSet]
+type BaselineSnapshot = dict[ContractName, ModulesByImporter]
 type ImportEdge = tuple[ModuleName, ModuleName]
 
 
@@ -37,7 +37,7 @@ class BaselinePayload(BaseModel):
     """Serialized baseline file payload."""
 
     version: int
-    contracts: dict[str, dict[str, list[str]]]
+    contracts: BaselineSnapshot
     model_config = ConfigDict(extra="forbid")
 
 
@@ -59,18 +59,16 @@ class BaselineDocument:
     """Domain baseline document used across the file boundary."""
 
     version: int
-    snapshot: Snapshot
+    snapshot: BaselineSnapshot
 
     @classmethod
     def from_payload(cls, payload: BaselinePayload) -> BaselineDocument:
-        normalized_snapshot: Snapshot = {}
+        normalized_snapshot: BaselineSnapshot = {}
         for contract_name, importers in payload.contracts.items():
-            normalized_importers: SnapshotModulesByImporter = {}
+            normalized_importers: ModulesByImporter = {}
             for importer, imported_modules in importers.items():
-                normalized_importers[ModuleName(importer)] = sorted(
-                    {ModuleName(module_name) for module_name in imported_modules}
-                )
-            normalized_snapshot[ContractName(contract_name)] = normalized_importers
+                normalized_importers[importer] = sorted(set(imported_modules))
+            normalized_snapshot[contract_name] = normalized_importers
 
         return cls(version=payload.version, snapshot=normalized_snapshot)
 
@@ -101,15 +99,15 @@ def load_report(config_path: str | None = None, contract_ids: tuple[str, ...] = 
     )
 
 
-def snapshot_from_report(report: Any) -> Snapshot:
+def snapshot_from_report(report: Any) -> BaselineSnapshot:
     """Return broken direct-import edges grouped by contract and importer module."""
 
-    snapshot: Snapshot = {}
+    snapshot: BaselineSnapshot = {}
     for contract, check in report.get_contracts_and_checks():
         if check.kept:
             continue
 
-        imports_by_importer: MutableSnapshotModulesByImporter = {}
+        imports_by_importer: MutableModulesByImporter = {}
         for importer, imported in _iter_direct_imports(check.metadata):
             imports_by_importer.setdefault(importer, set()).add(imported)
 
@@ -125,8 +123,8 @@ def snapshot_from_report(report: Any) -> Snapshot:
 
 
 def compare_snapshots(
-    current_snapshot: Snapshot,
-    baseline_snapshot: Snapshot,
+    current_snapshot: BaselineSnapshot,
+    baseline_snapshot: BaselineSnapshot,
     comparison: ComparisonMode = "subset",
 ) -> list[SnapshotFailure]:
     """Compare the current and baseline snapshots and return any regressions."""
