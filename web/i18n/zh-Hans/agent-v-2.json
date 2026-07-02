@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "如需显示隐藏的 .env 文件，请在文件选择器中按 Command + Shift + .。",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "如果 .env 文件被隐藏，请在系统文件选择器中开启隐藏文件显示。",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "如需显示隐藏的 .env 文件，请在文件资源管理器中开启“隐藏的项目”。",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "已跳过 {{count}} 行非法 .env 内容。",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "已跳过 {{count}} 行非法 .env 内容。",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

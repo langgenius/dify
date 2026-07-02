@@ -4637,14 +4637,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/tool/action-item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/tool/tool.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -5225,17 +5217,6 @@
   "web/app/components/workflow/nodes/_base/hooks/use-var-list.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/_base/node.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/_base/types.ts": {
