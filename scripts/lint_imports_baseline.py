@@ -11,12 +11,11 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
-import os
-import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, NewType
+import sys
 
 from importlinter import configuration
 from importlinter.application import use_cases
@@ -26,10 +25,8 @@ type BaselineVersion = Literal[1]
 type ComparisonMode = Literal["subset", "count"]
 ContractName = NewType("ContractName", str)
 ModuleName = NewType("ModuleName", str)
-type ImportedModuleList = list[ModuleName]
-type ImportedModuleSet = set[ModuleName]
-type ModulesByImporter = dict[ModuleName, ImportedModuleList]
-type MutableModulesByImporter = dict[ModuleName, ImportedModuleSet]
+type ModulesByImporter = dict[ModuleName, list[ModuleName]]
+type MutableModulesByImporter = dict[ModuleName, set[ModuleName]]
 type BaselineSnapshot = dict[ContractName, ModulesByImporter]
 type ImportEdge = tuple[ModuleName, ModuleName]
 
@@ -60,10 +57,9 @@ def load_report(config_path: str | None = None, contract_ids: tuple[str, ...] = 
 
     configuration.configure()
     api_dir = str(API_DIR)
-    cwd = os.getcwd()
-    for candidate in (api_dir, cwd):
-        if candidate not in sys.path:
-            sys.path.insert(0, candidate)
+    if api_dir not in sys.path:
+        sys.path.insert(0, api_dir)
+
     resolved_config_path = config_path or str(DEFAULT_CONFIG_PATH)
     user_options = use_cases.read_user_options(config_filename=resolved_config_path)
     return use_cases.create_report(
