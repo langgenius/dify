@@ -2368,28 +2368,28 @@ packages:
       react: '>= 16 || ^19.0.0-rc'
 
   '@hey-api/codegen-cli@https://pkg.pr.new/hey-api/hey-api/@hey-api/codegen-cli@2d9d430':
-    resolution: {tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/codegen-cli@2d9d430}
+    resolution: {integrity: sha512-TlCrLrUvle0XLc779kixhRIYonoA2oNGile4dw0prnKEcC3jbMQBOR9qNsKoQzgKT56du7mHiNVLP4DKTQIziQ==, tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/codegen-cli@2d9d430}
     version: 0.0.1
     engines: {node: '>=22.18.0'}
 
   '@hey-api/codegen-core@https://pkg.pr.new/hey-api/hey-api/@hey-api/codegen-core@2d9d430':
-    resolution: {tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/codegen-core@2d9d430}
+    resolution: {integrity: sha512-x/jGjilU8PN0EucporZJNQ8cU5IYxS8MXFPGCXfu0xX+r7cO+CVA9YDFaBznhjZ22iEB0Ukg68OtdN+bs/61AA==, tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/codegen-core@2d9d430}
     version: 0.9.1
     engines: {node: '>=22.18.0'}
 
   '@hey-api/json-schema-ref-parser@https://pkg.pr.new/hey-api/hey-api/@hey-api/json-schema-ref-parser@2d9d430':
-    resolution: {tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/json-schema-ref-parser@2d9d430}
+    resolution: {integrity: sha512-iHx111cubvOj9+ZdAqsSM9LUoKFgGh1eNrcWQExYSNU8cyHXIOuuRIog3I9A+Mlt/tVstl/KQ+4e1k/W7efASQ==, tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/json-schema-ref-parser@2d9d430}
     version: 1.4.4
     engines: {node: '>=22.18.0'}
 
   '@hey-api/openapi-ts@https://pkg.pr.new/@hey-api/openapi-ts@4195':
-    resolution: {tarball: https://pkg.pr.new/@hey-api/openapi-ts@4195}
+    resolution: {integrity: sha512-UoS+0Uo/fpFVk5q8v9TDXvlec96OqyoAzUmBjsY/sUSkEA3BhLS+nLSqFzARUgEm4ae/d5+OdtHVUm+8zcQzQA==, tarball: https://pkg.pr.new/@hey-api/openapi-ts@4195}
     version: 0.99.0
     engines: {node: '>=22.18.0'}
     hasBin: true
 
   '@hey-api/shared@https://pkg.pr.new/hey-api/hey-api/@hey-api/shared@2d9d430':
-    resolution: {tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/shared@2d9d430}
+    resolution: {integrity: sha512-xhDandmml00vSLUau4MO9qVZ4vfEC8zQ6ChSI8VT024UpXhbrDQVIcnt6lKgOf3lIBZ/Q/g98fh11qpJGnv5Hg==, tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/shared@2d9d430}
     version: 0.5.0
     engines: {node: '>=22.18.0'}
 
@@ -2397,14 +2397,14 @@ packages:
     resolution: {integrity: sha512-P5DKr4dpZ7lmZpZt2bc2KWuzU9vl4GZcN7VrjchZF1WWKNGZFnwWhBxZo1t6P2muOCopIvqD2Fvp5os4QiitKA==}
 
   '@hey-api/spec-types@https://pkg.pr.new/hey-api/hey-api/@hey-api/spec-types@2d9d430':
-    resolution: {tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/spec-types@2d9d430}
+    resolution: {integrity: sha512-16SH2yuob+mbCkX5fVcNMesEqm608AHL1FR453M+NWq1zI+y0JpGLz5fPJdTNHWsxgQeAEVT5GAJj6W4SWg6lQ==, tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/spec-types@2d9d430}
     version: 0.2.0
 
   '@hey-api/types@0.1.4':
     resolution: {integrity: sha512-thWfawrDIP7wSI9ioT13I5soaaqB5vAPIiZmgD8PbeEVKNrkonc0N/Sjj97ezl7oQgusZmaNphGdMKipPO6IBg==}
 
   '@hey-api/types@https://pkg.pr.new/hey-api/hey-api/@hey-api/types@2d9d430':
-    resolution: {tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/types@2d9d430}
+    resolution: {integrity: sha512-3nS1EGoYOcTneTpBccppcVwSlTe/KpumdjOKKM9rLsMwp+kxAAOa9vmWwG5L630Ml4GuiFvtH6yacYtcjeU4bA==, tarball: https://pkg.pr.new/hey-api/hey-api/@hey-api/types@2d9d430}
     version: 0.1.4
 
   '@hono/node-server@2.0.6':
