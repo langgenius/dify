@@ -4,11 +4,13 @@ import ApiAccess from '../index'
 
 // Mock context and hooks for Card component
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: vi.fn(() => 'test-dataset-id'),
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({ dataset: { id: 'test-dataset-id', permission_keys: [] }, mutateDatasetRes: () => {} }),
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(() => true),
+  useSelector: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({ workspacePermissionKeys: ['dataset.api_key.manage'], userProfile: { id: 'u1' } }),
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({
@@ -18,6 +20,13 @@ vi.mock('@/hooks/use-api-access-url', () => ({
 vi.mock('@/service/knowledge/use-dataset', () => ({
   useEnableDatasetServiceApi: vi.fn(() => ({ mutateAsync: vi.fn() })),
   useDisableDatasetServiceApi: vi.fn(() => ({ mutateAsync: vi.fn() })),
+}))
+
+// Mock SecretKeyModal to avoid complex modal rendering
+vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
+  default: ({ isShow, datasetId }: { isShow: boolean, datasetId?: string }) => (
+    <div data-testid="secret-key-modal" data-show={String(isShow)} data-dataset-id={datasetId} />
+  ),
 }))
 
 afterEach(() => {
@@ -52,6 +61,13 @@ describe('ApiAccess', () => {
 
   it('should be wrapped with React.memo', () => {
     expect((ApiAccess as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+  })
+
+  it('should pass the dataset id from context to the secret key modal', () => {
+    render(<ApiAccess expand={true} apiEnabled={true} />)
+    const modal = screen.getByTestId('secret-key-modal')
+    expect(modal).toHaveAttribute('data-dataset-id', 'test-dataset-id')
+    expect(modal).toHaveAttribute('data-show', 'false')
   })
 
   describe('toggle functionality', () => {

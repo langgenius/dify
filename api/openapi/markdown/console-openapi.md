@@ -6654,7 +6654,7 @@ Check if dataset is in use
 | 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
 
 ### [GET] /datasets/{resource_id}/api-keys
-**Get all API keys for a dataset**
+**Get all API keys that can access a dataset**
 
 #### Parameters
 
@@ -6669,7 +6669,7 @@ Check if dataset is in use
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /datasets/{resource_id}/api-keys
-**Create a new API key for a dataset**
+**Create a new API key bound to a single dataset**
 
 #### Parameters
 
@@ -14805,6 +14805,7 @@ Soft lifecycle state for Agent records.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
+| dataset_id | string |  | No |
 | id | string |  | Yes |
 | last_used_at | integer |  | No |
 | token | string |  | Yes |

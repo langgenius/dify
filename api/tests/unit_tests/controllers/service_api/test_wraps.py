@@ -526,6 +526,7 @@ class TestValidateDatasetToken:
         tenant_id = str(uuid.uuid4())
         mock_api_token = Mock()
         mock_api_token.tenant_id = tenant_id
+        mock_api_token.dataset_id = None
         mock_validate_token.return_value = mock_api_token
 
         mock_tenant = Mock()
@@ -564,6 +565,7 @@ class TestValidateDatasetToken:
         # Arrange
         mock_api_token = Mock()
         mock_api_token.tenant_id = str(uuid.uuid4())
+        mock_api_token.dataset_id = None
         mock_validate_token.return_value = mock_api_token
 
         mock_db.session.scalar.return_value = None
@@ -577,6 +579,134 @@ class TestValidateDatasetToken:
             with pytest.raises(NotFound) as exc_info:
                 protected_view(dataset_id=str(uuid.uuid4()))
             assert "Dataset not found" in str(exc_info.value)
+
+    def _arrange_tenant_owner(self, mock_db, tenant_id: str) -> None:
+        """Stub the tenant-owner resolution shared by all success-path tests."""
+        mock_tenant = Mock()
+        mock_tenant.id = tenant_id
+        mock_tenant.status = TenantStatus.NORMAL
+
+        mock_ta = Mock()
+        mock_ta.account_id = str(uuid.uuid4())
+
+        mock_account = Mock()
+        mock_account.id = mock_ta.account_id
+        mock_account.current_tenant = mock_tenant
+
+        setup_mock_dataset_owner_execute_result(mock_db, mock_tenant, mock_ta)
+        mock_db.session.get.return_value = mock_account
+
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.db")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.current_app")
+    def test_workspace_scoped_token_can_access_any_dataset(
+        self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app: Flask
+    ):
+        """A token without dataset binding (NULL dataset_id) keeps tenant-wide access."""
+        # Arrange
+        _configure_current_app_mock(mock_current_app)
+
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        mock_api_token = Mock()
+        mock_api_token.tenant_id = tenant_id
+        mock_api_token.dataset_id = None
+        mock_validate_token.return_value = mock_api_token
+
+        mock_dataset = Mock()
+        mock_dataset.id = dataset_id
+        mock_dataset.enable_api = True
+        mock_db.session.scalar.return_value = mock_dataset
+
+        self._arrange_tenant_owner(mock_db, tenant_id)
+
+        @validate_dataset_token
+        def protected_view(tenant_id, dataset_id=None):
+            return {"success": True}
+
+        # Act
+        with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}):
+            result = protected_view(dataset_id=dataset_id)
+
+        # Assert
+        assert result["success"] is True
+
+    @patch("controllers.service_api.wraps.user_logged_in")
+    @patch("controllers.service_api.wraps.db")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    @patch("controllers.service_api.wraps.current_app")
+    def test_dataset_bound_token_allows_its_own_dataset(
+        self, mock_current_app, mock_validate_token, mock_db, mock_user_logged_in, app: Flask
+    ):
+        """A dataset-bound token can access the dataset it is bound to."""
+        # Arrange
+        _configure_current_app_mock(mock_current_app)
+
+        tenant_id = str(uuid.uuid4())
+        dataset_id = str(uuid.uuid4())
+        mock_api_token = Mock()
+        mock_api_token.tenant_id = tenant_id
+        mock_api_token.dataset_id = dataset_id
+        mock_validate_token.return_value = mock_api_token
+
+        mock_dataset = Mock()
+        mock_dataset.id = dataset_id
+        mock_dataset.enable_api = True
+        mock_db.session.scalar.return_value = mock_dataset
+
+        self._arrange_tenant_owner(mock_db, tenant_id)
+
+        @validate_dataset_token
+        def protected_view(tenant_id, dataset_id=None):
+            return {"success": True}
+
+        # Act
+        with app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}):
+            result = protected_view(dataset_id=dataset_id)
+
+        # Assert
+        assert result["success"] is True
+
+    @patch("controllers.service_api.wraps.db")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_dataset_bound_token_rejects_other_dataset(self, mock_validate_token, mock_db, app: Flask):
+        """A dataset-bound token gets Forbidden for any other dataset in the tenant."""
+        # Arrange
+        mock_api_token = Mock()
+        mock_api_token.tenant_id = str(uuid.uuid4())
+        mock_api_token.dataset_id = str(uuid.uuid4())
+        mock_validate_token.return_value = mock_api_token
+
+        @validate_dataset_token
+        def protected_view(tenant_id, dataset_id=None):
+            return {"success": True}
+
+        # Act & Assert
+        with app.test_request_context("/", method="GET"):
+            with pytest.raises(Forbidden) as exc_info:
+                protected_view(dataset_id=str(uuid.uuid4()))
+            assert "not authorized" in str(exc_info.value)
+
+    @patch("controllers.service_api.wraps.db")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_dataset_bound_token_rejects_request_without_dataset_id(self, mock_validate_token, mock_db, app: Flask):
+        """A dataset-bound token cannot call endpoints that carry no dataset id (e.g. list-all)."""
+        # Arrange
+        mock_api_token = Mock()
+        mock_api_token.tenant_id = str(uuid.uuid4())
+        mock_api_token.dataset_id = str(uuid.uuid4())
+        mock_validate_token.return_value = mock_api_token
+
+        @validate_dataset_token
+        def protected_view(tenant_id):
+            return {"success": True}
+
+        # Act & Assert
+        with app.test_request_context("/", method="GET"):
+            with pytest.raises(Forbidden) as exc_info:
+                protected_view()
+            assert "not authorized" in str(exc_info.value)
 
 
 class TestFetchUserArg:

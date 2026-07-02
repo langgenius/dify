@@ -38,6 +38,9 @@ class CachedApiToken(BaseModel):
     id: str
     app_id: str | None
     tenant_id: str | None
+    # Defaults to None so cache entries written before this field existed keep
+    # deserializing; a validation failure here would 401 live tokens until TTL expiry.
+    dataset_id: str | None = None
     type: str
     token: str
     last_used_at: datetime | None
@@ -95,6 +98,7 @@ class ApiTokenCache:
             id=str(api_token.id),
             app_id=str(api_token.app_id) if api_token.app_id else None,
             tenant_id=str(api_token.tenant_id) if api_token.tenant_id else None,
+            dataset_id=str(api_token.dataset_id) if api_token.dataset_id else None,
             type=api_token.type,
             token=api_token.token,
             last_used_at=api_token.last_used_at,

@@ -34,6 +34,7 @@ export const zAgentApiStatusPayload = z.object({
  */
 export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
+  dataset_id: z.string().nullish(),
   id: z.string(),
   last_used_at: z.int().nullish(),
   token: z.string(),

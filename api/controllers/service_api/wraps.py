@@ -306,6 +306,14 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             except Exception:
                 logger.exception("Failed to parse dataset_id from positional args")
 
+        # A dataset-bound token (non-NULL dataset_id) may only call endpoints that
+        # carry its own dataset id; endpoints without one (e.g. list/create datasets)
+        # are rejected outright. Workspace-scoped tokens (dataset_id IS NULL) keep
+        # tenant-wide access, which preserves behavior for all keys created before
+        # per-dataset scoping existed.
+        if api_token.dataset_id and (not dataset_id or str(dataset_id) != str(api_token.dataset_id)):
+            raise Forbidden("The API key is not authorized to access this knowledge base.")
+
         if dataset_id:
             dataset_id = str(dataset_id)
             dataset = db.session.scalar(

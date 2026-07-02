@@ -2233,18 +2233,36 @@ class Site(Base):
         return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
 
 
-class ApiToken(Base):  # bug: this uses setattr so idk the field.
+class ApiToken(Base):
+    """API token for the service API.
+
+    Scoping rules:
+    - ``type`` = "app": ``app_id`` points at the app the key serves.
+    - ``type`` = "dataset": ``tenant_id`` is always set. ``dataset_id`` is NULL for
+      workspace-scoped keys (full access to every dataset in the tenant — the default
+      and the only behavior before the column was reintroduced) or set to bind the key
+      to a single dataset (least-privilege keys created from a knowledge base page).
+      Enforcement lives in ``validate_dataset_token`` (controllers/service_api/wraps.py);
+      cached copies must mirror this field (services/api_token_service.CachedApiToken).
+
+    Note: controllers/console/apikey.py assigns the *_id columns via ``setattr`` keyed
+    on ``resource_id_field``, so renaming ``app_id``/``dataset_id`` requires updating
+    those controllers too.
+    """
+
     __tablename__ = "api_tokens"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="api_token_pkey"),
         sa.Index("api_token_app_id_type_idx", "app_id", "type"),
         sa.Index("api_token_token_idx", "token", "type"),
         sa.Index("api_token_tenant_idx", "tenant_id", "type"),
+        sa.Index("api_token_dataset_id_idx", "dataset_id", "type"),
     )
 
     id = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=True)
     tenant_id = mapped_column(StringUUID, nullable=True)
+    dataset_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[ApiTokenType] = mapped_column(EnumText(ApiTokenType, length=16), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
     last_used_at = mapped_column(sa.DateTime, nullable=True)
