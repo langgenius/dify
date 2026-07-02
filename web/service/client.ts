@@ -12,6 +12,7 @@ import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
+import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
@@ -21,7 +22,6 @@ import {
   IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
-import { marketplaceRouterContract } from '@/contract/marketplace'
 import { isClient } from '@/utils/client'
 // eslint-disable-next-line no-restricted-imports
 import { request } from './base'
