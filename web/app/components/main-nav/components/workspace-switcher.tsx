@@ -1,6 +1,6 @@
 'use client'
 
-import type { IWorkspace } from '@/models/common'
+import type { TenantListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -21,8 +21,13 @@ const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
 const workspaceSwitchI18nKey = (key: string) => key as 'mainNav.workspace.settings'
 type WorkspaceSort = 'lastOpened' | 'createdAt'
+type WorkspaceListItem = TenantListItemResponse & {
+  last_opened_at?: number | null
+}
 
-const getWorkspaceLastOpenedAt = (workspace: IWorkspace) => workspace.last_opened_at ?? 0
+const getWorkspaceName = (workspace: WorkspaceListItem) => workspace.name || workspace.id
+const getWorkspaceCreatedAt = (workspace: WorkspaceListItem) => workspace.created_at ?? 0
+const getWorkspaceLastOpenedAt = (workspace: WorkspaceListItem) => workspace.last_opened_at ?? 0
 
 function WorkspaceSwitchControls({
   searchText,
@@ -118,7 +123,7 @@ function WorkspaceSwitchControls({
 }
 
 type WorkspaceSwitcherProps = {
-  workspaces: IWorkspace[]
+  workspaces: WorkspaceListItem[]
   onSwitchWorkspace: (workspaceId: string) => void
 }
 
@@ -131,15 +136,15 @@ export function WorkspaceSwitcher({
   const displayedWorkspaces = useMemo(() => {
     const normalizedSearchText = workspaceSearchText.trim().toLowerCase()
     const filteredWorkspaces = normalizedSearchText
-      ? workspaces.filter(workspace => workspace.name.toLowerCase().includes(normalizedSearchText))
+      ? workspaces.filter(workspace => getWorkspaceName(workspace).toLowerCase().includes(normalizedSearchText))
       : [...workspaces]
 
     if (workspaceSort === 'createdAt')
-      return filteredWorkspaces.sort((a, b) => b.created_at - a.created_at)
+      return filteredWorkspaces.sort((a, b) => getWorkspaceCreatedAt(b) - getWorkspaceCreatedAt(a))
 
     return filteredWorkspaces.sort((a, b) => {
       return getWorkspaceLastOpenedAt(b) - getWorkspaceLastOpenedAt(a)
-        || b.created_at - a.created_at
+        || getWorkspaceCreatedAt(b) - getWorkspaceCreatedAt(a)
     })
   }, [workspaceSearchText, workspaceSort, workspaces])
 
@@ -152,27 +157,31 @@ export function WorkspaceSwitcher({
         onSortChange={setWorkspaceSort}
       />
       <div className={workspaceSwitchListClassName}>
-        {displayedWorkspaces.map(workspace => (
-          <button
-            type="button"
-            key={workspace.id}
-            aria-current={workspace.current ? 'true' : undefined}
-            title={workspace.name}
-            className={cn(
-              'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
-              workspace.current && 'bg-state-base-hover',
-            )}
-            onClick={() => {
-              onSwitchWorkspace(workspace.id)
-            }}
-          >
-            <WorkspaceMenuItemContent
-              icon={<WorkspaceIcon name={workspace.name} className="h-5 w-5 rounded-md" />}
-              label={workspace.name}
-              trailing={workspace.current ? <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" /> : undefined}
-            />
-          </button>
-        ))}
+        {displayedWorkspaces.map((workspace) => {
+          const workspaceName = getWorkspaceName(workspace)
+
+          return (
+            <button
+              type="button"
+              key={workspace.id}
+              aria-current={workspace.current ? 'true' : undefined}
+              title={workspaceName}
+              className={cn(
+                'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+                workspace.current && 'bg-state-base-hover',
+              )}
+              onClick={() => {
+                onSwitchWorkspace(workspace.id)
+              }}
+            >
+              <WorkspaceMenuItemContent
+                icon={<WorkspaceIcon name={workspaceName} className="h-5 w-5 rounded-md" />}
+                label={workspaceName}
+                trailing={workspace.current ? <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" /> : undefined}
+              />
+            </button>
+          )
+        })}
       </div>
     </>
   )

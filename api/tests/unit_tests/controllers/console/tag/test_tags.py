@@ -253,6 +253,35 @@ class TestTagUpdateDeleteApi:
         delete_mock.assert_called_once_with("tag-1", module.db.session)
         assert status == 204
 
+    def test_delete_snippet_tag_checks_type_in_current_tenant(self, app: Flask, admin_user):
+        api = TagUpdateDeleteApi()
+        method = unwrap(api.delete)
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.tag.tags.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.tag.tags.current_account_with_tenant",
+                return_value=(SimpleNamespace(id="user-1"), "tenant-1"),
+            ),
+            patch.object(module.db.session, "scalar", return_value=TagType.SNIPPET) as scalar_mock,
+            patch("controllers.console.tag.tags.enforce_rbac_access") as enforce_mock,
+            patch("controllers.console.tag.tags.TagService.delete_tag") as delete_mock,
+        ):
+            result, status = method(api, "tag-1")
+
+        scalar_mock.assert_called_once()
+        enforce_mock.assert_called_once_with(
+            tenant_id="tenant-1",
+            account_id="user-1",
+            resource_type=module.RBACResourceScope.WORKSPACE,
+            scene=module.RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
+            resource_required=False,
+        )
+        delete_mock.assert_called_once_with("tag-1", module.db.session)
+        assert result == ""
+        assert status == 204
+
 
 class TestTagBindingCollectionApi:
     def test_create_success(self, app: Flask, admin_user, payload_patch):

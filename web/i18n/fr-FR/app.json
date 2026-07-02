@@ -55,6 +55,8 @@
   "firstEmpty.title": "Aucune application pour le moment",
   "gotoAnything.actions.accountDesc": "Accédez à la page de compte",
   "gotoAnything.actions.communityDesc": "Ouvrir la communauté Discord",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Laissez l'IA choisir Workflow ou Chatflow à partir de votre description",
   "gotoAnything.actions.createCategoryDesc": "Créez un flux de travail ou un chatflow généré par l'IA",
   "gotoAnything.actions.createChatflow": "Flux de discussion",
   "gotoAnything.actions.createChatflowDesc": "Générer une application chatflow (chat avancé) à partir d'une description",

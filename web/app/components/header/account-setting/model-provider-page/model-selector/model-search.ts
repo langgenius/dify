@@ -1,4 +1,5 @@
 import type { DefaultModel, Model, ModelItem, TypeWithI18N } from '../declarations'
+import type { ModelSelectorModelPredicate } from './types'
 import Fuse from 'fuse.js'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { ModelFeatureEnum } from '../declarations'
@@ -29,6 +30,7 @@ type FilterModelSelectorModelsParams = {
   defaultModel?: DefaultModel
   inputValue: string
   installedModelList: Model[]
+  modelPredicate?: ModelSelectorModelPredicate
   scopeFeatures: ModelFeatureEnum[]
   searchIndex: ModelSelectorSearchIndex
 }
@@ -152,6 +154,7 @@ export const filterModelSelectorModels = ({
   defaultModel,
   inputValue,
   installedModelList,
+  modelPredicate,
   scopeFeatures,
   searchIndex,
 }: FilterModelSelectorModelsParams) => {
@@ -170,6 +173,7 @@ export const filterModelSelectorModels = ({
         return matches.models.has(createModelSearchKey(model.provider, modelItem.model))
       })
       .filter(modelItem => modelSupportsScopeFeatures(modelItem, scopeFeatures))
+      .filter(modelItem => modelPredicate?.(model, modelItem) ?? true)
 
     if (
       (trimmedInputValue && filteredModels.length === 0)

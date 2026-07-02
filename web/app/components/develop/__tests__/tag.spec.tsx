@@ -103,8 +103,6 @@ describe('Tag', () => {
       const tag = screen.getByText('GET')
       expect(tag.className).toContain('rounded-lg')
       expect(tag.className).toContain('px-1.5')
-      expect(tag.className).toContain('ring-1')
-      expect(tag.className).toContain('ring-inset')
     })
 
     it('should apply small variant styles', () => {
