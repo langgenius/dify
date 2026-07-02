@@ -171,6 +171,7 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         "conversation_id": None,
         "agent_id": None,
         "agent_config_version_id": None,
+        "agent_config_version_kind": None,
         "agent_mode": "workflow_run",
         "invoke_from": "service-api",
         "trace_id": "trace-1",

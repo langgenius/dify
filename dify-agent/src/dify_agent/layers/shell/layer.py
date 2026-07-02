@@ -16,7 +16,16 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validat
 from pydantic_ai import Tool
 from typing_extensions import Self, override
 
-from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
+from agenton.layers import (
+    EmptyLayerConfig,
+    EmptyRuntimeState,
+    LayerDeps,
+    NoLayerDeps,
+    PlainLayer,
+    PydanticAILayer,
+    PydanticAIPrompt,
+    PydanticAITool,
+)
 from dify_agent.adapters.shell.protocols import (
     CompleteShellCommandResult,
     ShellCommandProtocol,
@@ -26,9 +35,15 @@ from dify_agent.adapters.shell.protocols import (
     ShellResourceProtocol,
 )
 from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
-from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
+
+try:
+    from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
+except ModuleNotFoundError:
+
+    class DifyExecutionContextLayer(PlainLayer[NoLayerDeps, EmptyLayerConfig, EmptyRuntimeState]):
+        """Minimal fallback for shell-only imports without server extras installed."""
 
 logger = logging.getLogger(__name__)
 
