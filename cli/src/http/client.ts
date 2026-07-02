@@ -313,7 +313,7 @@ export function createHttpClient(opts: ClientOptions): HttpClient {
   // Low-level entrypoint for oRPC's OpenAPILink: executes an already-built, absolute-URL
   // Request through the same transport (UA+bearer hooks, retry, timeout, error-map) while
   // skipping joinURL. Policy comes from the client instance defaults — there is no per-call
-  // override, so this stays a drop-in for OpenAPILink's `(req, init) => Promise<Response>`.
+  // override, so the oRPC wrapper can adapt the fetch callback into this Request entrypoint.
   // Returns the raw Response for every status; the oRPC fetch wrapper (orpc.ts) inspects the
   // status and raises classifyResponse for non-2xx, so error mapping stays in one place.
   const requestFetch = (req: Request, init?: RequestInit): Promise<Response> => {

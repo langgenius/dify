@@ -1,7 +1,8 @@
-import type { AnyContractRouter } from '@orpc/contract'
+import type { RouterContract } from '@orpc/contract'
 import { contractLoaders } from '@dify/contracts/api/console/orpc.gen'
 
-const generatedConsoleContractLoaders: Partial<Record<string, () => Promise<AnyContractRouter>>> = contractLoaders
+const generatedConsoleContractLoaders: Partial<Record<string, () => Promise<RouterContract>>>
+  = contractLoaders
 
 async function loadGeneratedConsoleContract(segment: string) {
   const loader = generatedConsoleContractLoaders[segment]
@@ -11,7 +12,7 @@ async function loadGeneratedConsoleContract(segment: string) {
   return loader()
 }
 
-async function loadEnterpriseContract(): Promise<AnyContractRouter> {
+async function loadEnterpriseContract(): Promise<RouterContract> {
   const { contract } = await import('@dify/contracts/enterprise/orpc.gen')
   return { enterprise: contract }
 }

@@ -17,6 +17,11 @@ shellEmulator: true
 strictDepBuilds: true
 trustPolicy: no-downgrade
 trustPolicyExclude:
+  - '@standardserver/core@0.0.25'
+  - '@standardserver/fetch@0.0.25'
+  - '@standardserver/node@0.0.25'
+  - '@standardserver/peer@0.0.25'
+  - '@standardserver/shared@0.0.25'
   - chokidar@4.0.3
   - reselect@5.1.1
   - semver@6.3.1
@@ -82,10 +87,10 @@ catalog:
   '@napi-rs/keyring': 1.3.0
   '@next/eslint-plugin-next': 16.2.9
   '@next/mdx': 16.2.9
-  '@orpc/client': 1.14.6
-  '@orpc/contract': 1.14.6
-  '@orpc/openapi-client': 1.14.6
-  '@orpc/tanstack-query': 1.14.6
+  '@orpc/client': 2.0.0-beta.11
+  '@orpc/contract': 2.0.0-beta.11
+  '@orpc/openapi': 2.0.0-beta.11
+  '@orpc/tanstack-query': 2.0.0-beta.11
   '@playwright/test': 1.61.1
   '@remixicon/react': 4.9.0
   '@rgrove/parse-xml': 4.2.1

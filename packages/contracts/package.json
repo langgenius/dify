@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@orpc/contract": "catalog:",
+    "@orpc/openapi": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -302,6 +302,10 @@ export default defineConfig({
     },
     postProcess: [
       {
+        command: 'node',
+        args: ['scripts/patch-orpc-v2-generated.mjs', '{{path}}'],
+      },
+      {
         command: 'vp',
         args: ['fmt', '{{path}}'],
       },

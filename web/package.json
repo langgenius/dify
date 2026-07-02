@@ -68,7 +68,7 @@
     "@monaco-editor/react": "catalog:",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
-    "@orpc/openapi-client": "catalog:",
+    "@orpc/openapi": "catalog:",
     "@orpc/tanstack-query": "catalog:",
     "@remixicon/react": "catalog:",
     "@sentry/react": "catalog:",
