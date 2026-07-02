@@ -348,7 +348,7 @@ class TestCreateWorkflowPause:
         assert workflow_run.status == WorkflowExecutionStatus.PAUSED
         assert pause_entity.id == pause_model.id
         assert pause_entity.workflow_execution_id == workflow_run.id
-        assert pause_entity.get_pause_reasons() == ()
+        assert pause_entity.get_pause_reasons() == []
         assert pause_entity.get_state() == state.encode()
 
     def test_create_workflow_pause_not_found(
