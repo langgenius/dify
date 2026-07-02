@@ -28,25 +28,55 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    rbacAccessConfig: {
-      apps: {
-        updateOpenScope: mocks.updateOpenScope,
-        updateUserAccessSettings: mocks.updateUserAccessSettings,
-        removeMemberBindings: mocks.removeMemberBindings,
+    workspaces: {
+      current: {
+        rbac: {
+          apps: {
+            byAppId: {
+              accessPolicies: {
+                byPolicyId: {
+                  memberBindings: {
+                    delete: mocks.removeMemberBindings,
+                  },
+                },
+              },
+              users: {
+                byTargetAccountId: {
+                  accessPolicies: {
+                    put: mocks.updateUserAccessSettings,
+                  },
+                },
+              },
+              whitelist: {
+                put: mocks.updateOpenScope,
+              },
+            },
+          },
+        },
       },
     },
   },
   consoleQuery: {
-    rbacAccessConfig: {
-      apps: {
-        accessRules: {
-          key: mocks.accessRulesKey,
-          queryOptions: mocks.accessRulesQueryOptions,
-        },
-        userAccessSettings: {
-          key: mocks.userAccessSettingsKey,
-          queryKey: mocks.userAccessSettingsQueryKey,
-          queryOptions: mocks.userAccessSettingsQueryOptions,
+    workspaces: {
+      current: {
+        rbac: {
+          apps: {
+            byAppId: {
+              accessPolicy: {
+                get: {
+                  key: mocks.accessRulesKey,
+                  queryOptions: mocks.accessRulesQueryOptions,
+                },
+              },
+              userAccessPolicies: {
+                get: {
+                  key: mocks.userAccessSettingsKey,
+                  queryKey: mocks.userAccessSettingsQueryKey,
+                  queryOptions: mocks.userAccessSettingsQueryOptions,
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -79,7 +109,7 @@ describe('use-app-access-config', () => {
       expect(mocks.accessRulesQueryOptions).toHaveBeenCalledWith({
         input: {
           params: {
-            appId: 'app-1',
+            app_id: 'app-1',
           },
           query: {
             language: 'zh',
@@ -97,7 +127,7 @@ describe('use-app-access-config', () => {
       expect(mocks.userAccessSettingsQueryOptions).toHaveBeenCalledWith({
         input: {
           params: {
-            appId: 'app-1',
+            app_id: 'app-1',
           },
           query: {
             language: 'en',
@@ -115,8 +145,8 @@ describe('use-app-access-config', () => {
 
       expect(mocks.updateUserAccessSettings).toHaveBeenCalledWith({
         params: {
-          appId: 'app-1',
-          accountId: 'account-1',
+          app_id: 'app-1',
+          target_account_id: 'account-1',
         },
         body: {
           access_policy_ids: ['policy-1', 'policy-2'],
@@ -135,8 +165,8 @@ describe('use-app-access-config', () => {
 
       expect(mocks.removeMemberBindings).toHaveBeenCalledWith({
         params: {
-          appId: 'app-1',
-          policyId: 'policy-1',
+          app_id: 'app-1',
+          policy_id: 'policy-1',
         },
         body: {
           account_ids: ['account-1'],
@@ -155,7 +185,7 @@ describe('use-app-access-config', () => {
 
       expect(mocks.updateOpenScope).toHaveBeenCalledWith({
         params: {
-          appId: 'app-1',
+          app_id: 'app-1',
         },
         body: {
           scope: 'all',

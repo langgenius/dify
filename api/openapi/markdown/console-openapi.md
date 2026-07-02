@@ -2371,7 +2371,7 @@ Get status of annotation reply action job
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/annotation-setting
@@ -2480,7 +2480,7 @@ Batch import annotations from CSV file with rate limiting and security checks
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch import started successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 200 | Batch import started successfully | **application/json**: [AnnotationBatchImportResponse](#annotationbatchimportresponse)<br> |
 | 400 | No file uploaded or too many files |  |
 | 403 | Insufficient permissions |  |
 | 413 | File too large |  |
@@ -2500,7 +2500,7 @@ Get status of batch import job
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/annotations/count
@@ -2816,11 +2816,11 @@ Generate completion message for debugging
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Completion generated successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Invalid request parameters |  |
-| 404 | App not found |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Completion generated successfully |
+| 400 | Invalid request parameters |
+| 404 | App not found |
 
 ### [POST] /apps/{app_id}/completion-messages/{task_id}/stop
 Stop a running completion message generation
@@ -2903,6 +2903,7 @@ Create a copy of an existing application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | App copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 202 | App copy requires confirmation | **application/json**: [AppImportResponse](#appimportresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/export
@@ -3378,10 +3379,10 @@ Convert text to speech for chat messages
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Text to speech conversion successful | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
-| 400 | Bad request - Invalid parameters |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Text to speech conversion successful |
+| 400 | Bad request - Invalid parameters |
 
 ### [GET] /apps/{app_id}/text-to-audio/voices
 Get available TTS voices for a specific language
@@ -6801,7 +6802,7 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
+| 200 | Success | **application/json**: [RecommendedAppDetailNullableResponse](#recommendedappdetailnullableresponse)<br> |
 
 ### [GET] /features
 **Get feature configuration for current tenant**
@@ -9385,7 +9386,7 @@ Bedrock retrieval test (internal use only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialAppDetailWithSite](#trialappdetailwithsite)<br> |
+| 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
@@ -9452,7 +9453,7 @@ Bedrock retrieval test (internal use only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialDatasetList](#trialdatasetlist)<br> |
+| 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/messages/{message_id}/suggested-questions
 #### Parameters
@@ -9532,7 +9533,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TrialWorkflow](#trialworkflow)<br> |
+| 200 | Success | **application/json**: [TrialWorkflowResponse](#trialworkflowresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/run
 **Run workflow**
@@ -9761,7 +9762,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippets retrieved successfully | **application/json**: [SnippetPagination](#snippetpagination)<br> |
+| 200 | Snippets retrieved successfully | **application/json**: [SnippetPaginationResponse](#snippetpaginationresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets
 **Create a new customized snippet**
@@ -9776,7 +9777,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Snippet created successfully | **application/json**: [Snippet](#snippet)<br> |
+| 201 | Snippet created successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request |  |
 
 ### [POST] /workspaces/current/customized-snippets/imports
@@ -9841,7 +9842,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet retrieved successfully | **application/json**: [Snippet](#snippet)<br> |
+| 200 | Snippet retrieved successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 404 | Snippet not found |  |
 
 ### [PATCH] /workspaces/current/customized-snippets/{snippet_id}
@@ -9863,7 +9864,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet updated successfully | **application/json**: [Snippet](#snippet)<br> |
+| 200 | Snippet updated successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request |  |
 | 404 | Snippet not found |  |
 
@@ -12396,7 +12397,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [TriggerSubscriptionBuilderVerifyResponse](#triggersubscriptionbuilderverifyresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
 **Delete a subscription instance**
@@ -12954,7 +12955,7 @@ Default namespace
 | role | string |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
-| tracing | [JSONValue](#jsonvalue) |  | No |
+| tracing |  |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
@@ -14643,18 +14644,20 @@ Soft lifecycle state for Agent records.
 | id | string |  | Yes |
 | question | string |  | No |
 
+#### AnnotationBatchImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_msg | string |  | No |
+| job_id | string |  | No |
+| job_status | string |  | No |
+| record_count | integer |  | No |
+
 #### AnnotationCountResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | count | integer | Number of annotations | Yes |
-
-#### AnnotationEmbeddingModelResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
 
 #### AnnotationExportList
 
@@ -14697,14 +14700,20 @@ Soft lifecycle state for Agent records.
 | limit | integer, <br>**Default:** 20 | Page size | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 
-#### AnnotationJobStatusResponse
+#### AnnotationJobStatusDetailResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | error_msg | string |  | No |
-| job_id | string |  | No |
-| job_status | string |  | No |
-| record_count | integer |  | No |
+| job_id | string |  | Yes |
+| job_status | string<br>string |  | Yes |
+
+#### AnnotationJobStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| job_id | string |  | Yes |
+| job_status | string<br>string |  | Yes |
 
 #### AnnotationList
 
@@ -14738,11 +14747,18 @@ Soft lifecycle state for Agent records.
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "disable", "enable" | *Enum:* `"disable"`, `"enable"` | Yes |
 
+#### AnnotationSettingEmbeddingModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | No |
+| embedding_provider_name | string |  | No |
+
 #### AnnotationSettingResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model | [AnnotationEmbeddingModelResponse](#annotationembeddingmodelresponse) |  | No |
+| embedding_model | [AnnotationSettingEmbeddingModelResponse](#annotationsettingembeddingmodelresponse) |  | No |
 | enabled | boolean |  | Yes |
 | id | string |  | No |
 | score_threshold | number |  | No |
@@ -14890,7 +14906,7 @@ Enum class for api provider schema type.
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
-| tracing | [JSONValue](#jsonvalue) |  | No |
+| tracing |  |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
@@ -14953,7 +14969,7 @@ Enum class for api provider schema type.
 | permission_keys | [ string ] |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
-| tracing | [JSONValue](#jsonvalue) |  | No |
+| tracing |  |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
@@ -14999,6 +15015,18 @@ Enum class for api provider schema type.
 | name | string |  | No |
 | yaml_content | string |  | No |
 | yaml_url | string |  | No |
+
+#### AppImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| app_mode | string |  | No |
+| current_dsl_version | string |  | Yes |
+| error | string |  | No |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | No |
+| status | [ImportStatus](#importstatus) |  | Yes |
 
 #### AppListQuery
 
@@ -15147,7 +15175,7 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
+| enabled | boolean |  | No |
 | tracing_provider | string |  | No |
 
 #### AppVariableConfig
@@ -15699,13 +15727,13 @@ Enum class for configurate method of provider model.
 | admin_feedback_stats | [FeedbackStat](#feedbackstat) |  | No |
 | annotation | [ConversationAnnotation](#conversationannotation) |  | No |
 | created_at | integer |  | No |
-| first_message | [SimpleMessageDetail](#simplemessagedetail) |  | No |
 | from_account_id | string |  | No |
 | from_account_name | string |  | No |
 | from_end_user_id | string |  | No |
 | from_end_user_session_id | string |  | No |
 | from_source | string |  | Yes |
 | id | string |  | Yes |
+| message | [SimpleMessageDetail](#simplemessagedetail) |  | No |
 | model_config | [SimpleModelConfig](#simplemodelconfig) |  | No |
 | read_at | integer |  | No |
 | status | string |  | Yes |
@@ -15769,11 +15797,11 @@ Enum class for configurate method of provider model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| first_message | [MessageDetail](#messagedetail) |  | No |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | from_source | string |  | Yes |
 | id | string |  | Yes |
+| message | [MessageDetail](#messagedetail) |  | No |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | status | string |  | Yes |
 
@@ -15781,10 +15809,10 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_next | boolean |  | Yes |
-| items | [ [Conversation](#conversation) ] |  | Yes |
+| data | [ [Conversation](#conversation) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 | page | integer |  | Yes |
-| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### ConversationRenamePayload
@@ -15847,7 +15875,7 @@ Enum class for configurate method of provider model.
 | read_at | integer |  | No |
 | status | string |  | Yes |
 | status_count | [StatusCount](#statuscount) |  | No |
-| summary_or_query | string |  | Yes |
+| summary | string |  | Yes |
 | updated_at | integer |  | No |
 | user_feedback_stats | [FeedbackStat](#feedbackstat) |  | No |
 
@@ -15855,10 +15883,10 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_next | boolean |  | Yes |
-| items | [ [ConversationWithSummary](#conversationwithsummary) ] |  | Yes |
+| data | [ [ConversationWithSummary](#conversationwithsummary) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 | page | integer |  | Yes |
-| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### ConvertToWorkflowPayload
@@ -16031,10 +16059,10 @@ Model class for provider custom model configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| currency | string |  | Yes |
+| currency | string |  | No |
 | date | string |  | Yes |
-| token_count | integer |  | Yes |
-| total_price | string<br>number |  | Yes |
+| token_count | integer |  | No |
+| total_price | string |  | No |
 
 #### DailyTokenCostStatisticResponse
 
@@ -17274,6 +17302,10 @@ The type of the parameter
 
 #### ExploreAppMetaResponse
 
+Metadata consumed by the installed-app chat UI.
+
+Built-in tool icons are URL strings; API-based tool icons are provider-defined payload objects.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
@@ -17971,6 +18003,7 @@ Input field definition for snippet parameters.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | mode | string |  | No |
 | name | string |  | No |
@@ -18048,6 +18081,12 @@ Input field definition for snippet parameters.
 | ---- | ---- | ----------- | -------- |
 | JSONValueType |  |  |  |
 
+#### JsonObject
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| JsonObject | object |  |  |
+
 #### JsonValue
 
 | Name | Type | Description | Required |
@@ -18093,7 +18132,7 @@ Enum class for large language model mode.
 | alternative_plugin_id | string |  | Yes |
 | deprecated_reason | string |  | Yes |
 | plugin_id | string |  | Yes |
-| status | string |  | Yes |
+| status | string, <br>**Available values:** "active", "deleted" | *Enum:* `"active"`, `"deleted"` | Yes |
 | unique_identifier | string |  | Yes |
 | version | string |  | Yes |
 
@@ -18320,6 +18359,7 @@ Enum class for large language model mode.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | annotation | [ConversationAnnotation](#conversationannotation) |  | No |
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
+| answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
@@ -18332,12 +18372,11 @@ Enum class for large language model mode.
 | inputs | object |  | Yes |
 | message | [JSONValue](#jsonvalue) |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
-| message_metadata_dict | [JSONValue](#jsonvalue) |  | Yes |
 | message_tokens | integer |  | Yes |
+| metadata | [JSONValue](#jsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
-| re_sign_file_url_answer | string |  | Yes |
 | status | string |  | Yes |
 | workflow_run_id | string |  | No |
 
@@ -18345,27 +18384,27 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_thoughts | [ [AgentThought](#agentthought) ] |  | No |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | annotation | [ConversationAnnotation](#conversationannotation) |  | No |
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
 | answer | string |  | Yes |
-| answer_tokens | integer |  | No |
+| answer_tokens | integer |  | Yes |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | No |
-| feedbacks | [ [Feedback](#feedback) ] |  | No |
+| feedbacks | [ [Feedback](#feedback) ] |  | Yes |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | from_source | string |  | Yes |
 | id | string |  | Yes |
 | inputs | object |  | Yes |
-| message | [JSONValue](#jsonvalue) |  | No |
-| message_files | [ [MessageFile](#messagefile) ] |  | No |
-| message_tokens | integer |  | No |
-| metadata | [JSONValue](#jsonvalue) |  | No |
+| message | [JSONValue](#jsonvalue) |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| message_tokens | integer |  | Yes |
+| metadata | [JSONValue](#jsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
-| provider_response_latency | number |  | No |
+| provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
 | status | string |  | Yes |
 | workflow_run_id | string |  | No |
@@ -18461,7 +18500,7 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| model | [JSONValue](#jsonvalue) |  | No |
+| model |  |  | No |
 | pre_prompt | string |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -19590,7 +19629,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | checksum | string |  | Yes |
 | created_at | dateTime |  | Yes |
-| declaration | object |  | Yes |
+| declaration | [PluginDeclarationResponse](#plugindeclarationresponse) |  | Yes |
 | endpoints_active | integer |  | Yes |
 | endpoints_setups | integer |  | Yes |
 | id | string |  | Yes |
@@ -20061,6 +20100,12 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
 
+#### RecommendedAppDetailNullableResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RecommendedAppDetailNullableResponse | [RecommendedAppDetailResponse](#recommendedappdetailresponse) |  |  |
+
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -20080,6 +20125,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | mode | string |  | No |
 | name | string |  | No |
@@ -20213,7 +20259,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ResourceUserAccessPolicies](#resourceuseraccesspolicies) ] |  | No |
-| scope | string |  | Yes |
+| scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
 
 #### ResourceWhitelist
 
@@ -20581,7 +20627,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| model_dict | [JSONValue](#jsonvalue) |  | No |
+| model | [JSONValue](#jsonvalue) |  | No |
 | pre_prompt | string |  | No |
 
 #### SimpleProviderEntityResponse
@@ -20667,31 +20713,19 @@ Validated metadata extracted from a Skill package.
 | inferable | boolean |  | Yes |
 | reason | string |  | No |
 
-#### Snippet
+#### SnippetAccountResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | long |  | No |
-| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| description | string |  | No |
-| graph | object |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| input_fields | object |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
 
 #### SnippetDependencyCheckResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| SnippetDependencyCheckResponse | object |  |  |
+| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | Yes |
 
 #### SnippetDraftConfigResponse
 
@@ -20746,7 +20780,12 @@ Payload for importing snippet from DSL.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| SnippetImportResponse | object |  |  |
+| current_dsl_version | string |  | Yes |
+| error | string |  | Yes |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | Yes |
+| snippet_id | string |  | Yes |
+| status | [ImportStatus](#importstatus) |  | Yes |
 
 #### SnippetIterationNodeRunPayload
 
@@ -20756,24 +20795,24 @@ Payload for running an iteration node in snippet draft workflow.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### SnippetList
+#### SnippetListItemResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
+| author_name | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | string |  | Yes |
+| description | string |  | Yes |
+| icon_info | object |  | Yes |
+| id | string |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
+| type | [SnippetType](#snippettype) |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | Yes |
+| use_count | integer |  | Yes |
+| version | integer |  | Yes |
 
 #### SnippetListQuery
 
@@ -20796,15 +20835,51 @@ Payload for running a loop node in snippet draft workflow.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### SnippetPagination
+#### SnippetPaginationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_744ff9cc03e6](#_anonymousinlinemodel_744ff9cc03e6) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
-| total | integer |  | No |
+| data | [ [SnippetListItemResponse](#snippetlistitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SnippetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| description | string |  | Yes |
+| graph | object |  | Yes |
+| icon_info | object |  | Yes |
+| id | string |  | Yes |
+| input_fields | [ object ] |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
+| type | [SnippetType](#snippettype) |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| use_count | integer |  | Yes |
+| version | integer |  | Yes |
+
+#### SnippetTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### SnippetType
+
+Snippet Type Enum
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SnippetType | string | Snippet Type Enum |  |
 
 #### SnippetUseCountResponse
 
@@ -21175,15 +21250,24 @@ Tag type
 
 #### TextToSpeechVoiceListResponse
 
+Available voices
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| TextToSpeechVoiceListResponse | array |  |  |
+| TextToSpeechVoiceListResponse | array | Available voices |  |
 
 #### TextToSpeechVoiceQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | language | string | Language code | Yes |
+
+#### TextToSpeechVoiceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string | Voice display name | Yes |
+| value | string | Voice identifier | Yes |
 
 #### TokensPerSecondStatisticItem
 
@@ -21277,6 +21361,43 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | tracing_provider | string | Tracing provider name | Yes |
 
+#### TrialAppAgentMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| strategy | string |  | No |
+| tools | [ [JsonObject](#jsonobject) ] |  | No |
+
+#### TrialAppDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| api_base_url | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| deleted_tools | [ [TrialDeletedToolResponse](#trialdeletedtoolresponse) ] |  | No |
+| description | string |  | No |
+| enable_api | boolean |  | Yes |
+| enable_site | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [TrialIconType](#trialicontype) |  | No |
+| icon_url | string |  | No |
+| id | string |  | Yes |
+| max_active_requests | integer |  | No |
+| mode | [TrialAppMode](#trialappmode) |  | Yes |
+| model_config | [TrialAppModelConfigResponse](#trialappmodelconfigresponse) |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| site | [TrialSiteResponse](#trialsiteresponse) |  | Yes |
+| tags | [ [TrialTagResponse](#trialtagresponse) ] |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [TrialWorkflowPartialResponse](#trialworkflowpartialresponse) |  | No |
+
 #### TrialAppDetailWithSite
 
 | Name | Type | Description | Required |
@@ -21306,6 +21427,21 @@ Enum class for tool provider
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [TrialWorkflowPartial](#trialworkflowpartial) |  | No |
 
+#### TrialAppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TrialAppMode | string |  |  |
+
+#### TrialAppModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | [JsonObject](#jsonobject) |  | No |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+
 #### TrialAppModelConfig
 
 | Name | Type | Description | Required |
@@ -21334,6 +21470,35 @@ Enum class for tool provider
 | updated_at | long |  | No |
 | updated_by | string |  | No |
 | user_input_form | [ object ] |  | No |
+
+#### TrialAppModelConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode | [TrialAppAgentMode](#trialappagentmode) |  | No |
+| annotation_reply | [JsonObject](#jsonobject) |  | No |
+| chat_prompt_config | [JsonObject](#jsonobject) |  | No |
+| completion_prompt_config | [JsonObject](#jsonobject) |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| dataset_configs | [JsonObject](#jsonobject) |  | No |
+| dataset_query_variable | string |  | No |
+| external_data_tools | [ [JsonObject](#jsonobject) ] |  | No |
+| file_upload | [JsonObject](#jsonobject) |  | No |
+| model | [TrialAppModel](#trialappmodel) |  | No |
+| more_like_this | [JsonObject](#jsonobject) |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| prompt_type | string |  | No |
+| retriever_resource | [JsonObject](#jsonobject) |  | No |
+| sensitive_word_avoidance | [JsonObject](#jsonobject) |  | No |
+| speech_to_text | [JsonObject](#jsonobject) |  | No |
+| suggested_questions | [ string ] |  | No |
+| suggested_questions_after_answer | [JsonObject](#jsonobject) |  | No |
+| text_to_speech | [JsonObject](#jsonobject) |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| user_input_form | [ [JsonObject](#jsonobject) ] |  | No |
 
 #### TrialConversationVariable
 
@@ -21377,6 +21542,30 @@ Enum class for tool provider
 | limit | integer, <br>**Default:** 20 | Number of items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 
+#### TrialDatasetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [TrialDatasetResponse](#trialdatasetresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### TrialDatasetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| data_source_type | string |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| indexing_technique | string |  | No |
+| name | string |  | Yes |
+| permission | string |  | No |
+| permission_keys | [ string ] |  | No |
+
 #### TrialDeletedTool
 
 | Name | Type | Description | Required |
@@ -21384,6 +21573,20 @@ Enum class for tool provider
 | provider_id | string |  | No |
 | tool_name | string |  | No |
 | type | string |  | No |
+
+#### TrialDeletedToolResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| provider_id | string |  | Yes |
+| tool_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### TrialIconType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TrialIconType | string |  |  |
 
 #### TrialModelsResponse
 
@@ -21447,6 +21650,36 @@ Enum class for tool provider
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
+#### TrialSiteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | No |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| code | string |  | No |
+| copyright | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| custom_disclaimer | string |  | No |
+| customize_domain | string |  | No |
+| customize_token_strategy | string |  | No |
+| default_language | string |  | Yes |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [TrialIconType](#trialicontype) |  | No |
+| icon_url | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| prompt_public | boolean |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
 #### TrialTag
 
 | Name | Type | Description | Required |
@@ -21454,6 +21687,14 @@ Enum class for tool provider
 | id | string |  | No |
 | name | string |  | No |
 | type | string |  | No |
+
+#### TrialTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### TrialWorkflow
 
@@ -21475,6 +21716,14 @@ Enum class for tool provider
 | updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
 | version | string |  | No |
 
+#### TrialWorkflowAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | Yes |
+| name | string |  | No |
+
 #### TrialWorkflowPartial
 
 | Name | Type | Description | Required |
@@ -21484,6 +21733,36 @@ Enum class for tool provider
 | id | string |  | No |
 | updated_at | long |  | No |
 | updated_by | string |  | No |
+
+#### TrialWorkflowPartialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| id | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+
+#### TrialWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| created_at | integer |  | No |
+| created_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
+| environment_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| features | [JsonObject](#jsonobject) |  | No |
+| graph | [JsonObject](#jsonobject) |  | Yes |
+| hash | string |  | No |
+| id | string |  | Yes |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+| rag_pipeline_variables | [ [JsonObject](#jsonobject) ] |  | No |
+| tool_published | boolean |  | No |
+| updated_at | integer |  | No |
+| updated_by | [TrialWorkflowAccount](#trialworkflowaccount) |  | No |
+| version | string |  | No |
 
 #### TriggerCreationMethod
 
@@ -21513,7 +21792,7 @@ Enum class for tool provider
 | configured | boolean |  | Yes |
 | custom_configured | boolean |  | Yes |
 | custom_enabled | boolean |  | Yes |
-| oauth_client_schema |  |  | Yes |
+| oauth_client_schema | [ [TriggerProviderConfigResponse](#triggerproviderconfigresponse) ] |  | Yes |
 | params | object |  | Yes |
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
@@ -21535,6 +21814,29 @@ Enum class for tool provider
 | subscription_schema | [ [ProviderConfig](#providerconfig) ] | The subscription schema of the trigger provider | No |
 | supported_creation_methods | [ [TriggerCreationMethod](#triggercreationmethod) ] | Supported creation methods for the trigger provider. like 'OAUTH', 'APIKEY', 'MANUAL'. | No |
 | tags | [ string ] | The tags of the trigger provider | No |
+
+#### TriggerProviderConfigOptionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
+
+#### TriggerProviderConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [TriggerProviderConfigOptionResponse](#triggerproviderconfigoptionresponse) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | string, <br>**Available values:** "app-selector", "array[tools]", "boolean", "model-selector", "secret-input", "select", "text-input" | The type of the credentials<br>*Enum:* `"app-selector"`, `"array[tools]"`, `"boolean"`, `"model-selector"`, `"secret-input"`, `"select"`, `"text-input"` | Yes |
+| url | string |  | No |
 
 #### TriggerProviderListResponse
 
@@ -22838,41 +23140,6 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicy](#accesspolicy) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
-
-#### _AnonymousInlineModel_744ff9cc03e6
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
-
-#### _AnonymousInlineModel_7b8b49ca164e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_b0fd3f86d9d5
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
 
 #### _AnonymousInlineModel_b1954337d565
 
