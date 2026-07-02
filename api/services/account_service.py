@@ -545,7 +545,7 @@ class AccountService:
         # Queue account deletion sync tasks for all workspaces BEFORE account deletion (enterprise only)
         from services.enterprise.account_deletion_sync import sync_account_deletion
 
-        sync_success = sync_account_deletion(account_id=account.id, source="account_deleted")
+        sync_success = sync_account_deletion(account_id=account.id, source="account_deleted", session=db.session)
         if not sync_success:
             logger.warning(
                 "Enterprise account deletion sync failed for account %s; proceeding with local deletion.",
