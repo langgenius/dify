@@ -91,7 +91,7 @@ api-contract-lint:
 
 api-import-baseline-lint:
 	@echo "🏗️ Checking import-linter baseline..."
-	@uv run --project api --dev python api/dev/lint_imports_baseline.py --baseline api/dev/import_linter_baseline.json
+	@uv run --project api --dev python scripts/lint_imports_baseline.py --baseline import_linter_baseline.json
 	@echo "✅ Import baseline lint complete"
 
 type-check:

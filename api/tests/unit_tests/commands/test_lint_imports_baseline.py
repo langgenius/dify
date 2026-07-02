@@ -10,8 +10,8 @@ from pydantic import ValidationError
 
 
 def _load_lint_imports_baseline_module():
-    api_dir = Path(__file__).parents[3]
-    script_path = api_dir / "dev" / "lint_imports_baseline.py"
+    repo_root = Path(__file__).parents[4]
+    script_path = repo_root / "scripts" / "lint_imports_baseline.py"
     spec = importlib.util.spec_from_file_location("lint_imports_baseline", script_path)
     assert spec is not None
     module = importlib.util.module_from_spec(spec)

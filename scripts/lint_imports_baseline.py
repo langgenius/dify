@@ -42,7 +42,9 @@ class BaselinePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / ".importlinter"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+API_DIR = REPO_ROOT / "api"
+DEFAULT_CONFIG_PATH = API_DIR / ".importlinter"
 
 
 @dataclass(frozen=True)
@@ -53,40 +55,11 @@ class SnapshotFailure:
     current_count: int
     extra_imports: tuple[ModuleName, ...]
 
-
-@dataclass(frozen=True)
-class BaselineDocument:
-    """Domain baseline document used across the file boundary."""
-
-    snapshot: BaselineSnapshot
-    version: BaselineVersion = 1
-
-    @classmethod
-    def from_payload(cls, payload: BaselinePayload) -> BaselineDocument:
-        normalized_snapshot: BaselineSnapshot = {}
-        for contract_name, importers in payload.contracts.items():
-            normalized_importers: ModulesByImporter = {}
-            for importer, imported_modules in importers.items():
-                normalized_importers[importer] = sorted(set(imported_modules))
-            normalized_snapshot[contract_name] = normalized_importers
-
-        return cls(version=payload.version, snapshot=normalized_snapshot)
-
-    def to_payload(self) -> BaselinePayload:
-        return BaselinePayload(
-            version=self.version,
-            contracts={
-                contract_name: {importer: list(imported_modules) for importer, imported_modules in importers.items()}
-                for contract_name, importers in self.snapshot.items()
-            },
-        )
-
-
 def load_report(config_path: str | None = None, contract_ids: tuple[str, ...] = ()) -> Any:
     """Build and return an import-linter report using the same path setup as the CLI."""
 
     configuration.configure()
-    api_dir = str(DEFAULT_CONFIG_PATH.parent)
+    api_dir = str(API_DIR)
     cwd = os.getcwd()
     for candidate in (api_dir, cwd):
         if candidate not in sys.path:
@@ -120,6 +93,19 @@ def snapshot_from_report(report: Any) -> BaselineSnapshot:
             }
 
     return {contract_name: snapshot[contract_name] for contract_name in sorted(snapshot)}
+
+
+def normalize_snapshot(snapshot: BaselineSnapshot) -> BaselineSnapshot:
+    """Return a stable snapshot with sorted keys and deduplicated imported modules."""
+
+    normalized_snapshot: BaselineSnapshot = {}
+    for contract_name, importers in snapshot.items():
+        normalized_importers: ModulesByImporter = {}
+        for importer, imported_modules in importers.items():
+            normalized_importers[importer] = sorted(set(imported_modules))
+        normalized_snapshot[contract_name] = normalized_importers
+
+    return {contract_name: normalized_snapshot[contract_name] for contract_name in sorted(normalized_snapshot)}
 
 
 def compare_snapshots(
@@ -160,17 +146,17 @@ def compare_snapshots(
     return failures
 
 
-def load_baseline(path: Path) -> BaselineDocument:
+def load_baseline(path: Path) -> BaselineSnapshot:
     """Load and validate a baseline file."""
 
     payload = BaselinePayload.model_validate_json(path.read_text(encoding="utf-8"))
-    return BaselineDocument.from_payload(payload)
+    return normalize_snapshot(payload.contracts)
 
 
-def write_baseline(path: Path, baseline_document: BaselineDocument) -> None:
+def write_baseline(path: Path, snapshot: BaselineSnapshot) -> None:
     """Persist the supplied snapshot as a JSON baseline file."""
 
-    payload = baseline_document.to_payload()
+    payload = BaselinePayload(contracts=normalize_snapshot(snapshot))
     path.write_text(payload.model_dump_json(indent=2) + "\n", encoding="utf-8")
 
 
@@ -182,17 +168,14 @@ def main(argv: list[str] | None = None) -> int:
     current_snapshot = snapshot_from_report(load_report(config_path=args.config, contract_ids=tuple(args.contract)))
 
     if args.write_baseline:
-        write_baseline(
-            baseline_path,
-            BaselineDocument(snapshot=current_snapshot),
-        )
+        write_baseline(baseline_path, current_snapshot)
         _write_line(f"Wrote import baseline to {baseline_path}.")
         return 0
 
-    baseline_document = load_baseline(baseline_path)
+    baseline_snapshot = load_baseline(baseline_path)
     failures = compare_snapshots(
         current_snapshot=current_snapshot,
-        baseline_snapshot=baseline_document.snapshot,
+        baseline_snapshot=baseline_snapshot,
         comparison=args.comparison,
     )
     if failures:
