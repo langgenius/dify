@@ -14,7 +14,7 @@ from models.enums import TagType
 from models.model import App, Tag, TagBinding
 from models.snippet import CustomizedSnippet
 
-type _SessionLike = Session | scoped_session[Session]
+type _SessionLike = Session | scoped_session
 type _TagTypeLike = TagType | str
 
 
