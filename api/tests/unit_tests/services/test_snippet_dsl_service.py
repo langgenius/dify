@@ -641,3 +641,51 @@ def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(monkeypatch)
         "tenant-1:dataset-1",
         "tenant-1:dataset-2",
     ]
+
+
+def test_extract_dependencies_from_workflow_graph_uses_provider_type_and_name():
+    """Regression test: the dependency id must be "{provider_type}/{provider_name}",
+    not the historical typo "{provider_name}/{provider_name}" which produced ids like
+    "google/google" instead of "langgenius/google". The docstring on the production
+    method explicitly states the expected format is ["langgenius/google"].
+    """
+    service = SnippetDslService(session=SimpleNamespace())
+    graph = {
+        "nodes": [
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.TOOL,
+                    "tool_configurations": {
+                        "provider_type": "langgenius",
+                        "provider": "google",
+                    },
+                }
+            },
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.AGENT,
+                    "agent_parameters": {
+                        "tools": {
+                            "value": [
+                                {
+                                    "provider_type": "langgenius",
+                                    "provider": "openai",
+                                }
+                            ]
+                        }
+                    },
+                }
+            },
+            # Missing either field — should be skipped, not appended as a malformed id.
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.TOOL,
+                    "tool_configurations": {"provider_type": "langgenius"},
+                }
+            },
+        ]
+    }
+
+    result = service._extract_dependencies_from_workflow_graph(graph)
+
+    assert result == ["langgenius/google", "langgenius/openai"]
