@@ -73,61 +73,64 @@ async function reachTerminal(rejectWith: unknown) {
   render(<DevicePage />)
   const input = screen.getByRole('textbox')
   fireEvent.change(input, { target: { value: VALID_CODE } })
-  fireEvent.click(screen.getByRole('button', { name: /Continue/i }))
+  fireEvent.click(screen.getByRole('button', { name: /deviceFlow.codeEntry.continue/i }))
 }
 
 describe('error_expired terminal state', () => {
-  it('shows "Code no longer valid" heading', async () => {
+  it('shows "errorExpired.title" heading', async () => {
     await reachTerminal(new Error('expired'))
-    await screen.findByText('Code no longer valid')
+    await screen.findByText('deviceFlow.errorExpired.title')
   })
 
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new Error('expired'))
-    await screen.findByText('Code no longer valid')
-    fireEvent.click(screen.getByRole('button', { name: /Try a different code/i }))
+    await screen.findByText('deviceFlow.errorExpired.title')
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('Code no longer valid')).not.toBeInTheDocument()
+    expect(screen.queryByText('deviceFlow.errorExpired.title')).not.toBeInTheDocument()
   })
 })
 
 describe('error_rate_limited terminal state', () => {
-  it('shows "Too many attempts" heading', async () => {
+  it('shows "errorRateLimited.title" heading', async () => {
     await reachTerminal(new MockDeviceFlowError('rate_limited', 429))
-    await screen.findByText('Too many attempts')
+    await screen.findByText('deviceFlow.errorRateLimited.title')
   })
 
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new MockDeviceFlowError('rate_limited', 429))
-    await screen.findByText('Too many attempts')
-    fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
+    await screen.findByText('deviceFlow.errorRateLimited.title')
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.tryAgain/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('Too many attempts')).not.toBeInTheDocument()
+    expect(screen.queryByText('deviceFlow.errorRateLimited.title')).not.toBeInTheDocument()
   })
 })
 
 describe('error_lookup_failed terminal state', () => {
-  it('shows "Could not verify the code" heading', async () => {
+  it('shows "errorLookupFailed.title" heading', async () => {
     await reachTerminal(new MockDeviceFlowError('server_error', 500))
-    await screen.findByText('Could not verify the code')
+    await screen.findByText('deviceFlow.errorLookupFailed.title')
   })
 
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new MockDeviceFlowError('server_error', 500))
-    await screen.findByText('Could not verify the code')
-    fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
+    await screen.findByText('deviceFlow.errorLookupFailed.title')
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.tryAgain/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('Could not verify the code')).not.toBeInTheDocument()
+    expect(screen.queryByText('deviceFlow.errorLookupFailed.title')).not.toBeInTheDocument()
   })
 })
 
 describe('error_sso dedicated view', () => {
-  const GENERIC = /single sign-on could not be completed/i
+  const TITLE = 'deviceFlow.errorSso.title'
+  const GENERIC = 'deviceFlow.ssoError.default'
+  const EMAIL_COPY = 'deviceFlow.ssoError.emailBelongsToDifyAccount'
+  const BACK_TO_LOGIN = 'deviceFlow.errorSso.backToLoginOptions'
 
   it('renders the dedicated SSO error screen (not the code-entry page)', async () => {
     mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
     render(<DevicePage />)
-    expect(await screen.findByText('Sign-in could not be completed')).toBeInTheDocument()
+    expect(await screen.findByText(TITLE)).toBeInTheDocument()
     expect(await screen.findByText(GENERIC)).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
@@ -135,20 +138,20 @@ describe('error_sso dedicated view', () => {
   it('shows the email special-case copy', async () => {
     mockSearchParams = { sso_error: 'email_belongs_to_dify_account', user_code: 'ABCD-3456' }
     render(<DevicePage />)
-    expect(await screen.findByText(/identity is linked to a Dify account/i)).toBeInTheDocument()
+    expect(await screen.findByText(EMAIL_COPY)).toBeInTheDocument()
   })
 
   it('never surfaces the raw backend code', async () => {
     mockSearchParams = { sso_error: 'email_belongs_to_dify_account', user_code: 'ABCD-3456' }
     render(<DevicePage />)
-    await screen.findByText(/identity is linked to a Dify account/i)
+    await screen.findByText(EMAIL_COPY)
     expect(screen.queryByText('email_belongs_to_dify_account')).not.toBeInTheDocument()
   })
 
   it('scrubs sso_error + user_code from the URL on mount', async () => {
     mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
     render(<DevicePage />)
-    await screen.findByText('Sign-in could not be completed')
+    await screen.findByText(TITLE)
     expect(mockReplace).toHaveBeenCalledWith('/device')
   })
 
@@ -156,15 +159,15 @@ describe('error_sso dedicated view', () => {
     mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
     mockDeviceLookup.mockResolvedValue({ valid: true })
     render(<DevicePage />)
-    await screen.findByText('Sign-in could not be completed')
-    fireEvent.click(screen.getByRole('button', { name: /Back to login options/i }))
-    await screen.findByText(/is valid/i)
+    await screen.findByText(TITLE)
+    fireEvent.click(screen.getByRole('button', { name: BACK_TO_LOGIN }))
+    await screen.findByText('chooser.subtitle')
     expect(mockDeviceLookup).toHaveBeenCalledWith('ABCD-3456')
   })
 
   it('shows no SSO error screen when sso_error is absent', () => {
     render(<DevicePage />)
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('Sign-in could not be completed')).not.toBeInTheDocument()
+    expect(screen.queryByText(TITLE)).not.toBeInTheDocument()
   })
 })

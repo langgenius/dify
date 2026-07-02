@@ -3,6 +3,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -28,6 +29,7 @@ type View
     | { kind: 'error_sso', code: string, userCode: string }
 
 export default function DevicePage() {
+  const { t } = useTranslation('deviceFlow')
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -135,9 +137,9 @@ export default function DevicePage() {
       {view.kind === 'code_entry' && (
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-2xl font-semibold text-text-primary">Authorize Dify CLI</h1>
+            <h1 className="text-2xl font-semibold text-text-primary">{t('codeEntry.title')}</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              Enter the code shown in your terminal.
+              {t('codeEntry.subtitle')}
             </p>
           </div>
           <CodeInput value={typed} onChange={setTyped} autoFocus />
@@ -148,7 +150,7 @@ export default function DevicePage() {
             onClick={onContinue}
             disabled={!isValidUserCode(typed)}
           >
-            Continue
+            {t('codeEntry.continue')}
           </Button>
         </div>
       )}
@@ -156,13 +158,14 @@ export default function DevicePage() {
       {view.kind === 'chooser' && (
         <div className="flex flex-col gap-5">
           <div>
-            <h1 className="text-2xl font-semibold text-text-primary">Sign in to authorize</h1>
+            <h1 className="text-2xl font-semibold text-text-primary">{t('chooser.title')}</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              Code
-              {' '}
-              <code className="rounded bg-components-input-bg-normal px-1 font-mono">{view.userCode}</code>
-              {' '}
-              is valid. Choose how to sign in.
+              <Trans
+                i18nKey="chooser.subtitle"
+                ns="deviceFlow"
+                values={{ code: view.userCode }}
+                components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
+              />
             </p>
           </div>
           <Chooser userCode={view.userCode} ssoAvailable={ssoAvailable} />
@@ -194,11 +197,11 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-success-hover">
             <span className="i-ri-checkbox-circle-line h-[18px] w-[18px] text-util-colors-green-green-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">You&apos;re signed in</h1>
-          <p className="text-sm text-text-secondary">Return to your terminal to continue.</p>
+          <h1 className="text-xl font-semibold text-text-primary">{t('success.title')}</h1>
+          <p className="text-sm text-text-secondary">{t('success.subtitle')}</p>
           <Divider className="my-3" />
           <Button variant="ghost" className="w-full" onClick={() => router.push('/')}>
-            Go to Dify console →
+            {t('success.goToConsole')}
           </Button>
         </div>
       )}
@@ -208,13 +211,13 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
             <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">Code no longer valid</h1>
+          <h1 className="text-xl font-semibold text-text-primary">{t('errorExpired.title')}</h1>
           <p className="text-sm text-text-secondary">
-            Expired or already used. Run
-            {' '}
-            <code className="rounded bg-components-input-bg-normal px-1 font-mono">difyctl auth login</code>
-            {' '}
-            to get a new code.
+            <Trans
+              i18nKey="errorExpired.body"
+              ns="deviceFlow"
+              components={{ codeTag: <code className="rounded bg-components-input-bg-normal px-1 font-mono" /> }}
+            />
           </p>
           <Divider className="my-3" />
           <Button
@@ -225,7 +228,7 @@ export default function DevicePage() {
               setErrMsg(null)
             }}
           >
-            ← Try a different code
+            {t('errorExpired.tryDifferentCode')}
           </Button>
         </div>
       )}
@@ -235,8 +238,8 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
             <span className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">Too many attempts</h1>
-          <p className="text-sm text-text-secondary">Wait a moment and try again.</p>
+          <h1 className="text-xl font-semibold text-text-primary">{t('errorRateLimited.title')}</h1>
+          <p className="text-sm text-text-secondary">{t('errorRateLimited.body')}</p>
           <Divider className="my-3" />
           <Button
             variant="ghost"
@@ -246,7 +249,7 @@ export default function DevicePage() {
               setErrMsg(null)
             }}
           >
-            ← Try again
+            {t('tryAgain')}
           </Button>
         </div>
       )}
@@ -256,9 +259,9 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-destructive-hover">
             <span className="i-ri-close-circle-line h-[18px] w-[18px] text-util-colors-red-red-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">Could not verify the code</h1>
+          <h1 className="text-xl font-semibold text-text-primary">{t('errorLookupFailed.title')}</h1>
           <p className="text-sm text-text-secondary">
-            Something went wrong on our side. Try again in a moment.
+            {t('errorLookupFailed.body')}
           </p>
           <Divider className="my-3" />
           <Button
@@ -269,7 +272,7 @@ export default function DevicePage() {
               setErrMsg(null)
             }}
           >
-            ← Try again
+            {t('tryAgain')}
           </Button>
         </div>
       )}
@@ -279,8 +282,8 @@ export default function DevicePage() {
           <div className="mb-2.5 flex h-[38px] w-[38px] items-center justify-center rounded-full bg-state-warning-hover">
             <span aria-hidden="true" className="i-ri-error-warning-line h-[18px] w-[18px] text-util-colors-yellow-yellow-600" />
           </div>
-          <h1 className="text-xl font-semibold text-text-primary">Sign-in could not be completed</h1>
-          <p className="text-sm text-text-secondary">{ssoErrorCopy(view.code)}</p>
+          <h1 className="text-xl font-semibold text-text-primary">{t('errorSso.title')}</h1>
+          <p className="text-sm text-text-secondary">{ssoErrorCopy(view.code, t)}</p>
           <Divider className="my-3" />
           <Button
             variant="primary"
@@ -294,7 +297,7 @@ export default function DevicePage() {
                 setView({ kind: 'code_entry' })
             }}
           >
-            ← Back to login options
+            {t('errorSso.backToLoginOptions')}
           </Button>
         </div>
       )}
