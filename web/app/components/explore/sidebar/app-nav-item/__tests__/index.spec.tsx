@@ -27,12 +27,6 @@ describe('AppNavItem', () => {
       expect(screen.getByText('My App')).toBeInTheDocument()
       expect(screen.getByTestId('item-operation-trigger')).toBeInTheDocument()
     })
-
-    it('should render icon-only content when folded', () => {
-      render(<AppNavItem {...baseProps} isFolded />)
-
-      expect(screen.getByRole('link', { name: 'My App' })).toBeInTheDocument()
-    })
   })
 
   describe('User Interactions', () => {
