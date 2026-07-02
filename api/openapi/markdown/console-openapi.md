@@ -12919,7 +12919,7 @@ Default namespace
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | name | string | Agent name | Yes |
-| role | string | Agent role | Yes |
+| role | string | Agent role | No |
 
 #### AgentAppDetailWithSite
 
@@ -13046,7 +13046,7 @@ default (the config form sends the full desired feature state on save).
 | icon_type | [IconType](#icontype) | Icon type | No |
 | max_active_requests | integer | Maximum active requests | No |
 | name | string | App name | Yes |
-| role | string | Agent role | Yes |
+| role | string | Agent role | No |
 | use_icon_as_answer_icon | boolean | Use icon as answer icon | No |
 
 #### AgentAverageResponseTimeStatisticResponse
