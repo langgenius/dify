@@ -30,7 +30,7 @@ describe('AgentWorkingDirectoryBreadcrumb', () => {
     it('should render home as the current path when path is home', () => {
       render(
         <AgentWorkingDirectoryBreadcrumb
-          path="../"
+          path="~"
           onPathChange={vi.fn()}
         />,
       )
@@ -97,7 +97,7 @@ describe('AgentWorkingDirectoryBreadcrumb', () => {
         name: 'agentV2.agentDetail.configure.workingDirectory.home',
       }))
 
-      expect(handlePathChange).toHaveBeenCalledWith('../')
+      expect(handlePathChange).toHaveBeenCalledWith('~')
     })
 
     it('should request working directory path when working directory is clicked', async () => {

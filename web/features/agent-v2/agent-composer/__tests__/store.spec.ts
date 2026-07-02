@@ -423,38 +423,6 @@ describe('agent composer store conversions', () => {
     ])
   })
 
-  it('should not save credentialed tool config without a credential reference', () => {
-    const baseConfig = {
-      tools: {
-        dify_tools: [
-          {
-            provider: 'google',
-            provider_id: 'google',
-            provider_type: 'builtin',
-            tool_name: 'search',
-            credential_type: 'oauth2',
-          },
-        ],
-      },
-    } satisfies AgentSoulConfig
-    const formState = agentSoulConfigToFormState(baseConfig)
-    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
-
-    expect(formState.tools).toEqual([
-      expect.objectContaining({
-        credentialId: undefined,
-        credentialType: 'oauth2',
-        credentialVariant: 'unauthorized',
-      }),
-    ])
-    expect(publishConfig.tools?.dify_tools).toEqual([
-      expect.objectContaining({
-        credential_type: 'unauthorized',
-        credential_ref: undefined,
-      }),
-    ])
-  })
-
   it('should hydrate oauth tool authorization state from credential refs', () => {
     const formState = agentSoulConfigToFormState({
       tools: {
@@ -493,6 +461,38 @@ describe('agent composer store conversions', () => {
         credentialId: 'slack-oauth',
         credentialType: 'oauth2',
         credentialVariant: 'authorized',
+      }),
+    ])
+  })
+
+  it('should not save credentialed tool config without a credential reference', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: undefined,
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'unauthorized',
+        credential_ref: undefined,
       }),
     ])
   })
