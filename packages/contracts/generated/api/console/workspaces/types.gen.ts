@@ -52,7 +52,7 @@ export type CreateSnippetPayload = {
 
 export type SnippetResponse = {
   created_at: number
-  created_by: SnippetAccountResponse | null
+  created_by?: SimpleAccountResponse | null
   description: string | null
   graph: {
     [key: string]: unknown
@@ -69,7 +69,7 @@ export type SnippetResponse = {
   tags: Array<SnippetTagResponse>
   type: SnippetType
   updated_at: number
-  updated_by: SnippetAccountResponse | null
+  updated_by?: SimpleAccountResponse | null
   use_count: number
   version: number
 }
@@ -959,7 +959,7 @@ export type InputFieldDefinition = {
   type?: string | null
 }
 
-export type SnippetAccountResponse = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string

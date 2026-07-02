@@ -20939,14 +20939,6 @@ Validated metadata extracted from a Skill package.
 | inferable | boolean |  | Yes |
 | reason | string |  | No |
 
-#### SnippetAccountResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-
 #### SnippetDependencyCheckResponse
 
 | Name | Type | Description | Required |
@@ -21076,7 +21068,7 @@ Payload for running a loop node in snippet draft workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | Yes |
-| created_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | description | string |  | Yes |
 | graph | object |  | Yes |
 | icon_info | object |  | Yes |
@@ -21087,7 +21079,7 @@ Payload for running a loop node in snippet draft workflow.
 | tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
 | type | [SnippetType](#snippettype) |  | Yes |
 | updated_at | integer |  | Yes |
-| updated_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | use_count | integer |  | Yes |
 | version | integer |  | Yes |
 
