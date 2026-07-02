@@ -536,11 +536,6 @@ export const zExploreMessageInfiniteScrollPagination = z.object({
 })
 
 /**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponseWritable = zJsonValue
-
-/**
  * InstalledAppInfoResponse
  */
 export const zInstalledAppInfoResponseWritable = z.object({

@@ -2575,9 +2575,9 @@ export const zTriggerProviderApiEntity = z.object({
 export const zTriggerProviderListResponse = z.array(zTriggerProviderApiEntity)
 
 /**
- * AccountWithRole
+ * AccountWithRoleResponse
  */
-export const zAccountWithRoleWritable = z.object({
+export const zAccountWithRoleResponseWritable = z.object({
   avatar: z.string().nullish(),
   created_at: z.int().nullish(),
   email: z.string(),
@@ -2591,10 +2591,10 @@ export const zAccountWithRoleWritable = z.object({
 })
 
 /**
- * AccountWithRoleList
+ * AccountWithRoleListResponse
  */
-export const zAccountWithRoleListWritable = z.object({
-  accounts: z.array(zAccountWithRoleWritable),
+export const zAccountWithRoleListResponseWritable = z.object({
+  accounts: z.array(zAccountWithRoleResponseWritable),
 })
 
 /**
