@@ -8,7 +8,7 @@ from flask.views import MethodView
 from extensions import ext_fastopenapi
 
 if not hasattr(builtins, "MethodView"):
-    builtins.MethodView = MethodView  # type: ignore[attr-defined]
+    vars(builtins)["MethodView"] = MethodView
 
 
 @pytest.fixture
