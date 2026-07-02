@@ -1623,8 +1623,8 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     @override
     def get_pause_reasons(self) -> Sequence[DifyPauseReason]:
         if self._pause_reasons is not None:
-            return tuple(self._pause_reasons)
-        return tuple(_to_dify_pause_reason(reason) for reason in self._reason_models)
+            return list(self._pause_reasons)
+        return [_to_dify_pause_reason(reason) for reason in self._reason_models]
 
     @property
     @override

@@ -9,7 +9,10 @@ from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from models.human_input import RecipientType
 from models.workflow import WorkflowPauseReason
-from repositories.sqlalchemy_api_workflow_run_repository import _build_human_input_required_reason
+from repositories.sqlalchemy_api_workflow_run_repository import (
+    _PrivateWorkflowPauseEntity,
+    _build_human_input_required_reason,
+)
 
 
 def _build_form_model() -> SimpleNamespace:
@@ -101,3 +104,31 @@ def test_workflow_pause_reason_to_entity_restores_graphon_hitl_reason() -> None:
     assert reason.TYPE == PauseReasonType.HITL_REQUIRED
     assert reason.session_id == "form-1"
     assert reason.node_id == "node-1"
+
+
+def test_private_workflow_pause_entity_preserves_list_shaped_pause_reasons() -> None:
+    pause_reasons = [
+        HumanInputRequired(
+            form_id="form-1",
+            form_content="content",
+            inputs=[],
+            actions=[],
+            node_id="node-1",
+            node_title="Ask Name",
+        )
+    ]
+    entity = _PrivateWorkflowPauseEntity(
+        pause_model=SimpleNamespace(
+            id="pause-1",
+            workflow_run_id="run-1",
+            resumed_at=None,
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        ),
+        reason_models=[],
+        pause_reasons=pause_reasons,
+    )
+
+    result = entity.get_pause_reasons()
+
+    assert isinstance(result, list)
+    assert result == pause_reasons
