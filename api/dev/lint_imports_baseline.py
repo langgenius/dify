@@ -11,16 +11,16 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
-import json
 import os
 import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, NewType, TypedDict
+from typing import Any, Literal, NewType
 
 from importlinter import configuration
 from importlinter.application import use_cases
+from pydantic import BaseModel, ConfigDict
 
 type ComparisonMode = Literal["subset", "count"]
 ContractName = NewType("ContractName", str)
@@ -33,9 +33,12 @@ type Snapshot = dict[ContractName, SnapshotModulesByImporter]
 type ImportEdge = tuple[ModuleName, ModuleName]
 
 
-class BaselineFile(TypedDict):
+class BaselinePayload(BaseModel):
+    """Serialized baseline file payload."""
+
     version: int
     contracts: dict[str, dict[str, list[str]]]
+    model_config = ConfigDict(extra="forbid")
 
 
 BASELINE_VERSION = 1
@@ -49,6 +52,39 @@ class SnapshotFailure:
     baseline_count: int
     current_count: int
     extra_imports: tuple[ModuleName, ...]
+
+
+@dataclass(frozen=True)
+class BaselineDocument:
+    """Domain baseline document used across the file boundary."""
+
+    version: int
+    snapshot: Snapshot
+
+    @classmethod
+    def from_payload(cls, payload: BaselinePayload) -> BaselineDocument:
+        normalized_snapshot: Snapshot = {}
+        for contract_name, importers in payload.contracts.items():
+            normalized_importers: SnapshotModulesByImporter = {}
+            for importer, imported_modules in importers.items():
+                normalized_importers[ModuleName(importer)] = sorted(
+                    {ModuleName(module_name) for module_name in imported_modules}
+                )
+            normalized_snapshot[ContractName(contract_name)] = normalized_importers
+
+        return cls(version=payload.version, snapshot=normalized_snapshot)
+
+    def to_payload(self) -> BaselinePayload:
+        return BaselinePayload(
+            version=self.version,
+            contracts={
+                contract_name: {
+                    importer: list(imported_modules)
+                    for importer, imported_modules in importers.items()
+                }
+                for contract_name, importers in self.snapshot.items()
+            },
+        )
 
 
 def load_report(config_path: str | None = None, contract_ids: tuple[str, ...] = ()) -> Any:
@@ -129,48 +165,23 @@ def compare_snapshots(
     return failures
 
 
-def load_baseline(path: Path) -> Snapshot:
+def load_baseline(path: Path) -> BaselineDocument:
     """Load and validate a baseline file."""
 
-    payload: BaselineFile = json.loads(path.read_text(encoding="utf-8"))
-    version = payload.get("version")
-    if version != BASELINE_VERSION:
-        raise ValueError(f"Unsupported baseline version {version!r}; expected {BASELINE_VERSION}.")
-
-    contracts = payload.get("contracts")
-    if not isinstance(contracts, dict):
-        raise ValueError("Baseline file must contain a 'contracts' object.")
-
-    normalized: Snapshot = {}
-    for contract_name, importers in contracts.items():
-        if not isinstance(contract_name, str) or not isinstance(importers, dict):
-            raise ValueError("Each baseline contract entry must be an object keyed by contract name.")
-
-        normalized_importers: SnapshotModulesByImporter = {}
-        for importer, imported_modules in importers.items():
-            if not isinstance(importer, str) or not isinstance(imported_modules, list):
-                raise ValueError("Each baseline importer entry must map to a list of modules.")
-            if not all(isinstance(module_name, str) for module_name in imported_modules):
-                raise ValueError("Each baseline imported module must be a string.")
-            normalized_importers[ModuleName(importer)] = sorted(
-                {ModuleName(module_name) for module_name in imported_modules}
-            )
-        normalized[ContractName(contract_name)] = normalized_importers
-
-    return normalized
+    payload = BaselinePayload.model_validate_json(path.read_text(encoding="utf-8"))
+    baseline_document = BaselineDocument.from_payload(payload)
+    if baseline_document.version != BASELINE_VERSION:
+        raise ValueError(
+            f"Unsupported baseline version {baseline_document.version!r}; expected {BASELINE_VERSION}."
+        )
+    return baseline_document
 
 
-def write_baseline(path: Path, snapshot: Snapshot) -> None:
+def write_baseline(path: Path, baseline_document: BaselineDocument) -> None:
     """Persist the supplied snapshot as a JSON baseline file."""
 
-    payload: BaselineFile = {
-        "version": BASELINE_VERSION,
-        "contracts": {
-            contract_name: {importer: list(imported_modules) for importer, imported_modules in importers.items()}
-            for contract_name, importers in snapshot.items()
-        },
-    }
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    payload = baseline_document.to_payload()
+    path.write_text(payload.model_dump_json(indent=2) + "\n", encoding="utf-8")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -181,14 +192,17 @@ def main(argv: list[str] | None = None) -> int:
     current_snapshot = snapshot_from_report(load_report(config_path=args.config, contract_ids=tuple(args.contract)))
 
     if args.write_baseline:
-        write_baseline(baseline_path, current_snapshot)
+        write_baseline(
+            baseline_path,
+            BaselineDocument(version=BASELINE_VERSION, snapshot=current_snapshot),
+        )
         _write_line(f"Wrote import baseline to {baseline_path}.")
         return 0
 
-    baseline_snapshot = load_baseline(baseline_path)
+    baseline_document = load_baseline(baseline_path)
     failures = compare_snapshots(
         current_snapshot=current_snapshot,
-        baseline_snapshot=baseline_snapshot,
+        baseline_snapshot=baseline_document.snapshot,
         comparison=args.comparison,
     )
     if failures:

@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+from pydantic import ValidationError
+
 
 def _load_lint_imports_baseline_module():
     api_dir = Path(__file__).parents[3]
@@ -268,3 +271,21 @@ def test_main_fails_on_replacement_violation_in_default_subset_mode(tmp_path: Pa
     output = capsys.readouterr().out
     assert "controllers.apps.list" in output
     assert "services.billing" in output
+
+
+def test_load_baseline_rejects_unexpected_top_level_fields(tmp_path: Path):
+    module = _load_lint_imports_baseline_module()
+    baseline_path = tmp_path / "import-baseline.json"
+    baseline_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "contracts": {},
+                "unexpected": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        module.load_baseline(baseline_path)
