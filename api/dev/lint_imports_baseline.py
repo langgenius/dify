@@ -22,6 +22,7 @@ from importlinter import configuration
 from importlinter.application import use_cases
 from pydantic import BaseModel, ConfigDict
 
+type BaselineVersion = Literal[1]
 type ComparisonMode = Literal["subset", "count"]
 ContractName = NewType("ContractName", str)
 ModuleName = NewType("ModuleName", str)
@@ -36,12 +37,11 @@ type ImportEdge = tuple[ModuleName, ModuleName]
 class BaselinePayload(BaseModel):
     """Serialized baseline file payload."""
 
-    version: int
+    version: BaselineVersion = 1
     contracts: BaselineSnapshot
     model_config = ConfigDict(extra="forbid")
 
 
-BASELINE_VERSION = 1
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / ".importlinter"
 
 
@@ -58,8 +58,8 @@ class SnapshotFailure:
 class BaselineDocument:
     """Domain baseline document used across the file boundary."""
 
-    version: int
     snapshot: BaselineSnapshot
+    version: BaselineVersion = 1
 
     @classmethod
     def from_payload(cls, payload: BaselinePayload) -> BaselineDocument:
@@ -164,10 +164,7 @@ def load_baseline(path: Path) -> BaselineDocument:
     """Load and validate a baseline file."""
 
     payload = BaselinePayload.model_validate_json(path.read_text(encoding="utf-8"))
-    baseline_document = BaselineDocument.from_payload(payload)
-    if baseline_document.version != BASELINE_VERSION:
-        raise ValueError(f"Unsupported baseline version {baseline_document.version!r}; expected {BASELINE_VERSION}.")
-    return baseline_document
+    return BaselineDocument.from_payload(payload)
 
 
 def write_baseline(path: Path, baseline_document: BaselineDocument) -> None:
@@ -187,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.write_baseline:
         write_baseline(
             baseline_path,
-            BaselineDocument(version=BASELINE_VERSION, snapshot=current_snapshot),
+            BaselineDocument(snapshot=current_snapshot),
         )
         _write_line(f"Wrote import baseline to {baseline_path}.")
         return 0
