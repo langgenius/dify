@@ -27,7 +27,6 @@ from enums.cloud_plan import CloudPlan
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
-from libs.pagination import paginate_query
 from extensions.ext_redis import redis_client
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
@@ -35,6 +34,7 @@ from graphon.model_runtime.model_providers.base.text_embedding_model import Text
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
+from libs.pagination import paginate_query
 from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,

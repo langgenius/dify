@@ -145,7 +145,9 @@ class TestExternalDatasetServiceGetAPIs:
 
     @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
-    def test_get_external_knowledge_apis_success_basic(self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_get_external_knowledge_apis_success_basic(
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+    ):
         """Test successful retrieval of external knowledge APIs with pagination."""
         # Arrange
         tenant_id = "tenant-123"
@@ -200,7 +202,9 @@ class TestExternalDatasetServiceGetAPIs:
 
     @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
-    def test_get_external_knowledge_apis_empty_results(self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_get_external_knowledge_apis_empty_results(
+        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+    ):
         """Test retrieval with no results."""
         # Arrange
         mock_pagination = MagicMock()

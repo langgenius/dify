@@ -50,7 +50,6 @@ from core.errors.error import ProviderTokenNotInitError
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from libs.pagination import paginate_query
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentListResponse,
@@ -60,6 +59,7 @@ from fields.document_fields import (
 )
 from libs.helper import dump_response
 from libs.login import current_user
+from libs.pagination import paginate_query
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from services.dataset_service import DatasetService, DocumentService

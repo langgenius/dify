@@ -23,7 +23,6 @@ from controllers.console.wraps import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from libs.pagination import paginate_query
 from fields.conversation_fields import (
     Conversation as ConversationResponse,
 )
@@ -41,6 +40,7 @@ from fields.conversation_fields import (
 )
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models import Conversation, EndUser, Message, MessageAnnotation
 from models.account import Account
 from models.model import App, AppMode

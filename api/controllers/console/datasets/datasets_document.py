@@ -33,7 +33,6 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
-from libs.pagination import paginate_query
 from fields.base import ResponseModel
 from fields.document_fields import (
     DocumentMetadataResponse,
@@ -47,6 +46,7 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models import Account, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, SegmentStatus

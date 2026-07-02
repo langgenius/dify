@@ -43,7 +43,6 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_database import db
-from libs.pagination import paginate_query
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.segment_fields import (
@@ -58,6 +57,7 @@ from fields.segment_fields import (
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response, escape_like_pattern
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models import Account
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile

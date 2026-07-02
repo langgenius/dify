@@ -10,10 +10,10 @@ from werkzeug.exceptions import NotFound
 
 from core.helper.csv_sanitizer import CSVSanitizer
 from extensions.ext_database import db
-from libs.pagination import paginate_query
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
+from libs.pagination import paginate_query
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.app_ref_service import AnnotationRef, AppRef
 from services.feature_service import FeatureService
