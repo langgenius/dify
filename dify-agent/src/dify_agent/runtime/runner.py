@@ -24,10 +24,10 @@ both the JSON-safe final output or deferred tool call and the session snapshot;
 there are no separate output or snapshot events to correlate.
 """
 
-from collections.abc import AsyncIterable
+from collections.abc import AsyncIterable, Callable
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import httpx
 from pydantic import JsonValue, TypeAdapter
@@ -71,6 +71,26 @@ from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, 
 
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
+
+
+@runtime_checkable
+class _HasUsage(Protocol):
+    usage: object
+
+
+@runtime_checkable
+class _HasInputTokens(Protocol):
+    input_tokens: object
+
+
+@runtime_checkable
+class _HasOutputTokens(Protocol):
+    output_tokens: object
+
+
+@runtime_checkable
+class _HasTotalTokens(Protocol):
+    total_tokens: object
 
 
 class AgentRunValidationError(ValueError):
@@ -268,11 +288,15 @@ def _serialize_agent_output(output: object) -> JsonValue:
 
 def _result_usage(result: object) -> object | None:
     """Return pydantic-ai result usage across method/property API variants."""
-    usage = getattr(result, "usage", None)
-    if hasattr(usage, "input_tokens") or hasattr(usage, "output_tokens"):
+    if not isinstance(result, _HasUsage):
+        return None
+
+    usage = result.usage
+    if isinstance(usage, _HasInputTokens) or isinstance(usage, _HasOutputTokens):
         return usage
     if callable(usage):
-        return usage()
+        usage_getter = cast(Callable[[], object], usage)
+        return usage_getter()
     return usage
 
 
@@ -280,9 +304,9 @@ def _serialize_agent_usage(usage: object | None) -> AgentRunUsage | None:
     """Convert pydantic-ai request usage into the public Agent run usage shape."""
     if usage is None:
         return None
-    input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
-    output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
-    total_tokens = int(getattr(usage, "total_tokens", 0) or 0)
+    input_tokens = int(usage.input_tokens or 0) if isinstance(usage, _HasInputTokens) else 0
+    output_tokens = int(usage.output_tokens or 0) if isinstance(usage, _HasOutputTokens) else 0
+    total_tokens = int(usage.total_tokens or 0) if isinstance(usage, _HasTotalTokens) else 0
     return AgentRunUsage(
         prompt_tokens=input_tokens,
         completion_tokens=output_tokens,

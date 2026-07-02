@@ -21,7 +21,7 @@ import re
 import secrets
 import time
 from dataclasses import dataclass
-from typing import ClassVar, Literal, NotRequired, TypedDict
+from typing import ClassVar, Literal, NotRequired, Protocol, TypedDict, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
 from pydantic_ai import Tool
@@ -58,6 +58,12 @@ except ModuleNotFoundError:
 
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class _HasErrorCode(Protocol):
+    code: object
+
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TERMINATE_GRACE_SECONDS = 10.0
@@ -778,9 +784,8 @@ def _tool_error_from_exception(exc: Exception, *, job_id: str | None = None) -> 
     # returned to the model as observations. The broader Exception fallback
     # below handles unexpected failures; BaseException, including cancellation,
     # is intentionally left uncaught at the tool boundary.
-    code = getattr(exc, "code", None)
-    if isinstance(code, str) and code:
-        return _tool_error(f"{code}: {exc}", job_id=job_id)
+    if isinstance(exc, _HasErrorCode) and isinstance(exc.code, str) and exc.code:
+        return _tool_error(f"{exc.code}: {exc}", job_id=job_id)
     return _tool_error(str(exc), job_id=job_id)
 
 

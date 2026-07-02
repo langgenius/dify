@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 
-export const AGENT_WORKING_DIRECTORY_HOME_PATH = '~'
+const AGENT_WORKING_DIRECTORY_HOME_PATH = '~'
 export const AGENT_WORKING_DIRECTORY_ROOT_PATH = '.'
 
 export type AgentWorkingDirectoryPath

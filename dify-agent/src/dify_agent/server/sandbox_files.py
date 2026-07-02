@@ -10,9 +10,10 @@ The scripts still frame their structured payloads with a PTY-safe
 base64-between-sentinels envelope. shellctl jobs are tmux-backed, so raw JSON can
 be wrapped or surrounded by prompt noise; the framing keeps list/read/upload
 responses parseable without falling back to direct shellctl file access. Path
-arguments stay relative to the saved shell workspace cwd, but the scripts do not
-re-impose a workspace-root boundary, so callers can use ``../`` when the
-sandbox filesystem layout expects it.
+arguments resolve from the saved shell workspace cwd, and ``~`` resolves through
+the shell layer's injected sandbox ``HOME``. The scripts do not re-impose a
+workspace-root boundary, so callers can use ``../`` or ``~/...`` when the sandbox
+filesystem layout expects it.
 """
 
 from __future__ import annotations
@@ -68,7 +69,7 @@ def emit(payload):
 
 raw_path = sys.argv[1]
 limit = int(sys.argv[2])
-target = Path(raw_path).resolve()
+target = Path(raw_path).expanduser().resolve()
 
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
@@ -125,7 +126,7 @@ def emit(payload):
 
 raw_path = sys.argv[1]
 max_bytes = int(sys.argv[2])
-target = Path(raw_path).resolve()
+target = Path(raw_path).expanduser().resolve()
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
     sys.exit(0)
@@ -182,7 +183,7 @@ def emit(payload):
 
 
 raw_path = sys.argv[1]
-target = Path(raw_path).resolve()
+target = Path(raw_path).expanduser().resolve()
 if not target.exists():
     emit({"error": "sandbox_path_not_found", "message": "path not found in sandbox"})
     sys.exit(0)
@@ -297,6 +298,8 @@ def _normalize_sandbox_path(path: str, *, allow_current_directory: bool) -> str:
 
     The remote scripts run with the saved workspace cwd, so ``../`` remains a
     valid sandbox-relative path when callers need to reach sibling directories.
+    ``~`` and ``~/...`` are also accepted and resolved by the embedded scripts
+    against the shell layer's sandbox ``HOME``.
     """
 
     normalized = (path or "").strip()
@@ -304,10 +307,12 @@ def _normalize_sandbox_path(path: str, *, allow_current_directory: bool) -> str:
         if allow_current_directory:
             return "."
         raise SandboxFileError("invalid_sandbox_path", "path must not be blank", status_code=400)
-    if normalized.startswith("/") or normalized.startswith("~"):
+    if normalized.startswith("/"):
         raise SandboxFileError(
             "invalid_sandbox_path", "path must be relative to the sandbox workspace", status_code=400
         )
+    if normalized.startswith("~") and normalized != "~" and not normalized.startswith("~/"):
+        raise SandboxFileError("invalid_sandbox_path", "path must use ~ or ~/ for the sandbox home", status_code=400)
     if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
         raise SandboxFileError("invalid_sandbox_path", "path contains unsupported control characters", status_code=400)
     return normalized
