@@ -75,7 +75,9 @@ def _zip_bytes(members: dict[str, bytes]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         for name, payload in members.items():
-            archive.writestr(name, payload)
+            zip_info = zipfile.ZipInfo(filename=name)
+            zip_info.date_time = (1980, 1, 1, 0, 0, 0)
+            archive.writestr(zip_info, payload)
     return buffer.getvalue()
 
 
@@ -418,8 +420,8 @@ def test_apply_env_text_supports_delete_comments_export_and_keeps_unmentioned_va
 @pytest.mark.parametrize(
     "archive_bytes",
     [
-        b"not-a-zip-archive",
-        _zip_bytes({"README.md": b"missing skill md"}),
+        pytest.param(b"not-a-zip-archive", id="not-a-zip-archive"),
+        pytest.param(_zip_bytes({"README.md": b"missing skill md"}), id="missing-skill-md"),
     ],
 )
 def test_inspect_skill_maps_invalid_archives_to_service_errors(archive_bytes: bytes) -> None:
