@@ -35,6 +35,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ApiProviderSchemaType,
     EmojiIconDict,
     ToolInvokeFrom,
     ToolParameter,
@@ -917,9 +918,10 @@ class ToolManager:
         # add tool labels
         labels = ToolLabelManager.get_tool_labels(controller)
         schema_type = provider_obj.schema_type
+        schema_type_value = schema_type.value if isinstance(schema_type, ApiProviderSchemaType) else schema_type
 
         return {
-            "schema_type": getattr(schema_type, "value", schema_type),
+            "schema_type": schema_type_value,
             "schema": provider_obj.schema,
             "tools": [tool.model_dump(mode="json") for tool in provider_obj.tools],
             "icon": icon,
