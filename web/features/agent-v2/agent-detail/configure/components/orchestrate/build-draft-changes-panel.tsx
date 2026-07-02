@@ -86,21 +86,20 @@ function AgentBuildDraftChangeItemRow({
   const { t } = useTranslation('agentV2')
 
   return (
-    <div className="flex min-w-0 items-start gap-1">
-      <span
-        aria-hidden
-        className={cn(
-          'size-3 shrink-0',
-          item.descriptionKey && 'mt-0.5',
-          item.operation === 'removed'
-            ? 'i-ri-indeterminate-circle-fill text-text-destructive'
-            : item.operation === 'added'
-              ? 'i-ri-add-circle-fill text-text-success'
-              : 'i-ri-add-circle-fill text-text-accent',
-        )}
-      />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex min-w-0 items-center gap-1">
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex min-w-0 items-center gap-1">
+        <span
+          aria-hidden
+          className={cn(
+            'size-3 shrink-0',
+            item.operation === 'removed'
+              ? 'i-ri-indeterminate-circle-fill text-text-destructive'
+              : item.operation === 'added'
+                ? 'i-ri-add-circle-fill text-text-success'
+                : 'i-ri-add-circle-fill text-text-accent',
+          )}
+        />
+        <div className="flex min-w-0 flex-1 items-center gap-1">
           {item.icon
             ? <FileTreeIcon type={item.icon} className="size-4" />
             : <span aria-hidden className="i-custom-public-agent-building-blocks size-4 shrink-0 text-text-tertiary" />}
@@ -108,12 +107,12 @@ function AgentBuildDraftChangeItemRow({
             {item.name}
           </p>
         </div>
-        {item.descriptionKey && (
-          <p className="system-xs-regular text-text-tertiary">
-            {t(item.descriptionKey)}
-          </p>
-        )}
       </div>
+      {item.descriptionKey && (
+        <p className="ms-4 system-xs-regular text-text-tertiary">
+          {t(item.descriptionKey)}
+        </p>
+      )}
     </div>
   )
 }
