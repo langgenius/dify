@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 
-export type AgentWorkingDirectoryPath = '.' | '../' | string
+export type AgentWorkingDirectoryPath = '.' | '~' | string
 
 type AgentWorkingDirectoryBreadcrumbItemData = {
   iconClassName: string
@@ -17,8 +17,10 @@ type AgentWorkingDirectoryBreadcrumbItemData = {
   path: AgentWorkingDirectoryPath
 }
 
+const HOME_DIRECTORY_PATH = '~'
+
 const normalizeWorkingDirectoryPath = (path: AgentWorkingDirectoryPath) => {
-  if (path === '.' || path === '../')
+  if (path === '.' || path === HOME_DIRECTORY_PATH)
     return path
 
   return path.replace(/^\.\/+/, '').replace(/^\/+|\/+$/g, '')
@@ -41,10 +43,10 @@ function getBreadcrumbItems({
   const homeItem: AgentWorkingDirectoryBreadcrumbItemData = {
     iconClassName: 'i-ri-folder-3-line',
     label: homeLabel,
-    path: '../',
+    path: HOME_DIRECTORY_PATH,
   }
 
-  if (normalizedPath === '../')
+  if (normalizedPath === HOME_DIRECTORY_PATH)
     return [homeItem]
 
   const segments = normalizedPath === '.'
