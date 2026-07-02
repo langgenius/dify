@@ -381,7 +381,7 @@
   "roster.searchLabel": "搜尋 Agent",
   "roster.searchPlaceholder": "依名稱搜尋 Agent…",
   "roster.tabs.agent": "Agent",
-  "roster.tabs.human": "人工成員",
+  "roster.tabs.human": "聯絡人",
   "roster.tabsLabel": "Roster 類型",
   "roster.updateSuccess": "Agent 已更新。",
   "roster.usageStatus.draft": "草稿"

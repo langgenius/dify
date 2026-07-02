@@ -252,12 +252,29 @@ class DeferredToolCallPayload(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class AgentRunUsage(BaseModel):
+    """Token usage reported by the model request behind one Agent run."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _derive_total_tokens(self) -> AgentRunUsage:
+        if self.total_tokens == 0 and (self.prompt_tokens > 0 or self.completion_tokens > 0):
+            self.total_tokens = self.prompt_tokens + self.completion_tokens
+        return self
+
+
 class RunSucceededEventData(BaseModel):
     """Terminal success payload for final output or deferred tool continuation."""
 
     output: JsonValue | None = None
     deferred_tool_call: DeferredToolCallPayload | None = None
     session_snapshot: CompositorSessionSnapshot
+    usage: AgentRunUsage | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -276,6 +293,8 @@ class RunSucceededEventData(BaseModel):
             data["output"] = self.output
         if "deferred_tool_call" in self.model_fields_set:
             data["deferred_tool_call"] = self.deferred_tool_call
+        if self.usage is not None:
+            data["usage"] = self.usage
         return data
 
 
@@ -361,6 +380,7 @@ class RunEventsResponse(BaseModel):
 
 __all__ = [
     "BaseRunEvent",
+    "AgentRunUsage",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",

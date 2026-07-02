@@ -381,7 +381,7 @@
   "roster.searchLabel": "에이전트 검색",
   "roster.searchPlaceholder": "이름으로 에이전트 검색…",
   "roster.tabs.agent": "에이전트",
-  "roster.tabs.human": "사람",
+  "roster.tabs.human": "연락처",
   "roster.tabsLabel": "Roster 유형",
   "roster.updateSuccess": "에이전트가 업데이트되었습니다.",
   "roster.usageStatus.draft": "초안"

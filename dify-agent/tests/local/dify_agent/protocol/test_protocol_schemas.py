@@ -12,6 +12,7 @@ from dify_agent.layers.dify_plugin import DIFY_PLUGIN_LLM_LAYER_TYPE_ID, DIFY_PL
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
+    AgentRunUsage,
     RUN_EVENT_ADAPTER,
     CreateRunRequest,
     DeferredToolCallPayload,
@@ -402,6 +403,27 @@ def test_run_succeeded_event_round_trips_explicit_json_null_output() -> None:
     assert decoded.data.deferred_tool_call is None
     assert b'"output":null' in payload
     assert b'"deferred_tool_call"' not in payload
+
+
+def test_run_succeeded_event_round_trips_usage() -> None:
+    event = RunSucceededEvent(
+        run_id="run-usage",
+        data=RunSucceededEventData(
+            output="done",
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            usage=AgentRunUsage(prompt_tokens=3, completion_tokens=5),
+        ),
+    )
+
+    payload = RUN_EVENT_ADAPTER.dump_json(event)
+    decoded = RUN_EVENT_ADAPTER.validate_json(payload)
+
+    assert isinstance(decoded, RunSucceededEvent)
+    assert decoded.data.usage is not None
+    assert decoded.data.usage.prompt_tokens == 3
+    assert decoded.data.usage.completion_tokens == 5
+    assert decoded.data.usage.total_tokens == 8
+    assert b'"usage"' in payload
 
 
 def test_on_exit_accept_layer_overrides() -> None:

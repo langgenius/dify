@@ -42,6 +42,7 @@ from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.protocol.schemas import (
+    AgentRunUsage,
     CreateRunRequest,
     DIFY_AGENT_MODEL_LAYER_ID,
     DeferredToolCallPayload,
@@ -83,6 +84,7 @@ class RunSuccessOutcome:
     output: JsonValue | None
     deferred_tool_call: DeferredToolCallPayload | None
     session_snapshot: CompositorSessionSnapshot
+    usage: AgentRunUsage | None
 
 
 class AgentRunRunner:
@@ -135,6 +137,7 @@ class AgentRunRunner:
                 else {"deferred_tool_call": outcome.deferred_tool_call}
             ),
             session_snapshot=outcome.session_snapshot,
+            usage=outcome.usage,
         )
         await self.sink.update_status(self.run_id, "succeeded")
 
@@ -170,6 +173,7 @@ class AgentRunRunner:
         output: JsonValue | None = None
         deferred_tool_call: DeferredToolCallPayload | None = None
         result_kind: Literal["output", "deferred_tool_call"] | None = None
+        usage: AgentRunUsage | None = None
         try:
             async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
                 entered_run = True
@@ -217,6 +221,7 @@ class AgentRunRunner:
                     deferred_tool_results=deferred_tool_results,
                     event_stream_handler=handle_events,
                 )
+                usage = _serialize_agent_usage(_result_usage(result))
                 append_successful_run_history(history_layer, result.new_messages())
                 if isinstance(result.output, DeferredToolRequests):
                     if ask_human_layer is None:
@@ -251,12 +256,37 @@ class AgentRunRunner:
             output=output,
             deferred_tool_call=deferred_tool_call,
             session_snapshot=run.session_snapshot,
+            usage=usage,
         )
 
 
 def _serialize_agent_output(output: object) -> JsonValue:
     """Convert arbitrary pydantic-ai output into the public JSON-safe payload type."""
     return cast(JsonValue, _AGENT_OUTPUT_ADAPTER.dump_python(output, mode="json"))
+
+
+def _result_usage(result: object) -> object | None:
+    """Return pydantic-ai result usage across method/property API variants."""
+    usage = getattr(result, "usage", None)
+    if hasattr(usage, "input_tokens") or hasattr(usage, "output_tokens"):
+        return usage
+    if callable(usage):
+        return usage()
+    return usage
+
+
+def _serialize_agent_usage(usage: object | None) -> AgentRunUsage | None:
+    """Convert pydantic-ai request usage into the public Agent run usage shape."""
+    if usage is None:
+        return None
+    input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+    output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+    total_tokens = int(getattr(usage, "total_tokens", 0) or 0)
+    return AgentRunUsage(
+        prompt_tokens=input_tokens,
+        completion_tokens=output_tokens,
+        total_tokens=total_tokens,
+    )
 
 
 def _resolve_agent_output_type(output_type: OutputSpec[object], allow_deferred_tools: bool) -> OutputSpec[object]:

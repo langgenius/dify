@@ -378,6 +378,8 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
     terminal = sink.events["run-1"][-1]
     assert isinstance(terminal, RunSucceededEvent)
     assert terminal.data.output == "done"
+    assert terminal.data.usage is not None
+    assert terminal.data.usage.total_tokens > 0
     assert [layer.name for layer in terminal.data.session_snapshot.layers] == [
         "prompt",
         "renamed-execution-context",
