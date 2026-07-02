@@ -40,6 +40,16 @@ describe('AppNavItem', () => {
       expect(link).not.toHaveAttribute('aria-current')
     })
 
+    it('should use a contextual accessible name when ariaLabel is provided', () => {
+      render(<AppNavItem {...baseProps} variant="mainNav" ariaLabel="Open My App web app" />)
+
+      const link = screen.getByRole('link', { name: 'Open My App web app' })
+
+      expect(link).toHaveAttribute('href', '/installed/app-123')
+      expect(link).toHaveAttribute('aria-label', 'Open My App web app')
+      expect(screen.getByText('My App')).toBeInTheDocument()
+    })
+
     it('should expose selected state through the current link', () => {
       render(<AppNavItem {...baseProps} isSelected />)
 

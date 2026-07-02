@@ -11,6 +11,7 @@ import Link from '@/next/link'
 type IAppNavItemProps = {
   variant?: 'default' | 'mainNav'
   name: string
+  ariaLabel?: string
   id: string
   icon_type: AppIconType | null
   icon: string
@@ -26,6 +27,7 @@ type IAppNavItemProps = {
 export default function AppNavItem({
   variant = 'default',
   name,
+  ariaLabel,
   id,
   icon_type,
   icon,
@@ -55,7 +57,7 @@ export default function AppNavItem({
       <Link
         href={url}
         aria-current={isSelected ? 'page' : undefined}
-        aria-label={name}
+        aria-label={ariaLabel ?? name}
         title={name}
         className={cn(isMainNav ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden' : 'flex w-0 grow items-center space-x-2 outline-hidden group-data-[folded=true]/sidebar:w-auto group-data-[folded=true]/sidebar:justify-center group-data-[folded=true]/sidebar:space-x-0')}
       >
