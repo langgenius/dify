@@ -21,7 +21,7 @@ import type { AppMeta, ToolIcon } from '@/models/share'
 import type { AppIconType } from '@/types/app'
 import { AccessMode } from '@/models/access-control'
 import { PromptMode } from '@/models/debug'
-import { AppModeEnum, RETRIEVE_TYPE, TtsAutoPlay } from '@/types/app'
+import { RETRIEVE_TYPE, TtsAutoPlay } from '@/types/app'
 import { consoleClient } from './client'
 
 type ExploreAppsResponse = {
@@ -38,7 +38,7 @@ type ExploreAppDetailResponse = {
   name: string
   icon: string
   icon_background: string
-  mode: AppModeEnum
+  mode: string
   export_data: string
   can_trial?: boolean | null
 }
@@ -71,19 +71,8 @@ const getBooleanProperty = (source: object, key: string, fallback = false) => {
   return typeof value === 'boolean' ? value : fallback
 }
 
-const isAppMode = (value: unknown): value is AppModeEnum => {
-  return value === AppModeEnum.COMPLETION
-    || value === AppModeEnum.WORKFLOW
-    || value === AppModeEnum.CHAT
-    || value === AppModeEnum.ADVANCED_CHAT
-    || value === AppModeEnum.AGENT_CHAT
-}
-
-const normalizeAppMode = (value: unknown, context: string) => {
-  if (isAppMode(value))
-    return value
-
-  throw new Error(`${context} returned an unsupported app mode.`)
+const normalizeAppMode = (value: unknown) => {
+  return typeof value === 'string' ? value : ''
 }
 
 const isAppIconType = (value: unknown): value is AppIconType => {
@@ -123,7 +112,7 @@ const normalizeAppBasicInfo = (
 
   return {
     id: source?.id ?? fallbackId,
-    mode: normalizeAppMode(source?.mode, 'App info'),
+    mode: normalizeAppMode(source?.mode),
     icon_type: normalizeAppIconType(source?.icon_type),
     icon: source?.icon ?? '',
     icon_background: source?.icon_background ?? '',
@@ -172,7 +161,7 @@ const normalizeAppDetail = (response: RecommendedAppDetailResponse): ExploreAppD
     name: response.name,
     icon: response.icon ?? '',
     icon_background: response.icon_background ?? '',
-    mode: normalizeAppMode(response.mode, 'Recommended app detail'),
+    mode: normalizeAppMode(response.mode),
     export_data: response.export_data,
     can_trial: response.can_trial,
   }
@@ -219,12 +208,6 @@ const normalizeBannersResponse = (response: BannerListResponse): Banner[] => {
   return response.map(normalizeBanner)
 }
 
-const isToolIconObject = (value: unknown): value is Exclude<ToolIcon, string> => {
-  return isRecord(value)
-    && typeof value.background === 'string'
-    && typeof value.content === 'string'
-}
-
 const normalizeToolIcons = (value: unknown) => {
   const record = isRecord(value) ? value : {}
   const result: Record<string, ToolIcon> = {}
@@ -232,7 +215,7 @@ const normalizeToolIcons = (value: unknown) => {
   Object.entries(record).forEach(([key, item]) => {
     if (typeof item === 'string')
       result[key] = item
-    else if (isToolIconObject(item))
+    else if (isRecord(item))
       result[key] = item
   })
 

@@ -17276,7 +17276,7 @@ The type of the parameter
 
 Metadata consumed by the installed-app chat UI.
 
-Built-in tool icons are URL strings; API-based tool icons are emoji payloads.
+Built-in tool icons are URL strings; API-based tool icons are provider-defined payload objects.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21244,13 +21244,6 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [TokensPerSecondStatisticItem](#tokenspersecondstatisticitem) ] |  | Yes |
-
-#### ToolIconResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| background | string |  | Yes |
-| content | string |  | Yes |
 
 #### ToolOAuthClientSchemaResponse
 

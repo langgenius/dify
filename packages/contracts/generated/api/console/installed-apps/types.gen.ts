@@ -117,7 +117,11 @@ export type SuggestedQuestionsResponse = {
 
 export type ExploreAppMetaResponse = {
   tool_icons?: {
-    [key: string]: string | ToolIconResponse
+    [key: string]:
+      | string
+      | {
+        [key: string]: unknown
+      }
   }
 }
 
@@ -206,11 +210,6 @@ export type ExploreMessageListItem = {
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
-}
-
-export type ToolIconResponse = {
-  background: string
-  content: string
 }
 
 export type JsonObject = {

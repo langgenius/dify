@@ -112,6 +112,19 @@ export const zSuggestedQuestionsResponse = z.object({
 })
 
 /**
+ * ExploreAppMetaResponse
+ *
+ * Metadata consumed by the installed-app chat UI.
+ *
+ * Built-in tool icons are URL strings; API-based tool icons are provider-defined payload objects.
+ */
+export const zExploreAppMetaResponse = z.object({
+  tool_icons: z
+    .record(z.string(), z.union([z.string(), z.record(z.string(), z.unknown())]))
+    .optional(),
+})
+
+/**
  * SavedMessageCreatePayload
  */
 export const zSavedMessageCreatePayload = z.object({
@@ -186,25 +199,6 @@ export const zConversationInfiniteScrollPagination = z.object({
   data: z.array(zSimpleConversation),
   has_more: z.boolean(),
   limit: z.int(),
-})
-
-/**
- * ToolIconResponse
- */
-export const zToolIconResponse = z.object({
-  background: z.string(),
-  content: z.string(),
-})
-
-/**
- * ExploreAppMetaResponse
- *
- * Metadata consumed by the installed-app chat UI.
- *
- * Built-in tool icons are URL strings; API-based tool icons are emoji payloads.
- */
-export const zExploreAppMetaResponse = z.object({
-  tool_icons: z.record(z.string(), z.union([z.string(), zToolIconResponse])).optional(),
 })
 
 export const zJsonObject = z.record(z.string(), z.unknown())

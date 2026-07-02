@@ -214,9 +214,8 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
     assert {"type": "string"} in tool_icon_schema["anyOf"]
-    assert {"$ref": "#/components/schemas/ToolIconResponse"} in tool_icon_schema["anyOf"]
-    assert schemas["ToolIconResponse"]["properties"]["background"]["type"] == "string"
-    assert schemas["ToolIconResponse"]["properties"]["content"]["type"] == "string"
+    assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]
+    assert "ToolIconResponse" not in schemas
 
     plugin_versions = schemas["PluginVersionsResponse"]["properties"]["versions"]
     assert plugin_versions["additionalProperties"]["anyOf"][0]["$ref"] == "#/components/schemas/LatestPluginCache"
