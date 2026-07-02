@@ -68,14 +68,11 @@ def snapshot_from_report(report: Any) -> Snapshot:
             imports_by_importer[importer].add(imported)
 
         if check.metadata and not imports_by_importer:
-            raise ValueError(
-                f"Broken contract '{contract.name}' does not expose direct import edges in metadata."
-            )
+            raise ValueError(f"Broken contract '{contract.name}' does not expose direct import edges in metadata.")
 
         if imports_by_importer:
             snapshot[contract.name] = {
-                importer: sorted(imported_modules)
-                for importer, imported_modules in sorted(imports_by_importer.items())
+                importer: sorted(imported_modules) for importer, imported_modules in sorted(imports_by_importer.items())
             }
 
     return {contract_name: snapshot[contract_name] for contract_name in sorted(snapshot)}
@@ -125,9 +122,7 @@ def load_baseline(path: Path) -> Snapshot:
     payload = json.loads(path.read_text(encoding="utf-8"))
     version = payload.get("version")
     if version != BASELINE_VERSION:
-        raise ValueError(
-            f"Unsupported baseline version {version!r}; expected {BASELINE_VERSION}."
-        )
+        raise ValueError(f"Unsupported baseline version {version!r}; expected {BASELINE_VERSION}.")
 
     contracts = payload.get("contracts")
     if not isinstance(contracts, dict):
@@ -164,9 +159,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     baseline_path = args.baseline
-    current_snapshot = snapshot_from_report(
-        load_report(config_path=args.config, contract_ids=tuple(args.contract))
-    )
+    current_snapshot = snapshot_from_report(load_report(config_path=args.config, contract_ids=tuple(args.contract)))
 
     if args.write_baseline:
         write_baseline(baseline_path, current_snapshot)

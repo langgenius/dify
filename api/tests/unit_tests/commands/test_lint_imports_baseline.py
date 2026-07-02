@@ -213,9 +213,7 @@ def test_main_writes_baseline_snapshot(tmp_path: Path, monkeypatch):
     }
 
 
-def test_main_fails_on_replacement_violation_in_default_subset_mode(
-    tmp_path: Path, monkeypatch, capsys
-):
+def test_main_fails_on_replacement_violation_in_default_subset_mode(tmp_path: Path, monkeypatch, capsys):
     module = _load_lint_imports_baseline_module()
     baseline_path = tmp_path / "import-baseline.json"
     baseline_path.write_text(
