@@ -12,8 +12,18 @@ from models.model import AppMode, InstalledApp
 from services.app_service import AppService
 
 
+class ToolIconResponse(BaseModel):
+    background: str
+    content: str
+
+
 class ExploreAppMetaResponse(BaseModel):
-    tool_icons: dict[str, Any] = Field(default_factory=dict)
+    """Metadata consumed by the installed-app chat UI.
+
+    Built-in tool icons are URL strings; API-based tool icons are emoji payloads.
+    """
+
+    tool_icons: dict[str, str | ToolIconResponse] = Field(default_factory=dict)
 
 
 register_response_schema_models(console_ns, fields.Parameters, ExploreAppMetaResponse)

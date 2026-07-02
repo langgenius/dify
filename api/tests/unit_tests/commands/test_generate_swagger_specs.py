@@ -212,6 +212,11 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert {"type": "null"} in app_detail_nullable_schema["anyOf"]
     assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
+    tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
+    assert {"type": "string"} in tool_icon_schema["anyOf"]
+    assert {"$ref": "#/components/schemas/ToolIconResponse"} in tool_icon_schema["anyOf"]
+    assert schemas["ToolIconResponse"]["properties"]["background"]["type"] == "string"
+    assert schemas["ToolIconResponse"]["properties"]["content"]["type"] == "string"
 
     plugin_versions = schemas["PluginVersionsResponse"]["properties"]["versions"]
     assert plugin_versions["additionalProperties"]["anyOf"][0]["$ref"] == "#/components/schemas/LatestPluginCache"

@@ -17,7 +17,7 @@ import type {
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { Banner } from '@/models/app'
 import type { App, AppCategory, InstalledApp } from '@/models/explore'
-import type { AppMeta } from '@/models/share'
+import type { AppMeta, ToolIcon } from '@/models/share'
 import type { AppIconType } from '@/types/app'
 import { AccessMode } from '@/models/access-control'
 import { PromptMode } from '@/models/debug'
@@ -79,8 +79,11 @@ const isAppMode = (value: unknown): value is AppModeEnum => {
     || value === AppModeEnum.AGENT_CHAT
 }
 
-const normalizeAppMode = (value: unknown) => {
-  return isAppMode(value) ? value : AppModeEnum.CHAT
+const normalizeAppMode = (value: unknown, context: string) => {
+  if (isAppMode(value))
+    return value
+
+  throw new Error(`${context} returned an unsupported app mode.`)
 }
 
 const isAppIconType = (value: unknown): value is AppIconType => {
@@ -95,7 +98,10 @@ const isAccessMode = (value: unknown): value is AccessMode => {
 }
 
 const normalizeAccessMode = (value: unknown) => {
-  return isAccessMode(value) ? value : AccessMode.PUBLIC
+  if (isAccessMode(value))
+    return value
+
+  throw new Error('Web app access mode response returned an unsupported access mode.')
 }
 
 const normalizeAppIconType = (value: unknown) => {
@@ -117,7 +123,7 @@ const normalizeAppBasicInfo = (
 
   return {
     id: source?.id ?? fallbackId,
-    mode: normalizeAppMode(source?.mode),
+    mode: normalizeAppMode(source?.mode, 'App info'),
     icon_type: normalizeAppIconType(source?.icon_type),
     icon: source?.icon ?? '',
     icon_background: source?.icon_background ?? '',
@@ -166,7 +172,7 @@ const normalizeAppDetail = (response: RecommendedAppDetailResponse): ExploreAppD
     name: response.name,
     icon: response.icon ?? '',
     icon_background: response.icon_background ?? '',
-    mode: normalizeAppMode(response.mode),
+    mode: normalizeAppMode(response.mode, 'Recommended app detail'),
     export_data: response.export_data,
     can_trial: response.can_trial,
   }
@@ -213,12 +219,20 @@ const normalizeBannersResponse = (response: BannerListResponse): Banner[] => {
   return response.map(normalizeBanner)
 }
 
-const normalizeStringRecord = (value: unknown) => {
+const isToolIconObject = (value: unknown): value is Exclude<ToolIcon, string> => {
+  return isRecord(value)
+    && typeof value.background === 'string'
+    && typeof value.content === 'string'
+}
+
+const normalizeToolIcons = (value: unknown) => {
   const record = isRecord(value) ? value : {}
-  const result: Record<string, string> = {}
+  const result: Record<string, ToolIcon> = {}
 
   Object.entries(record).forEach(([key, item]) => {
     if (typeof item === 'string')
+      result[key] = item
+    else if (isToolIconObject(item))
       result[key] = item
   })
 
@@ -227,7 +241,7 @@ const normalizeStringRecord = (value: unknown) => {
 
 const normalizeAppMeta = (response: ExploreAppMetaResponse): AppMeta => {
   return {
-    tool_icons: normalizeStringRecord(response.tool_icons),
+    tool_icons: normalizeToolIcons(response.tool_icons),
   }
 }
 
@@ -236,7 +250,20 @@ const isTtsAutoPlay = (value: unknown): value is TtsAutoPlay => {
 }
 
 const isUserInputFormItem = (value: unknown): value is ChatConfig['user_input_form'][number] => {
-  return isRecord(value)
+  if (!isRecord(value))
+    return false
+
+  return [
+    'text-input',
+    'select',
+    'paragraph',
+    'number',
+    'checkbox',
+    'file',
+    'file-list',
+    'external_data_tool',
+    'json_object',
+  ].some(key => isRecord(getValue(value, key)))
 }
 
 const isModel = (value: unknown): value is NonNullable<ChatConfig['suggested_questions_after_answer']['model']> => {
