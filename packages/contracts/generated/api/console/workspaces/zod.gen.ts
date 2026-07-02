@@ -600,19 +600,6 @@ export const zWorkflowToolDeletePayload = z.object({
 })
 
 /**
- * TriggerOAuthClientResponse
- */
-export const zTriggerOAuthClientResponse = z.object({
-  configured: z.boolean(),
-  custom_configured: z.boolean(),
-  custom_enabled: z.boolean(),
-  oauth_client_schema: z.unknown(),
-  params: z.record(z.string(), z.unknown()),
-  redirect_uri: z.string(),
-  system_configured: z.boolean(),
-})
-
-/**
  * TriggerOAuthClientPayload
  */
 export const zTriggerOAuthClientPayload = z.object({
@@ -1099,7 +1086,7 @@ export const zLatestPluginCache = z.object({
   alternative_plugin_id: z.string(),
   deprecated_reason: z.string(),
   plugin_id: z.string(),
-  status: z.string(),
+  status: z.enum(['active', 'deleted']),
   unique_identifier: z.string(),
   version: z.string(),
 })
@@ -1762,33 +1749,6 @@ export const zPluginAutoUpgradeFetchResponse = z.object({
 export const zPluginInstallationSource = z.enum(['github', 'marketplace', 'package', 'remote'])
 
 /**
- * PluginInstallationItemResponse
- */
-export const zPluginInstallationItemResponse = z.object({
-  checksum: z.string(),
-  created_at: z.iso.datetime(),
-  declaration: z.record(z.string(), z.unknown()),
-  endpoints_active: z.int(),
-  endpoints_setups: z.int(),
-  id: z.string(),
-  meta: z.record(z.string(), z.unknown()),
-  plugin_id: z.string(),
-  plugin_unique_identifier: z.string(),
-  runtime_type: z.string(),
-  source: zPluginInstallationSource,
-  tenant_id: z.string(),
-  updated_at: z.iso.datetime(),
-  version: z.string(),
-})
-
-/**
- * PluginInstallationsResponse
- */
-export const zPluginInstallationsResponse = z.object({
-  plugins: z.array(zPluginInstallationItemResponse),
-})
-
-/**
  * I18nObject
  *
  * Model class for i18n object.
@@ -1873,7 +1833,7 @@ export const zResourceUserAccessPolicies = z.object({
  */
 export const zResourceUserAccessPoliciesResponse = z.object({
   data: z.array(zResourceUserAccessPolicies).optional(),
-  scope: z.string(),
+  scope: zRbacResourceWhitelistScope,
 })
 
 /**
@@ -2054,6 +2014,52 @@ export const zProviderConfig = z.object({
 export const zOAuthSchema = z.object({
   client_schema: z.array(zProviderConfig).optional(),
   credentials_schema: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * TriggerProviderConfigOptionResponse
+ */
+export const zTriggerProviderConfigOptionResponse = z.object({
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * TriggerProviderConfigResponse
+ */
+export const zTriggerProviderConfigResponse = z.object({
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zI18nObject.nullish(),
+  label: zI18nObject.nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zTriggerProviderConfigOptionResponse).nullish(),
+  placeholder: zI18nObject.nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
+  type: z.enum([
+    'app-selector',
+    'array[tools]',
+    'boolean',
+    'model-selector',
+    'secret-input',
+    'select',
+    'text-input',
+  ]),
+  url: z.string().nullish(),
+})
+
+/**
+ * TriggerOAuthClientResponse
+ */
+export const zTriggerOAuthClientResponse = z.object({
+  configured: z.boolean(),
+  custom_configured: z.boolean(),
+  custom_enabled: z.boolean(),
+  oauth_client_schema: z.array(zTriggerProviderConfigResponse),
+  params: z.record(z.string(), z.unknown()),
+  redirect_uri: z.string(),
+  system_configured: z.boolean(),
 })
 
 /**
@@ -2345,6 +2351,33 @@ export const zPluginDeclarationResponse = z.object({
   trigger: z.record(z.string(), z.unknown()).nullish(),
   verified: z.boolean().optional().default(false),
   version: z.string(),
+})
+
+/**
+ * PluginInstallationItemResponse
+ */
+export const zPluginInstallationItemResponse = z.object({
+  checksum: z.string(),
+  created_at: z.iso.datetime(),
+  declaration: zPluginDeclarationResponse,
+  endpoints_active: z.int(),
+  endpoints_setups: z.int(),
+  id: z.string(),
+  meta: z.record(z.string(), z.unknown()),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  runtime_type: z.string(),
+  source: zPluginInstallationSource,
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  version: z.string(),
+})
+
+/**
+ * PluginInstallationsResponse
+ */
+export const zPluginInstallationsResponse = z.object({
+  plugins: z.array(zPluginInstallationItemResponse),
 })
 
 /**
@@ -4362,7 +4395,7 @@ export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyB
  * Success
  */
 export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse
-  = zTriggerProviderOpaqueResponse
+  = zTriggerSubscriptionBuilderVerifyResponse
 
 export const zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeletePath
   = z.object({
