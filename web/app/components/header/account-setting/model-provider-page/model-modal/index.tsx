@@ -147,23 +147,10 @@ const ModelModal: FC<ModelModalProps> = ({
       modelNameAndTypeValues = formResult.values
     }
 
-    if (mode === ModelModalModeEnum.configModelCredential) {
-      const modelContext = model ?? (currentCustomConfigurationModelFixedFields
-        ? {
-            model: currentCustomConfigurationModelFixedFields.__model_name,
-            model_type: currentCustomConfigurationModelFixedFields.__model_type,
-          }
-        : undefined)
-      if (!modelContext)
-        return
-
-      modelNameAndTypeValues = {
-        __model_name: modelContext.model,
-        __model_type: modelContext.model_type,
-      }
-    }
-
-    if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential) {
+    if (
+      mode === ModelModalModeEnum.configModelCredential
+      || (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential)
+    ) {
       const modelContext = model ?? (currentCustomConfigurationModelFixedFields
         ? {
             model: currentCustomConfigurationModelFixedFields.__model_name,
