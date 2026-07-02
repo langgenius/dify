@@ -322,18 +322,24 @@ class TestWorkflowEntryInit:
             max_time=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_TIME,
         )
         llm_quota_layer_cls.assert_called_once_with(tenant_id="tenant-id")
-        assert graph_engine.layer.call_args_list == [
-            ((debug_layer,), {}),
-            ((execution_limits_layer,), {}),
-            ((llm_quota_layer,), {}),
-            ((observability_layer,), {}),
-        ]
+        # Layers are registered in order: debug, limits, llm_quota, log_context, observability
+        layer_calls = graph_engine.layer.call_args_list
+        assert len(layer_calls) == 5
+        assert layer_calls[0] == ((debug_layer,), {})
+        assert layer_calls[1] == ((execution_limits_layer,), {})
+        assert layer_calls[2] == ((llm_quota_layer,), {})
+        # layer 3 is WorkflowLogContextLayer (instantiated directly, not mocked)
+        log_ctx_layer = layer_calls[3][0][0]
+        assert type(log_ctx_layer).__name__ == "WorkflowLogContextLayer"
+        assert layer_calls[4] == ((observability_layer,), {})
 
 
 class TestWorkflowEntryRun:
     def test_run_swallows_generate_task_stopped_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = MagicMock()
+        entry._app_id = "app-id"
+        entry._workflow_id = "workflow-id"
         entry.graph_engine.run.side_effect = GenerateTaskStoppedError()
 
         assert list(entry.run()) == []
@@ -373,6 +379,8 @@ class TestWorkflowEntryRun:
     def test_run_delegates_to_dify_event_iterator(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = sentinel.graph_engine
+        entry._app_id = "app-id"
+        entry._workflow_id = "workflow-id"
 
         with patch.object(
             workflow_entry,
@@ -387,6 +395,8 @@ class TestWorkflowEntryRun:
     def test_run_emits_failed_event_for_unexpected_errors(self):
         entry = object.__new__(workflow_entry.WorkflowEntry)
         entry.graph_engine = MagicMock()
+        entry._app_id = "app-id"
+        entry._workflow_id = "workflow-id"
         entry.graph_engine.run.side_effect = RuntimeError("boom")
 
         events = list(entry.run())
@@ -394,6 +404,59 @@ class TestWorkflowEntryRun:
         assert len(events) == 1
         assert isinstance(events[0], GraphRunFailedEvent)
         assert events[0].error == "boom"
+
+
+class TestExtractFailedNodeId:
+    """Tests for _extract_failed_node_id helper."""
+
+    def test_returns_empty_when_graph_execution_is_none(self):
+
+        engine = MagicMock()
+        engine.graph_runtime_state.graph_execution = None
+
+        assert workflow_entry._extract_failed_node_id(engine) == ""
+
+    def test_returns_empty_when_no_failed_nodes(self):
+        from graphon.graph_engine.domain.graph_execution import GraphExecution
+
+        graph_exec = GraphExecution(workflow_id="wf-1")
+        graph_exec.get_or_create_node_execution("node-1").mark_taken()
+
+        engine = MagicMock()
+        engine.graph_runtime_state.graph_execution = graph_exec
+
+        assert workflow_entry._extract_failed_node_id(engine) == ""
+
+    def test_returns_failed_node_id(self):
+        from graphon.graph_engine.domain.graph_execution import GraphExecution
+
+        graph_exec = GraphExecution(workflow_id="wf-1")
+        graph_exec.get_or_create_node_execution("node-1").mark_taken()
+        graph_exec.get_or_create_node_execution("node-2").mark_failed("JSON parse error")
+
+        engine = MagicMock()
+        engine.graph_runtime_state.graph_execution = graph_exec
+
+        assert workflow_entry._extract_failed_node_id(engine) == "node-2"
+
+    def test_returns_first_failed_when_multiple_failures(self):
+        from graphon.graph_engine.domain.graph_execution import GraphExecution
+
+        graph_exec = GraphExecution(workflow_id="wf-1")
+        graph_exec.get_or_create_node_execution("node-a").mark_failed("error A")
+        graph_exec.get_or_create_node_execution("node-b").mark_failed("error B")
+
+        engine = MagicMock()
+        engine.graph_runtime_state.graph_execution = graph_exec
+
+        result = workflow_entry._extract_failed_node_id(engine)
+        assert result in ("node-a", "node-b")
+
+    def test_returns_empty_on_exception(self):
+        engine = MagicMock()
+        engine.graph_runtime_state.graph_execution.node_executions.items.side_effect = TypeError("mock")
+
+        assert workflow_entry._extract_failed_node_id(engine) == ""
 
 
 class TestWorkflowEntrySingleStepRun:

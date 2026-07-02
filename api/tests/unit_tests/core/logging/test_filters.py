@@ -292,3 +292,67 @@ class TestIdentityContextFilter:
             assert log_record.tenant_id == "tenant_id"
             assert log_record.user_id == "end_user_id"
             assert log_record.user_type == "end_user"
+
+
+class TestWorkflowLogContextFilter:
+    """Tests for WorkflowLogContextFilter."""
+
+    def test_sets_empty_context_by_default(self, log_record):
+        from core.logging.context import clear_workflow_log_context
+        from core.logging.filters import WorkflowLogContextFilter
+
+        clear_workflow_log_context()
+
+        filter = WorkflowLogContextFilter()
+        result = filter.filter(log_record)
+
+        assert result is True
+        assert log_record.app_id == ""
+        assert log_record.workflow_id == ""
+        assert log_record.node_id == ""
+
+    def test_sets_context_from_contextvars(self, log_record):
+        from core.logging.context import (
+            clear_workflow_log_context,
+            set_workflow_log_context,
+        )
+        from core.logging.filters import WorkflowLogContextFilter
+
+        clear_workflow_log_context()
+        set_workflow_log_context("app-100", "wf-200")
+
+        filter = WorkflowLogContextFilter()
+        filter.filter(log_record)
+
+        assert log_record.app_id == "app-100"
+        assert log_record.workflow_id == "wf-200"
+        assert log_record.node_id == ""
+
+    def test_sets_node_id_from_contextvar(self, log_record):
+        from core.logging.context import (
+            clear_workflow_log_context,
+            set_node_log_context,
+            set_workflow_log_context,
+        )
+        from core.logging.filters import WorkflowLogContextFilter
+
+        clear_workflow_log_context()
+        set_workflow_log_context("app-100", "wf-200")
+        set_node_log_context("node-xyz")
+
+        filter = WorkflowLogContextFilter()
+        filter.filter(log_record)
+
+        assert log_record.app_id == "app-100"
+        assert log_record.workflow_id == "wf-200"
+        assert log_record.node_id == "node-xyz"
+
+    def test_filter_always_returns_true(self, log_record):
+        from core.logging.context import clear_workflow_log_context
+        from core.logging.filters import WorkflowLogContextFilter
+
+        clear_workflow_log_context()
+
+        filter = WorkflowLogContextFilter()
+        result = filter.filter(log_record)
+        assert result is True

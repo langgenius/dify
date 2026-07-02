@@ -6,7 +6,13 @@ from typing import override
 
 import flask
 
-from core.logging.context import get_request_id, get_trace_id
+from core.logging.context import (
+    get_app_id,
+    get_node_id,
+    get_request_id,
+    get_trace_id,
+    get_workflow_id,
+)
 from core.logging.structured_formatter import IdentityDict
 
 
@@ -97,3 +103,19 @@ class IdentityContextFilter(logging.Filter):
             return identity
         except Exception:
             return {}
+
+
+class WorkflowLogContextFilter(logging.Filter):
+    """Inject workflow log context (app_id, workflow_id, node_id) into log records.
+
+    Values are read from ContextVars that are managed by ``WorkflowEntry.run``
+    (app_id / workflow_id / error_source) and ``WorkflowLogContextLayer``
+    (node_id).
+    """
+
+    @override
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.app_id = get_app_id()
+        record.workflow_id = get_workflow_id()
+        record.node_id = get_node_id()
+        return True

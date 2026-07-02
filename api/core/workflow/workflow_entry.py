@@ -9,7 +9,16 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, build_dify_run_context
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.llm_quota import LLMQuotaLayer
+from core.app.workflow.layers.log_context import WorkflowLogContextLayer
 from core.app.workflow.layers.observability import ObservabilityLayer
+from core.logging.context import (
+    ErrorSource,
+    clear_error_source,
+    clear_workflow_log_context,
+    set_error_source,
+    set_node_log_context,
+    set_workflow_log_context,
+)
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -59,6 +68,34 @@ def iter_dify_graph_engine_events(engine: GraphEngine) -> Generator[GraphEngineE
         context=GraphEventFilterContext.from_engine(engine),
         filters=[ResponseStreamFilter()],
     )
+
+
+def _extract_failed_node_id(graph_engine: GraphEngine) -> str:
+    """Extract the node_id of the first failed node from graph_execution.
+
+    Node execution runs in worker threads where ContextVar values don't
+    propagate back to the main thread.  This function recovers the
+    failed node_id from the domain model (``graph_execution.node_executions``)
+    so it can be set on the main thread's ContextVar before logging.
+
+    Returns empty string if no failed node is found or if the graph
+    execution state is inaccessible.
+    """
+    try:
+        graph_execution = graph_engine.graph_runtime_state.graph_execution
+        if graph_execution is None:
+            return ""
+
+        node_executions = graph_execution.node_executions
+        for _node_id, node_exec in node_executions.items():
+            # NodeExecutionProtocol doesn't declare `error`, but the concrete
+            # NodeExecution dataclass has it. Use getattr for safety.
+            if getattr(node_exec, "error", None) is not None:
+                return getattr(node_exec, "node_id", _node_id)
+    except (AttributeError, TypeError, KeyError):
+        pass
+
+    return ""
 
 
 class _WorkflowChildEngineBuilder:
@@ -195,6 +232,8 @@ class WorkflowEntry:
             command_channel = InMemoryChannel()
 
         self.command_channel = command_channel
+        self._app_id = app_id
+        self._workflow_id = workflow_id
         execution_context = capture_current_context()
         graph_runtime_state.execution_context = execution_context
         self._child_engine_builder = _WorkflowChildEngineBuilder(tenant_id=tenant_id)
@@ -231,12 +270,22 @@ class WorkflowEntry:
         self.graph_engine.layer(limits_layer)
         self.graph_engine.layer(LLMQuotaLayer(tenant_id=tenant_id))
 
+        # Add workflow log context layer (node_id tracking in logs)
+        self.graph_engine.layer(WorkflowLogContextLayer(execution_context=execution_context))
+
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():
             self.graph_engine.layer(ObservabilityLayer())
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         graph_engine = self.graph_engine
+
+        # Set workflow log context before graph execution starts.
+        # This ensures app_id / workflow_id / error_source are available
+        # to all log records, including the logger.exception call below.
+        # Context is cleared in the finally block after all logging is done.
+        set_workflow_log_context(self._app_id, self._workflow_id)
+        set_error_source(ErrorSource.WORKFLOW)
 
         try:
             # Preserve Dify's response-stream semantics on top of Graphon 0.5.0.
@@ -245,9 +294,21 @@ class WorkflowEntry:
         except GenerateTaskStoppedError:
             pass
         except Exception as e:
+            # Extract the failed node_id from graph_execution so that
+            # logger.exception carries it in the log context.  Node
+            # execution runs in worker threads where ContextVar doesn't
+            # propagate back to this main thread, so we recover node_id
+            # from the domain model instead.
+            failed_node_id = _extract_failed_node_id(graph_engine)
+            if failed_node_id:
+                set_node_log_context(failed_node_id)
+
             logger.exception("Unknown Error when workflow entry running")
             yield GraphRunFailedEvent(error=str(e))
             return
+        finally:
+            clear_workflow_log_context()
+            clear_error_source()
 
     @classmethod
     def single_step_run(

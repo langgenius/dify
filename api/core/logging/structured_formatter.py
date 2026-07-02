@@ -8,12 +8,19 @@ from typing import Any, NotRequired, TypedDict, override
 import orjson
 
 from configs import dify_config
+from core.logging.context import get_error_source
 
 
 class IdentityDict(TypedDict, total=False):
     tenant_id: str
     user_id: str
     user_type: str
+
+
+class LogContextDict(TypedDict, total=False):
+    app_id: str
+    workflow_id: str
+    node_id: str
 
 
 class LogDict(TypedDict):
@@ -25,6 +32,8 @@ class LogDict(TypedDict):
     trace_id: NotRequired[str]
     span_id: NotRequired[str]
     identity: NotRequired[IdentityDict]
+    context: NotRequired[LogContextDict]
+    error_source: NotRequired[str]
     attributes: NotRequired[dict[str, Any]]
     stack_trace: NotRequired[str]
 
@@ -93,6 +102,15 @@ class StructuredJSONFormatter(logging.Formatter):
         if identity:
             log_dict["identity"] = identity
 
+        # Workflow log context (from WorkflowLogContextFilter)
+        context = self._extract_log_context(record)
+        if context:
+            log_dict["context"] = context
+
+        # Error source inference (ERROR and above only)
+        if record.levelno >= logging.ERROR:
+            log_dict["error_source"] = self._infer_error_source(record)
+
         # Dynamic attributes
         attributes = getattr(record, "attributes", None)
         if attributes:
@@ -120,6 +138,33 @@ class StructuredJSONFormatter(logging.Formatter):
         if user_type:
             identity["user_type"] = user_type
         return identity
+
+    def _extract_log_context(self, record: logging.LogRecord) -> LogContextDict | None:
+        """Extract workflow log context (app_id, workflow_id, node_id) from record."""
+        app_id = getattr(record, "app_id", "") or ""
+        workflow_id = getattr(record, "workflow_id", "") or ""
+        node_id = getattr(record, "node_id", "") or ""
+
+        if not any([app_id, workflow_id, node_id]):
+            return None
+
+        context: LogContextDict = {}
+        if app_id:
+            context["app_id"] = app_id
+        if workflow_id:
+            context["workflow_id"] = workflow_id
+        if node_id:
+            context["node_id"] = node_id
+        return context
+
+    def _infer_error_source(self, record: logging.LogRecord) -> str:
+        """Return the error_source for this ERROR+ log record.
+
+        The value comes from the ``_error_source`` ContextVar, which defaults
+        to ``"system"`` and is set to ``"workflow"`` by ``WorkflowEntry.run``
+        during workflow graph execution.
+        """
+        return get_error_source().value
 
     def _format_exception(self, exc_info: tuple[Any, ...]) -> str:
         if exc_info and exc_info[0] is not None:
