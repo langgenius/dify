@@ -112,11 +112,14 @@ class _WorkflowChildEngineBuilder:
         if has_root_node is False:
             raise ChildGraphNotFoundError(f"child graph root node '{root_node_id}' not found")
 
-        child_graph = Graph.init(
-            graph_config=graph_config,
-            node_factory=node_factory,
-            root_node_id=root_node_id,
-        )
+        # Graph.init creates node instances immediately, and Dify node creation can
+        # read Flask-bound services such as model provider configuration.
+        with child_graph_runtime_state.execution_context:
+            child_graph = Graph.init(
+                graph_config=graph_config,
+                node_factory=node_factory,
+                root_node_id=root_node_id,
+            )
 
         command_channel = InMemoryChannel()
         config = GraphEngineConfig()

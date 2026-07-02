@@ -1,9 +1,12 @@
-from types import SimpleNamespace
+from contextlib import AbstractContextManager
+from types import SimpleNamespace, TracebackType
+from typing import override
 
 import pytest
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeLanguage
+from core.workflow import workflow_entry
 from core.workflow.system_variables import build_system_variables, default_system_variables
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
@@ -14,8 +17,9 @@ from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.limits import CodeNodeLimits
-from graphon.runtime import VariablePool
+from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.variables import StringVariable
+from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture(autouse=True)
@@ -51,6 +55,98 @@ def _mock_ssrf_head(monkeypatch: pytest.MonkeyPatch):
 
 class TestWorkflowEntry:
     """Test WorkflowEntry class methods."""
+
+    def test_child_engine_enters_execution_context_while_initializing_graph(self, monkeypatch: pytest.MonkeyPatch):
+        """Child graph node factories should run inside the parent execution context."""
+
+        class RecordingExecutionContext(AbstractContextManager[None]):
+            entered: bool
+            was_entered_during_graph_init: bool
+
+            def __init__(self) -> None:
+                self.entered = False
+                self.was_entered_during_graph_init = False
+
+            @override
+            def __enter__(self) -> None:
+                self.entered = True
+
+            @override
+            def __exit__(
+                self,
+                exc_type: type[BaseException] | None,
+                exc_value: BaseException | None,
+                traceback: TracebackType | None,
+            ) -> bool:
+                self.entered = False
+                return False
+
+        class StubDifyNodeFactory:
+            graph_runtime_state: GraphRuntimeState
+
+            def __init__(self, *, graph_init_params: object, graph_runtime_state: GraphRuntimeState) -> None:
+                self.graph_init_params = graph_init_params
+                self.graph_runtime_state = graph_runtime_state
+                created_runtime_states.append(graph_runtime_state)
+
+        class StubGraphEngine:
+            graph_runtime_state: GraphRuntimeState
+            layers: list[object]
+
+            def __init__(
+                self,
+                *,
+                workflow_id: str,
+                graph: object,
+                graph_runtime_state: GraphRuntimeState,
+                command_channel: object,
+                config: object,
+                child_engine_builder: object,
+            ) -> None:
+                self.workflow_id = workflow_id
+                self.graph = graph
+                self.graph_runtime_state = graph_runtime_state
+                self.command_channel = command_channel
+                self.config = config
+                self.child_engine_builder = child_engine_builder
+                self.layers = []
+
+            def layer(self, layer: object) -> None:
+                self.layers.append(layer)
+
+        created_runtime_states: list[GraphRuntimeState] = []
+        execution_context = RecordingExecutionContext()
+        parent_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool(),
+            start_at=0.0,
+            execution_context=execution_context,
+        )
+        graph_init_params = build_test_graph_init_params(
+            graph_config={"nodes": [{"id": "root"}], "edges": []},
+        )
+
+        def init_graph(*, graph_config: object, node_factory: object, root_node_id: str) -> object:
+            execution_context.was_entered_during_graph_init = execution_context.entered
+            return {"graph_config": graph_config, "node_factory": node_factory, "root_node_id": root_node_id}
+
+        monkeypatch.setattr(workflow_entry, "DifyNodeFactory", StubDifyNodeFactory)
+        monkeypatch.setattr(workflow_entry.Graph, "init", staticmethod(init_graph))
+        monkeypatch.setattr(workflow_entry, "GraphEngine", StubGraphEngine)
+        monkeypatch.setattr(workflow_entry, "LLMQuotaLayer", lambda tenant_id: ("quota", tenant_id))
+
+        engine = workflow_entry._WorkflowChildEngineBuilder(tenant_id="tenant-1").build_child_engine(
+            workflow_id="workflow-1",
+            graph_init_params=graph_init_params,
+            parent_graph_runtime_state=parent_runtime_state,
+            root_node_id="root",
+        )
+
+        assert isinstance(engine, StubGraphEngine)
+        assert execution_context.was_entered_during_graph_init is True
+        assert execution_context.entered is False
+        assert created_runtime_states[0].execution_context is execution_context
+        assert engine.graph_runtime_state.execution_context is execution_context
+        assert engine.layers == [("quota", "tenant-1")]
 
     def test_mapping_user_inputs_to_variable_pool_with_system_variables(self):
         """Test mapping system variables from user inputs to variable pool."""
