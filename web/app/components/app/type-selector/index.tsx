@@ -81,7 +81,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
 export default AppTypeSelector
 
 type AppTypeIconProps = {
-  type: AppModeEnum
+  type: string
   style?: React.CSSProperties
   className?: string
   wrapperClassName?: string
@@ -199,7 +199,7 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
   )
 }
 
-function getAppTypeLabel(type: AppModeEnum, t: ReturnType<typeof useTranslation>['t']) {
+function getAppTypeLabel(type: string, t: ReturnType<typeof useTranslation>['t']) {
   if (type === AppModeEnum.CHAT)
     return t('typeSelector.chatbot', { ns: 'app' })
   if (type === AppModeEnum.AGENT_CHAT)
@@ -215,7 +215,7 @@ function getAppTypeLabel(type: AppModeEnum, t: ReturnType<typeof useTranslation>
 }
 
 type AppTypeLabelProps = {
-  type: AppModeEnum
+  type: string
   className?: string
 }
 export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
