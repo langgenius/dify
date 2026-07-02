@@ -148,7 +148,8 @@ def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPa
 
 
 def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: ["voice-1"])
+    expected_voices = [{"name": "Voice 1", "value": "voice-1"}]
+    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: expected_voices)
 
     api = TextModesApi()
     handler = unwrap(api.get)
@@ -157,7 +158,7 @@ def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch)
     with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
         response = handler(api, app_model=app_model)
 
-    assert response == ["voice-1"]
+    assert response == expected_voices
 
 
 def test_console_text_modes_language_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -242,7 +243,8 @@ def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatc
     api = TextModesApi()
     method = unwrap(api.get)
 
-    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: ["voice-1"])
+    expected_voices = [{"name": "Voice 1", "value": "voice-1"}]
+    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: expected_voices)
 
     app_model = SimpleNamespace(tenant_id="tenant-1")
 
@@ -253,7 +255,7 @@ def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatc
     ):
         response = method(api, app_model=app_model)
 
-    assert response == ["voice-1"]
+    assert response == expected_voices
 
 
 def test_audio_to_text_with_invalid_file(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -300,7 +302,7 @@ def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(
         AudioService,
         "transcript_tts_voices",
-        lambda **_kwargs: [{"id": "voice-1", "name": "Voice 1"}],
+        lambda **_kwargs: [{"name": "Voice 1", "value": "voice-1"}],
     )
 
     app_model = SimpleNamespace(tenant_id="tenant-1")
