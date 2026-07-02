@@ -1,7 +1,6 @@
 """Command channels used by Dify workflow runners."""
 
 import logging
-import threading
 from collections.abc import Sequence
 from typing import final, override
 
@@ -12,8 +11,7 @@ from graphon.graph_engine.entities.commands import AbortCommand, GraphEngineComm
 logger = logging.getLogger(__name__)
 
 WORKFLOW_WARM_SHUTDOWN_ABORT_REASON = "Workflow stopped because the worker is shutting down."
-_celery_warm_shutdown_lock = threading.RLock()
-_celery_warm_shutdown_abort_command: AbortCommand | None = None
+_celery_warm_shutdown_abort_reason: str | None = None
 
 
 @final
@@ -47,12 +45,9 @@ class CelerySignalCommandChannel(CommandChannel):
 
     @override
     def fetch_commands(self) -> list[GraphEngineCommand]:
-        with _celery_warm_shutdown_lock:
-            abort_command = _celery_warm_shutdown_abort_command
-
-        if abort_command is None:
+        if _celery_warm_shutdown_abort_reason is None:
             return []
-        return [abort_command]
+        return [AbortCommand(reason=_celery_warm_shutdown_abort_reason)]
 
     @override
     def send_command(self, command: GraphEngineCommand) -> None:
@@ -64,15 +59,13 @@ def send_celery_warm_shutdown_abort_commands(
     reason: str = WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
 ) -> int:
     """Set the process-wide abort command and return the current active workflow run count."""
-    global _celery_warm_shutdown_abort_command
-    with _celery_warm_shutdown_lock:
-        _celery_warm_shutdown_abort_command = AbortCommand(reason=reason)
+    global _celery_warm_shutdown_abort_reason
+    _celery_warm_shutdown_abort_reason = reason
 
     return get_active_workflow_task_count()
 
 
 def reset_celery_warm_shutdown_state() -> None:
     """Reset local Celery warm shutdown abort state for worker initialization and tests."""
-    global _celery_warm_shutdown_abort_command
-    with _celery_warm_shutdown_lock:
-        _celery_warm_shutdown_abort_command = None
+    global _celery_warm_shutdown_abort_reason
+    _celery_warm_shutdown_abort_reason = None
