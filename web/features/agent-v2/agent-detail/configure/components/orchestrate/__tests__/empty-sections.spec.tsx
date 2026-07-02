@@ -8,12 +8,10 @@ import { AgentKnowledgeRetrieval } from '../knowledge'
 import { AgentSkills } from '../skills'
 import { AgentTools } from '../tools'
 
-vi.mock('../drive-context', () => ({
-  FILES_DRIVE_PREFIX: 'files/',
-  getAgentDriveFileName: (key: string) => key.split('/').pop() ?? key,
-  useAgentDriveApiContext: () => ({ agentId: 'agent-1' }),
-  useAgentDriveFiles: () => ({ files: [], query: { refetch: vi.fn() } }),
-  useAgentDriveSkills: () => ({ skills: [], query: { refetch: vi.fn() } }),
+vi.mock('../config-context', () => ({
+  useAgentConfigApiContext: () => ({ agentId: 'agent-1', draftType: 'draft' }),
+  useAgentConfigFiles: () => ({ files: [] }),
+  useAgentConfigSkills: () => ({ skills: [] }),
 }))
 
 function renderEmptySections() {

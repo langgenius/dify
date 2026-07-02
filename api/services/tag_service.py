@@ -147,8 +147,14 @@ class TagService:
         return tag
 
     @staticmethod
-    def update_tags(payload: UpdateTagPayload, tag_id: str, session: scoped_session) -> Tag:
-        tag = session.scalar(select(Tag).where(Tag.id == tag_id).limit(1))
+    def update_tags(
+        payload: UpdateTagPayload, tag_id: str, session: scoped_session, *, tag_type: TagType | None = None
+    ) -> Tag:
+        current_tenant_id = current_user.current_tenant_id
+        stmt = select(Tag).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id)
+        if tag_type is not None:
+            stmt = stmt.where(Tag.type == tag_type)
+        tag = session.scalar(stmt.limit(1))
         if not tag:
             raise NotFound("Tag not found")
         if payload.name != tag.name:
@@ -169,18 +175,32 @@ class TagService:
         return tag
 
     @staticmethod
-    def get_tag_binding_count(tag_id: str, session: scoped_session) -> int:
-        count = session.scalar(select(func.count(TagBinding.id)).where(TagBinding.tag_id == tag_id)) or 0
+    def get_tag_binding_count(tag_id: str, session: scoped_session, *, tag_type: TagType | None = None) -> int:
+        current_tenant_id = current_user.current_tenant_id
+        stmt = (
+            select(func.count(TagBinding.id))
+            .join(Tag, Tag.id == TagBinding.tag_id)
+            .where(TagBinding.tag_id == tag_id, Tag.tenant_id == current_tenant_id)
+        )
+        if tag_type is not None:
+            stmt = stmt.where(Tag.type == tag_type)
+        count = session.scalar(stmt) or 0
         return count
 
     @staticmethod
-    def delete_tag(tag_id: str, session: scoped_session):
-        tag = session.scalar(select(Tag).where(Tag.id == tag_id).limit(1))
+    def delete_tag(tag_id: str, session: scoped_session, *, tag_type: TagType | None = None):
+        current_tenant_id = current_user.current_tenant_id
+        stmt = select(Tag).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id)
+        if tag_type is not None:
+            stmt = stmt.where(Tag.type == tag_type)
+        tag = session.scalar(stmt.limit(1))
         if not tag:
             raise NotFound("Tag not found")
         session.delete(tag)
         # delete tag binding
-        tag_bindings = session.scalars(select(TagBinding).where(TagBinding.tag_id == tag_id)).all()
+        tag_bindings = session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag_id, TagBinding.tenant_id == current_tenant_id)
+        ).all()
         if tag_bindings:
             for tag_binding in tag_bindings:
                 session.delete(tag_binding)

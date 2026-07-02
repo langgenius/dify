@@ -80,7 +80,9 @@ type ShortcutPopup = {
   Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>
 }
 
-type PromptEditorContentProps = {
+type PromptEditorContentAriaProps = Pick<React.AriaAttributes, 'aria-label' | 'aria-labelledby'>
+
+type PromptEditorContentProps = PromptEditorContentAriaProps & {
   compact?: boolean
   className?: string
   placeholder?: string | React.ReactNode
@@ -111,6 +113,8 @@ type PromptEditorContentProps = {
 }
 
 const PromptEditorContent: FC<PromptEditorContentProps> = ({
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   compact,
   className,
   placeholder,
@@ -144,6 +148,8 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       <RichTextPlugin
         contentEditable={(
           <ContentEditable
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
             className={cn(
               'group/editable text-text-secondary outline-hidden group-[.clamp]:max-h-24 group-[.clamp]:overflow-y-auto',
               compact ? 'text-[13px] leading-5' : 'text-sm/6',

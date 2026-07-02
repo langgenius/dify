@@ -11,6 +11,24 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
 
+vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset', () => ({
+  default: function MockAddKnowledge({
+    onChange,
+  }: {
+    onChange: (datasets: Array<{ id: string, name: string }>) => void
+  }) {
+    return (
+      <button
+        type="button"
+        aria-label="common.operation.add workflow.nodes.knowledgeRetrieval.knowledge"
+        onClick={() => onChange([{ id: 'dataset-2', name: 'Release Docs' }])}
+      >
+        Add mock knowledge
+      </button>
+    )
+  },
+}))
+
 const agentKnowledgeDraft = {
   ...defaultAgentSoulConfigFormState,
   knowledgeRetrievals: [
@@ -136,6 +154,9 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).getByRole('button', {
         name: 'workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title',
       })).toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo"}',
+      })).not.toBeInTheDocument()
     })
 
     it('should show the custom query input when query mode changes', async () => {
@@ -162,7 +183,24 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).queryByText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription')).not.toBeInTheDocument()
     })
 
-    it('should show inline validation for missing datasets and blank custom queries', async () => {
+    it('should not create a new retrieval until knowledge is selected', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval()
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add' }))
+
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo"}',
+      })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Close' }))
+
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo"}',
+      })).not.toBeInTheDocument()
+    })
+
+    it('should show inline validation for blank custom queries after knowledge is selected', async () => {
       const user = userEvent.setup()
       renderKnowledgeRetrieval()
 
@@ -171,7 +209,9 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
       })
 
-      expect(within(dialog).getByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')).toBeInTheDocument()
+      await user.click(within(dialog).getByRole('button', {
+        name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge',
+      }))
 
       await user.click(within(dialog).getByRole('radio', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.custom',
@@ -240,6 +280,9 @@ describe('AgentKnowledgeRetrieval', () => {
       await user.type(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel',
       }), 'new release notes')
+      await user.click(within(dialog).getByRole('button', {
+        name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge',
+      }))
 
       const knowledgeConfig = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
       expect(knowledgeConfig.sets).toEqual(expect.arrayContaining([
@@ -253,7 +296,12 @@ describe('AgentKnowledgeRetrieval', () => {
         }),
         expect.objectContaining({
           name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo',
-          datasets: [],
+          datasets: [
+            expect.objectContaining({
+              id: 'dataset-2',
+              name: 'Release Docs',
+            }),
+          ],
           query: {
             mode: 'user_query',
             value: 'new release notes',

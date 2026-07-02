@@ -91,7 +91,7 @@ export const startLoggedProcess = async ({
 }: ManagedProcessOptions): Promise<ManagedProcess> => {
   await mkdir(dirname(logFilePath), { recursive: true })
 
-  const logStream = createWriteStream(logFilePath, { flags: 'a' })
+  const logStream = createWriteStream(logFilePath, { flags: 'w' })
   const childProcess = spawn(command, args, {
     cwd,
     env: {
@@ -122,20 +122,22 @@ const waitForProcessExit = (childProcess: ChildProcess, timeoutMs: number) =>
       return
     }
 
-    const timeout = setTimeout(() => {
-      cleanup()
-      resolve()
-    }, timeoutMs)
+    let timeout: ReturnType<typeof setTimeout>
 
-    const onExit = () => {
-      cleanup()
-      resolve()
-    }
-
-    const cleanup = () => {
+    function cleanup() {
       clearTimeout(timeout)
       childProcess.off('exit', onExit)
     }
+
+    function onExit() {
+      cleanup()
+      resolve()
+    }
+
+    timeout = setTimeout(() => {
+      cleanup()
+      resolve()
+    }, timeoutMs)
 
     childProcess.once('exit', onExit)
   })

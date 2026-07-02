@@ -763,6 +763,9 @@ importers:
       '@cucumber/cucumber':
         specifier: 'catalog:'
         version: 13.0.0
+      '@dify/contracts':
+        specifier: workspace:*
+        version: link:../packages/contracts
       '@dify/tsconfig':
         specifier: workspace:*
         version: link:../packages/tsconfig

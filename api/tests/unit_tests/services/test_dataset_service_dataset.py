@@ -18,7 +18,6 @@ from .dataset_service_test_helpers import (
     TenantAccountRole,
     _make_knowledge_configuration,
     _make_retrieval_model,
-    _make_session_context,
     json,
     patch,
     pytest,
@@ -345,7 +344,9 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.scalar.return_value = object()
 
             with pytest.raises(DatasetNameDuplicateError, match="Dataset with name Dataset already exists"):
-                DatasetService.create_empty_dataset("tenant-1", "Dataset", None, "economy", account)
+                DatasetService.create_empty_dataset(
+                    "tenant-1", "Dataset", None, "economy", account, session=mock_db.session
+                )
 
     def test_create_empty_dataset_uses_default_embedding_model_for_high_quality_dataset(self):
         account = SimpleNamespace(id="user-1")
@@ -370,6 +371,7 @@ class TestDatasetServiceCreationAndUpdate:
                 description="Description",
                 indexing_technique="high_quality",
                 account=account,
+                session=mock_db.session,
             )
 
         assert dataset.embedding_model_provider == "provider"
@@ -421,6 +423,7 @@ class TestDatasetServiceCreationAndUpdate:
                 embedding_model_name="embedding-model",
                 retrieval_model=retrieval_model,
                 summary_index_setting={"enable": True},
+                session=mock_db.session,
             )
 
         assert dataset.embedding_model_provider == "provider"
@@ -451,7 +454,7 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.scalar.return_value = object()
 
             with pytest.raises(DatasetNameDuplicateError, match="Existing Dataset already exists"):
-                DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity)
+                DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, mock_db.session)
 
     def test_create_empty_rag_pipeline_dataset_generates_name_and_creates_dataset(self):
         entity = RagPipelineDatasetCreateEntity(
@@ -482,7 +485,7 @@ class TestDatasetServiceCreationAndUpdate:
                 SimpleNamespace(name="Untitled 1"),
             ]
 
-            dataset = DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity)
+            dataset = DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, mock_db.session)
 
         assert entity.name == "Untitled 2"
         assert dataset.pipeline_id == "pipeline-1"
@@ -505,12 +508,13 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.scalar.return_value = None
 
             with pytest.raises(ValueError, match="Current user or current user id not found"):
-                DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity)
+                DatasetService.create_empty_rag_pipeline_dataset("tenant-1", entity, mock_db.session)
 
     def test_update_dataset_raises_when_dataset_is_missing(self):
+        session = MagicMock()
         with patch.object(DatasetService, "get_dataset", return_value=None):
             with pytest.raises(ValueError, match="Dataset not found"):
-                DatasetService.update_dataset("dataset-1", {}, SimpleNamespace(id="user-1"))
+                DatasetService.update_dataset("dataset-1", {}, SimpleNamespace(id="user-1"), session)
 
     def test_update_dataset_raises_when_new_name_conflicts(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1", tenant_id="tenant-1")
@@ -521,7 +525,12 @@ class TestDatasetServiceCreationAndUpdate:
             patch.object(DatasetService, "_has_dataset_same_name", return_value=True),
         ):
             with pytest.raises(ValueError, match="Dataset name already exists"):
-                DatasetService.update_dataset("dataset-1", {"name": "New Dataset"}, SimpleNamespace(id="user-1"))
+                DatasetService.update_dataset(
+                    "dataset-1",
+                    {"name": "New Dataset"},
+                    SimpleNamespace(id="user-1"),
+                    MagicMock(),
+                )
 
     def test_update_dataset_routes_external_datasets_to_external_helper(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1", tenant_id="tenant-1")
@@ -533,13 +542,14 @@ class TestDatasetServiceCreationAndUpdate:
             patch.object(DatasetService, "check_dataset_permission") as check_permission,
             patch.object(DatasetService, "_update_external_dataset", return_value="updated") as update_external,
         ):
-            result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user)
+            session = MagicMock()
+            result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user, session)
 
         assert result == "updated"
         check_permission.assert_called_once()
         assert check_permission.call_args.args[:2] == (dataset, user)
         assert len(check_permission.call_args.args) == 3
-        update_external.assert_called_once_with(dataset, {"name": dataset.name}, user)
+        update_external.assert_called_once_with(dataset, {"name": dataset.name}, user, session)
 
     def test_update_dataset_routes_internal_datasets_to_internal_helper(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1", tenant_id="tenant-1")
@@ -551,19 +561,20 @@ class TestDatasetServiceCreationAndUpdate:
             patch.object(DatasetService, "check_dataset_permission") as check_permission,
             patch.object(DatasetService, "_update_internal_dataset", return_value="updated") as update_internal,
         ):
-            result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user)
+            session = MagicMock()
+            result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user, session)
 
         assert result == "updated"
         check_permission.assert_called_once()
         assert check_permission.call_args.args[:2] == (dataset, user)
         assert len(check_permission.call_args.args) == 3
-        update_internal.assert_called_once_with(dataset, {"name": dataset.name}, user)
+        update_internal.assert_called_once_with(dataset, {"name": dataset.name}, user, session)
 
     def test_has_dataset_same_name_returns_true_when_query_matches(self):
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = object()
 
-            result = DatasetService._has_dataset_same_name("tenant-1", "dataset-1", "Dataset")
+            result = DatasetService._has_dataset_same_name("tenant-1", "dataset-1", "Dataset", mock_db.session)
 
         assert result is True
 
@@ -592,6 +603,7 @@ class TestDatasetServiceCreationAndUpdate:
                     "external_knowledge_api_id": "api-1",
                 },
                 user,
+                mock_db.session,
             )
 
         assert result is dataset
@@ -603,7 +615,7 @@ class TestDatasetServiceCreationAndUpdate:
         assert dataset.updated_by == "user-1"
         assert dataset.updated_at is now
         get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id)
-        update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1")
+        update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1", mock_db.session)
         mock_db.session.add.assert_called_once_with(dataset)
         mock_db.session.commit.assert_called_once()
 
@@ -618,7 +630,7 @@ class TestDatasetServiceCreationAndUpdate:
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
 
         with pytest.raises(ValueError, match=message):
-            DatasetService._update_external_dataset(dataset, payload, SimpleNamespace(id="user-1"))
+            DatasetService._update_external_dataset(dataset, payload, SimpleNamespace(id="user-1"), MagicMock())
 
     def test_update_external_dataset_rejects_cross_tenant_external_api_id(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
@@ -639,6 +651,7 @@ class TestDatasetServiceCreationAndUpdate:
                         "external_knowledge_api_id": "foreign-api",
                     },
                     SimpleNamespace(id="user-1"),
+                    mock_db.session,
                 )
 
         get_external_knowledge_api.assert_called_once_with("foreign-api", dataset.tenant_id)
@@ -650,16 +663,7 @@ class TestDatasetServiceCreationAndUpdate:
         session = MagicMock()
         session.scalar.return_value = binding
         session.add = MagicMock()
-        session_context = _make_session_context(session)
-
-        mock_sessionmaker = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value = session_context
-
-        with (
-            patch("services.dataset_service.db") as mock_db,
-            patch("services.dataset_service.sessionmaker", mock_sessionmaker),
-        ):
-            DatasetService._update_external_knowledge_binding("dataset-1", "new-knowledge", "new-api")
+        DatasetService._update_external_knowledge_binding("dataset-1", "new-knowledge", "new-api", session)
 
         assert binding.external_knowledge_id == "new-knowledge"
         assert binding.external_knowledge_api_id == "new-api"
@@ -668,17 +672,8 @@ class TestDatasetServiceCreationAndUpdate:
     def test_update_external_knowledge_binding_raises_for_missing_binding(self):
         session = MagicMock()
         session.scalar.return_value = None
-        session_context = _make_session_context(session)
-
-        mock_sessionmaker = MagicMock()
-        mock_sessionmaker.return_value.begin.return_value = session_context
-
-        with (
-            patch("services.dataset_service.db"),
-            patch("services.dataset_service.sessionmaker", mock_sessionmaker),
-        ):
-            with pytest.raises(ValueError, match="External knowledge binding not found"):
-                DatasetService._update_external_knowledge_binding("dataset-1", "knowledge-1", "api-1")
+        with pytest.raises(ValueError, match="External knowledge binding not found"):
+            DatasetService._update_external_knowledge_binding("dataset-1", "knowledge-1", "api-1", session)
 
     def test_update_internal_dataset_updates_fields_and_dispatches_regeneration_tasks(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1")
@@ -704,7 +699,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch("services.dataset_service.deal_dataset_vector_index_task") as vector_task,
             patch("services.dataset_service.regenerate_summary_index_task") as regenerate_task,
         ):
-            result = DatasetService._update_internal_dataset(dataset, update_payload.copy(), user)
+            result = DatasetService._update_internal_dataset(dataset, update_payload.copy(), user, mock_db.session)
 
         assert result is dataset
         updated_values = mock_db.session.execute.call_args.args[0].compile().params
@@ -721,7 +716,7 @@ class TestDatasetServiceCreationAndUpdate:
         assert "external_retrieval_model" not in updated_values
         mock_db.session.commit.assert_called_once()
         mock_db.session.refresh.assert_called_once_with(dataset)
-        update_pipeline.assert_called_once_with(dataset, "user-1")
+        update_pipeline.assert_called_once_with(dataset, "user-1", mock_db.session)
         vector_task.delay.assert_called_once_with("dataset-1", "update")
         regenerate_task.delay.assert_called_once_with(
             "dataset-1",
@@ -733,7 +728,7 @@ class TestDatasetServiceCreationAndUpdate:
         dataset = SimpleNamespace(runtime_mode="workflow", pipeline_id="pipeline-1")
 
         with patch("services.dataset_service.db") as mock_db:
-            DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
+            DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1", mock_db.session)
 
         mock_db.session.get.assert_not_called()
 
@@ -743,7 +738,7 @@ class TestDatasetServiceCreationAndUpdate:
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.get.return_value = None
 
-            DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
+            DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1", mock_db.session)
 
         mock_db.session.commit.assert_not_called()
 
@@ -782,7 +777,7 @@ class TestDatasetServiceCreationAndUpdate:
         ):
             mock_db.session.get.return_value = pipeline
 
-            DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
+            DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1", mock_db.session)
 
         published_graph = json.loads(workflow_new.call_args.kwargs["graph"])
         assert published_graph["nodes"][0]["data"]["embedding_model"] == "embedding-model"
@@ -805,15 +800,16 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.get.return_value = pipeline
 
             with pytest.raises(RuntimeError, match="boom"):
-                DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1")
+                DatasetService._update_pipeline_knowledge_base_node_data(dataset, "user-1", mock_db.session)
 
         mock_db.session.rollback.assert_called_once()
 
     def test_handle_indexing_technique_change_returns_none_without_indexing_technique(self):
         filtered_data: dict[str, object] = {}
         dataset = SimpleNamespace(indexing_technique="economy")
+        session = MagicMock()
 
-        result = DatasetService._handle_indexing_technique_change(dataset, {}, filtered_data)
+        result = DatasetService._handle_indexing_technique_change(dataset, {}, filtered_data, session)
 
         assert result is None
         assert filtered_data == {}
@@ -821,11 +817,13 @@ class TestDatasetServiceCreationAndUpdate:
     def test_handle_indexing_technique_change_switches_to_economy(self):
         filtered_data: dict[str, object] = {}
         dataset = SimpleNamespace(indexing_technique="high_quality")
+        session = MagicMock()
 
         result = DatasetService._handle_indexing_technique_change(
             dataset,
             {"indexing_technique": "economy"},
             filtered_data,
+            session,
         )
 
         assert result == "remove"
@@ -838,20 +836,23 @@ class TestDatasetServiceCreationAndUpdate:
     def test_handle_indexing_technique_change_switches_to_high_quality(self):
         filtered_data: dict[str, object] = {}
         dataset = SimpleNamespace(indexing_technique="economy")
+        session = MagicMock()
 
         with patch.object(DatasetService, "_configure_embedding_model_for_high_quality") as configure_embedding:
             result = DatasetService._handle_indexing_technique_change(
                 dataset,
                 {"indexing_technique": "high_quality"},
                 filtered_data,
+                session,
             )
 
         assert result == "add"
-        configure_embedding.assert_called_once_with({"indexing_technique": "high_quality"}, filtered_data)
+        configure_embedding.assert_called_once_with({"indexing_technique": "high_quality"}, filtered_data, session)
 
     def test_handle_indexing_technique_change_delegates_when_technique_is_unchanged(self):
         filtered_data: dict[str, object] = {}
         dataset = SimpleNamespace(indexing_technique="high_quality")
+        session = MagicMock()
 
         with patch.object(
             DatasetService,
@@ -862,10 +863,16 @@ class TestDatasetServiceCreationAndUpdate:
                 dataset,
                 {"indexing_technique": "high_quality"},
                 filtered_data,
+                session,
             )
 
         assert result == "update"
-        update_embedding.assert_called_once_with(dataset, {"indexing_technique": "high_quality"}, filtered_data)
+        update_embedding.assert_called_once_with(
+            dataset,
+            {"indexing_technique": "high_quality"},
+            filtered_data,
+            session,
+        )
 
     def test_configure_embedding_model_for_high_quality_updates_filtered_data(self):
         class FakeAccount:
@@ -875,6 +882,7 @@ class TestDatasetServiceCreationAndUpdate:
         current_user.current_tenant_id = "tenant-1"
         embedding_model = SimpleNamespace(provider="provider", model_name="embedding-model")
         filtered_data: dict[str, object] = {}
+        session = MagicMock()
 
         with (
             patch("services.dataset_service.Account", FakeAccount),
@@ -890,6 +898,7 @@ class TestDatasetServiceCreationAndUpdate:
             DatasetService._configure_embedding_model_for_high_quality(
                 {"embedding_model_provider": "provider", "embedding_model": "embedding-model"},
                 filtered_data,
+                session,
             )
 
         assert filtered_data == {
@@ -911,6 +920,7 @@ class TestDatasetServiceCreationAndUpdate:
 
         current_user = FakeAccount()
         current_user.current_tenant_id = "tenant-1"
+        session = MagicMock()
 
         with (
             patch("services.dataset_service.Account", FakeAccount),
@@ -923,6 +933,7 @@ class TestDatasetServiceCreationAndUpdate:
                 DatasetService._configure_embedding_model_for_high_quality(
                     {"embedding_model_provider": "provider", "embedding_model": "embedding-model"},
                     {},
+                    session,
                 )
 
     def test_handle_embedding_model_update_when_technique_unchanged_preserves_existing_settings(self):
@@ -931,12 +942,14 @@ class TestDatasetServiceCreationAndUpdate:
             embedding_model="embedding-model",
         )
         filtered_data: dict[str, object] = {}
+        session = MagicMock()
 
         with patch.object(DatasetService, "_preserve_existing_embedding_settings") as preserve_settings:
             result = DatasetService._handle_embedding_model_update_when_technique_unchanged(
                 dataset,
                 {},
                 filtered_data,
+                session,
             )
 
         assert result is None
@@ -947,16 +960,23 @@ class TestDatasetServiceCreationAndUpdate:
             embedding_model_provider="provider",
             embedding_model="embedding-model",
         )
+        session = MagicMock()
 
         with patch.object(DatasetService, "_update_embedding_model_settings", return_value="update") as update_settings:
             result = DatasetService._handle_embedding_model_update_when_technique_unchanged(
                 dataset,
                 {"embedding_model_provider": "provider-two", "embedding_model": "embedding-model-two"},
                 {},
+                session,
             )
 
         assert result == "update"
-        update_settings.assert_called_once()
+        update_settings.assert_called_once_with(
+            dataset,
+            {"embedding_model_provider": "provider-two", "embedding_model": "embedding-model-two"},
+            {},
+            session,
+        )
 
     def test_preserve_existing_embedding_settings_keeps_current_binding(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
@@ -991,27 +1011,36 @@ class TestDatasetServiceCreationAndUpdate:
             embedding_model_provider="provider",
             embedding_model="embedding-model",
         )
+        session = MagicMock()
 
         with patch.object(DatasetService, "_apply_new_embedding_settings") as apply_settings:
             result = DatasetService._update_embedding_model_settings(
                 dataset,
                 {"embedding_model_provider": "provider-two", "embedding_model": "embedding-model-two"},
                 {},
+                session,
             )
 
         assert result == "update"
-        apply_settings.assert_called_once()
+        apply_settings.assert_called_once_with(
+            dataset,
+            {"embedding_model_provider": "provider-two", "embedding_model": "embedding-model-two"},
+            {},
+            session,
+        )
 
     def test_update_embedding_model_settings_returns_none_for_unchanged_values(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
             embedding_model_provider="provider",
             embedding_model="embedding-model",
         )
+        session = MagicMock()
 
         result = DatasetService._update_embedding_model_settings(
             dataset,
             {"embedding_model_provider": "provider", "embedding_model": "embedding-model"},
             {},
+            session,
         )
 
         assert result is None
@@ -1021,6 +1050,7 @@ class TestDatasetServiceCreationAndUpdate:
             embedding_model_provider="provider",
             embedding_model="embedding-model",
         )
+        session = MagicMock()
 
         with patch.object(DatasetService, "_apply_new_embedding_settings", side_effect=LLMBadRequestError()):
             with pytest.raises(ValueError, match="No Embedding Model available"):
@@ -1028,6 +1058,7 @@ class TestDatasetServiceCreationAndUpdate:
                     dataset,
                     {"embedding_model_provider": "provider-two", "embedding_model": "embedding-model-two"},
                     {},
+                    session,
                 )
 
     def test_apply_new_embedding_settings_updates_binding_for_new_model(self):
@@ -1038,6 +1069,7 @@ class TestDatasetServiceCreationAndUpdate:
         current_user.current_tenant_id = "tenant-1"
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(collection_binding_id="binding-1")
         filtered_data: dict[str, object] = {}
+        session = MagicMock()
 
         with (
             patch("services.dataset_service.Account", FakeAccount),
@@ -1057,6 +1089,7 @@ class TestDatasetServiceCreationAndUpdate:
                 dataset,
                 {"embedding_model_provider": "provider-two", "embedding_model": "embedding-model-two"},
                 filtered_data,
+                session,
             )
 
         assert filtered_data == {
@@ -1077,6 +1110,7 @@ class TestDatasetServiceCreationAndUpdate:
             collection_binding_id="binding-1",
         )
         filtered_data: dict[str, object] = {}
+        session = MagicMock()
 
         with (
             patch("services.dataset_service.Account", FakeAccount),
@@ -1091,6 +1125,7 @@ class TestDatasetServiceCreationAndUpdate:
                 dataset,
                 {"embedding_model_provider": "provider-two", "embedding_model": "embedding-model-two"},
                 filtered_data,
+                session,
             )
 
         assert filtered_data == {
@@ -1380,11 +1415,21 @@ class TestDatasetServicePermissionsAndLifecycle:
     """Unit tests for dataset permissions, deletion, and metadata helpers."""
 
     def test_check_dataset_operator_permission_validates_required_arguments(self):
+        session = MagicMock()
+
         with pytest.raises(ValueError, match="Dataset not found"):
-            DatasetService.check_dataset_operator_permission(user=SimpleNamespace(id="user-1"), dataset=None)
+            DatasetService.check_dataset_operator_permission(
+                user=SimpleNamespace(id="user-1"),
+                dataset=None,
+                session=session,
+            )
 
         with pytest.raises(ValueError, match="User not found"):
-            DatasetService.check_dataset_operator_permission(user=None, dataset=SimpleNamespace(id="dataset-1"))
+            DatasetService.check_dataset_operator_permission(
+                user=None,
+                dataset=SimpleNamespace(id="dataset-1"),
+                session=session,
+            )
 
 
 class TestDatasetCollectionBindingService:
@@ -1395,44 +1440,49 @@ class TestDatasetPermissionService:
     """Unit tests for dataset partial-member management helpers."""
 
     def test_update_partial_member_list_rolls_back_on_exception(self):
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.add_all.side_effect = RuntimeError("boom")
+        session = MagicMock()
+        session.add_all.side_effect = RuntimeError("boom")
 
-            with pytest.raises(RuntimeError, match="boom"):
-                DatasetPermissionService.update_partial_member_list(
-                    "tenant-1",
-                    "dataset-1",
-                    [{"user_id": "user-1"}],
-                )
+        with pytest.raises(RuntimeError, match="boom"):
+            DatasetPermissionService.update_partial_member_list(
+                "tenant-1",
+                "dataset-1",
+                [{"user_id": "user-1"}],
+                session,
+            )
 
-        mock_db.session.rollback.assert_called_once()
+        session.rollback.assert_called_once()
 
     def test_check_permission_requires_dataset_editor(self):
         user = SimpleNamespace(is_dataset_editor=False, is_dataset_operator=False)
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock()
+        session = MagicMock()
 
         with pytest.raises(NoPermissionError, match="does not have permission"):
-            DatasetPermissionService.check_permission(user, dataset, "all_team", [])
+            DatasetPermissionService.check_permission(user, dataset, "all_team", [], session)
 
     def test_check_permission_prevents_dataset_operator_from_changing_permission_mode(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(permission="all_team")
+        session = MagicMock()
 
         with pytest.raises(NoPermissionError, match="cannot change the dataset permissions"):
-            DatasetPermissionService.check_permission(user, dataset, "only_me", [])
+            DatasetPermissionService.check_permission(user, dataset, "only_me", [], session)
 
     def test_check_permission_requires_partial_member_list_for_partial_members_mode(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(permission="partial_members")
+        session = MagicMock()
 
         with pytest.raises(ValueError, match="Partial member list is required"):
-            DatasetPermissionService.check_permission(user, dataset, "partial_members", [])
+            DatasetPermissionService.check_permission(user, dataset, "partial_members", [], session)
 
     def test_check_permission_rejects_dataset_operator_member_list_changes(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
             dataset_id="dataset-1", permission="partial_members"
         )
+        session = MagicMock()
 
         with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
             with pytest.raises(ValueError, match="cannot change the dataset permissions"):
@@ -1441,6 +1491,7 @@ class TestDatasetPermissionService:
                     dataset,
                     "partial_members",
                     [{"user_id": "user-2"}],
+                    session,
                 )
 
     def test_check_permission_allows_dataset_operator_when_member_list_is_unchanged(self):
@@ -1448,6 +1499,7 @@ class TestDatasetPermissionService:
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(
             dataset_id="dataset-1", permission="partial_members"
         )
+        session = MagicMock()
 
         with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
             DatasetPermissionService.check_permission(
@@ -1455,13 +1507,14 @@ class TestDatasetPermissionService:
                 dataset,
                 "partial_members",
                 [{"user_id": "user-1"}],
+                session,
             )
 
     def test_clear_partial_member_list_rolls_back_on_exception(self):
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.execute.side_effect = RuntimeError("boom")
+        session = MagicMock()
+        session.execute.side_effect = RuntimeError("boom")
 
-            with pytest.raises(RuntimeError, match="boom"):
-                DatasetPermissionService.clear_partial_member_list("dataset-1")
+        with pytest.raises(RuntimeError, match="boom"):
+            DatasetPermissionService.clear_partial_member_list("dataset-1", session)
 
-        mock_db.session.rollback.assert_called_once()
+        session.rollback.assert_called_once()

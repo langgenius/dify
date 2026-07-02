@@ -62,8 +62,8 @@ const SnippetCard = ({
     return new Map((membersData?.accounts ?? []).map(member => [member.id, member.name]))
   }, [membersData?.accounts])
 
-  const updatedByName = memberNameById.get(snippet.updated_by)
-    || memberNameById.get(snippet.created_by)
+  const updatedByName = (snippet.updated_by ? memberNameById.get(snippet.updated_by) : undefined)
+    || (snippet.created_by ? memberNameById.get(snippet.created_by) : undefined)
     || t('unknownUser')
 
   const updatedAt = snippet.updated_at || snippet.created_at
@@ -73,7 +73,7 @@ const SnippetCard = ({
   })
   const initialValue = useMemo(() => ({
     name: snippet.name,
-    description: snippet.description,
+    description: snippet.description ?? undefined,
   }), [snippet.description, snippet.name])
 
   const handleOpenEditDialog = () => {
@@ -119,7 +119,7 @@ const SnippetCard = ({
       params: { snippetId: snippet.id },
       body: {
         name,
-        description: description || undefined,
+        description,
       },
     }, {
       onSuccess: () => {
@@ -148,7 +148,7 @@ const SnippetCard = ({
             </div>
           </div>
           <div className="h-22.5 px-3.5 text-xs leading-normal text-text-tertiary">
-            <div className="line-clamp-2" title={snippet.description}>
+            <div className="line-clamp-2" title={snippet.description ?? undefined}>
               {snippet.description}
             </div>
           </div>
@@ -181,7 +181,7 @@ const SnippetCard = ({
               <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
                 <DropdownMenuTrigger
                   aria-label={tCommon('operation.more', { ns: 'common' })}
-                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
+                  className="flex size-8 items-center justify-center rounded-md border-none bg-transparent p-2 hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active data-popup-open:bg-state-base-hover data-popup-open:shadow-none"
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()
