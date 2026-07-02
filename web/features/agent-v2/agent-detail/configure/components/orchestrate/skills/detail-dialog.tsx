@@ -95,8 +95,8 @@ function AgentSkillFileList({
       onFolderOpenChange={onFolderOpenChange}
       onFolderDoubleClick={onFolderDoubleClick}
       renderFile={onSelectFile
-        ? ({ file, selected, children }) => (
-            <FileTreeFile selected={selected} onClick={() => onSelectFile(file)}>
+        ? ({ depth, file, selected, children }) => (
+            <FileTreeFile level={depth} selected={selected} onClick={() => onSelectFile(file)}>
               {children}
             </FileTreeFile>
           )

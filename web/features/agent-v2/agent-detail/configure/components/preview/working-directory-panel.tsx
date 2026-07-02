@@ -35,8 +35,16 @@ type SandboxErrorPayload = {
 }
 
 const normalizeSandboxPath = (path: string) => {
-  const normalizedPath = path.replace(/^\.\//, '').replace(/^\/+|\/+$/g, '')
+  const normalizedPath = path.replace(/^~(?:\/|$)/, '').replace(/^\.\//, '').replace(/^\/+|\/+$/g, '')
   return normalizedPath === '.' ? '' : normalizedPath
+}
+
+const toSandboxApiPath = (path: string) => {
+  if (path === '.')
+    return '.'
+
+  const normalizedPath = normalizeSandboxPath(path)
+  return normalizedPath ? `~/${normalizedPath}` : '~'
 }
 
 const joinSandboxPath = (basePath: string, name: string) => {
@@ -63,16 +71,40 @@ function getSandboxEntryRelativePathSegments(entryName: string, basePath: string
   return normalizedEntryName.split('/').filter(Boolean)
 }
 
-function buildSandboxFileTree(entries: SandboxFileEntryResponse[] = [], basePath = '.'): AgentFileNode[] {
-  const rootFiles: AgentFileNode[] = []
+function buildSandboxFileTree(
+  entries: SandboxFileEntryResponse[] = [],
+  basePath = '.',
+  options: { nestUnderBasePath?: boolean } = {},
+): AgentFileNode[] {
   const normalizedBasePath = normalizeSandboxPath(basePath)
+  const rootFiles: AgentFileNode[] = []
+  let baseFolder: AgentFileNode | undefined
+
+  if (options.nestUnderBasePath && normalizedBasePath) {
+    let currentFiles = rootFiles
+    let currentPath = ''
+
+    normalizedBasePath.split('/').filter(Boolean).forEach((segment) => {
+      currentPath = joinSandboxPath(currentPath, segment)
+      const folder: AgentFileNode = {
+        id: currentPath,
+        name: segment,
+        icon: 'folder',
+        children: [],
+      }
+
+      currentFiles.push(folder)
+      currentFiles = folder.children ?? []
+      baseFolder = folder
+    })
+  }
 
   for (const entry of entries) {
     const pathSegments = getSandboxEntryRelativePathSegments(entry.name, basePath)
     if (!pathSegments.length)
       continue
 
-    let currentFiles = rootFiles
+    let currentFiles = baseFolder?.children ?? rootFiles
     let currentPath = normalizedBasePath
 
     pathSegments.forEach((segment, index) => {
@@ -202,7 +234,7 @@ export function AgentWorkingDirectoryPanel({
               },
               query: {
                 conversation_id: source.conversationId,
-                path,
+                path: toSandboxApiPath(path),
               },
             }
           : skipToken,
@@ -219,7 +251,7 @@ export function AgentWorkingDirectoryPanel({
                 node_id: source.nodeId,
               },
               query: {
-                path,
+                path: toSandboxApiPath(path),
               },
             }
           : skipToken,
@@ -281,8 +313,12 @@ export function AgentWorkingDirectoryPanel({
         })
       : [],
   })
-  const workingDirectoryFiles = expandedFolderQueries.reduce((files, query) => {
-    return mergeSandboxFileTree(files, buildSandboxFileTree(query.data?.entries, query.data?.path))
+  const workingDirectoryFiles = expandedFolderQueries.reduce((files, query, index) => {
+    return mergeSandboxFileTree(files, buildSandboxFileTree(
+      query.data?.entries,
+      loadedFolderPaths[index] ?? query.data?.path,
+      { nestUnderBasePath: true },
+    ))
   }, buildSandboxFileTree(fileListQuery.data?.entries, fileListQuery.data?.path))
   const selectedWorkingDirectoryFile = findReadableFile(workingDirectoryFiles, selectedFileId)
     ?? findFirstReadableFile(workingDirectoryFiles)
@@ -298,7 +334,7 @@ export function AgentWorkingDirectoryPanel({
               },
               query: {
                 conversation_id: source.conversationId,
-                path: selectedWorkingDirectoryFile.id,
+                path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
               },
             }
           : skipToken,
@@ -315,7 +351,7 @@ export function AgentWorkingDirectoryPanel({
                 node_id: source.nodeId,
               },
               query: {
-                path: selectedWorkingDirectoryFile.id,
+                path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
               },
             }
           : skipToken,

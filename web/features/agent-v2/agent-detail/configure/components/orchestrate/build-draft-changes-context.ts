@@ -1,10 +1,29 @@
 'use client'
 
+import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 import type { ReactNode } from 'react'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { createContext, createElement, useContext, useMemo } from 'react'
 
 export type AgentBuildDraftChangedKey = keyof AgentSoulConfigFormState
+
+export type AgentBuildDraftChangeOperation = 'added' | 'removed' | 'updated'
+
+export type AgentBuildDraftChangeItem = {
+  id: string
+  name: string
+  operation: AgentBuildDraftChangeOperation
+  icon?: FileTreeIconType
+  descriptionKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.buildDraft.'>
+}
+
+export type AgentBuildDraftChangeSummary = {
+  changedKeys: readonly AgentBuildDraftChangedKey[]
+  changesCount: number
+  skills: readonly AgentBuildDraftChangeItem[]
+  files: readonly AgentBuildDraftChangeItem[]
+}
 
 export type AgentBuildDraftChangeSection
   = | 'skills'

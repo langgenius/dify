@@ -326,6 +326,7 @@ function AgentConfigurePageComposerContent({
           bottomAction={showBuildDraftBar
             ? (
                 <AgentBuildDraftBar
+                  changeSummary={buildDraft.changeSummary}
                   changesCount={buildDraft.changesCount}
                   disabled={buildDraftActionsDisabled}
                   isApplying={buildDraftActions.isApplyingBuildDraft}

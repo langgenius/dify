@@ -230,6 +230,7 @@ vi.mock('../components/orchestrate', async () => {
 
 vi.mock('../components/orchestrate/build-draft-bar', () => ({
   AgentBuildDraftBar: (props: {
+    changeSummary?: unknown
     changesCount: number
     disabled?: boolean
     onApply: () => void
