@@ -108,6 +108,15 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
         # Assert
         assert result_config["sensitive_word_avoidance"]["enabled"] is False
 
+    def test_validate_ignores_legacy_disabled_fields(self):
+        config = {"sensitive_word_avoidance": {"enabled": False, "type": "", "config": {}}}
+
+        result_config, _ = SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(
+            tenant_id="tenant1", config=config
+        )
+
+        assert result_config["sensitive_word_avoidance"] == {"enabled": False}
+
     def test_validate_raises_when_enabled_true_without_type(self):
         config = {"sensitive_word_avoidance": {"enabled": True}}
 
