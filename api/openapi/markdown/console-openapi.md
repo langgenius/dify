@@ -13080,8 +13080,8 @@ default (the config form sends the full desired feature state on save).
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_soul | object |  | Yes |
-| draft | object |  | Yes |
+| agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
+| draft | [AgentConfigDraftSummaryResponse](#agentconfigdraftsummaryresponse) |  | Yes |
 | variant | string |  | Yes |
 
 #### AgentCliToolAuthorizationStatus
@@ -14156,9 +14156,9 @@ section may be empty, which is how callers express "no knowledge layer".
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| active_config_snapshot | object |  | No |
+| active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | active_config_snapshot_id | string |  | Yes |
-| draft | object |  | No |
+| draft | [AgentConfigDraftSummaryResponse](#agentconfigdraftsummaryresponse) |  | No |
 | result | string |  | Yes |
 
 #### AgentPublishedReferenceResponse

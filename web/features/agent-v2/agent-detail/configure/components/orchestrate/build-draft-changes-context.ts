@@ -9,10 +9,12 @@ export type AgentBuildDraftChangedKey = keyof AgentSoulConfigFormState
 export type AgentBuildDraftChangeSection
   = | 'skills'
     | 'files'
+    | 'advancedSettings'
 
 const changedKeysBySection: Record<AgentBuildDraftChangeSection, readonly AgentBuildDraftChangedKey[]> = {
   skills: ['skills'],
   files: ['files'],
+  advancedSettings: ['envVariables'],
 }
 
 const AgentBuildDraftChangedKeysContext = createContext<ReadonlySet<AgentBuildDraftChangedKey>>(new Set())
