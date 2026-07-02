@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { waitForUrl } from '../support/process'
@@ -9,6 +10,7 @@ import {
   e2eWebEnvOverrides,
   ensureFileExists,
   ensureLineInFile,
+  getTcpPortListenerDescription,
   getWebEnvLocalHash,
   isMainModule,
   isTcpPortReachable,
@@ -16,6 +18,7 @@ import {
   middlewareEnvExampleFile,
   middlewareEnvFile,
   readSimpleDotenv,
+  rootDir,
   runCommand,
   runCommandOrThrow,
   runForegroundProcess,
@@ -24,7 +27,9 @@ import {
 } from './common'
 
 const buildIdPath = path.join(webDir, '.next', 'BUILD_ID')
-const webBuildEnvStampPath = path.join(webDir, '.next', 'e2e-web-env.sha256')
+const webBuildStampPath = path.join(webDir, '.next', 'e2e-web-build.sha256')
+const apiHost = '127.0.0.1'
+const apiPort = 5001
 
 const middlewareDataPaths = [
   path.join(dockerDir, 'volumes', 'db', 'data'),
@@ -113,8 +118,62 @@ const waitForDependency = async ({
   }
 }
 
+const webBuildSourcePaths = [
+  'package.json',
+  'pnpm-lock.yaml',
+  'pnpm-workspace.yaml',
+  'packages',
+  'web',
+]
+
+const getWebBuildSourceHash = async () => {
+  const hash = createHash('sha256')
+  const gitArgsSuffix = ['--', ...webBuildSourcePaths]
+  const commands = [
+    ['rev-parse', 'HEAD'],
+    ['diff', '--binary', ...gitArgsSuffix],
+    ['diff', '--cached', '--binary', ...gitArgsSuffix],
+  ]
+
+  for (const args of commands) {
+    const result = await runCommandOrThrow({
+      command: 'git',
+      args,
+      cwd: rootDir,
+      stdio: 'pipe',
+    })
+
+    hash.update(args.join(' '))
+    hash.update('\n')
+    hash.update(result.stdout)
+    hash.update('\n')
+  }
+
+  const untrackedFiles = await runCommandOrThrow({
+    command: 'git',
+    args: ['ls-files', '--others', '--exclude-standard', '-z', ...gitArgsSuffix],
+    cwd: rootDir,
+    stdio: 'pipe',
+  })
+
+  for (const file of untrackedFiles.stdout.split('\0').filter(Boolean)) {
+    hash.update(file)
+    hash.update('\0')
+    hash.update(await readFile(path.join(rootDir, file)))
+    hash.update('\0')
+  }
+
+  return hash.digest('hex')
+}
+
 export const ensureWebBuild = async () => {
   const envHash = await getWebEnvLocalHash()
+  const sourceHash = await getWebBuildSourceHash()
+  const buildStamp = createHash('sha256')
+    .update(envHash)
+    .update('\n')
+    .update(sourceHash)
+    .digest('hex')
   const buildEnv = {
     ...e2eWebEnvOverrides,
   }
@@ -126,21 +185,21 @@ export const ensureWebBuild = async () => {
       cwd: webDir,
       env: buildEnv,
     })
-    await writeFile(webBuildEnvStampPath, `${envHash}\n`, 'utf8')
+    await writeFile(webBuildStampPath, `${buildStamp}\n`, 'utf8')
     return
   }
 
   try {
-    const [buildExists, previousEnvHash] = await Promise.all([
+    const [buildExists, previousBuildStamp] = await Promise.all([
       access(buildIdPath)
         .then(() => true)
         .catch(() => false),
-      readFile(webBuildEnvStampPath, 'utf8')
+      readFile(webBuildStampPath, 'utf8')
         .then(value => value.trim())
         .catch(() => ''),
     ])
 
-    if (buildExists && previousEnvHash === envHash) {
+    if (buildExists && previousBuildStamp === buildStamp) {
       console.log('Reusing existing web build artifact.')
       return
     }
@@ -155,7 +214,7 @@ export const ensureWebBuild = async () => {
     cwd: webDir,
     env: buildEnv,
   })
-  await writeFile(webBuildEnvStampPath, `${envHash}\n`, 'utf8')
+  await writeFile(webBuildStampPath, `${buildStamp}\n`, 'utf8')
 }
 
 export const startWeb = async () => {
@@ -174,6 +233,17 @@ export const startWeb = async () => {
 }
 
 export const startApi = async () => {
+  if (await isTcpPortReachable(apiHost, apiPort)) {
+    const listenerDescription = await getTcpPortListenerDescription(apiPort)
+    const listenerMessage = listenerDescription
+      ? `\n\nPort listener:\n${listenerDescription}`
+      : ''
+
+    throw new Error(
+      `Cannot start the E2E API server because ${apiHost}:${apiPort} is already in use.${listenerMessage}`,
+    )
+  }
+
   const env = await getApiEnvironment()
 
   await runCommandOrThrow({
@@ -193,9 +263,9 @@ export const startApi = async () => {
       'flask',
       'run',
       '--host',
-      '127.0.0.1',
+      apiHost,
       '--port',
-      '5001',
+      String(apiPort),
     ],
     cwd: apiDir,
     env,
