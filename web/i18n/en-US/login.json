@@ -28,6 +28,8 @@
   "error.invalidEmailOrPassword": "Invalid email or password.",
   "error.invalidRedirectUrlOrAppCode": "Invalid redirect URL or app code",
   "error.invalidSSOProtocol": "Invalid SSO protocol",
+  "error.ssoFailed": "SSO login failed. Please try again or contact your administrator.",
+  "error.unknown": "Something went wrong. Please try again.",
   "error.nameEmpty": "Name is required",
   "error.passwordEmpty": "Password is required",
   "error.passwordInvalid": "Password must contain letters and numbers, and the length must be greater than 8",

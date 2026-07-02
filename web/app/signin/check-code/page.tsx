@@ -67,7 +67,10 @@ export default function CheckCode() {
         }
       }
     }
-    catch (error) { console.error(error) }
+    catch (error) {
+      console.error(error)
+      toast.error(t('error.unknown', { ns: 'login' }))
+    }
     finally {
       setIsLoading(false)
     }
@@ -91,7 +94,10 @@ export default function CheckCode() {
         router.replace(`/signin/check-code?${params.toString()}`)
       }
     }
-    catch (error) { console.error(error) }
+    catch (error) {
+      console.error(error)
+      toast.error(t('error.unknown', { ns: 'login' }))
+    }
   }
 
   return (
