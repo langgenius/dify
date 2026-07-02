@@ -574,7 +574,11 @@ class TestDatasetPermissionServiceIntegration:
 
         with pytest.raises(NoPermissionError, match="does not have permission"):
             DatasetPermissionService.check_permission(
-                user, dataset, DatasetPermissionEnum.ALL_TEAM, [], session=db_session_with_containers
+                db_session_with_containers,
+                user,
+                dataset,
+                DatasetPermissionEnum.ALL_TEAM,
+                [],
             )
 
     def test_check_permission_prevents_dataset_operator_from_changing_permission_mode(
@@ -585,7 +589,11 @@ class TestDatasetPermissionServiceIntegration:
 
         with pytest.raises(NoPermissionError, match="cannot change the dataset permissions"):
             DatasetPermissionService.check_permission(
-                user, dataset, DatasetPermissionEnum.ONLY_ME, [], session=db_session_with_containers
+                db_session_with_containers,
+                user,
+                dataset,
+                DatasetPermissionEnum.ONLY_ME,
+                [],
             )
 
     def test_check_permission_requires_partial_member_list_for_partial_members_mode(
@@ -596,7 +604,11 @@ class TestDatasetPermissionServiceIntegration:
 
         with pytest.raises(ValueError, match="Partial member list is required"):
             DatasetPermissionService.check_permission(
-                user, dataset, DatasetPermissionEnum.PARTIAL_TEAM, [], session=db_session_with_containers
+                db_session_with_containers,
+                user,
+                dataset,
+                DatasetPermissionEnum.PARTIAL_TEAM,
+                [],
             )
 
     def test_check_permission_rejects_dataset_operator_member_list_changes(self, db_session_with_containers: Session):
@@ -606,11 +618,11 @@ class TestDatasetPermissionServiceIntegration:
         with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
             with pytest.raises(ValueError, match="cannot change the dataset permissions"):
                 DatasetPermissionService.check_permission(
+                    db_session_with_containers,
                     user,
                     dataset,
                     DatasetPermissionEnum.PARTIAL_TEAM,
                     [{"user_id": "user-2"}],
-                    session=db_session_with_containers,
                 )
 
     def test_check_permission_allows_dataset_operator_when_member_list_is_unchanged(
@@ -621,11 +633,11 @@ class TestDatasetPermissionServiceIntegration:
 
         with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
             DatasetPermissionService.check_permission(
+                db_session_with_containers,
                 user,
                 dataset,
                 DatasetPermissionEnum.PARTIAL_TEAM,
                 [{"user_id": "user-1"}],
-                session=db_session_with_containers,
             )
 
     def test_clear_partial_member_list_deletes_permissions_and_commits(self, db_session_with_containers: Session):

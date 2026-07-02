@@ -405,6 +405,7 @@ class DatasetService:
 
     @staticmethod
     def create_empty_dataset(
+        session: Session,
         tenant_id: str,
         name: str,
         description: str | None,
@@ -418,8 +419,6 @@ class DatasetService:
         embedding_model_name: str | None = None,
         retrieval_model: RetrievalModel | None = None,
         summary_index_setting: dict[str, Any] | None = None,
-        *,
-        session: scoped_session | Session,
     ):
         # check if dataset name already exists
         if session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
@@ -473,7 +472,7 @@ class DatasetService:
 
         if provider == "external" and external_knowledge_api_id:
             external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-                external_knowledge_api_id, tenant_id
+                session, external_knowledge_api_id, tenant_id
             )
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
@@ -632,7 +631,7 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
-    def update_dataset(dataset_id, data, user, session: scoped_session | Session):
+    def update_dataset(session: Session, dataset_id, data, user):
         """
         Update dataset configuration and settings.
 
@@ -685,7 +684,7 @@ class DatasetService:
         return dataset is not None
 
     @staticmethod
-    def _update_external_dataset(dataset, data, user, session: scoped_session | Session):
+    def _update_external_dataset(dataset, data, user, session: Session):
         """
         Update external dataset configuration.
 
@@ -725,7 +724,7 @@ class DatasetService:
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
         # Ensure the referenced external API template exists and belongs to the dataset tenant.
-        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id)
+        ExternalDatasetService.get_external_knowledge_api(session, external_knowledge_api_id, dataset.tenant_id)
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()
@@ -4315,9 +4314,7 @@ class DatasetPermissionService:
             raise e
 
     @classmethod
-    def check_permission(
-        cls, user, dataset, requested_permission, requested_partial_member_list, session: scoped_session | Session
-    ):
+    def check_permission(cls, session: Session, user, dataset, requested_permission, requested_partial_member_list):
         if not user.is_dataset_editor:
             raise NoPermissionError("User does not have permission to edit this dataset.")
 

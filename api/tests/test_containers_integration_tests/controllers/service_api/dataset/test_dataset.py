@@ -501,7 +501,7 @@ class TestDatasetListApiPost:
             json={"name": "New Dataset"},
         ):
             api = DatasetListApi()
-            response, status = unwrap(api.post)(api, tenant_id=mock_tenant.id)
+            response, status = unwrap(api.post)(api, Mock(spec=Session), tenant_id=mock_tenant.id)
 
         assert status == 200
         assert_dataset_detail_shape(response)
@@ -529,7 +529,7 @@ class TestDatasetListApiPost:
         ):
             api = DatasetListApi()
             with pytest.raises(DatasetNameDuplicateError):
-                unwrap(api.post)(api, tenant_id=mock_tenant.id)
+                unwrap(api.post)(api, Mock(spec=Session), tenant_id=mock_tenant.id)
 
 
 # ---------------------------------------------------------------------------
@@ -722,14 +722,19 @@ class TestDatasetApiPatch:
             json=payload,
         ):
             api = DatasetApi()
-            response, status = unwrap(api.patch)(api, _=mock_dataset.tenant_id, dataset_id=mock_dataset.id)
+            response, status = unwrap(api.patch)(
+                api,
+                Mock(spec=Session),
+                _=mock_dataset.tenant_id,
+                dataset_id=mock_dataset.id,
+            )
 
         assert status == 200
         assert_dataset_detail_shape(response, with_partial_members=True)
         assert response["name"] == "Updated Dataset"
         assert response["partial_member_list"] == ["user-1"]
         mock_dataset_svc.update_dataset.assert_called_once()
-        _, update_data, _, session = mock_dataset_svc.update_dataset.call_args.args
+        session, _, update_data, _ = mock_dataset_svc.update_dataset.call_args.args
         assert isinstance(session, (Session, scoped_session))
         assert update_data["name"] == "Updated Dataset"
         assert update_data["permission"] == "partial_members"

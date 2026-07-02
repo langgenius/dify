@@ -3,6 +3,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -16,6 +17,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import with_current_user, with_current_user_id
@@ -85,7 +87,8 @@ class CompletionApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
+    @with_session
+    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -103,7 +106,12 @@ class CompletionApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -161,7 +169,8 @@ class ChatApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, installed_app: InstalledApp):
+    @with_session
+    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -179,7 +188,12 @@ class ChatApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
