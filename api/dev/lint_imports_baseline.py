@@ -78,10 +78,7 @@ class BaselineDocument:
         return BaselinePayload(
             version=self.version,
             contracts={
-                contract_name: {
-                    importer: list(imported_modules)
-                    for importer, imported_modules in importers.items()
-                }
+                contract_name: {importer: list(imported_modules) for importer, imported_modules in importers.items()}
                 for contract_name, importers in self.snapshot.items()
             },
         )
@@ -171,9 +168,7 @@ def load_baseline(path: Path) -> BaselineDocument:
     payload = BaselinePayload.model_validate_json(path.read_text(encoding="utf-8"))
     baseline_document = BaselineDocument.from_payload(payload)
     if baseline_document.version != BASELINE_VERSION:
-        raise ValueError(
-            f"Unsupported baseline version {baseline_document.version!r}; expected {BASELINE_VERSION}."
-        )
+        raise ValueError(f"Unsupported baseline version {baseline_document.version!r}; expected {BASELINE_VERSION}.")
     return baseline_document
 
 
