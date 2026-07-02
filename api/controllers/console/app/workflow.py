@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict
 
 from flask import abort, request
-from flask_restx import Resource, fields
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, ValidationError, field_validator
+from flask_restx import Resource
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 

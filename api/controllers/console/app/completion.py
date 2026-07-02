@@ -399,6 +399,7 @@ def _create_chat_message(
         streaming=streaming,
     )
 
+
 def _create_build_chat_finalization_message(
     *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
