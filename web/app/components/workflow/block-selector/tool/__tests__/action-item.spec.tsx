@@ -45,7 +45,7 @@ describe('ToolActionItem', () => {
       />,
     )
 
-    await user.click(screen.getByText('Search Tool'))
+    await user.click(screen.getByRole('button', { name: 'Search Tool' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.Tool, expect.objectContaining({
       provider_id: 'provider-1',
@@ -75,8 +75,9 @@ describe('ToolActionItem', () => {
     )
 
     expect(screen.getByText('tools.addToolModal.added')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Search Tool/ })).toBeDisabled()
 
-    await user.click(screen.getByText('Search Tool'))
+    await user.click(screen.getByRole('button', { name: /Search Tool/ }))
 
     expect(onSelect).not.toHaveBeenCalled()
     expect(mockTrackEvent).not.toHaveBeenCalled()
