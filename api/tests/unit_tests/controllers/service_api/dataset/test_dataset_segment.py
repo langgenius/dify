@@ -925,6 +925,21 @@ class TestSegmentApiGet:
         assert response["page"] == 1
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    def test_list_segments_rejects_malformed_pagination_query(
+        self, mock_account_fn, app: Flask, mock_tenant, mock_dataset
+    ):
+        """Test malformed non-empty pagination values are rejected."""
+        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments?page=bad&limit=abc",
+            method="GET",
+        ):
+            api = SegmentApi()
+            with pytest.raises(ValueError):
+                api.get(tenant_id=mock_tenant.id, dataset_id=mock_dataset.id, document_id="doc-id")
+
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.service_api.dataset.segment.db")
     def test_list_segments_dataset_not_found(self, mock_db, mock_account_fn, app, mock_tenant, mock_dataset):
         """Test 404 when dataset not found."""
@@ -1723,6 +1738,42 @@ class TestChildChunkApiGet:
         assert status == 200
         assert response["total"] == 2
         assert response["page"] == 1
+
+    @patch("controllers.service_api.dataset.segment._get_segment_for_document", return_value=(Mock(), Mock()))
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    @patch("controllers.service_api.dataset.segment.db")
+    def test_list_child_chunks_rejects_malformed_pagination_query(
+        self,
+        mock_db,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        mock_get_segment,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+    ):
+        """Test malformed non-empty pagination values are rejected for child chunk listing."""
+        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_db.session.scalar.return_value = mock_dataset
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks?page=bad&limit=abc",
+            method="GET",
+        ):
+            api = ChildChunkApi()
+            with pytest.raises(ValueError):
+                api.get(
+                    tenant_id=mock_tenant.id,
+                    dataset_id=mock_dataset.id,
+                    document_id="doc-id",
+                    segment_id="seg-id",
+                )
+
+        mock_seg_svc.get_child_chunks.assert_not_called()
 
     @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
     @patch("controllers.service_api.dataset.segment.db")
