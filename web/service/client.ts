@@ -26,7 +26,6 @@ import { isClient } from '@/utils/client'
 // eslint-disable-next-line no-restricted-imports
 import { request } from './base'
 import { createConsoleDynamicLink } from './console-link'
-import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
 
 function getMarketplaceHeaders() {
   return new Headers({
@@ -80,7 +79,7 @@ function createConsoleOpenAPILink(contract: RouterContract): ConsoleClientLink {
     fetch: (url, init, options) => {
       const input = new Request(url, init)
       return request(
-        normalizeConsoleOpenAPIURL(url),
+        url,
         init,
         {
           fetchCompat: true,

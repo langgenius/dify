@@ -568,6 +568,10 @@ export const get2 = oc
       method: 'GET',
       operationId: 'getAppsStarred',
       path: '/apps/starred',
+      queryStyles: {
+        creator_ids: 'array',
+        tag_ids: 'array',
+      },
       tags: ['console'],
     }),
   )
@@ -5292,6 +5296,10 @@ export const get93 = oc
       method: 'GET',
       operationId: 'getApps',
       path: '/apps',
+      queryStyles: {
+        creator_ids: 'array',
+        tag_ids: 'array',
+      },
       summary: 'Get app list',
       tags: ['console'],
     }),

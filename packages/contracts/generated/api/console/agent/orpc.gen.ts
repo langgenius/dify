@@ -1150,6 +1150,10 @@ export const get25 = oc
       method: 'GET',
       operationId: 'getAgentByAgentIdLogsByConversationIdMessages',
       path: '/agent/{agent_id}/logs/{conversation_id}/messages',
+      queryStyles: {
+        sources: 'array',
+        statuses: 'array',
+      },
       tags: ['console'],
     }),
   )
@@ -1176,6 +1180,10 @@ export const get26 = oc
       method: 'GET',
       operationId: 'getAgentByAgentIdLogs',
       path: '/agent/{agent_id}/logs',
+      queryStyles: {
+        sources: 'array',
+        statuses: 'array',
+      },
       tags: ['console'],
     }),
   )
@@ -1566,6 +1574,10 @@ export const get35 = oc
       method: 'GET',
       operationId: 'getAgent',
       path: '/agent',
+      queryStyles: {
+        creator_ids: 'array',
+        tag_ids: 'array',
+      },
       tags: ['console'],
     }),
   )

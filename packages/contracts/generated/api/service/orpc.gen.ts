@@ -1364,6 +1364,9 @@ export const get12 = oc
       method: 'GET',
       operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
       path: '/datasets/{dataset_id}/documents/{document_id}/segments',
+      queryStyles: {
+        status: 'array',
+      },
       summary: 'List Chunks',
       tags: ['Chunks'],
     }),
@@ -2080,6 +2083,9 @@ export const get20 = oc
       method: 'GET',
       operationId: 'getDatasets',
       path: '/datasets',
+      queryStyles: {
+        tag_ids: 'array',
+      },
       summary: 'List Knowledge Bases',
       tags: ['Knowledge Bases'],
     }),

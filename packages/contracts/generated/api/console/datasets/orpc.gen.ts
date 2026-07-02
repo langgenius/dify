@@ -1007,6 +1007,9 @@ export const patch6 = oc
       method: 'PATCH',
       operationId: 'patchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByAction',
       path: '/datasets/{dataset_id}/documents/{document_id}/segment/{action}',
+      queryStyles: {
+        segment_id: 'array',
+      },
       tags: ['console'],
     }),
   )
@@ -1239,6 +1242,9 @@ export const delete5 = oc
       method: 'DELETE',
       operationId: 'deleteDatasetsByDatasetIdDocumentsByDocumentIdSegments',
       path: '/datasets/{dataset_id}/documents/{document_id}/segments',
+      queryStyles: {
+        segment_id: 'array',
+      },
       successStatus: 204,
       tags: ['console'],
     }),
@@ -1258,6 +1264,9 @@ export const get21 = oc
       method: 'GET',
       operationId: 'getDatasetsByDatasetIdDocumentsByDocumentIdSegments',
       path: '/datasets/{dataset_id}/documents/{document_id}/segments',
+      queryStyles: {
+        status: 'array',
+      },
       tags: ['console'],
     }),
   )
@@ -1928,6 +1937,9 @@ export const get36 = oc
       method: 'GET',
       operationId: 'getDatasets',
       path: '/datasets',
+      queryStyles: {
+        tag_ids: 'array',
+      },
       tags: ['console'],
     }),
   )

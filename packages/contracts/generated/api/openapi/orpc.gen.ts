@@ -387,6 +387,10 @@ export const get10 = oc
       method: 'GET',
       operationId: 'getApps',
       path: '/apps',
+      queryStyles: {
+        creator_ids: 'array',
+        tag_ids: 'array',
+      },
       tags: ['openapi'],
     }),
   )

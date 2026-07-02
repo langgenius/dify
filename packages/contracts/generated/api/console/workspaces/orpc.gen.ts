@@ -683,6 +683,10 @@ export const get6 = oc
       method: 'GET',
       operationId: 'getWorkspacesCurrentCustomizedSnippets',
       path: '/workspaces/current/customized-snippets',
+      queryStyles: {
+        creators: 'array',
+        tag_ids: 'array',
+      },
       summary: 'List customized snippets with pagination and search',
       tags: ['console'],
     }),
@@ -3450,6 +3454,9 @@ export const get64 = oc
       method: 'GET',
       operationId: 'getWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfo',
       path: '/workspaces/current/tool-provider/builtin/{provider}/credential/info',
+      queryStyles: {
+        include_credential_ids: 'array',
+      },
       tags: ['console'],
     }),
   )
@@ -3506,6 +3513,9 @@ export const get66 = oc
       method: 'GET',
       operationId: 'getWorkspacesCurrentToolProviderBuiltinByProviderCredentials',
       path: '/workspaces/current/tool-provider/builtin/{provider}/credentials',
+      queryStyles: {
+        include_credential_ids: 'array',
+      },
       tags: ['console'],
     }),
   )
