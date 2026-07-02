@@ -607,7 +607,11 @@ class TestMiscApis:
         method = unwrap(api.get)
 
         service = MagicMock()
-        service.get_recommended_plugins.return_value = [{"id": "p1"}]
+        recommended_plugins = {
+            "installed_recommended_plugins": [{"id": "p1"}],
+            "uninstalled_recommended_plugins": [{"id": "p2"}],
+        }
+        service.get_recommended_plugins.return_value = recommended_plugins
         user = make_account()
         tenant_id = "tenant-1"
 
@@ -619,7 +623,7 @@ class TestMiscApis:
             ),
         ):
             result = method(api, tenant_id, user)
-            assert result == [{"id": "p1"}]
+            assert result == recommended_plugins
             service.get_recommended_plugins.assert_called_once_with("all", user, tenant_id)
 
 
