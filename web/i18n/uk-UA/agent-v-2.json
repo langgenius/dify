@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Щоб показати приховані файли .env, у вікні вибору файла натисніть Command + Shift + .",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Якщо ваш файл .env прихований, увімкніть відображення прихованих файлів у системному діалозі вибору файлів.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Щоб показати приховані файли .env, увімкніть «Приховані елементи» в Провіднику.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "Пропущено {{count}} недійсний рядок .env.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "Пропущено {{count}} недійсних рядків .env.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

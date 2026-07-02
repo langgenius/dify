@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Para mostrar archivos .env ocultos, presiona Command + Shift + . en el selector de archivos.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Si tu archivo .env está oculto, habilita los archivos ocultos en el selector de archivos del sistema.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Para mostrar los archivos .env ocultos, habilita Elementos ocultos en el Explorador de archivos.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "Se omitió {{count}} línea .env no válida.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "Se omitieron {{count}} líneas .env no válidas.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

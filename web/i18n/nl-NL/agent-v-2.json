@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Druk in het bestandsdialoogvenster op Command + Shift + . om verborgen .env-bestanden weer te geven.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Als je .env-bestand verborgen is, schakel verborgen bestanden in via het bestandsdialoogvenster van je systeem.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Schakel „Verborgen items” in Verkenner in om verborgen .env-bestanden weer te geven.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "{{count}} ongeldige .env-regel is overgeslagen.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "{{count}} ongeldige .env-regels zijn overgeslagen.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

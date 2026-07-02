@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Pour afficher les fichiers .env cachés, appuyez sur Command + Maj + . dans le sélecteur de fichiers.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Si votre fichier .env est masqué, activez les fichiers cachés dans le sélecteur de fichiers du système.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Pour afficher les fichiers .env cachés, activez Éléments masqués dans l’Explorateur de fichiers.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "{{count}} ligne .env non valide a été ignorée.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "{{count}} lignes .env non valides ont été ignorées.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

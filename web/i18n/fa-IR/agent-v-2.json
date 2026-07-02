@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "برای نمایش فایل‌های .env پنهان، در انتخابگر فایل Command + Shift + . را فشار دهید.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "اگر فایل .env شما پنهان است، فایل‌های پنهان را در انتخابگر فایل سیستم خود فعال کنید.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "برای نمایش فایل‌های .env پنهان، Hidden items را در File Explorer فعال کنید.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "{{count}} خط .env نامعتبر نادیده گرفته شد.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "{{count}} خط .env نامعتبر نادیده گرفته شد.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

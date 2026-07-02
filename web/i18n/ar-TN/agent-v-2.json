@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "لإظهار ملفات .env المخفية، اضغط Command + Shift + . في منتقي الملفات.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "إذا كان ملف .env مخفياً، فعّل الملفات المخفية في منتقي ملفات النظام.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "لإظهار ملفات .env المخفية، فعّل العناصر المخفية في File Explorer.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "تم تخطي {{count}} سطر .env غير صالح.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "تم تخطي {{count}} سطر .env غير صالح.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

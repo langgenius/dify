@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "隠れた .env ファイルを表示するには、ファイル選択画面で Command + Shift + . を押します。",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": ".env ファイルが隠れている場合は、システムのファイル選択画面で隠しファイルを有効にしてください。",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "隠れた .env ファイルを表示するには、エクスプローラーで「隠しファイル」を有効にします。",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "無効な .env 行を {{count}} 行スキップしました。",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "無効な .env 行を {{count}} 行スキップしました。",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

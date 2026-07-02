@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "숨겨진 .env 파일을 표시하려면 파일 선택기에서 Command + Shift + . 을 누르세요.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": ".env 파일이 숨겨져 있으면 시스템 파일 선택기에서 숨김 파일 표시를 활성화하세요.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "숨겨진 .env 파일을 표시하려면 파일 탐색기에서 '숨긴 항목'을 활성화하세요.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "잘못된 .env 줄 {{count}}개를 건너뛰었습니다.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "잘못된 .env 줄 {{count}}개를 건너뛰었습니다.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",
