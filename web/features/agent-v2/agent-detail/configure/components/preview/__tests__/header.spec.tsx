@@ -92,8 +92,20 @@ describe('AgentPreviewHeader', () => {
 
     const modeControl = screen.getByRole('group', { name: 'agentV2.agentDetail.configure.rightPanel.modeLabel' })
 
-    await user.click(within(modeControl).getByRole('button', { name: /agentV2\.agentDetail\.configure\.rightPanel\.preview/ }))
+    await user.click(within(modeControl).getByRole('button', { name: 'agentV2.agentDetail.configure.rightPanel.preview' }))
 
     expect(onModeChange).not.toHaveBeenCalled()
+  })
+
+  it('should explain disabled preview mode on hover', async () => {
+    const user = userEvent.setup()
+    renderHeader({
+      mode: 'build',
+      previewEnabled: false,
+    })
+
+    await user.hover(screen.getByLabelText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip'))
+
+    expect(await screen.findByText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip')).toBeInTheDocument()
   })
 })

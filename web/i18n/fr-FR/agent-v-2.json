@@ -171,6 +171,7 @@
   "agentDetail.configure.rightPanel.learnMore": "En savoir plus",
   "agentDetail.configure.rightPanel.modeLabel": "Mode de configuration de l’agent",
   "agentDetail.configure.rightPanel.preview": "Aperçu",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview n’est pas disponible dans l’édition Community. Pour utiliser Preview, utilisez SaaS ou l’édition Enterprise.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview exécute l’agent final comme vos utilisateurs le verront, avec des réponses claires et les fonctions de chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Prévisualiser votre agent",
   "agentDetail.configure.skills.add": "Ajouter une compétence",

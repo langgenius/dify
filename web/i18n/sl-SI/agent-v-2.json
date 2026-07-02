@@ -171,6 +171,7 @@
   "agentDetail.configure.rightPanel.learnMore": "Več o tem",
   "agentDetail.configure.rightPanel.modeLabel": "Način konfiguracije agenta",
   "agentDetail.configure.rightPanel.preview": "Predogled",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview ni na voljo v izdaji Community. Za uporabo Preview uporabite SaaS ali izdajo Enterprise.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview zažene dokončanega agenta tako, kot ga bodo videli uporabniki, z jasnimi odgovori in funkcijami klepeta.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Predogled agenta",
   "agentDetail.configure.skills.add": "Dodaj veščino",

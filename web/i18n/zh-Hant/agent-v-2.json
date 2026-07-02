@@ -171,6 +171,7 @@
   "agentDetail.configure.rightPanel.learnMore": "了解更多",
   "agentDetail.configure.rightPanel.modeLabel": "Agent 配置模式",
   "agentDetail.configure.rightPanel.preview": "預覽",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "社群版不支援 Preview 功能。如需使用 Preview 功能，請使用 SaaS 或企業版。",
   "agentDetail.configure.rightPanel.previewTipBody": "像使用者一樣測試它。你的互動不會影響 Agent 後續的行為。",
   "agentDetail.configure.rightPanel.previewTipTitle": "預覽你的 Agent",
   "agentDetail.configure.skills.add": "新增 Skill",
