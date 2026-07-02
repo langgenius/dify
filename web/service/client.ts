@@ -129,13 +129,32 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   },
   interceptors: [
     onError((error) => {
-      console.error(error)
+      logClientError(error)
     }),
   ],
 })
 
 export const marketplaceClient: JsonifiedClient<ContractRouterClient<typeof marketplaceRouterContract>> = createORPCClient(marketplaceLink)
 export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] })
+
+function isExpectedAbortError(error: unknown) {
+  if (!error || typeof error !== 'object')
+    return false
+
+  const maybeError = error as { name?: unknown, message?: unknown }
+  return maybeError.name === 'AbortError'
+    || (
+      typeof maybeError.message === 'string'
+      && maybeError.message.includes('signal is aborted without reason')
+    )
+}
+
+export function logClientError(error: unknown) {
+  if (isExpectedAbortError(error))
+    return
+
+  console.error(error)
+}
 
 const APP_DEPLOY_SOURCE_APPS_PAGE_SIZE = 100
 const APP_DEPLOY_READINESS_RETRY_DELAYS = [0, 300, 700, 1200]

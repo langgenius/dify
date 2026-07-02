@@ -59,6 +59,7 @@ describe('DatasetDetailLayout', () => {
       push: vi.fn(),
       replace: mockReplace,
       prefetch: vi.fn(),
+      bfcacheId: '',
     })
   })
 

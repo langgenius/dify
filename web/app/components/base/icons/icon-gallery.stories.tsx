@@ -12,7 +12,7 @@ type IconEntry = {
   Component: IconComponent
 }
 
-const iconModules: Record<string, IconModule> = import.meta.glob('./src/**/*.tsx', { eager: true })
+const iconModules = import.meta.glob('./src/**/*.tsx', { eager: true }) as Record<string, IconModule>
 
 const iconEntries: IconEntry[] = Object.entries(iconModules)
   .filter(([key]) => !key.endsWith('.stories.tsx') && !key.endsWith('.spec.tsx'))
