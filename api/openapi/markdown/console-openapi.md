@@ -38,7 +38,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/change-email
 #### Request Body
@@ -77,7 +77,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/change-email/validity
 #### Request Body
@@ -198,7 +198,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/interface-theme
 #### Request Body
@@ -211,7 +211,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/name
 #### Request Body
@@ -224,7 +224,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/password
 #### Request Body
@@ -237,14 +237,14 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [GET] /account/profile
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/timezone
 #### Request Body
@@ -257,7 +257,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /activate
 Activate account with invitation token
@@ -9793,8 +9793,8 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet imported successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
-| 202 | Import pending confirmation | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
+| 200 | Snippet imported successfully | **application/json**: [SnippetImportInfo](#snippetimportinfo)<br> |
+| 202 | Import pending confirmation | **application/json**: [SnippetImportInfo](#snippetimportinfo)<br> |
 | 400 | Import failed |  |
 
 ### [POST] /workspaces/current/customized-snippets/imports/{import_id}/confirm
@@ -9810,7 +9810,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import confirmed successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
+| 200 | Import confirmed successfully | **application/json**: [SnippetImportInfo](#snippetimportinfo)<br> |
 | 400 | Import failed |  |
 
 ### [DELETE] /workspaces/current/customized-snippets/{snippet_id}
@@ -9881,7 +9881,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dependencies checked successfully | **application/json**: [SnippetDependencyCheckResponse](#snippetdependencycheckresponse)<br> |
+| 200 | Dependencies checked successfully | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
 | 404 | Snippet not found |  |
 
 ### [GET] /workspaces/current/customized-snippets/{snippet_id}/export
@@ -9898,10 +9898,10 @@ Export snippet configuration as DSL
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Snippet exported successfully | **application/json**: [TextFileResponse](#textfileresponse)<br> |
-| 404 | Snippet not found |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Snippet exported successfully |
+| 404 | Snippet not found |
 
 ### [POST] /workspaces/current/customized-snippets/{snippet_id}/use-count/increment
 **Increment snippet use count when it is inserted into a workflow**
@@ -9918,7 +9918,7 @@ Increment snippet use count by 1
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Use count incremented successfully | **application/json**: [SnippetUseCountResponse](#snippetusecountresponse)<br> |
+| 200 | Use count incremented successfully | **application/json**: [SnippetUseCountIncrementResponse](#snippetusecountincrementresponse)<br> |
 | 404 | Snippet not found |  |
 
 ### [GET] /workspaces/current/dataset-operators
@@ -9926,7 +9926,7 @@ Increment snippet use count by 1
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountWithRoleList](#accountwithrolelist)<br> |
+| 200 | Success | **application/json**: [AccountWithRoleListResponse](#accountwithrolelistresponse)<br> |
 
 ### [GET] /workspaces/current/default-model
 #### Parameters
@@ -10135,7 +10135,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountWithRoleList](#accountwithrolelist)<br> |
+| 200 | Success | **application/json**: [AccountWithRoleListResponse](#accountwithrolelistresponse)<br> |
 
 ### [POST] /workspaces/current/members/invite-email
 #### Request Body
@@ -12644,23 +12644,6 @@ Default namespace
 | role_name | string |  | No |
 | tenant_id | string |  | No |
 
-#### Account
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar | string |  | No |
-| avatar_url | string |  | Yes |
-| created_at | integer |  | No |
-| email | string |  | Yes |
-| id | string |  | Yes |
-| interface_language | string |  | No |
-| interface_theme | string |  | No |
-| is_password_set | boolean |  | Yes |
-| last_login_at | integer |  | No |
-| last_login_ip | string |  | No |
-| name | string |  | Yes |
-| timezone | string |  | No |
-
 #### AccountAvatarPayload
 
 | Name | Type | Description | Required |
@@ -12736,13 +12719,36 @@ Default namespace
 | password | string |  | No |
 | repeat_new_password | string |  | Yes |
 
+#### AccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| avatar_url | string |  | Yes |
+| created_at | integer |  | No |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| interface_language | string |  | No |
+| interface_theme | string |  | No |
+| is_password_set | boolean |  | Yes |
+| last_login_at | integer |  | No |
+| last_login_ip | string |  | No |
+| name | string |  | Yes |
+| timezone | string |  | No |
+
 #### AccountTimezonePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | timezone | string |  | Yes |
 
-#### AccountWithRole
+#### AccountWithRoleListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accounts | [ [AccountWithRoleResponse](#accountwithroleresponse) ] |  | Yes |
+
+#### AccountWithRoleResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -12757,12 +12763,6 @@ Default namespace
 | role | string |  | Yes |
 | roles | [ object ] |  | No |
 | status | string |  | Yes |
-
-#### AccountWithRoleList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| accounts | [ [AccountWithRole](#accountwithrole) ] |  | Yes |
 
 #### ActivateCheckQuery
 
@@ -12812,7 +12812,7 @@ Default namespace
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string |  | No |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
@@ -19951,6 +19951,8 @@ Payload for publishing snippet workflow.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | knowledge_base_setting | object |  | No |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
 
 #### PublishedWorkflowRunPayload
 
@@ -20575,6 +20577,14 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | id | string |  | Yes |
 | name | string |  | Yes |
 
+#### SimpleAccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
 #### SimpleConversation
 
 | Name | Type | Description | Required |
@@ -20713,20 +20723,6 @@ Validated metadata extracted from a Skill package.
 | inferable | boolean |  | Yes |
 | reason | string |  | No |
 
-#### SnippetAccountResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-
-#### SnippetDependencyCheckResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | Yes |
-
 #### SnippetDraftConfigResponse
 
 | Name | Type | Description | Required |
@@ -20763,6 +20759,17 @@ Payload for syncing snippet draft workflow.
 | hash | string |  | No |
 | input_fields | [ object ] |  | No |
 
+#### SnippetImportInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_dsl_version | string, <br>**Default:** 0.1.0 |  | No |
+| error | string |  | No |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | No |
+| snippet_id | string |  | No |
+| status | [ImportStatus](#importstatus) |  | Yes |
+
 #### SnippetImportPayload
 
 Payload for importing snippet from DSL.
@@ -20776,17 +20783,6 @@ Payload for importing snippet from DSL.
 | yaml_content | string | YAML content (required for yaml-content mode) | No |
 | yaml_url | string | YAML URL (required for yaml-url mode) | No |
 
-#### SnippetImportResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| current_dsl_version | string |  | Yes |
-| error | string |  | Yes |
-| id | string |  | Yes |
-| imported_dsl_version | string |  | Yes |
-| snippet_id | string |  | Yes |
-| status | [ImportStatus](#importstatus) |  | Yes |
-
 #### SnippetIterationNodeRunPayload
 
 Payload for running an iteration node in snippet draft workflow.
@@ -20799,18 +20795,18 @@ Payload for running an iteration node in snippet draft workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author_name | string |  | Yes |
-| created_at | integer |  | Yes |
-| created_by | string |  | Yes |
-| description | string |  | Yes |
-| icon_info | object |  | Yes |
+| author_name | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| icon_info | object |  | No |
 | id | string |  | Yes |
 | is_published | boolean |  | Yes |
 | name | string |  | Yes |
-| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
-| type | [SnippetType](#snippettype) |  | Yes |
-| updated_at | integer |  | Yes |
-| updated_by | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | No |
+| type | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
 | use_count | integer |  | Yes |
 | version | integer |  | Yes |
 
@@ -20849,19 +20845,19 @@ Payload for running a loop node in snippet draft workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | integer |  | Yes |
-| created_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
-| description | string |  | Yes |
-| graph | object |  | Yes |
-| icon_info | object |  | Yes |
+| created_at | integer |  | No |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| description | string |  | No |
+| graph | object |  | No |
+| icon_info | object |  | No |
 | id | string |  | Yes |
-| input_fields | [ object ] |  | Yes |
+| input_fields | [ object ] |  | No |
 | is_published | boolean |  | Yes |
 | name | string |  | Yes |
-| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | Yes |
-| type | [SnippetType](#snippettype) |  | Yes |
-| updated_at | integer |  | Yes |
-| updated_by | [SnippetAccountResponse](#snippetaccountresponse) |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | No |
+| type | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | use_count | integer |  | Yes |
 | version | integer |  | Yes |
 
@@ -20873,15 +20869,7 @@ Payload for running a loop node in snippet draft workflow.
 | name | string |  | Yes |
 | type | string |  | Yes |
 
-#### SnippetType
-
-Snippet Type Enum
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| SnippetType | string | Snippet Type Enum |  |
-
-#### SnippetUseCountResponse
+#### SnippetUseCountIncrementResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -20912,7 +20900,7 @@ Query parameters for listing snippet published workflows.
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
 | created_at | integer |  | Yes |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
 | features | object |  | Yes |
 | graph | object |  | Yes |
@@ -20924,7 +20912,7 @@ Query parameters for listing snippet published workflows.
 | rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
 | tool_published | boolean |  | Yes |
 | updated_at | integer |  | Yes |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
 
 #### StarredAppListQuery
@@ -22180,7 +22168,7 @@ How a workflow node is bound to an Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | created_from | string |  | No |
@@ -22217,7 +22205,7 @@ How a workflow node is bound to an Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | id | string |  | Yes |
 | trigger_metadata |  |  | No |
@@ -22318,7 +22306,7 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| users | [ [AccountWithRole](#accountwithrole) ] |  | Yes |
+| users | [ [AccountWithRoleResponse](#accountwithroleresponse) ] |  | Yes |
 
 #### WorkflowCommentReply
 
@@ -22741,7 +22729,7 @@ tenant's default model. The underlying generator never raises — an empty
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
 | created_at | integer |  | Yes |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
 | features | object |  | Yes |
 | graph | object |  | Yes |
@@ -22752,7 +22740,7 @@ tenant's default model. The underlying generator never raises — an empty
 | rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
 | tool_published | boolean |  | Yes |
 | updated_at | integer |  | Yes |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
 
 #### WorkflowRestoreResponse
@@ -22787,7 +22775,7 @@ tenant's default model. The underlying generator never raises — an empty
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
@@ -22826,7 +22814,7 @@ tenant's default model. The underlying generator never raises — an empty
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
@@ -22873,7 +22861,7 @@ tenant's default model. The underlying generator never raises — an empty
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
