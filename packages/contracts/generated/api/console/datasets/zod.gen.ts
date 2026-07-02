@@ -248,14 +248,6 @@ export const zExternalHitTestingPayload = z.object({
 })
 
 /**
- * ExternalRetrievalTestResponse
- */
-export const zExternalRetrievalTestResponse = z.union([
-  z.record(z.string(), z.unknown()),
-  z.array(z.record(z.string(), z.unknown())),
-])
-
-/**
  * MetadataArgs
  */
 export const zMetadataArgs = z.object({
@@ -397,52 +389,10 @@ export const zDatasetTagResponse = z.object({
   type: z.string(),
 })
 
-export const zDatasetDocMetadata = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  type: z.string().optional(),
-})
-
-export const zExternalKnowledgeInfo = z.object({
-  external_knowledge_api_endpoint: z.string().optional(),
-  external_knowledge_api_id: z.string().optional(),
-  external_knowledge_api_name: z.string().optional(),
-  external_knowledge_id: z.string().optional(),
-})
-
-export const zExternalRetrievalModel = z.object({
-  score_threshold: z.number().optional(),
-  score_threshold_enabled: z.boolean().optional(),
-  top_k: z.int().optional(),
-})
-
-export const zDatasetIconInfo = z.object({
-  icon: z.string().optional(),
-  icon_background: z.string().optional(),
-  icon_type: z.string().optional(),
-  icon_url: z.string().optional(),
-})
-
-export const zAnonymousInlineModelB1954337D565 = z.object({
-  enable: z.boolean().optional(),
-  model_name: z.string().optional(),
-  model_provider_name: z.string().optional(),
-  summary_prompt: z.string().optional(),
-})
-
 /**
- * Tag
+ * ExternalKnowledgeApiBindingResponse
  */
-export const zTag = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.string(),
-})
-
-/**
- * ExternalKnowledgeDatasetBindingResponse
- */
-export const zExternalKnowledgeDatasetBindingResponse = z.object({
+export const zExternalKnowledgeApiBindingResponse = z.object({
   id: z.string(),
   name: z.string(),
 })
@@ -453,11 +403,11 @@ export const zExternalKnowledgeDatasetBindingResponse = z.object({
 export const zExternalKnowledgeApiResponse = z.object({
   created_at: z.string(),
   created_by: z.string(),
-  dataset_bindings: z.array(zExternalKnowledgeDatasetBindingResponse).optional(),
+  dataset_bindings: z.array(zExternalKnowledgeApiBindingResponse),
   description: z.string(),
   id: z.string(),
   name: z.string(),
-  settings: z.record(z.string(), z.unknown()).nullish(),
+  settings: z.record(z.string(), z.unknown()).nullable(),
   tenant_id: z.string(),
 })
 
@@ -469,7 +419,7 @@ export const zExternalKnowledgeApiListResponse = z.object({
   has_more: z.boolean(),
   limit: z.int(),
   page: z.int(),
-  total: z.int(),
+  total: z.int().nullable(),
 })
 
 /**
@@ -701,6 +651,31 @@ export const zChildChunkBatchUpdatePayload = z.object({
 })
 
 /**
+ * ExternalHitTestingQueryResponse
+ */
+export const zExternalHitTestingQueryResponse = z.object({
+  content: z.string(),
+})
+
+/**
+ * ExternalHitTestingRecordResponse
+ */
+export const zExternalHitTestingRecordResponse = z.object({
+  content: z.string().nullish(),
+  metadata: z.record(z.string(), z.unknown()).nullish(),
+  score: z.number().nullish(),
+  title: z.string().nullish(),
+})
+
+/**
+ * ExternalHitTestingResponse
+ */
+export const zExternalHitTestingResponse = z.object({
+  query: zExternalHitTestingQueryResponse,
+  records: z.array(zExternalHitTestingRecordResponse),
+})
+
+/**
  * HitTestingQuery
  */
 export const zHitTestingQuery = z.object({
@@ -753,11 +728,6 @@ export const zRelatedAppListResponse = z.object({
 export const zDatasetRerankingModelResponse = z.object({
   reranking_model_name: z.string().nullish(),
   reranking_provider_name: z.string().nullish(),
-})
-
-export const zDatasetRerankingModel = z.object({
-  reranking_model_name: z.string().optional(),
-  reranking_provider_name: z.string().optional(),
 })
 
 /**
@@ -1077,88 +1047,6 @@ export const zDatasetListResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
-})
-
-export const zDatasetKeywordSetting = z.object({
-  keyword_weight: z.number().optional(),
-})
-
-export const zDatasetVectorSetting = z.object({
-  embedding_model_name: z.string().optional(),
-  embedding_provider_name: z.string().optional(),
-  vector_weight: z.number().optional(),
-})
-
-export const zDatasetWeightedScore = z.object({
-  keyword_setting: zDatasetKeywordSetting.optional(),
-  vector_setting: zDatasetVectorSetting.optional(),
-  weight_type: z.string().optional(),
-})
-
-export const zDatasetRetrievalModel = z.object({
-  reranking_enable: z.boolean().optional(),
-  reranking_mode: z.string().optional(),
-  reranking_model: zDatasetRerankingModel.optional(),
-  score_threshold: z.number().optional(),
-  score_threshold_enabled: z.boolean().optional(),
-  search_method: z.string().optional(),
-  top_k: z.int().optional(),
-  weights: zDatasetWeightedScore.optional(),
-})
-
-export const zDatasetDetail = z.object({
-  app_count: z.int().optional(),
-  author_name: z.string().optional(),
-  built_in_field_enabled: z.boolean().optional(),
-  chunk_structure: z.string().optional(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: z.string().optional(),
-  data_source_type: z.string().optional(),
-  description: z.string().optional(),
-  doc_form: z.string().optional(),
-  doc_metadata: z.array(zDatasetDocMetadata).optional(),
-  document_count: z.int().optional(),
-  embedding_available: z.boolean().optional(),
-  embedding_model: z.string().optional(),
-  embedding_model_provider: z.string().optional(),
-  enable_api: z.boolean().optional(),
-  external_knowledge_info: zExternalKnowledgeInfo.optional(),
-  external_retrieval_model: zExternalRetrievalModel.optional(),
-  icon_info: zDatasetIconInfo.optional(),
-  id: z.string().optional(),
-  indexing_technique: z.string().optional(),
-  is_multimodal: z.boolean().optional(),
-  is_published: z.boolean().optional(),
-  name: z.string().optional(),
-  permission: z.string().optional(),
-  permission_keys: z.array(z.string()).optional(),
-  pipeline_id: z.string().optional(),
-  provider: z.string().optional(),
-  retrieval_model_dict: zDatasetRetrievalModel.optional(),
-  runtime_mode: z.string().optional(),
-  summary_index_setting: zAnonymousInlineModelB1954337D565.optional(),
-  tags: z.array(zTag).optional(),
-  total_available_documents: z.int().optional(),
-  total_documents: z.int().optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: z.string().optional(),
-  word_count: z.int().optional(),
 })
 
 /**
@@ -1558,7 +1446,7 @@ export const zPostDatasetsExternalBody = zExternalDatasetCreatePayload
 /**
  * External dataset created successfully
  */
-export const zPostDatasetsExternalResponse = zDatasetDetail
+export const zPostDatasetsExternalResponse = zDatasetDetailResponse
 
 export const zGetDatasetsExternalKnowledgeApiQuery = z.object({
   keyword: z.string().optional(),
@@ -2188,7 +2076,7 @@ export const zPostDatasetsByDatasetIdExternalHitTestingPath = z.object({
 /**
  * External hit testing completed successfully
  */
-export const zPostDatasetsByDatasetIdExternalHitTestingResponse = zExternalRetrievalTestResponse
+export const zPostDatasetsByDatasetIdExternalHitTestingResponse = zExternalHitTestingResponse
 
 export const zPostDatasetsByDatasetIdHitTestingBody = zHitTestingPayload
 

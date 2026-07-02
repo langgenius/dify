@@ -27,14 +27,9 @@ export const zSnippetImportPayload = z.object({
 })
 
 /**
- * TextFileResponse
+ * SnippetUseCountIncrementResponse
  */
-export const zTextFileResponse = z.string()
-
-/**
- * SnippetUseCountResponse
- */
-export const zSnippetUseCountResponse = z.object({
+export const zSnippetUseCountIncrementResponse = z.object({
   result: z.string(),
   use_count: z.int(),
 })
@@ -684,6 +679,7 @@ export const zTenantListItemResponse = z.object({
   created_at: z.int().nullish(),
   current: z.boolean(),
   id: z.string(),
+  last_opened_at: z.int().nullish(),
   name: z.string().nullish(),
   plan: z.string().nullish(),
   status: z.string().nullish(),
@@ -723,9 +719,9 @@ export const zTenantInfoResponse = z.object({
 })
 
 /**
- * WorkspaceMutationResponse
+ * WorkspaceTenantResultResponse
  */
-export const zWorkspaceMutationResponse = z.object({
+export const zWorkspaceTenantResultResponse = z.object({
   result: z.string(),
   tenant: zTenantInfoResponse,
 })
@@ -792,9 +788,9 @@ export const zCreateSnippetPayload = z.object({
 })
 
 /**
- * SnippetAccountResponse
+ * SimpleAccountResponse
  */
-export const zSnippetAccountResponse = z.object({
+export const zSimpleAccountResponse = z.object({
   email: z.string(),
   id: z.string(),
   name: z.string(),
@@ -810,29 +806,22 @@ export const zSnippetTagResponse = z.object({
 })
 
 /**
- * SnippetType
- *
- * Snippet Type Enum
- */
-export const zSnippetType = z.enum(['group', 'node'])
-
-/**
  * SnippetResponse
  */
 export const zSnippetResponse = z.object({
-  created_at: z.int(),
-  created_by: zSnippetAccountResponse.nullable(),
-  description: z.string().nullable(),
-  graph: z.record(z.string(), z.unknown()),
-  icon_info: z.record(z.string(), z.unknown()).nullable(),
+  created_at: z.int().nullish(),
+  created_by: zSimpleAccountResponse.nullish(),
+  description: z.string().nullish(),
+  graph: z.record(z.string(), z.unknown()).nullish(),
+  icon_info: z.record(z.string(), z.unknown()).nullish(),
   id: z.string(),
-  input_fields: z.array(z.record(z.string(), z.unknown())),
+  input_fields: z.array(z.record(z.string(), z.unknown())).nullish(),
   is_published: z.boolean(),
   name: z.string(),
-  tags: z.array(zSnippetTagResponse),
-  type: zSnippetType,
-  updated_at: z.int(),
-  updated_by: zSnippetAccountResponse.nullable(),
+  tags: z.array(zSnippetTagResponse).optional(),
+  type: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: zSimpleAccountResponse.nullish(),
   use_count: z.int(),
   version: z.int(),
 })
@@ -841,18 +830,18 @@ export const zSnippetResponse = z.object({
  * SnippetListItemResponse
  */
 export const zSnippetListItemResponse = z.object({
-  author_name: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string().nullable(),
-  description: z.string().nullable(),
-  icon_info: z.record(z.string(), z.unknown()).nullable(),
+  author_name: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  description: z.string().nullish(),
+  icon_info: z.record(z.string(), z.unknown()).nullish(),
   id: z.string(),
   is_published: z.boolean(),
   name: z.string(),
-  tags: z.array(zSnippetTagResponse),
-  type: zSnippetType,
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
+  tags: z.array(zSnippetTagResponse).optional(),
+  type: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
   use_count: z.int(),
   version: z.int(),
 })
@@ -874,21 +863,21 @@ export const zSnippetPaginationResponse = z.object({
 export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
 
 /**
- * SnippetImportResponse
+ * SnippetImportInfo
  */
-export const zSnippetImportResponse = z.object({
-  current_dsl_version: z.string(),
-  error: z.string(),
+export const zSnippetImportInfo = z.object({
+  current_dsl_version: z.string().optional().default('0.1.0'),
+  error: z.string().optional().default(''),
   id: z.string(),
-  imported_dsl_version: z.string(),
-  snippet_id: z.string().nullable(),
+  imported_dsl_version: z.string().optional().default(''),
+  snippet_id: z.string().nullish(),
   status: zImportStatus,
 })
 
 /**
- * AccountWithRole
+ * AccountWithRoleResponse
  */
-export const zAccountWithRole = z.object({
+export const zAccountWithRoleResponse = z.object({
   avatar: z.string().nullish(),
   avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
@@ -903,10 +892,10 @@ export const zAccountWithRole = z.object({
 })
 
 /**
- * AccountWithRoleList
+ * AccountWithRoleListResponse
  */
-export const zAccountWithRoleList = z.object({
-  accounts: z.array(zAccountWithRole),
+export const zAccountWithRoleListResponse = z.object({
+  accounts: z.array(zAccountWithRoleResponse),
 })
 
 /**
@@ -1531,10 +1520,10 @@ export const zPluginDependency = z.object({
 })
 
 /**
- * SnippetDependencyCheckResponse
+ * CheckDependenciesResult
  */
-export const zSnippetDependencyCheckResponse = z.object({
-  leaked_dependencies: z.array(zPluginDependency),
+export const zCheckDependenciesResult = z.object({
+  leaked_dependencies: z.array(zPluginDependency).optional(),
 })
 
 /**
@@ -2575,9 +2564,9 @@ export const zTriggerProviderApiEntity = z.object({
 export const zTriggerProviderListResponse = z.array(zTriggerProviderApiEntity)
 
 /**
- * AccountWithRole
+ * AccountWithRoleResponse
  */
-export const zAccountWithRoleWritable = z.object({
+export const zAccountWithRoleResponseWritable = z.object({
   avatar: z.string().nullish(),
   created_at: z.int().nullish(),
   email: z.string(),
@@ -2591,10 +2580,10 @@ export const zAccountWithRoleWritable = z.object({
 })
 
 /**
- * AccountWithRoleList
+ * AccountWithRoleListResponse
  */
-export const zAccountWithRoleListWritable = z.object({
-  accounts: z.array(zAccountWithRoleWritable),
+export const zAccountWithRoleListResponseWritable = z.object({
+  accounts: z.array(zAccountWithRoleResponseWritable),
 })
 
 /**
@@ -2647,7 +2636,7 @@ export const zPostWorkspacesCurrentCustomizedSnippetsImportsBody = zSnippetImpor
 /**
  * Snippet imported successfully
  */
-export const zPostWorkspacesCurrentCustomizedSnippetsImportsResponse = zSnippetImportResponse
+export const zPostWorkspacesCurrentCustomizedSnippetsImportsResponse = zSnippetImportInfo
 
 export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPath = z.object({
   import_id: z.string(),
@@ -2657,7 +2646,7 @@ export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPat
  * Import confirmed successfully
  */
 export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
-  = zSnippetImportResponse
+  = zSnippetImportInfo
 
 export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
   snippet_id: z.uuid(),
@@ -2696,7 +2685,7 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependencies
  * Dependencies checked successfully
  */
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse
-  = zSnippetDependencyCheckResponse
+  = zCheckDependenciesResult
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportPath = z.object({
   snippet_id: z.uuid(),
@@ -2709,7 +2698,10 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportQuery = z.o
 /**
  * Snippet exported successfully
  */
-export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse = zTextFileResponse
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementPath = z.object({
   snippet_id: z.uuid(),
@@ -2719,12 +2711,12 @@ export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncremen
  * Use count incremented successfully
  */
 export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse
-  = zSnippetUseCountResponse
+  = zSnippetUseCountIncrementResponse
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleListResponse
 
 export const zGetWorkspacesCurrentDefaultModelQuery = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
@@ -2828,7 +2820,7 @@ export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointUpdateRespo
 /**
  * Success
  */
-export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleListResponse
 
 export const zPostWorkspacesCurrentMembersInviteEmailBody = zMemberInvitePayload
 
@@ -4441,7 +4433,11 @@ export const zPostWorkspacesCustomConfigBody = zWorkspaceCustomConfigPayload
 /**
  * Success
  */
-export const zPostWorkspacesCustomConfigResponse = zWorkspaceMutationResponse
+export const zPostWorkspacesCustomConfigResponse = zWorkspaceTenantResultResponse
+
+export const zPostWorkspacesCustomConfigWebappLogoUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+})
 
 /**
  * Logo uploaded
@@ -4453,7 +4449,7 @@ export const zPostWorkspacesInfoBody = zWorkspaceInfoPayload
 /**
  * Success
  */
-export const zPostWorkspacesInfoResponse = zWorkspaceMutationResponse
+export const zPostWorkspacesInfoResponse = zWorkspaceTenantResultResponse
 
 export const zPostWorkspacesSwitchBody = zSwitchWorkspacePayload
 

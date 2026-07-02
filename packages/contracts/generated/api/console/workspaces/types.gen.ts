@@ -51,25 +51,25 @@ export type CreateSnippetPayload = {
 }
 
 export type SnippetResponse = {
-  created_at: number
-  created_by: SnippetAccountResponse | null
-  description: string | null
-  graph: {
+  created_at?: number | null
+  created_by?: SimpleAccountResponse | null
+  description?: string | null
+  graph?: {
     [key: string]: unknown
-  }
-  icon_info: {
+  } | null
+  icon_info?: {
     [key: string]: unknown
   } | null
   id: string
-  input_fields: Array<{
+  input_fields?: Array<{
     [key: string]: unknown
-  }>
+  }> | null
   is_published: boolean
   name: string
-  tags: Array<SnippetTagResponse>
-  type: SnippetType
-  updated_at: number
-  updated_by: SnippetAccountResponse | null
+  tags?: Array<SnippetTagResponse>
+  type: string
+  updated_at?: number | null
+  updated_by?: SimpleAccountResponse | null
   use_count: number
   version: number
 }
@@ -83,12 +83,12 @@ export type SnippetImportPayload = {
   yaml_url?: string | null
 }
 
-export type SnippetImportResponse = {
-  current_dsl_version: string
-  error: string
+export type SnippetImportInfo = {
+  current_dsl_version?: string
+  error?: string
   id: string
-  imported_dsl_version: string
-  snippet_id: string | null
+  imported_dsl_version?: string
+  snippet_id?: string | null
   status: ImportStatus
 }
 
@@ -98,19 +98,17 @@ export type UpdateSnippetPayload = {
   name?: string | null
 }
 
-export type SnippetDependencyCheckResponse = {
-  leaked_dependencies: Array<PluginDependency>
+export type CheckDependenciesResult = {
+  leaked_dependencies?: Array<PluginDependency>
 }
 
-export type TextFileResponse = string
-
-export type SnippetUseCountResponse = {
+export type SnippetUseCountIncrementResponse = {
   result: string
   use_count: number
 }
 
-export type AccountWithRoleList = {
-  accounts: Array<AccountWithRole>
+export type AccountWithRoleListResponse = {
+  accounts: Array<AccountWithRoleResponse>
 }
 
 export type DefaultModelDataResponse = {
@@ -913,7 +911,7 @@ export type WorkspaceCustomConfigPayload = {
   replace_webapp_logo?: string | null
 }
 
-export type WorkspaceMutationResponse = {
+export type WorkspaceTenantResultResponse = {
   result: string
   tenant: TenantInfoResponse
 }
@@ -939,6 +937,7 @@ export type TenantListItemResponse = {
   created_at?: number | null
   current: boolean
   id: string
+  last_opened_at?: number | null
   name?: string | null
   plan?: string | null
   status?: string | null
@@ -950,20 +949,20 @@ export type WorkspaceCustomConfigResponse = {
 }
 
 export type SnippetListItemResponse = {
-  author_name: string | null
-  created_at: number
-  created_by: string | null
-  description: string | null
-  icon_info: {
+  author_name?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  description?: string | null
+  icon_info?: {
     [key: string]: unknown
   } | null
   id: string
   is_published: boolean
   name: string
-  tags: Array<SnippetTagResponse>
-  type: SnippetType
-  updated_at: number
-  updated_by: string | null
+  tags?: Array<SnippetTagResponse>
+  type: string
+  updated_at?: number | null
+  updated_by?: string | null
   use_count: number
   version: number
 }
@@ -986,7 +985,7 @@ export type InputFieldDefinition = {
   type?: string | null
 }
 
-export type SnippetAccountResponse = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -998,8 +997,6 @@ export type SnippetTagResponse = {
   type: string
 }
 
-export type SnippetType = 'group' | 'node'
-
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
 
 export type PluginDependency = {
@@ -1008,7 +1005,7 @@ export type PluginDependency = {
   value: Github | Marketplace | Package
 }
 
-export type AccountWithRole = {
+export type AccountWithRoleResponse = {
   avatar?: string | null
   readonly avatar_url: string | null
   created_at?: number | null
@@ -1822,11 +1819,11 @@ export type RestrictModel = {
 
 export type CorePluginEntitiesParametersPluginParameterAutoGenerateType = 'prompt_instruction'
 
-export type AccountWithRoleListWritable = {
-  accounts: Array<AccountWithRoleWritable>
+export type AccountWithRoleListResponseWritable = {
+  accounts: Array<AccountWithRoleResponseWritable>
 }
 
-export type AccountWithRoleWritable = {
+export type AccountWithRoleResponseWritable = {
   avatar?: string | null
   created_at?: number | null
   email: string
@@ -1949,8 +1946,8 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsErrors = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsResponses = {
-  200: SnippetImportResponse
-  202: SnippetImportResponse
+  200: SnippetImportInfo
+  202: SnippetImportInfo
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsResponse
@@ -1970,7 +1967,7 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmError
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses = {
-  200: SnippetImportResponse
+  200: SnippetImportInfo
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
@@ -2051,7 +2048,7 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesEr
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses = {
-  200: SnippetDependencyCheckResponse
+  200: CheckDependenciesResult
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse
@@ -2073,7 +2070,9 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses = {
-  200: TextFileResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse
@@ -2093,7 +2092,7 @@ export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementE
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponses = {
-  200: SnippetUseCountResponse
+  200: SnippetUseCountIncrementResponse
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse
@@ -2107,7 +2106,7 @@ export type GetWorkspacesCurrentDatasetOperatorsData = {
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponse
@@ -2334,7 +2333,7 @@ export type GetWorkspacesCurrentMembersData = {
 }
 
 export type GetWorkspacesCurrentMembersResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentMembersResponse
@@ -4935,14 +4934,16 @@ export type PostWorkspacesCustomConfigData = {
 }
 
 export type PostWorkspacesCustomConfigResponses = {
-  200: WorkspaceMutationResponse
+  200: WorkspaceTenantResultResponse
 }
 
 export type PostWorkspacesCustomConfigResponse
   = PostWorkspacesCustomConfigResponses[keyof PostWorkspacesCustomConfigResponses]
 
 export type PostWorkspacesCustomConfigWebappLogoUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/custom-config/webapp-logo/upload'
@@ -4963,7 +4964,7 @@ export type PostWorkspacesInfoData = {
 }
 
 export type PostWorkspacesInfoResponses = {
-  200: WorkspaceMutationResponse
+  200: WorkspaceTenantResultResponse
 }
 
 export type PostWorkspacesInfoResponse
