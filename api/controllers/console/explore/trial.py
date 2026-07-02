@@ -328,6 +328,11 @@ class TrialDatasetResponse(ResponseModel):
     created_at: int | None = None
     permission_keys: list[str] = Field(default_factory=list)
 
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
 
 class TrialDatasetListResponse(ResponseModel):
     data: list[TrialDatasetResponse]
@@ -337,7 +342,7 @@ class TrialDatasetListResponse(ResponseModel):
     page: int
 
 
-class TrialWorkflowAccount(ResponseModel):
+class TrialSimpleAccount(ResponseModel):
     id: str
     name: str | None = None
     email: str | None = None
@@ -351,12 +356,12 @@ class TrialWorkflowResponse(ResponseModel):
     version: str | None = None
     marked_name: str | None = None
     marked_comment: str | None = None
-    created_by: TrialWorkflowAccount | None = Field(
+    created_by: TrialSimpleAccount | None = Field(
         default=None,
         validation_alias=AliasChoices("created_by_account", "created_by"),
     )
     created_at: int | None = None
-    updated_by: TrialWorkflowAccount | None = Field(
+    updated_by: TrialSimpleAccount | None = Field(
         default=None,
         validation_alias=AliasChoices("updated_by_account", "updated_by"),
     )
@@ -392,6 +397,8 @@ register_response_schema_models(
     TrialDatasetListResponse,
     TrialWorkflowResponse,
 )
+
+simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
