@@ -63,8 +63,8 @@ export function AccessSurfaceCard({
   return (
     <article className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs">
       <div className="px-4 pt-4 pb-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="flex min-w-48 flex-1 items-center gap-2">
             <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-lg', iconClassName)}>
               <span aria-hidden className={cn(icon, 'size-4')} />
             </span>

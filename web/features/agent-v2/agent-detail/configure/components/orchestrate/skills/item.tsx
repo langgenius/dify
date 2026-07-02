@@ -43,7 +43,7 @@ export function AgentSkillItem({
         <button
           type="button"
           aria-label={skill.name}
-          className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg py-1 pr-2.5 pl-2 text-left outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg py-1 pr-2.5 pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           onClick={handleOpenPreview}
         >
           <span aria-hidden className="i-custom-public-agent-building-blocks size-4 shrink-0" />

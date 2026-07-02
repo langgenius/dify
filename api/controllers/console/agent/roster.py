@@ -5,16 +5,21 @@ from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import func, select
 
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model, resolve_agent_runtime_app_model
 from controllers.console.apikey import ApiKeyItem, ApiKeyList, BaseApiKeyListResource, BaseApiKeyResource
 from controllers.console.app.app import (
-    AppDetailWithSite as GenericAppDetailWithSite,
+    APP_LIST_QUERY_ARRAY_FIELDS,
+    AppListQuery,
 )
 from controllers.console.app.app import (
-    AppListQuery,
-    _normalize_app_list_query_args,
+    AppDetailWithSite as GenericAppDetailWithSite,
 )
 from controllers.console.app.app import (
     AppPagination as GenericAppPagination,
@@ -39,9 +44,11 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.agent_fields import (
+    AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
+    AgentConfigSnapshotSummaryResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
     AgentLogMessageListResponse,
@@ -50,11 +57,13 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
+from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.agent import Agent, AgentStatus
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
@@ -193,11 +202,9 @@ class AgentLogsQuery(BaseModel):
     def empty_list_values_to_list(cls, value: object) -> list[str]:
         if value in (None, ""):
             return []
-        if isinstance(value, str):
-            return [value]
         if isinstance(value, list):
-            return [item for item in value if item]
-        return []
+            return [str(item).strip() for item in value if str(item).strip()]
+        raise ValueError("Unsupported query list type.")
 
     @field_validator("sort_by")
     @classmethod
@@ -264,21 +271,21 @@ class AgentPublishPayload(BaseModel):
     version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
 
 
-class AgentPublishResponse(BaseModel):
+class AgentPublishResponse(ResponseModel):
     result: str
     active_config_snapshot_id: str
-    active_config_snapshot: dict[str, object] | None = None
-    draft: dict[str, object] | None = None
+    active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    draft: AgentConfigDraftSummaryResponse | None = None
 
 
 class AgentBuildDraftCheckoutPayload(BaseModel):
     force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
 
 
-class AgentBuildDraftResponse(BaseModel):
+class AgentBuildDraftResponse(ResponseModel):
     variant: str
-    draft: dict[str, object]
-    agent_soul: dict[str, object]
+    draft: AgentConfigDraftSummaryResponse
+    agent_soul: AgentSoulConfig
 
 
 class AgentBuildDraftApplyResponse(BaseModel):
@@ -502,16 +509,11 @@ def _parse_observability_time_range(start: str | None, end: str | None, account:
         abort(400, description=str(exc))
 
 
-def _multi_query_values(name: str, legacy_name: str | None = None) -> list[str]:
-    values: list[str] = []
-    for query_name in (name, f"{name}[]"):
-        values.extend(request.args.getlist(query_name))
-    if legacy_name:
-        values.extend(request.args.getlist(legacy_name))
-    parsed: list[str] = []
-    for value in values:
-        parsed.extend(item.strip() for item in value.split(",") if item.strip())
-    return parsed
+def _query_values(name: str, alias_name: str | None = None) -> list[str]:
+    values = request.args.getlist(name)
+    if alias_name:
+        values.extend(request.args.getlist(alias_name))
+    return [value.strip() for value in values if value.strip()]
 
 
 @console_ns.route("/agent")
@@ -524,7 +526,7 @@ class AgentAppListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
-        args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
+        args = query_params_from_request(AppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
         params = AppListParams(
             page=args.page,
             limit=args.limit,
@@ -889,8 +891,8 @@ class AgentLogsApi(Resource):
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
-        query_data["sources"] = _multi_query_values("sources", "source")
-        query_data["statuses"] = _multi_query_values("statuses", "status")
+        query_data["sources"] = _query_values("sources", "source")
+        query_data["statuses"] = _query_values("statuses", "status")
         query = AgentLogsQuery.model_validate(query_data)
         start, end = _parse_observability_time_range(query.start, query.end, current_user)
         try:
@@ -926,8 +928,8 @@ class AgentLogMessagesApi(Resource):
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
         app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
-        query_data["sources"] = _multi_query_values("sources", "source")
-        query_data["statuses"] = _multi_query_values("statuses", "status")
+        query_data["sources"] = _query_values("sources", "source")
+        query_data["statuses"] = _query_values("statuses", "status")
         query = AgentLogsQuery.model_validate(query_data)
         start, end = _parse_observability_time_range(query.start, query.end, current_user)
         try:

@@ -106,10 +106,14 @@ vi.mock('@/service/client', () => ({
     },
     explore: {
       apps: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', 'get', input],
+        },
       },
       banners: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', 'get', input],
+        },
       },
     },
   },
@@ -206,7 +210,7 @@ const mockMemberRole = (hasEditPermission: boolean) => {
 }
 
 const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
 const homeContinueWorkAppsInput = {
   query: {
     page: 1,

@@ -429,15 +429,17 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
     })
 
-    it('should render sort filter before search and the snippets link', () => {
+    it('should render filters and search before the right aligned actions', () => {
       renderList()
 
-      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
+      const creatorsButton = screen.getByRole('button', { name: 'Creators' })
       const searchInput = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
+      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
       const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
       expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -448,6 +450,17 @@ describe('List', () => {
 
       expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
+    })
+
+    it('should lay out app cards with auto-fill grid columns', () => {
+      renderList()
+
+      const grid = screen.getByTestId('app-card-app-1').parentElement
+
+      expect(grid).toHaveClass(
+        'grid',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+      )
     })
 
     it('should hide starred section when there are no starred apps', () => {
@@ -520,6 +533,24 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+    })
+
+    it('should lay out first empty state placeholder cards with auto-fill grid columns', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      const { container } = renderList()
+      const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none'))
+        .find(element => element.className.includes('grid-rows-4'))
+
+      if (!placeholderGrid)
+        throw new Error('Expected first empty state placeholder grid to render')
+
+      expect(placeholderGrid).toHaveClass(
+        'grid',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+        'grid-rows-4',
+      )
+      expect(placeholderGrid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4')
     })
 
     it('should hide learn dify in first empty state when learn app is disabled', () => {
@@ -683,17 +714,6 @@ describe('List', () => {
           creator_ids: ['creator-1'],
           mode: AppModeEnum.WORKFLOW,
         },
-      })
-    })
-
-    it('should remove legacy tagIDs from URL while preserving other filters', async () => {
-      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales')
-
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith(
-          '/apps?category=workflow&keywords=sales',
-          { scroll: false },
-        )
       })
     })
   })
