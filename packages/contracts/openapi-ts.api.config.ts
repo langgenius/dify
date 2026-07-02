@@ -465,6 +465,20 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       suffix: '.gen',
     },
     path: job.outputPath,
+    postProcess: [
+      {
+        command: 'node',
+        args: ['scripts/patch-orpc-v2-generated.mjs', '{{path}}'],
+      },
+      {
+        command: 'vp',
+        args: ['fmt', '{{path}}'],
+      },
+      {
+        command: 'eslint',
+        args: ['--fix', '{{path}}/*.ts'],
+      },
+    ],
     ...(job.source ? { source: job.source } : {}),
   },
   plugins: job.plugins ?? [

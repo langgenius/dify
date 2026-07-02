@@ -83,7 +83,7 @@
     "@napi-rs/keyring": "catalog:",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
-    "@orpc/openapi-client": "catalog:",
+    "@orpc/openapi": "catalog:",
     "cli-table3": "catalog:",
     "eventsource-parser": "catalog:",
     "js-yaml": "catalog:",

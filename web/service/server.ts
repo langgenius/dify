@@ -1,15 +1,11 @@
 import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
 import type { ClientLink } from '@orpc/client'
-import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
-import type { JsonifiedClient } from '@orpc/openapi-client'
+import type { RouterContract, RouterContractClient } from '@orpc/contract'
+import type { JsonifiedClient } from '@orpc/openapi'
 import { createORPCClient, onError } from '@orpc/client'
-import { OpenAPILink } from '@orpc/openapi-client/fetch'
+import { OpenAPILink } from '@orpc/openapi/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import {
-  API_PREFIX,
-  CSRF_COOKIE_NAME,
-  CSRF_HEADER_NAME,
-} from '@/config'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
 import { createConsoleDynamicLink } from './console-link'
 
@@ -20,8 +16,8 @@ export type ServerConsoleClientContext = {
   csrfToken?: string
 }
 
-const withTrailingSlash = (value: string) => value.endsWith('/') ? value : `${value}/`
-const withoutLeadingSlash = (value: string) => value.startsWith('/') ? value.slice(1) : value
+const withTrailingSlash = (value: string) => (value.endsWith('/') ? value : `${value}/`)
+const withoutLeadingSlash = (value: string) => (value.startsWith('/') ? value.slice(1) : value)
 
 const resolveAbsoluteUrlPrefix = (value: string) => {
   try {
@@ -57,6 +53,15 @@ const getServerConsoleApiPrefix = () => {
   return apiPrefix
 }
 
+const getServerConsoleApiLinkURL = () => {
+  const url = new URL(getServerConsoleApiPrefix())
+
+  return {
+    origin: url.origin,
+    url: `${url.pathname}${url.search}` as `/${string}`,
+  }
+}
+
 const createServerConsoleRequestHeaders = (context: ServerConsoleClientContext | undefined) => {
   const requestHeaders = new Headers({
     Accept: 'application/json',
@@ -72,17 +77,24 @@ const createServerConsoleRequestHeaders = (context: ServerConsoleClientContext |
 
 type ServerConsoleClientLink = ClientLink<ServerConsoleClientContext>
 
-function createServerConsoleOpenAPILink(contract: AnyContractRouter): ServerConsoleClientLink {
+function createServerConsoleOpenAPILink(contract: RouterContract): ServerConsoleClientLink {
   return new OpenAPILink<ServerConsoleClientContext>(contract, {
-    url: getServerConsoleApiPrefix,
+    origin: () => getServerConsoleApiLinkURL().origin,
+    url: () => getServerConsoleApiLinkURL().url,
     headers: ({ context }) => createServerConsoleRequestHeaders(context),
-    fetch: (request, init) => {
-      if (request.body && !request.headers.has('content-type'))
-        request.headers.set('Content-Type', 'application/json')
+    fetch: (url, init) => {
+      const headers = new Headers(init.headers)
+      if (init.body && !headers.has('content-type'))
+        headers.set('Content-Type', 'application/json')
+
+      const request = new Request(url, {
+        ...init,
+        headers,
+      })
 
       return globalThis.fetch(request, {
-        ...init,
         cache: 'no-store',
+        redirect: init.redirect,
       })
     },
     interceptors: [
@@ -107,9 +119,13 @@ export const getServerConsoleClientContext = async (): Promise<ServerConsoleClie
 export const getServerConsoleRequestHeaders = async () =>
   createServerConsoleRequestHeaders(await getServerConsoleClientContext())
 
-const serverConsoleLink = createConsoleDynamicLink<ServerConsoleClientContext>(createServerConsoleOpenAPILink)
+const serverConsoleLink = createConsoleDynamicLink<ServerConsoleClientContext>(
+  createServerConsoleOpenAPILink,
+)
 
-export const serverConsoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ServerConsoleClientContext>> = createORPCClient(serverConsoleLink)
+export const serverConsoleClient: JsonifiedClient<
+  RouterContractClient<typeof consoleRouterContract, ServerConsoleClientContext>
+> = createORPCClient(serverConsoleLink)
 
 export const serverConsoleQuery = createTanstackQueryUtils(serverConsoleClient, {
   path: ['console'],

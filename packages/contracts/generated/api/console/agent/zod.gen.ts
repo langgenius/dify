@@ -62,6 +62,15 @@ export const zAgentSimpleResultResponse = z.object({
 })
 
 /**
+ * AgentBuildDraftResponse
+ */
+export const zAgentBuildDraftResponse = z.object({
+  agent_soul: z.record(z.string(), z.unknown()),
+  draft: z.record(z.string(), z.unknown()),
+  variant: z.string(),
+})
+
+/**
  * AgentBuildDraftApplyResponse
  */
 export const zAgentBuildDraftApplyResponse = z.object({
@@ -186,6 +195,16 @@ export const zAgentPublishPayload = z.object({
 })
 
 /**
+ * AgentPublishResponse
+ */
+export const zAgentPublishResponse = z.object({
+  active_config_snapshot: z.record(z.string(), z.unknown()).nullish(),
+  active_config_snapshot_id: z.string(),
+  draft: z.record(z.string(), z.unknown()).nullish(),
+  result: z.string(),
+})
+
+/**
  * SandboxReadResponse
  */
 export const zSandboxReadResponse = z.object({
@@ -305,6 +324,17 @@ export const zTag = z.object({
   name: z.string(),
   type: z.string(),
 })
+
+export const zJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
 
 /**
  * WorkflowPartial
@@ -772,17 +802,6 @@ export const zAgentLogMessageListResponse = z.object({
   total: z.int(),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
-
 /**
  * AgentThought
  */
@@ -928,7 +947,7 @@ export const zAgentStatisticSummaryResponse = z.object({
 export const zModelConfigPartial = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
-  model: z.unknown().nullish(),
+  model: zJsonValue.nullish(),
   pre_prompt: z.string().nullish(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
@@ -1046,7 +1065,7 @@ export const zAgentAppDetailWithSite = z.object({
   role: z.string().nullish(),
   site: zAppDetailSiteResponse.nullish(),
   tags: z.array(zTag).optional(),
-  tracing: z.unknown().nullish(),
+  tracing: zJsonValue.nullish(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
@@ -1215,38 +1234,6 @@ export const zAgentSoulPromptConfig = z.object({
 })
 
 /**
- * AgentConfigDraftType
- *
- * Editable Agent Soul draft workspace type.
- */
-export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
-
-/**
- * AgentConfigDraftSummaryResponse
- */
-export const zAgentConfigDraftSummaryResponse = z.object({
-  account_id: z.string().nullish(),
-  agent_id: z.string(),
-  base_snapshot_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  draft_type: zAgentConfigDraftType,
-  id: z.string(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-})
-
-/**
- * AgentPublishResponse
- */
-export const zAgentPublishResponse = z.object({
-  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
-  active_config_snapshot_id: z.string(),
-  draft: zAgentConfigDraftSummaryResponse.nullish(),
-  result: z.string(),
-})
-
-/**
  * AgentHumanContactConfig
  */
 export const zAgentHumanContactConfig = z.object({
@@ -1282,6 +1269,28 @@ export const zWorkflowPreviousNodeOutputRef = z.object({
   variable_selector: z
     .array(z.union([z.string(), z.int(), z.number(), z.boolean(), z.null()]))
     .nullish(),
+})
+
+/**
+ * AgentConfigDraftType
+ *
+ * Editable Agent Soul draft workspace type.
+ */
+export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
+
+/**
+ * AgentConfigDraftSummaryResponse
+ */
+export const zAgentConfigDraftSummaryResponse = z.object({
+  account_id: z.string().nullish(),
+  agent_id: z.string(),
+  base_snapshot_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  draft_type: zAgentConfigDraftType,
+  id: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
 })
 
 /**
@@ -2376,15 +2385,6 @@ export const zAgentSoulConfig = z.object({
 })
 
 /**
- * AgentBuildDraftResponse
- */
-export const zAgentBuildDraftResponse = z.object({
-  agent_soul: zAgentSoulConfig,
-  draft: zAgentConfigDraftSummaryResponse,
-  variant: z.string(),
-})
-
-/**
  * ComposerSavePayload
  */
 export const zComposerSavePayload = z.object({
@@ -2525,27 +2525,27 @@ export const zHumanInputContent = z.object({
  * MessageDetailResponse
  */
 export const zMessageDetailResponse = z.object({
-  agent_thoughts: z.array(zAgentThought),
+  agent_thoughts: z.array(zAgentThought).optional(),
   annotation: zConversationAnnotation.nullish(),
   annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
   answer: z.string(),
-  answer_tokens: z.int(),
+  answer_tokens: z.int().nullish(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent).optional(),
-  feedbacks: z.array(zFeedback),
+  feedbacks: z.array(zFeedback).optional(),
   from_account_id: z.string().nullish(),
   from_end_user_id: z.string().nullish(),
   from_source: z.string(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue,
-  message_files: z.array(zMessageFile),
-  message_tokens: z.int(),
-  metadata: zJsonValue,
+  message: zJsonValue.nullish(),
+  message_files: z.array(zMessageFile).optional(),
+  message_tokens: z.int().nullish(),
+  metadata: zJsonValue.nullish(),
   parent_message_id: z.string().nullish(),
-  provider_response_latency: z.number(),
+  provider_response_latency: z.number().nullish(),
   query: z.string(),
   status: z.string(),
   workflow_run_id: z.string().nullish(),
@@ -2672,7 +2672,7 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   role: z.string().nullish(),
   site: zAppDetailSiteResponseWritable.nullish(),
   tags: z.array(zTag).optional(),
-  tracing: z.unknown().nullish(),
+  tracing: zJsonValue.nullish(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),

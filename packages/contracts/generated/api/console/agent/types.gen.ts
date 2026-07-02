@@ -52,7 +52,7 @@ export type AgentAppDetailWithSite = {
   role?: string | null
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
-  tracing?: unknown | null
+  tracing?: JsonValue | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -120,8 +120,12 @@ export type AgentSimpleResultResponse = {
 }
 
 export type AgentBuildDraftResponse = {
-  agent_soul: AgentSoulConfig
-  draft: AgentConfigDraftSummaryResponse
+  agent_soul: {
+    [key: string]: unknown
+  }
+  draft: {
+    [key: string]: unknown
+  }
   variant: string
 }
 
@@ -374,16 +378,16 @@ export type AgentLogMessageListResponse = {
 }
 
 export type MessageDetailResponse = {
-  agent_thoughts: Array<AgentThought>
+  agent_thoughts?: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
-  answer_tokens: number
+  answer_tokens?: number | null
   conversation_id: string
   created_at?: number | null
   error?: string | null
   extra_contents?: Array<HumanInputContent>
-  feedbacks: Array<Feedback>
+  feedbacks?: Array<Feedback>
   from_account_id?: string | null
   from_end_user_id?: string | null
   from_source: string
@@ -391,12 +395,12 @@ export type MessageDetailResponse = {
   inputs: {
     [key: string]: JsonValue
   }
-  message: JsonValue
-  message_files: Array<MessageFile>
-  message_tokens: number
-  metadata: JsonValue
+  message?: JsonValue | null
+  message_files?: Array<MessageFile>
+  message_tokens?: number | null
+  metadata?: JsonValue | null
   parent_message_id?: string | null
-  provider_response_latency: number
+  provider_response_latency?: number | null
   query: string
   status: string
   workflow_run_id?: string | null
@@ -407,9 +411,13 @@ export type AgentPublishPayload = {
 }
 
 export type AgentPublishResponse = {
-  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
+  active_config_snapshot?: {
+    [key: string]: unknown
+  } | null
   active_config_snapshot_id: string
-  draft?: AgentConfigDraftSummaryResponse | null
+  draft?: {
+    [key: string]: unknown
+  } | null
   result: string
 }
 
@@ -570,6 +578,17 @@ export type Tag = {
   type: string
 }
 
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+
 export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -631,18 +650,6 @@ export type AgentSoulConfig = {
   tools?: AgentSoulToolsConfig
 }
 
-export type AgentConfigDraftSummaryResponse = {
-  account_id?: string | null
-  agent_id: string
-  base_snapshot_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  draft_type: AgentConfigDraftType
-  id: string
-  updated_at?: number | null
-  updated_by?: string | null
-}
-
 export type ComposerBindingPayload = {
   agent_id?: string | null
   binding_type: 'inline_agent' | 'roster_agent'
@@ -702,6 +709,18 @@ export type AgentComposerAgentResponse = {
   scope: AgentScope
   source?: AgentSource | null
   status: AgentStatus
+}
+
+export type AgentConfigDraftSummaryResponse = {
+  account_id?: string | null
+  agent_id: string
+  base_snapshot_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  draft_type: AgentConfigDraftType
+  id: string
+  updated_at?: number | null
+  updated_by?: string | null
 }
 
 export type ComposerValidationFindingsResponse = {
@@ -960,17 +979,6 @@ export type Feedback = {
   rating: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type MessageFile = {
   belongs_to?: string | null
   filename: string
@@ -1073,7 +1081,7 @@ export type AgentConfigRevisionResponse = {
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
-  model?: unknown | null
+  model?: JsonValue | null
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
@@ -1194,8 +1202,6 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
-export type AgentConfigDraftType = 'debug_build' | 'draft'
-
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
@@ -1261,6 +1267,8 @@ export type WorkflowPreviousNodeOutputRef = {
   variable_selector?: Array<string | number | number | boolean | null> | null
   [key: string]: unknown
 }
+
+export type AgentConfigDraftType = 'debug_build' | 'draft'
 
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
@@ -1854,7 +1862,7 @@ export type AgentAppDetailWithSiteWritable = {
   role?: string | null
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
-  tracing?: unknown | null
+  tracing?: JsonValue | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null

@@ -1,9 +1,10 @@
-import type { InferContractRouterInputs } from '@orpc/contract'
+import type { InferRouterContractInputs } from '@orpc/contract'
 import { oc, type } from '@orpc/contract'
+import { openapi } from '@orpc/openapi'
 
 // This Marketplace contract is manually maintained because these APIs are not generated from Dify OpenAPI specs.
 
-const base = oc.$route({ inputStructure: 'detailed' })
+const base = oc.meta(openapi({ inputStructure: 'detailed' }))
 
 export type SearchParamsFromCollection = {
   query?: string
@@ -157,10 +158,10 @@ export type TemplateDetailResponse = {
 export type DownloadPluginResponse = Blob
 
 const collectionsContract = base
-  .route({
+  .meta(openapi({
     path: '/collections',
     method: 'GET',
-  })
+  }))
   .input(
     type<{
       query?: CollectionsAndPluginsSearchParams & { page?: number, page_size?: number }
@@ -169,10 +170,10 @@ const collectionsContract = base
   .output(type<CollectionsResponse>())
 
 const collectionPluginsContract = base
-  .route({
+  .meta(openapi({
     path: '/collections/{collectionId}/plugins',
     method: 'POST',
-  })
+  }))
   .input(
     type<{
       params: {
@@ -184,10 +185,10 @@ const collectionPluginsContract = base
   .output(type<CollectionPluginsResponse>())
 
 const searchAdvancedContract = base
-  .route({
+  .meta(openapi({
     path: '/{kind}/search/advanced',
     method: 'POST',
-  })
+  }))
   .input(type<{
     params: {
       kind: 'plugins' | 'bundles'
@@ -197,10 +198,10 @@ const searchAdvancedContract = base
   .output(type<SearchAdvancedResponse>())
 
 const templateDetailContract = base
-  .route({
+  .meta(openapi({
     path: '/templates/{templateId}',
     method: 'GET',
-  })
+  }))
   .input(type<{
     params: {
       templateId: string
@@ -209,10 +210,10 @@ const templateDetailContract = base
   .output(type<TemplateDetailResponse>())
 
 const downloadPluginContract = base
-  .route({
+  .meta(openapi({
     path: '/plugins/{organization}/{pluginName}/{version}/download',
     method: 'GET',
-  })
+  }))
   .input(type<{
     params: {
       organization: string
@@ -230,4 +231,4 @@ export const marketplaceRouterContract = {
   downloadPlugin: downloadPluginContract,
 }
 
-export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
+export type MarketPlaceInputs = InferRouterContractInputs<typeof marketplaceRouterContract>

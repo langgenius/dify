@@ -939,7 +939,6 @@ export type TenantListItemResponse = {
   created_at?: number | null
   current: boolean
   id: string
-  last_opened_at?: number | null
   name?: string | null
   plan?: string | null
   status?: string | null
