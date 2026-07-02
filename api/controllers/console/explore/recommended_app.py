@@ -70,19 +70,33 @@ class LearnDifyAppListResponse(ResponseModel):
     recommended_apps: list[RecommendedAppResponse]
 
 
-class RecommendedAppDetailResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
+class RecommendedAppDetailResponse(ResponseModel):
+    id: str
+    name: str
+    icon: str | None = None
+    icon_background: str | None = None
+    mode: str
+    export_data: str
+    can_trial: bool | None = None
+
+
+class RecommendedAppDetailNullableResponse(RootModel[RecommendedAppDetailResponse | None]):
+    pass
 
 
 register_schema_models(
     console_ns,
     RecommendedAppsQuery,
+)
+register_response_schema_models(
+    console_ns,
     RecommendedAppInfoResponse,
     RecommendedAppResponse,
     RecommendedAppListResponse,
     LearnDifyAppListResponse,
+    RecommendedAppDetailResponse,
+    RecommendedAppDetailNullableResponse,
 )
-register_response_schema_models(console_ns, RecommendedAppDetailResponse)
 
 
 def _resolve_language(language: str | None, user: Account) -> str:
@@ -130,7 +144,7 @@ class LearnDifyAppListApi(Resource):
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[RecommendedAppDetailNullableResponse.__name__])
     @login_required
     @account_initialization_required
     def get(self, app_id: UUID):

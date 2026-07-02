@@ -88,7 +88,7 @@ def test_convert_tool_response_to_str_and_extract_binary_messages():
         tool.create_json_message({"a": 1}),
         tool.create_json_message({"a": 1}, suppress_output=True),
     ]
-    text = ToolEngine._convert_tool_response_to_str(messages)
+    text = ToolEngine.tool_response_to_str(messages)
     assert "hello" in text
     assert "result link: https://example.com." in text
     assert '"a": 1' in text
@@ -271,7 +271,7 @@ def test_convert_tool_response_excludes_variable_messages():
     """Regression test for issue #34723.
 
     WorkflowTool._invoke yields VARIABLE, TEXT, and suppressed-JSON messages.
-    _convert_tool_response_to_str must skip VARIABLE messages so that the
+    tool_response_to_str must skip VARIABLE messages so that the
     returned string contains only the TEXT representation and not a
     duplicated, garbled Pydantic repr of the same data.
     """
@@ -283,7 +283,7 @@ def test_convert_tool_response_excludes_variable_messages():
         tool.create_json_message(outputs, suppress_output=True),
     ]
 
-    result = ToolEngine._convert_tool_response_to_str(messages)
+    result = ToolEngine.tool_response_to_str(messages)
 
     assert result == '{"reports": "hello"}'
     assert "variable_name" not in result

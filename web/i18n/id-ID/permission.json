@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Tidak ada deskripsi",
   "accessRule.noRules": "Tidak ada aturan akses",
   "accessRule.noUserAccessSettings": "Tidak ada pengaturan izin individu",
+  "accessRule.onlyMe": "Hanya saya",
+  "accessRule.onlyMeDescription": "Hanya Anda yang dapat mengakses resource ini.",
   "accessRule.permission": "Izin",
   "accessRule.resourceOpenScope": "Cakupan akses sumber daya",
   "accessRule.resourceOpenScopeDescription": "Pilih siapa yang dapat mengakses sumber daya ini. Izin peran tetap menentukan apa yang dapat dilakukan setiap anggota.",

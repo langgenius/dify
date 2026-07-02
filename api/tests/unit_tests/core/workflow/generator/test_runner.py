@@ -2921,3 +2921,168 @@ class TestWorkflowGeneratorDuplicateNodeIds:
 
         codes = {e["code"] for e in result["errors"]}
         assert "DUPLICATE_NODE_ID" in codes
+
+
+def _stream_planner_json() -> str:
+    return json.dumps(
+        {
+            "title": "URL Summarizer",
+            "description": "Fetch a URL, summarize it, return the summary.",
+            "app_name": "Summarizer",
+            "icon": "🔗",
+            "nodes": [
+                {"label": "Start", "node_type": "start", "purpose": "User submits URL."},
+                {"label": "Summarize", "node_type": "llm", "purpose": "Summarize the page."},
+                {"label": "End", "node_type": "end", "purpose": "Return summary."},
+            ],
+        }
+    )
+
+
+def _stream_builder_json() -> str:
+    return json.dumps(
+        {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "desc": "", "variables": []},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "llm",
+                        "title": "Summarize",
+                        "desc": "",
+                        "prompt_template": [{"role": "user", "text": "{{#node1.url#}}"}],
+                    },
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "desc": "",
+                        "outputs": [{"variable": "summary", "value_selector": ["node2", "text"]}],
+                    },
+                },
+            ],
+            "edges": [
+                {"id": "x", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "y", "source": "node2", "target": "node3", "type": "custom"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+    )
+
+
+class TestWorkflowGeneratorStream:
+    """``generate_workflow_graph_stream`` yields a ``plan`` event then a ``result`` event."""
+
+    def test_stream_emits_plan_then_result(self):
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(_stream_planner_json()),
+            _llm_result(_stream_builder_json()),
+        ]
+
+        events = list(
+            WorkflowGenerator.generate_workflow_graph_stream(
+                model_instance=model_instance,
+                model_parameters={},
+                provider="openai",
+                model_name="gpt-4o",
+                model_mode="chat",
+                mode="workflow",
+                instruction="Summarize a URL",
+            )
+        )
+
+        assert [name for name, _ in events] == ["plan", "result"]
+
+        plan = events[0][1]
+        assert plan["title"] == "URL Summarizer"
+        assert plan["app_name"] == "Summarizer"
+        assert plan["mode"] == "workflow"
+        assert [n["node_type"] for n in plan["nodes"]] == ["start", "llm", "end"]
+        assert plan["nodes"][0]["label"] == "Start"
+        assert plan["nodes"][0]["purpose"] == "User submits URL."
+
+        result = events[1][1]
+        assert result["error"] == ""
+        assert result["mode"] == "workflow"
+        assert [n["data"]["type"] for n in result["graph"]["nodes"]] == ["start", "llm", "end"]
+
+    def test_stream_planner_failure_emits_only_result(self):
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = RuntimeError("planner exploded")
+
+        events = list(
+            WorkflowGenerator.generate_workflow_graph_stream(
+                model_instance=model_instance,
+                model_parameters={},
+                provider="openai",
+                model_name="gpt-4o",
+                model_mode="chat",
+                mode="workflow",
+                instruction="x",
+            )
+        )
+
+        assert [name for name, _ in events] == ["result"]
+        result = events[0][1]
+        assert "planner exploded" in result["error"]
+        assert result["graph"]["nodes"] == []
+        assert result["mode"] == "workflow"
+
+    def test_stream_and_blocking_results_match(self):
+        """The streaming ``result`` event must equal the blocking return value."""
+        stream_instance = MagicMock()
+        stream_instance.invoke_llm.side_effect = [
+            _llm_result(_stream_planner_json()),
+            _llm_result(_stream_builder_json()),
+        ]
+        blocking_instance = MagicMock()
+        blocking_instance.invoke_llm.side_effect = [
+            _llm_result(_stream_planner_json()),
+            _llm_result(_stream_builder_json()),
+        ]
+
+        kwargs = {
+            "model_parameters": {},
+            "provider": "openai",
+            "model_name": "gpt-4o",
+            "model_mode": "chat",
+            "mode": "advanced-chat",
+            "instruction": "Greet me",
+        }
+        stream_events = list(WorkflowGenerator.generate_workflow_graph_stream(model_instance=stream_instance, **kwargs))
+        stream_result = next(payload for name, payload in stream_events if name == "result")
+        blocking_result = WorkflowGenerator.generate_workflow_graph(model_instance=blocking_instance, **kwargs)
+
+        assert stream_result == blocking_result
+
+    def test_blocking_result_includes_resolved_mode(self):
+        """Task 3: the non-streaming envelope carries the resolved ``mode`` too."""
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(_stream_planner_json()),
+            _llm_result(_stream_builder_json()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize a URL",
+        )
+
+        assert result["mode"] == "workflow"

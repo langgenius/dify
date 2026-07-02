@@ -25,6 +25,7 @@ import { DSLImportMode } from '@/models/app'
 import dynamic from '@/next/dynamic'
 import { consoleQuery } from '@/service/client'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { ExploreAppListHeader } from './explore-app-list-header'
@@ -60,7 +61,7 @@ function getExploreAppListQueryOptions(locale?: string) {
   const language = input.query?.language
 
   return queryOptions<ExploreAppListData>({
-    queryKey: [...consoleQuery.explore.apps.queryKey({ input }), language],
+    queryKey: [...consoleQuery.explore.apps.get.queryKey({ input }), language],
     queryFn: async () => {
       const { categories, recommended_apps } = await fetchAppList(language)
       return {
@@ -72,9 +73,9 @@ function getExploreAppListQueryOptions(locale?: string) {
 }
 
 function getContinueWorkAppsQueryOptions() {
-  return consoleQuery.apps.list.queryOptions({
+  return consoleQuery.apps.get.queryOptions({
     input: homeContinueWorkAppsInput,
-    select: (response): WorkspaceApp[] => response.data ?? [],
+    select: (response): WorkspaceApp[] => normalizeAppPagination(response).data,
   })
 }
 
@@ -83,7 +84,7 @@ function getBannersQueryOptions(locale?: string) {
   const language = input.query?.language
 
   return queryOptions<BannerType[]>({
-    queryKey: [...consoleQuery.explore.banners.queryKey({ input }), language],
+    queryKey: [...consoleQuery.explore.banners.get.queryKey({ input }), language],
     queryFn: () => fetchBanners(language),
   })
 }
@@ -245,9 +246,11 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     async ({ name, icon_type, icon, icon_background, description }) => {
       hideTryAppPanel()
 
-      const { export_data, mode } = await fetchAppDetail(
-        currApp?.app.id as string,
-      )
+      const appId = currApp?.app.id
+      if (!appId)
+        return
+
+      const { export_data, mode } = await fetchAppDetail(appId)
       currentCreateAppModeRef.current = mode
       const payload = {
         mode: DSLImportMode.YAML_CONTENT,

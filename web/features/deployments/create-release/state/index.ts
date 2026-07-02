@@ -22,6 +22,7 @@ import {
 } from 'jotai-tanstack-query'
 import * as z from 'zod'
 import { consoleQuery } from '@/service/client'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import { encodeDslContent, isWorkflowDsl } from '../../shared/domain/dsl'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
@@ -245,7 +246,7 @@ export const createReleaseSourceAppSearchTextAtom = atom('')
 export const createReleaseSourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   const searchText = get(createReleaseSourceAppSearchTextAtom)
 
-  return consoleQuery.apps.list.infiniteOptions({
+  return consoleQuery.apps.get.infiniteOptions({
     input: pageParam => ({
       query: {
         page: Number(pageParam),
@@ -257,6 +258,10 @@ export const createReleaseSourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: 1,
     placeholderData: keepPreviousData,
+    select: data => ({
+      ...data,
+      pages: data.pages.map(normalizeAppPagination),
+    }),
     enabled: Boolean(
       get(createReleaseDialogOpenAtom)
       && effectiveCreateReleaseSourceMode(get) === 'sourceApp'

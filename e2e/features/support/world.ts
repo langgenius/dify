@@ -5,6 +5,65 @@ import { setWorldConstructor, World } from '@cucumber/cucumber'
 import { authStatePath, readAuthSessionMetadata } from '../../fixtures/auth'
 import { baseURL, defaultLocale } from '../../test-env'
 
+export type ScenarioCleanup = () => Promise<void> | void
+export type CreatedAgentDriveFile = {
+  agentId: string
+  key: string
+}
+export type CreatedAgentConfigFile = {
+  agentId: string
+  name: string
+}
+export type CreatedAgentConfigSkill = {
+  agentId: string
+  name: string
+}
+export type CreatedBuiltinToolCredential = {
+  credentialId: string
+  provider: string
+}
+export type AgentBuilderStableChatModel = {
+  name: string
+  provider: string
+  type: string
+}
+export type AgentBuilderPreseededResource = {
+  id: string
+  kind: 'agent' | 'api-key' | 'dataset' | 'skill' | 'tool' | 'workflow'
+  name: string
+}
+export type AgentV2WorkflowOutputVariable = {
+  name: string
+  type: string
+}
+
+export const createAgentBuilderWorldState = () => ({
+  preflight: {
+    brokenModel: undefined as AgentBuilderStableChatModel | undefined,
+    preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
+    stableModel: undefined as AgentBuilderStableChatModel | undefined,
+  },
+  accessPoint: {
+    apiReferencePage: undefined as Page | undefined,
+    composerDraftSnapshot: undefined as string | undefined,
+    generatedApiKey: undefined as string | undefined,
+    serviceApiResponse: undefined as { body: unknown, ok: boolean, status: number } | undefined,
+    serviceApiBaseURL: undefined as string | undefined,
+    webAppPage: undefined as Page | undefined,
+    webAppURL: undefined as string | undefined,
+    workflowReferencePage: undefined as Page | undefined,
+  },
+  configure: {
+    concurrentPage: undefined as Page | undefined,
+  },
+  workflow: {
+    agentConsolePage: undefined as Page | undefined,
+    outputVariables: [] as AgentV2WorkflowOutputVariable[],
+  },
+})
+
+export type AgentBuilderWorldState = ReturnType<typeof createAgentBuilderWorldState>
+
 export class DifyWorld extends World {
   context: BrowserContext | undefined
   page: Page | undefined
@@ -17,6 +76,13 @@ export class DifyWorld extends World {
   lastCreatedAgentRole: string | undefined
   createdAppIds: string[] = []
   createdAgentIds: string[] = []
+  createdDatasetIds: string[] = []
+  createdAgentConfigFiles: CreatedAgentConfigFile[] = []
+  createdAgentConfigSkills: CreatedAgentConfigSkill[] = []
+  createdAgentDriveFiles: CreatedAgentDriveFile[] = []
+  createdBuiltinToolCredentials: CreatedBuiltinToolCredential[] = []
+  agentBuilder: AgentBuilderWorldState = createAgentBuilderWorldState()
+  scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
 
@@ -33,6 +99,13 @@ export class DifyWorld extends World {
     this.lastCreatedAgentRole = undefined
     this.createdAppIds = []
     this.createdAgentIds = []
+    this.createdDatasetIds = []
+    this.createdAgentConfigFiles = []
+    this.createdAgentConfigSkills = []
+    this.createdAgentDriveFiles = []
+    this.createdBuiltinToolCredentials = []
+    this.agentBuilder = createAgentBuilderWorldState()
+    this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined
   }
@@ -78,6 +151,26 @@ export class DifyWorld extends World {
   async getAuthSession() {
     this.session ??= await readAuthSessionMetadata()
     return this.session
+  }
+
+  registerCleanup(cleanup: ScenarioCleanup) {
+    this.scenarioCleanups.push(cleanup)
+  }
+
+  async runRegisteredCleanups() {
+    const errors: string[] = []
+
+    for (const cleanup of this.scenarioCleanups.toReversed()) {
+      try {
+        await cleanup()
+      }
+      catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error))
+      }
+    }
+
+    if (errors.length > 0)
+      this.attach(`Cleanup errors:\n${errors.join('\n')}`, 'text/plain')
   }
 
   async closeSession() {

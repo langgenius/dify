@@ -11,6 +11,13 @@ from typing import Final, Literal, NotRequired, TypedDict
 
 WorkflowGenerationMode = Literal["workflow", "advanced-chat"]
 
+# The mode accepted at the API boundary. ``auto`` is a sentinel that asks the
+# service to classify the instruction into a concrete ``WorkflowGenerationMode``
+# (one tiny LLM call) BEFORE planning — see
+# ``WorkflowGeneratorService._resolve_mode`` and
+# ``LLMGenerator.classify_workflow_mode``.
+WorkflowGenerationModeRequest = Literal["workflow", "advanced-chat", "auto"]
+
 
 # Machine-readable error codes returned in ``WorkflowGenerateResultDict.errors``.
 # Frontend maps these to localised copy via ``workflow.generator.errors.<code>``
@@ -148,3 +155,7 @@ class WorkflowGenerateResultDict(TypedDict):
     icon: str
     error: str
     errors: list[WorkflowGenerateErrorDict]
+    # Resolved concrete generation mode ("workflow" / "advanced-chat"). Stamped
+    # onto every envelope so a ``mode="auto"`` request can tell the frontend
+    # which app type to create; present for explicit modes too for uniformity.
+    mode: NotRequired[str]

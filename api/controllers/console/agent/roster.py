@@ -39,9 +39,11 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.agent_fields import (
+    AgentConfigDraftSummaryResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
+    AgentConfigSnapshotSummaryResponse,
     AgentInviteOptionsResponse,
     AgentLogListResponse,
     AgentLogMessageListResponse,
@@ -50,11 +52,13 @@ from fields.agent_fields import (
     AgentRosterListResponse,
     AgentStatisticSummaryEnvelopeResponse,
 )
+from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.agent import Agent, AgentStatus
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
@@ -248,33 +252,37 @@ class AgentAppDetailWithSite(GenericAppDetailWithSite):
     backing_app_id: str | None = None
     hidden_app_backed: bool = False
     debug_conversation_id: str | None = None
+    debug_conversation_has_messages: bool = False
+    debug_conversation_message_count: int = 0
     role: str | None = None
     active_config_is_published: bool = False
 
 
 class AgentDebugConversationRefreshResponse(BaseModel):
     debug_conversation_id: str
+    debug_conversation_has_messages: bool = False
+    debug_conversation_message_count: int = 0
 
 
 class AgentPublishPayload(BaseModel):
     version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
 
 
-class AgentPublishResponse(BaseModel):
+class AgentPublishResponse(ResponseModel):
     result: str
     active_config_snapshot_id: str
-    active_config_snapshot: dict[str, object] | None = None
-    draft: dict[str, object] | None = None
+    active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    draft: AgentConfigDraftSummaryResponse | None = None
 
 
 class AgentBuildDraftCheckoutPayload(BaseModel):
     force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
 
 
-class AgentBuildDraftResponse(BaseModel):
+class AgentBuildDraftResponse(ResponseModel):
     variant: str
-    draft: dict[str, object]
-    agent_soul: dict[str, object]
+    draft: AgentConfigDraftSummaryResponse
+    agent_soul: AgentSoulConfig
 
 
 class AgentBuildDraftApplyResponse(BaseModel):
@@ -372,11 +380,17 @@ def _serialize_agent_app_detail(app_model, *, current_user: Account, agent_id: s
     payload["backing_app_id"] = roster_service.runtime_backing_app_id(agent)
     payload["hidden_app_backed"] = bool(agent.backing_app_id and agent.backing_app_id != agent.app_id)
     payload["id"] = agent.id
-    payload["debug_conversation_id"] = roster_service.get_or_create_agent_app_debug_conversation_id(
+    debug_conversation_id = roster_service.get_or_create_agent_app_debug_conversation_id(
         tenant_id=app_model.tenant_id,
         agent_id=agent.id,
         account_id=current_user.id,
     )
+    message_count = roster_service.count_agent_app_debug_conversation_messages(
+        conversation_id=debug_conversation_id,
+    )
+    payload["debug_conversation_id"] = debug_conversation_id
+    payload["debug_conversation_has_messages"] = message_count > 0
+    payload["debug_conversation_message_count"] = message_count
     payload["role"] = agent.role or ""
     payload["active_config_is_published"] = roster_service.active_config_is_published(
         tenant_id=app_model.tenant_id,
@@ -635,9 +649,11 @@ class AgentDebugConversationRefreshApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
         )
-        return AgentDebugConversationRefreshResponse(debug_conversation_id=debug_conversation_id).model_dump(
-            mode="json"
-        )
+        return AgentDebugConversationRefreshResponse(
+            debug_conversation_id=debug_conversation_id,
+            debug_conversation_has_messages=False,
+            debug_conversation_message_count=0,
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/agent/<uuid:agent_id>/publish")

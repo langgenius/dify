@@ -40,7 +40,10 @@ const ModerationContent: FC<ModerationContentProps> = ({
   }
 
   return (
-    <div className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs">
+    <section
+      aria-label={title}
+      className="rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-xs"
+    >
       <div className="flex min-h-10 items-center gap-2 px-3 py-2">
         <div className="min-w-0 flex-1 system-sm-medium text-text-secondary">{title}</div>
         <div className="flex min-w-0 shrink-0 items-center justify-end">
@@ -52,6 +55,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
           <Switch
             checked={config.enabled}
             onCheckedChange={v => handleConfigChange('enabled', v)}
+            aria-label={title}
           />
         </div>
       </div>
@@ -85,7 +89,7 @@ const ModerationContent: FC<ModerationContentProps> = ({
           </div>
         )
       }
-    </div>
+    </section>
   )
 }
 
