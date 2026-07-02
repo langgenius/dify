@@ -1,6 +1,5 @@
 import uuid
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -14,6 +13,8 @@ from core.workflow.human_input_adapter import (
 )
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.human_input.entities import HumanInputNodeData
+from models import Account
+from models.model import App
 from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
 
@@ -52,16 +53,22 @@ def _make_email_method(enabled: bool = True, debug_mode: bool = False) -> EmailD
     )
 
 
+def _make_app() -> Mock:
+    return Mock(spec=App, tenant_id="tenant-1", id="app-1")
+
+
+def _make_account() -> Mock:
+    return Mock(spec=Account, id="account-1")
+
+
 def test_human_input_delivery_requires_draft_workflow():
     service = _make_service()
     service.get_draft_workflow = MagicMock(return_value=None)  # type: ignore[method-assign]
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
-    account = SimpleNamespace(id="account-1")
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         service.test_human_input_delivery(
-            app_model=app_model,
-            account=account,
+            app_model=_make_app(),
+            account=_make_account(),
             node_id="node-1",
             delivery_method_id="delivery-1",
         )
@@ -90,12 +97,9 @@ def test_human_input_delivery_allows_disabled_method(monkeypatch: pytest.MonkeyP
         MagicMock(return_value=test_service_instance),
     )
 
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
-    account = SimpleNamespace(id="account-1")
-
     service.test_human_input_delivery(
-        app_model=app_model,
-        account=account,
+        app_model=_make_app(),
+        account=_make_account(),
         node_id="node-1",
         delivery_method_id=str(delivery_method.id),
     )
@@ -126,12 +130,9 @@ def test_human_input_delivery_dispatches_to_test_service(monkeypatch: pytest.Mon
         MagicMock(return_value=test_service_instance),
     )
 
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
-    account = SimpleNamespace(id="account-1")
-
     service.test_human_input_delivery(
-        app_model=app_model,
-        account=account,
+        app_model=_make_app(),
+        account=_make_account(),
         node_id="node-1",
         delivery_method_id=str(delivery_method.id),
         inputs={"#node-1.output#": "value"},
@@ -165,11 +166,9 @@ def test_human_input_delivery_debug_mode_overrides_recipients(monkeypatch: pytes
         MagicMock(return_value=test_service_instance),
     )
 
-    app_model = SimpleNamespace(tenant_id="tenant-1", id="app-1")
-    account = SimpleNamespace(id="account-1")
-
+    account = _make_account()
     service.test_human_input_delivery(
-        app_model=app_model,
+        app_model=_make_app(),
         account=account,
         node_id="node-1",
         delivery_method_id=str(delivery_method.id),
