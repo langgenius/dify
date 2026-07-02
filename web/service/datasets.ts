@@ -49,12 +49,32 @@ export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
 export type MetadataType = 'all' | 'only' | 'without'
 
+export type UpdateDatasetSettingBody = Partial<Pick<
+  DataSet,
+  | 'name'
+  | 'description'
+  | 'permission'
+  | 'indexing_technique'
+  | 'retrieval_model'
+  | 'embedding_model'
+  | 'embedding_model_provider'
+  | 'icon_info'
+  | 'doc_form'
+  | 'summary_index_setting'
+  | 'external_retrieval_model'
+>> & {
+  partial_member_list?: Array<{ user_id: string, role?: string }>
+  external_knowledge_id?: string
+  external_knowledge_api_id?: string
+  keyword_number?: number
+}
+
 export const updateDatasetSetting = ({
   datasetId,
   body,
 }: {
   datasetId: string
-  body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider' | 'icon_info' | 'doc_form'>>
+  body: UpdateDatasetSettingBody
 }): Promise<DataSet> => {
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
 }

@@ -369,7 +369,16 @@ describe('Form', () => {
 
     it('should display external knowledge ID value', () => {
       render(<Form />)
-      expect(screen.getByText('ext-1')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('ext-1')).toBeInTheDocument()
+    })
+
+    it('should allow editing external knowledge ID', () => {
+      render(<Form />)
+
+      const externalKnowledgeIdInput = screen.getByDisplayValue('ext-1')
+      fireEvent.change(externalKnowledgeIdInput, { target: { value: 'ext-updated' } })
+
+      expect(externalKnowledgeIdInput).toHaveValue('ext-updated')
     })
   })
 
@@ -457,6 +466,28 @@ describe('Form', () => {
           expect.objectContaining({
             body: expect.objectContaining({
               description: 'New description',
+            }),
+          }),
+        )
+      })
+    })
+
+    it('should save with updated external knowledge ID for external provider', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      mockDataset = createMockDataset({ provider: 'external' })
+      render(<Form />)
+
+      const externalKnowledgeIdInput = screen.getByDisplayValue('ext-1')
+      fireEvent.change(externalKnowledgeIdInput, { target: { value: 'ext-updated' } })
+
+      const saveButton = screen.getByRole('button', { name: /form\.save/i })
+      fireEvent.click(saveButton)
+
+      await waitFor(() => {
+        expect(updateDatasetSetting).toHaveBeenCalledWith(
+          expect.objectContaining({
+            body: expect.objectContaining({
+              external_knowledge_id: 'ext-updated',
             }),
           }),
         )

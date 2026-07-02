@@ -38,6 +38,8 @@ const Form = () => {
     memberList,
 
     // External retrieval
+    externalKnowledgeId,
+    setExternalKnowledgeId,
     topK,
     scoreThreshold,
     scoreThresholdEnabled,
@@ -93,6 +95,8 @@ const Form = () => {
         ? (
             <ExternalKnowledgeSection
               currentDataset={currentDataset}
+              externalKnowledgeId={externalKnowledgeId}
+              setExternalKnowledgeId={setExternalKnowledgeId}
               topK={topK}
               scoreThreshold={scoreThreshold}
               scoreThresholdEnabled={scoreThresholdEnabled}

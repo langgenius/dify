@@ -3,6 +3,7 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Member } from '@/models/common'
 import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import type { UpdateDatasetSettingBody } from '@/service/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useState } from 'react'
@@ -56,6 +57,9 @@ export const useFormState = () => {
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
 
   // External retrieval state
+  const [externalKnowledgeId, setExternalKnowledgeId] = useState(
+    currentDataset?.external_knowledge_info.external_knowledge_id ?? '',
+  )
   const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
@@ -133,6 +137,12 @@ export const useFormState = () => {
       return
     }
 
+    const normalizedExternalKnowledgeId = externalKnowledgeId.trim()
+    if (currentDataset?.provider === 'external' && !normalizedExternalKnowledgeId) {
+      toast.error(t('externalKnowledgeIdPlaceholder', { ns: 'dataset' }))
+      return
+    }
+
     if (!isReRankModelSelected({ rerankModelList, retrievalConfig, indexMethod })) {
       toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
       return
@@ -145,7 +155,7 @@ export const useFormState = () => {
 
     try {
       setLoading(true)
-      const body: Record<string, unknown> = {
+      const body: UpdateDatasetSettingBody = {
         name,
         icon_info: iconInfo,
         doc_form: currentDataset?.doc_form,
@@ -163,7 +173,7 @@ export const useFormState = () => {
       }
 
       if (currentDataset!.provider === 'external') {
-        body.external_knowledge_id = currentDataset!.external_knowledge_info.external_knowledge_id
+        body.external_knowledge_id = normalizedExternalKnowledgeId
         body.external_knowledge_api_id = currentDataset!.external_knowledge_info.external_knowledge_api_id
         body.external_retrieval_model = {
           top_k: topK,
@@ -241,6 +251,8 @@ export const useFormState = () => {
     memberList,
 
     // External retrieval
+    externalKnowledgeId,
+    setExternalKnowledgeId,
     topK,
     scoreThreshold,
     scoreThresholdEnabled,
