@@ -42,6 +42,9 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
   const activeVersionId = selectedVersionId ?? (shouldLoadPublishedVersion ? publishedVersionId : null)
   const activeConfigSnapshot = selectedVersionId ? versionDetail : (composerQuery.data?.active_config_snapshot ?? versionDetail)
   const agentSoulConfig = selectedVersionId ? versionDetail?.config_snapshot : (composerQuery.data?.agent_soul ?? versionDetail?.config_snapshot)
+  const isPending = agentQuery.isPending
+    || composerQuery.isPending
+    || (shouldLoadVersion && versionQuery.isPending)
 
   return {
     agentQuery,
@@ -52,6 +55,7 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
     activeVersionId,
     activeConfigSnapshot,
     agentSoulConfig,
+    isPending,
   }
 }
 

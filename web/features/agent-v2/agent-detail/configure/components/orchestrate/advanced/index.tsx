@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
+import { ENABLE_AGENT_CONTENT_MODERATION } from '../../../feature-flags'
 import { ConfigureSection } from '../common/section'
 import { AgentContentModerationSettings } from './content-moderation'
 import { AgentEnvEditor } from './env'
@@ -22,7 +23,7 @@ export function AgentAdvancedSettings() {
       panelContentClassName="flex flex-col rounded-lg bg-background-section"
     >
       <AgentEnvEditor />
-      <AgentContentModerationSettings />
+      {ENABLE_AGENT_CONTENT_MODERATION && <AgentContentModerationSettings />}
     </ConfigureSection>
   )
 }

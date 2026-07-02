@@ -111,6 +111,7 @@ export default function IntegrationsPage({
     canUpdatePlugin,
     handlePermissionChange,
     isPluginCategory,
+    isReferenceSettingLoading,
     permission,
     showPermissionQuickPanel,
     showPluginCategorySetting,
@@ -285,6 +286,7 @@ export default function IntegrationsPage({
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
                   canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
                   canUpdatePlugin={canUpdatePlugin}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
@@ -297,7 +299,6 @@ export default function IntegrationsPage({
                 slotClassNames={{
                   viewport: 'overscroll-contain',
                   content: 'min-h-full',
-                  scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
                 }}
               >
                 <IntegrationSectionRenderer
@@ -310,6 +311,7 @@ export default function IntegrationsPage({
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
                   canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
                   canUpdatePlugin={canUpdatePlugin}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />

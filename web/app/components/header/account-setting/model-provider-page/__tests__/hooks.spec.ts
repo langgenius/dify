@@ -1011,7 +1011,7 @@ describe('hooks', () => {
         ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
 
       const provider = createMockProvider()
-      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+      const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
         input: {
           params: {
             provider: provider.provider,
@@ -1046,7 +1046,7 @@ describe('hooks', () => {
         __model_name: 'gpt-4',
         __model_type: ModelTypeEnum.textGeneration,
       }
-      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+      const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
         input: {
           params: {
             provider: provider.provider,
@@ -1077,7 +1077,7 @@ describe('hooks', () => {
       ; (useExpandModelProviderList as Mock).mockReturnValue(expandModelProviderList)
 
       const provider = { ...createMockProvider(), custom_configuration: { status: CustomConfigurationStatusEnum.noConfigure } }
-      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+      const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
         input: {
           params: {
             provider: provider.provider,
@@ -1104,7 +1104,7 @@ describe('hooks', () => {
       ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
 
       const provider = createMockProvider()
-      const modelProviderModelListQueryKey = consoleQuery.modelProviders.models.queryKey({
+      const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
         input: {
           params: {
             provider: provider.provider,
