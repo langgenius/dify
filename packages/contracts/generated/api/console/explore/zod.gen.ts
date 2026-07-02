@@ -16,6 +16,11 @@ export const zRecommendedAppDetailResponse = z.object({
 })
 
 /**
+ * RecommendedAppDetailNullableResponse
+ */
+export const zRecommendedAppDetailNullableResponse = zRecommendedAppDetailResponse.nullable()
+
+/**
  * BannerResponse
  */
 export const zBannerResponse = z.object({
@@ -39,6 +44,7 @@ export const zRecommendedAppInfoResponse = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
   id: z.string(),
   mode: z.string().nullish(),
   name: z.string().nullish(),
@@ -75,6 +81,49 @@ export const zLearnDifyAppListResponse = z.object({
   recommended_apps: z.array(zRecommendedAppResponse),
 })
 
+/**
+ * RecommendedAppInfoResponse
+ */
+export const zRecommendedAppInfoResponseWritable = z.object({
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  id: z.string(),
+  mode: z.string().nullish(),
+  name: z.string().nullish(),
+})
+
+/**
+ * RecommendedAppResponse
+ */
+export const zRecommendedAppResponseWritable = z.object({
+  app: zRecommendedAppInfoResponseWritable.nullish(),
+  app_id: z.string(),
+  can_trial: z.boolean().nullish(),
+  categories: z.array(z.string()).optional(),
+  copyright: z.string().nullish(),
+  custom_disclaimer: z.string().nullish(),
+  description: z.string().nullish(),
+  is_listed: z.boolean().nullish(),
+  position: z.int().nullish(),
+  privacy_policy: z.string().nullish(),
+})
+
+/**
+ * RecommendedAppListResponse
+ */
+export const zRecommendedAppListResponseWritable = z.object({
+  categories: z.array(z.string()),
+  recommended_apps: z.array(zRecommendedAppResponseWritable),
+})
+
+/**
+ * LearnDifyAppListResponse
+ */
+export const zLearnDifyAppListResponseWritable = z.object({
+  recommended_apps: z.array(zRecommendedAppResponseWritable),
+})
+
 export const zGetExploreAppsQuery = z.object({
   language: z.string().optional(),
 })
@@ -100,7 +149,7 @@ export const zGetExploreAppsByAppIdPath = z.object({
 /**
  * Success
  */
-export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailResponse
+export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailNullableResponse
 
 export const zGetExploreBannersQuery = z.object({
   language: z.string().optional().default('en-US'),

@@ -1,0 +1,2 @@
+Dify Agent E2E knowledge source.
+Dify Agent E2E test passphrase is AGENT_KNOWLEDGE_PASS.

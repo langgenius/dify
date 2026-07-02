@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Немає опису",
   "accessRule.noRules": "Немає правил доступу",
   "accessRule.noUserAccessSettings": "Немає індивідуальних налаштувань дозволів",
+  "accessRule.onlyMe": "Лише я",
+  "accessRule.onlyMeDescription": "Лише ви можете отримати доступ до цього ресурсу.",
   "accessRule.permission": "Дозвіл",
   "accessRule.resourceOpenScope": "Сфера відкритості ресурсу",
   "accessRule.resourceOpenScopeDescription": "Виберіть, кому відкрито цей ресурс. Дозволи ролей усе одно визначають, що може робити кожен учасник.",

@@ -135,7 +135,7 @@ function AgentRosterItem({
           href={`/roster/agent/${agent.id}/configure`}
           aria-labelledby={nameId}
           aria-describedby={agent.description ? descriptionId : undefined}
-          className="relative block shrink-0 cursor-pointer touch-manipulation rounded-xl outline-hidden after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-state-accent-solid focus-visible:after:ring-inset"
+          className="relative block shrink-0 cursor-pointer touch-manipulation rounded-xl outline-hidden after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] focus-visible:after:inset-ring-2 focus-visible:after:inset-ring-state-accent-solid"
         >
           <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
             <span aria-hidden className="shrink-0">

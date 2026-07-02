@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
@@ -137,7 +137,7 @@ After config persistence completes, respond FINISHED."""
 
 
 register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 # define completion message api for user
@@ -147,7 +147,7 @@ class CompletionMessageApi(Resource):
     @console_ns.doc(description="Generate completion message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
-    @console_ns.response(200, "Completion generated successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Completion generated successfully")
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App not found")
     @setup_required
@@ -174,6 +174,7 @@ class CompletionMessageApi(Resource):
                 streaming=streaming,
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -217,7 +218,7 @@ class CompletionMessageStopApi(Resource):
             app_mode=AppMode.value_of(app_model.mode),
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
@@ -226,7 +227,7 @@ class ChatMessageApi(Resource):
     @console_ns.doc(description="Generate chat message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Chat message generated successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Chat message generated successfully")
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App or conversation not found")
     @setup_required
@@ -250,7 +251,7 @@ class AgentChatMessageApi(Resource):
     @console_ns.doc(description="Generate an Agent App chat message for debugging")
     @console_ns.doc(params={"agent_id": "Agent ID"})
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Chat message generated successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Chat message generated successfully")
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "Agent or conversation not found")
     @setup_required
@@ -541,4 +542,4 @@ def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
         app_mode=AppMode.value_of(app_model.mode),
     )
 
-    return {"result": "success"}, 200
+    return SimpleResultResponse(result="success").model_dump(mode="json"), 200

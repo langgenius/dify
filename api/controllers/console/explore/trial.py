@@ -1,9 +1,10 @@
 import logging
+from datetime import datetime
 from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
@@ -64,6 +65,7 @@ from fields.app_fields import (
     site_fields,
     tag_fields,
 )
+from fields.base import ResponseModel
 from fields.dataset_fields import dataset_fields
 from fields.member_fields import simple_account_fields
 from fields.message_fields import SuggestedQuestionsResponse
@@ -76,7 +78,7 @@ from fields.workflow_fields import (
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import uuid_value
+from libs.helper import to_timestamp, uuid_value
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
@@ -181,6 +183,254 @@ class TrialDatasetListQuery(BaseModel):
     ids: list[str] = Field(default_factory=list, description="Dataset IDs")
 
 
+type TrialAppMode = Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+type TrialIconType = Literal["emoji", "image", "link"]
+type JsonObject = dict[str, Any]
+
+
+class TrialAppModel(ResponseModel):
+    provider: str
+    name: str
+    mode: str | None = None
+    completion_params: JsonObject = Field(default_factory=dict)
+
+
+class TrialAppAgentMode(ResponseModel):
+    enabled: bool | None = None
+    strategy: str | None = None
+    tools: list[JsonObject] = Field(default_factory=list)
+
+
+class TrialAppModelConfigResponse(ResponseModel):
+    opening_statement: str | None = None
+    suggested_questions: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("suggested_questions_list", "suggested_questions"),
+    )
+    suggested_questions_after_answer: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("suggested_questions_after_answer_dict", "suggested_questions_after_answer"),
+    )
+    speech_to_text: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("speech_to_text_dict", "speech_to_text")
+    )
+    text_to_speech: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("text_to_speech_dict", "text_to_speech")
+    )
+    retriever_resource: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("retriever_resource_dict", "retriever_resource")
+    )
+    annotation_reply: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("annotation_reply_dict", "annotation_reply")
+    )
+    more_like_this: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("more_like_this_dict", "more_like_this")
+    )
+    sensitive_word_avoidance: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("sensitive_word_avoidance_dict", "sensitive_word_avoidance")
+    )
+    external_data_tools: list[JsonObject] = Field(
+        default_factory=list, validation_alias=AliasChoices("external_data_tools_list", "external_data_tools")
+    )
+    model: TrialAppModel | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
+    user_input_form: list[JsonObject] = Field(
+        default_factory=list, validation_alias=AliasChoices("user_input_form_list", "user_input_form")
+    )
+    dataset_query_variable: str | None = None
+    pre_prompt: str | None = None
+    agent_mode: TrialAppAgentMode | None = Field(
+        default=None,
+        validation_alias=AliasChoices("agent_mode_dict", "agent_mode"),
+    )
+    prompt_type: str | None = None
+    chat_prompt_config: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("chat_prompt_config_dict", "chat_prompt_config")
+    )
+    completion_prompt_config: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("completion_prompt_config_dict", "completion_prompt_config")
+    )
+    dataset_configs: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("dataset_configs_dict", "dataset_configs"),
+    )
+    file_upload: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("file_upload_dict", "file_upload"),
+    )
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialDeletedToolResponse(ResponseModel):
+    type: str
+    tool_name: str
+    provider_id: str
+
+
+class TrialTagResponse(ResponseModel):
+    id: str
+    name: str
+    type: str
+
+
+class TrialSiteResponse(ResponseModel):
+    access_token: str | None = Field(default=None, validation_alias="code")
+    code: str | None = None
+    title: str
+    icon_type: TrialIconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    description: str | None = None
+    default_language: str
+    chat_color_theme: str | None = None
+    chat_color_theme_inverted: bool | None = None
+    customize_domain: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    input_placeholder: str | None = None
+    custom_disclaimer: str | None = None
+    customize_token_strategy: str | None = None
+    prompt_public: bool | None = None
+    app_base_url: str | None = None
+    show_workflow_steps: bool | None = None
+    use_icon_as_answer_icon: bool | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+    icon_url: str | None = None
+
+    @field_validator("icon_type", mode="before")
+    @classmethod
+    def _normalize_icon_type(cls, value: Any) -> str | None:
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialWorkflowPartialResponse(ResponseModel):
+    id: str
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialAppDetailResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None = None
+    mode: TrialAppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: TrialIconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    icon_url: str | None = None
+    enable_site: bool
+    enable_api: bool
+    model_config_: TrialAppModelConfigResponse | None = Field(
+        default=None,
+        validation_alias=AliasChoices("app_model_config", "model_config"),
+        alias="model_config",
+    )
+    workflow: TrialWorkflowPartialResponse | None = None
+    api_base_url: str | None = None
+    use_icon_as_answer_icon: bool | None = None
+    max_active_requests: int | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+    deleted_tools: list[TrialDeletedToolResponse] = Field(default_factory=list)
+    access_mode: str | None = None
+    tags: list[TrialTagResponse] = Field(default_factory=list)
+    permission_keys: list[str] = Field(default_factory=list)
+    site: TrialSiteResponse
+
+    @field_validator("icon_type", mode="before")
+    @classmethod
+    def _normalize_icon_type(cls, value: Any) -> str | None:
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialDatasetResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None = None
+    permission: str | None = None
+    data_source_type: str | None = None
+    indexing_technique: str | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    permission_keys: list[str] = Field(default_factory=list)
+
+
+class TrialDatasetListResponse(ResponseModel):
+    data: list[TrialDatasetResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
+
+
+class TrialWorkflowAccount(ResponseModel):
+    id: str
+    name: str | None = None
+    email: str | None = None
+
+
+class TrialWorkflowResponse(ResponseModel):
+    id: str
+    graph: JsonObject = Field(validation_alias=AliasChoices("graph_dict", "graph"))
+    features: JsonObject = Field(default_factory=dict, validation_alias=AliasChoices("features_dict", "features"))
+    hash: str | None = Field(default=None, validation_alias=AliasChoices("unique_hash", "hash"))
+    version: str | None = None
+    marked_name: str | None = None
+    marked_comment: str | None = None
+    created_by: TrialWorkflowAccount | None = Field(
+        default=None,
+        validation_alias=AliasChoices("created_by_account", "created_by"),
+    )
+    created_at: int | None = None
+    updated_by: TrialWorkflowAccount | None = Field(
+        default=None,
+        validation_alias=AliasChoices("updated_by_account", "updated_by"),
+    )
+    updated_at: int | None = None
+    tool_published: bool | None = None
+    environment_variables: list[JsonObject] = Field(default_factory=list)
+    conversation_variables: list[JsonObject] = Field(default_factory=list)
+    rag_pipeline_variables: list[JsonObject] = Field(default_factory=list)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
 register_schema_models(
     console_ns,
     WorkflowRunRequest,
@@ -198,6 +448,9 @@ register_response_schema_models(
     SimpleResultResponse,
     SiteResponse,
     SuggestedQuestionsResponse,
+    TrialAppDetailResponse,
+    TrialDatasetListResponse,
+    TrialWorkflowResponse,
 )
 
 
@@ -585,7 +838,7 @@ class TrialAppParameterApi(Resource):
 
 
 class AppApi(Resource):
-    @console_ns.response(200, "Success", app_detail_with_site_model)
+    @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @get_app_model_with_trial(None)
     @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
@@ -598,7 +851,7 @@ class AppApi(Resource):
 
 
 class AppWorkflowApi(Resource):
-    @console_ns.response(200, "Success", workflow_model)
+    @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @get_app_model_with_trial(None)
     @marshal_with(workflow_model)
     def get(self, app_model):
@@ -612,7 +865,7 @@ class AppWorkflowApi(Resource):
 
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
-    @console_ns.response(200, "Success", dataset_list_model)
+    @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @get_app_model_with_trial(None)
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)

@@ -7,6 +7,10 @@ When('I open the apps console', async function (this: DifyWorld) {
   await this.getPage().goto('/apps')
 })
 
+When('I refresh the current page', async function (this: DifyWorld) {
+  await this.getPage().reload()
+})
+
 Then('I should stay on the apps console', async function (this: DifyWorld) {
   await waitForAppsConsole(this.getPage())
 })

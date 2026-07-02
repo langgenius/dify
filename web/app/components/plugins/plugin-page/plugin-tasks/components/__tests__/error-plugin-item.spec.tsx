@@ -1,4 +1,5 @@
-import type { PluginInfoFromMarketPlace, PluginStatus } from '@/app/components/plugins/types'
+import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
+import type { PluginStatus } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'

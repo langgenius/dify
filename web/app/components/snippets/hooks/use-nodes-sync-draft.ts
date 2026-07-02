@@ -113,8 +113,8 @@ export const useNodesSyncDraft = (snippetId: string) => {
     } = workflowStore.getState()
 
     try {
-      const response = await consoleClient.snippets.syncDraftWorkflow({
-        params: { snippetId },
+      const response = await consoleClient.snippets.bySnippetId.workflows.draft.post({
+        params: { snippet_id: snippetId },
         body: {
           ...payload,
           hash: syncWorkflowDraftHash || undefined,
