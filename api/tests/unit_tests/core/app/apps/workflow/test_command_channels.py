@@ -77,19 +77,18 @@ def test_combined_command_channel_continues_after_source_failure(caplog: pytest.
     assert "Failed to fetch GraphEngine commands" in caplog.text
 
 
-def test_celery_signal_command_channel_receives_pushed_abort_once() -> None:
+def test_celery_signal_command_channel_receives_pushed_abort() -> None:
     channel = CelerySignalCommandChannel(task_id="task-a")
 
     with channel:
         channel_count = send_celery_warm_shutdown_abort_commands()
         commands = channel.fetch_commands()
-        send_celery_warm_shutdown_abort_commands()
 
     assert len(commands) == 1
     assert channel_count == 1
     assert isinstance(commands[0], AbortCommand)
     assert commands[0].reason == WORKFLOW_WARM_SHUTDOWN_ABORT_REASON
-    assert channel.fetch_commands() == []
+    assert channel.fetch_commands() == commands
 
 
 def test_celery_signal_command_channel_registered_after_shutdown_receives_abort() -> None:
@@ -113,23 +112,23 @@ def test_celery_signal_command_channel_unregisters_on_exit() -> None:
     assert send_celery_warm_shutdown_abort_commands() == 0
 
 
-def test_celery_signal_command_channel_preserves_local_commands() -> None:
+def test_celery_signal_command_channel_send_command_is_noop() -> None:
     channel = CelerySignalCommandChannel(task_id="task-a")
     command = PauseCommand(reason="pause")
 
     channel.send_command(command)
 
-    assert channel.fetch_commands() == [command]
+    assert channel.fetch_commands() == []
 
 
-def test_celery_signal_command_channel_uses_task_id_mapping() -> None:
+def test_celery_signal_command_channel_rejects_duplicate_task_id() -> None:
     old_channel = CelerySignalCommandChannel(task_id="task-a")
     new_channel = CelerySignalCommandChannel(task_id="task-a")
 
     with old_channel:
-        with new_channel:
-            assert send_celery_warm_shutdown_abort_commands() == 1
-            assert old_channel.fetch_commands() == []
-            assert len(new_channel.fetch_commands()) == 1
+        with pytest.raises(ValueError, match="already registered"):
+            with new_channel:
+                pass
 
-        assert send_celery_warm_shutdown_abort_commands() == 0
+        assert send_celery_warm_shutdown_abort_commands() == 1
+        assert len(old_channel.fetch_commands()) == 1
