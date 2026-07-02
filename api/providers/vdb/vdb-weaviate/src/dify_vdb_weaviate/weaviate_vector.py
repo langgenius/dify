@@ -7,6 +7,7 @@ document embeddings used in retrieval-augmented generation workflows.
 
 import atexit
 import datetime
+import importlib.metadata
 import json
 import logging
 import threading
@@ -36,6 +37,48 @@ logger = logging.getLogger(__name__)
 
 _weaviate_client: weaviate.WeaviateClient | None = None
 _weaviate_client_lock = threading.Lock()
+
+# Identifies Dify to Weaviate's server-side telemetry via the X-Weaviate-Client-Integration
+# header, matching the identifier emitted by other official Weaviate integrations.
+_INTEGRATION_NAME = "dify"
+
+
+def _integration_version() -> str:
+    """Best-effort Dify version reported in the integration telemetry header."""
+    version = (dify_config.project.version or "").strip()
+    if version:
+        return version
+    try:
+        return importlib.metadata.version("dify-api")
+    except Exception:
+        return "unknown"
+
+
+def _register_integration(client: weaviate.WeaviateClient) -> None:
+    """
+    Registers the ``X-Weaviate-Client-Integration`` telemetry header on the client.
+
+    The header value is ``dify/<version>`` and is sent on both HTTP and gRPC requests, letting
+    Weaviate's server attribute traffic to Dify in its telemetry (alongside the built-in
+    ``X-Weaviate-Client`` header). Registration is best-effort: any failure — including older
+    weaviate-client releases that lack the ``integrations`` API — is swallowed so telemetry never
+    breaks client initialization.
+    """
+    try:
+        from pydantic import Field
+        from weaviate.connect.integrations import _IntegrationConfig
+
+        value = f"{_INTEGRATION_NAME}/{_integration_version()}"
+
+        class _DifyIntegration(_IntegrationConfig):
+            integration: str = Field(
+                default=value,
+                serialization_alias="X-Weaviate-Client-Integration",
+            )
+
+        client.integrations.configure(_DifyIntegration())
+    except Exception:
+        logger.debug("Could not register Dify Weaviate integration header", exc_info=True)
 
 
 def _shutdown_weaviate_client() -> None:
@@ -158,6 +201,9 @@ class WeaviateVector(BaseVector):
                 auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
                 skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
             )
+
+            # Tag outgoing requests so Weaviate can attribute traffic to Dify in its telemetry.
+            _register_integration(client)
 
             if not client.is_ready():
                 raise ConnectionError("Vector database is not ready")
