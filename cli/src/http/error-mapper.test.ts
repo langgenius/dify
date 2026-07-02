@@ -33,7 +33,7 @@ describe('classifyResponse — canonical ErrorBody', () => {
     expect(err.code).toBe(ErrorCode.Server4xxOther)
   })
 
-  it('401 classifies by status as AuthExpired with CLI login hint', async () => {
+  it('401 unauthorized classifies as AuthExpired with CLI login hint', async () => {
     const err = await classified(401, {
       code: 'unauthorized',
       message: 'session expired or revoked',
@@ -41,6 +41,20 @@ describe('classifyResponse — canonical ErrorBody', () => {
     })
 
     expect(err.code).toBe(ErrorCode.AuthExpired)
+    expect(err.hint).toBe('run \'difyctl auth login\' to sign in again')
+  })
+
+  it('401 token_expired carries the structured TokenExpired code with the server message', async () => {
+    const err = await classified(401, {
+      code: 'token_expired',
+      message: 'Your session has expired.',
+      status: 401,
+      hint: 'Re-authenticate to continue (e.g. re-run your login command).',
+    })
+
+    expect(err.code).toBe(ErrorCode.TokenExpired)
+    expect(err.exit()).toBe(4)
+    expect(err.message).toBe('Your session has expired.')
     expect(err.hint).toBe('run \'difyctl auth login\' to sign in again')
   })
 

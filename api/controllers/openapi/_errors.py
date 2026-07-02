@@ -34,6 +34,7 @@ class OpenApiErrorCode(StrEnum):
     # transport-generic (resolved from HTTP status for plain werkzeug raises)
     BAD_REQUEST = "bad_request"
     UNAUTHORIZED = "unauthorized"
+    TOKEN_EXPIRED = "token_expired"
     FORBIDDEN = "forbidden"
     NOT_FOUND = "not_found"
     METHOD_NOT_ALLOWED = "method_not_allowed"
@@ -221,6 +222,19 @@ class OpenApiErrorFormatter:
     def _is_loc_part(part: Any) -> bool:
         # bool is an int subclass but is not a valid path segment
         return isinstance(part, (str, int)) and not isinstance(part, bool)
+
+
+class InvalidBearer(OpenApiError):  # noqa: N818
+    code = 401
+    error_code = OpenApiErrorCode.UNAUTHORIZED
+    description = "Invalid or unknown bearer token."
+
+
+class SessionExpired(OpenApiError):  # noqa: N818
+    code = 401
+    error_code = OpenApiErrorCode.TOKEN_EXPIRED
+    description = "Your session has expired."
+    hint = "Re-authenticate to continue (e.g. re-run your login command)."
 
 
 class FilenameNotExists(OpenApiError):  # noqa: N818

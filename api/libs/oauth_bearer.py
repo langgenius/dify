@@ -236,6 +236,16 @@ class TokenExpiredError(Exception):
     """Hard-expire bookkeeping is the resolver's job before raising."""
 
 
+class NegativeCache(StrEnum):
+    """Negative cache markers. ``EXPIRED`` is distinct from ``INVALID`` so a
+    retry inside ``NEGATIVE_TTL`` still reports expiry instead of collapsing
+    into a generic unknown-token miss.
+    """
+
+    INVALID = "invalid"
+    EXPIRED = "expired"
+
+
 # ============================================================================
 # Registry
 # ============================================================================
@@ -343,13 +353,15 @@ class OAuthAccessTokenResolver:
     def _cache_key(self, token_hash: str) -> str:
         return TOKEN_CACHE_KEY_FMT.format(hash=token_hash)
 
-    def cache_get(self, token_hash: str) -> ResolvedRow | None | Literal["invalid"]:
+    def cache_get(self, token_hash: str) -> ResolvedRow | None | NegativeCache:
         raw = self._redis.get(self._cache_key(token_hash))
         if raw is None:
             return None
         text = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
-        if text == "invalid":
-            return "invalid"
+        try:
+            return NegativeCache(text)
+        except ValueError:
+            pass
         try:
             return ResolvedRow.from_cache(json.loads(text))
         except (ValueError, KeyError):
@@ -363,8 +375,8 @@ class OAuthAccessTokenResolver:
             json.dumps(row.to_cache()),
         )
 
-    def cache_set_negative(self, token_hash: str) -> None:
-        self._redis.setex(self._cache_key(token_hash), self._negative_ttl, "invalid")
+    def cache_set_negative(self, token_hash: str, marker: NegativeCache = NegativeCache.INVALID) -> None:
+        self._redis.setex(self._cache_key(token_hash), self._negative_ttl, str(marker))
 
     def hard_expire(self, session: Session, row_id: uuid.UUID | str, token_hash: str) -> None:
         """Atomic CAS — only the worker that flips revoked_at emits audit;
@@ -385,7 +397,7 @@ class OAuthAccessTokenResolver:
                 extra={"audit": True, "token_id": str(row_id)},
             )
         self._redis.delete(self._cache_key(token_hash))
-        self.cache_set_negative(token_hash)
+        self.cache_set_negative(token_hash, NegativeCache.EXPIRED)
 
 
 class _VariantResolver:
@@ -395,9 +407,11 @@ class _VariantResolver:
 
     def resolve(self, token_hash: str) -> ResolvedRow | None:
         cached = self._parent.cache_get(token_hash)
-        if cached == "invalid":
+        if isinstance(cached, NegativeCache):
+            if cached is NegativeCache.EXPIRED:
+                raise TokenExpiredError("token_expired")
             return None
-        if cached is not None and not isinstance(cached, str):
+        if cached is not None:
             if not self._matches_variant(cached):
                 return None
             return cached
@@ -413,7 +427,7 @@ class _VariantResolver:
         now = datetime.now(UTC)
         if row.expires_at is not None and row.expires_at <= now:
             self._parent.hard_expire(session, row.id, token_hash)
-            return None
+            raise TokenExpiredError("token_expired")
 
         if not self._matches_variant_model(row):
             logger.error(
@@ -472,7 +486,7 @@ def record_layer0_verdict(token_hash: str, tenant_id: str, verdict: bool) -> Non
     if raw is None:
         return
     text = raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
-    if text == "invalid":
+    if text in (NegativeCache.INVALID, NegativeCache.EXPIRED):
         return
     try:
         data = json.loads(text)
@@ -601,6 +615,8 @@ def validate_bearer(*, accept: frozenset[Accepts]) -> Callable[[Callable[_DP, _D
 
             try:
                 ctx = get_authenticator().authenticate(token)
+            except TokenExpiredError:
+                raise Unauthorized("token_expired")
             except InvalidBearerError as e:
                 raise Unauthorized(str(e))
 

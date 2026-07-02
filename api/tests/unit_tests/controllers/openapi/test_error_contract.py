@@ -33,6 +33,7 @@ from controllers.openapi._errors import (
     OpenApiErrorCode,
     OpenApiErrorFormatter,
     RecipientSurfaceMismatch,
+    SessionExpired,
 )
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -353,3 +354,20 @@ class TestErrorCodeEnumRegistration:
         schema = model.__schema__
         assert schema["type"] == "string"
         assert set(schema["enum"]) == {member.value for member in OpenApiErrorCode}
+
+
+class TestSessionExpired:
+    def test_session_expired_emits_token_expired_401_with_hint(self):
+        fmt = OpenApiErrorFormatter()
+        e = SessionExpired()
+        data = {"code": "unauthorized", "message": e.description, "status": 401}
+
+        wire = fmt.finalize(e, data, 401)
+
+        assert wire["code"] == OpenApiErrorCode.TOKEN_EXPIRED
+        assert wire["status"] == 401
+        assert wire["hint"]
+
+    def test_session_expired_code_is_401(self):
+        assert SessionExpired.code == 401
+        assert SessionExpired.error_code == OpenApiErrorCode.TOKEN_EXPIRED

@@ -89,7 +89,7 @@ async function pollWithRetry(
 
 function expired(): BaseError {
   return new BaseError({
-    code: ErrorCode.ExpiredToken,
+    code: ErrorCode.TokenExpired,
     message: 'code expired before authorization',
   })
 }

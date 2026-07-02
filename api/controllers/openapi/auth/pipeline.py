@@ -17,6 +17,7 @@ from flask_login import user_logged_in
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from controllers.openapi._audit import emit_wrong_surface
+from controllers.openapi._errors import InvalidBearer, SessionExpired
 from controllers.openapi.auth.data import (
     AuthData,
     Edition,
@@ -28,7 +29,9 @@ from controllers.openapi.auth.data import (
 from controllers.openapi.auth.flow import When
 from libs.oauth_bearer import (
     AuthContext,
+    InvalidBearerError,
     Scope,
+    TokenExpiredError,
     TokenType,
     extract_bearer,
     get_authenticator,
@@ -217,7 +220,12 @@ class PipelineRouter:
         if not token:
             raise Unauthorized("bearer required")
 
-        identity = get_authenticator().authenticate(token)
+        try:
+            identity = get_authenticator().authenticate(token)
+        except TokenExpiredError:
+            raise SessionExpired()
+        except InvalidBearerError:
+            raise InvalidBearer()
 
         if allowed_token_types is not None and identity.token_type not in allowed_token_types:
             emit_wrong_surface(
