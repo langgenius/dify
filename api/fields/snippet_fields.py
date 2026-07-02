@@ -52,9 +52,9 @@ class SnippetResponse(ResponseModel):
     graph: dict[str, Any] = Field(validation_alias="graph_dict")
     input_fields: list[dict[str, Any]] = Field(validation_alias="input_fields_list")
     tags: list[SnippetTagResponse]
-    created_by: SimpleAccountResponse | None = Field(default=None, validation_alias="created_by_account")
+    created_by: SimpleAccountResponse | None = Field(validation_alias="created_by_account")
     created_at: int
-    updated_by: SimpleAccountResponse | None = Field(default=None, validation_alias="updated_by_account")
+    updated_by: SimpleAccountResponse | None = Field(validation_alias="updated_by_account")
     updated_at: int
 
     @field_validator("created_at", "updated_at", mode="before")
