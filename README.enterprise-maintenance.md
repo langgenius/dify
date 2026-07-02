@@ -120,6 +120,21 @@ git switch -c codex/enterprise-candidate-1.15.0-20260626 1.15.0
 
 迁移完成后，应通过只读检查确认旧数据已经接管新环境，例如账户、空间、应用、知识库、已安装插件、智慧广场资产数量，以及 `alembic_version` 是否到达当前企业迁移 head。浏览器访问 `/apps` 应进入登录页或已登录工作台，不应进入初始化页。
 
+知识库验证不能只看 PostgreSQL。对于 `VECTOR_STORE=weaviate` 的本机升级，必须运行：
+
+```bash
+scripts/check-enterprise-vector-indexes.sh
+```
+
+这个脚本会检查每个存在 completed/enabled 分段的高质量知识库是否有对应 Weaviate class。若报告缺失，说明业务库数据已经平移但向量库目录未正确平移、挂载到了空目录或 schema 状态丢失。此时运行：
+
+```bash
+scripts/check-enterprise-vector-indexes.sh --repair
+scripts/check-enterprise-vector-indexes.sh
+```
+
+第二次只读检查通过后，才允许进入浏览器知识库召回测试。不得把“知识库列表和文档存在”视为向量召回已迁移成功。
+
 ## 官方版本与企业镜像版本
 
 每次从官方稳定 tag/tree 创建候选后，按下面顺序确定企业版本：

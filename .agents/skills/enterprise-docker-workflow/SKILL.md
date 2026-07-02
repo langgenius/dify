@@ -39,6 +39,7 @@ Before compose validation for a new official version candidate:
 - After `up --force-recreate`, inspect API, API WebSocket, Web, worker, plugin daemon, database, Redis, vector store, sandbox, and ssrf proxy containers. All bind mounts must point to the new worktree.
 - Do not leave `api_websocket`, `weaviate`, `sandbox`, `ssrf_proxy`, `plugin_daemon`, or database services running from an old worktree while validating a new candidate.
 - Verify migrated data with read-only checks before asking the user to log in: accounts, tenants, apps/workflows, datasets, installed plugins, enterprise marketplace assets, and `alembic_version`.
+- For Weaviate-backed knowledge bases, run `scripts/check-enterprise-vector-indexes.sh` after volume migration and compose startup. This is mandatory because PostgreSQL may contain completed dataset documents and segments while Weaviate is empty or mounted from the wrong worktree. If the script reports missing classes, run `scripts/check-enterprise-vector-indexes.sh --repair`, then rerun the read-only check before browser recall validation.
 
 ## Rebuild Decisions
 

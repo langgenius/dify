@@ -219,6 +219,7 @@ Before this candidate becomes the new `enterprise/main`:
 6. Rebuild enterprise `api` and `web` images as `1.15.0-enterprise`.
 7. Force recreate `api`, `api_websocket`, `worker`, `worker_beat`, `web`, `plugin_daemon`, vector store, sandbox, ssrf proxy, and `nginx` as required by changed runtime surfaces and data-migration checks.
 8. Verify migrated data is present, including accounts, workspaces, apps/workflows, datasets, installed plugins, and enterprise marketplace assets when available.
-9. Repeat the verified runtime flows and inspect logs for new 500s, tracebacks, and Next error boundaries.
-10. Export the offline image bundle with `Mode=reuse` from the same validated image IDs.
-11. Protect the previous `enterprise/main` and promote this candidate by fork-internal PR, merge, or an explicitly approved branch reset. Never promote through an upstream `langgenius/dify` PR.
+9. Run `scripts/check-enterprise-vector-indexes.sh`; if any Weaviate-backed high-quality dataset is missing its vector class, run `scripts/check-enterprise-vector-indexes.sh --repair` and then rerun the read-only check.
+10. Repeat the verified runtime flows and inspect logs for new 500s, tracebacks, and Next error boundaries.
+11. Export the offline image bundle with `Mode=reuse` from the same validated image IDs.
+12. Protect the previous `enterprise/main` and promote this candidate by fork-internal PR, merge, or an explicitly approved branch reset. Never promote through an upstream `langgenius/dify` PR.

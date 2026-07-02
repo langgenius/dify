@@ -146,9 +146,25 @@ docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise
 docker inspect docker-api-1 docker-web-1 docker-worker-1 docker-worker_beat-1 docker-plugin_daemon-1 docker-db_postgres-1 docker-redis-1 docker-weaviate-1 docker-sandbox-1 docker-ssrf_proxy-1 \
   --format '{{.Name}} image={{.Config.Image}} id={{.Image}} mounts={{range .Mounts}}{{.Source}}=>{{.Destination}};{{end}}'
 docker exec docker-db_postgres-1 psql -U postgres -d dify -c 'select version_num from alembic_version;'
+scripts/check-enterprise-vector-indexes.sh
 ```
 
 The expected result is that API/Web/worker containers use the current enterprise image tag and image IDs, every bind mount points to the new worktree, and the migrated database reaches the current enterprise Alembic head. Old enterprise images may remain on disk as cache, but no running container may reference an old enterprise tag or old worktree mount.
+
+For `VECTOR_STORE=weaviate`, the vector-index check is mandatory after same-machine volume migration. PostgreSQL can contain completed
+knowledge documents and segments while Weaviate has no matching schema classes if the vector-store data directory was not copied, was copied
+from the wrong source, or the compose service mounted a fresh empty volume. In that state, knowledge pages look populated but recall testing
+returns no right-side results because the API receives `404 Not Found` for the expected Weaviate class.
+
+If the read-only check reports missing classes, rebuild only the missing indexes from existing Postgres documents and segments:
+
+```bash
+scripts/check-enterprise-vector-indexes.sh --repair
+scripts/check-enterprise-vector-indexes.sh
+```
+
+Do not treat the local upgrade as validated until the final read-only vector-index check passes and browser recall testing returns visible
+results for migrated high-quality knowledge bases.
 
 ## Final packaging commands
 

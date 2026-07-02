@@ -35,9 +35,11 @@ required_files=(
   "docker/docker-compose.enterprise.yaml"
   "docker/.env.example"
   "docker/ENTERPRISE_DEPLOY_STARTUP.md"
+  "docker/UPGRADE_1.14.2_TO_1.15.0_ENTERPRISE.md"
   "docker/dify-env-sync.py"
   "docker/dify-env-sync.sh"
   "docker/README.enterprise.md"
+  "scripts/check-enterprise-vector-indexes.sh"
   "$OUTPUT_DIR/manifest-$VERSION.json"
   "$OUTPUT_DIR/images-$VERSION.txt"
 )
