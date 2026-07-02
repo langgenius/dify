@@ -481,6 +481,30 @@ describe('useChat', () => {
       expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3) // node, iteration, loop
     })
 
+    it('should stop responding on message_end when no workflow ever started', () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'annotation shortcut' }, {})
+      })
+
+      expect(result.current.isResponding).toBe(true)
+
+      act(() => {
+        callbacks.onData('shortcut answer', true, { messageId: 'm-shortcut', conversationId: 'c-shortcut', taskId: 't-shortcut' })
+        callbacks.onMessageEnd({ id: 'm-shortcut', metadata: {}, files: [] })
+      })
+
+      expect(result.current.isResponding).toBe(false)
+      expect(result.current.chatList[1]!.content).toBe('shortcut answer')
+    })
+
     it('should handle human input forms, pauses, TTS, and message ends', async () => {
       let callbacks: HookCallbacks
 

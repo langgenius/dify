@@ -419,6 +419,7 @@ export const useChat = (
           }
         },
         onMessageEnd: (messageEnd) => {
+          const shouldStopWithoutWorkflow = !responseItem.workflowProcess
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
@@ -429,6 +430,8 @@ export const useChat = (
             responseItem,
             parentId: params.parent_message_id,
           })
+          if (shouldStopWithoutWorkflow)
+            handleResponding(false)
         },
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
@@ -774,11 +777,15 @@ export const useChat = (
         }
       },
       onMessageEnd: (messageEnd) => {
+        let shouldStopWithoutWorkflow = false
         updateChatTreeNode(messageId, (responseItem) => {
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
           const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
           responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
+          shouldStopWithoutWorkflow = !responseItem.workflowProcess
         })
+        if (shouldStopWithoutWorkflow)
+          handleResponding(false)
       },
       onMessageReplace: (messageReplace) => {
         updateChatTreeNode(messageId, (responseItem) => {

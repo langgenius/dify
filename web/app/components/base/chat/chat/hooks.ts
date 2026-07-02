@@ -398,18 +398,23 @@ export const useChat = (
         })
       },
       onMessageEnd: (messageEnd) => {
+        let shouldStopWithoutWorkflow = false
         updateChatTreeNode(messageId, (responseItem) => {
           if (messageEnd.metadata?.annotation_reply) {
             responseItem.annotation = ({
               id: messageEnd.metadata.annotation_reply.id,
               authorName: messageEnd.metadata.annotation_reply.account.name,
             })
-            return
           }
-          responseItem.citation = messageEnd.metadata?.retriever_resources || []
-          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
-          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
+          else {
+            responseItem.citation = messageEnd.metadata?.retriever_resources || []
+            const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
+            responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
+          }
+          shouldStopWithoutWorkflow = !responseItem.workflowProcess
         })
+        if (shouldStopWithoutWorkflow)
+          handleResponding(false)
       },
       onMessageReplace: (messageReplace) => {
         updateChatTreeNode(messageId, (responseItem) => {
@@ -966,6 +971,7 @@ export const useChat = (
         })
       },
       onMessageEnd: (messageEnd) => {
+        const shouldStopWithoutWorkflow = !responseItem.workflowProcess
         if (messageEnd.metadata?.annotation_reply) {
           responseItem.id = messageEnd.id
           responseItem.annotation = ({
@@ -978,12 +984,12 @@ export const useChat = (
             responseItem,
             parentId: data.parent_message_id,
           })
-          handleResponding(false)
-          return
         }
-        responseItem.citation = messageEnd.metadata?.retriever_resources || []
-        const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
-        responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
+        else {
+          responseItem.citation = messageEnd.metadata?.retriever_resources || []
+          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
+          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
+        }
 
         updateCurrentQAOnTree({
           placeholderQuestionId,
@@ -991,6 +997,8 @@ export const useChat = (
           responseItem,
           parentId: data.parent_message_id,
         })
+        if (shouldStopWithoutWorkflow)
+          handleResponding(false)
       },
       onMessageReplace: (messageReplace) => {
         responseItem.content = messageReplace.answer

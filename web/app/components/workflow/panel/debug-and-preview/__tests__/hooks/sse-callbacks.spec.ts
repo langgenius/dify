@@ -416,6 +416,23 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.id === 'msg-1')
       expect(answer!.citation).toEqual([])
     })
+
+    it('should stop responding when message_end arrives before workflow_started', () => {
+      const { result } = setupAndSend()
+
+      expect(result.current.isResponding).toBe(true)
+
+      act(() => {
+        capturedCallbacks.onData('response', true, {
+          conversationId: 'c1',
+          messageId: 'msg-1',
+          taskId: 't1',
+        })
+        capturedCallbacks.onMessageEnd({ metadata: {}, files: [] })
+      })
+
+      expect(result.current.isResponding).toBe(false)
+    })
   })
 
   describe('onMessageReplace', () => {
