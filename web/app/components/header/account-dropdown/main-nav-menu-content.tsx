@@ -61,7 +61,7 @@ function AppearanceSubmenu() {
       <DropdownMenuSubContent
         placement="right-start"
         sideOffset={6}
-        popupClassName="w-[139px] max-h-[360px] bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]"
+        popupClassName="w-[139px] max-h-[360px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <DropdownMenuRadioGroup value={theme || 'system'} onValueChange={value => setTheme(value as Theme)}>
           <DropdownMenuRadioItem value="light" closeOnClick className="mx-0 h-8 gap-1 px-2 py-1">
