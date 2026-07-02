@@ -15,6 +15,7 @@ import { dataSource } from '@dify/contracts/api/console/data-source/orpc.gen'
 import { datasets } from '@dify/contracts/api/console/datasets/orpc.gen'
 import { emailCodeLogin } from '@dify/contracts/api/console/email-code-login/orpc.gen'
 import { emailRegister } from '@dify/contracts/api/console/email-register/orpc.gen'
+import { explore } from '@dify/contracts/api/console/explore/orpc.gen'
 import { features } from '@dify/contracts/api/console/features/orpc.gen'
 import { files } from '@dify/contracts/api/console/files/orpc.gen'
 import { forgotPassword } from '@dify/contracts/api/console/forgot-password/orpc.gen'
@@ -46,11 +47,9 @@ import { website } from '@dify/contracts/api/console/website/orpc.gen'
 import { workflowGenerate } from '@dify/contracts/api/console/workflow-generate/orpc.gen'
 import { workflow } from '@dify/contracts/api/console/workflow/orpc.gen'
 import { workspaces } from '@dify/contracts/api/console/workspaces/orpc.gen'
-import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
-import { exploreConsoleRouterContract } from './console/explore'
-import { pluginsConsoleRouterContract } from './console/plugins'
-import { snippetsConsoleRouterContract } from './console/snippets'
-import { trialAppsConsoleRouterContract } from './console/try-app'
+import { contract } from '@dify/contracts/enterprise/orpc.gen'
+
+const enterpriseContract = contract
 
 const communityContract = {
   account,
@@ -70,6 +69,7 @@ const communityContract = {
   datasets,
   emailCodeLogin,
   emailRegister,
+  explore,
   features,
   files,
   forgotPassword,
@@ -106,8 +106,4 @@ const communityContract = {
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
   ...communityContract,
-  ...exploreConsoleRouterContract,
-  ...pluginsConsoleRouterContract,
-  ...snippetsConsoleRouterContract,
-  ...trialAppsConsoleRouterContract,
 }

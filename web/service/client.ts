@@ -652,22 +652,6 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
         },
       },
     },
-    explore: {
-      updateAppAccessMode: {
-        mutationOptions: {
-          onSuccess: (_data, _variables, _onMutateResult, context) => {
-            return Promise.all([
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.explore.appAccessMode.key({ type: 'query' }),
-              }),
-              context.client.invalidateQueries({
-                queryKey: ['access-control', 'app-whitelist-subjects'],
-              }),
-            ])
-          },
-        },
-      },
-    },
     apiBasedExtension: {
       post: {
         mutationOptions: {

@@ -16,6 +16,8 @@ export const useAppWhiteListSubjects = (appId: string | undefined, enabled: bool
   })
 }
 
+export const useAppWhiteListSubjectsBase = useAppWhiteListSubjects
+
 type SearchResults = {
   currPage: number
   totalPages: number
@@ -57,6 +59,8 @@ export const useSearchForWhiteListCandidates = (query: SearchForWhiteListCandida
   })
 }
 
+export const useSearchForWhiteListCandidatesBase = useSearchForWhiteListCandidates
+
 export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string, isInstalledApp?: boolean, enabled?: boolean }) => {
   // useQuery (not useSuspenseQuery) to keep this service hook's call contract
   // unchanged from the zustand era: callers should not need a Suspense boundary.
@@ -76,3 +80,5 @@ export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }
     gcTime: 0,
   })
 }
+
+export const useGetUserCanAccessAppBase = useGetUserCanAccessApp

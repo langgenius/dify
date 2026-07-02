@@ -1,17 +1,14 @@
 'use client'
 
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
-import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { queryOptions, useQueries, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useQueryState } from 'nuqs'
-import * as React from 'react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppCard from '@/app/components/explore/app-card'
@@ -35,6 +32,9 @@ import s from './style.module.css'
 
 const TryApp = dynamic(() => import('../try-app'), { ssr: false })
 
+type BannerType = import('@/models/app').Banner
+type WorkspaceApp = import('@/types/app').App
+
 type ExploreAppListData = {
   categories: string[]
   allList: App[]
@@ -48,7 +48,7 @@ const homeContinueWorkAppsInput = {
   },
 }
 
-const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled'] as const
+const disabledBannersQueryKey = ['explore', 'home', 'banners', 'disabled']
 
 function getLocaleQueryInput(locale?: string) {
   return locale
@@ -61,7 +61,7 @@ function getExploreAppListQueryOptions(locale?: string) {
   const language = input.query?.language
 
   return queryOptions<ExploreAppListData>({
-    queryKey: [...consoleQuery.explore.apps.queryKey({ input }), language],
+    queryKey: [...consoleQuery.explore.apps.get.queryKey({ input }), language],
     queryFn: async () => {
       const { categories, recommended_apps } = await fetchAppList(language)
       return {
@@ -84,7 +84,7 @@ function getBannersQueryOptions(locale?: string) {
   const language = input.query?.language
 
   return queryOptions<BannerType[]>({
-    queryKey: [...consoleQuery.explore.banners.queryKey({ input }), language],
+    queryKey: [...consoleQuery.explore.banners.get.queryKey({ input }), language],
     queryFn: () => fetchBanners(language),
   })
 }
@@ -246,9 +246,11 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     async ({ name, icon_type, icon, icon_background, description }) => {
       hideTryAppPanel()
 
-      const { export_data, mode } = await fetchAppDetail(
-        currApp?.app.id as string,
-      )
+      const appId = currApp?.app.id
+      if (!appId)
+        return
+
+      const { export_data, mode } = await fetchAppDetail(appId)
       currentCreateAppModeRef.current = mode
       const payload = {
         mode: DSLImportMode.YAML_CONTENT,
@@ -373,4 +375,4 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   )
 }
 
-export default React.memo(Apps)
+export default memo(Apps)
