@@ -16,7 +16,7 @@ import logging
 import time
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from redis import RedisError
@@ -75,7 +75,7 @@ class PluginService:
         plugin_id: str
         version: str
         unique_identifier: str
-        status: str
+        status: Literal["active", "deleted"]
         deprecated_reason: str
         alternative_plugin_id: str
 
