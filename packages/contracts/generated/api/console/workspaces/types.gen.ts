@@ -1823,11 +1823,11 @@ export type RestrictModel = {
 
 export type CorePluginEntitiesParametersPluginParameterAutoGenerateType = 'prompt_instruction'
 
-export type AccountWithRoleListWritable = {
-  accounts: Array<AccountWithRoleWritable>
+export type AccountWithRoleListResponseWritable = {
+  accounts: Array<AccountWithRoleResponseWritable>
 }
 
-export type AccountWithRoleWritable = {
+export type AccountWithRoleResponseWritable = {
   avatar?: string | null
   created_at?: number | null
   email: string

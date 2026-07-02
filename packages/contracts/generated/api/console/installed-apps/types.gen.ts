@@ -409,8 +409,6 @@ export type InstalledAppListResponseWritable = {
   installed_apps: Array<InstalledAppResponseWritable>
 }
 
-export type GeneratedAppResponseWritable = JsonValue
-
 export type InstalledAppResponseWritable = {
   app: InstalledAppInfoResponseWritable
   app_owner_tenant_id: string
