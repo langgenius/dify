@@ -1108,9 +1108,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """
         extras = self._task_state.metadata.model_dump()
 
-        if self._task_state.metadata.annotation_reply:
-            del extras["annotation_reply"]
-
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
