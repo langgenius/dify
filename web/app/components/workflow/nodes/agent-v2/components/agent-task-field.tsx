@@ -122,6 +122,7 @@ export function AgentTaskField({
       >
         <div className={cn('flex h-full flex-col rounded-lg', isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal')}>
           <PromptEditor
+            aria-label={t(`${i18nPrefix}.task.label`, { ns: 'workflow' })}
             wrapperClassName="flex h-full flex-col"
             value={data.agent_task || ''}
             onChange={onChange}

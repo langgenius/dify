@@ -7,13 +7,19 @@ function renderSection({
   section = 'skills',
   changedKeys,
 }: {
-  section?: 'skills' | 'files'
+  section?: 'skills' | 'files' | 'advancedSettings'
   changedKeys: AgentBuildDraftChangedKey[]
 }) {
+  const label = {
+    advancedSettings: 'Advanced Settings',
+    files: 'Files',
+    skills: 'Skills',
+  }[section]
+
   return render(
     <AgentBuildDraftChangedKeysProvider changedKeys={changedKeys}>
       <ConfigureSection
-        label={section === 'skills' ? 'Skills' : 'Files'}
+        label={label}
         labelId={`${section}-label`}
         buildDraftChangeSection={section}
       >
@@ -34,6 +40,12 @@ describe('ConfigureSection', () => {
     renderSection({ section: 'files', changedKeys: ['files'] })
 
     expect(screen.getByRole('heading', { name: 'Files' }).querySelector('.bg-text-warning-secondary')).toBeInTheDocument()
+  })
+
+  it('should show a build draft change dot when Advanced Settings changed', () => {
+    renderSection({ section: 'advancedSettings', changedKeys: ['envVariables'] })
+
+    expect(screen.getByRole('heading', { name: 'Advanced Settings' }).querySelector('.bg-text-warning-secondary')).toBeInTheDocument()
   })
 
   it('should not show a build draft change dot when only another key changed', () => {
