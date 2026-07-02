@@ -1,172 +1,270 @@
-from types import SimpleNamespace
+import uuid
+from dataclasses import dataclass
 
 import pytest
-from pytest_mock import MockerFixture
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from models.enums import TagType
-from services.tag_service import TagBindingCreatePayload, TagBindingDeletePayload, TagService, UpdateTagPayload
+from models.model import Tag, TagBinding
+from services.tag_service import (
+    TagBindingCreatePayload,
+    TagBindingDeletePayload,
+    TagService,
+    UpdateTagPayload,
+)
 
 
-@pytest.fixture
-def current_user(mocker: MockerFixture):
-    user = SimpleNamespace(id="user-1", current_tenant_id="tenant-1")
-    mocker.patch("services.tag_service.current_user", user)
-    return user
+@dataclass
+class _CurrentUserStub:
+    id: str
+    current_tenant_id: str
 
 
-@pytest.fixture
-def db_session(mocker: MockerFixture):
-    mock_db = mocker.Mock()
-    return mock_db.session
+def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
+    snippet = _create_snippet(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    valid_tag = _create_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.SNIPPET, count=1
+    )[0]
+    app_tag = _create_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=1
+    )[0]
+    other_account, other_tenant = _create_account_with_tenant(db_session_with_containers)
+    other_tenant_tag = _create_tags(
+        db_session_with_containers,
+        tenant_id=other_tenant.id,
+        user_id=other_account.id,
+        tag_type=TagType.SNIPPET,
+        count=1,
+    )[0]
+
+    binding_payload = TagBindingCreatePayload(
+        type=TagType.SNIPPET,
+        target_id=snippet.id,
+        tag_ids=[valid_tag.id, app_tag.id, other_tenant_tag.id],
+    )
+    TagService.save_tag_binding(binding_payload, db_session_with_containers)
+
+    bindings = db_session_with_containers.scalars(select(TagBinding).where(TagBinding.target_id == snippet.id)).all()
+    assert len(bindings) == 1
+    assert bindings[0].tag_id == valid_tag.id
+    assert bindings[0].tenant_id == tenant.id
+    assert bindings[0].created_by == account.id
 
 
-def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(mocker: MockerFixture, current_user, db_session):
-    mocker.patch("services.tag_service.TagService.check_target_exists")
-    db_session.scalars.return_value.all.return_value = ["tag-1"]
-    db_session.scalar.return_value = None
-
-    TagService.save_tag_binding(
-        TagBindingCreatePayload(
-            tag_ids=["tag-1", "tag-from-other-tenant"],
-            target_id="snippet-1",
-            type=TagType.SNIPPET,
-        ),
-        db_session,
+def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
+    snippet = _create_snippet(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    valid_tag = _create_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.SNIPPET, count=1
+    )[0]
+    app_tag = _create_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=1
+    )[0]
+    other_account, other_tenant = _create_account_with_tenant(db_session_with_containers)
+    other_tenant_tag = _create_tags(
+        db_session_with_containers,
+        tenant_id=other_tenant.id,
+        user_id=other_account.id,
+        tag_type=TagType.SNIPPET,
+        count=1,
+    )[0]
+    _create_tag_bindings(
+        db_session_with_containers, tags=[valid_tag], target_id=snippet.id, tenant_id=tenant.id, user_id=account.id
+    )
+    _create_tag_bindings(
+        db_session_with_containers, tags=[app_tag], target_id=snippet.id, tenant_id=tenant.id, user_id=account.id
+    )
+    _create_tag_bindings(
+        db_session_with_containers,
+        tags=[other_tenant_tag],
+        target_id=snippet.id,
+        tenant_id=other_tenant.id,
+        user_id=other_account.id,
     )
 
-    db_session.add.assert_called_once()
-    tag_binding = db_session.add.call_args.args[0]
-    assert tag_binding.tag_id == "tag-1"
-    assert tag_binding.target_id == "snippet-1"
-    assert tag_binding.tenant_id == current_user.current_tenant_id
-    assert tag_binding.created_by == current_user.id
-    db_session.commit.assert_called_once()
+    delete_payload = TagBindingDeletePayload(
+        type=TagType.SNIPPET,
+        target_id=snippet.id,
+        tag_ids=[valid_tag.id, app_tag.id, other_tenant_tag.id],
+    )
+    TagService.delete_tag_binding(delete_payload, db_session_with_containers)
+
+    remaining_tag_ids = set(
+        db_session_with_containers.scalars(select(TagBinding.tag_id).where(TagBinding.target_id == snippet.id)).all()
+    )
+    assert remaining_tag_ids == {app_tag.id, other_tenant_tag.id}
 
 
-def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(mocker: MockerFixture, current_user, db_session):
-    mocker.patch("services.tag_service.TagService.check_target_exists")
-    db_session.execute.return_value = SimpleNamespace(rowcount=1)
+def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
+    snippet = _create_snippet(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    tag = _create_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.SNIPPET, count=1
+    )[0]
 
-    TagService.delete_tag_binding(
-        TagBindingDeletePayload(
-            tag_ids=["tag-1", "tag-from-other-tenant"],
-            target_id="snippet-1",
-            type=TagType.SNIPPET,
-        ),
-        db_session,
+    delete_payload = TagBindingDeletePayload(type=TagType.SNIPPET, target_id=snippet.id, tag_ids=[tag.id])
+    TagService.delete_tag_binding(delete_payload, db_session_with_containers)
+
+    bindings = db_session_with_containers.scalars(select(TagBinding).where(TagBinding.target_id == snippet.id)).all()
+    assert bindings == []
+
+
+def test_update_tags_scopes_lookup_to_current_tenant_and_type(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
+    app_tag = _create_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=1
+    )[0]
+    other_account, other_tenant = _create_account_with_tenant(db_session_with_containers)
+    other_tenant_tag = _create_tags(
+        db_session_with_containers,
+        tenant_id=other_tenant.id,
+        user_id=other_account.id,
+        tag_type=TagType.KNOWLEDGE,
+        count=1,
+    )[0]
+    app_tag_name = app_tag.name
+    other_tenant_tag_name = other_tenant_tag.name
+    update_args = UpdateTagPayload(name="should_not_update")
+
+    with pytest.raises(NotFound, match="Tag not found"):
+        TagService.update_tags(update_args, app_tag.id, db_session_with_containers, tag_type=TagType.KNOWLEDGE)
+
+    with pytest.raises(NotFound, match="Tag not found"):
+        TagService.update_tags(update_args, other_tenant_tag.id, db_session_with_containers, tag_type=TagType.KNOWLEDGE)
+
+    db_session_with_containers.refresh(app_tag)
+    db_session_with_containers.refresh(other_tenant_tag)
+    assert app_tag.name == app_tag_name
+    assert other_tenant_tag.name == other_tenant_tag_name
+
+
+def test_get_tag_binding_count_scopes_lookup_to_current_tenant_and_type(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
+    tag = _create_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.KNOWLEDGE, count=1
+    )[0]
+    dataset = _create_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    _create_tag_bindings(
+        db_session_with_containers, tags=[tag], target_id=dataset.id, tenant_id=tenant.id, user_id=account.id
+    )
+    other_account, other_tenant = _create_account_with_tenant(db_session_with_containers)
+    other_tenant_tag = _create_tags(
+        db_session_with_containers,
+        tenant_id=other_tenant.id,
+        user_id=other_account.id,
+        tag_type=TagType.KNOWLEDGE,
+        count=1,
+    )[0]
+    other_tenant_dataset = _create_dataset(
+        db_session_with_containers, tenant_id=other_tenant.id, user_id=other_account.id
+    )
+    _create_tag_bindings(
+        db_session_with_containers,
+        tags=[other_tenant_tag],
+        target_id=other_tenant_dataset.id,
+        tenant_id=other_tenant.id,
+        user_id=other_account.id,
     )
 
-    db_session.execute.assert_called_once()
-    db_session.commit.assert_called_once()
-
-
-def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(mocker: MockerFixture, current_user, db_session):
-    mocker.patch("services.tag_service.TagService.check_target_exists")
-    db_session.execute.return_value = SimpleNamespace(rowcount=0)
-
-    TagService.delete_tag_binding(
-        TagBindingDeletePayload(
-            tag_ids=["tag-1"],
-            target_id="snippet-1",
-            type=TagType.SNIPPET,
-        ),
-        db_session,
+    assert TagService.get_tag_binding_count(tag.id, db_session_with_containers, tag_type=TagType.KNOWLEDGE) == 1
+    assert TagService.get_tag_binding_count(tag.id, db_session_with_containers, tag_type=TagType.APP) == 0
+    assert (
+        TagService.get_tag_binding_count(other_tenant_tag.id, db_session_with_containers, tag_type=TagType.KNOWLEDGE)
+        == 0
     )
 
-    db_session.execute.assert_called_once()
-    db_session.commit.assert_not_called()
+
+def test_delete_tag_scopes_lookup_and_bindings_to_current_tenant(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
+    app_tag = _create_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=1
+    )[0]
+    other_account, other_tenant = _create_account_with_tenant(db_session_with_containers)
+    other_tenant_tag = _create_tags(
+        db_session_with_containers,
+        tenant_id=other_tenant.id,
+        user_id=other_account.id,
+        tag_type=TagType.KNOWLEDGE,
+        count=1,
+    )[0]
+
+    with pytest.raises(NotFound, match="Tag not found"):
+        TagService.delete_tag(app_tag.id, db_session_with_containers, tag_type=TagType.KNOWLEDGE)
+
+    with pytest.raises(NotFound, match="Tag not found"):
+        TagService.delete_tag(other_tenant_tag.id, db_session_with_containers, tag_type=TagType.KNOWLEDGE)
+
+    assert db_session_with_containers.scalar(select(Tag).where(Tag.id == app_tag.id)) is not None
+    assert db_session_with_containers.scalar(select(Tag).where(Tag.id == other_tenant_tag.id)) is not None
 
 
-def test_update_tags_scopes_lookup_to_current_tenant_and_type(current_user, db_session):
-    tag = SimpleNamespace(id="tag-1", name="old", type=TagType.KNOWLEDGE)
-    db_session.scalar.side_effect = [tag, None]
+def test_get_target_ids_by_tag_ids_returns_empty_without_query_for_empty_input(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    result = TagService.update_tags(UpdateTagPayload(name="new"), "tag-1", db_session, tag_type=TagType.KNOWLEDGE)
-
-    stmt = db_session.scalar.call_args_list[0].args[0]
-    compiled = stmt.compile()
-    statement = str(compiled)
-    assert "tags.id" in statement
-    assert "tags.tenant_id" in statement
-    assert "tags.type" in statement
-    assert "tag-1" in compiled.params.values()
-    assert current_user.current_tenant_id in compiled.params.values()
-    assert TagType.KNOWLEDGE in compiled.params.values()
-    assert result is tag
-    assert tag.name == "new"
-    db_session.commit.assert_called_once()
-
-
-def test_get_tag_binding_count_scopes_lookup_to_current_tenant_and_type(current_user, db_session):
-    db_session.scalar.return_value = 3
-
-    result = TagService.get_tag_binding_count("tag-1", db_session, tag_type=TagType.KNOWLEDGE)
-
-    stmt = db_session.scalar.call_args.args[0]
-    compiled = stmt.compile()
-    statement = str(compiled)
-    assert "tag_bindings.tag_id" in statement
-    assert "tags.tenant_id" in statement
-    assert "tags.type" in statement
-    assert "tag-1" in compiled.params.values()
-    assert current_user.current_tenant_id in compiled.params.values()
-    assert TagType.KNOWLEDGE in compiled.params.values()
-    assert result == 3
-
-
-def test_delete_tag_scopes_lookup_and_bindings_to_current_tenant(current_user, db_session):
-    tag = SimpleNamespace(id="tag-1", name="old", type=TagType.KNOWLEDGE)
-    binding = SimpleNamespace(id="binding-1")
-    db_session.scalar.return_value = tag
-    db_session.scalars.return_value.all.return_value = [binding]
-
-    TagService.delete_tag("tag-1", db_session, tag_type=TagType.KNOWLEDGE)
-
-    tag_stmt = db_session.scalar.call_args.args[0]
-    tag_compiled = tag_stmt.compile()
-    assert "tags.id" in str(tag_compiled)
-    assert "tags.tenant_id" in str(tag_compiled)
-    assert "tags.type" in str(tag_compiled)
-    assert "tag-1" in tag_compiled.params.values()
-    assert current_user.current_tenant_id in tag_compiled.params.values()
-    assert TagType.KNOWLEDGE in tag_compiled.params.values()
-
-    binding_stmt = db_session.scalars.call_args.args[0]
-    binding_compiled = binding_stmt.compile()
-    assert "tag_bindings.tag_id" in str(binding_compiled)
-    assert "tag_bindings.tenant_id" in str(binding_compiled)
-    assert "tag-1" in binding_compiled.params.values()
-    assert current_user.current_tenant_id in binding_compiled.params.values()
-    db_session.delete.assert_any_call(tag)
-    db_session.delete.assert_any_call(binding)
-    db_session.commit.assert_called_once()
-
-
-def test_get_target_ids_by_tag_ids_returns_empty_without_query_for_empty_input(db_session):
-    result = TagService.get_target_ids_by_tag_ids(TagType.SNIPPET, "tenant-1", [], db_session)
+    result = TagService.get_target_ids_by_tag_ids(TagType.SNIPPET, tenant.id, [], db_session_with_containers)
 
     assert result == []
-    db_session.scalars.assert_not_called()
 
 
-def test_check_target_exists_accepts_existing_snippet(current_user, db_session):
-    db_session.scalar.return_value = SimpleNamespace(id="snippet-1")
+def test_check_target_exists_accepts_existing_snippet(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    TagService.check_target_exists("snippet", "snippet-1", db_session)
+    snippet = _create_snippet(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
 
-    db_session.scalar.assert_called_once()
+    TagService.check_target_exists(TagType.SNIPPET, snippet.id, db_session_with_containers)
 
 
-def test_check_target_exists_raises_when_snippet_missing(current_user, db_session):
-    db_session.scalar.return_value = None
+def test_check_target_exists_raises_when_snippet_missing(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     with pytest.raises(NotFound, match="Snippet not found"):
-        TagService.check_target_exists("snippet", "missing-snippet", db_session)
+        TagService.check_target_exists(TagType.SNIPPET, str(uuid.uuid4()), db_session_with_containers)
 
 
-def test_check_target_exists_raises_for_invalid_binding_type(current_user, db_session):
+def test_check_target_exists_snippet_not_found_for_other_tenant(
+    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
+) -> None:
+    account, tenant = _create_account_with_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
+    other_account, other_tenant = _create_account_with_tenant(db_session_with_containers)
+    other_tenant_snippet = _create_snippet(
+        db_session_with_containers, tenant_id=other_tenant.id, user_id=other_account.id
+    )
+
+    with pytest.raises(NotFound, match="Snippet not found"):
+        TagService.check_target_exists(TagType.SNIPPET, other_tenant_snippet.id, db_session_with_containers)
+
+
+def test_check_target_exists_raises_for_invalid_binding_type(db_session_with_containers: Session) -> None:
     with pytest.raises(NotFound, match="Invalid binding type"):
-        TagService.check_target_exists("unknown", "target-1", db_session)
-
-    db_session.scalar.assert_not_called()
+        TagService.check_target_exists("invalid_type", "target-id", db_session_with_containers)

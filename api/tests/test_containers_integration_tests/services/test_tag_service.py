@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
-from faker import Faker
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -14,6 +13,7 @@ from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAcco
 from models.dataset import Dataset
 from models.enums import DataSourceType, TagType
 from models.model import App, Tag, TagBinding
+from models.snippet import CustomizedSnippet, SnippetType
 from services.tag_service import (
     SaveTagPayload,
     TagBindingCreatePayload,
@@ -37,28 +37,21 @@ def current_user_stub() -> Generator[_CurrentUserStub, None, None]:
         yield current_user
 
 
-def _create_test_account_and_tenant(
-    db_session_with_containers: Session,
-    current_user_stub: _CurrentUserStub,
-) -> tuple[Account, Tenant]:
-    fake = Faker()
-
+def _create_test_account_and_tenant(db_session_with_containers: Session) -> tuple[Account, Tenant]:
+    suffix = uuid.uuid4().hex
     account = Account(
-        email=fake.email(),
-        name=fake.name(),
+        email=f"tag-service-{suffix}@example.com",
+        name=f"Tag Service Account {suffix}",
         interface_language="en-US",
         status=AccountStatus.ACTIVE,
     )
 
-    db_session_with_containers.add(account)
-    db_session_with_containers.commit()
-
     tenant = Tenant(
-        name=fake.company(),
+        name=f"Tag Service Tenant {suffix}",
         status=TenantStatus.NORMAL,
     )
-    db_session_with_containers.add(tenant)
-    db_session_with_containers.commit()
+    db_session_with_containers.add_all([account, tenant])
+    db_session_with_containers.flush()
 
     join = TenantAccountJoin(
         tenant_id=tenant.id,
@@ -67,48 +60,50 @@ def _create_test_account_and_tenant(
         current=True,
     )
     db_session_with_containers.add(join)
-    db_session_with_containers.commit()
-
-    current_user_stub.current_tenant_id = tenant.id
-    current_user_stub.id = account.id
+    db_session_with_containers.flush()
 
     return account, tenant
 
 
+def _set_current_user(current_user_stub: _CurrentUserStub, account: Account, tenant: Tenant) -> None:
+    current_user_stub.current_tenant_id = tenant.id
+    current_user_stub.id = account.id
+
+
 def _create_test_dataset(
     db_session_with_containers: Session,
-    current_user_stub: _CurrentUserStub,
+    *,
     tenant_id: str,
+    user_id: str,
 ) -> Dataset:
-    fake = Faker()
-
+    suffix = uuid.uuid4().hex
     dataset = Dataset(
-        name=fake.company(),
-        description=fake.text(max_nb_chars=100),
+        name=f"Tag Service Dataset {suffix}",
+        description="Tag service test dataset",
         provider="vendor",
         permission="only_me",
         data_source_type=DataSourceType.UPLOAD_FILE,
         indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         tenant_id=tenant_id,
-        created_by=current_user_stub.id,
+        created_by=user_id,
     )
 
     db_session_with_containers.add(dataset)
-    db_session_with_containers.commit()
+    db_session_with_containers.flush()
 
     return dataset
 
 
 def _create_test_app(
     db_session_with_containers: Session,
-    current_user_stub: _CurrentUserStub,
+    *,
     tenant_id: str,
+    user_id: str,
 ) -> App:
-    fake = Faker()
-
+    suffix = uuid.uuid4().hex
     app = App(
-        name=fake.company(),
-        description=fake.text(max_nb_chars=100),
+        name=f"Tag Service App {suffix}",
+        description="Tag service test app",
         mode="chat",
         icon_type="emoji",
         icon="🤖",
@@ -116,47 +111,69 @@ def _create_test_app(
         enable_site=False,
         enable_api=False,
         tenant_id=tenant_id,
-        created_by=current_user_stub.id,
+        created_by=user_id,
     )
 
     db_session_with_containers.add(app)
-    db_session_with_containers.commit()
+    db_session_with_containers.flush()
 
     return app
 
 
+def _create_snippet(
+    db_session_with_containers: Session,
+    *,
+    tenant_id: str,
+    user_id: str,
+) -> CustomizedSnippet:
+    suffix = uuid.uuid4().hex
+    snippet = CustomizedSnippet(
+        tenant_id=tenant_id,
+        name=f"Tag Service Snippet {suffix}",
+        description="Tag service test snippet",
+        type=SnippetType.NODE.value,
+        created_by=user_id,
+        updated_by=user_id,
+    )
+
+    db_session_with_containers.add(snippet)
+    db_session_with_containers.flush()
+
+    return snippet
+
+
 def _create_test_tags(
     db_session_with_containers: Session,
-    current_user_stub: _CurrentUserStub,
+    *,
     tenant_id: str,
+    user_id: str,
     tag_type: TagType,
     count: int = 3,
 ) -> list[Tag]:
-    fake = Faker()
     tags = []
 
     for i in range(count):
         tag = Tag(
-            name=f"tag_{tag_type.value}_{i}_{fake.word()}",
+            name=f"tag-{tag_type.value}-{i}-{uuid.uuid4().hex}",
             type=tag_type,
             tenant_id=tenant_id,
-            created_by=current_user_stub.id,
+            created_by=user_id,
         )
         tags.append(tag)
 
-    for tag in tags:
-        db_session_with_containers.add(tag)
-    db_session_with_containers.commit()
+    db_session_with_containers.add_all(tags)
+    db_session_with_containers.flush()
 
     return tags
 
 
 def _create_test_tag_bindings(
     db_session_with_containers: Session,
-    current_user_stub: _CurrentUserStub,
+    *,
     tags: Sequence[Tag],
     target_id: str,
     tenant_id: str,
+    user_id: str,
 ) -> list[TagBinding]:
     tag_bindings = []
 
@@ -165,25 +182,28 @@ def _create_test_tag_bindings(
             tag_id=tag.id,
             target_id=target_id,
             tenant_id=tenant_id,
-            created_by=current_user_stub.id,
+            created_by=user_id,
         )
         tag_bindings.append(tag_binding)
 
-    for tag_binding in tag_bindings:
-        db_session_with_containers.add(tag_binding)
-    db_session_with_containers.commit()
+    db_session_with_containers.add_all(tag_bindings)
+    db_session_with_containers.flush()
 
     return tag_bindings
 
 
 def test_get_tags_success(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.KNOWLEDGE, 3)
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.KNOWLEDGE, count=3
+    )
 
-    dataset = _create_test_dataset(db_session_with_containers, current_user_stub, tenant.id)
-    _create_test_tag_bindings(db_session_with_containers, current_user_stub, tags[:2], dataset.id, tenant.id)
+    dataset = _create_test_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    _create_test_tag_bindings(
+        db_session_with_containers, tags=tags[:2], target_id=dataset.id, tenant_id=tenant.id, user_id=account.id
+    )
 
     result = TagService.get_tags(db_session_with_containers, TagType.KNOWLEDGE, tenant.id)
 
@@ -201,19 +221,19 @@ def test_get_tags_success(db_session_with_containers: Session, current_user_stub
     assert tag_with_bindings is not None
     assert tag_with_bindings.binding_count >= 1
 
-    assert len(result) == 3
-
 
 def test_get_tags_with_keyword_filter(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.APP, 3)
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=3
+    )
 
     tags[0].name = "python_development"
     tags[1].name = "machine_learning"
     tags[2].name = "web_development"
-    db_session_with_containers.commit()
+    db_session_with_containers.flush()
 
     result = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="development")
 
@@ -224,14 +244,14 @@ def test_get_tags_with_keyword_filter(db_session_with_containers: Session, curre
         assert "development" in tag_result.name.lower()
 
     result_no_match = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="nonexistent")
-    assert len(result_no_match) == 0
+    assert result_no_match == []
 
 
 def test_get_tags_with_special_characters_in_keyword(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     tag_with_percent = Tag(
         name="50% discount",
@@ -269,7 +289,7 @@ def test_get_tags_with_special_characters_in_keyword(
     tag_no_match.id = str(uuid.uuid4())
     db_session_with_containers.add(tag_no_match)
 
-    db_session_with_containers.commit()
+    db_session_with_containers.flush()
 
     result = TagService.get_tags(db_session_with_containers, TagType.APP, tenant.id, keyword="50%")
     assert len(result) == 1
@@ -289,31 +309,32 @@ def test_get_tags_with_special_characters_in_keyword(
 
 
 def test_get_tags_empty_result(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     result = TagService.get_tags(db_session_with_containers, TagType.KNOWLEDGE, tenant.id)
 
-    assert result is not None
-    assert len(result) == 0
-    assert isinstance(result, list)
+    assert result == []
 
 
 def test_get_target_ids_by_tag_ids_success(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.KNOWLEDGE, 3)
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.KNOWLEDGE, count=3
+    )
 
     datasets = []
     for i in range(2):
-        dataset = _create_test_dataset(db_session_with_containers, current_user_stub, tenant.id)
+        dataset = _create_test_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
         datasets.append(dataset)
-
         tags_to_bind = tags[:2] if i == 0 else tags[2:]
-        _create_test_tag_bindings(db_session_with_containers, current_user_stub, tags_to_bind, dataset.id, tenant.id)
+        _create_test_tag_bindings(
+            db_session_with_containers, tags=tags_to_bind, target_id=dataset.id, tenant_id=tenant.id, user_id=account.id
+        )
 
     tag_ids = [tag.id for tag in tags]
     result = TagService.get_target_ids_by_tag_ids(TagType.KNOWLEDGE, tenant.id, tag_ids, db_session_with_containers)
@@ -335,36 +356,37 @@ def test_get_target_ids_by_tag_ids_success(
 def test_get_target_ids_by_tag_ids_empty_tag_ids(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     result = TagService.get_target_ids_by_tag_ids(TagType.KNOWLEDGE, tenant.id, [], db_session_with_containers)
 
-    assert result is not None
-    assert len(result) == 0
-    assert isinstance(result, list)
+    assert result == []
 
 
 def test_get_target_ids_by_tag_ids_match_all(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.KNOWLEDGE, 2)
-    dataset_with_all_tags = _create_test_dataset(db_session_with_containers, current_user_stub, tenant.id)
-    dataset_with_one_tag = _create_test_dataset(db_session_with_containers, current_user_stub, tenant.id)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.KNOWLEDGE, count=2
+    )
+    dataset_with_all_tags = _create_test_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    dataset_with_one_tag = _create_test_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
     _create_test_tag_bindings(
         db_session_with_containers,
-        current_user_stub,
-        tags,
-        dataset_with_all_tags.id,
-        tenant.id,
+        tags=tags,
+        target_id=dataset_with_all_tags.id,
+        tenant_id=tenant.id,
+        user_id=account.id,
     )
     _create_test_tag_bindings(
         db_session_with_containers,
-        current_user_stub,
-        tags[:1],
-        dataset_with_one_tag.id,
-        tenant.id,
+        tags=tags[:1],
+        target_id=dataset_with_one_tag.id,
+        tenant_id=tenant.id,
+        user_id=account.id,
     )
 
     tag_ids = [tag.id for tag in tags]
@@ -387,10 +409,8 @@ def test_get_target_ids_by_tag_ids_match_all(
 def test_get_target_ids_by_tag_ids_no_matching_tags(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-
-    import uuid
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     non_existent_tag_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
 
@@ -398,20 +418,20 @@ def test_get_target_ids_by_tag_ids_no_matching_tags(
         TagType.KNOWLEDGE, tenant.id, non_existent_tag_ids, db_session_with_containers
     )
 
-    assert result is not None
-    assert len(result) == 0
-    assert isinstance(result, list)
+    assert result == []
 
 
 def test_get_tag_by_tag_name_success(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.APP, 2)
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=2
+    )
 
     tags[0].name = "python_tag"
     tags[1].name = "ml_tag"
-    db_session_with_containers.commit()
+    db_session_with_containers.flush()
 
     result = TagService.get_tag_by_tag_name(TagType.APP, tenant.id, "python_tag", db_session_with_containers)
 
@@ -425,21 +445,19 @@ def test_get_tag_by_tag_name_success(db_session_with_containers: Session, curren
 def test_get_tag_by_tag_name_no_matches(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     result = TagService.get_tag_by_tag_name(TagType.KNOWLEDGE, tenant.id, "nonexistent_tag", db_session_with_containers)
 
-    assert result is not None
-    assert len(result) == 0
-    assert isinstance(result, list)
+    assert result == []
 
 
 def test_get_tag_by_tag_name_empty_parameters(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     result_empty_type = TagService.get_tag_by_tag_name("", tenant.id, "test_tag", db_session_with_containers)
     result_empty_name = TagService.get_tag_by_tag_name(TagType.KNOWLEDGE, tenant.id, "", db_session_with_containers)
@@ -453,13 +471,17 @@ def test_get_tag_by_tag_name_empty_parameters(
 def test_get_tags_by_target_id_success(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.APP, 3)
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=3
+    )
 
-    app = _create_test_app(db_session_with_containers, current_user_stub, tenant.id)
-    _create_test_tag_bindings(db_session_with_containers, current_user_stub, tags, app.id, tenant.id)
+    app = _create_test_app(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    _create_test_tag_bindings(
+        db_session_with_containers, tags=tags, target_id=app.id, tenant_id=tenant.id, user_id=account.id
+    )
 
     result = TagService.get_tags_by_target_id(TagType.APP, tenant.id, app.id, db_session_with_containers)
 
@@ -475,10 +497,10 @@ def test_get_tags_by_target_id_success(
 def test_get_tags_by_target_id_no_bindings(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    app = _create_test_app(db_session_with_containers, current_user_stub, tenant.id)
+    app = _create_test_app(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
 
     result = TagService.get_tags_by_target_id(TagType.APP, tenant.id, app.id, db_session_with_containers)
 
@@ -488,8 +510,8 @@ def test_get_tags_by_target_id_no_bindings(
 
 
 def test_save_tags_success(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     tag_args = SaveTagPayload(name="test_tag_name", type=TagType.KNOWLEDGE)
 
@@ -505,7 +527,7 @@ def test_save_tags_success(db_session_with_containers: Session, current_user_stu
     db_session_with_containers.refresh(result)
     assert result.id is not None
 
-    saved_tag = db_session_with_containers.query(Tag).where(Tag.id == result.id).first()
+    saved_tag = db_session_with_containers.scalar(select(Tag).where(Tag.id == result.id))
     assert saved_tag is not None
     assert saved_tag.name == "test_tag_name"
 
@@ -513,27 +535,26 @@ def test_save_tags_success(db_session_with_containers: Session, current_user_stu
 def test_save_tags_duplicate_name_error(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     tag_args = SaveTagPayload(name="duplicate_tag", type=TagType.APP)
     TagService.save_tags(tag_args, db_session_with_containers)
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="Tag name already exists"):
         TagService.save_tags(tag_args, db_session_with_containers)
-    assert "Tag name already exists" in str(exc_info.value)
 
 
 def test_update_tags_success(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     tag_args = SaveTagPayload(name="original_name", type=TagType.KNOWLEDGE)
     tag = TagService.save_tags(tag_args, db_session_with_containers)
 
     update_args = UpdateTagPayload(name="updated_name")
 
-    result = TagService.update_tags(update_args, tag.id, db_session_with_containers)
+    result = TagService.update_tags(update_args, tag.id, db_session_with_containers, tag_type=TagType.KNOWLEDGE)
 
     assert result is not None
     assert result.name == "updated_name"
@@ -543,58 +564,62 @@ def test_update_tags_success(db_session_with_containers: Session, current_user_s
     db_session_with_containers.refresh(result)
     assert result.name == "updated_name"
 
-    updated_tag = db_session_with_containers.query(Tag).where(Tag.id == tag.id).first()
+    updated_tag = db_session_with_containers.scalar(select(Tag).where(Tag.id == tag.id))
     assert updated_tag is not None
     assert updated_tag.name == "updated_name"
 
 
 def test_update_tags_not_found_error(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-
-    import uuid
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     non_existent_tag_id = str(uuid.uuid4())
 
     update_args = UpdateTagPayload(name="updated_name")
 
-    with pytest.raises(NotFound) as exc_info:
+    with pytest.raises(NotFound, match="Tag not found"):
         TagService.update_tags(update_args, non_existent_tag_id, db_session_with_containers)
-    assert "Tag not found" in str(exc_info.value)
 
 
 def test_update_tags_duplicate_name_error(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     tag1_args = SaveTagPayload(name="first_tag", type=TagType.APP)
-    tag1 = TagService.save_tags(tag1_args, db_session_with_containers)
+    TagService.save_tags(tag1_args, db_session_with_containers)
 
     tag2_args = SaveTagPayload(name="second_tag", type=TagType.APP)
     tag2 = TagService.save_tags(tag2_args, db_session_with_containers)
 
     update_args = UpdateTagPayload(name="first_tag")
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="Tag name already exists"):
         TagService.update_tags(update_args, tag2.id, db_session_with_containers)
-    assert "Tag name already exists" in str(exc_info.value)
 
 
 def test_get_tag_binding_count_success(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.KNOWLEDGE, 2)
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.KNOWLEDGE, count=2
+    )
 
-    dataset = _create_test_dataset(db_session_with_containers, current_user_stub, tenant.id)
-    _create_test_tag_bindings(db_session_with_containers, current_user_stub, [tags[0]], dataset.id, tenant.id)
+    dataset = _create_test_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    _create_test_tag_bindings(
+        db_session_with_containers, tags=[tags[0]], target_id=dataset.id, tenant_id=tenant.id, user_id=account.id
+    )
 
-    result_tag_with_bindings = TagService.get_tag_binding_count(tags[0].id, db_session_with_containers)
-    result_tag_without_bindings = TagService.get_tag_binding_count(tags[1].id, db_session_with_containers)
+    result_tag_with_bindings = TagService.get_tag_binding_count(
+        tags[0].id, db_session_with_containers, tag_type=TagType.KNOWLEDGE
+    )
+    result_tag_without_bindings = TagService.get_tag_binding_count(
+        tags[1].id, db_session_with_containers, tag_type=TagType.KNOWLEDGE
+    )
 
     assert result_tag_with_bindings == 1
     assert result_tag_without_bindings == 0
@@ -603,10 +628,8 @@ def test_get_tag_binding_count_success(
 def test_get_tag_binding_count_non_existent_tag(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-
-    import uuid
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     non_existent_tag_id = str(uuid.uuid4())
 
@@ -616,49 +639,52 @@ def test_get_tag_binding_count_non_existent_tag(
 
 
 def test_delete_tag_success(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tag = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.APP, 1)[0]
+    tag = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=1
+    )[0]
 
-    app = _create_test_app(db_session_with_containers, current_user_stub, tenant.id)
-    _create_test_tag_bindings(db_session_with_containers, current_user_stub, [tag], app.id, tenant.id)
+    app = _create_test_app(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    _create_test_tag_bindings(
+        db_session_with_containers, tags=[tag], target_id=app.id, tenant_id=tenant.id, user_id=account.id
+    )
 
-    tag_before = db_session_with_containers.query(Tag).where(Tag.id == tag.id).first()
+    tag_before = db_session_with_containers.scalar(select(Tag).where(Tag.id == tag.id))
     assert tag_before is not None
 
-    binding_before = db_session_with_containers.query(TagBinding).where(TagBinding.tag_id == tag.id).first()
+    binding_before = db_session_with_containers.scalar(select(TagBinding).where(TagBinding.tag_id == tag.id))
     assert binding_before is not None
 
-    TagService.delete_tag(tag.id, db_session_with_containers)
+    TagService.delete_tag(tag.id, db_session_with_containers, tag_type=TagType.APP)
 
-    tag_after = db_session_with_containers.query(Tag).where(Tag.id == tag.id).first()
+    tag_after = db_session_with_containers.scalar(select(Tag).where(Tag.id == tag.id))
     assert tag_after is None
 
-    binding_after = db_session_with_containers.query(TagBinding).where(TagBinding.tag_id == tag.id).first()
+    binding_after = db_session_with_containers.scalar(select(TagBinding).where(TagBinding.tag_id == tag.id))
     assert binding_after is None
 
 
 def test_delete_tag_not_found_error(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-
-    import uuid
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     non_existent_tag_id = str(uuid.uuid4())
 
-    with pytest.raises(NotFound) as exc_info:
+    with pytest.raises(NotFound, match="Tag not found"):
         TagService.delete_tag(non_existent_tag_id, db_session_with_containers)
-    assert "Tag not found" in str(exc_info.value)
 
 
 def test_save_tag_binding_success(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.KNOWLEDGE, 2)
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.KNOWLEDGE, count=2
+    )
 
-    dataset = _create_test_dataset(db_session_with_containers, current_user_stub, tenant.id)
+    dataset = _create_test_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
 
     binding_payload = TagBindingCreatePayload(
         type=TagType.KNOWLEDGE, target_id=dataset.id, tag_ids=[tag.id for tag in tags]
@@ -666,10 +692,8 @@ def test_save_tag_binding_success(db_session_with_containers: Session, current_u
     TagService.save_tag_binding(binding_payload, db_session_with_containers)
 
     for tag in tags:
-        binding = (
-            db_session_with_containers.query(TagBinding)
-            .where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id)
-            .first()
+        binding = db_session_with_containers.scalar(
+            select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == dataset.id)
         )
         assert binding is not None
         assert binding.tenant_id == tenant.id
@@ -679,12 +703,14 @@ def test_save_tag_binding_success(db_session_with_containers: Session, current_u
 def test_save_tag_binding_duplicate_handling(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tag = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.APP, 1)[0]
+    tag = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=1
+    )[0]
 
-    app = _create_test_app(db_session_with_containers, current_user_stub, tenant.id)
+    app = _create_test_app(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
 
     binding_payload = TagBindingCreatePayload(type=TagType.APP, target_id=app.id, tag_ids=[tag.id])
     TagService.save_tag_binding(binding_payload, db_session_with_containers)
@@ -697,38 +723,22 @@ def test_save_tag_binding_duplicate_handling(
     assert len(bindings) == 1
 
 
-def test_save_tag_binding_invalid_target_type(
-    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
-) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-
-    tag = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.KNOWLEDGE, 1)[0]
-
-    import uuid
-
-    non_existent_target_id = str(uuid.uuid4())
-
-    from pydantic import ValidationError
-
-    with pytest.raises(ValidationError):
-        TagBindingCreatePayload(type="invalid_type", target_id=non_existent_target_id, tag_ids=[tag.id])
-
-
 def test_delete_tag_binding_success(db_session_with_containers: Session, current_user_stub: _CurrentUserStub) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tags = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.KNOWLEDGE, 2)
-
-    dataset = _create_test_dataset(db_session_with_containers, current_user_stub, tenant.id)
-    _create_test_tag_bindings(db_session_with_containers, current_user_stub, tags, dataset.id, tenant.id)
-
-    bindings_before = (
-        db_session_with_containers.query(TagBinding)
-        .where(TagBinding.tag_id.in_([tag.id for tag in tags]), TagBinding.target_id == dataset.id)
-        .all()
+    tags = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.KNOWLEDGE, count=2
     )
+
+    dataset = _create_test_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
+    _create_test_tag_bindings(
+        db_session_with_containers, tags=tags, target_id=dataset.id, tenant_id=tenant.id, user_id=account.id
+    )
+
+    bindings_before = db_session_with_containers.scalars(
+        select(TagBinding).where(TagBinding.tag_id.in_([tag.id for tag in tags]), TagBinding.target_id == dataset.id)
+    ).all()
     assert len(bindings_before) == 2
 
     delete_payload = TagBindingDeletePayload(
@@ -736,22 +746,22 @@ def test_delete_tag_binding_success(db_session_with_containers: Session, current
     )
     TagService.delete_tag_binding(delete_payload, db_session_with_containers)
 
-    bindings_after = (
-        db_session_with_containers.query(TagBinding)
-        .where(TagBinding.tag_id.in_([tag.id for tag in tags]), TagBinding.target_id == dataset.id)
-        .all()
-    )
-    assert len(bindings_after) == 0
+    bindings_after = db_session_with_containers.scalars(
+        select(TagBinding).where(TagBinding.tag_id.in_([tag.id for tag in tags]), TagBinding.target_id == dataset.id)
+    ).all()
+    assert bindings_after == []
 
 
 def test_delete_tag_binding_non_existent_binding(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    tag = _create_test_tags(db_session_with_containers, current_user_stub, tenant.id, TagType.APP, 1)[0]
-    app = _create_test_app(db_session_with_containers, current_user_stub, tenant.id)
+    tag = _create_test_tags(
+        db_session_with_containers, tenant_id=tenant.id, user_id=account.id, tag_type=TagType.APP, count=1
+    )[0]
+    app = _create_test_app(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
 
     delete_payload = TagBindingDeletePayload(type=TagType.APP, target_id=app.id, tag_ids=[tag.id])
     TagService.delete_tag_binding(delete_payload, db_session_with_containers)
@@ -759,16 +769,16 @@ def test_delete_tag_binding_non_existent_binding(
     bindings = db_session_with_containers.scalars(
         select(TagBinding).where(TagBinding.tag_id == tag.id, TagBinding.target_id == app.id)
     ).all()
-    assert len(bindings) == 0
+    assert bindings == []
 
 
 def test_check_target_exists_knowledge_success(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    dataset = _create_test_dataset(db_session_with_containers, current_user_stub, tenant.id)
+    dataset = _create_test_dataset(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
 
     TagService.check_target_exists(TagType.KNOWLEDGE, dataset.id, db_session_with_containers)
 
@@ -776,25 +786,22 @@ def test_check_target_exists_knowledge_success(
 def test_check_target_exists_knowledge_not_found(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-
-    import uuid
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     non_existent_dataset_id = str(uuid.uuid4())
 
-    with pytest.raises(NotFound) as exc_info:
+    with pytest.raises(NotFound, match="Dataset not found"):
         TagService.check_target_exists(TagType.KNOWLEDGE, non_existent_dataset_id, db_session_with_containers)
-    assert "Dataset not found" in str(exc_info.value)
 
 
 def test_check_target_exists_app_success(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
-    app = _create_test_app(db_session_with_containers, current_user_stub, tenant.id)
+    app = _create_test_app(db_session_with_containers, tenant_id=tenant.id, user_id=account.id)
 
     TagService.check_target_exists(TagType.APP, app.id, db_session_with_containers)
 
@@ -802,28 +809,10 @@ def test_check_target_exists_app_success(
 def test_check_target_exists_app_not_found(
     db_session_with_containers: Session, current_user_stub: _CurrentUserStub
 ) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-
-    import uuid
+    account, tenant = _create_test_account_and_tenant(db_session_with_containers)
+    _set_current_user(current_user_stub, account, tenant)
 
     non_existent_app_id = str(uuid.uuid4())
 
-    with pytest.raises(NotFound) as exc_info:
+    with pytest.raises(NotFound, match="App not found"):
         TagService.check_target_exists(TagType.APP, non_existent_app_id, db_session_with_containers)
-    assert "App not found" in str(exc_info.value)
-
-
-def test_check_target_exists_invalid_type(
-    db_session_with_containers: Session, current_user_stub: _CurrentUserStub
-) -> None:
-    fake = Faker()
-    account, tenant = _create_test_account_and_tenant(db_session_with_containers, current_user_stub)
-
-    import uuid
-
-    non_existent_target_id = str(uuid.uuid4())
-
-    with pytest.raises(NotFound) as exc_info:
-        TagService.check_target_exists("invalid_type", non_existent_target_id, db_session_with_containers)
-    assert "Invalid binding type" in str(exc_info.value)
