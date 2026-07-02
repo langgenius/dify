@@ -33,9 +33,10 @@ export const useSnippetPublish = ({
         params: { snippetId },
       })
       queryClient.setQueryData<SnippetContract | undefined>(
-        consoleQuery.snippets.detail.queryKey({
+        consoleQuery.workspaces.current.customizedSnippets.bySnippetId.get.key({
+          type: 'query',
           input: {
-            params: { snippetId },
+            params: { snippet_id: snippetId },
           },
         }),
         old => old ? { ...old, is_published: true } : old,
