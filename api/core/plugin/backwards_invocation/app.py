@@ -3,6 +3,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -60,6 +61,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_app(
         cls,
+        session: Session,
         app_id: str,
         user_id: str,
         tenant_id: str,
@@ -85,20 +87,21 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 if not query:
                     raise ValueError("missing query")
 
-                return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files)
+                return cls.invoke_chat_app(session, app, user, conversation_id, query, stream, inputs, files)
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app)
                 if not workflow:
                     raise ValueError("unexpected app type")
                 return cls.invoke_workflow_app(app, workflow, user, stream, inputs, files)
             case AppMode.COMPLETION:
-                return cls.invoke_completion_app(app, user, stream, inputs, files)
+                return cls.invoke_completion_app(session, app, user, stream, inputs, files)
             case _:
                 raise ValueError("unexpected app type")
 
     @classmethod
     def invoke_chat_app(
         cls,
+        session: Session,
         app: App,
         user: Account | EndUser,
         conversation_id: str,
@@ -151,6 +154,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 )
             case AppMode.CHAT:
                 return ChatAppGenerator().generate(
+                    session=session,
                     app_model=app,
                     user=user,
                     args={
@@ -197,6 +201,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_completion_app(
         cls,
+        session: Session,
         app: App,
         user: EndUser | Account,
         stream: bool,
@@ -207,6 +212,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         invoke completion app
         """
         return CompletionAppGenerator().generate(
+            session=session,
             app_model=app,
             user=user,
             args={"inputs": inputs, "files": files},

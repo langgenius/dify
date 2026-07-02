@@ -7,6 +7,7 @@ from typing import Any, Literal, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import UUID_NIL
@@ -228,6 +229,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
+        session: Session,
         context: contextvars.Context,
         application_generate_entity: AgentChatAppGenerateEntity,
         queue_manager: AppQueueManager,
@@ -253,6 +255,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 # chatbot app
                 runner = AgentChatAppRunner()
                 runner.run(
+                    session=session,
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,

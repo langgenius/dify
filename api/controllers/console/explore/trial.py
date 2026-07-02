@@ -6,6 +6,7 @@ from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -37,7 +38,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.app.wraps import get_app_model_with_trial
+from controllers.console.app.wraps import get_app_model_with_trial, with_session
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -458,7 +459,8 @@ class TrialAppWorkflowRunApi(TrialAppResource):
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         """
         Run workflow
         """
@@ -475,7 +477,12 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             app_id = app_model.id
             user_id = current_user.id
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
@@ -525,7 +532,8 @@ class TrialChatApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @trial_feature_enable
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -548,7 +556,12 @@ class TrialChatApi(TrialAppResource):
             user_id = current_user.id
 
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
@@ -721,7 +734,8 @@ class TrialCompletionApi(TrialAppResource):
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @trial_feature_enable
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -738,7 +752,12 @@ class TrialCompletionApi(TrialAppResource):
             user_id = current_user.id
 
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
             )
 
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)

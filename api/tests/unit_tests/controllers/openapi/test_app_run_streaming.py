@@ -77,6 +77,7 @@ def test_run_chat_always_calls_generate_with_streaming_true(
             _make_app(),
             _make_account(),
             AppRunRequest(inputs={}, query="hello"),
+            Mock(),
         )
     _, kwargs = generate_mock.call_args
     assert kwargs["streaming"] is True
