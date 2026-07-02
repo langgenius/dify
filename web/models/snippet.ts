@@ -8,7 +8,7 @@ export type SnippetSection = 'orchestrate'
 export type SnippetListItem = {
   id: string
   name: string
-  description: string
+  description: string | null
   updatedAt: string
   usage: string
   tags: Tag[]
@@ -19,7 +19,7 @@ export type SnippetListItem = {
 export type SnippetDetail = {
   id: string
   name: string
-  description: string
+  description: string | null
   updatedAt: string
   usage: string
   tags: Tag[]
