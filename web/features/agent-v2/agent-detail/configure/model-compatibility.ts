@@ -9,18 +9,16 @@ const agentIncompatibleModelConfig: ProviderModelCompatibility[] = [
   {
     providers: ['openai'],
     incompatibleModels: [
-      /^gpt-4o-mini(?:-|$)/i,
-      /^gpt-4\.1-(?:mini|nano)(?:-|$)/i,
-      /^gpt-4(?:-|$)/i,
-      /^gpt-3\.5/i,
+      /^chatgpt-/i,
+      /^gpt-4/i,
+      /^gpt-3/i,
       /^o[34]-mini(?:-|$)/i,
     ],
   },
   {
     providers: ['anthropic'],
     incompatibleModels: [
-      /^claude-3-(?:haiku|sonnet|opus)(?:-|$)/i,
-      /^claude-3(?:\.5|-5)-(?:haiku|sonnet)(?:-|$)/i,
+      /^claude-3/i,
     ],
   },
   {
@@ -28,14 +26,20 @@ const agentIncompatibleModelConfig: ProviderModelCompatibility[] = [
     incompatibleModels: [
       /^gemini-2[.-][05]-flash(?:-lite)?(?:-|$)/i,
       /^gemini-1[.-]5-flash(?:-8b)?(?:-|$)/i,
+      /^Nano/i,
+    ],
+  },
+  {
+    providers: ['x'],
+    incompatibleModels: [
+      /^grok-code-/i,
+      /^grok-(?:2|3)/i,
     ],
   },
   {
     providers: ['deepseek'],
     incompatibleModels: [
-      /^deepseek-r1$/i,
-      /^deepseek-r1-lite$/i,
-      /^deepseek-r1-distill(?:-[a-z0-9]+)*-(?:1\.5b|7b|8b|14b|32b|70b)$/i,
+      /^deepseek-(?:chat|coder|reasoner)(?:-|$)/i,
     ],
   },
   {
@@ -48,14 +52,14 @@ const agentIncompatibleModelConfig: ProviderModelCompatibility[] = [
   {
     providers: ['tongyi', 'qwen'],
     incompatibleModels: [
-      /^qwen2[.-]5(?:-[a-z0-9.]+)?-instruct(?:-|$)/i,
-      /^qwen2[.-]5-coder(?:-|$)/i,
-      /^qwen3-(?:0\.6b|1\.7b|4b|8b|14b|30b)(?:-|$)/i,
+      /^qwen2/i,
+      /^qwen-flash/i,
     ],
   },
   {
     providers: ['chatglm', 'zhipuai'],
     incompatibleModels: [
+      /^chatglm-(?:2|3)/i,
       /^glm-4-(?:air|airx|flash)$/i,
       /^glm-z1-(?:air|flash)$/i,
     ],

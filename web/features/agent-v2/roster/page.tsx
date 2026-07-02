@@ -12,17 +12,23 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { AgentRosterList } from './components/agent-roster-list'
-import { ROSTER_FILTER_VALUES } from './components/roster-filter'
 import { RosterToolbar } from './components/roster-toolbar'
+import {
+  rosterCreatedByMeQueryParser,
+  rosterFilterQueryParser,
+  rosterKeywordQueryParser,
+  rosterQueryParamNames,
+  rosterSortByQueryParser,
+} from './query-params'
 
 const ROSTER_PAGE_SIZE = 30
 const isAgentPublished = (agent: AgentRosterListItem) => agent.active_config_is_published === true
-const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-util-colors-blue-brand-blue-brand-500 data-disabled:opacity-100'
+const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-transparent data-disabled:opacity-100'
 
 const getFilteredRosterItems = (
   agents: AgentRosterListItem[],
@@ -40,18 +46,26 @@ const getFilteredRosterItems = (
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [keyword, setKeyword] = useQueryState('keyword', parseAsString.withDefault('').withOptions({
-    limitUrlUpdates: debounce(300),
-  }))
+  const [keyword, setKeyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter, setRosterFilter] = useQueryState(
-    'filter',
-    parseAsStringLiteral(ROSTER_FILTER_VALUES).withDefault('all'),
+    rosterQueryParamNames.filter,
+    rosterFilterQueryParser,
+  )
+  const [createdByMe, setCreatedByMe] = useQueryState(
+    rosterQueryParamNames.createdByMe,
+    rosterCreatedByMeQueryParser,
+  )
+  const [sortBy, setSortBy] = useQueryState(
+    rosterQueryParamNames.sortBy,
+    rosterSortByQueryParser,
   )
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
 
   const rosterQueryInput = {
     limit: ROSTER_PAGE_SIZE,
+    sort_by: sortBy,
     ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
+    ...(createdByMe ? { is_created_by_me: true } : {}),
   }
 
   const {
@@ -108,14 +122,22 @@ export default function RosterPage() {
           </div>
           <div className="mt-3.5">
             <RosterToolbar
+              createdByMe={createdByMe}
               draftAgents={draftAgents}
               filter={rosterFilter}
               keyword={keyword}
+              sortBy={sortBy}
+              onCreatedByMeChange={(value) => {
+                void setCreatedByMe(value)
+              }}
               onFilterChange={(value) => {
                 void setRosterFilter(value)
               }}
               onKeywordChange={(value) => {
                 void setKeyword(value)
+              }}
+              onSortByChange={(value) => {
+                void setSortBy(value)
               }}
               publishedAgents={publishedAgents}
             />
