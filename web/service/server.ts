@@ -1,7 +1,7 @@
+import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
 import type { ClientLink } from '@orpc/client'
 import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import type { consoleRouterContract } from '@/contract/router'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
