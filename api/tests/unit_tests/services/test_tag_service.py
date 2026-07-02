@@ -7,7 +7,6 @@ from werkzeug.exceptions import NotFound
 from models import Account
 from models.enums import TagType
 from models.snippet import CustomizedSnippet
-from services.tag_service import TagBindingCreatePayload, TagBindingDeletePayload, TagService
 from services.tag_service import TagBindingCreatePayload, TagBindingDeletePayload, TagService, UpdateTagPayload
 
 
