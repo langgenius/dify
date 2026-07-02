@@ -4,23 +4,37 @@ type SnippetType = 'node' | 'group'
 
 type SnippetInputField = Record<string, unknown>
 
-export type Snippet = {
+type SnippetTag = Tag
+
+type SnippetAccount = {
   id: string
   name: string
-  description: string
-  type: SnippetType
-  is_published: boolean
-  version: string
-  use_count: number
-  tags: Tag[]
-  input_fields: SnippetInputField[]
-  created_at: number
-  created_by: string
-  updated_at: number
-  updated_by: string
+  email: string
 }
 
-export type SnippetListItem = Omit<Snippet, 'version' | 'input_fields'>
+export type SnippetListItem = {
+  id: string
+  name: string
+  description: string | null
+  type: SnippetType
+  is_published: boolean
+  version: number
+  use_count: number
+  icon_info?: Record<string, unknown> | null
+  tags: SnippetTag[]
+  created_at: number
+  created_by: string | null
+  author_name?: string | null
+  updated_at: number
+  updated_by: string | null
+}
+
+export type Snippet = Omit<SnippetListItem, 'created_by' | 'updated_by' | 'author_name'> & {
+  graph: Record<string, unknown>
+  input_fields: SnippetInputField[]
+  created_by: SnippetAccount | null
+  updated_by: SnippetAccount | null
+}
 
 export type SnippetListResponse = {
   data: SnippetListItem[]
@@ -44,7 +58,7 @@ export type UpdateSnippetPayload = {
 }
 
 export type SnippetImportPayload = {
-  mode?: string
+  mode: string
   yaml_content?: string
   yaml_url?: string
   snippet_id?: string
@@ -55,9 +69,9 @@ export type SnippetImportPayload = {
 export type SnippetDSLImportResponse = {
   id: string
   status: string
-  snippet_id?: string
-  current_dsl_version?: string
-  imported_dsl_version?: string
+  snippet_id: string | null
+  current_dsl_version: string
+  imported_dsl_version: string
   error: string
 }
 
@@ -77,9 +91,8 @@ export type SnippetWorkflow = {
 }
 
 export type SnippetDraftSyncPayload = {
-  graph?: Record<string, unknown>
+  graph: Record<string, unknown>
   hash?: string
-  environment_variables?: Record<string, unknown>[]
   conversation_variables?: Record<string, unknown>[]
   input_fields?: SnippetInputField[]
 }
@@ -90,68 +103,12 @@ export type SnippetDraftSyncResponse = {
   updated_at: number
 }
 
-export type SnippetDraftConfig = {
-  parallel_depth_limit: number
-}
-
 export type PublishSnippetWorkflowResponse = {
   result: string
   created_at: number
 }
 
-export type WorkflowRunDetail = {
-  id: string
-  version: string
-  status: 'running' | 'succeeded' | 'failed' | 'stopped' | 'partial-succeeded'
-  elapsed_time: number
-  total_tokens: number
-  total_steps: number
-  created_at: number
-  finished_at: number
-  exceptions_count: number
-}
-
-export type WorkflowRunPagination = {
-  limit: number
-  has_more: boolean
-  data: WorkflowRunDetail[]
-}
-
-export type WorkflowNodeExecution = {
-  id: string
-  index: number
-  node_id: string
-  node_type: string
-  title: string
-  inputs: Record<string, unknown>
-  process_data: Record<string, unknown>
-  outputs: Record<string, unknown>
-  status: string
-  error: string
-  elapsed_time: number
-  created_at: number
-  finished_at: number
-}
-
-export type WorkflowNodeExecutionListResponse = {
-  data: WorkflowNodeExecution[]
-}
-
-export type SnippetDraftNodeRunPayload = {
-  inputs?: Record<string, unknown>
-  query?: string
-  files?: Record<string, unknown>[]
-}
-
 export type SnippetDraftRunPayload = {
-  inputs?: Record<string, unknown>
+  inputs: Record<string, unknown>
   files?: Record<string, unknown>[]
-}
-
-export type SnippetIterationNodeRunPayload = {
-  inputs?: Record<string, unknown>
-}
-
-export type SnippetLoopNodeRunPayload = {
-  inputs?: Record<string, unknown>
 }
