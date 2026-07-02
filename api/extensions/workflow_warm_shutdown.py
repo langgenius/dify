@@ -5,9 +5,12 @@ from typing import Any
 
 from celery.signals import worker_shutdown, worker_shutting_down
 
+from core.app.apps.workflow.active_workflow_tasks import (
+    get_active_workflow_task_count,
+    reset_active_workflow_tasks,
+)
 from core.app.apps.workflow.command_channels import (
-    get_celery_signal_command_channel_count,
-    reset_celery_signal_command_channels,
+    reset_celery_warm_shutdown_state,
     send_celery_warm_shutdown_abort_commands,
 )
 
@@ -29,31 +32,32 @@ def _on_worker_shutting_down(*args: object, **kwargs: object) -> None:
 
     abort_count = send_celery_warm_shutdown_abort_commands()
     if abort_count == 0:
-        logger.info("No active workflow command channels found during Celery warm shutdown")
+        logger.info("No active workflow runs found during Celery warm shutdown")
         return
 
     logger.info(
-        "Pushed workflow abort commands to %s local command channel(s) during Celery warm shutdown",
+        "Set workflow warm shutdown abort command for %s active workflow run(s)",
         abort_count,
     )
 
 
 def _on_worker_shutdown(*args: object, **kwargs: object) -> None:
     """Log whether tracked workflow tasks ended before Celery worker shutdown."""
-    remaining_channel_count = get_celery_signal_command_channel_count()
-    if remaining_channel_count:
+    remaining_run_count = get_active_workflow_task_count()
+    if remaining_run_count:
         logger.warning(
-            "Celery worker is shutting down with %s workflow command channel(s) still active after warm shutdown wait",
-            remaining_channel_count,
+            "Celery worker is shutting down with %s workflow run(s) still active after warm shutdown wait",
+            remaining_run_count,
         )
         return
 
-    logger.info("Celery worker shutdown reached after all tracked workflow command channels ended")
+    logger.info("Celery worker shutdown reached after all tracked workflow runs ended")
 
 
 def setup_workflow_warm_shutdown_handler() -> None:
     """Connect Celery worker shutdown handlers for workflow abort and logging."""
-    reset_celery_signal_command_channels()
+    reset_active_workflow_tasks()
+    reset_celery_warm_shutdown_state()
     worker_shutting_down.connect(
         _on_worker_shutting_down,
         weak=False,

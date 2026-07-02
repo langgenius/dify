@@ -4,11 +4,12 @@ from types import SimpleNamespace
 
 import pytest
 
+from core.app.apps.workflow.active_workflow_tasks import active_workflow_task, reset_active_workflow_tasks
 from core.app.apps.workflow.command_channels import (
     WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
     CelerySignalCommandChannel,
     CombinedCommandChannel,
-    reset_celery_signal_command_channels,
+    reset_celery_warm_shutdown_state,
     send_celery_warm_shutdown_abort_commands,
 )
 from graphon.graph_engine.entities.commands import AbortCommand, PauseCommand
@@ -30,9 +31,11 @@ class _CommandChannelStub:
 
 @pytest.fixture(autouse=True)
 def reset_celery_signal_channels():
-    reset_celery_signal_command_channels()
+    reset_active_workflow_tasks()
+    reset_celery_warm_shutdown_state()
     yield
-    reset_celery_signal_command_channels()
+    reset_active_workflow_tasks()
+    reset_celery_warm_shutdown_state()
 
 
 def test_combined_command_channel_fetches_from_all_sources() -> None:
@@ -77,15 +80,15 @@ def test_combined_command_channel_continues_after_source_failure(caplog: pytest.
     assert "Failed to fetch GraphEngine commands" in caplog.text
 
 
-def test_celery_signal_command_channel_receives_pushed_abort() -> None:
-    channel = CelerySignalCommandChannel(task_id="task-a")
+def test_celery_signal_command_channel_reads_warm_shutdown_abort_command() -> None:
+    channel = CelerySignalCommandChannel()
 
-    with channel:
-        channel_count = send_celery_warm_shutdown_abort_commands()
+    with active_workflow_task("task-a"):
+        run_count = send_celery_warm_shutdown_abort_commands()
         commands = channel.fetch_commands()
 
     assert len(commands) == 1
-    assert channel_count == 1
+    assert run_count == 1
     assert isinstance(commands[0], AbortCommand)
     assert commands[0].reason == WORKFLOW_WARM_SHUTDOWN_ABORT_REASON
     assert channel.fetch_commands() == commands
@@ -93,9 +96,9 @@ def test_celery_signal_command_channel_receives_pushed_abort() -> None:
 
 def test_celery_signal_command_channel_registered_after_shutdown_receives_abort() -> None:
     assert send_celery_warm_shutdown_abort_commands(reason="worker shutdown") == 0
-    channel = CelerySignalCommandChannel(task_id="task-a")
+    channel = CelerySignalCommandChannel()
 
-    with channel:
+    with active_workflow_task("task-a"):
         commands = channel.fetch_commands()
 
     assert len(commands) == 1
@@ -104,16 +107,14 @@ def test_celery_signal_command_channel_registered_after_shutdown_receives_abort(
 
 
 def test_celery_signal_command_channel_unregisters_on_exit() -> None:
-    channel = CelerySignalCommandChannel(task_id="task-a")
-
-    with channel:
+    with active_workflow_task("task-a"):
         assert send_celery_warm_shutdown_abort_commands() == 1
 
     assert send_celery_warm_shutdown_abort_commands() == 0
 
 
 def test_celery_signal_command_channel_send_command_is_noop() -> None:
-    channel = CelerySignalCommandChannel(task_id="task-a")
+    channel = CelerySignalCommandChannel()
     command = PauseCommand(reason="pause")
 
     channel.send_command(command)
@@ -121,14 +122,10 @@ def test_celery_signal_command_channel_send_command_is_noop() -> None:
     assert channel.fetch_commands() == []
 
 
-def test_celery_signal_command_channel_rejects_duplicate_task_id() -> None:
-    old_channel = CelerySignalCommandChannel(task_id="task-a")
-    new_channel = CelerySignalCommandChannel(task_id="task-a")
-
-    with old_channel:
-        with pytest.raises(ValueError, match="already registered"):
-            with new_channel:
+def test_active_workflow_task_rejects_duplicate_task_id() -> None:
+    with active_workflow_task("task-a"):
+        with pytest.raises(ValueError, match="already active"):
+            with active_workflow_task("task-a"):
                 pass
 
         assert send_celery_warm_shutdown_abort_commands() == 1
-        assert len(old_channel.fetch_commands()) == 1
