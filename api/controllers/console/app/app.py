@@ -1,5 +1,4 @@
 import logging
-import re
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
@@ -10,7 +9,6 @@ from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, computed_field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
@@ -19,6 +17,7 @@ from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
 from controllers.common.schema import (
     query_params_from_model,
+    query_params_from_request,
     register_enum_models,
     register_response_schema_models,
     register_schema_models,
@@ -75,10 +74,9 @@ ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "co
 register_enum_models(console_ns, IconType)
 
 _logger = logging.getLogger(__name__)
-_TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
-_CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 DEFAULT_APP_LIST_MODE: AppListMode = "all"
+APP_LIST_QUERY_ARRAY_FIELDS = ("tag_ids", "creator_ids")
 
 
 class AppListBaseQuery(BaseModel):
@@ -137,34 +135,6 @@ class AppListQuery(AppListBaseQuery):
 
 class StarredAppListQuery(AppListBaseQuery):
     pass
-
-
-def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
-    normalized: dict[str, str | list[str]] = {}
-    indexed_tag_ids: list[tuple[int, str]] = []
-    indexed_creator_ids: list[tuple[int, str]] = []
-
-    for key in query_args:
-        match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
-        if match:
-            indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
-            continue
-
-        match = _CREATOR_IDS_BRACKET_PATTERN.fullmatch(key)
-        if match:
-            indexed_creator_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
-            continue
-
-        value = query_args.get(key)
-        if value is not None:
-            normalized[key] = value
-
-    if indexed_tag_ids:
-        normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
-    if indexed_creator_ids:
-        normalized["creator_ids"] = [value for _, value in sorted(indexed_creator_ids)]
-
-    return normalized
 
 
 class CreateAppPayload(BaseModel):
@@ -599,7 +569,7 @@ class AppListApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user_id: str, session: Session):
         """Get app list"""
-        args = AppListQuery.model_validate(_normalize_app_list_query_args(request.args))
+        args = query_params_from_request(AppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
         params = AppListParams(
             page=args.page,
             limit=args.limit,
@@ -699,7 +669,7 @@ class StarredAppListApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user_id: str, session: Session):
-        args = StarredAppListQuery.model_validate(_normalize_app_list_query_args(request.args))
+        args = query_params_from_request(StarredAppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
         params = StarredAppListParams(
             page=args.page,
             limit=args.limit,

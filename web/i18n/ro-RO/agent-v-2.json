@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Pentru a afișa fișierele .env ascunse, apăsați Command + Shift + . în selectorul de fișiere.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Dacă fișierul .env este ascuns, activați fișierele ascunse în selectorul de fișiere al sistemului.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Pentru a afișa fișierele .env ascunse, activați Elemente ascunse în File Explorer.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "{{count}} linie .env nevalidă a fost ignorată.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "{{count}} linii .env nevalide au fost ignorate.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

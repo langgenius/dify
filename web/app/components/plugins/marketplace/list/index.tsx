@@ -1,6 +1,6 @@
 'use client'
+import type { MarketplaceCollection, SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '../../types'
-import type { MarketplaceCollection, SearchParamsFromCollection } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import Empty from '../empty'
