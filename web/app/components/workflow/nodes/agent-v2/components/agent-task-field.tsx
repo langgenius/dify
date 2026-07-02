@@ -1,5 +1,6 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentV2NodeType } from '../types'
+import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
@@ -61,6 +62,7 @@ export function AgentTaskField({
   onChange,
   outputs,
   onOutputsChange,
+  onEditOutput,
 }: {
   id: string
   data: AgentV2NodeType
@@ -68,6 +70,7 @@ export function AgentTaskField({
   onChange: (value: string) => void
   outputs: DeclaredOutputConfig[]
   onOutputsChange: (outputs: DeclaredOutputConfig[], prompt?: string) => void
+  onEditOutput?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 }) {
   const { t } = useTranslation()
   const getVarType = useWorkflowVariableType()
@@ -119,6 +122,7 @@ export function AgentTaskField({
       >
         <div className={cn('flex h-full flex-col rounded-lg', isFocus ? 'bg-background-default' : 'bg-components-input-bg-normal')}>
           <PromptEditor
+            aria-label={t(`${i18nPrefix}.task.label`, { ns: 'workflow' })}
             wrapperClassName="flex h-full flex-col"
             value={data.agent_task || ''}
             onChange={onChange}
@@ -140,6 +144,7 @@ export function AgentTaskField({
               show: true,
               outputs,
               onChange: onOutputsChange,
+              onEdit: onEditOutput,
             }}
           >
             {isFocus && (

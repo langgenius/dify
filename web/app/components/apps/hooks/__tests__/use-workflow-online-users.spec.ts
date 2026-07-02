@@ -25,8 +25,12 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
-      workflowOnlineUsers: {
-        queryOptions: mockQueryOptions,
+      workflows: {
+        onlineUsers: {
+          post: {
+            queryOptions: mockQueryOptions,
+          },
+        },
       },
     },
   },
@@ -35,7 +39,7 @@ vi.mock('@/service/client', () => ({
 const getLastQueryOptions = () => {
   const lastCall = mockQueryOptions.mock.lastCall
   if (!lastCall)
-    throw new Error('workflowOnlineUsers.queryOptions was not called')
+    throw new Error('workflows.onlineUsers.post.queryOptions was not called')
   return lastCall[0] as QueryOptions
 }
 

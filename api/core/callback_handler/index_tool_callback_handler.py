@@ -2,7 +2,7 @@ import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -30,7 +30,7 @@ class DatasetIndexToolCallbackHandler:
         self._user_id = user_id
         self._invoke_from = invoke_from
 
-    def on_query(self, query: str, dataset_id: str):
+    def on_query(self, query: str, dataset_id: str, session: scoped_session):
         """
         Handle query.
         """
@@ -49,19 +49,19 @@ class DatasetIndexToolCallbackHandler:
 
         # Use an independent session so this audit-log side effect does
         # not commit or close the caller's request-scoped session.
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-            session.add(dataset_query)
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as independent_session:
+            independent_session.add(dataset_query)
 
-    def on_tool_end(self, documents: list[Document]):
+    def on_tool_end(self, documents: list[Document], session: scoped_session):
         """Handle tool end."""
         # Use an independent session so hit-count updates do not
         # interfere with the caller's request-scoped session.
-        with Session(db.engine, expire_on_commit=False) as session:
+        with Session(db.engine, expire_on_commit=False) as independent_session:
             for document in documents:
                 if document.metadata is not None:
                     document_id = document.metadata["document_id"]
                     dataset_document_stmt = select(DatasetDocument).where(DatasetDocument.id == document_id)
-                    dataset_document = session.scalar(dataset_document_stmt)
+                    dataset_document = independent_session.scalar(dataset_document_stmt)
                     if not dataset_document:
                         _logger.warning(
                             "Expected DatasetDocument record to exist, but none was found, document_id=%s",
@@ -74,9 +74,9 @@ class DatasetIndexToolCallbackHandler:
                             ChildChunk.dataset_id == dataset_document.dataset_id,
                             ChildChunk.document_id == dataset_document.id,
                         )
-                        child_chunk = session.scalar(child_chunk_stmt)
+                        child_chunk = independent_session.scalar(child_chunk_stmt)
                         if child_chunk:
-                            session.execute(
+                            independent_session.execute(
                                 update(DocumentSegment)
                                 .where(DocumentSegment.id == child_chunk.segment_id)
                                 .values(hit_count=DocumentSegment.hit_count + 1)
@@ -88,11 +88,11 @@ class DatasetIndexToolCallbackHandler:
                             conditions.append(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
                         # add hit count to document segment
-                        session.execute(
+                        independent_session.execute(
                             update(DocumentSegment).where(*conditions).values(hit_count=DocumentSegment.hit_count + 1)
                         )
 
-            session.commit()
+            independent_session.commit()
 
     # TODO(-LAN-): Improve type check
     def return_retriever_resource_info(self, resource: Sequence[RetrievalSourceMetadata]):

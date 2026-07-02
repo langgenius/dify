@@ -68,6 +68,7 @@ export enum ModelFeatureEnum {
   video = 'video',
   document = 'document',
   audio = 'audio',
+  polling = 'polling',
   StructuredOutput = 'structured-output',
 }
 

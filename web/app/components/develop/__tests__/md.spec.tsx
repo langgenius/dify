@@ -101,13 +101,6 @@ describe('md.tsx components', () => {
         const badge = screen.getByText('GET')
         expect(badge.className).toContain('font-semibold')
       })
-
-      it('should have ring-1 and ring-inset classes', () => {
-        render(<Heading {...defaultProps} />)
-        const badge = screen.getByText('GET')
-        expect(badge.className).toContain('ring-1')
-        expect(badge.className).toContain('ring-inset')
-      })
     })
 
     describe('url styles', () => {

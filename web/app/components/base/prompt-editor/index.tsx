@@ -110,7 +110,9 @@ const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
   return null
 }
 
-export type PromptEditorProps = {
+type PromptEditorAriaProps = Pick<React.AriaAttributes, 'aria-label' | 'aria-labelledby'>
+
+export type PromptEditorProps = PromptEditorAriaProps & {
   instanceId?: string
   children?: React.ReactNode
   compact?: boolean
@@ -148,6 +150,8 @@ export type PromptEditorProps = {
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   instanceId,
   children,
   compact,
@@ -248,6 +252,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <div className={cn('relative', wrapperClassName)} ref={onRef}>
         <PromptEditorContent
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
           compact={compact}
           className={className}
           placeholder={placeholder}

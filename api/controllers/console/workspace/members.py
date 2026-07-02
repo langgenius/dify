@@ -84,8 +84,6 @@ class MemberActionTenantResponse(ResponseModel):
 register_enum_models(console_ns, TenantAccountRole)
 register_schema_models(
     console_ns,
-    AccountWithRole,
-    AccountWithRoleList,
     MemberInvitePayload,
     MemberRoleUpdatePayload,
     OwnerTransferEmailPayload,
@@ -94,6 +92,8 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    AccountWithRole,
+    AccountWithRoleList,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,

@@ -1,7 +1,6 @@
-import type { SnippetWorkflow } from '@/types/snippet'
+import type { PublishSnippetWorkflowResponse, SnippetWorkflow } from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { consoleQuery } from '@/service/client'
-import { get } from './base'
+import { consoleClient, consoleQuery } from '@/service/client'
 
 const isNotFoundError = (error: unknown) => {
   return !!error && typeof error === 'object' && 'status' in error && error.status === 404
@@ -9,7 +8,11 @@ const isNotFoundError = (error: unknown) => {
 
 export const fetchSnippetDraftWorkflow = async (snippetId: string) => {
   try {
-    return await get<SnippetWorkflow>(`/snippets/${snippetId}/workflows/draft`, {}, { silent: true })
+    return await consoleClient.snippets.bySnippetId.workflows.draft.get({
+      params: { snippet_id: snippetId },
+    }, {
+      context: { silent: true },
+    })
   }
   catch (error) {
     if (isNotFoundError(error))
@@ -19,30 +22,35 @@ export const fetchSnippetDraftWorkflow = async (snippetId: string) => {
   }
 }
 
+const snippetWorkflowContract = consoleQuery.snippets.bySnippetId
+const snippetWorkflowClient = consoleClient.snippets.bySnippetId
+
 const invalidateSnippetWorkflowQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
   snippetId: string,
 ) => {
   await Promise.all([
     queryClient.invalidateQueries({
-      queryKey: consoleQuery.snippets.draftWorkflow.queryKey({
+      queryKey: snippetWorkflowContract.workflows.draft.get.key({
+        type: 'query',
         input: {
-          params: { snippetId },
+          params: { snippet_id: snippetId },
         },
       }),
     }),
     queryClient.invalidateQueries({
-      queryKey: consoleQuery.snippets.publishedWorkflow.queryKey({
+      queryKey: snippetWorkflowContract.workflows.publish.get.key({
+        type: 'query',
         input: {
-          params: { snippetId },
+          params: { snippet_id: snippetId },
         },
       }),
     }),
     queryClient.invalidateQueries({
-      queryKey: consoleQuery.snippets.workflowRuns.key(),
+      queryKey: snippetWorkflowContract.workflowRuns.get.key({ type: 'query' }),
     }),
     queryClient.invalidateQueries({
-      queryKey: consoleQuery.snippets.lastDraftNodeRun.key(),
+      queryKey: snippetWorkflowContract.workflows.draft.nodes.byNodeId.lastRun.get.key({ type: 'query' }),
     }),
   ])
 }
@@ -50,9 +58,9 @@ export const useSnippetPublishedWorkflow = (
   snippetId: string,
   onSuccess?: (publishedWorkflow: SnippetWorkflow) => void,
 ) => {
-  const queryOptions = consoleQuery.snippets.publishedWorkflow.queryOptions({
+  const queryOptions = snippetWorkflowContract.workflows.publish.get.queryOptions({
     input: {
-      params: { snippetId },
+      params: { snippet_id: snippetId },
     },
     enabled: !!snippetId,
   })
@@ -80,9 +88,9 @@ export const useSnippetDefaultBlockConfigs = (
   snippetId: string,
   onSuccess?: (nodesDefaultConfigs: unknown) => void,
 ) => {
-  const queryOptions = consoleQuery.snippets.defaultBlockConfigs.queryOptions({
+  const queryOptions = snippetWorkflowContract.workflows.defaultWorkflowBlockConfigs.get.queryOptions({
     input: {
-      params: { snippetId },
+      params: { snippet_id: snippetId },
     },
     enabled: !!snippetId,
   })
@@ -100,11 +108,16 @@ export const useSnippetDefaultBlockConfigs = (
 export const usePublishSnippetWorkflowMutation = (snippetId: string) => {
   const queryClient = useQueryClient()
 
-  return useMutation({
-    ...consoleQuery.snippets.publishWorkflow.mutationOptions({
-      onSuccess: async () => {
-        await invalidateSnippetWorkflowQueries(queryClient, snippetId)
+  return useMutation<PublishSnippetWorkflowResponse, Error, { params: { snippetId: string } }>({
+    mutationKey: snippetWorkflowContract.workflows.publish.post.mutationKey(),
+    mutationFn: ({ params }) => snippetWorkflowClient.workflows.publish.post({
+      params: {
+        snippet_id: params.snippetId,
       },
+      body: {},
     }),
+    onSuccess: async () => {
+      await invalidateSnippetWorkflowQueries(queryClient, snippetId)
+    },
   })
 }
