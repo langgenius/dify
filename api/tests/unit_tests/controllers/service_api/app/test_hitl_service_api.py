@@ -358,6 +358,7 @@ class TestHitlServiceApi:
         user.id = "user-id"
 
         result = AppGenerateService.generate(
+            session=Mock(),
             app_model=app_model,
             user=user,
             args={"workflow_id": None, "query": "hi", "inputs": {}},

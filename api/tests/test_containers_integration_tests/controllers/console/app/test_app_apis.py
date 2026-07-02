@@ -117,7 +117,7 @@ class TestCompletionEndpoints:
             "/",
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
-            resp = method(api, _make_account(), app_model=MagicMock(id="app-1"))
+            resp = method(api, MagicMock(spec=Session), _make_account(), app_model=MagicMock(id="app-1"))
 
         assert resp == {"result": {"text": "ok"}}
 
@@ -138,7 +138,7 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(NotFound):
-                method(api, _make_account(), app_model=MagicMock(id="app-1"))
+                method(api, MagicMock(spec=Session), _make_account(), app_model=MagicMock(id="app-1"))
 
     def test_completion_api_provider_not_initialized(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
@@ -155,7 +155,7 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(completion_module.ProviderNotInitializeError):
-                method(api, _make_account(), app_model=MagicMock(id="app-1"))
+                method(api, MagicMock(spec=Session), _make_account(), app_model=MagicMock(id="app-1"))
 
     def test_completion_api_quota_exceeded(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = completion_module.CompletionMessageApi()
@@ -172,7 +172,7 @@ class TestCompletionEndpoints:
             json={"inputs": {}, "model_config": {}, "query": "hi"},
         ):
             with pytest.raises(completion_module.ProviderQuotaExceededError):
-                method(api, _make_account(), app_model=MagicMock(id="app-1"))
+                method(api, MagicMock(spec=Session), _make_account(), app_model=MagicMock(id="app-1"))
 
 
 class TestAppEndpoints:

@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
@@ -57,7 +58,9 @@ class ExternalDatasetService:
             raise ValueError("api_key is required")
 
     @staticmethod
-    def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict[str, Any]) -> ExternalKnowledgeApis:
+    def create_external_knowledge_api(
+        tenant_id: str, user_id: str, args: dict[str, Any], session: Session
+    ) -> ExternalKnowledgeApis:
         settings = args.get("settings")
         if settings is None:
             raise ValueError("settings is required")
@@ -71,8 +74,8 @@ class ExternalDatasetService:
             settings=json.dumps(args.get("settings"), ensure_ascii=False),
         )
 
-        db.session.add(external_knowledge_api)
-        db.session.commit()
+        session.add(external_knowledge_api)
+        session.commit()
         return external_knowledge_api
 
     @staticmethod
@@ -103,8 +106,10 @@ class ExternalDatasetService:
             raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
 
     @staticmethod
-    def get_external_knowledge_api(external_knowledge_api_id: str, tenant_id: str) -> ExternalKnowledgeApis:
-        external_knowledge_api: ExternalKnowledgeApis | None = db.session.scalar(
+    def get_external_knowledge_api(
+        session: Session, external_knowledge_api_id: str, tenant_id: str
+    ) -> ExternalKnowledgeApis:
+        external_knowledge_api: ExternalKnowledgeApis | None = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
             .limit(1)
@@ -114,8 +119,10 @@ class ExternalDatasetService:
         return external_knowledge_api
 
     @staticmethod
-    def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api: ExternalKnowledgeApis | None = db.session.scalar(
+    def update_external_knowledge_api(
+        session: Session, tenant_id: str, user_id: str, external_knowledge_api_id: str, args
+    ) -> ExternalKnowledgeApis:
+        external_knowledge_api: ExternalKnowledgeApis | None = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
             .limit(1)
@@ -131,13 +138,13 @@ class ExternalDatasetService:
         external_knowledge_api.settings = json.dumps(args.get("settings"), ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
         external_knowledge_api.updated_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         return external_knowledge_api
 
     @staticmethod
-    def delete_external_knowledge_api(tenant_id: str, external_knowledge_api_id: str):
-        external_knowledge_api = db.session.scalar(
+    def delete_external_knowledge_api(session: Session, tenant_id: str, external_knowledge_api_id: str):
+        external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
             .limit(1)
@@ -145,11 +152,13 @@ class ExternalDatasetService:
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
-        db.session.delete(external_knowledge_api)
-        db.session.commit()
+        session.delete(external_knowledge_api)
+        session.commit()
 
     @staticmethod
-    def external_knowledge_api_use_check(external_knowledge_api_id: str, tenant_id: str) -> tuple[bool, int]:
+    def external_knowledge_api_use_check(
+        session: Session, external_knowledge_api_id: str, tenant_id: str
+    ) -> tuple[bool, int]:
         """
         Return usage for an external knowledge API within a single tenant.
 
@@ -157,7 +166,7 @@ class ExternalDatasetService:
         same; otherwise the endpoint becomes a cross-tenant UUID oracle.
         """
         count = (
-            db.session.scalar(
+            session.scalar(
                 select(func.count(ExternalKnowledgeBindings.id)).where(
                     ExternalKnowledgeBindings.external_knowledge_api_id == external_knowledge_api_id,
                     ExternalKnowledgeBindings.tenant_id == tenant_id,
@@ -168,8 +177,10 @@ class ExternalDatasetService:
         return count > 0, count
 
     @staticmethod
-    def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
-        external_knowledge_binding: ExternalKnowledgeBindings | None = db.session.scalar(
+    def get_external_knowledge_binding_with_dataset_id(
+        session: Session, tenant_id: str, dataset_id: str
+    ) -> ExternalKnowledgeBindings:
+        external_knowledge_binding: ExternalKnowledgeBindings | None = session.scalar(
             select(ExternalKnowledgeBindings)
             .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
             .limit(1)
@@ -180,9 +191,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def document_create_args_validate(
-        tenant_id: str, external_knowledge_api_id: str, process_parameter: dict[str, Any]
+        session: Session, tenant_id: str, external_knowledge_api_id: str, process_parameter: dict[str, Any]
     ):
-        external_knowledge_api = db.session.scalar(
+        external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
             .limit(1)
@@ -255,13 +266,13 @@ class ExternalDatasetService:
         return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
-    def create_external_dataset(tenant_id: str, user_id: str, args: dict[str, Any]) -> Dataset:
+    def create_external_dataset(tenant_id: str, user_id: str, args: dict[str, Any], session: Session) -> Dataset:
         # check if dataset name already exists
-        if db.session.scalar(
+        if session.scalar(
             select(Dataset).where(Dataset.name == args.get("name"), Dataset.tenant_id == tenant_id).limit(1)
         ):
             raise DatasetNameDuplicateError(f"Dataset with name {args.get('name')} already exists.")
-        external_knowledge_api = db.session.scalar(
+        external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(
                 ExternalKnowledgeApis.id == args.get("external_knowledge_api_id"),
@@ -283,8 +294,8 @@ class ExternalDatasetService:
             maintainer=user_id,
         )
 
-        db.session.add(dataset)
-        db.session.flush()
+        session.add(dataset)
+        session.flush()
         if args.get("external_knowledge_id") is None:
             raise ValueError("external_knowledge_id is required")
         if args.get("external_knowledge_api_id") is None:
@@ -297,14 +308,15 @@ class ExternalDatasetService:
             external_knowledge_id=args.get("external_knowledge_id") or "",
             created_by=user_id,
         )
-        db.session.add(external_knowledge_binding)
+        session.add(external_knowledge_binding)
 
-        db.session.commit()
+        session.commit()
 
         return dataset
 
     @staticmethod
     def fetch_external_knowledge_retrieval(
+        session: Session,
         tenant_id: str,
         dataset_id: str,
         query: str,
@@ -320,7 +332,7 @@ class ExternalDatasetService:
         the inner knowledge retrieval API—can consistently expose
         ``502 external_knowledge_failed``.
         """
-        external_knowledge_binding = db.session.scalar(
+        external_knowledge_binding = session.scalar(
             select(ExternalKnowledgeBindings)
             .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
             .limit(1)
@@ -328,7 +340,7 @@ class ExternalDatasetService:
         if not external_knowledge_binding:
             raise ExternalKnowledgeRetrievalError("external knowledge binding not found")
 
-        external_knowledge_api = db.session.scalar(
+        external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(
                 ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id,
