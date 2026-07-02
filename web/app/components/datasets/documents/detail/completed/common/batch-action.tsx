@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiRefreshLine } from '@remixicon/react'
+import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDownload2Line, RiDraftLine, RiLoopLeftLine, RiRefreshLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +30,7 @@ type IBatchActionProps = {
   onArchive?: () => void
   onEditMetadata?: () => void
   onBatchReIndex?: () => void
+  onBatchSync?: () => void
   onCancel: () => void
 }
 
@@ -44,6 +45,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onBatchDelete,
   onEditMetadata,
   onBatchReIndex,
+  onBatchSync,
   onCancel,
 }) => {
   const { t } = useTranslation()
@@ -131,6 +133,16 @@ const BatchAction: FC<IBatchActionProps> = ({
           >
             <RiRefreshLine className="size-4" />
             <span className="px-0.5">{t(`${i18nPrefix}.reIndex`, { ns: 'dataset' })}</span>
+          </Button>
+        )}
+        {onBatchSync && (
+          <Button
+            variant="ghost"
+            className="gap-x-0.5 px-3"
+            onClick={onBatchSync}
+          >
+            <RiLoopLeftLine className="size-4" />
+            <span className="px-0.5">{t(`${i18nPrefix}.sync`, { ns: 'dataset' })}</span>
           </Button>
         )}
         {onBatchDownload && (

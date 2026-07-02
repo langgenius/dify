@@ -10,6 +10,8 @@
   "batchAction.download": "تحميل",
   "batchAction.enable": "تمكين",
   "batchAction.reIndex": "إعادة الفهرسة",
+  "batchAction.sync": "مزامنة",
+  "batchAction.syncAll": "مزامنة الكل",
   "batchAction.selected": "محدد",
   "chunkingMode.general": "عام",
   "chunkingMode.graph": "رسم بياني",

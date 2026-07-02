@@ -10,6 +10,8 @@
   "batchAction.download": "下載",
   "batchAction.enable": "使",
   "batchAction.reIndex": "重新建立索引",
+  "batchAction.sync": "同步",
+  "batchAction.syncAll": "全部同步",
   "batchAction.selected": "選擇",
   "chunkingMode.general": "常規",
   "chunkingMode.graph": "圖形",

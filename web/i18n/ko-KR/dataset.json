@@ -10,6 +10,8 @@
   "batchAction.download": "다운로드",
   "batchAction.enable": "사용",
   "batchAction.reIndex": "재색인",
+  "batchAction.sync": "동기화",
+  "batchAction.syncAll": "모두 동기화",
   "batchAction.selected": "선택한",
   "chunkingMode.general": "일반",
   "chunkingMode.graph": "그래프",

@@ -10,6 +10,8 @@
   "batchAction.download": "Descarcă",
   "batchAction.enable": "Activa",
   "batchAction.reIndex": "Reindexare",
+  "batchAction.sync": "Sincronizare",
+  "batchAction.syncAll": "Sincronizează tot",
   "batchAction.selected": "Selectat",
   "chunkingMode.general": "General",
   "chunkingMode.graph": "Grafic",

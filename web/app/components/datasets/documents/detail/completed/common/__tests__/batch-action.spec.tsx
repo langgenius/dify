@@ -154,6 +154,27 @@ describe('BatchAction', () => {
       expect(screen.getByText(/batchAction\.reIndex/i)).toBeInTheDocument()
     })
 
+    it('should render sync button when onBatchSync is provided', () => {
+      render(<BatchAction {...defaultProps} onBatchSync={vi.fn()} />)
+
+      expect(screen.getByText(/batchAction\.sync/i)).toBeInTheDocument()
+    })
+
+    it('should not render sync button when onBatchSync is not provided', () => {
+      render(<BatchAction {...defaultProps} />)
+
+      expect(screen.queryByText(/batchAction\.sync/i)).not.toBeInTheDocument()
+    })
+
+    it('should call onBatchSync when sync button is clicked', () => {
+      const mockOnBatchSync = vi.fn()
+      render(<BatchAction {...defaultProps} onBatchSync={mockOnBatchSync} />)
+
+      fireEvent.click(screen.getByText(/batchAction\.sync/i))
+
+      expect(mockOnBatchSync).toHaveBeenCalledTimes(1)
+    })
+
     it('should call onBatchDownload when download button is clicked', () => {
       const mockOnBatchDownload = vi.fn()
       render(<BatchAction {...defaultProps} onBatchDownload={mockOnBatchDownload} />)

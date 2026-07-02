@@ -10,6 +10,8 @@
   "batchAction.download": "डाउनलोड करें",
   "batchAction.enable": "योग्य बनाना",
   "batchAction.reIndex": "पुनः अनुक्रमित करें",
+  "batchAction.sync": "सिंक करें",
+  "batchAction.syncAll": "सभी सिंक करें",
   "batchAction.selected": "चयनित",
   "chunkingMode.general": "सामान्य",
   "chunkingMode.graph": "ग्राफ",

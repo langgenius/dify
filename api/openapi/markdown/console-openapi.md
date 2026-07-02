@@ -6652,6 +6652,19 @@ Check if dataset is in use
 | ---- | ----------- | ------ |
 | 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
 
+### [GET] /datasets/{dataset_id}/website-sync
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+
 ### [GET] /datasets/{resource_id}/api-keys
 **Get all API keys for a dataset**
 

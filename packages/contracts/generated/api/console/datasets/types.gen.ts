@@ -2510,6 +2510,22 @@ export type GetDatasetsByDatasetIdUseCheckResponses = {
 export type GetDatasetsByDatasetIdUseCheckResponse
   = GetDatasetsByDatasetIdUseCheckResponses[keyof GetDatasetsByDatasetIdUseCheckResponses]
 
+export type GetDatasetsByDatasetIdWebsiteSyncData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/website-sync'
+}
+
+export type GetDatasetsByDatasetIdWebsiteSyncResponses = {
+  200: SimpleResultResponse
+}
+
+export type GetDatasetsByDatasetIdWebsiteSyncResponse
+  = GetDatasetsByDatasetIdWebsiteSyncResponses[keyof GetDatasetsByDatasetIdWebsiteSyncResponses]
+
 export type GetDatasetsByResourceIdApiKeysData = {
   body?: never
   path: {

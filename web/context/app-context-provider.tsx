@@ -33,6 +33,10 @@ type AppContextProviderProps = {
 
 const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal'])
 const emptyWorkspacePermissionKeys: string[] = []
+// Backward-compat defaults for workspaces where the RBAC permissions endpoint is unavailable (e.g. API < 1.16).
+// Workspace managers need at minimum `*.create_and_management` so that `shouldGrantMaintainerPermissions`
+// can recognise them as owners of resources they created.
+const managerFallbackPermissionKeys: string[] = ['dataset.create_and_management', 'app.create_and_management']
 
 const resolveWorkspaceRole = (role: PostWorkspacesCurrentResponse['role']): ICurrentWorkspace['role'] => {
   if (role && workspaceRoles.has(role as ICurrentWorkspace['role']))
@@ -189,7 +193,8 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isLoadingCurrentWorkspace: currentWorkspaceQuery.isPending,
       isLoadingWorkspacePermissionKeys: workspacePermissionKeysQuery.isPending,
       isValidatingCurrentWorkspace: currentWorkspaceQuery.isFetching,
-      workspacePermissionKeys: workspacePermissionKeysQuery.data?.workspace.permission_keys ?? emptyWorkspacePermissionKeys,
+      workspacePermissionKeys: workspacePermissionKeysQuery.data?.workspace.permission_keys
+        ?? (isCurrentWorkspaceManager ? managerFallbackPermissionKeys : emptyWorkspacePermissionKeys),
     }}
     >
       <div className="flex h-full flex-col overflow-hidden">
