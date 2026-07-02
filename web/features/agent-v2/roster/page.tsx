@@ -22,7 +22,7 @@ import { RosterToolbar } from './components/roster-toolbar'
 
 const ROSTER_PAGE_SIZE = 30
 const isAgentPublished = (agent: AgentRosterListItem) => agent.active_config_is_published === true
-const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-util-colors-blue-brand-blue-brand-500 data-disabled:opacity-100'
+const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-transparent data-disabled:opacity-100'
 
 const getFilteredRosterItems = (
   agents: AgentRosterListItem[],
