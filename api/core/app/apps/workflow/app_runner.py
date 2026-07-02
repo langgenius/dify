@@ -5,6 +5,7 @@ from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
+from core.app.apps.workflow.command_channels import CelerySignalCommandChannel, CombinedCommandChannel
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
@@ -146,7 +147,13 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
         channel_key = f"workflow:{task_id}:commands"
-        command_channel = RedisChannel(redis_client, channel_key)
+        celery_signal_channel = CelerySignalCommandChannel(task_id=task_id)
+        command_channel = CombinedCommandChannel(
+            (
+                RedisChannel(redis_client, channel_key),
+                celery_signal_channel,
+            )
+        )
 
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
@@ -183,7 +190,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 
-        generator = workflow_entry.run()
-
-        for event in generator:
-            self._handle_event(workflow_entry, event)
+        with celery_signal_channel:
+            generator = workflow_entry.run()
+            for event in generator:
+                self._handle_event(workflow_entry, event)

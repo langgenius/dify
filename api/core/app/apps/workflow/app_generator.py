@@ -19,7 +19,6 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
@@ -642,8 +641,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             )
 
             try:
-                with active_workflow_task(application_generate_entity.task_id):
-                    runner.run()
+                runner.run()
             except GenerateTaskStoppedError as e:
                 logger.warning("Task stopped: %s", str(e))
                 pass

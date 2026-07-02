@@ -429,23 +429,20 @@ def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | 
     return redis.Redis.from_url(pubsub_url, **kwargs)
 
 
-def create_redis_client() -> Union[redis.Redis, RedisCluster]:
-    """Create a Redis client using the configured Redis deployment mode."""
-    if dify_config.REDIS_USE_SENTINEL:
-        redis_params = _get_base_redis_params()
-        return _create_sentinel_client(redis_params)
-    if dify_config.REDIS_USE_CLUSTERS:
-        return _create_cluster_client()
-
-    redis_params = _get_base_redis_params()
-    return _create_standalone_client(redis_params)
-
-
 def init_app(app: DifyApp):
     """Initialize Redis client and attach it to the app."""
     global redis_client
 
-    client = create_redis_client()
+    # Determine Redis mode and create appropriate client
+    if dify_config.REDIS_USE_SENTINEL:
+        redis_params = _get_base_redis_params()
+        client = _create_sentinel_client(redis_params)
+    elif dify_config.REDIS_USE_CLUSTERS:
+        client = _create_cluster_client()
+    else:
+        redis_params = _get_base_redis_params()
+        client = _create_standalone_client(redis_params)
+
     # Initialize the wrapper and attach to app
     redis_client.initialize(client)
     app.extensions["redis"] = redis_client

@@ -33,7 +33,6 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import (
     AdvancedChatPausedBlockingResponse,
@@ -666,8 +665,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             )
 
             try:
-                with active_workflow_task(application_generate_entity.task_id):
-                    runner.run()
+                runner.run()
             except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
