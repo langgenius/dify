@@ -202,6 +202,7 @@
   "mainNav.integrations": "連携",
   "mainNav.marketplace": "マーケットプレイス",
   "mainNav.webApps.noResults": "Webアプリが見つかりません",
+  "mainNav.webApps.openApp": "{{name}} のWebアプリを開く",
   "mainNav.webApps.searchPlaceholder": "Webアプリを検索",
   "mainNav.workspace.credits": "{{count}} クレジット",
   "mainNav.workspace.creditsUnit": "クレジット",

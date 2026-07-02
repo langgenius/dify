@@ -202,6 +202,7 @@
   "mainNav.integrations": "Integrationen",
   "mainNav.marketplace": "Marketplace",
   "mainNav.webApps.noResults": "Keine Web-Apps gefunden",
+  "mainNav.webApps.openApp": "Web-App {{name}} öffnen",
   "mainNav.webApps.searchPlaceholder": "Web-Apps suchen",
   "mainNav.workspace.credits": "{{count}} Credits",
   "mainNav.workspace.creditsUnit": "Credits",

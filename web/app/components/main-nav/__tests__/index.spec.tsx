@@ -1084,7 +1084,8 @@ describe('MainNav', () => {
     })
 
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Beta Tool' })).toHaveAttribute('href', '/installed/installed-2')
+    expect(screen.getByText('Beta Tool')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' })).toHaveAttribute('href', '/installed/installed-2')
   })
 
   it('renders web app skeleton rows while installed apps are loading', () => {

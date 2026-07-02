@@ -16,7 +16,6 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
 import { usePathname, useSelectedLayoutSegments } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
@@ -40,8 +39,6 @@ const SideBar = () => {
   const { mutateAsync: uninstallApp, isPending: isUninstalling } = useUninstallApp()
   const { mutateAsync: updatePinStatus } = useUpdateAppPinStatus()
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const [isFold, {
     toggle: toggleIsFold,
   }] = useBoolean(false)
@@ -61,12 +58,10 @@ const SideBar = () => {
   }
 
   const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
-  const shouldUseExpandedScrollArea = !isMobile && !isFold
   const webAppsLabelId = React.useId()
   const installedAppItems = installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
     <React.Fragment key={id}>
       <Item
-        isMobile={isMobile || isFold}
         name={name}
         icon_type={icon_type}
         icon={icon}
@@ -87,21 +82,24 @@ const SideBar = () => {
   ))
 
   return (
-    <div className={cn('flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}>
+    <div
+      data-folded={isFold ? 'true' : undefined}
+      className={cn('group/sidebar flex h-full w-fit shrink-0 cursor-pointer flex-col px-3 pt-6 sm:w-[240px]', isFold && 'sm:w-[56px]')}
+    >
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
           href="/"
-          aria-label={isMobile || isFold ? t('sidebar.title', { ns: 'explore' }) : undefined}
-          className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover', 'flex h-8 items-center gap-2 rounded-lg px-1 mobile:w-fit mobile:justify-center pc:w-full pc:justify-start')}
+          aria-label={isFold ? t('sidebar.title', { ns: 'explore' }) : undefined}
+          className={cn(isDiscoverySelected ? 'bg-state-base-active' : 'hover:bg-state-base-hover', 'flex h-8 w-full items-center justify-start gap-2 rounded-lg px-1')}
         >
           <div className="flex size-6 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid">
             <span aria-hidden="true" className="i-ri-apps-fill size-3.5 text-components-avatar-shape-fill-stop-100" />
           </div>
-          {!isMobile && !isFold && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('sidebar.title', { ns: 'explore' })}</div>}
+          {!isFold && <div className={cn('truncate', isDiscoverySelected ? 'system-sm-semibold text-components-menu-item-text-active' : 'system-sm-regular text-components-menu-item-text')}>{t('sidebar.title', { ns: 'explore' })}</div>}
         </Link>
       </div>
 
-      {!isPending && installedApps.length === 0 && !isMobile && !isFold
+      {!isPending && installedApps.length === 0 && !isFold
         && (
           <div className="mt-5">
             <NoApps />
@@ -110,8 +108,8 @@ const SideBar = () => {
 
       {installedApps.length > 0 && (
         <div className="mt-5 flex min-h-0 flex-1 flex-col">
-          {!isMobile && !isFold && <p id={webAppsLabelId} className="mb-1.5 pl-2 system-xs-medium-uppercase break-all text-text-tertiary uppercase mobile:px-0">{t('sidebar.webApps', { ns: 'explore' })}</p>}
-          {shouldUseExpandedScrollArea
+          {!isFold && <p id={webAppsLabelId} className="mb-1.5 pl-2 system-xs-medium-uppercase break-all text-text-tertiary uppercase">{t('sidebar.webApps', { ns: 'explore' })}</p>}
+          {!isFold
             ? (
                 <div className="min-h-0 flex-1">
                   <ScrollArea
@@ -133,22 +131,20 @@ const SideBar = () => {
         </div>
       )}
 
-      {!isMobile && (
-        <div className="mt-auto flex py-3">
-          <button
-            type="button"
-            aria-label={isFold ? t('sidebar.expandSidebar', { ns: 'layout' }) : t('sidebar.collapseSidebar', { ns: 'layout' })}
-            className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover focus-visible:outline-hidden focus-visible:ring-inset"
-            onClick={toggleIsFold}
-          >
-            {isFold
-              ? <span aria-hidden="true" className="i-ri-expand-right-line" />
-              : (
-                  <span aria-hidden="true" className="i-ri-layout-left-2-line" />
-                )}
-          </button>
-        </div>
-      )}
+      <div className="mt-auto flex py-3">
+        <button
+          type="button"
+          aria-label={isFold ? t('sidebar.expandSidebar', { ns: 'layout' }) : t('sidebar.collapseSidebar', { ns: 'layout' })}
+          className="flex size-8 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-base-hover focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-hover focus-visible:outline-hidden"
+          onClick={toggleIsFold}
+        >
+          {isFold
+            ? <span aria-hidden="true" className="i-ri-expand-right-line" />
+            : (
+                <span aria-hidden="true" className="i-ri-layout-left-2-line" />
+              )}
+        </button>
+      </div>
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>
