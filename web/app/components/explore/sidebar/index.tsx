@@ -16,7 +16,6 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Link from '@/next/link'
 import { usePathname, useSelectedLayoutSegments } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
@@ -25,8 +24,6 @@ import NoApps from './no-apps'
 
 const SideBar = () => {
   const { t } = useTranslation()
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
   const pathname = usePathname()
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
@@ -96,7 +93,7 @@ const SideBar = () => {
         </Link>
       </div>
 
-      {!isPending && installedApps.length === 0 && !isFold && !isMobile
+      {!isPending && installedApps.length === 0 && !isFold
         && (
           <div className="mt-5">
             <NoApps />
