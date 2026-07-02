@@ -5238,6 +5238,25 @@ Refresh MCP server configuration and regenerate server code
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
+### [POST] /auth/plugin/datasource/{provider_id}/visibility
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasourceCredentialVisibilityPayload](#datasourcecredentialvisibilitypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+
 ### [GET] /billing/invoices
 #### Responses
 
@@ -16580,6 +16599,7 @@ Model class for provider custom model configuration.
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
 | name | string |  | No |
+| visibility | string | only_me or all_team_members (defaults to all_team) | No |
 
 #### DatasourceCredentialUpdatePayload
 
@@ -16588,6 +16608,14 @@ Model class for provider custom model configuration.
 | credential_id | string |  | Yes |
 | credentials | object |  | No |
 | name | string |  | No |
+
+#### DatasourceCredentialVisibilityPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | Yes |
+| partial_member_list | [ string ] | account ids granted access when visibility is partial_members | No |
+| visibility | string | only_me, all_team_members, or partial_members | Yes |
 
 #### DatasourceCredentialsResponse
 

@@ -1,6 +1,7 @@
 import type { DataSourceCredential } from '../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
+import { PermissionLevel } from '@/models/permission'
 import Item from '../item'
 
 /**
@@ -61,6 +62,42 @@ describe('Item Component', () => {
       // Assert
       expect(container.querySelector('img')).not.toBeInTheDocument()
       expect(screen.getByText('plugin.auth.default')).toBeInTheDocument()
+    })
+  })
+
+  describe('Visibility Badge', () => {
+    it('should show the "only me" badge when visibility is only_me', () => {
+      render(
+        <Item
+          credentialItem={{ ...mockCredentialItem, visibility: PermissionLevel.onlyMe }}
+          onAction={mockOnAction}
+        />,
+      )
+
+      expect(screen.getByText('datasetSettings.form.permissionsOnlyMe')).toBeInTheDocument()
+    })
+
+    it('should show the "invited members" badge when visibility is partial_members', () => {
+      render(
+        <Item
+          credentialItem={{ ...mockCredentialItem, visibility: PermissionLevel.partialMembers }}
+          onAction={mockOnAction}
+        />,
+      )
+
+      expect(screen.getByText('datasetSettings.form.permissionsInvitedMembers')).toBeInTheDocument()
+    })
+
+    it('should not show a scope badge for the default all_team_members visibility', () => {
+      render(
+        <Item
+          credentialItem={{ ...mockCredentialItem, visibility: PermissionLevel.allTeamMembers }}
+          onAction={mockOnAction}
+        />,
+      )
+
+      expect(screen.queryByText('datasetSettings.form.permissionsOnlyMe')).not.toBeInTheDocument()
+      expect(screen.queryByText('datasetSettings.form.permissionsInvitedMembers')).not.toBeInTheDocument()
     })
   })
 

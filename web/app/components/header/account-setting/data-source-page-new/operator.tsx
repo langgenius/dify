@@ -34,6 +34,8 @@ const Operator = ({
   const {
     type,
   } = credentialItem
+  // Only the creator (or legacy NULL-owner rows) may change a credential's sharing scope.
+  const canEditVisibility = canManageCredential && credentialItem.is_editable !== false
   const handleAction = useCallback((action: string, allowed: boolean) => {
     if (!allowed)
       return
@@ -83,6 +85,10 @@ const Operator = ({
             <div className="mb-1 system-sm-semibold text-text-secondary">{t('dataSource.notion.changeAuthorizedPages', { ns: 'common' })}</div>
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem disabled={!canEditVisibility} className="h-auto gap-2 py-2" onClick={() => handleAction('visibility', canEditVisibility)}>
+          <span aria-hidden className="i-ri-group-line size-4 text-text-tertiary" />
+          <div className="system-sm-semibold text-text-secondary">{t('auth.whoCanUse', { ns: 'plugin' })}</div>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={!canManageCredential} variant="destructive" className="h-auto gap-2 py-2" onClick={() => handleAction('delete', canManageCredential)}>
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
