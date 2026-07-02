@@ -199,6 +199,7 @@ describe('PromptEditor', () => {
 
       render(
         <PromptEditor
+          aria-labelledby="prompt-label"
           compact={true}
           className="editor-class"
           placeholder="Type prompt"
@@ -210,6 +211,7 @@ describe('PromptEditor', () => {
       expect(screen.getByText('Type prompt')).toBeInTheDocument()
       expect(screen.getByTestId('content-editable')).toHaveClass('editor-class')
       expect(screen.getByTestId('content-editable')).toHaveClass('text-[13px]')
+      expect(screen.getByTestId('content-editable')).toHaveAttribute('aria-labelledby', 'prompt-label')
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith('first line\nsecond line')

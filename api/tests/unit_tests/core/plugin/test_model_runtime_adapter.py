@@ -3,7 +3,7 @@
 import datetime
 import uuid
 from types import SimpleNamespace
-from unittest.mock import Mock, patch, sentinel
+from unittest.mock import MagicMock, Mock, patch, sentinel
 
 import pytest
 
@@ -44,12 +44,34 @@ class _FakeRedis:
     def delete(self, key: str) -> None:
         self._values.pop(key, None)
 
+    def lock(
+        self,
+        key: str,
+        *,
+        timeout: int,
+        sleep: float,
+    ) -> "_FakeRedisLock":
+        return _FakeRedisLock(self, key)
 
-@pytest.fixture(autouse=True)
-def clear_plugin_model_provider_memory_cache() -> None:
-    PluginService._plugin_model_providers_memory_cache.clear()
-    yield
-    PluginService._plugin_model_providers_memory_cache.clear()
+
+class _FakeRedisLock:
+    def __init__(self, redis: _FakeRedis, key: str) -> None:
+        self._redis = redis
+        self._key = key
+        self._acquired = False
+
+    def acquire(self, *, blocking: bool = True, blocking_timeout: float | None = None) -> bool:
+        if self._key in self._redis._values:
+            return False
+
+        self._redis._values[self._key] = "locked"
+        self._acquired = True
+        return True
+
+    def release(self) -> None:
+        if self._acquired:
+            self._redis.delete(self._key)
+            self._acquired = False
 
 
 def _build_model_schema() -> AIModelEntity:
@@ -413,12 +435,13 @@ class TestPluginModelRuntime:
             "redis_client",
             SimpleNamespace(
                 get=Mock(return_value=None),
-                mget=Mock(return_value=[None, None]),
+                mget=Mock(return_value=[None]),
                 delete=Mock(),
                 setex=Mock(),
+                lock=Mock(return_value=MagicMock()),
             ),
         )
-        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 300)
+        monkeypatch.setattr(plugin_service_module.dify_config, "PLUGIN_MODEL_PROVIDERS_CACHE_TTL", 0)
         runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
 
         runtime.fetch_model_providers()

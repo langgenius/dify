@@ -32,6 +32,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode
+from services.app_ref_service import MessageRef
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 
@@ -773,6 +774,27 @@ class TestTrialChatTextApi:
             result = method(api, account, trial_app_chat)
 
         assert result == {"audio": "base64_data"}
+
+    def test_success_with_message_ref(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+        api = module.TrialChatTextApi()
+        method = unwrap(api.post)
+        transcript_tts = MagicMock(return_value={"audio": "base64_data"})
+        trial_app_chat.tenant_id = "tenant-1"
+
+        with (
+            app.test_request_context("/", json={"text": "hello", "message_id": "message-1"}),
+            patch.object(module.AudioService, "transcript_tts", transcript_tts),
+            patch.object(module.RecommendedAppService, "add_trial_app_record"),
+        ):
+            result = method(api, account, trial_app_chat)
+
+        assert result == {"audio": "base64_data"}
+        assert transcript_tts.call_args.kwargs["message_ref"] == MessageRef(
+            "tenant-1",
+            "a-chat",
+            "message-1",
+            account_id="u1",
+        )
 
     def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()

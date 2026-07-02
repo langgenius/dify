@@ -40,6 +40,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     resolved_settings = settings or ServerSettings()
     agent_stub_token_codec = resolved_settings.create_agent_stub_token_codec()
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
+    agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
     agent_stub_drive_request_handler = resolved_settings.create_agent_stub_drive_request_handler()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
@@ -111,6 +112,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,
             file_request_handler=agent_stub_file_request_handler,
+            config_request_handler=agent_stub_config_request_handler,
             drive_request_handler=agent_stub_drive_request_handler,
         )
     )

@@ -10,10 +10,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
-import { hasAgentComposerUnpublishedChangesAtom } from '@/features/agent-v2/agent-composer/store'
+import { hasAgentComposerUnpublishedChangesAtom, isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -37,27 +37,32 @@ type AgentConfigurePublishBarProps = {
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
-  onOpenVersions: () => void
+  onOpenVersions?: () => void
 }
 
 function getPublishState({
   activeConfigIsPublished,
   activeConfigSnapshot,
-  isDirty,
+  hasLocalChanges,
+  hasUnpublishedChanges,
   isPublishing,
 }: {
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  isDirty: boolean
+  hasLocalChanges: boolean
+  hasUnpublishedChanges: boolean
   isPublishing: boolean
 }): AgentConfigurePublishState {
   if (isPublishing)
     return 'publishing'
 
+  if (hasLocalChanges)
+    return 'unpublished'
+
   if (activeConfigIsPublished)
     return 'published'
 
-  if (isDirty)
+  if (hasUnpublishedChanges)
     return 'unpublished'
 
   if (!activeConfigSnapshot)
@@ -96,20 +101,29 @@ export function AgentConfigurePublishBar({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
+  const lastKnownPublishedRef = useRef(false)
+  if (activeConfigIsPublished === true)
+    lastKnownPublishedRef.current = true
+  if (activeConfigIsPublished === false)
+    lastKnownPublishedRef.current = false
+  const stableActiveConfigIsPublished = activeConfigIsPublished ?? (lastKnownPublishedRef.current ? true : undefined)
   const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
+  const hasLocalChanges = useAtomValue(isAgentComposerDirtyAtom)
   const knowledgeRetrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
   const getValidationMessage = useKnowledgeValidationMessage()
   const publishableState = getPublishState({
-    activeConfigIsPublished,
+    activeConfigIsPublished: stableActiveConfigIsPublished,
     activeConfigSnapshot,
-    isDirty: hasUnpublishedChanges,
+    hasLocalChanges,
+    hasUnpublishedChanges,
     isPublishing: false,
   })
   const publishState = getPublishState({
-    activeConfigIsPublished,
+    activeConfigIsPublished: stableActiveConfigIsPublished,
     activeConfigSnapshot,
-    isDirty: hasUnpublishedChanges,
+    hasLocalChanges,
+    hasUnpublishedChanges,
     isPublishing,
   })
   const publishIsAvailable = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')
@@ -296,7 +310,7 @@ export function AgentConfigurePublishBar({
         statusLabel={currentStateMeta.statusLabel}
         canPublish={canPublish}
         onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
-        onOpenVersions={onOpenVersions}
+        onOpenVersions={() => onOpenVersions?.()}
         onPublishRequest={handlePublishRequest}
       />
     </CollapsibleRoot>
@@ -332,7 +346,11 @@ function PublishBarActions({
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
-      <div className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden">
+      <div
+        role="status"
+        aria-label={`${statusLabel}. ${metaLabel}`}
+        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden"
+      >
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={dotStatus} />
         </span>

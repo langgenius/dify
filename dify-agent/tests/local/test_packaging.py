@@ -23,7 +23,7 @@ SERVER_RUNTIME_DEPENDENCIES = {
     "pydantic-ai-slim[anthropic,google,openai]>=1.85.1,<2.0.0",
     "pydantic-settings>=2.12.0,<3.0.0",
     "redis>=7.4.0,<8.0.0",
-    "shell-session-manager==2.2.1",
+    "shell-session-manager==2.3.0",
     "uvicorn[standard]==0.46.0",
 }
 
@@ -66,24 +66,43 @@ def test_default_package_discovery_excludes_example_packages() -> None:
     assert "dify_agent_examples*" not in find_config["include"]
 
 
-def test_project_declares_console_script_and_local_sandbox_docker_version() -> None:
+def test_project_declares_console_scripts() -> None:
     pyproject = _read_pyproject()
     scripts = pyproject["project"]["scripts"]
-    dockerfile = (PROJECT_ROOT / "docker" / "local-sandbox" / "Dockerfile").read_text(encoding="utf-8")
 
     assert scripts["dify-agent"] == "dify_agent.agent_stub.cli.main:main"
     assert scripts["dify-agent-stub-server"] == "dify_agent.agent_stub.server.cli:main"
-    assert "SHELL_SESSION_MANAGER_VERSION=2.2.1" in dockerfile
 
 
 def test_local_sandbox_dockerfile_installs_stub_client_and_shellctl() -> None:
     dockerfile = (PROJECT_ROOT / "docker" / "local-sandbox" / "Dockerfile").read_text(encoding="utf-8")
 
-    assert "uv sync --frozen --no-dev --no-editable --extra grpc" in dockerfile
-    assert "SHELL_SESSION_MANAGER_VERSION=2.2.1" in dockerfile
-    assert "shell-session-manager==${SHELL_SESSION_MANAGER_VERSION}" in dockerfile
+    assert "ARG NODE_VERSION=22.22.1" in dockerfile
+    assert "ARG PNPM_VERSION=11.9.0" in dockerfile
+    assert "ARG UV_VERSION=0.8.9" in dockerfile
+    assert "ARG DIFY_AGENT_TOOL_SPEC=.[grpc]" in dockerfile
+    assert "ARG SHELL_SESSION_MANAGER_TOOL_SPEC=shell-session-manager" in dockerfile
+    assert "UV_TOOL_DIR=/opt/dify-agent-tools/envs" in dockerfile
+    assert "UV_TOOL_BIN_DIR=/opt/dify-agent-tools/bin" in dockerfile
+    assert "git" in dockerfile
+    assert "jq" in dockerfile
+    assert "openssh-client" in dockerfile
+    assert "ripgrep" in dockerfile
+    assert 'node_dist="node-v${NODE_VERSION}-linux-${node_arch}"' in dockerfile
+    assert 'curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt"' in dockerfile
+    assert 'tar -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1' in dockerfile
+    assert 'npm install --global "pnpm@${PNPM_VERSION}"' in dockerfile
+    assert "uv export --frozen --no-dev --all-extras --no-emit-project --no-hashes" in dockerfile
+    assert "> /tmp/dify-agent-constraints.txt" in dockerfile
+    assert '--constraints /tmp/dify-agent-constraints.txt --link-mode=copy "${DIFY_AGENT_TOOL_SPEC}"' in dockerfile
+    assert (
+        '--constraints /tmp/dify-agent-constraints.txt --link-mode=copy "${SHELL_SESSION_MANAGER_TOOL_SPEC}"'
+        in dockerfile
+    )
     assert "DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive" in dockerfile
-    assert "ln -s ${VIRTUAL_ENV}/bin/dify-agent /usr/local/bin/dify-agent" in dockerfile
-    assert "ln -s ${VIRTUAL_ENV}/bin/shellctl /usr/local/bin/shellctl" in dockerfile
+    assert "COPY --from=tools ${UV_TOOL_DIR} ${UV_TOOL_DIR}" in dockerfile
+    assert "COPY --from=tools ${UV_TOOL_BIN_DIR} ${UV_TOOL_BIN_DIR}" in dockerfile
+    assert "VIRTUAL_ENV" not in dockerfile
+    assert "uv sync" not in dockerfile
     assert "mkdir -p /mnt/drive" in dockerfile
     assert '["shellctl", "serve", "--listen", "0.0.0.0:5004"]' in dockerfile

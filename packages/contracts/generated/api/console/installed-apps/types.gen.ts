@@ -117,7 +117,11 @@ export type SuggestedQuestionsResponse = {
 
 export type ExploreAppMetaResponse = {
   tool_icons?: {
-    [key: string]: unknown
+    [key: string]:
+      | string
+      | {
+        [key: string]: unknown
+      }
   }
 }
 
@@ -237,6 +241,7 @@ export type InstalledAppInfoResponse = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  readonly icon_url: string | null
   id: string
   mode?: string | null
   name?: string | null
@@ -401,6 +406,33 @@ export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type ValueSourceType = 'constant' | 'variable'
+
+export type InstalledAppListResponseWritable = {
+  installed_apps: Array<InstalledAppResponseWritable>
+}
+
+export type GeneratedAppResponseWritable = JsonValue
+
+export type InstalledAppResponseWritable = {
+  app: InstalledAppInfoResponseWritable
+  app_owner_tenant_id: string
+  editable: boolean
+  id: string
+  is_pinned: boolean
+  last_used_at?: number | null
+  uninstallable: boolean
+}
+
+export type InstalledAppInfoResponseWritable = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  mode?: string | null
+  name?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
 
 export type GetInstalledAppsData = {
   body?: never

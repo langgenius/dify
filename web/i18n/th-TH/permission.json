@@ -28,6 +28,8 @@
   "accessRule.noDescription": "ไม่มีคําอธิบาย",
   "accessRule.noRules": "ไม่มีกฎการเข้าถึง",
   "accessRule.noUserAccessSettings": "ไม่มีการตั้งค่าสิทธิ์เฉพาะบุคคล",
+  "accessRule.onlyMe": "ฉันเท่านั้น",
+  "accessRule.onlyMeDescription": "เฉพาะคุณเท่านั้นที่เข้าถึงทรัพยากรนี้ได้",
   "accessRule.permission": "สิทธิ์",
   "accessRule.resourceOpenScope": "ขอบเขตการเปิดของทรัพยากร",
   "accessRule.resourceOpenScopeDescription": "เลือกว่าทรัพยากรนี้เปิดให้ใครเข้าถึง สิทธิ์ตามบทบาทยังคงเป็นตัวกําหนดว่าสมาชิกแต่ละคนทําอะไรได้บ้าง",

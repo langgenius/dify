@@ -14,13 +14,15 @@ vi.mock('@/app/components/workflow/workflow-preview', () => ({
     miniMapToRight,
     nodes,
     edges,
-  }: { className?: string, miniMapToRight?: boolean, nodes?: unknown[], edges?: unknown[] }) => (
+    viewport,
+  }: { className?: string, miniMapToRight?: boolean, nodes?: unknown[], edges?: unknown[], viewport?: unknown }) => (
     <div
       data-testid="workflow-preview"
       className={className}
       data-mini-map-to-right={miniMapToRight}
       data-nodes-count={nodes?.length}
       data-edges-count={edges?.length}
+      data-viewport={JSON.stringify(viewport)}
     >
       WorkflowPreview
     </div>
@@ -108,6 +110,25 @@ describe('FlowAppPreview', () => {
       const workflowPreview = screen.getByTestId('workflow-preview')
       expect(workflowPreview).toHaveAttribute('data-nodes-count', '3')
       expect(workflowPreview).toHaveAttribute('data-edges-count', '2')
+    })
+
+    it('uses a default viewport when graph viewport is missing', () => {
+      mockUseGetTryAppFlowPreview.mockReturnValue({
+        data: {
+          graph: {
+            nodes: [],
+            edges: [],
+          },
+        },
+        isLoading: false,
+      })
+
+      render(<FlowAppPreview appId="test-app-id" />)
+
+      expect(screen.getByTestId('workflow-preview')).toHaveAttribute(
+        'data-viewport',
+        JSON.stringify({ x: 0, y: 0, zoom: 1 }),
+      )
     })
 
     it('passes miniMapToRight=true to WorkflowPreview', () => {
