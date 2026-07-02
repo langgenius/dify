@@ -31,7 +31,7 @@ type CreateAppSource
 
 export type TrackCreateAppParams = {
   source: CreateAppSource
-  appMode: AppModeEnum
+  appMode: string
   templateId?: string
 }
 
@@ -89,11 +89,11 @@ const formatCreateAppTime = (date: Date) => {
   return `${padTimeValue(date.getMonth() + 1)}-${padTimeValue(date.getDate())}-${padTimeValue(date.getHours())}:${padTimeValue(date.getMinutes())}:${padTimeValue(date.getSeconds())}`
 }
 
-const mapOriginalCreateAppMode = (appMode: AppModeEnum): OriginalCreateAppMode => {
+const mapOriginalCreateAppMode = (appMode: string): OriginalCreateAppMode => {
   if (appMode === AppModeEnum.WORKFLOW)
     return 'workflow'
 
-  if (appMode === AppModeEnum.AGENT_CHAT)
+  if (appMode === AppModeEnum.AGENT_CHAT || appMode === 'agent')
     return 'agent'
 
   return 'chatflow'
