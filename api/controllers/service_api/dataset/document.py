@@ -416,6 +416,7 @@ def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Document
             account=current_user,
             dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
             created_from="api",
+            session=db.session,
         )
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
@@ -475,6 +476,7 @@ def _update_document_by_text(tenant_id: str, dataset_id: UUID, document_id: UUID
             account=current_user,
             dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
             created_from="api",
+            session=db.session,
         )
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
@@ -776,6 +778,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 account=dataset.created_by_account,
                 dataset_process_rule=dataset_process_rule,
                 created_from="api",
+                session=db.session,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -852,6 +855,7 @@ def _update_document_by_file(tenant_id: str, dataset_id: UUID, document_id: UUID
             account=dataset.created_by_account,
             dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
             created_from="api",
+            session=db.session,
         )
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
@@ -1023,6 +1027,7 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
             document_ids=[str(document_id) for document_id in payload.document_ids],
             tenant_id=str(tenant_id),
             current_user=current_user,
+            session=db.session,
         )
 
         with ExitStack() as stack:
@@ -1080,7 +1085,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
         # get documents
-        documents = DocumentService.get_batch_documents(dataset_id_str, batch)
+        documents = DocumentService.get_batch_documents(dataset_id_str, batch, db.session)
         if not documents:
             raise NotFound("Documents not found.")
         documents_status = []
@@ -1156,7 +1161,7 @@ class DocumentDownloadApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def get(self, tenant_id, dataset_id: UUID, document_id: UUID):
         dataset = self.get_dataset(str(dataset_id), str(tenant_id))
-        document = DocumentService.get_document(dataset.id, str(document_id))
+        document = DocumentService.get_document(dataset.id, str(document_id), session=db.session)
 
         if not document:
             raise NotFound("Document not found.")
@@ -1217,7 +1222,7 @@ class DocumentApi(DatasetApiResource):
 
         dataset = self.get_dataset(dataset_id_str, tenant_id)
 
-        document = DocumentService.get_document(dataset.id, document_id_str)
+        document = DocumentService.get_document(dataset.id, document_id_str, session=db.session)
 
         if not document:
             raise NotFound("Document not found.")
@@ -1405,7 +1410,7 @@ class DocumentApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
-        document = DocumentService.get_document(dataset.id, document_id_str)
+        document = DocumentService.get_document(dataset.id, document_id_str, session=db.session)
 
         # 404 if document not found
         if document is None:
