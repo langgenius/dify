@@ -27,8 +27,10 @@ export type SiteInfo = {
   use_icon_as_answer_icon?: boolean
 }
 
+export type ToolIcon = string | Record<string, unknown>
+
 export type AppMeta = {
-  tool_icons: Record<string, string>
+  tool_icons: Record<string, ToolIcon>
 }
 
 export type CustomConfigValueType = string | number | boolean | null | undefined

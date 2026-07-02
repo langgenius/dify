@@ -178,6 +178,14 @@ describe('useDocLink', () => {
       expect(url).toBe(`${defaultDocBaseUrl}/en/cloud/use-dify/workspace/subscription-management#dify-for-education`)
     })
 
+    it('should use the self-host Start node docs path outside cloud edition', () => {
+      mockConfig.IS_CLOUD_EDITION = false
+
+      const { result } = renderHook(() => useDocLink())
+      const url = result.current('/use-dify/nodes/start')
+      expect(url).toBe(`${defaultDocBaseUrl}/en/self-host/use-dify/nodes/start`)
+    })
+
     it('should use the existing self-host docs path for self-host-only product docs in cloud edition', () => {
       mockConfig.IS_CLOUD_EDITION = true
 
