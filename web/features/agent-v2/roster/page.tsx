@@ -46,19 +46,10 @@ const getFilteredRosterItems = (
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [keyword, setKeyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
-  const [rosterFilter, setRosterFilter] = useQueryState(
-    rosterQueryParamNames.filter,
-    rosterFilterQueryParser,
-  )
-  const [createdByMe, setCreatedByMe] = useQueryState(
-    rosterQueryParamNames.createdByMe,
-    rosterCreatedByMeQueryParser,
-  )
-  const [sortBy, setSortBy] = useQueryState(
-    rosterQueryParamNames.sortBy,
-    rosterSortByQueryParser,
-  )
+  const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
+  const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
+  const [createdByMe] = useQueryState(rosterQueryParamNames.createdByMe, rosterCreatedByMeQueryParser)
+  const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
 
   const rosterQueryInput = {
@@ -122,23 +113,7 @@ export default function RosterPage() {
           </div>
           <div className="mt-3.5">
             <RosterToolbar
-              createdByMe={createdByMe}
               draftAgents={draftAgents}
-              filter={rosterFilter}
-              keyword={keyword}
-              sortBy={sortBy}
-              onCreatedByMeChange={(value) => {
-                void setCreatedByMe(value)
-              }}
-              onFilterChange={(value) => {
-                void setRosterFilter(value)
-              }}
-              onKeywordChange={(value) => {
-                void setKeyword(value)
-              }}
-              onSortByChange={(value) => {
-                void setSortBy(value)
-              }}
               publishedAgents={publishedAgents}
             />
           </div>

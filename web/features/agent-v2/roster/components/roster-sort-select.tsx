@@ -1,6 +1,5 @@
 'use client'
 
-import type { RosterSortBy } from './roster-sort'
 import {
   Select,
   SelectContent,
@@ -9,26 +8,23 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
+import { rosterQueryParamNames, rosterSortByQueryParser } from '../query-params'
 import { DEFAULT_ROSTER_SORT_BY, rosterSortOptions } from './roster-sort'
 
-type RosterSortSelectProps = {
-  value: RosterSortBy
-  onValueChange: (value: RosterSortBy) => void
-}
-
-export function RosterSortSelect({
-  value,
-  onValueChange,
-}: RosterSortSelectProps) {
+export function RosterSortSelect() {
   const { t } = useTranslation('agentV2')
+  const [value, setValue] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const selectedOption = rosterSortOptions.find(option => option.value === value)
     ?? rosterSortOptions.find(option => option.value === DEFAULT_ROSTER_SORT_BY)!
 
   return (
     <Select
       value={value}
-      onValueChange={nextValue => onValueChange(nextValue as RosterSortBy)}
+      onValueChange={(nextValue) => {
+        void setValue(nextValue)
+      }}
     >
       <SelectTrigger
         aria-label={t('roster.sort.label')}
