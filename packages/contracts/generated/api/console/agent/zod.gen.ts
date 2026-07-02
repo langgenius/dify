@@ -62,15 +62,6 @@ export const zAgentSimpleResultResponse = z.object({
 })
 
 /**
- * AgentBuildDraftResponse
- */
-export const zAgentBuildDraftResponse = z.object({
-  agent_soul: z.record(z.string(), z.unknown()),
-  draft: z.record(z.string(), z.unknown()),
-  variant: z.string(),
-})
-
-/**
  * AgentBuildDraftApplyResponse
  */
 export const zAgentBuildDraftApplyResponse = z.object({
@@ -192,16 +183,6 @@ export const zAgentDriveFilePayload = z.object({
  */
 export const zAgentPublishPayload = z.object({
   version_note: z.string().nullish(),
-})
-
-/**
- * AgentPublishResponse
- */
-export const zAgentPublishResponse = z.object({
-  active_config_snapshot: z.record(z.string(), z.unknown()).nullish(),
-  active_config_snapshot_id: z.string(),
-  draft: z.record(z.string(), z.unknown()).nullish(),
-  result: z.string(),
 })
 
 /**
@@ -1234,6 +1215,38 @@ export const zAgentSoulPromptConfig = z.object({
 })
 
 /**
+ * AgentConfigDraftType
+ *
+ * Editable Agent Soul draft workspace type.
+ */
+export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
+
+/**
+ * AgentConfigDraftSummaryResponse
+ */
+export const zAgentConfigDraftSummaryResponse = z.object({
+  account_id: z.string().nullish(),
+  agent_id: z.string(),
+  base_snapshot_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  draft_type: zAgentConfigDraftType,
+  id: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+})
+
+/**
+ * AgentPublishResponse
+ */
+export const zAgentPublishResponse = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
+  active_config_snapshot_id: z.string(),
+  draft: zAgentConfigDraftSummaryResponse.nullish(),
+  result: z.string(),
+})
+
+/**
  * AgentHumanContactConfig
  */
 export const zAgentHumanContactConfig = z.object({
@@ -1269,28 +1282,6 @@ export const zWorkflowPreviousNodeOutputRef = z.object({
   variable_selector: z
     .array(z.union([z.string(), z.int(), z.number(), z.boolean(), z.null()]))
     .nullish(),
-})
-
-/**
- * AgentConfigDraftType
- *
- * Editable Agent Soul draft workspace type.
- */
-export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
-
-/**
- * AgentConfigDraftSummaryResponse
- */
-export const zAgentConfigDraftSummaryResponse = z.object({
-  account_id: z.string().nullish(),
-  agent_id: z.string(),
-  base_snapshot_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  draft_type: zAgentConfigDraftType,
-  id: z.string(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
 })
 
 /**
@@ -2382,6 +2373,15 @@ export const zAgentSoulConfig = z.object({
   sandbox: zAgentSoulSandboxConfig.optional(),
   schema_version: z.int().optional().default(1),
   tools: zAgentSoulToolsConfig.optional(),
+})
+
+/**
+ * AgentBuildDraftResponse
+ */
+export const zAgentBuildDraftResponse = z.object({
+  agent_soul: zAgentSoulConfig,
+  draft: zAgentConfigDraftSummaryResponse,
+  variant: z.string(),
 })
 
 /**

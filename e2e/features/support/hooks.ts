@@ -7,9 +7,12 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
-import { deleteTestAgent } from '../../support/agent'
 import { deleteTestApp } from '../../support/api'
+import { deleteTestDataset } from '../../support/datasets'
+import { deleteBuiltinToolCredential } from '../../support/tools'
 import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
+import { deleteTestAgent } from '../agent-v2/support/agent'
+import { deleteAgentConfigFile, deleteAgentConfigSkill, deleteAgentDriveFile } from '../agent-v2/support/agent-drive'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')
@@ -17,6 +20,14 @@ const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')
 let browser: Browser | undefined
 
 setDefaultTimeout(60_000)
+
+const diagnosticArtifactStatuses = new Set([
+  Status.FAILED,
+  Status.AMBIGUOUS,
+  Status.PENDING,
+  Status.UNDEFINED,
+  Status.UNKNOWN,
+])
 
 const sanitizeForPath = (value: string) =>
   value.replaceAll(/[^\w-]+/g, '-').replaceAll(/^-+|-+$/g, '')
@@ -33,6 +44,19 @@ const writeArtifact = async (
   await writeFile(artifactPath, contents)
 
   return artifactPath
+}
+
+const recordCleanup = async (
+  errors: string[],
+  label: string,
+  cleanup: () => Promise<void>,
+) => {
+  try {
+    await cleanup()
+  }
+  catch (error) {
+    errors.push(`${label}: ${error instanceof Error ? error.message : String(error)}`)
+  }
 }
 
 BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
@@ -65,8 +89,9 @@ Before(async function (this: DifyWorld, { pickle }) {
 
 After(async function (this: DifyWorld, { pickle, result }) {
   const elapsedMs = this.scenarioStartedAt ? Date.now() - this.scenarioStartedAt : undefined
+  const status = result?.status || Status.UNKNOWN
 
-  if (result?.status !== Status.PASSED && this.page) {
+  if (diagnosticArtifactStatuses.has(status) && this.page) {
     const screenshot = await this.page.screenshot({
       fullPage: true,
     })
@@ -86,13 +111,40 @@ After(async function (this: DifyWorld, { pickle, result }) {
     this.attach(`Artifacts:\n${[screenshotPath, htmlPath].join('\n')}`, 'text/plain')
   }
 
-  const status = result?.status || 'UNKNOWN'
   console.warn(
     `[e2e] end ${pickle.name} status=${status}${elapsedMs ? ` durationMs=${elapsedMs}` : ''}`,
   )
 
-  for (const id of this.createdAgentIds) await deleteTestAgent(id).catch(() => {})
-  for (const id of this.createdAppIds) await deleteTestApp(id).catch(() => {})
+  const cleanupErrors: string[] = []
+
+  for (const skill of this.createdAgentConfigSkills.toReversed()) {
+    await recordCleanup(cleanupErrors, `Delete Agent config skill ${skill.name}`, () =>
+      deleteAgentConfigSkill(skill.agentId, skill.name))
+  }
+  for (const file of this.createdAgentConfigFiles.toReversed()) {
+    await recordCleanup(cleanupErrors, `Delete Agent config file ${file.name}`, () =>
+      deleteAgentConfigFile(file.agentId, file.name))
+  }
+  for (const file of this.createdAgentDriveFiles.toReversed()) {
+    await recordCleanup(cleanupErrors, `Delete Agent drive file ${file.key}`, () =>
+      deleteAgentDriveFile(file.agentId, file.key))
+  }
+  for (const id of this.createdAppIds)
+    await recordCleanup(cleanupErrors, `Delete app ${id}`, () => deleteTestApp(id))
+  for (const id of this.createdAgentIds)
+    await recordCleanup(cleanupErrors, `Delete Agent ${id}`, () => deleteTestAgent(id))
+  for (const id of this.createdDatasetIds)
+    await recordCleanup(cleanupErrors, `Delete dataset ${id}`, () => deleteTestDataset(id))
+  for (const credential of this.createdBuiltinToolCredentials.toReversed()) {
+    await recordCleanup(
+      cleanupErrors,
+      `Delete builtin tool credential ${credential.provider}/${credential.credentialId}`,
+      () => deleteBuiltinToolCredential(credential.provider, credential.credentialId),
+    )
+  }
+  if (cleanupErrors.length > 0)
+    this.attach(`Typed cleanup errors:\n${cleanupErrors.join('\n')}`, 'text/plain')
+  await this.runRegisteredCleanups()
 
   await this.closeSession()
 })
