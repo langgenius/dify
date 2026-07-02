@@ -1485,9 +1485,43 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
+class EngramConfig(BaseSettings):
+    """Configuration for the Weaviate Engram managed memory service (long-term agent memory)."""
+
+    ENGRAM_ENABLED: bool = Field(
+        description="Enable the Weaviate Engram long-term memory layer for chat and agent-chat apps. "
+        "Requires ENGRAM_API_KEY. Memory writes are fire-and-forget; recall augments the prompt context.",
+        default=False,
+    )
+
+    ENGRAM_API_KEY: str | None = Field(
+        description="API key for the Weaviate Engram managed memory service (obtained from Weaviate Cloud)",
+        default=None,
+    )
+
+    ENGRAM_ENDPOINT: str | None = Field(
+        description="Base URL of the Engram API. Defaults to the managed Weaviate Cloud endpoint when unset.",
+        default=None,
+    )
+
+    ENGRAM_RECALL_TOP_K: PositiveInt = Field(
+        description="Maximum number of memories to recall and inject into the prompt context (default is 5)",
+        default=5,
+    )
+
+    ENGRAM_CONVERSATION_SCOPE_ENABLED: bool = Field(
+        description="Scope Engram memories by conversation_id on both store and recall. Only enable this when "
+        "the target Engram project/group has 'conversation_id' configured as a scope property on a topic; "
+        "otherwise Engram rejects the write. Default off, so memories are scoped by user_id alone and work "
+        "against any Engram group out of the box.",
+        default=False,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
+    EngramConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,

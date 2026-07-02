@@ -11,6 +11,7 @@ from core.app.app_config.easy_ui_based_app.model_config.manager import ModelConf
 from core.app.app_config.easy_ui_based_app.prompt_template.manager import PromptTemplateConfigManager
 from core.app.app_config.easy_ui_based_app.variables.manager import BasicVariablesConfigManager
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
+from core.app.app_config.features.engram.manager import EngramConfigManager
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
 from core.app.app_config.features.retrieval_resource.manager import RetrievalResourceConfigManager
@@ -79,6 +80,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             dataset=DatasetConfigManager.convert(config=config_dict),
             agent=AgentConfigManager.convert(config=config_dict),
             additional_features=cls.convert_features(config_dict, app_mode),
+            engram=EngramConfigManager.convert(config=config_dict),
         )
 
         app_config.variables, app_config.external_data_variables = BasicVariablesConfigManager.convert(
@@ -152,6 +154,10 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
         config, current_related_config_keys = SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(
             tenant_id, config
         )
+        related_config_keys.extend(current_related_config_keys)
+
+        # engram long-term memory
+        config, current_related_config_keys = EngramConfigManager.validate_and_set_defaults(config)
         related_config_keys.extend(current_related_config_keys)
 
         related_config_keys = list(set(related_config_keys))

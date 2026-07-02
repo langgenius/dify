@@ -48,6 +48,7 @@ export const buildConfigurationFeaturesData = (
     suggested: modelConfig.suggested_questions_after_answer || { enabled: false },
     citation: modelConfig.retriever_resource || { enabled: false },
     annotationReply: modelConfig.annotation_reply || { enabled: false },
+    engram: modelConfig.engram || { enabled: false, api_key: '', endpoint: '' },
   }
 }
 

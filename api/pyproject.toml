@@ -101,7 +101,7 @@ dify-trace-tencent = { workspace = true }
 dify-trace-weave = { workspace = true }
 
 [tool.uv]
-default-groups = ["storage", "tools", "vdb-all", "trace-all"]
+default-groups = ["storage", "tools", "vdb-all", "trace-all", "engram"]
 package = false
 override-dependencies = [
     "litellm>=1.83.10,<2.0.0",
@@ -200,6 +200,12 @@ storage = [
 # [ Tools ] dependency group
 ############################################################
 tools = ["cloudscraper>=1.2.71,<2.0.0", "nltk>=3.9.1,<4.0.0"]
+
+############################################################
+# [ Engram ] dependency group
+# Weaviate Engram managed memory service client (optional, config-gated).
+############################################################
+engram = ["weaviate-engram==1.0.0"]
 
 ############################################################
 # [ VDB ] workspace plugins — hollow packages under providers/vdb/*

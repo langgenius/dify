@@ -18,7 +18,7 @@ from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, e
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 
 from configs import dify_config
-from constants import DEFAULT_FILE_NUMBER_LIMITS
+from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.tools.signature import sign_tool_file
 from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowExecutionStatus
@@ -90,6 +90,12 @@ def _build_app_tenant_resolver(app_id: str, owner_tenant_id: str | None = None) 
 
 class EnabledConfig(TypedDict):
     enabled: bool
+
+
+class EngramMemoryConfig(TypedDict):
+    enabled: bool
+    api_key: str
+    endpoint: str
 
 
 class SuggestedQuestionsAfterAnswerModelConfig(TypedDict):
@@ -252,6 +258,7 @@ class AppModelConfigDict(TypedDict):
     completion_prompt_config: CompletionPromptConfig
     dataset_configs: DatasetConfigs
     file_upload: FileUploadConfig
+    engram: NotRequired[EngramMemoryConfig]
     # Added dynamically in Conversation.model_config
     model_id: NotRequired[str | None]
     provider: NotRequired[str | None]
@@ -741,6 +748,7 @@ class AppModelConfig(TypeBase):
     dataset_configs: Mapped[str | None] = mapped_column(LongText, default=None)
     external_data_tools: Mapped[str | None] = mapped_column(LongText, default=None)
     file_upload: Mapped[str | None] = mapped_column(LongText, default=None)
+    engram: Mapped[str | None] = mapped_column(LongText, default=None)
 
     @property
     def app(self) -> App | None:
@@ -851,6 +859,28 @@ class AppModelConfig(TypeBase):
             },
         )
 
+    @property
+    def engram_dict(self) -> EngramMemoryConfig:
+        """
+        Raw stored Engram config (``api_key`` still encrypted). Used to build the runtime app config,
+        which decrypts the key only at the point of use. NOT for API responses — use
+        ``engram_dict_masked`` there.
+        """
+        return cast(
+            EngramMemoryConfig,
+            json.loads(self.engram) if self.engram else {"enabled": False, "api_key": "", "endpoint": ""},
+        )
+
+    @property
+    def engram_dict_masked(self) -> EngramMemoryConfig:
+        """Engram config for API responses: the stored API key is replaced with the hidden sentinel."""
+        config = self.engram_dict
+        return {
+            "enabled": config.get("enabled", False),
+            "api_key": HIDDEN_VALUE if config.get("api_key") else "",
+            "endpoint": config.get("endpoint", ""),
+        }
+
     def to_dict(self, *, annotation_reply: AnnotationReplyConfig | None = None) -> AppModelConfigDict:
         return {
             "opening_statement": self.opening_statement,
@@ -873,6 +903,7 @@ class AppModelConfig(TypeBase):
             "completion_prompt_config": self.completion_prompt_config_dict,
             "dataset_configs": self.dataset_configs_dict,
             "file_upload": self.file_upload_dict,
+            "engram": self.engram_dict,
         }
 
     @staticmethod
@@ -901,6 +932,7 @@ class AppModelConfig(TypeBase):
         self.completion_prompt_config = self._dump_optional(model_config.get("completion_prompt_config"))
         self.dataset_configs = self._dump_optional(model_config.get("dataset_configs"))
         self.file_upload = self._dump_optional(model_config.get("file_upload"))
+        self.engram = self._dump_optional(model_config.get("engram"))
         return self
 
 

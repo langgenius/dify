@@ -85,6 +85,11 @@ type AnnotationReplyConfig = {
   }
 }
 
+export type Engram = EnabledOrDisabled & {
+  api_key?: string
+  endpoint?: string
+}
+
 export enum FeatureEnum {
   moreLikeThis = 'moreLikeThis',
   opening = 'opening',
@@ -95,6 +100,7 @@ export enum FeatureEnum {
   moderation = 'moderation',
   file = 'file',
   annotationReply = 'annotationReply',
+  engram = 'engram',
 }
 
 export type Features = {
@@ -107,6 +113,7 @@ export type Features = {
   [FeatureEnum.moderation]?: SensitiveWordAvoidance
   [FeatureEnum.file]?: FileUpload
   [FeatureEnum.annotationReply]?: AnnotationReplyConfig
+  [FeatureEnum.engram]?: Engram
 }
 
 export type OnFeaturesChange = (features?: Features) => void

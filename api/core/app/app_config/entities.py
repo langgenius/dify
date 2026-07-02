@@ -231,6 +231,20 @@ class EasyUIBasedAppModelConfigFrom(StrEnum):
     CONVERSATION_SPECIFIC_CONFIG = "conversation-specific-config"
 
 
+class EngramConfigEntity(BaseModel):
+    """
+    Per-app Weaviate Engram long-term memory config.
+
+    ``api_key`` is stored encrypted at rest (per-tenant) and is only decrypted at the point of use
+    (store/recall). ``enabled`` is authoritative per app; ``api_key``/``endpoint`` fall back to the
+    deployment-wide ENGRAM_* settings when left blank.
+    """
+
+    enabled: bool = False
+    api_key: str | None = None
+    endpoint: str | None = None
+
+
 class EasyUIBasedAppConfig(AppConfig):
     """
     Easy UI Based App Config Entity.
@@ -245,6 +259,7 @@ class EasyUIBasedAppConfig(AppConfig):
     prompt_template: PromptTemplateEntity
     dataset: DatasetEntity | None = None
     external_data_variables: list[ExternalDataVariableEntity] = []
+    engram: EngramConfigEntity | None = None
 
 
 class WorkflowUIBasedAppConfig(AppConfig):
