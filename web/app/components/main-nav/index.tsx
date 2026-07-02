@@ -216,29 +216,37 @@ const MainNav = ({
   return (
     <aside
       className={cn(
-        'relative flex h-full shrink-0',
-        detailNavigationTransitionDisabled ? 'transition-none' : 'transition-all',
-        isDetailNavigationHoverPreviewOpen ? 'overflow-visible' : 'overflow-hidden',
-        showDetailNavigation
-          ? detailNavigationExpanded
-            ? 'w-[248px] bg-background-body p-1'
-            : 'w-16 bg-background-body p-1'
-          : showSnippetDetailBottomNavigation
-            ? 'w-16 bg-background-body p-1'
-            : 'w-60 flex-col',
-        'bg-background-body',
+        'relative flex h-full w-62 shrink-0 flex-col overflow-hidden bg-background-body p-1 transition-all',
         className,
       )}
     >
-      <div
-        className={cn(
-          'flex min-h-0 flex-1 flex-col',
-          showDetailNavigation && (
-            isDetailNavigationHoverPreviewOpen
-              ? 'absolute top-1 bottom-1 left-1 z-40 w-60 overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg shadow-lg'
-              : 'overflow-hidden rounded-lg bg-components-panel-bg'
-          ),
-          showDetailNavigation && (detailNavigationVisibleExpanded ? 'w-60' : 'w-14'),
+      <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
+          {renderLogo()}
+          <MainNavSearchButton />
+        </div>
+        <div className="p-2">
+          <WorkspaceCard />
+        </div>
+        <nav className="isolate flex flex-col gap-px p-2">
+          {navItems.map(item => (
+            <MainNavLink key={item.href} item={item} pathname={pathname}>
+              {item.href === '/roster' && (
+                <Badge
+                  size="xs"
+                  variant="dimm"
+                  text={t('menus.status', { ns: 'common' })}
+                  className="ml-auto shrink-0"
+                />
+              )}
+            </MainNavLink>
+          ))}
+        </nav>
+        {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+        {showEnvTag && (
+          <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
+            <EnvNav />
+          </div>
         )}
         onMouseEnter={isCollapsedDetailNavigation ? openDetailNavigationHoverPreview : undefined}
         onMouseLeave={isCollapsedDetailNavigation ? closeDetailNavigationHoverPreview : undefined}
