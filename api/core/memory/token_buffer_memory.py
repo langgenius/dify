@@ -199,10 +199,11 @@ class TokenBufferMemory:
         # prune the chat message if it exceeds the max token limit
         curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
-        if curr_message_tokens > max_token_limit:
-            while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
-                prompt_messages.pop(0)
-                curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
+        while curr_message_tokens > max_token_limit and prompt_messages:
+            prompt_messages.pop(0)
+            if not prompt_messages:
+                break
+            curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         return prompt_messages
 
