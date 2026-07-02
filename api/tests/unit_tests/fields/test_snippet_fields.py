@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from fields.snippet_fields import SnippetListItemResponse
@@ -17,9 +18,9 @@ def test_snippet_list_fields_include_author_name() -> None:
         tags=[],
         created_by="account-1",
         author_name="Alice",
-        created_at=1704067200,
+        created_at=datetime.fromtimestamp(1704067200, tz=UTC),
         updated_by="account-1",
-        updated_at=1704067201,
+        updated_at=datetime.fromtimestamp(1704067201, tz=UTC),
     )
 
     result = dump_response(SnippetListItemResponse, snippet)
