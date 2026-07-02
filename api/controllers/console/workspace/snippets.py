@@ -533,4 +533,4 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
             session.commit()
             session.refresh(snippet)
 
-        return {"result": "success", "use_count": snippet.use_count}, 200
+        return SnippetUseCountResponse(result="success", use_count=snippet.use_count).model_dump(mode="json"), 200
