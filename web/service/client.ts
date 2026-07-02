@@ -16,7 +16,12 @@ import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
-import { API_PREFIX, APP_VERSION, IS_MARKETPLACE, MARKETPLACE_API_PREFIX } from '@/config'
+import {
+  API_PREFIX,
+  APP_VERSION,
+  IS_MARKETPLACE,
+  MARKETPLACE_API_PREFIX,
+} from '@/config'
 import { isClient } from '@/utils/client'
 // eslint-disable-next-line no-restricted-imports
 import { request } from './base'
@@ -41,19 +46,14 @@ function isURL(path: string) {
 }
 
 export function getBaseURL(path: string) {
-  const url = new URL(
-    path,
-    isURL(path) ? undefined : isClient ? window.location.origin : 'http://localhost',
-  )
+  const url = new URL(path, isURL(path) ? undefined : isClient ? window.location.origin : 'http://localhost')
 
   if (!isClient && !isURL(path)) {
     console.warn('Using localhost as base URL in server environment, please configure accordingly.')
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    console.warn(
-      `Unexpected protocol for API requests, expected http or https. Current protocol: ${url.protocol}. Please configure accordingly.`,
-    )
+    console.warn(`Unexpected protocol for API requests, expected http or https. Current protocol: ${url.protocol}. Please configure accordingly.`)
   }
 
   return url
@@ -79,11 +79,15 @@ function createConsoleOpenAPILink(contract: RouterContract): ConsoleClientLink {
     ...getOpenAPILinkURL(API_PREFIX),
     fetch: (url, init, options) => {
       const input = new Request(url, init)
-      return request(normalizeConsoleOpenAPIURL(url), init, {
-        fetchCompat: true,
-        request: input,
-        silent: options.context.silent,
-      })
+      return request(
+        normalizeConsoleOpenAPIURL(url),
+        init,
+        {
+          fetchCompat: true,
+          request: input,
+          silent: options.context.silent,
+        },
+      )
     },
     interceptors: [
       onError((error) => {
@@ -95,7 +99,7 @@ function createConsoleOpenAPILink(contract: RouterContract): ConsoleClientLink {
 
 const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   ...getOpenAPILinkURL(MARKETPLACE_API_PREFIX),
-  headers: () => getMarketplaceHeaders(),
+  headers: () => (getMarketplaceHeaders()),
   fetch: (url, init) => {
     return globalThis.fetch(url, {
       ...init,
@@ -109,12 +113,8 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   ],
 })
 
-export const marketplaceClient: JsonifiedClient<
-  RouterContractClient<typeof marketplaceRouterContract>
-> = createORPCClient(marketplaceLink)
-export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, {
-  path: ['marketplace'],
-})
+export const marketplaceClient: JsonifiedClient<RouterContractClient<typeof marketplaceRouterContract>> = createORPCClient(marketplaceLink)
+export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] })
 
 const APP_DEPLOY_SOURCE_APPS_PAGE_SIZE = 100
 const APP_DEPLOY_READINESS_RETRY_DELAYS = [0, 300, 700, 1200]
@@ -133,9 +133,7 @@ type AppDeployInvalidationOptions = {
   developerApiSettings?: boolean
 }
 
-type ConsoleQueryUtils = RouterUtils<
-  JsonifiedClient<RouterContractClient<typeof consoleRouterContract, ConsoleClientContext>>
->
+type ConsoleQueryUtils = RouterUtils<JsonifiedClient<RouterContractClient<typeof consoleRouterContract, ConsoleClientContext>>>
 
 function isTagType(type: string | null | undefined): type is TagType {
   return type === 'app' || type === 'knowledge' || type === 'snippet'
@@ -267,11 +265,7 @@ function apiKeysQueryKey(query: ConsoleQueryUtils, appInstanceId: string, enviro
   })
 }
 
-function accessPolicyQueryKey(
-  query: ConsoleQueryUtils,
-  appInstanceId: string,
-  environmentId: string,
-) {
+function accessPolicyQueryKey(query: ConsoleQueryUtils, appInstanceId: string, environmentId: string) {
   return query.enterprise.accessService.getAccessPolicy.key({
     type: 'query',
     input: { params: { appInstanceId, environmentId } },
@@ -316,11 +310,7 @@ function invalidateAppDeployQueries(
   return invalidateQueryKeys(client, queryKeys)
 }
 
-function removeAppDeployQueries(
-  query: ConsoleQueryUtils,
-  client: QueryClient,
-  appInstanceId: string,
-) {
+function removeAppDeployQueries(query: ConsoleQueryUtils, client: QueryClient, appInstanceId: string) {
   const queryKeys = [
     appInstanceQueryKey(query, appInstanceId),
     appInstanceOverviewQueryKey(query, appInstanceId),
@@ -378,93 +368,81 @@ async function invalidateReleaseMutationQueries(
 
 const consoleLink = createConsoleDynamicLink<ConsoleClientContext>(createConsoleOpenAPILink)
 
-export const consoleClient: JsonifiedClient<
-  RouterContractClient<typeof consoleRouterContract, ConsoleClientContext>
-> = createORPCClient(consoleLink)
+export const consoleClient: JsonifiedClient<RouterContractClient<typeof consoleRouterContract, ConsoleClientContext>> = createORPCClient(consoleLink)
 
-export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(
-  consoleClient,
-  {
-    path: ['console'],
-    scoped: {
-      apps: {
-        byAppId: {
-          workflows: {
-            draft: {
-              nodes: {
-                byNodeId: {
-                  agentComposer: {
-                    put: {
+export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(consoleClient, {
+  path: ['console'],
+  scoped: {
+    apps: {
+      byAppId: {
+        workflows: {
+          draft: {
+            nodes: {
+              byNodeId: {
+                agentComposer: {
+                  put: {
+                    mutationOptions: {
+                      onSuccess: (composerState, variables, _onMutateResult, context) => {
+                        context.client.setQueryData(
+                          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+                            input: {
+                              params: variables.params,
+                            },
+                          }),
+                          composerState,
+                        )
+                      },
+                    },
+                  },
+                  copyFromRoster: {
+                    post: {
                       mutationOptions: {
                         onSuccess: (composerState, variables, _onMutateResult, context) => {
                           context.client.setQueryData(
-                            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                              {
-                                input: {
-                                  params: variables.params,
-                                },
+                            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+                              input: {
+                                params: variables.params,
                               },
-                            ),
+                            }),
                             composerState,
                           )
                         },
                       },
                     },
-                    copyFromRoster: {
-                      post: {
-                        mutationOptions: {
-                          onSuccess: (composerState, variables, _onMutateResult, context) => {
-                            context.client.setQueryData(
-                              consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                                {
-                                  input: {
-                                    params: variables.params,
-                                  },
-                                },
-                              ),
-                              composerState,
-                            )
-                          },
-                        },
-                      },
-                    },
-                    saveToRoster: {
-                      post: {
-                        mutationOptions: {
-                          onSuccess: (composerState, variables, _onMutateResult, context) => {
-                            context.client.setQueryData(
-                              consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
-                                {
-                                  input: {
-                                    params: variables.params,
-                                  },
-                                },
-                              ),
-                              composerState,
-                            )
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.agent.get.key(),
-                            })
-                            context.client.invalidateQueries({
-                              queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                            })
+                  },
+                  saveToRoster: {
+                    post: {
+                      mutationOptions: {
+                        onSuccess: (composerState, variables, _onMutateResult, context) => {
+                          context.client.setQueryData(
+                            consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+                              input: {
+                                params: variables.params,
+                              },
+                            }),
+                            composerState,
+                          )
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.agent.get.key(),
+                          })
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                          })
 
-                            const agentId
-                              = composerState.binding?.binding_type === 'roster_agent'
-                                ? composerState.binding.agent_id
-                                : undefined
-                            if (agentId) {
-                              context.client.invalidateQueries({
-                                queryKey: consoleQuery.agent.byAgentId.get.queryKey({
-                                  input: {
-                                    params: {
-                                      agent_id: agentId,
-                                    },
+                          const agentId = composerState.binding?.binding_type === 'roster_agent'
+                            ? composerState.binding.agent_id
+                            : undefined
+                          if (agentId) {
+                            context.client.invalidateQueries({
+                              queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+                                input: {
+                                  params: {
+                                    agent_id: agentId,
                                   },
-                                }),
-                              })
-                            }
-                          },
+                                },
+                              }),
+                            })
+                          }
                         },
                       },
                     },
@@ -475,185 +453,34 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           },
         },
       },
-      agent: {
-        post: {
-          mutationOptions: {
-            onSuccess: (_createdAgent, _variables, _onMutateResult, context) => {
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.agent.get.key(),
-              })
-              context.client.invalidateQueries({
-                queryKey: consoleQuery.agent.inviteOptions.get.key(),
-              })
-            },
+    },
+    agent: {
+      post: {
+        mutationOptions: {
+          onSuccess: (_createdAgent, _variables, _onMutateResult, context) => {
+            context.client.invalidateQueries({
+              queryKey: consoleQuery.agent.get.key(),
+            })
+            context.client.invalidateQueries({
+              queryKey: consoleQuery.agent.inviteOptions.get.key(),
+            })
           },
         },
-        byAgentId: {
-          copy: {
-            post: {
-              mutationOptions: {
-                onSuccess: (copiedAgent, _variables, _onMutateResult, context) => {
-                  context.client.setQueryData(
-                    consoleQuery.agent.byAgentId.get.queryKey({
-                      input: {
-                        params: {
-                          agent_id: copiedAgent.id,
-                        },
-                      },
-                    }),
-                    copiedAgent,
-                  )
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.agent.get.key(),
-                  })
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                  })
-                },
-              },
-            },
-          },
-          put: {
+      },
+      byAgentId: {
+        copy: {
+          post: {
             mutationOptions: {
-              onSuccess: (updatedAgent, variables, _onMutateResult, context) => {
-                context.client.setQueriesData(
-                  {
-                    queryKey: consoleQuery.agent.get.key({ type: 'query' }),
-                  },
-                  (oldList: AgentAppPagination | undefined) => {
-                    if (!oldList?.data.some(item => item.id === updatedAgent.id))
-                      return oldList
-
-                    return {
-                      ...oldList,
-                      data: oldList.data.map(item =>
-                        item.id === updatedAgent.id ? updatedAgent : item,
-                      ),
-                    }
-                  },
-                )
-                context.client.setQueriesData(
-                  {
-                    queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
-                  },
-                  (oldList: InfiniteData<AgentAppPagination, unknown> | undefined) => {
-                    if (
-                      !oldList?.pages.some(page =>
-                        page.data.some(item => item.id === updatedAgent.id),
-                      )
-                    ) {
-                      return oldList
-                    }
-
-                    return {
-                      ...oldList,
-                      pages: oldList.pages.map(page => ({
-                        ...page,
-                        data: page.data.map(item =>
-                          item.id === updatedAgent.id ? updatedAgent : item,
-                        ),
-                      })),
-                    }
-                  },
-                )
+              onSuccess: (copiedAgent, _variables, _onMutateResult, context) => {
                 context.client.setQueryData(
                   consoleQuery.agent.byAgentId.get.queryKey({
                     input: {
                       params: {
-                        agent_id: variables.params.agent_id,
+                        agent_id: copiedAgent.id,
                       },
                     },
                   }),
-                  updatedAgent,
-                )
-                context.client.invalidateQueries({
-                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                })
-              },
-            },
-          },
-          composer: {
-            put: {
-              mutationOptions: {
-                onSuccess: (_composerState, variables, _onMutateResult, context) => {
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.agent.get.key(),
-                  })
-                  if (variables.body.save_strategy !== 'save_as_new_version')
-                    return
-
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                  })
-                  context.client.removeQueries({
-                    queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                  })
-                },
-              },
-            },
-          },
-          publish: {
-            post: {
-              mutationOptions: {
-                onSuccess: (_publishResult, _variables, _onMutateResult, context) => {
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.agent.get.key(),
-                  })
-                  context.client.invalidateQueries({
-                    queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                  })
-                  context.client.removeQueries({
-                    queryKey: consoleQuery.agent.inviteOptions.get.key(),
-                  })
-                },
-              },
-            },
-          },
-          delete: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _onMutateResult, context) => {
-                context.client.setQueriesData(
-                  {
-                    queryKey: consoleQuery.agent.get.key({ type: 'query' }),
-                  },
-                  (oldList: AgentAppPagination | undefined) => {
-                    if (!oldList?.data.some(item => item.id === variables.params.agent_id))
-                      return oldList
-
-                    return {
-                      ...oldList,
-                      data: oldList.data.filter(item => item.id !== variables.params.agent_id),
-                      total: Math.max(0, oldList.total - 1),
-                    }
-                  },
-                )
-                context.client.setQueriesData(
-                  {
-                    queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
-                  },
-                  (oldList: InfiniteData<AgentAppPagination, unknown> | undefined) => {
-                    if (
-                      !oldList?.pages.some(page =>
-                        page.data.some(item => item.id === variables.params.agent_id),
-                      )
-                    ) {
-                      return oldList
-                    }
-
-                    return {
-                      ...oldList,
-                      pages: oldList.pages.map((page) => {
-                        const total = Math.max(0, page.total - 1)
-
-                        return {
-                          ...page,
-                          data: page.data.filter(item => item.id !== variables.params.agent_id),
-                          has_more: page.page * page.limit < total,
-                          total,
-                        }
-                      }),
-                    }
-                  },
+                  copiedAgent,
                 )
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.get.key(),
@@ -665,363 +492,466 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
-      },
-      apiBasedExtension: {
-        post: {
+        put: {
           mutationOptions: {
-            onSuccess: (createdExtension, _variables, _onMutateResult, context) => {
-              context.client.setQueryData(
-                consoleQuery.apiBasedExtension.get.queryKey(),
-                (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
-                  oldExtensions ? [createdExtension, ...oldExtensions] : oldExtensions,
-              )
-            },
-          },
-        },
-        byId: {
-          post: {
-            mutationOptions: {
-              onSuccess: (updatedExtension, variables, _onMutateResult, context) => {
-                context.client.setQueryData(
-                  consoleQuery.apiBasedExtension.get.queryKey(),
-                  (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
-                    oldExtensions?.map(extension =>
-                      extension.id === variables.params.id ? updatedExtension : extension,
-                    ),
-                )
-              },
-            },
-          },
-          delete: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _onMutateResult, context) => {
-                context.client.setQueryData(
-                  consoleQuery.apiBasedExtension.get.queryKey(),
-                  (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
-                    oldExtensions?.filter(extension => extension.id !== variables.params.id),
-                )
-              },
-            },
-          },
-        },
-      },
-      tags: {
-        post: {
-          mutationOptions: {
-            onSuccess: (tag, _variables, _onMutateResult, context) => {
-              if (!isTagType(tag.type))
-                return
+            onSuccess: (updatedAgent, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+                },
+                (oldList: AgentAppPagination | undefined) => {
+                  if (!oldList?.data.some(item => item.id === updatedAgent.id))
+                    return oldList
 
+                  return {
+                    ...oldList,
+                    data: oldList.data.map(item => item.id === updatedAgent.id ? updatedAgent : item),
+                  }
+                },
+              )
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+                },
+                (oldList: InfiniteData<AgentAppPagination, unknown> | undefined) => {
+                  if (!oldList?.pages.some(page => page.data.some(item => item.id === updatedAgent.id)))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    pages: oldList.pages.map(page => ({
+                      ...page,
+                      data: page.data.map(item => item.id === updatedAgent.id ? updatedAgent : item),
+                    })),
+                  }
+                },
+              )
               context.client.setQueryData(
-                consoleQuery.tags.get.queryKey({
+                consoleQuery.agent.byAgentId.get.queryKey({
                   input: {
-                    query: {
-                      type: tag.type,
+                    params: {
+                      agent_id: variables.params.agent_id,
                     },
                   },
                 }),
-                (oldTags: Tag[] | undefined) => (oldTags ? [tag, ...oldTags] : oldTags),
+                updatedAgent,
               )
+              context.client.invalidateQueries({
+                queryKey: consoleQuery.agent.inviteOptions.get.key(),
+              })
             },
           },
         },
-        byTagId: {
-          patch: {
+        composer: {
+          put: {
             mutationOptions: {
-              onSuccess: (updatedTag, variables, _onMutateResult, context) => {
-                context.client.setQueriesData(
-                  {
-                    queryKey: consoleQuery.tags.get.key({ type: 'query' }),
-                  },
-                  (oldTags: Tag[] | undefined) =>
-                    oldTags?.map(tag => (tag.id === variables.params.tag_id ? updatedTag : tag)),
-                )
+              onSuccess: (_composerState, variables, _onMutateResult, context) => {
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.get.key(),
+                })
+                if (variables.body.save_strategy !== 'save_as_new_version')
+                  return
+
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
               },
             },
           },
-          delete: {
+        },
+        publish: {
+          post: {
             mutationOptions: {
-              onSuccess: (_data, variables, _onMutateResult, context) => {
-                context.client.setQueriesData(
-                  {
-                    queryKey: consoleQuery.tags.get.key({ type: 'query' }),
-                  },
-                  (oldTags: Tag[] | undefined) =>
-                    oldTags?.filter(tag => tag.id !== variables.params.tag_id),
-                )
+              onSuccess: (_publishResult, _variables, _onMutateResult, context) => {
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.get.key(),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
               },
+            },
+          },
+        },
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agent.get.key({ type: 'query' }),
+                },
+                (oldList: AgentAppPagination | undefined) => {
+                  if (!oldList?.data.some(item => item.id === variables.params.agent_id))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    data: oldList.data.filter(item => item.id !== variables.params.agent_id),
+                    total: Math.max(0, oldList.total - 1),
+                  }
+                },
+              )
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.agent.get.key({ type: 'infinite' }),
+                },
+                (oldList: InfiniteData<AgentAppPagination, unknown> | undefined) => {
+                  if (!oldList?.pages.some(page => page.data.some(item => item.id === variables.params.agent_id)))
+                    return oldList
+
+                  return {
+                    ...oldList,
+                    pages: oldList.pages.map((page) => {
+                      const total = Math.max(0, page.total - 1)
+
+                      return {
+                        ...page,
+                        data: page.data.filter(item => item.id !== variables.params.agent_id),
+                        has_more: page.page * page.limit < total,
+                        total,
+                      }
+                    }),
+                  }
+                },
+              )
+              context.client.invalidateQueries({
+                queryKey: consoleQuery.agent.get.key(),
+              })
+              context.client.invalidateQueries({
+                queryKey: consoleQuery.agent.inviteOptions.get.key(),
+              })
             },
           },
         },
       },
-      enterprise: {
-        appInstanceService: {
-          createAppInstance: {
-            mutationOptions: {
-              onSuccess: async (data, _variables, _result, context) => {
-                const appInstanceId = data.appInstance?.id
-                if (appInstanceId) {
-                  for (const delay of APP_DEPLOY_READINESS_RETRY_DELAYS) {
-                    if (delay > 0)
-                      await new Promise(resolve => setTimeout(resolve, delay))
+    },
+    apiBasedExtension: {
+      post: {
+        mutationOptions: {
+          onSuccess: (createdExtension, _variables, _onMutateResult, context) => {
+            context.client.setQueryData(
+              consoleQuery.apiBasedExtension.get.queryKey(),
+              (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
+                oldExtensions ? [createdExtension, ...oldExtensions] : oldExtensions,
+            )
+          },
+        },
+      },
+      byId: {
+        post: {
+          mutationOptions: {
+            onSuccess: (updatedExtension, variables, _onMutateResult, context) => {
+              context.client.setQueryData(
+                consoleQuery.apiBasedExtension.get.queryKey(),
+                (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
+                  oldExtensions?.map(extension => extension.id === variables.params.id
+                    ? updatedExtension
+                    : extension),
+              )
+            },
+          },
+        },
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              context.client.setQueryData(
+                consoleQuery.apiBasedExtension.get.queryKey(),
+                (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
+                  oldExtensions?.filter(extension => extension.id !== variables.params.id),
+              )
+            },
+          },
+        },
+      },
+    },
+    tags: {
+      post: {
+        mutationOptions: {
+          onSuccess: (tag, _variables, _onMutateResult, context) => {
+            if (!isTagType(tag.type))
+              return
 
-                    const listResponse = await context.client
-                      .fetchQuery(
-                        consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
-                          input: {
-                            query: {
-                              pageNumber: 1,
-                              resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
-                            },
-                          },
-                        }),
-                      )
-                      .catch(() => undefined)
+            context.client.setQueryData(
+              consoleQuery.tags.get.queryKey({
+                input: {
+                  query: {
+                    type: tag.type,
+                  },
+                },
+              }),
+              (oldTags: Tag[] | undefined) => oldTags ? [tag, ...oldTags] : oldTags,
+            )
+          },
+        },
+      },
+      byTagId: {
+        patch: {
+          mutationOptions: {
+            onSuccess: (updatedTag, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                },
+                (oldTags: Tag[] | undefined) => oldTags?.map(tag => tag.id === variables.params.tag_id
+                  ? updatedTag
+                  : tag),
+              )
+            },
+          },
+        },
+        delete: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _onMutateResult, context) => {
+              context.client.setQueriesData(
+                {
+                  queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                },
+                (oldTags: Tag[] | undefined) => oldTags?.filter(tag => tag.id !== variables.params.tag_id),
+              )
+            },
+          },
+        },
+      },
+    },
+    enterprise: {
+      appInstanceService: {
+        createAppInstance: {
+          mutationOptions: {
+            onSuccess: async (data, _variables, _result, context) => {
+              const appInstanceId = data.appInstance?.id
+              if (appInstanceId) {
+                for (const delay of APP_DEPLOY_READINESS_RETRY_DELAYS) {
+                  if (delay > 0)
+                    await new Promise(resolve => setTimeout(resolve, delay))
 
-                    if (listResponse?.appInstances?.some(app => app.id === appInstanceId))
-                      break
-                  }
+                  const listResponse = await context.client
+                    .fetchQuery(consoleQuery.enterprise.appInstanceService.listAppInstances.queryOptions({
+                      input: {
+                        query: {
+                          pageNumber: 1,
+                          resultsPerPage: APP_DEPLOY_SOURCE_APPS_PAGE_SIZE,
+                        },
+                      },
+                    }))
+                    .catch(() => undefined)
+
+                  if (listResponse?.appInstances?.some(app => app.id === appInstanceId))
+                    break
                 }
+              }
 
-                await context.client.invalidateQueries({
+              await context.client.invalidateQueries({
+                queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
+              })
+              await context.client.invalidateQueries({
+                queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
+              })
+            },
+          },
+        },
+        updateAppInstance: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const appInstanceId = variables.params.appInstanceId
+              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
+                environmentDeployments: false,
+                releases: false,
+                accessChannels: false,
+              })
+            },
+          },
+        },
+        deleteAppInstance: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const appInstanceId = variables.params.appInstanceId
+              removeAppDeployQueries(consoleQuery, context.client, appInstanceId)
+
+              return Promise.all([
+                context.client.invalidateQueries({
                   queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
-                })
-                await context.client.invalidateQueries({
-                  queryKey:
-                    consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
-                })
-              },
+                }),
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
+                }),
+              ])
             },
           },
-          updateAppInstance: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const appInstanceId = variables.params.appInstanceId
-                return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
-                  environmentDeployments: false,
-                  releases: false,
-                  accessChannels: false,
-                })
-              },
-            },
-          },
-          deleteAppInstance: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const appInstanceId = variables.params.appInstanceId
-                removeAppDeployQueries(consoleQuery, context.client, appInstanceId)
-
+        },
+      },
+      releaseService: {
+        createRelease: {
+          mutationOptions: {
+            onSuccess: (data, variables, _result, context) => {
+              const appInstanceId = data.release?.appInstanceId ?? data.appInstance?.id ?? variables.body.appInstanceId
+              const { dsl, sourceAppId } = variables.body
+              if (!appInstanceId) {
                 return Promise.all([
                   context.client.invalidateQueries({
                     queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
                   }),
                   context.client.invalidateQueries({
-                    queryKey:
-                      consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
+                    queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
                   }),
                 ])
-              },
+              }
+
+              const appDeployInvalidation = invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
+                environmentDeployments: false,
+                accessChannels: false,
+              })
+              if (!dsl && !sourceAppId)
+                return appDeployInvalidation
+
+              return Promise.all([
+                appDeployInvalidation,
+                context.client.invalidateQueries({
+                  queryKey: precheckReleaseQueryKey(consoleQuery, {
+                    appInstanceId,
+                    ...(dsl ? { dsl } : { sourceAppId }),
+                  }),
+                }),
+              ])
             },
           },
         },
-        releaseService: {
-          createRelease: {
-            mutationOptions: {
-              onSuccess: (data, variables, _result, context) => {
-                const appInstanceId
-                  = data.release?.appInstanceId
-                    ?? data.appInstance?.id
-                    ?? variables.body.appInstanceId
-                const { dsl, sourceAppId } = variables.body
-                if (!appInstanceId) {
-                  return Promise.all([
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
-                    }),
-                  ])
-                }
+        deleteRelease: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const releaseId = variables.params.releaseId
+              const appInstanceId = cachedReleaseAppInstanceId(consoleQuery, context.client, releaseId)
 
-                const appDeployInvalidation = invalidateAppDeployQueries(
-                  consoleQuery,
-                  context.client,
-                  appInstanceId,
-                  {
-                    environmentDeployments: false,
-                    accessChannels: false,
-                  },
-                )
-                if (!dsl && !sourceAppId)
-                  return appDeployInvalidation
+              return invalidateReleaseMutationQueries(consoleQuery, context.client, releaseId, appInstanceId, {
+                removeRelease: true,
+              })
+            },
+          },
+        },
+        updateRelease: {
+          mutationOptions: {
+            onSuccess: (data, variables, _result, context) => {
+              const releaseId = variables.params.releaseId
+              const appInstanceId = data.release?.appInstanceId
+                ?? cachedReleaseAppInstanceId(consoleQuery, context.client, releaseId)
 
+              return invalidateReleaseMutationQueries(consoleQuery, context.client, releaseId, appInstanceId)
+            },
+          },
+        },
+      },
+      deploymentService: {
+        deploy: {
+          mutationOptions: {
+            onSuccess: (data, _variables, _result, context) => {
+              // Deploy always creates a new AppInstance, so the reply carries it.
+              const appInstanceId = data.appInstance?.id ?? data.release?.appInstanceId
+              if (!appInstanceId) {
                 return Promise.all([
-                  appDeployInvalidation,
                   context.client.invalidateQueries({
-                    queryKey: precheckReleaseQueryKey(consoleQuery, {
-                      appInstanceId,
-                      ...(dsl ? { dsl } : { sourceAppId }),
-                    }),
+                    queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
+                  }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
                   }),
                 ])
-              },
-            },
-          },
-          deleteRelease: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const releaseId = variables.params.releaseId
-                const appInstanceId = cachedReleaseAppInstanceId(
-                  consoleQuery,
-                  context.client,
-                  releaseId,
-                )
+              }
 
-                return invalidateReleaseMutationQueries(
-                  consoleQuery,
-                  context.client,
-                  releaseId,
-                  appInstanceId,
-                  {
-                    removeRelease: true,
-                  },
-                )
-              },
-            },
-          },
-          updateRelease: {
-            mutationOptions: {
-              onSuccess: (data, variables, _result, context) => {
-                const releaseId = variables.params.releaseId
-                const appInstanceId
-                  = data.release?.appInstanceId
-                    ?? cachedReleaseAppInstanceId(consoleQuery, context.client, releaseId)
-
-                return invalidateReleaseMutationQueries(
-                  consoleQuery,
-                  context.client,
-                  releaseId,
-                  appInstanceId,
-                )
-              },
+              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
             },
           },
         },
-        deploymentService: {
-          deploy: {
-            mutationOptions: {
-              onSuccess: (data, _variables, _result, context) => {
-                // Deploy always creates a new AppInstance, so the reply carries it.
-                const appInstanceId = data.appInstance?.id ?? data.release?.appInstanceId
-                if (!appInstanceId) {
-                  return Promise.all([
-                    context.client.invalidateQueries({
-                      queryKey: consoleQuery.enterprise.appInstanceService.listAppInstances.key(),
-                    }),
-                    context.client.invalidateQueries({
-                      queryKey:
-                        consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
-                    }),
-                  ])
-                }
-
-                return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
-              },
-            },
-          },
-          cancelDeployment: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const appInstanceId = variables.params.appInstanceId
-                return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
-              },
-            },
-          },
-          promote: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const appInstanceId = variables.params.appInstanceId
-                return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
-              },
-            },
-          },
-          rollback: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const appInstanceId = variables.params.appInstanceId
-                return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
-              },
-            },
-          },
-          undeploy: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const appInstanceId = variables.params.appInstanceId
-                return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
-              },
+        cancelDeployment: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const appInstanceId = variables.params.appInstanceId
+              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
             },
           },
         },
-        accessService: {
-          createApiKey: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const appInstanceId = variables.params.appInstanceId
-                const environmentId = variables.params.environmentId
-                return invalidateQueryKeys(context.client, [
-                  appInstanceQueryKey(consoleQuery, appInstanceId),
-                  appInstanceOverviewQueryKey(consoleQuery, appInstanceId),
-                  consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
-                  accessChannelsQueryKey(consoleQuery, appInstanceId),
-                  developerApiSettingsQueryKey(consoleQuery, appInstanceId),
-                  apiKeysQueryKey(consoleQuery, appInstanceId, environmentId),
-                ])
-              },
+        promote: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const appInstanceId = variables.params.appInstanceId
+              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
             },
           },
-          deleteApiKey: {
-            mutationOptions: {
-              onSuccess: (_data, _variables, _result, context) => {
-                return invalidateQueryKeys(context.client, [
-                  consoleQuery.enterprise.accessService.listApiKeys.key({ type: 'query' }),
-                  consoleQuery.enterprise.accessService.getDeveloperApiSettings.key({
-                    type: 'query',
-                  }),
-                  consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({
-                    type: 'query',
-                  }),
-                  consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
-                ])
-              },
+        },
+        rollback: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const appInstanceId = variables.params.appInstanceId
+              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
             },
           },
-          updateAccessChannels: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const appInstanceId = variables.params.appInstanceId
-                return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
-                  environmentDeployments: false,
-                  releases: false,
-                })
-              },
+        },
+        undeploy: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const appInstanceId = variables.params.appInstanceId
+              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId)
             },
           },
-          updateAccessPolicy: {
-            mutationOptions: {
-              onSuccess: (_data, variables, _result, context) => {
-                const { appInstanceId, environmentId } = variables.params
-                return invalidateQueryKeys(context.client, [
-                  accessPolicyQueryKey(consoleQuery, appInstanceId, environmentId),
-                  accessChannelsQueryKey(consoleQuery, appInstanceId),
-                  accessSettingsQueryKey(consoleQuery, appInstanceId),
-                ])
-              },
+        },
+      },
+      accessService: {
+        createApiKey: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const appInstanceId = variables.params.appInstanceId
+              const environmentId = variables.params.environmentId
+              return invalidateQueryKeys(context.client, [
+                appInstanceQueryKey(consoleQuery, appInstanceId),
+                appInstanceOverviewQueryKey(consoleQuery, appInstanceId),
+                consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
+                accessChannelsQueryKey(consoleQuery, appInstanceId),
+                developerApiSettingsQueryKey(consoleQuery, appInstanceId),
+                apiKeysQueryKey(consoleQuery, appInstanceId, environmentId),
+              ])
+            },
+          },
+        },
+        deleteApiKey: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _result, context) => {
+              return invalidateQueryKeys(context.client, [
+                consoleQuery.enterprise.accessService.listApiKeys.key({ type: 'query' }),
+                consoleQuery.enterprise.accessService.getDeveloperApiSettings.key({ type: 'query' }),
+                consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.key({ type: 'query' }),
+                consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.key(),
+              ])
+            },
+          },
+        },
+        updateAccessChannels: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const appInstanceId = variables.params.appInstanceId
+              return invalidateAppDeployQueries(consoleQuery, context.client, appInstanceId, {
+                environmentDeployments: false,
+                releases: false,
+              })
+            },
+          },
+        },
+        updateAccessPolicy: {
+          mutationOptions: {
+            onSuccess: (_data, variables, _result, context) => {
+              const { appInstanceId, environmentId } = variables.params
+              return invalidateQueryKeys(context.client, [
+                accessPolicyQueryKey(consoleQuery, appInstanceId, environmentId),
+                accessChannelsQueryKey(consoleQuery, appInstanceId),
+                accessSettingsQueryKey(consoleQuery, appInstanceId),
+              ])
             },
           },
         },
       },
     },
   },
-)
+})

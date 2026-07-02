@@ -15,21 +15,16 @@ import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
 
-const workspaceSwitchActionButtonClassName
-  = 'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+const workspaceSwitchActionButtonClassName = 'flex shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 const workspaceSwitchActionIconWrapClassName = 'flex size-5 shrink-0 items-center justify-center'
 const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
 const workspaceSwitchI18nKey = (key: string) => key as 'mainNav.workspace.settings'
 type WorkspaceSort = 'lastOpened' | 'createdAt'
-type WorkspaceWithLastOpenedAt = TenantListItemResponse & {
-  last_opened_at?: number | null
-}
 
 const getWorkspaceName = (workspace: TenantListItemResponse) => workspace.name || workspace.id
 const getWorkspaceCreatedAt = (workspace: TenantListItemResponse) => workspace.created_at ?? 0
-const getWorkspaceLastOpenedAt = (workspace: WorkspaceWithLastOpenedAt) =>
-  workspace.last_opened_at ?? 0
+const getWorkspaceLastOpenedAt = (workspace: TenantListItemResponse) => workspace.last_opened_at ?? 0
 
 function WorkspaceSwitchControls({
   searchText,
@@ -45,18 +40,10 @@ function WorkspaceSwitchControls({
   const { t } = useTranslation()
   const [searchVisible, setSearchVisible] = useState(false)
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
-  const sortMenuLabel = t(workspaceSwitchI18nKey('mainNav.workspace.sort.openMenu'), {
-    ns: 'common',
-  })
+  const sortMenuLabel = t(workspaceSwitchI18nKey('mainNav.workspace.sort.openMenu'), { ns: 'common' })
   const sortOptions: Array<{ value: WorkspaceSort, label: string }> = [
-    {
-      value: 'lastOpened',
-      label: t(workspaceSwitchI18nKey('mainNav.workspace.sort.lastOpened'), { ns: 'common' }),
-    },
-    {
-      value: 'createdAt',
-      label: t(workspaceSwitchI18nKey('mainNav.workspace.sort.createdTime'), { ns: 'common' }),
-    },
+    { value: 'lastOpened', label: t(workspaceSwitchI18nKey('mainNav.workspace.sort.lastOpened'), { ns: 'common' }) },
+    { value: 'createdAt', label: t(workspaceSwitchI18nKey('mainNav.workspace.sort.createdTime'), { ns: 'common' }) },
   ]
 
   return (
@@ -92,11 +79,7 @@ function WorkspaceSwitchControls({
               }}
             >
               {sortOptions.map(option => (
-                <DropdownMenuRadioItem
-                  key={option.value}
-                  value={option.value}
-                  className="mx-0 h-8 gap-1 px-2 py-1"
-                >
+                <DropdownMenuRadioItem key={option.value} value={option.value} className="mx-0 h-8 gap-1 px-2 py-1">
                   <span className="flex size-4 shrink-0 items-center justify-center">
                     <DropdownMenuRadioItemIndicator className="ml-0" />
                   </span>
@@ -127,9 +110,7 @@ function WorkspaceSwitchControls({
           <SearchInput
             value={searchText}
             onValueChange={onSearchTextChange}
-            placeholder={t(workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder'), {
-              ns: 'common',
-            })}
+            placeholder={t(workspaceSwitchI18nKey('mainNav.workspace.searchPlaceholder'), { ns: 'common' })}
             autoFocus
           />
         </div>
@@ -143,25 +124,24 @@ type WorkspaceSwitcherProps = {
   onSwitchWorkspace: (workspaceId: string) => void
 }
 
-export function WorkspaceSwitcher({ workspaces, onSwitchWorkspace }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({
+  workspaces,
+  onSwitchWorkspace,
+}: WorkspaceSwitcherProps) {
   const [workspaceSearchText, setWorkspaceSearchText] = useState('')
   const [workspaceSort, setWorkspaceSort] = useState<WorkspaceSort>('lastOpened')
   const displayedWorkspaces = useMemo(() => {
     const normalizedSearchText = workspaceSearchText.trim().toLowerCase()
     const filteredWorkspaces = normalizedSearchText
-      ? workspaces.filter(workspace =>
-          getWorkspaceName(workspace).toLowerCase().includes(normalizedSearchText),
-        )
+      ? workspaces.filter(workspace => getWorkspaceName(workspace).toLowerCase().includes(normalizedSearchText))
       : [...workspaces]
 
     if (workspaceSort === 'createdAt')
       return filteredWorkspaces.sort((a, b) => getWorkspaceCreatedAt(b) - getWorkspaceCreatedAt(a))
 
     return filteredWorkspaces.sort((a, b) => {
-      return (
-        getWorkspaceLastOpenedAt(b) - getWorkspaceLastOpenedAt(a)
+      return getWorkspaceLastOpenedAt(b) - getWorkspaceLastOpenedAt(a)
         || getWorkspaceCreatedAt(b) - getWorkspaceCreatedAt(a)
-      )
     })
   }, [workspaceSearchText, workspaceSort, workspaces])
 
@@ -194,13 +174,7 @@ export function WorkspaceSwitcher({ workspaces, onSwitchWorkspace }: WorkspaceSw
               <WorkspaceMenuItemContent
                 icon={<WorkspaceIcon name={workspaceName} className="h-5 w-5 rounded-md" />}
                 label={workspaceName}
-                trailing={
-                  workspace.current
-                    ? (
-                        <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" />
-                      )
-                    : undefined
-                }
+                trailing={workspace.current ? <span aria-hidden className="i-ri-check-line h-4 w-4 text-text-accent" /> : undefined}
               />
             </button>
           )

@@ -1,13 +1,20 @@
 import type { SnippetWorkflow } from '@/types/snippet'
 import isEqual from 'fast-deep-equal'
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   fetchSnippetDraftWorkflow,
   useSnippetDefaultBlockConfigs,
   useSnippetPublishedWorkflow,
 } from '@/service/use-snippet-workflows'
-import { buildSnippetDetailPayload, useSnippetApiDetail } from '@/service/use-snippets'
+import {
+  buildSnippetDetailPayload,
+  useSnippetApiDetail,
+} from '@/service/use-snippets'
 
 const normalizeNodesDefaultConfigs = (nodesDefaultConfigs: unknown) => {
   if (!nodesDefaultConfigs || typeof nodesDefaultConfigs !== 'object')
@@ -16,22 +23,19 @@ const normalizeNodesDefaultConfigs = (nodesDefaultConfigs: unknown) => {
   if (!Array.isArray(nodesDefaultConfigs))
     return nodesDefaultConfigs as Record<string, unknown>
 
-  return nodesDefaultConfigs.reduce(
-    (acc, item) => {
-      if (
-        item
-        && typeof item === 'object'
-        && 'type' in item
-        && 'config' in item
-        && typeof item.type === 'string'
-      ) {
-        acc[item.type] = item.config
-      }
+  return nodesDefaultConfigs.reduce((acc, item) => {
+    if (
+      item
+      && typeof item === 'object'
+      && 'type' in item
+      && 'config' in item
+      && typeof item.type === 'string'
+    ) {
+      acc[item.type] = item.config
+    }
 
-      return acc
-    },
-    {} as Record<string, unknown>,
-  )
+    return acc
+  }, {} as Record<string, unknown>)
 }
 
 const isNotFoundError = (error: unknown) => {
@@ -84,7 +88,10 @@ export const useSnippetInit = (snippetId: string) => {
           return
 
         if (response) {
-          const { setDraftUpdatedAt, setSyncWorkflowDraftHash } = workflowStore.getState()
+          const {
+            setDraftUpdatedAt,
+            setSyncWorkflowDraftHash,
+          } = workflowStore.getState()
 
           setDraftUpdatedAt(response.updated_at)
           setSyncWorkflowDraftHash(response.hash)
@@ -107,10 +114,8 @@ export const useSnippetInit = (snippetId: string) => {
     }
   }, [snippetId, workflowStore])
 
-  const isDraftWorkflowLoading
-    = !!snippetId && (!draftWorkflowState.isLoaded || draftWorkflowState.snippetId !== snippetId)
-  const draftWorkflow
-    = draftWorkflowState.snippetId === snippetId ? draftWorkflowState.data : undefined
+  const isDraftWorkflowLoading = !!snippetId && (!draftWorkflowState.isLoaded || draftWorkflowState.snippetId !== snippetId)
+  const draftWorkflow = draftWorkflowState.snippetId === snippetId ? draftWorkflowState.data : undefined
 
   const data = useMemo(() => {
     if (snippetApiDetail.data && !publishedWorkflowQuery.isLoading && !isDraftWorkflowLoading) {
@@ -123,12 +128,10 @@ export const useSnippetInit = (snippetId: string) => {
         draft: buildSnippetDetailPayload(snippetApiDetail.data, effectiveDraftWorkflow),
         draftWorkflow,
         publishedWorkflow,
-        hasDraftChanges:
-          !!draftWorkflow
-          && !isEqual(
-            getComparableWorkflowData(draftWorkflow),
-            getComparableWorkflowData(publishedWorkflow),
-          ),
+        hasDraftChanges: !!draftWorkflow && !isEqual(
+          getComparableWorkflowData(draftWorkflow),
+          getComparableWorkflowData(publishedWorkflow),
+        ),
       }
     }
 
@@ -136,19 +139,11 @@ export const useSnippetInit = (snippetId: string) => {
       return null
 
     return undefined
-  }, [
-    draftWorkflow,
-    isDraftWorkflowLoading,
-    publishedWorkflowQuery.data,
-    publishedWorkflowQuery.isLoading,
-    snippetApiDetail.data,
-    snippetApiDetail.error,
-  ])
+  }, [draftWorkflow, isDraftWorkflowLoading, publishedWorkflowQuery.data, publishedWorkflowQuery.isLoading, snippetApiDetail.data, snippetApiDetail.error])
 
   return {
     ...snippetApiDetail,
     data,
-    isLoading:
-      snippetApiDetail.isLoading || publishedWorkflowQuery.isLoading || isDraftWorkflowLoading,
+    isLoading: snippetApiDetail.isLoading || publishedWorkflowQuery.isLoading || isDraftWorkflowLoading,
   }
 }
