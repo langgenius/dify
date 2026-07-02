@@ -1,6 +1,15 @@
 'use client'
 
+import type { AgentLogConversationItemResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { SourceFilterValue } from './components/source-picker'
+import {
+  Drawer,
+  DrawerBackdrop,
+  DrawerContent,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerViewport,
+} from '@langgenius/dify-ui/drawer'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
@@ -10,8 +19,10 @@ import Chip from '@/app/components/base/chip'
 import { SearchInput } from '@/app/components/base/search-input'
 import Sort from '@/app/components/base/sort'
 import { useDocLink } from '@/context/i18n'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { consoleQuery } from '@/service/client'
 import { AgentDetailSectionSurface } from '../section-surface'
+import { AgentLogDetailPanel } from './components/log-detail-panel'
 import { AgentLogsTable } from './components/logs-table'
 import { AgentLogSourcePicker } from './components/source-picker'
 
@@ -64,6 +75,8 @@ export function AgentLogsPage({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const docLink = useDocLink()
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
   const [period, setPeriod] = useState<PeriodKey>('last7days')
   const [source, setSource] = useState<SourceFilterValue>([])
   const [keyword, setKeyword] = useState('')
@@ -73,6 +86,7 @@ export function AgentLogsPage({
   })
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(25)
+  const [selectedLog, setSelectedLog] = useState<AgentLogConversationItemResponse>()
   const periodItems = periodOptions.map(option => ({
     value: option.value,
     name: t(option.labelKey),
@@ -106,6 +120,10 @@ export function AgentLogsPage({
   const logs = logsQuery.data?.data ?? []
   const totalPages = Math.max(Math.ceil((logsQuery.data?.total ?? 0) / limit), 1)
   const currentPage = logsQuery.data?.page ?? page
+  const closeLogDetail = () => {
+    setSelectedLog(undefined)
+    void logsQuery.refetch()
+  }
 
   return (
     <AgentDetailSectionSurface label={t('agentDetail.sections.logs')}>
@@ -192,11 +210,38 @@ export function AgentLogsPage({
           isPending={logsQuery.isPending}
           isError={logsQuery.isError}
           isSuccess={logsQuery.isSuccess}
+          selectedLogId={selectedLog?.id}
+          onOpenLog={setSelectedLog}
           onRetry={() => {
             void logsQuery.refetch()
           }}
         />
       </div>
+
+      <Drawer
+        open={!!selectedLog}
+        modal
+        swipeDirection="right"
+        onOpenChange={(open) => {
+          if (!open)
+            closeLogDetail()
+        }}
+      >
+        <DrawerPortal>
+          <DrawerBackdrop className={!isMobile ? 'bg-transparent' : undefined} />
+          <DrawerViewport>
+            <DrawerPopup className="p-0! data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-3 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-150 data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border data-[swipe-direction=right]:border-components-panel-border">
+              <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+                <AgentLogDetailPanel
+                  agentId={agentId}
+                  log={selectedLog}
+                  onClose={closeLogDetail}
+                />
+              </DrawerContent>
+            </DrawerPopup>
+          </DrawerViewport>
+        </DrawerPortal>
+      </Drawer>
 
       <Pagination
         page={currentPage}
