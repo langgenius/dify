@@ -64,6 +64,7 @@ logger = logging.getLogger(__name__)
 class _HasErrorCode(Protocol):
     code: object
 
+
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TERMINATE_GRACE_SECONDS = 10.0
 _WORKSPACE_ROOT = "~/workspace"
