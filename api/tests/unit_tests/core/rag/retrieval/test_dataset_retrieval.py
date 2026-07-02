@@ -723,6 +723,7 @@ class TestRetrievalService:
             retrieval_method,
             exceptions,
             document_ids_filter=None,
+            query_type=None,
         ):
             all_documents.extend(sample_documents[:2])
 
@@ -843,6 +844,7 @@ class TestRetrievalService:
             retrieval_method,
             exceptions,
             document_ids_filter=None,
+            query_type=None,
         ):
             """Vector search finds 2 documents including high-score duplicate."""
             all_documents.extend([doc1_high, doc2])
@@ -933,6 +935,7 @@ class TestRetrievalService:
             retrieval_method,
             exceptions,
             document_ids_filter=None,
+            query_type=None,
         ):
             all_documents.extend(sample_documents[:2])
 
@@ -1442,6 +1445,43 @@ class TestRetrievalService:
 
         assert "Search failed" in str(exc_info.value)
 
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
+    def test_retrieve_propagates_unrecorded_worker_exception(self, mock_get_dataset, mock_retrieve, mock_dataset):
+        mock_get_dataset.return_value = mock_dataset
+        mock_retrieve.side_effect = RuntimeError("retrieval worker failed")
+
+        with pytest.raises(RuntimeError, match="retrieval worker failed"):
+            RetrievalService.retrieve(
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset_id=mock_dataset.id,
+                query="test query",
+                top_k=5,
+            )
+
+    def test_retrieve_worker_propagates_unrecorded_search_exception(self, mock_dataset):
+        retrieval_service = RetrievalService()
+        flask_app = Flask(__name__)
+
+        with (
+            flask_app.app_context(),
+            patch.object(
+                retrieval_service,
+                "embedding_search",
+                side_effect=RuntimeError("embedding search failed"),
+            ),
+            pytest.raises(RuntimeError, match="embedding search failed"),
+        ):
+            retrieval_service._retrieve(
+                flask_app=flask_app,
+                retrieval_method=RetrievalMethod.SEMANTIC_SEARCH,
+                dataset=mock_dataset,
+                all_documents=[],
+                exceptions=[],
+                query="test query",
+                top_k=5,
+            )
+
     # ==================== Score Threshold Tests ====================
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
@@ -1919,6 +1959,46 @@ class TestRetrievalService:
         # Documents should be added after standard scoring
         assert len(all_documents) == 1
         assert all_documents[0].page_content == "Test content 1"
+
+    def test_multiple_retrieve_thread_surfaces_inner_retriever_exception(self, mock_dataset):
+        dataset_retrieval = DatasetRetrieval()
+        flask_app = Flask(__name__)
+        mock_dataset.provider = "dify"
+        mock_dataset.indexing_technique = "high_quality"
+        all_documents: list[Document] = []
+        thread_exceptions: list[Exception] = []
+        cancel_event = threading.Event()
+
+        with (
+            patch.object(dataset_retrieval, "_retriever", side_effect=RuntimeError("oracle retrieval failed")),
+            patch.object(dataset_retrieval, "calculate_vector_score") as mock_calculate_vector_score,
+        ):
+            dataset_retrieval._multiple_retrieve_thread(
+                flask_app=flask_app,
+                available_datasets=[mock_dataset],
+                metadata_condition=None,
+                metadata_filter_document_ids=None,
+                all_documents=all_documents,
+                tenant_id=str(uuid4()),
+                reranking_enable=False,
+                reranking_mode="reranking_model",
+                reranking_model=None,
+                weights=None,
+                top_k=5,
+                score_threshold=0.0,
+                query="test query",
+                attachment_id=None,
+                dataset_count=1,
+                cancel_event=cancel_event,
+                thread_exceptions=thread_exceptions,
+            )
+
+        assert all_documents == []
+        assert cancel_event.is_set()
+        assert len(thread_exceptions) == 1
+        assert isinstance(thread_exceptions[0], RuntimeError)
+        assert str(thread_exceptions[0]) == "oracle retrieval failed"
+        mock_calculate_vector_score.assert_not_called()
 
 
 class TestRetrievalMethods:
@@ -5026,6 +5106,33 @@ class TestSingleAndMultipleRetrieveCoverage:
                         score_threshold=0.0,
                         reranking_mode="reranking_model",
                     )
+
+    def test_multiple_retrieve_propagates_inner_retriever_exception(self, retrieval: DatasetRetrieval) -> None:
+        dataset = _dataset(
+            id="d1",
+            provider="dify",
+            indexing_technique="high_quality",
+            embedding_model="model-a",
+            embedding_model_provider="provider-a",
+        )
+        flask_app = Flask(__name__)
+
+        with (
+            flask_app.app_context(),
+            patch.object(retrieval, "_retriever", side_effect=RuntimeError("inner retrieval failed")),
+            pytest.raises(RuntimeError, match="inner retrieval failed"),
+        ):
+            retrieval.multiple_retrieve(
+                app_id="app-1",
+                tenant_id="tenant-1",
+                user_id="user-1",
+                user_from="workflow",
+                available_datasets=[dataset],
+                query="python",
+                top_k=2,
+                score_threshold=0.0,
+                reranking_mode="reranking_model",
+            )
 
 
 class TestInternalHooksCoverage:

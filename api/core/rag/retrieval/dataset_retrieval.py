@@ -1765,7 +1765,21 @@ class DatasetRetrieval:
             with flask_app.app_context():
                 threads = []
                 all_documents_item: list[Document] = []
+                retrieval_exceptions: list[Exception] = []
+                retrieval_exceptions_lock = threading.Lock()
                 index_type = None
+
+                def run_retriever(**kwargs: Any) -> None:
+                    try:
+                        self._retriever(**kwargs)
+                    except Exception as error:
+                        # Exceptions raised in a child ``threading.Thread`` do not
+                        # propagate to the thread that joins it. Capture them here
+                        # so the outer retrieval worker can fail the workflow node
+                        # instead of treating an empty result as a successful search.
+                        with retrieval_exceptions_lock:
+                            retrieval_exceptions.append(error)
+
                 for dataset in available_datasets:
                     # Check for cancellation signal
                     if cancel_event and cancel_event.is_set():
@@ -1782,7 +1796,7 @@ class DatasetRetrieval:
                             else:
                                 continue
                     retrieval_thread = threading.Thread(
-                        target=self._retriever,
+                        target=run_retriever,
                         kwargs={
                             "flask_app": flask_app,
                             "dataset_id": dataset.id,
@@ -1805,6 +1819,9 @@ class DatasetRetrieval:
                             break
                     if cancel_event and cancel_event.is_set():
                         break
+
+                if retrieval_exceptions:
+                    raise retrieval_exceptions[0]
 
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:

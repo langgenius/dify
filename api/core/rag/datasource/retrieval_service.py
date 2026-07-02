@@ -178,7 +178,12 @@ class RetrievalService:
                     )
 
             if futures:
-                for _ in concurrent.futures.as_completed(futures, timeout=3600):
+                for future in concurrent.futures.as_completed(futures, timeout=3600):
+                    future_exception = future.exception()
+                    if future_exception is not None:
+                        for pending_future in futures:
+                            pending_future.cancel()
+                        raise future_exception
                     if exceptions:
                         for f in futures:
                             f.cancel()
@@ -866,11 +871,12 @@ class RetrievalService:
                 # Use as_completed for early error propagation - cancel remaining futures on first error
                 if futures:
                     for future in concurrent.futures.as_completed(futures, timeout=300):
-                        if future.exception():
+                        future_exception = future.exception()
+                        if future_exception is not None:
                             # Cancel remaining futures to avoid unnecessary waiting
                             for f in futures:
                                 f.cancel()
-                            break
+                            raise future_exception
 
             if exceptions:
                 raise ValueError(";\n".join(exceptions))
