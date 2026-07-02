@@ -16,22 +16,22 @@ vi.mock('@/app/signin/utils/post-login-redirect', () => ({
 describe('Chooser', () => {
   it('renders account button', () => {
     render(<Chooser userCode="ABCD-3456" ssoAvailable={false} />)
-    expect(screen.getByRole('button', { name: /Sign in with Dify account/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /deviceFlow.chooser.signInAccount/i })).toBeInTheDocument()
   })
 
   it('hides SSO button when ssoAvailable is false', () => {
     render(<Chooser userCode="ABCD-3456" ssoAvailable={false} />)
-    expect(screen.queryByRole('button', { name: /Sign in with SSO/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /deviceFlow.chooser.signInSSO/i })).not.toBeInTheDocument()
   })
 
   it('shows SSO button when ssoAvailable is true', () => {
     render(<Chooser userCode="ABCD-3456" ssoAvailable={true} />)
-    expect(screen.getByRole('button', { name: /Sign in with SSO/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /deviceFlow.chooser.signInSSO/i })).toBeInTheDocument()
   })
 
   it('sets post-login redirect and navigates to /signin on account button click', () => {
     render(<Chooser userCode="ABCD-3456" ssoAvailable={false} />)
-    fireEvent.click(screen.getByRole('button', { name: /Sign in with Dify account/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.chooser.signInAccount/i }))
     expect(vi.mocked(setPostLoginRedirect)).toHaveBeenCalledWith('/device?user_code=ABCD-3456')
     expect(mockPush).toHaveBeenCalledWith('/signin')
   })
@@ -39,7 +39,7 @@ describe('Chooser', () => {
   it('encodes userCode in post-login redirect', () => {
     // Uses a code with a space to exercise encodeURIComponent
     render(<Chooser userCode="AB CD" ssoAvailable={false} />)
-    fireEvent.click(screen.getByRole('button', { name: /Sign in with Dify account/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.chooser.signInAccount/i }))
     expect(vi.mocked(setPostLoginRedirect)).toHaveBeenCalledWith('/device?user_code=AB%20CD')
   })
 
@@ -49,7 +49,7 @@ describe('Chooser', () => {
       value: { href: '' },
     })
     render(<Chooser userCode="ABCD-3456" ssoAvailable={true} />)
-    fireEvent.click(screen.getByRole('button', { name: /Sign in with SSO/i }))
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.chooser.signInSSO/i }))
     expect(window.location.href).toBe(
       '/openapi/v1/oauth/device/sso-initiate?user_code=ABCD-3456',
     )
