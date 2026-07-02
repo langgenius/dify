@@ -51,6 +51,18 @@ jobs:
         with:
           files: |
             api/**
+      - name: Check frontend contract inputs
+        if: github.event_name != 'merge_group'
+        id: frontend-contract-changes
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            api/**
+            packages/contracts/openapi-ts.api.config.ts
+            packages/contracts/package.json
+            packages/contracts/openapi/**
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
       - name: Check dify-agent inputs
         if: github.event_name != 'merge_group'
         id: dify-agent-changes
@@ -143,7 +155,7 @@ jobs:
           uv run dev/generate_swagger_markdown_docs.py --swagger-dir ../packages/contracts/openapi --markdown-dir openapi/markdown --keep-swagger-json
 
       - name: Generate frontend contracts
-        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
+        if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
         run: pnpm --dir packages/contracts gen-api-contract-from-openapi
 
       - name: ESLint autofix
