@@ -4,6 +4,10 @@
   "version": "0.0.0-private",
   "private": true,
   "exports": {
+    "./marketplace": {
+      "types": "./marketplace.ts",
+      "import": "./marketplace.ts"
+    },
     "./api/*": {
       "types": "./generated/api/*.ts",
       "import": "./generated/api/*.ts"
