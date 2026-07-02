@@ -7274,19 +7274,6 @@
       "count": 1
     }
   },
-  "web/service/try-app.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/try-app.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-apps.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -7357,11 +7344,6 @@
       "count": 4
     }
   },
-  "web/service/use-snippet-workflows.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-tools.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -7398,11 +7380,6 @@
   },
   "web/service/workflow.ts": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/types/app.ts": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -7475,16 +7452,6 @@
   "web/utils/mcp.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/utils/model-config.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 13
-    }
-  },
-  "web/utils/model-config.ts": {
-    "ts/no-explicit-any": {
-      "count": 6
     }
   },
   "web/utils/tool-call.spec.ts": {

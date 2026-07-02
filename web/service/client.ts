@@ -44,6 +44,38 @@ function isURL(path: string) {
   }
 }
 
+const trialAppDatasetsPathPattern = /\/trial-apps\/[^/]+\/datasets$/
+const indexedIdsQueryParamPattern = /^ids\[(\d+)\]$/
+
+function normalizeConsoleOpenAPIURL(url: string | URL) {
+  const normalizedUrl = new URL(url)
+
+  if (!trialAppDatasetsPathPattern.test(normalizedUrl.pathname))
+    return normalizedUrl.href
+
+  const ids: Array<{ index: number, value: string }> = []
+  const indexedKeys = new Set<string>()
+
+  normalizedUrl.searchParams.forEach((value, key) => {
+    const match = indexedIdsQueryParamPattern.exec(key)
+    if (!match)
+      return
+
+    indexedKeys.add(key)
+    ids.push({ index: Number(match[1]), value })
+  })
+
+  if (!ids.length)
+    return normalizedUrl.href
+
+  indexedKeys.forEach(key => normalizedUrl.searchParams.delete(key))
+  ids
+    .sort((a, b) => a.index - b.index)
+    .forEach(({ value }) => normalizedUrl.searchParams.append('ids', value))
+
+  return normalizedUrl.href
+}
+
 export function getBaseURL(path: string) {
   const url = new URL(path, isURL(path) ? undefined : isClient ? window.location.origin : 'http://localhost')
 
@@ -69,7 +101,7 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
     url: getBaseURL(API_PREFIX),
     fetch: (input, init, options) => {
       return request(
-        input.url,
+        normalizeConsoleOpenAPIURL(input.url),
         init,
         {
           fetchCompat: true,
