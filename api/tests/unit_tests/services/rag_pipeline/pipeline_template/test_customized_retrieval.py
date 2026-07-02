@@ -6,7 +6,7 @@ from services.rag_pipeline.pipeline_template.customized.customized_retrieval imp
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
 
-def test_get_pipeline_templates(mocker: MockerFixture, patch_session_factory) -> None:
+def test_get_pipeline_templates(mocker: MockerFixture) -> None:
     customized_template = SimpleNamespace(
         id="tpl-1",
         name="Custom Template",
@@ -19,10 +19,9 @@ def test_get_pipeline_templates(mocker: MockerFixture, patch_session_factory) ->
     scalars_mock.all.return_value = [customized_template]
     session_mock = mocker.Mock()
     session_mock.scalars.return_value = scalars_mock
-    patch_session_factory("services.rag_pipeline.pipeline_template.customized.customized_retrieval", session_mock)
     retrieval = CustomizedPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_templates("en-US", "tenant-id")
+    result = retrieval.get_pipeline_templates(session_mock, "en-US", "tenant-id")
 
     assert retrieval.get_type() == PipelineTemplateType.CUSTOMIZED
     assert result == {
@@ -39,7 +38,7 @@ def test_get_pipeline_templates(mocker: MockerFixture, patch_session_factory) ->
     }
 
 
-def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture, patch_session_factory) -> None:
+def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = SimpleNamespace(
         id="tpl-1",
@@ -50,10 +49,9 @@ def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture, patc
         yaml_content="workflow:\n  graph:\n    edges: []",
         created_user_name="creator",
     )
-    patch_session_factory("services.rag_pipeline.pipeline_template.customized.customized_retrieval", session_mock)
     retrieval = CustomizedPipelineTemplateRetrieval()
 
-    detail = retrieval.get_pipeline_template_detail("tpl-1")
+    detail = retrieval.get_pipeline_template_detail(session_mock, "tpl-1")
 
     assert detail == {
         "id": "tpl-1",
@@ -67,12 +65,11 @@ def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture, patc
     }
 
 
-def test_get_pipeline_template_detail_returns_none_when_not_found(mocker: MockerFixture, patch_session_factory) -> None:
+def test_get_pipeline_template_detail_returns_none_when_not_found(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = None
-    patch_session_factory("services.rag_pipeline.pipeline_template.customized.customized_retrieval", session_mock)
     retrieval = CustomizedPipelineTemplateRetrieval()
 
-    result = retrieval.get_pipeline_template_detail("missing")
+    result = retrieval.get_pipeline_template_detail(session_mock, "missing")
 
     assert result is None

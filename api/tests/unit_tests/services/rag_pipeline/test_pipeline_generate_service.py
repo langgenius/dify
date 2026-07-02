@@ -79,13 +79,6 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
     update_status_mock = mocker.patch.object(PipelineGenerateService, "update_document_status")
     session = mocker.Mock()
-    session_maker = mocker.MagicMock()
-    session_maker.begin.return_value.__enter__.return_value = session
-    session_maker.begin.return_value.__exit__.return_value = None
-    mocker.patch(
-        "services.rag_pipeline.pipeline_generate_service.session_factory.get_session_maker",
-        return_value=session_maker,
-    )
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
     generator_instance = generator_cls.return_value
@@ -93,6 +86,7 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
     generator_cls.convert_to_event_stream.return_value = "stream-events"
 
     result = PipelineGenerateService.generate(
+        session=session,
         pipeline=pipeline,
         user=user,
         args=args,

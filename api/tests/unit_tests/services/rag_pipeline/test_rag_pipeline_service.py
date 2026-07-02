@@ -144,6 +144,7 @@ def _make_recommended_plugin(plugin_id: str) -> PipelineRecommendedPlugin:
 
 def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_result(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+    session = mocker.Mock()
 
     remote_retrieval = mocker.Mock()
     remote_retrieval.get_pipeline_templates.return_value = {"pipeline_templates": []}
@@ -155,39 +156,44 @@ def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_resul
     builtin_retrieval.fetch_pipeline_templates_from_builtin.return_value = {"pipeline_templates": [{"id": "builtin-1"}]}
     factory_mock.get_built_in_pipeline_template_retrieval.return_value = builtin_retrieval
 
-    result = RagPipelineService.get_pipeline_templates(type="built-in", language="ja-JP")
+    result = RagPipelineService.get_pipeline_templates(session, type="built-in", language="ja-JP")
 
     assert result == {"pipeline_templates": [{"id": "builtin-1"}]}
+    remote_retrieval.get_pipeline_templates.assert_called_once_with(session, "ja-JP", None)
     builtin_retrieval.fetch_pipeline_templates_from_builtin.assert_called_once_with("en-US")
 
 
 def test_get_pipeline_templates_customized_mode_uses_customized_factory(mocker: MockerFixture) -> None:
+    session = mocker.Mock()
     retrieval = mocker.Mock()
     retrieval.get_pipeline_templates.return_value = {"pipeline_templates": [{"id": "custom-1"}]}
 
     factory_mock = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
     factory_mock.get_pipeline_template_factory.return_value.return_value = retrieval
 
-    result = RagPipelineService.get_pipeline_templates(type="customized", language="en-US")
+    result = RagPipelineService.get_pipeline_templates(session, type="customized", language="en-US")
 
     assert result == {"pipeline_templates": [{"id": "custom-1"}]}
     factory_mock.get_pipeline_template_factory.assert_called_with("customized")
+    retrieval.get_pipeline_templates.assert_called_once_with(session, "en-US", None)
 
 
 @pytest.mark.parametrize("template_type", ["built-in", "customized"])
 def test_get_pipeline_template_detail_uses_expected_mode(mocker: MockerFixture, template_type: str) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+    session = mocker.Mock()
     retrieval = mocker.Mock()
     retrieval.get_pipeline_template_detail.return_value = {"id": "tpl-1"}
 
     factory_mock = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
     factory_mock.get_pipeline_template_factory.return_value.return_value = retrieval
 
-    result = RagPipelineService.get_pipeline_template_detail("tpl-1", type=template_type)
+    result = RagPipelineService.get_pipeline_template_detail(session, "tpl-1", type=template_type)
 
     assert result == {"id": "tpl-1"}
     expected_mode = "remote" if template_type == "built-in" else "customized"
     factory_mock.get_pipeline_template_factory.assert_called_with(expected_mode)
+    retrieval.get_pipeline_template_detail.assert_called_once_with(session, "tpl-1")
 
 
 def test_get_published_workflow_returns_none_when_pipeline_has_no_workflow_id(
@@ -1837,15 +1843,17 @@ def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture) -> None
 
 def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE", "remote")
+    session = mocker.Mock()
     retrieval = mocker.Mock()
     retrieval.get_pipeline_templates.return_value = {"pipeline_templates": []}
     factory = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
     factory.get_pipeline_template_factory.return_value.return_value = retrieval
     builtin = factory.get_built_in_pipeline_template_retrieval.return_value
 
-    result = RagPipelineService.get_pipeline_templates(type="built-in", language="en-US")
+    result = RagPipelineService.get_pipeline_templates(session, type="built-in", language="en-US")
 
     assert result == {"pipeline_templates": []}
+    retrieval.get_pipeline_templates.assert_called_once_with(session, "en-US", None)
     builtin.fetch_pipeline_templates_from_builtin.assert_not_called()
 
 

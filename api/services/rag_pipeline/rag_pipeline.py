@@ -109,6 +109,7 @@ class RagPipelineService:
     @classmethod
     def get_pipeline_templates(
         cls,
+        session: Session,
         type: str = "built-in",
         language: str = "en-US",
         current_tenant_id: str | None = None,
@@ -116,7 +117,7 @@ class RagPipelineService:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            result = retrieval_instance.get_pipeline_templates(language, current_tenant_id)
+            result = retrieval_instance.get_pipeline_templates(session, language, current_tenant_id)
             if not result.get("pipeline_templates") and language != "en-US":
                 template_retrieval = PipelineTemplateRetrievalFactory.get_built_in_pipeline_template_retrieval()
                 result = template_retrieval.fetch_pipeline_templates_from_builtin("en-US")
@@ -124,11 +125,13 @@ class RagPipelineService:
         else:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            result = retrieval_instance.get_pipeline_templates(language, current_tenant_id)
+            result = retrieval_instance.get_pipeline_templates(session, language, current_tenant_id)
             return result
 
     @classmethod
-    def get_pipeline_template_detail(cls, template_id: str, type: str = "built-in") -> dict[str, Any] | None:
+    def get_pipeline_template_detail(
+        cls, session: Session, template_id: str, type: str = "built-in"
+    ) -> dict[str, Any] | None:
         """
         Get pipeline template detail.
 
@@ -139,7 +142,9 @@ class RagPipelineService:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            built_in_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(template_id)
+            built_in_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(
+                session, template_id
+            )
             if built_in_result is None:
                 logger.warning(
                     "pipeline template retrieval returned empty result, template_id: %s, mode: %s",
@@ -150,7 +155,9 @@ class RagPipelineService:
         else:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
-            customized_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(template_id)
+            customized_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(
+                session, template_id
+            )
             return customized_result
 
     @classmethod
