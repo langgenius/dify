@@ -31,15 +31,15 @@
   "codeEntry.title": "تفويض Dify CLI",
   "errorExpired.body": "منتهي الصلاحية أو تم استخدامه بالفعل. شغّل <codeTag>difyctl auth login</codeTag> للحصول على رمز جديد.",
   "errorExpired.title": "الرمز لم يعد صالحًا",
-  "errorExpired.tryDifferentCode": "جرّب رمزًا مختلفًا →",
+  "errorExpired.tryDifferentCode": "← جرّب رمزًا مختلفًا",
   "errorLookupFailed.body": "حدث خطأ ما من جانبنا. حاول مرة أخرى بعد لحظة.",
   "errorLookupFailed.title": "تعذّر التحقق من الرمز",
   "errorRateLimited.body": "انتظر لحظة وحاول مرة أخرى.",
   "errorRateLimited.title": "عدد كبير جدًا من المحاولات",
   "ssoError.default": "تعذّر إكمال تسجيل الدخول الموحّد (SSO). حاول مرة أخرى.",
   "ssoError.emailBelongsToDifyAccount": "هذه الهوية مرتبطة بحساب Dify. استخدم “تسجيل الدخول بحساب Dify” بدلاً من ذلك.",
-  "success.goToConsole": "الانتقال إلى وحدة تحكم Dify ←",
+  "success.goToConsole": "الانتقال إلى وحدة تحكم Dify →",
   "success.subtitle": "عد إلى الطرفية الخاصة بك للمتابعة.",
   "success.title": "تم تسجيل دخولك",
-  "tryAgain": "حاول مرة أخرى →"
+  "tryAgain": "← حاول مرة أخرى"
 }

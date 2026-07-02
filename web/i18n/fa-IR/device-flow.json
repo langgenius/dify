@@ -31,15 +31,15 @@
   "codeEntry.title": "تأیید Dify CLI",
   "errorExpired.body": "منقضی شده یا قبلاً استفاده شده است. برای دریافت کد جدید، <codeTag>difyctl auth login</codeTag> را اجرا کنید.",
   "errorExpired.title": "کد دیگر معتبر نیست",
-  "errorExpired.tryDifferentCode": "کد دیگری را امتحان کنید →",
+  "errorExpired.tryDifferentCode": "← کد دیگری را امتحان کنید",
   "errorLookupFailed.body": "مشکلی از سمت ما پیش آمد. کمی بعد دوباره امتحان کنید.",
   "errorLookupFailed.title": "تأیید کد ممکن نشد",
   "errorRateLimited.body": "کمی صبر کنید و دوباره امتحان کنید.",
   "errorRateLimited.title": "تعداد تلاش‌ها بیش از حد است",
   "ssoError.default": "ورود یکپارچه (SSO) تکمیل نشد. دوباره امتحان کنید.",
   "ssoError.emailBelongsToDifyAccount": "این هویت به یک حساب Dify متصل است. در عوض از «ورود با حساب Dify» استفاده کنید.",
-  "success.goToConsole": "رفتن به کنسول Dify ←",
+  "success.goToConsole": "رفتن به کنسول Dify →",
   "success.subtitle": "برای ادامه به ترمینال خود بازگردید.",
   "success.title": "وارد شدید",
-  "tryAgain": "دوباره امتحان کنید →"
+  "tryAgain": "← دوباره امتحان کنید"
 }

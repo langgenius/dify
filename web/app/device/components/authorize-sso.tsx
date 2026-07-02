@@ -33,6 +33,7 @@ const AuthorizeSSO: FC<Props> = ({ onApproved, onError }) => {
 
   useEffect(() => {
     let cancelled = false
+    setLoadErr(null)
     fetchApprovalContext()
       .then((c) => {
         if (!cancelled)
