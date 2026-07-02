@@ -23,6 +23,7 @@ export type AgentBuildDraftChangeSummary = {
   changesCount: number
   skills: readonly AgentBuildDraftChangeItem[]
   files: readonly AgentBuildDraftChangeItem[]
+  envVariables: readonly AgentBuildDraftChangeItem[]
 }
 
 export type AgentBuildDraftChangeSection

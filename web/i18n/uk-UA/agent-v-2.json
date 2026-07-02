@@ -56,6 +56,7 @@
   "agentDetail.configure.advancedSettings.envEditor.scopePlain": "Plain",
   "agentDetail.configure.advancedSettings.envEditor.scopeSecret": "Secret",
   "agentDetail.configure.advancedSettings.envEditor.scopeSelector": "Виберіть область змінної середовища",
+  "agentDetail.configure.advancedSettings.envEditor.shortLabel": "Env",
   "agentDetail.configure.advancedSettings.envEditor.tip": "Ваш агент працює в середовищі Linux. Ви можете попередньо задати конфігурації або секрети, визначивши тут змінні середовища. Також ви завжди можете налаштувати все через чат Build. Див. документацію.",
   "agentDetail.configure.advancedSettings.envEditor.toggle": "Перемкнути Env Editor",
   "agentDetail.configure.advancedSettings.envEditor.valueColumn": "Value",

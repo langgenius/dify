@@ -56,6 +56,7 @@
   "agentDetail.configure.advancedSettings.envEditor.scopePlain": "Plain",
   "agentDetail.configure.advancedSettings.envEditor.scopeSecret": "Secret",
   "agentDetail.configure.advancedSettings.envEditor.scopeSelector": "환경 변수 범위 선택",
+  "agentDetail.configure.advancedSettings.envEditor.shortLabel": "Env",
   "agentDetail.configure.advancedSettings.envEditor.tip": "에이전트는 Linux 환경에서 실행됩니다. 여기에서 환경 변수를 정의하여 구성이나 시크릿을 미리 설정할 수 있습니다. 또는 Build 채팅을 통해 언제든지 설정할 수 있습니다. 문서를 참조하세요.",
   "agentDetail.configure.advancedSettings.envEditor.toggle": "Env Editor 전환",
   "agentDetail.configure.advancedSettings.envEditor.valueColumn": "Value",

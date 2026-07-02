@@ -56,6 +56,7 @@
   "agentDetail.configure.advancedSettings.envEditor.scopePlain": "Plain",
   "agentDetail.configure.advancedSettings.envEditor.scopeSecret": "Secret",
   "agentDetail.configure.advancedSettings.envEditor.scopeSelector": "เลือกขอบเขตตัวแปรสภาพแวดล้อม",
+  "agentDetail.configure.advancedSettings.envEditor.shortLabel": "Env",
   "agentDetail.configure.advancedSettings.envEditor.tip": "เอเจนต์ของคุณทำงานในสภาพแวดล้อม Linux คุณสามารถตั้งค่าคอนฟิกหรือความลับไว้ล่วงหน้าได้โดยกำหนดตัวแปรสภาพแวดล้อมที่นี่ หรือจะให้ตั้งค่าผ่านแชท Build ก็ได้ ดูเอกสารประกอบ",
   "agentDetail.configure.advancedSettings.envEditor.toggle": "สลับ Env Editor",
   "agentDetail.configure.advancedSettings.envEditor.valueColumn": "Value",

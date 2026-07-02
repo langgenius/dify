@@ -56,6 +56,7 @@
   "agentDetail.configure.advancedSettings.envEditor.scopePlain": "Plain",
   "agentDetail.configure.advancedSettings.envEditor.scopeSecret": "Secret",
   "agentDetail.configure.advancedSettings.envEditor.scopeSelector": "Izberite obseg okoljske spremenljivke",
+  "agentDetail.configure.advancedSettings.envEditor.shortLabel": "Env",
   "agentDetail.configure.advancedSettings.envEditor.tip": "Vaš agent se izvaja v okolju Linux. Konfiguracije ali skrivnosti lahko vnaprej nastavite tako, da tukaj določite okoljske spremenljivke. Druga možnost je, da nastavitev vedno izvedete prek klepeta Build. Glejte dokumentacijo.",
   "agentDetail.configure.advancedSettings.envEditor.toggle": "Preklopi Env Editor",
   "agentDetail.configure.advancedSettings.envEditor.valueColumn": "Value",

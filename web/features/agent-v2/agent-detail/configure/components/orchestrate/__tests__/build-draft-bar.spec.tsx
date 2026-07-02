@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { AgentBuildDraftBar } from '../build-draft-bar'
 
 const changeSummary: AgentBuildDraftChangeSummary = {
-  changedKeys: ['skills', 'files'],
-  changesCount: 4,
+  changedKeys: ['skills', 'files', 'envVariables'],
+  changesCount: 5,
   skills: [
     { id: 'skill-1', name: 'tender-analyzer', operation: 'added' },
     { id: 'skill-2', name: 'figma-code-connect', operation: 'removed' },
@@ -19,6 +19,9 @@ const changeSummary: AgentBuildDraftChangeSummary = {
       descriptionKey: 'agentDetail.configure.buildDraft.buildNoteDescription',
     },
     { id: 'file-1', name: 'index.json', operation: 'added', icon: 'json' },
+  ],
+  envVariables: [
+    { id: 'env-1', name: 'API_KEY', operation: 'updated' },
   ],
 }
 
@@ -129,13 +132,13 @@ describe('AgentBuildDraftBar', () => {
     render(
       <AgentBuildDraftBar
         changeSummary={changeSummary}
-        changesCount={4}
+        changesCount={5}
         onApply={onApply}
         onDiscard={onDiscard}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":4}' }))
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":5}' }))
 
     expect(screen.getByText('agentV2.agentDetail.configure.skills.label')).toBeInTheDocument()
     expect(screen.getByText('tender-analyzer')).toBeInTheDocument()
@@ -143,6 +146,8 @@ describe('AgentBuildDraftBar', () => {
     expect(screen.getByText('build_note.md')).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.buildNoteDescription')).toBeInTheDocument()
     expect(screen.getByText('index.json')).toBeInTheDocument()
+    expect(screen.getByText('agentV2.agentDetail.configure.advancedSettings.envEditor.shortLabel')).toBeInTheDocument()
+    expect(screen.getByText('API_KEY')).toBeInTheDocument()
     expect(document.querySelector('.text-text-accent')).toHaveClass('i-ri-add-circle-fill')
 
     await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' }))

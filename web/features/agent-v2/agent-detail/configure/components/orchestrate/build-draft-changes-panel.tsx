@@ -141,6 +141,7 @@ function getChangeSections({
 
   pushItemSection('skills', t('agentDetail.configure.skills.label'), changeSummary.skills)
   pushItemSection('files', t('agentDetail.configure.files.label'), changeSummary.files)
+  pushItemSection('envVariables', t('agentDetail.configure.advancedSettings.envEditor.shortLabel'), changeSummary.envVariables)
 
   return sections
 }
