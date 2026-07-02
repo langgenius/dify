@@ -97,6 +97,11 @@ class TestSensitiveWordAvoidanceConfigManagerValidateAndSetDefaults:
             {"sensitive_word_avoidance": {"enabled": False}},
             {"sensitive_word_avoidance": {"enabled": None}},
             {"sensitive_word_avoidance": {}},
+            # Regression for issue #38327: client sends leftover type/config fields
+            # alongside enabled=False. The normalize step must strip them so the
+            # discriminator-tagged union (extra="forbid") does not reject the payload.
+            {"sensitive_word_avoidance": {"enabled": False, "type": "", "config": {}}},
+            {"sensitive_word_avoidance": {"enabled": False, "type": "keywords", "config": {"k": "v"}}},
         ],
     )
     def test_validate_disables_when_enabled_false_or_missing(self, config):
