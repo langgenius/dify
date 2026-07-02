@@ -36,6 +36,7 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
     WorkflowService,
     _rebuild_file_for_user_inputs_in_start_node,
@@ -1008,6 +1009,8 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
         account_id = "user-123"
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id)
 
@@ -1021,10 +1024,9 @@ class TestWorkflowService:
 
             result = workflow_service.update_workflow(
                 session=mock_session,
-                workflow_id=workflow_id,
-                tenant_id=tenant_id,
                 account_id=account_id,
                 data={"marked_name": "Updated Name", "marked_comment": "Updated Comment"},
+                workflow_ref=workflow_ref,
             )
 
             assert result == mock_workflow
@@ -1044,13 +1046,41 @@ class TestWorkflowService:
 
             result = workflow_service.update_workflow(
                 session=mock_session,
-                workflow_id="nonexistent",
-                tenant_id="tenant-456",
                 account_id="user-123",
                 data={"marked_name": "Test"},
+                workflow_ref=WorkflowRef(tenant_id="tenant-456", owner_id="app-789", workflow_id="nonexistent"),
             )
 
             assert result is None
+
+    def test_update_workflow_with_ref_scopes_lookup_to_app(self, workflow_service: WorkflowService):
+        """Test update_workflow includes the trusted app owner in the lookup."""
+        workflow_id = "workflow-123"
+        tenant_id = "tenant-456"
+        app_id = "app-789"
+        account_id = "user-123"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id)
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = mock_workflow
+
+        result = workflow_service.update_workflow(
+            session=mock_session,
+            account_id=account_id,
+            data={"marked_name": "Updated Name"},
+            workflow_ref=workflow_ref,
+        )
+
+        stmt = mock_session.scalar.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "workflows.id" in statement
+        assert "workflows.tenant_id" in statement
+        assert "workflows.app_id" in statement
+        assert workflow_id in compiled.params.values()
+        assert tenant_id in compiled.params.values()
+        assert app_id in compiled.params.values()
+        assert result == mock_workflow
 
     # ==================== Delete Workflow Tests ====================
     # These tests verify workflow deletion with safety checks
@@ -1064,6 +1094,8 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
         mock_session = MagicMock()
@@ -1078,12 +1110,34 @@ class TestWorkflowService:
             mock_select.return_value = mock_stmt
             mock_stmt.where.return_value = mock_stmt
 
-            result = workflow_service.delete_workflow(
-                session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id
-            )
+            result = workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
             assert result is True
             mock_session.delete.assert_called_once_with(mock_workflow)
+
+    def test_delete_workflow_with_ref_scopes_lookup_to_app(self, workflow_service: WorkflowService):
+        """Test delete_workflow includes the trusted app owner in the lookup."""
+        workflow_id = "workflow-123"
+        tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
+        mock_session = MagicMock()
+        mock_session.scalar.side_effect = [mock_workflow, None, None]
+
+        result = workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
+
+        stmt = mock_session.scalar.call_args_list[0].args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "workflows.id" in statement
+        assert "workflows.tenant_id" in statement
+        assert "workflows.app_id" in statement
+        assert workflow_id in compiled.params.values()
+        assert tenant_id in compiled.params.values()
+        assert app_id in compiled.params.values()
+        assert result is True
+        mock_session.delete.assert_called_once_with(mock_workflow)
 
     def test_delete_workflow_draft_raises_error(self, workflow_service: WorkflowService):
         """
@@ -1094,6 +1148,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(
             workflow_id=workflow_id, version=Workflow.VERSION_DRAFT
         )
@@ -1107,7 +1162,7 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     def test_delete_workflow_in_use_by_app_raises_error(self, workflow_service: WorkflowService):
         """
@@ -1118,6 +1173,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
         mock_app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=workflow_id)
 
@@ -1130,7 +1186,7 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="currently in use by app"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     def test_delete_workflow_published_as_tool_raises_error(self, workflow_service: WorkflowService):
         """
@@ -1142,6 +1198,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
         mock_tool_provider = MagicMock()
 
@@ -1154,12 +1211,13 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="published as a tool"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     def test_delete_workflow_not_found_raises_error(self, workflow_service: WorkflowService):
         """Test delete_workflow raises error when workflow not found."""
         workflow_id = "nonexistent"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
 
         mock_session = MagicMock()
         mock_session.scalar.return_value = None
@@ -1170,7 +1228,7 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(ValueError, match="not found"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     # ==================== Get Default Block Config Tests ====================
     # These tests verify retrieval of default node configurations

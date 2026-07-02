@@ -1,4 +1,4 @@
-import type { PluginsSearchParams } from './types'
+import type { PluginsSearchParams } from '@dify/contracts/marketplace'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
 import { useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchPluginText } from './atoms'

@@ -21,8 +21,10 @@ import {
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse,
   zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath,
   zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse,
+  zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsBody,
   zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath,
   zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse,
+  zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsBody,
   zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath,
   zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
   zDeleteWorkspacesCurrentRbacRolesByRoleIdPath,
@@ -106,8 +108,10 @@ import {
   zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsPath,
   zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse,
   zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyPath,
+  zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyQuery,
   zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse,
   zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesPath,
+  zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesQuery,
   zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse,
   zGetWorkspacesCurrentRbacAppsByAppIdWhitelistPath,
   zGetWorkspacesCurrentRbacAppsByAppIdWhitelistResponse,
@@ -116,8 +120,10 @@ import {
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsPath,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyPath,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyQuery,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesPath,
+  zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesQuery,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
   zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse,
@@ -390,20 +396,27 @@ import {
   zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse,
   zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath,
   zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse,
+  zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesBody,
   zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesPath,
   zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponse,
+  zPutWorkspacesCurrentRbacAppsByAppIdWhitelistBody,
   zPutWorkspacesCurrentRbacAppsByAppIdWhitelistPath,
   zPutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse,
+  zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesBody,
   zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesPath,
   zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponse,
+  zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistBody,
   zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
   zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse,
+  zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesBody,
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
   zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse,
   zPutWorkspacesCurrentRbacRolesByRoleIdPath,
   zPutWorkspacesCurrentRbacRolesByRoleIdResponse,
+  zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsBody,
   zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsPath,
   zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse,
+  zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsBody,
   zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsPath,
   zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse,
   zPutWorkspacesCurrentToolProviderMcpBody,
@@ -2229,6 +2242,7 @@ export const delete10 = oc
   })
   .input(
     z.object({
+      body: zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsBody,
       params: zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsPath,
     }),
   )
@@ -2290,7 +2304,12 @@ export const get37 = oc
     path: '/workspaces/current/rbac/apps/{app_id}/access-policy',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyPath,
+      query: zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse)
 
 export const accessPolicy = {
@@ -2305,7 +2324,12 @@ export const get38 = oc
     path: '/workspaces/current/rbac/apps/{app_id}/user-access-policies',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesPath,
+      query: zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse)
 
 export const userAccessPolicies = {
@@ -2322,6 +2346,7 @@ export const put7 = oc
   })
   .input(
     z.object({
+      body: zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesBody,
       params: zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesPath,
     }),
   )
@@ -2358,7 +2383,12 @@ export const put8 = oc
     path: '/workspaces/current/rbac/apps/{app_id}/whitelist',
     tags: ['console'],
   })
-  .input(z.object({ params: zPutWorkspacesCurrentRbacAppsByAppIdWhitelistPath }))
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacAppsByAppIdWhitelistBody,
+      params: zPutWorkspacesCurrentRbacAppsByAppIdWhitelistPath,
+    }),
+  )
   .output(zPutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse)
 
 export const whitelist = {
@@ -2389,6 +2419,7 @@ export const delete11 = oc
   })
   .input(
     z.object({
+      body: zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsBody,
       params:
         zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsPath,
     }),
@@ -2457,7 +2488,12 @@ export const get42 = oc
     path: '/workspaces/current/rbac/datasets/{dataset_id}/access-policy',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyPath,
+      query: zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse)
 
 export const accessPolicy2 = {
@@ -2472,7 +2508,12 @@ export const get43 = oc
     path: '/workspaces/current/rbac/datasets/{dataset_id}/user-access-policies',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesPath }))
+  .input(
+    z.object({
+      params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesPath,
+      query: zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesQuery.optional(),
+    }),
+  )
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse)
 
 export const userAccessPolicies2 = {
@@ -2489,6 +2530,7 @@ export const put9 = oc
   })
   .input(
     z.object({
+      body: zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesBody,
       params: zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesPath,
     }),
   )
@@ -2525,7 +2567,12 @@ export const put10 = oc
     path: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist',
     tags: ['console'],
   })
-  .input(z.object({ params: zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath }))
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistBody,
+      params: zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath,
+    }),
+  )
   .output(zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse)
 
 export const whitelist2 = {
@@ -2564,7 +2611,12 @@ export const put11 = oc
     path: '/workspaces/current/rbac/members/{member_id}/rbac-roles',
     tags: ['console'],
   })
-  .input(z.object({ params: zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath }))
+  .input(
+    z.object({
+      body: zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesBody,
+      params: zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath,
+    }),
+  )
   .output(zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
 
 export const rbacRoles = {
@@ -2751,6 +2803,7 @@ export const put13 = oc
   })
   .input(
     z.object({
+      body: zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsBody,
       params: zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsPath,
     }),
   )
@@ -2837,6 +2890,7 @@ export const put14 = oc
   })
   .input(
     z.object({
+      body: zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsBody,
       params: zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsPath,
     }),
   )

@@ -10,7 +10,7 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     tags: {
-      list: {
+      get: {
         queryOptions: vi.fn(input => ({ queryKey: ['tags', input] })),
       },
     },
@@ -24,8 +24,8 @@ describe('SnippetTagsFilter', () => {
     vi.clearAllMocks()
     mockUseQuery.mockReturnValue({
       data: [
-        { id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: 1 },
-        { id: 'tag-2', name: 'Support', type: 'snippet', binding_count: 2 },
+        { id: 'tag-1', name: 'Sales', type: 'snippet', binding_count: '' },
+        { id: 'tag-2', name: 'Support', type: 'snippet', binding_count: '' },
       ],
     } as ReturnType<typeof useQuery>)
   })

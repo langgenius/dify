@@ -33,7 +33,7 @@ export function WorkflowReferencesTable({
   const workflowReferences = workflowReferencesQuery.data?.data ?? []
 
   return (
-    <div className="overflow-x-auto">
+    <div className="min-w-0 overflow-x-auto">
       <table className="w-full min-w-[1212px] table-fixed border-collapse">
         <colgroup>
           <col className="w-[572px]" />

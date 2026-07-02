@@ -50,5 +50,5 @@
   "snippets.management": "スニペットを管理",
   "tool.manage": "ツールを管理",
   "workspace.member.manage": "メンバーを管理",
-  "workspace.role.manage": "ロール権限とリソースアクセスルールを管理"
+  "workspace.role.manage": "ロールと権限セットを管理"
 }

@@ -228,8 +228,14 @@ and pre-creates that directory with write access for the same user.
 The provided `docker/local-sandbox/Dockerfile` installs:
 
 - `tmux`, required by `shellctl` to manage shell jobs;
-- `shell-session-manager==2.2.1`, which provides the `shellctl` CLI/server;
+- common shell workspace tools: `git`, `openssh-client`, `jq`, `ripgrep`,
+  `unzip`, `zip`, `file`, `procps`, and `less`;
+- `shell-session-manager==2.3.0` as a standalone uv tool, which provides the
+  `shellctl` CLI/server;
 - `uv`, so uv shebang scripts with PEP 723 metadata can run inside the shell
-  workspace;
-- the `dify-agent` Agent Stub client CLI, including its gRPC transport extra;
+  workspace and Python CLI tools can be installed with isolated tool
+  environments;
+- `node==22.22.1` and `pnpm==11.9.0`, so JavaScript and TypeScript tooling can
+  run inside the shell workspace without per-job installation;
+- the `dify-agent[grpc]` Agent Stub client CLI as a standalone uv tool;
 - a non-root default user named `dify`.

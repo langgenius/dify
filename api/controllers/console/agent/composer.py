@@ -57,8 +57,9 @@ class WorkflowAgentComposerApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @with_current_user_id
     @with_current_tenant_id
-    def get(self, tenant_id: str, app_model: App, node_id: str):
+    def get(self, tenant_id: str, account_id: str, app_model: App, node_id: str):
         query = WorkflowAgentComposerQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             WorkflowAgentComposerResponse,
@@ -66,6 +67,7 @@ class WorkflowAgentComposerApi(Resource):
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 node_id=node_id,
+                account_id=account_id,
                 snapshot_id=query.snapshot_id,
             ),
         )

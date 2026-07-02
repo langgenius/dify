@@ -191,6 +191,30 @@ def test_builtin_provider_credentials_get(app: Flask, controller_module, monkeyp
     )
 
 
+def test_builtin_provider_credentials_get_reads_repeated_include_ids(
+    app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch
+):
+    user = _mock_account("user-tenant-cred")
+    service_mock = MagicMock(return_value=[{"cred": 1}])
+    monkeypatch.setattr(
+        controller_module.BuiltinToolManageService,
+        "get_builtin_tool_provider_credentials",
+        service_mock,
+    )
+
+    with app.test_request_context("/creds?include_credential_ids=cred-1&include_credential_ids=cred-2", method="GET"):
+        api = controller_module.ToolBuiltinProviderGetCredentialsApi()
+        resp = unwrap(api.get)(api, "tenant-cred", user, provider="demo")
+
+    assert resp == [{"cred": 1}]
+    service_mock.assert_called_once_with(
+        tenant_id="tenant-cred",
+        provider_name="demo",
+        user=user,
+        include_credential_ids=["cred-1", "cred-2"],
+    )
+
+
 def test_api_provider_remote_schema_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
     service_mock = MagicMock(return_value={"schema": "ok"})

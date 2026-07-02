@@ -38,6 +38,22 @@ register_response_schema_models(console_ns, AllowedExtensionsResponse, TextConte
 
 PREVIEW_WORDS_LIMIT = 3000
 
+_FILE_UPLOAD_PARAMS = {
+    "file": {
+        "description": "File to upload",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    },
+    "source": {
+        "description": "Optional upload source",
+        "in": "formData",
+        "type": "string",
+        "enum": ["datasets"],
+        "required": False,
+    },
+}
+
 
 @console_ns.route("/files/upload")
 class FileApi(Resource):
@@ -64,6 +80,7 @@ class FileApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("documents")
+    @console_ns.doc(consumes=["multipart/form-data"], params=_FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
