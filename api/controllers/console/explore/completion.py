@@ -17,9 +17,9 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.app.wraps import with_session
 from controllers.console.wraps import with_current_user, with_current_user_id
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -28,7 +28,6 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
-from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.datetime_utils import naive_utc_now

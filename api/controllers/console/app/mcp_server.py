@@ -21,7 +21,6 @@ from controllers.console.wraps import (
     setup_required,
     with_current_tenant_id,
 )
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required

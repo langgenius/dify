@@ -1,20 +1,18 @@
 from uuid import UUID
 
 from flask import request
-from sqlalchemy.orm import Session
-
 from pydantic import TypeAdapter
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.app.wraps import with_session
 from controllers.console.wraps import with_current_user
-from extensions.ext_database import db
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
 from models import Account

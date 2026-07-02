@@ -20,7 +20,6 @@ from controllers.console.wraps import (
     setup_required,
     with_current_user,
 )
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response
