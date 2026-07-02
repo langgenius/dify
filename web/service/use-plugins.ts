@@ -1,3 +1,4 @@
+import type { PluginInstallationItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
@@ -14,10 +15,12 @@ import type {
   InstalledPluginListWithTotalResponse,
   InstallPackageResponse,
   InstallStatusResponse,
+  MetaData,
   PackageDependency,
   Permissions,
   Plugin,
   PluginDeclaration,
+  PluginDetail,
   PluginInfoFromMarketPlace,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
@@ -36,9 +39,10 @@ import {
 } from '@tanstack/react-query'
 import { cloneDeep } from 'es-toolkit/object'
 import { useCallback, useEffect, useRef } from 'react'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
-import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { useAppContext } from '@/context/app-context'
 import { fetchModelProviderModelList } from '@/service/common'
 import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
@@ -54,6 +58,417 @@ const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 
 type PluginTaskListResponse = {
   tasks: PluginTask[]
+}
+
+const getString = (value: unknown) => {
+  return typeof value === 'string' ? value : ''
+}
+
+const getBoolean = (value: unknown) => {
+  return value === true
+}
+
+const getNumber = (value: unknown) => {
+  return typeof value === 'number' ? value : undefined
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+const getRecord = (value: unknown, key: string) => {
+  if (!isRecord(value))
+    return undefined
+
+  const child = value[key]
+  return isRecord(child) ? child : undefined
+}
+
+const getRecordArray = (value: unknown, key: string) => {
+  if (!isRecord(value))
+    return []
+
+  const child = value[key]
+  return Array.isArray(child) ? child.filter(isRecord) : []
+}
+
+const getStringArray = (value: unknown) => {
+  return Array.isArray(value) ? value.filter(item => typeof item === 'string') : []
+}
+
+const getI18nValue = (value: object | null | undefined, key: string) => {
+  return value ? getString(Object.entries(value).find(([itemKey]) => itemKey === key)?.[1]) : ''
+}
+
+const normalizeI18nObject = (value: object | null | undefined, fallback = ''): PluginDeclaration['label'] => {
+  const en = getI18nValue(value, 'en_US') || getI18nValue(value, 'en-US') || fallback
+  const zhHans = getI18nValue(value, 'zh_Hans') || getI18nValue(value, 'zh-Hans') || en
+  const ja = getI18nValue(value, 'ja_JP') || getI18nValue(value, 'ja-JP') || en
+  const ptBr = getI18nValue(value, 'pt_BR') || getI18nValue(value, 'pt-BR') || en
+
+  return {
+    'en-US': en,
+    'zh-Hans': zhHans,
+    'zh-Hant': en,
+    'pt-BR': ptBr,
+    'es-ES': en,
+    'fr-FR': en,
+    'de-DE': en,
+    'ja-JP': ja,
+    'ko-KR': en,
+    'ru-RU': en,
+    'it-IT': en,
+    'th-TH': en,
+    'uk-UA': en,
+    'vi-VN': en,
+    'ro-RO': en,
+    'pl-PL': en,
+    'hi-IN': en,
+    'tr-TR': en,
+    'fa-IR': en,
+    'sl-SI': en,
+    'id-ID': en,
+    'nl-NL': en,
+    'ar-TN': en,
+    'en_US': en,
+    'zh_Hans': zhHans,
+    'ja_JP': ja,
+  }
+}
+
+const normalizePluginCategory = (category: PluginInstallationItemResponse['declaration']['category']): PluginCategoryEnum => {
+  switch (category) {
+    case PluginCategoryEnum.tool:
+      return PluginCategoryEnum.tool
+    case PluginCategoryEnum.model:
+      return PluginCategoryEnum.model
+    case PluginCategoryEnum.datasource:
+      return PluginCategoryEnum.datasource
+    case PluginCategoryEnum.trigger:
+      return PluginCategoryEnum.trigger
+    case PluginCategoryEnum.agent:
+      return PluginCategoryEnum.agent
+    case PluginCategoryEnum.extension:
+      return PluginCategoryEnum.extension
+  }
+  return PluginCategoryEnum.extension
+}
+
+const normalizePluginSource = (source: PluginInstallationItemResponse['source']): PluginSource => {
+  switch (source) {
+    case PluginSource.github:
+      return PluginSource.github
+    case PluginSource.marketplace:
+      return PluginSource.marketplace
+    case PluginSource.local:
+      return PluginSource.local
+    case PluginSource.debugging:
+      return PluginSource.debugging
+  }
+  return PluginSource.marketplace
+}
+
+const normalizePluginMeta = (meta: Record<string, unknown>): MetaData => {
+  return {
+    repo: getString(meta.repo),
+    version: getString(meta.version),
+    package: getString(meta.package),
+  }
+}
+
+const normalizeToolCredentialOption = (
+  option: Record<string, unknown>,
+): NonNullable<NonNullable<PluginDeclaration['tool']>['credentials_schema'][number]['options']>[number] => ({
+  label: normalizeI18nObject(getRecord(option, 'label'), getString(option.value)),
+  value: getString(option.value),
+})
+
+const normalizeToolCredential = (
+  credential: Record<string, unknown>,
+): NonNullable<PluginDeclaration['tool']>['credentials_schema'][number] => ({
+  name: getString(credential.name),
+  label: normalizeI18nObject(getRecord(credential, 'label'), getString(credential.name)),
+  help: credential.help === null ? null : normalizeI18nObject(getRecord(credential, 'help')),
+  placeholder: normalizeI18nObject(getRecord(credential, 'placeholder')),
+  type: getString(credential.type),
+  required: getBoolean(credential.required),
+  default: getString(credential.default),
+  options: getRecordArray(credential, 'options').map(normalizeToolCredentialOption),
+})
+
+const normalizePluginToolDeclaration = (value: unknown): PluginDeclaration['tool'] => {
+  if (!isRecord(value))
+    return undefined
+
+  const identity = getRecord(value, 'identity')
+  if (!identity)
+    return undefined
+
+  const name = getString(identity.name)
+
+  return {
+    identity: {
+      author: getString(identity.author),
+      name,
+      description: normalizeI18nObject(getRecord(identity, 'description')),
+      icon: getString(identity.icon),
+      label: normalizeI18nObject(getRecord(identity, 'label'), name),
+      tags: getStringArray(identity.tags),
+    },
+    credentials_schema: getRecordArray(value, 'credentials_schema').map(normalizeToolCredential),
+  }
+}
+
+const normalizePluginEndpointDeclaration = (value: unknown): PluginDeclaration['endpoint'] => {
+  if (!isRecord(value))
+    return undefined
+
+  return {
+    settings: getRecordArray(value, 'settings').map(normalizeToolCredential),
+    endpoints: getRecordArray(value, 'endpoints').map(endpoint => ({
+      path: getString(endpoint.path),
+      method: getString(endpoint.method),
+      hidden: endpoint.hidden === undefined ? undefined : getBoolean(endpoint.hidden),
+    })),
+  }
+}
+
+const normalizeParameterDefault = (value: unknown) => {
+  if (Array.isArray(value))
+    return value.filter(item => typeof item === 'string')
+  if (typeof value === 'string')
+    return value
+  if (value === undefined || value === null)
+    return undefined
+  return String(value)
+}
+
+const normalizeFormType = (type: unknown): FormTypeEnum => {
+  switch (type) {
+    case FormTypeEnum.appSelector:
+      return FormTypeEnum.appSelector
+    case FormTypeEnum.boolean:
+      return FormTypeEnum.boolean
+    case FormTypeEnum.checkbox:
+      return FormTypeEnum.checkbox
+    case FormTypeEnum.dynamicSelect:
+      return FormTypeEnum.dynamicSelect
+    case FormTypeEnum.file:
+      return FormTypeEnum.file
+    case FormTypeEnum.files:
+      return FormTypeEnum.files
+    case FormTypeEnum.modelSelector:
+      return FormTypeEnum.modelSelector
+    case FormTypeEnum.multiToolSelector:
+      return FormTypeEnum.multiToolSelector
+    case FormTypeEnum.radio:
+      return FormTypeEnum.radio
+    case FormTypeEnum.secretInput:
+      return FormTypeEnum.secretInput
+    case FormTypeEnum.select:
+      return FormTypeEnum.select
+    case FormTypeEnum.textNumber:
+    case 'number':
+      return FormTypeEnum.textNumber
+    case FormTypeEnum.textInput:
+    case 'string':
+    case 'array':
+    case 'object':
+      return FormTypeEnum.textInput
+  }
+  return FormTypeEnum.textInput
+}
+
+const normalizeParameterOption = (
+  option: Record<string, unknown>,
+): NonNullable<PluginDeclaration['trigger']['subscription_schema'][number]['options']>[number] => ({
+  value: getString(option.value),
+  label: normalizeI18nObject(getRecord(option, 'label'), getString(option.value)),
+  icon: getString(option.icon) || undefined,
+})
+
+const normalizeParameterSchema = (
+  parameter: Record<string, unknown>,
+): PluginDeclaration['trigger']['subscription_schema'][number] => ({
+  name: getString(parameter.name),
+  label: normalizeI18nObject(getRecord(parameter, 'label'), getString(parameter.name)),
+  type: normalizeFormType(parameter.type),
+  auto_generate: parameter.auto_generate ?? undefined,
+  template: parameter.template ?? undefined,
+  scope: parameter.scope ?? undefined,
+  required: getBoolean(parameter.required),
+  multiple: getBoolean(parameter.multiple),
+  default: normalizeParameterDefault(parameter.default),
+  min: parameter.min ?? undefined,
+  max: parameter.max ?? undefined,
+  precision: parameter.precision ?? undefined,
+  options: getRecordArray(parameter, 'options').map(normalizeParameterOption),
+  description: normalizeI18nObject(getRecord(parameter, 'description')),
+})
+
+const normalizeCredentialSchema = (
+  schema: Record<string, unknown>,
+): PluginDeclaration['trigger']['subscription_constructor']['credentials_schema'][number] => ({
+  name: getString(schema.name),
+  label: normalizeI18nObject(getRecord(schema, 'label'), getString(schema.name)),
+  description: normalizeI18nObject(getRecord(schema, 'description')),
+  type: normalizeFormType(schema.type),
+  scope: schema.scope ?? undefined,
+  required: getBoolean(schema.required),
+  default: schema.default ?? undefined,
+  options: getRecordArray(schema, 'options').map(normalizeParameterOption),
+  help: normalizeI18nObject(getRecord(schema, 'help')),
+  url: getString(schema.url),
+  placeholder: normalizeI18nObject(getRecord(schema, 'placeholder')),
+})
+
+const normalizeTriggerEventParameter = (
+  parameter: Record<string, unknown>,
+): PluginDeclaration['trigger']['events'][number]['parameters'][number] => ({
+  name: getString(parameter.name),
+  label: normalizeI18nObject(getRecord(parameter, 'label'), getString(parameter.name)),
+  type: getString(parameter.type),
+  auto_generate: parameter.auto_generate ?? undefined,
+  template: parameter.template ?? undefined,
+  scope: parameter.scope ?? undefined,
+  required: getBoolean(parameter.required),
+  multiple: getBoolean(parameter.multiple),
+  default: parameter.default ?? '',
+  min: getNumber(parameter.min),
+  max: getNumber(parameter.max),
+  precision: getNumber(parameter.precision),
+  options: getRecordArray(parameter, 'options').map(normalizeParameterOption),
+  description: normalizeI18nObject(getRecord(parameter, 'description')),
+})
+
+const normalizeTriggerEvent = (
+  event: Record<string, unknown>,
+): PluginDeclaration['trigger']['events'][number] => {
+  const identity = getRecord(event, 'identity')
+  const name = getString(event.name)
+
+  return {
+    name,
+    identity: {
+      author: getString(identity?.author),
+      name: getString(identity?.name) || name,
+      label: normalizeI18nObject(getRecord(identity, 'label'), name),
+      provider: getString(identity?.provider) || undefined,
+    },
+    description: normalizeI18nObject(getRecord(event, 'description'), name),
+    parameters: getRecordArray(event, 'parameters').map(normalizeTriggerEventParameter),
+    output_schema: getRecord(event, 'output_schema') ?? {},
+  }
+}
+
+const createEmptyTrigger = (name: string): PluginDeclaration['trigger'] => ({
+  events: [],
+  identity: {
+    author: '',
+    name,
+    label: normalizeI18nObject(undefined, name),
+    description: normalizeI18nObject(undefined),
+    icon: '',
+    tags: [],
+  },
+  subscription_constructor: {
+    credentials_schema: [],
+    oauth_schema: {
+      client_schema: [],
+      credentials_schema: [],
+    },
+    parameters: [],
+  },
+  subscription_schema: [],
+})
+
+const normalizePluginTriggerDeclaration = (
+  value: unknown,
+  fallbackName: string,
+): PluginDeclaration['trigger'] => {
+  if (!isRecord(value))
+    return createEmptyTrigger(fallbackName)
+
+  const identity = getRecord(value, 'identity')
+  const subscriptionConstructor = getRecord(value, 'subscription_constructor')
+  const oauthSchema = getRecord(subscriptionConstructor, 'oauth_schema')
+
+  return {
+    events: getRecordArray(value, 'events').map(normalizeTriggerEvent),
+    identity: {
+      author: getString(identity?.author),
+      name: getString(identity?.name) || fallbackName,
+      label: normalizeI18nObject(getRecord(identity, 'label'), fallbackName),
+      description: normalizeI18nObject(getRecord(identity, 'description')),
+      icon: getString(identity?.icon),
+      tags: getStringArray(identity?.tags),
+    },
+    subscription_constructor: {
+      credentials_schema: getRecordArray(subscriptionConstructor, 'credentials_schema').map(normalizeCredentialSchema),
+      oauth_schema: {
+        client_schema: getRecordArray(oauthSchema, 'client_schema').map(normalizeCredentialSchema),
+        credentials_schema: getRecordArray(oauthSchema, 'credentials_schema').map(normalizeCredentialSchema),
+      },
+      parameters: getRecordArray(subscriptionConstructor, 'parameters').map(normalizeParameterSchema),
+    },
+    subscription_schema: getRecordArray(value, 'subscription_schema').map(normalizeParameterSchema),
+  }
+}
+
+const normalizePluginDeclaration = (plugin: PluginInstallationItemResponse): PluginDeclaration => {
+  const { declaration } = plugin
+  return {
+    plugin_unique_identifier: plugin.plugin_unique_identifier,
+    version: declaration.version,
+    author: declaration.author ?? '',
+    icon: declaration.icon,
+    icon_dark: declaration.icon_dark ?? undefined,
+    name: declaration.name,
+    category: normalizePluginCategory(declaration.category),
+    label: normalizeI18nObject(declaration.label, declaration.name),
+    description: normalizeI18nObject(declaration.description, declaration.name),
+    created_at: declaration.created_at,
+    resource: declaration.resource,
+    plugins: declaration.plugins,
+    verified: declaration.verified ?? false,
+    endpoint: normalizePluginEndpointDeclaration(declaration.endpoint),
+    tool: normalizePluginToolDeclaration(declaration.tool),
+    datasource: normalizePluginToolDeclaration(declaration.datasource),
+    model: declaration.model,
+    tags: declaration.tags ?? [],
+    agent_strategy: declaration.agent_strategy,
+    meta: {
+      version: getString(declaration.meta.version) || declaration.version,
+      minimum_dify_version: getString(declaration.meta.minimum_dify_version) || undefined,
+    },
+    trigger: normalizePluginTriggerDeclaration(declaration.trigger, declaration.name),
+  }
+}
+
+export const normalizeInstalledPluginDetail = (plugin: PluginInstallationItemResponse): PluginDetail => {
+  const declaration = normalizePluginDeclaration(plugin)
+
+  return {
+    id: plugin.id,
+    created_at: plugin.created_at,
+    updated_at: plugin.updated_at,
+    name: declaration.name,
+    plugin_id: plugin.plugin_id,
+    plugin_unique_identifier: plugin.plugin_unique_identifier,
+    declaration,
+    installation_id: plugin.id,
+    tenant_id: plugin.tenant_id,
+    endpoints_setups: plugin.endpoints_setups,
+    endpoints_active: plugin.endpoints_active,
+    version: plugin.version,
+    latest_version: plugin.version,
+    latest_unique_identifier: plugin.plugin_unique_identifier,
+    source: normalizePluginSource(plugin.source),
+    meta: normalizePluginMeta(plugin.meta),
+    status: 'active',
+    deprecated_reason: '',
+    alternative_plugin_id: '',
+  }
 }
 
 const isUnfinishedPluginTask = (task: PluginTask) => task.status === TaskStatus.pending || task.status === TaskStatus.running
@@ -114,10 +529,13 @@ export const useCheckInstalled = ({
   pluginIds: string[]
   enabled: boolean
 }) => {
-  return useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
+  return useQuery(consoleQuery.workspaces.current.plugin.list.installations.ids.post.queryOptions({
     input: { body: { plugin_ids: pluginIds } },
     enabled,
     staleTime: 0,
+    select: response => ({
+      plugins: response.plugins.map(normalizeInstalledPluginDetail),
+    }),
   }))
 }
 
@@ -125,7 +543,7 @@ export const useInvalidateCheckInstalled = () => {
   const queryClient = useQueryClient()
   return () => {
     queryClient.invalidateQueries({
-      queryKey: consoleQuery.plugins.checkInstalled.key(),
+      queryKey: consoleQuery.workspaces.current.plugin.list.installations.ids.post.key(),
     })
   }
 }
