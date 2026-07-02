@@ -17,9 +17,9 @@ def test_snippet_list_fields_include_author_name() -> None:
         tags=[],
         created_by="account-1",
         author_name="Alice",
-        created_at=None,
+        created_at=1704067200,
         updated_by="account-1",
-        updated_at=None,
+        updated_at=1704067201,
     )
 
     result = dump_response(SnippetListItemResponse, snippet)
