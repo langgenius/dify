@@ -2,11 +2,26 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import { post } from '@/service/base'
+import { consoleClient } from '@/service/client'
 import { useUpdateAccessMode } from '..'
 
-vi.mock('@/service/base', () => ({
-  post: vi.fn(),
+vi.mock('@/service/client', () => ({
+  consoleClient: {
+    enterprise: {
+      webAppAuth: {
+        updateWebAppWhitelistSubjects: vi.fn(),
+      },
+    },
+  },
+  consoleQuery: {
+    enterprise: {
+      webAppAuth: {
+        getWebAppAccessMode: {
+          key: vi.fn(() => ['enterprise', 'web-app-auth', 'access-mode']),
+        },
+      },
+    },
+  },
 }))
 
 const createWrapper = () => {
@@ -25,7 +40,7 @@ const createWrapper = () => {
 describe('access-control service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(post).mockResolvedValue({})
+    vi.mocked(consoleClient.enterprise.webAppAuth.updateWebAppWhitelistSubjects).mockResolvedValue({})
   })
 
   // Access mode updates keep the legacy webapp whitelist payload contract.
@@ -43,7 +58,7 @@ describe('access-control service', () => {
       })
 
       await waitFor(() => {
-        expect(post).toHaveBeenCalledWith('/enterprise/webapp/app/access-mode', {
+        expect(consoleClient.enterprise.webAppAuth.updateWebAppWhitelistSubjects).toHaveBeenCalledWith({
           body: {
             appId: 'app-1',
             accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
