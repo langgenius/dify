@@ -600,7 +600,7 @@ class TestMiscApis:
             app.test_request_context("/"),
         ):
             with pytest.raises(Forbidden):
-                method(api, user, "ds1")
+                method(api, MagicMock(spec=Session), user, "ds1")
 
     def test_recommended_plugins(self, app: Flask) -> None:
         api = RagPipelineRecommendedPluginApi()

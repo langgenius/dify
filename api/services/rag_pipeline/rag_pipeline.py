@@ -160,6 +160,7 @@ class RagPipelineService:
         template_info: PipelineTemplateInfoEntity,
         current_user: Account | None = None,
         current_tenant_id: str | None = None,
+        session: Session | None = None,
     ):
         """
         Update pipeline template.
@@ -167,55 +168,70 @@ class RagPipelineService:
         :param template_info: template info
         """
         current_user, current_tenant_id = resolve_account_fallback(current_user, current_tenant_id)
-        with session_factory.get_session_maker().begin() as session:
-            customized_template: PipelineCustomizedTemplate | None = session.scalar(
+        if session is None:
+            with session_factory.get_session_maker().begin() as new_session:
+                return cls.update_customized_pipeline_template(
+                    template_id,
+                    template_info,
+                    current_user,
+                    current_tenant_id,
+                    session=new_session,
+                )
+
+        customized_template: PipelineCustomizedTemplate | None = session.scalar(
+            select(PipelineCustomizedTemplate)
+            .where(
+                PipelineCustomizedTemplate.id == template_id,
+                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
+            )
+            .limit(1)
+        )
+        if not customized_template:
+            raise ValueError("Customized pipeline template not found.")
+        # check template name is exist
+        template_name = template_info.name
+        if template_name:
+            template = session.scalar(
                 select(PipelineCustomizedTemplate)
                 .where(
-                    PipelineCustomizedTemplate.id == template_id,
+                    PipelineCustomizedTemplate.name == template_name,
                     PipelineCustomizedTemplate.tenant_id == current_tenant_id,
+                    PipelineCustomizedTemplate.id != template_id,
                 )
                 .limit(1)
             )
-            if not customized_template:
-                raise ValueError("Customized pipeline template not found.")
-            # check template name is exist
-            template_name = template_info.name
-            if template_name:
-                template = session.scalar(
-                    select(PipelineCustomizedTemplate)
-                    .where(
-                        PipelineCustomizedTemplate.name == template_name,
-                        PipelineCustomizedTemplate.tenant_id == current_tenant_id,
-                        PipelineCustomizedTemplate.id != template_id,
-                    )
-                    .limit(1)
-                )
-                if template:
-                    raise ValueError("Template name is already exists")
-            customized_template.name = template_info.name
-            customized_template.description = template_info.description
-            customized_template.icon = template_info.icon_info.model_dump()
-            customized_template.updated_by = current_user.id
-            return customized_template
+            if template:
+                raise ValueError("Template name is already exists")
+        customized_template.name = template_info.name
+        customized_template.description = template_info.description
+        customized_template.icon = template_info.icon_info.model_dump()
+        customized_template.updated_by = current_user.id
+        return customized_template
 
     @classmethod
-    def delete_customized_pipeline_template(cls, template_id: str, current_tenant_id: str | None = None):
+    def delete_customized_pipeline_template(
+        cls, template_id: str, current_tenant_id: str | None = None, session: Session | None = None
+    ):
         """
         Delete customized pipeline template.
         """
         current_tenant_id = resolve_tenant_id_fallback(current_tenant_id)
-        with session_factory.get_session_maker().begin() as session:
-            customized_template: PipelineCustomizedTemplate | None = session.scalar(
-                select(PipelineCustomizedTemplate)
-                .where(
-                    PipelineCustomizedTemplate.id == template_id,
-                    PipelineCustomizedTemplate.tenant_id == current_tenant_id,
-                )
-                .limit(1)
+        if session is None:
+            with session_factory.get_session_maker().begin() as new_session:
+                cls.delete_customized_pipeline_template(template_id, current_tenant_id, session=new_session)
+                return
+
+        customized_template: PipelineCustomizedTemplate | None = session.scalar(
+            select(PipelineCustomizedTemplate)
+            .where(
+                PipelineCustomizedTemplate.id == template_id,
+                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
             )
-            if not customized_template:
-                raise ValueError("Customized pipeline template not found.")
-            session.delete(customized_template)
+            .limit(1)
+        )
+        if not customized_template:
+            raise ValueError("Customized pipeline template not found.")
+        session.delete(customized_template)
 
     def get_draft_workflow(self, pipeline: Pipeline) -> Workflow | None:
         """
@@ -1642,29 +1658,32 @@ class RagPipelineService:
 
             return datasource_plugins
 
-    def get_pipeline(self, tenant_id: str, dataset_id: str) -> Pipeline:
+    def get_pipeline(self, tenant_id: str, dataset_id: str, session: Session | None = None) -> Pipeline:
         """
         Get pipeline
         """
-        with self._session_maker() as session:
-            dataset: Dataset | None = session.scalar(
-                select(Dataset)
-                .where(
-                    Dataset.id == dataset_id,
-                    Dataset.tenant_id == tenant_id,
-                )
-                .limit(1)
+        if session is None:
+            with self._session_maker() as new_session:
+                return self.get_pipeline(tenant_id, dataset_id, session=new_session)
+
+        dataset: Dataset | None = session.scalar(
+            select(Dataset)
+            .where(
+                Dataset.id == dataset_id,
+                Dataset.tenant_id == tenant_id,
             )
-            if not dataset:
-                raise ValueError("Dataset not found")
-            pipeline: Pipeline | None = session.scalar(
-                select(Pipeline)
-                .where(
-                    Pipeline.id == dataset.pipeline_id,
-                    Pipeline.tenant_id == tenant_id,
-                )
-                .limit(1)
+            .limit(1)
+        )
+        if not dataset:
+            raise ValueError("Dataset not found")
+        pipeline: Pipeline | None = session.scalar(
+            select(Pipeline)
+            .where(
+                Pipeline.id == dataset.pipeline_id,
+                Pipeline.tenant_id == tenant_id,
             )
-            if not pipeline:
-                raise ValueError("Pipeline not found")
-            return pipeline
+            .limit(1)
+        )
+        if not pipeline:
+            raise ValueError("Pipeline not found")
+        return pipeline
