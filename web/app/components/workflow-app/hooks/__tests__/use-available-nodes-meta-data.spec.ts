@@ -63,7 +63,7 @@ describe('useAvailableNodesMetaData', () => {
     expect(result.current.nodesMap?.[BlockEnum.IterationStart]?.metaData.helpLinkUri).toBeUndefined()
     expect(result.current.nodesMap?.[BlockEnum.LoopStart]?.metaData.helpLinkUri).toBeUndefined()
     expect(result.current.nodesMap?.[BlockEnum.LoopEnd]?.metaData.helpLinkUri).toBeUndefined()
-    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toBe('/docs/use-dify/nodes/user-input')
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toBe('/docs/use-dify/nodes/start')
   })
 
   it('should expose Agent v2 instead of legacy Agent when Agent v2 is enabled', () => {

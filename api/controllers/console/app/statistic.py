@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 import sqlalchemy as sa
-from flask import abort, jsonify, request
+from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
@@ -20,7 +20,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
-from libs.helper import convert_datetime_to_date
+from libs.helper import convert_datetime_to_date, dump_response
 from libs.login import login_required
 from models import AppMode
 from models.account import Account
@@ -44,8 +44,15 @@ class DailyMessageStatisticItem(ResponseModel):
     message_count: int
 
 
-class DailyMessageStatisticResponse(ResponseModel):
-    data: list[DailyMessageStatisticItem]
+register_schema_models(console_ns, StatisticTimeRangeQuery)
+
+
+class StatisticDataResponse[T](ResponseModel):
+    data: list[T]
+
+
+class DailyMessageStatisticResponse(StatisticDataResponse[DailyMessageStatisticItem]):
+    pass
 
 
 class DailyConversationStatisticItem(ResponseModel):
@@ -53,8 +60,8 @@ class DailyConversationStatisticItem(ResponseModel):
     conversation_count: int
 
 
-class DailyConversationStatisticResponse(ResponseModel):
-    data: list[DailyConversationStatisticItem]
+class DailyConversationStatisticResponse(StatisticDataResponse[DailyConversationStatisticItem]):
+    pass
 
 
 class DailyTerminalStatisticItem(ResponseModel):
@@ -62,19 +69,19 @@ class DailyTerminalStatisticItem(ResponseModel):
     terminal_count: int
 
 
-class DailyTerminalStatisticResponse(ResponseModel):
-    data: list[DailyTerminalStatisticItem]
+class DailyTerminalStatisticResponse(StatisticDataResponse[DailyTerminalStatisticItem]):
+    pass
 
 
 class DailyTokenCostStatisticItem(ResponseModel):
     date: str
-    token_count: int
-    total_price: str | float
-    currency: str
+    token_count: int | None = None
+    total_price: Decimal | None = None
+    currency: str | None = None
 
 
-class DailyTokenCostStatisticResponse(ResponseModel):
-    data: list[DailyTokenCostStatisticItem]
+class DailyTokenCostStatisticResponse(StatisticDataResponse[DailyTokenCostStatisticItem]):
+    pass
 
 
 class AverageSessionInteractionStatisticItem(ResponseModel):
@@ -82,8 +89,8 @@ class AverageSessionInteractionStatisticItem(ResponseModel):
     interactions: float
 
 
-class AverageSessionInteractionStatisticResponse(ResponseModel):
-    data: list[AverageSessionInteractionStatisticItem]
+class AverageSessionInteractionStatisticResponse(StatisticDataResponse[AverageSessionInteractionStatisticItem]):
+    pass
 
 
 class UserSatisfactionRateStatisticItem(ResponseModel):
@@ -91,8 +98,8 @@ class UserSatisfactionRateStatisticItem(ResponseModel):
     rate: float
 
 
-class UserSatisfactionRateStatisticResponse(ResponseModel):
-    data: list[UserSatisfactionRateStatisticItem]
+class UserSatisfactionRateStatisticResponse(StatisticDataResponse[UserSatisfactionRateStatisticItem]):
+    pass
 
 
 class AverageResponseTimeStatisticItem(ResponseModel):
@@ -100,8 +107,8 @@ class AverageResponseTimeStatisticItem(ResponseModel):
     latency: float
 
 
-class AverageResponseTimeStatisticResponse(ResponseModel):
-    data: list[AverageResponseTimeStatisticItem]
+class AverageResponseTimeStatisticResponse(StatisticDataResponse[AverageResponseTimeStatisticItem]):
+    pass
 
 
 class TokensPerSecondStatisticItem(ResponseModel):
@@ -109,20 +116,27 @@ class TokensPerSecondStatisticItem(ResponseModel):
     tps: float
 
 
-class TokensPerSecondStatisticResponse(ResponseModel):
-    data: list[TokensPerSecondStatisticItem]
+class TokensPerSecondStatisticResponse(StatisticDataResponse[TokensPerSecondStatisticItem]):
+    pass
 
 
-register_schema_models(console_ns, StatisticTimeRangeQuery)
 register_response_schema_models(
     console_ns,
+    DailyMessageStatisticItem,
     DailyMessageStatisticResponse,
+    DailyConversationStatisticItem,
     DailyConversationStatisticResponse,
+    DailyTerminalStatisticItem,
     DailyTerminalStatisticResponse,
+    DailyTokenCostStatisticItem,
     DailyTokenCostStatisticResponse,
+    AverageSessionInteractionStatisticItem,
     AverageSessionInteractionStatisticResponse,
+    UserSatisfactionRateStatisticItem,
     UserSatisfactionRateStatisticResponse,
+    AverageResponseTimeStatisticItem,
     AverageResponseTimeStatisticResponse,
+    TokensPerSecondStatisticItem,
     TokensPerSecondStatisticResponse,
 )
 
@@ -131,8 +145,7 @@ register_response_schema_models(
 class DailyMessageStatistic(Resource):
     @console_ns.doc("get_daily_message_statistics")
     @console_ns.doc(description="Get daily message statistics for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(StatisticTimeRangeQuery)})
     @console_ns.response(
         200,
         "Daily message statistics retrieved successfully",
@@ -185,15 +198,14 @@ WHERE
             for i in rs:
                 response_data.append({"date": str(i.date), "message_count": i.message_count})
 
-        return jsonify({"data": response_data})
+        return dump_response(DailyMessageStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-conversations")
 class DailyConversationStatistic(Resource):
     @console_ns.doc("get_daily_conversation_statistics")
     @console_ns.doc(description="Get daily conversation statistics for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(StatisticTimeRangeQuery)})
     @console_ns.response(
         200,
         "Daily conversation statistics retrieved successfully",
@@ -245,15 +257,14 @@ WHERE
             for i in rs:
                 response_data.append({"date": str(i.date), "conversation_count": i.conversation_count})
 
-        return jsonify({"data": response_data})
+        return dump_response(DailyConversationStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-end-users")
 class DailyTerminalsStatistic(Resource):
     @console_ns.doc("get_daily_terminals_statistics")
     @console_ns.doc(description="Get daily terminal/end-user statistics for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(StatisticTimeRangeQuery)})
     @console_ns.response(
         200,
         "Daily terminal statistics retrieved successfully",
@@ -306,15 +317,14 @@ WHERE
             for i in rs:
                 response_data.append({"date": str(i.date), "terminal_count": i.terminal_count})
 
-        return jsonify({"data": response_data})
+        return dump_response(DailyTerminalStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/token-costs")
 class DailyTokenCostStatistic(Resource):
     @console_ns.doc("get_daily_token_cost_statistics")
     @console_ns.doc(description="Get daily token cost statistics for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(StatisticTimeRangeQuery)})
     @console_ns.response(
         200,
         "Daily token cost statistics retrieved successfully",
@@ -370,15 +380,14 @@ WHERE
                     {"date": str(i.date), "token_count": i.token_count, "total_price": i.total_price, "currency": "USD"}
                 )
 
-        return jsonify({"data": response_data})
+        return dump_response(DailyTokenCostStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/average-session-interactions")
 class AverageSessionInteractionStatistic(Resource):
     @console_ns.doc("get_average_session_interaction_statistics")
     @console_ns.doc(description="Get average session interaction statistics for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(StatisticTimeRangeQuery)})
     @console_ns.response(
         200,
         "Average session interaction statistics retrieved successfully",
@@ -450,15 +459,14 @@ ORDER BY
                     {"date": str(i.date), "interactions": float(i.interactions.quantize(Decimal("0.01")))}
                 )
 
-        return jsonify({"data": response_data})
+        return dump_response(AverageSessionInteractionStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/user-satisfaction-rate")
 class UserSatisfactionRateStatistic(Resource):
     @console_ns.doc("get_user_satisfaction_rate_statistics")
     @console_ns.doc(description="Get user satisfaction rate statistics for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(StatisticTimeRangeQuery)})
     @console_ns.response(
         200,
         "User satisfaction rate statistics retrieved successfully",
@@ -520,15 +528,14 @@ WHERE
                     }
                 )
 
-        return jsonify({"data": response_data})
+        return dump_response(UserSatisfactionRateStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/average-response-time")
 class AverageResponseTimeStatistic(Resource):
     @console_ns.doc("get_average_response_time_statistics")
     @console_ns.doc(description="Get average response time statistics for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(StatisticTimeRangeQuery)})
     @console_ns.response(
         200,
         "Average response time statistics retrieved successfully",
@@ -581,15 +588,14 @@ WHERE
             for i in rs:
                 response_data.append({"date": str(i.date), "latency": round(i.latency * 1000, 4)})
 
-        return jsonify({"data": response_data})
+        return dump_response(AverageResponseTimeStatisticResponse, {"data": response_data})
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/tokens-per-second")
 class TokensPerSecondStatistic(Resource):
     @console_ns.doc("get_tokens_per_second_statistics")
     @console_ns.doc(description="Get tokens per second statistics for an application")
-    @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(StatisticTimeRangeQuery)})
     @console_ns.response(
         200,
         "Tokens per second statistics retrieved successfully",
@@ -645,4 +651,4 @@ WHERE
             for i in rs:
                 response_data.append({"date": str(i.date), "tps": round(i.tokens_per_second, 4)})
 
-        return jsonify({"data": response_data})
+        return dump_response(TokensPerSecondStatisticResponse, {"data": response_data})
