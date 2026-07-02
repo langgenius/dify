@@ -44,6 +44,7 @@
   "interfaceLanguage": "Мова інтерфейсу",
   "invalid": "Посилання застаріло",
   "invalidInvitationCode": "Недійсний код запрошення",
+  "invitationAccountMismatch": "Ви ввійшли з іншого облікового запису. Перейдіть до запрошеного облікового запису та спробуйте ще раз.",
   "invitationCode": "Код запрошення",
   "invitationCodePlaceholder": "Ваш код запрошення",
   "join": "Приєднуйтесь",

@@ -44,6 +44,7 @@
   "interfaceLanguage": "Interface Language",
   "invalid": "The link has expired",
   "invalidInvitationCode": "Invalid invitation code",
+  "invitationAccountMismatch": "Je bent aangemeld met een ander account. Schakel over naar het uitgenodigde account en probeer het opnieuw.",
   "invitationCode": "Invitation Code",
   "invitationCodePlaceholder": "Your invitation code",
   "join": "Join ",

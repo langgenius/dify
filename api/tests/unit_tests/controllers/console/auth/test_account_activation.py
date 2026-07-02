@@ -14,7 +14,7 @@ import pytest
 from flask import Flask
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, InvitationAccountMismatchError
 from models.account import AccountStatus, TenantAccountRole
 
 
@@ -200,6 +200,13 @@ class TestActivateApi:
     @pytest.fixture(autouse=True)
     def mock_switch_tenant(self):
         with patch("controllers.console.auth.activate.TenantService.switch_tenant") as mock:
+            yield mock
+
+    @pytest.fixture(autouse=True)
+    def mock_current_account(self):
+        with patch(
+            "controllers.console.auth.activate.current_account_with_tenant_optional", return_value=(None, None)
+        ) as mock:
             yield mock
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
@@ -601,6 +608,45 @@ class TestActivateApi:
         )
         mock_switch_tenant.assert_called_once_with(mock_account, mock_invitation["tenant"].id, session=ANY)
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+
+    @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
+    @patch("controllers.console.auth.activate.db")
+    def test_activation_rejects_when_logged_in_account_does_not_match_invitee(
+        self,
+        mock_db: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_invitation: MagicMock,
+        mock_create_tenant_member: MagicMock,
+        app: Flask,
+        mock_invitation: MagicMock,
+        mock_account: MagicMock,
+        mock_switch_tenant: MagicMock,
+        mock_current_account: MagicMock,
+    ):
+        current_account = MagicMock()
+        current_account.id = "different-account-id"
+        mock_current_account.return_value = (current_account, "workspace-456")
+        mock_account.status = AccountStatus.ACTIVE
+        mock_invitation["data"]["requires_setup"] = False
+        mock_get_invitation.return_value = mock_invitation
+
+        with app.test_request_context(
+            "/activate",
+            method="POST",
+            json={
+                "workspace_id": "workspace-123",
+                "email": "invitee@example.com",
+                "token": "valid_token",
+            },
+        ):
+            with pytest.raises(InvitationAccountMismatchError):
+                ActivateApi().post()
+
+        mock_revoke_token.assert_not_called()
+        mock_create_tenant_member.assert_not_called()
+        mock_switch_tenant.assert_not_called()
 
     @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")

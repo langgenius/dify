@@ -44,6 +44,7 @@
   "interfaceLanguage": "Bahasa Antarmuka",
   "invalid": "Tautan telah kedaluwarsa",
   "invalidInvitationCode": "Kode undangan tidak valid",
+  "invitationAccountMismatch": "Anda masuk dengan akun yang berbeda. Silakan beralih ke akun yang diundang dan coba lagi.",
   "invitationCode": "Kode Undangan",
   "invitationCodePlaceholder": "Kode undangan Anda",
   "join": "Gabung",

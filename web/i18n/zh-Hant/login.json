@@ -44,6 +44,7 @@
   "interfaceLanguage": "介面語言",
   "invalid": "連結已失效",
   "invalidInvitationCode": "無效的邀請碼",
+  "invitationAccountMismatch": "目前登入帳號不是受邀帳號。請切換到受邀帳號後再試一次。",
   "invitationCode": "邀請碼",
   "invitationCodePlaceholder": "輸入邀請碼",
   "join": "加入",

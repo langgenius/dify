@@ -44,6 +44,7 @@
   "interfaceLanguage": "インターフェース言語",
   "invalid": "リンクの有効期限が切れています",
   "invalidInvitationCode": "無効な招待コード",
+  "invitationAccountMismatch": "別のアカウントでサインインしています。招待されたアカウントに切り替えて、もう一度お試しください。",
   "invitationCode": "招待コード",
   "invitationCodePlaceholder": "招待コードを入力してください",
   "join": "参加する",

@@ -44,6 +44,7 @@
   "interfaceLanguage": "Idioma de interfaz",
   "invalid": "El enlace ha expirado",
   "invalidInvitationCode": "Código de invitación inválido",
+  "invitationAccountMismatch": "Has iniciado sesión con una cuenta diferente. Cambia a la cuenta invitada e inténtalo de nuevo.",
   "invitationCode": "Código de invitación",
   "invitationCodePlaceholder": "Tu código de invitación",
   "join": "Unirse",

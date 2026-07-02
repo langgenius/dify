@@ -44,6 +44,7 @@
   "interfaceLanguage": "Idioma da interface",
   "invalid": "O link expirou",
   "invalidInvitationCode": "Código de convite inválido",
+  "invitationAccountMismatch": "Você entrou com uma conta diferente. Mude para a conta convidada e tente novamente.",
   "invitationCode": "Código de convite",
   "invitationCodePlaceholder": "Seu código de convite",
   "join": "Participar",

@@ -44,6 +44,7 @@
   "interfaceLanguage": "Ngôn ngữ giao diện",
   "invalid": "Liên kết đã hết hạn",
   "invalidInvitationCode": "Mã mời không hợp lệ",
+  "invitationAccountMismatch": "Bạn đang đăng nhập bằng một tài khoản khác. Vui lòng chuyển sang tài khoản được mời rồi thử lại.",
   "invitationCode": "Mã mời",
   "invitationCodePlaceholder": "Nhập mã mời của bạn",
   "join": "Tham gia",

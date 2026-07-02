@@ -44,6 +44,7 @@
   "interfaceLanguage": "Limba interfeței",
   "invalid": "Link-ul a expirat",
   "invalidInvitationCode": "Cod de invitație invalid",
+  "invitationAccountMismatch": "Sunteți autentificat cu un alt cont. Comutați la contul invitat și încercați din nou.",
   "invitationCode": "Cod de invitație",
   "invitationCodePlaceholder": "Codul tău de invitație",
   "join": "Alătură-te",
