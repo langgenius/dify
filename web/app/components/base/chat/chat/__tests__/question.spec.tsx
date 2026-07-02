@@ -48,9 +48,6 @@ vi.mock('../content-switch', () => ({
   },
 }))
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div className="markdown-body">{content}</div>,
-}))
 
 // Mock ResizeObserver and capture lifecycle for targeted coverage
 const observeMock = vi.fn()
@@ -132,11 +129,18 @@ describe('Question component', () => {
   it('should render the question content container and default avatar when hideAvatar is false', () => {
     const { container } = renderWithProvider(makeItem())
 
-    const markdown = container.querySelector('.markdown-body')
-    expect(markdown).toBeInTheDocument()
+    expect(screen.getByTestId('question-content')).toHaveTextContent('This is the question content')
 
     const avatar = container.querySelector('.size-10') || container.querySelector('.size-10.shrink-0')
     expect(avatar).toBeTruthy()
+  })
+
+  it('should render user-entered HTML as plain text', () => {
+    renderWithProvider(makeItem({ content: '<button class="primary-button">Confirm</button>' }))
+
+    const content = screen.getByTestId('question-content')
+    expect(content).toHaveTextContent('<button class="primary-button">Confirm</button>')
+    expect(content.querySelector('button.primary-button')).toBeNull()
   })
 
   it('should hide avatar when hideAvatar is true', () => {
@@ -223,9 +227,9 @@ describe('Question component', () => {
     })
   })
 
-  it('should cancel editing and revert to original markdown when cancel is clicked', async () => {
+  it('should cancel editing and revert to original text when cancel is clicked', async () => {
     const user = userEvent.setup()
-    const { container } = renderWithProvider(makeItem())
+    renderWithProvider(makeItem())
 
     const editBtn = screen.getByRole('button', { name: 'common.operation.edit' })
     await user.click(editBtn)
@@ -239,8 +243,7 @@ describe('Question component', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-      const md = container.querySelector('.markdown-body')
-      expect(md).toBeInTheDocument()
+      expect(screen.getByTestId('question-content')).toHaveTextContent('This is the question content')
     })
   })
 
