@@ -239,4 +239,4 @@ scripts/stress-test/reports/
 *.local.md
 
 # Code Agent Folder
-.qoder/*
+.omo/
