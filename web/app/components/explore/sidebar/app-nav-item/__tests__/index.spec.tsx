@@ -51,6 +51,7 @@ describe('AppNavItem', () => {
       const link = screen.getByRole('link', { name: 'My App' })
 
       expect(link).toHaveAttribute('href', '/installed/app-123')
+      expect(link).toHaveAttribute('aria-label', 'My App')
       expect(link).not.toHaveAttribute('aria-current')
     })
 

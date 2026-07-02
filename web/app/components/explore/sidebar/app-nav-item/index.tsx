@@ -72,6 +72,7 @@ export default function AppNavItem({
               <Link
                 href={url}
                 aria-current={isSelected ? 'page' : undefined}
+                aria-label={name}
                 title={name}
                 className={cn(isMainNav ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden' : 'flex min-w-0 flex-1 items-center justify-center outline-hidden pc:w-0 pc:grow pc:justify-start pc:space-x-2')}
               >
