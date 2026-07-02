@@ -4,3 +4,4 @@ playwright-report/
 test-results/
 cucumber-report/
 .logs/
+.generated-test-materials/
