@@ -57,15 +57,15 @@ describe('ChatRecord', () => {
     })
 
     expect(await screen.findByText('Question 1')).toBeInTheDocument()
-    expect(screen.getByText('Answer 1')).toBeInTheDocument()
-    expect(screen.getByText('Question 3')).toBeInTheDocument()
-    expect(screen.getByText('Answer 3')).toBeInTheDocument()
+    expect(await screen.findByText('Answer 1')).toBeInTheDocument()
+    expect(await screen.findByText('Question 3')).toBeInTheDocument()
+    expect(await screen.findByText('Answer 3')).toBeInTheDocument()
     expect(screen.queryByText('Question 2')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Previous' }))
 
     expect(await screen.findByText('Question 2')).toBeInTheDocument()
-    expect(screen.getByText('Answer 2')).toBeInTheDocument()
+    expect(await screen.findByText('Answer 2')).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.queryByText('Question 3')).not.toBeInTheDocument()
     })

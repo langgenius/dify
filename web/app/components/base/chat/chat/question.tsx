@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'
-import { Markdown } from '@/app/components/base/markdown'
 import ActionButton from '../../action-button'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
@@ -59,6 +58,7 @@ const Question: FC<QuestionProps> = ({
   const [editedContent, setEditedContent] = useState(content)
   const [contentWidth, setContentWidth] = useState(0)
   const contentRef = useRef<HTMLDivElement>(null)
+  const editInputRef = useRef<HTMLTextAreaElement>(null)
   const isComposingRef = useRef(false)
   const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -160,6 +160,11 @@ const Question: FC<QuestionProps> = ({
     }
   }, [clearCompositionEndTimer])
 
+  useEffect(() => {
+    if (isEditing)
+      editInputRef.current?.focus()
+  }, [isEditing])
+
   return (
     <div className="mb-2 flex justify-end last:mb-0">
       <div className={cn('group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14', isEditing && 'flex-1')}>
@@ -206,15 +211,15 @@ const Question: FC<QuestionProps> = ({
             )
           }
           {!isEditing
-            ? <Markdown content={content} />
+            ? <div className="break-words whitespace-pre-wrap">{content}</div>
             : (
                 <div className="flex flex-col gap-4">
                   <div className="max-h-[158px] overflow-x-hidden overflow-y-auto pr-1">
                     <Textarea
+                      ref={editInputRef}
                       className={cn(
                         'w-full resize-none bg-transparent p-0 body-lg-regular leading-7 text-text-primary outline-hidden',
                       )}
-                      autoFocus
                       minRows={1}
                       value={editedContent}
                       onChange={e => setEditedContent(e.target.value)}
