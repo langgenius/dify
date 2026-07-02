@@ -1,16 +1,20 @@
-from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
+from models import Account
 from models.enums import TagType
+from models.snippet import CustomizedSnippet
 from services.tag_service import TagBindingCreatePayload, TagBindingDeletePayload, TagService, UpdateTagPayload
 
 
 @pytest.fixture
 def current_user(mocker: MockerFixture):
-    user = SimpleNamespace(id="user-1", current_tenant_id="tenant-1")
+    user = MagicMock(spec=Account)
+    user.id = "user-1"
+    user.current_tenant_id = "tenant-1"
     mocker.patch("services.tag_service.current_user", user)
     return user
 
@@ -46,7 +50,9 @@ def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(mocker: M
 
 def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(mocker: MockerFixture, current_user, db_session):
     mocker.patch("services.tag_service.TagService.check_target_exists")
-    db_session.execute.return_value = SimpleNamespace(rowcount=1)
+    execute_result = MagicMock()
+    execute_result.rowcount = 1
+    db_session.execute.return_value = execute_result
 
     TagService.delete_tag_binding(
         TagBindingDeletePayload(
@@ -63,7 +69,9 @@ def test_delete_tag_binding_limits_deletion_to_valid_snippet_tags(mocker: Mocker
 
 def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(mocker: MockerFixture, current_user, db_session):
     mocker.patch("services.tag_service.TagService.check_target_exists")
-    db_session.execute.return_value = SimpleNamespace(rowcount=0)
+    execute_result = MagicMock()
+    execute_result.rowcount = 0
+    db_session.execute.return_value = execute_result
 
     TagService.delete_tag_binding(
         TagBindingDeletePayload(
@@ -151,7 +159,9 @@ def test_get_target_ids_by_tag_ids_returns_empty_without_query_for_empty_input(d
 
 
 def test_check_target_exists_accepts_existing_snippet(current_user, db_session):
-    db_session.scalar.return_value = SimpleNamespace(id="snippet-1")
+    snippet = MagicMock(spec=CustomizedSnippet)
+    snippet.id = "snippet-1"
+    db_session.scalar.return_value = snippet
 
     TagService.check_target_exists("snippet", "snippet-1", db_session)
 
