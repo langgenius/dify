@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, cast, overload, override
 
 from pydantic import JsonValue
@@ -24,6 +25,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.repositories.human_input_repository import (
     FormCreateParams,
+    HumanInputFormEntity,
     HumanInputFormRepository,
     HumanInputFormRepositoryImpl,
 )
@@ -34,6 +36,12 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormInputConfig,
+    HumanInputNodeData,
+)
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import File, FileTransferMethod, FileType
@@ -49,12 +57,6 @@ from graphon.model_runtime.entities.llm_entities import (
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from graphon.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormInputConfig,
-    HumanInputNodeData,
-)
 from graphon.nodes.llm.runtime_protocols import (
     LLMPollingCapableProtocol,
     LLMProtocol,
@@ -62,11 +64,7 @@ from graphon.nodes.llm.runtime_protocols import (
     RetrieverAttachmentLoaderProtocol,
 )
 from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
-from graphon.nodes.runtime import (
-    HumanInputFormStateProtocol,
-    HumanInputNodeRuntimeProtocol,
-    ToolNodeRuntimeProtocol,
-)
+from graphon.nodes.runtime import ToolNodeRuntimeProtocol
 from graphon.nodes.tool.exc import ToolNodeError, ToolRuntimeInvocationError, ToolRuntimeResolutionError
 from graphon.nodes.tool_runtime_entities import (
     ToolRuntimeHandle,
@@ -759,7 +757,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 return ToolRuntimeInvocationError(str(exc))
 
 
-class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
+class DifyHumanInputNodeRuntime:
     def __init__(
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
@@ -778,7 +776,9 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         invoke_from = self._run_context.invoke_from
         if isinstance(invoke_from, str):
             return invoke_from
-        return str(getattr(invoke_from, "value", invoke_from))
+        if isinstance(invoke_from, Enum):
+            return str(invoke_from.value)
+        return str(invoke_from)
 
     def _resolve_delivery_methods(self, *, node_data: HumanInputNodeData) -> Sequence[DeliveryChannelConfig]:
         invoke_source = self._invoke_source()
@@ -823,8 +823,7 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             form_repository=form_repository,
         )
 
-    @override
-    def get_form(self, *, node_id: str) -> HumanInputFormStateProtocol | None:
+    def get_form(self, *, node_id: str) -> HumanInputFormEntity | None:
         repo = self.build_form_repository()
         return repo.get_form(node_id)
 
@@ -845,7 +844,6 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             )
         return restored_data
 
-    @override
     def create_form(
         self,
         *,
@@ -853,7 +851,7 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         node_data: HumanInputNodeData,
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
-    ) -> HumanInputFormStateProtocol:
+    ) -> HumanInputFormEntity:
         repo = self.build_form_repository()
         params = FormCreateParams(
             workflow_execution_id=self._workflow_execution_id_getter() if self._workflow_execution_id_getter else None,
