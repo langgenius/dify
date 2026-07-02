@@ -2,6 +2,7 @@
 
 import type { FC } from 'react'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { normaliseUserCodeInput } from '../utils/user-code'
 
 type Props = {
@@ -19,6 +20,7 @@ type Props = {
  * not need to run validation itself.
  */
 const CodeInput: FC<Props> = ({ value, onChange, disabled, autoFocus }) => {
+  const { t } = useTranslation('deviceFlow')
   const handle = useCallback((raw: string) => {
     onChange(normaliseUserCodeInput(raw))
   }, [onChange])
@@ -32,7 +34,7 @@ const CodeInput: FC<Props> = ({ value, onChange, disabled, autoFocus }) => {
       spellCheck={false}
       placeholder="ABCD-1234"
       maxLength={9}
-      aria-label="one-time code"
+      aria-label={t('codeEntry.codeAriaLabel')}
       className="border-components-input-border-normal w-full rounded-lg border bg-components-input-bg-normal px-4 py-3 text-center font-mono text-2xl tracking-wider text-text-primary focus:border-components-input-border-active focus:outline-none"
       value={value}
       disabled={disabled}

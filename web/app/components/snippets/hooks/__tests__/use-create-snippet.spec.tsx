@@ -32,7 +32,13 @@ vi.mock('@/service/use-snippets', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     snippets: {
-      syncDraftWorkflow: mockSyncDraftWorkflow,
+      bySnippetId: {
+        workflows: {
+          draft: {
+            post: mockSyncDraftWorkflow,
+          },
+        },
+      },
     },
   },
 }))
@@ -123,7 +129,7 @@ describe('useCreateSnippet', () => {
         },
       })
       expect(mockSyncDraftWorkflow).toHaveBeenCalledWith({
-        params: { snippetId: 'snippet-123' },
+        params: { snippet_id: 'snippet-123' },
         body: {
           graph,
           input_fields: [

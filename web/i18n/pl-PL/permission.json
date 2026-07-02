@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Brak opisu",
   "accessRule.noRules": "Brak reguł dostępu",
   "accessRule.noUserAccessSettings": "Brak indywidualnych ustawień uprawnień",
+  "accessRule.onlyMe": "Tylko ja",
+  "accessRule.onlyMeDescription": "Tylko Ty możesz uzyskać dostęp do tego zasobu.",
   "accessRule.permission": "Uprawnienie",
   "accessRule.resourceOpenScope": "Zakres otwarcia zasobu",
   "accessRule.resourceOpenScopeDescription": "Wybierz, dla kogo ten zasób jest otwarty. Uprawnienia ról nadal decydują o tym, co każdy członek może robić.",

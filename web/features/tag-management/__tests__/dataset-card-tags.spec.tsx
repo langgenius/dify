@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DatasetCardTags } from '../components/dataset-card-tags'
@@ -30,8 +30,8 @@ vi.mock('@/features/tag-management/components/tag-selector', () => ({
 
 describe('DatasetCardTags', () => {
   const mockTags: Tag[] = [
-    { id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: 0 },
-    { id: 'tag-2', name: 'Tag 2', type: 'knowledge', binding_count: 0 },
+    { id: 'tag-1', name: 'Tag 1', type: 'knowledge', binding_count: '' },
+    { id: 'tag-2', name: 'Tag 2', type: 'knowledge', binding_count: '' },
   ]
 
   const defaultProps = {
@@ -163,7 +163,7 @@ describe('DatasetCardTags', () => {
         id: `tag-${i}`,
         name: `Tag ${i}`,
         type: 'knowledge',
-        binding_count: 0,
+        binding_count: '',
       }))
       render(<DatasetCardTags {...defaultProps} tags={manyTags} />)
       expect(screen.getByText('20 tags')).toBeInTheDocument()
