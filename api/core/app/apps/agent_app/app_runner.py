@@ -811,6 +811,9 @@ class AgentAppRunner:
         usage: LLMUsage | None,
     ) -> None:
         """Finish a successful streamed turn without duplicating the final text."""
+        if not answer and streamed_answer:
+            answer = streamed_answer
+
         if not streamed_answer:
             publish_text_answer(
                 queue_manager=queue_manager,
@@ -880,6 +883,8 @@ class AgentAppRunner:
         configured the value is a JSON object, which we serialize so the chat
         message always has a string body.
         """
+        if output is None:
+            return ""
         if isinstance(output, str):
             return output
         if isinstance(output, dict):
