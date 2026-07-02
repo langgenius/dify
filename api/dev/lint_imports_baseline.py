@@ -14,16 +14,29 @@ import dataclasses
 import json
 import os
 import sys
-from collections import defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, NewType, TypedDict
 
 from importlinter import configuration
 from importlinter.application import use_cases
 
 type ComparisonMode = Literal["subset", "count"]
-type Snapshot = dict[str, dict[str, list[str]]]
+ContractName = NewType("ContractName", str)
+ModuleName = NewType("ModuleName", str)
+type ImportedModuleList = list[ModuleName]
+type ImportedModuleSet = set[ModuleName]
+type SnapshotModulesByImporter = dict[ModuleName, ImportedModuleList]
+type MutableSnapshotModulesByImporter = dict[ModuleName, ImportedModuleSet]
+type Snapshot = dict[ContractName, SnapshotModulesByImporter]
+type ImportEdge = tuple[ModuleName, ModuleName]
+
+
+class BaselineFile(TypedDict):
+    version: int
+    contracts: dict[str, dict[str, list[str]]]
+
 
 BASELINE_VERSION = 1
 DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / ".importlinter"
@@ -31,11 +44,11 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parents[1] / ".importlinter"
 
 @dataclass(frozen=True)
 class SnapshotFailure:
-    contract_name: str
-    importer: str
+    contract_name: ContractName
+    importer: ModuleName
     baseline_count: int
     current_count: int
-    extra_imports: tuple[str, ...]
+    extra_imports: tuple[ModuleName, ...]
 
 
 def load_report(config_path: str | None = None, contract_ids: tuple[str, ...] = ()) -> Any:
@@ -58,21 +71,22 @@ def load_report(config_path: str | None = None, contract_ids: tuple[str, ...] = 
 def snapshot_from_report(report: Any) -> Snapshot:
     """Return broken direct-import edges grouped by contract and importer module."""
 
-    snapshot: dict[str, dict[str, set[str]]] = {}
+    snapshot: Snapshot = {}
     for contract, check in report.get_contracts_and_checks():
         if check.kept:
             continue
 
-        imports_by_importer: dict[str, set[str]] = defaultdict(set)
+        imports_by_importer: MutableSnapshotModulesByImporter = {}
         for importer, imported in _iter_direct_imports(check.metadata):
-            imports_by_importer[importer].add(imported)
+            imports_by_importer.setdefault(importer, set()).add(imported)
 
         if check.metadata and not imports_by_importer:
             raise ValueError(f"Broken contract '{contract.name}' does not expose direct import edges in metadata.")
 
         if imports_by_importer:
-            snapshot[contract.name] = {
-                importer: sorted(imported_modules) for importer, imported_modules in sorted(imports_by_importer.items())
+            snapshot[ContractName(contract.name)] = {
+                importer: sorted(imported_modules)
+                for importer, imported_modules in sorted(imports_by_importer.items())
             }
 
     return {contract_name: snapshot[contract_name] for contract_name in sorted(snapshot)}
@@ -119,7 +133,7 @@ def compare_snapshots(
 def load_baseline(path: Path) -> Snapshot:
     """Load and validate a baseline file."""
 
-    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload: BaselineFile = json.loads(path.read_text(encoding="utf-8"))
     version = payload.get("version")
     if version != BASELINE_VERSION:
         raise ValueError(f"Unsupported baseline version {version!r}; expected {BASELINE_VERSION}.")
@@ -133,13 +147,16 @@ def load_baseline(path: Path) -> Snapshot:
         if not isinstance(contract_name, str) or not isinstance(importers, dict):
             raise ValueError("Each baseline contract entry must be an object keyed by contract name.")
 
-        normalized[contract_name] = {}
+        normalized_importers: SnapshotModulesByImporter = {}
         for importer, imported_modules in importers.items():
             if not isinstance(importer, str) or not isinstance(imported_modules, list):
                 raise ValueError("Each baseline importer entry must map to a list of modules.")
             if not all(isinstance(module_name, str) for module_name in imported_modules):
                 raise ValueError("Each baseline imported module must be a string.")
-            normalized[contract_name][importer] = sorted(set(imported_modules))
+            normalized_importers[ModuleName(importer)] = sorted(
+                {ModuleName(module_name) for module_name in imported_modules}
+            )
+        normalized[ContractName(contract_name)] = normalized_importers
 
     return normalized
 
@@ -147,9 +164,15 @@ def load_baseline(path: Path) -> Snapshot:
 def write_baseline(path: Path, snapshot: Snapshot) -> None:
     """Persist the supplied snapshot as a JSON baseline file."""
 
-    payload = {
+    payload: BaselineFile = {
         "version": BASELINE_VERSION,
-        "contracts": snapshot,
+        "contracts": {
+            contract_name: {
+                importer: list(imported_modules)
+                for importer, imported_modules in importers.items()
+            }
+            for contract_name, importers in snapshot.items()
+        },
     }
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -217,15 +240,16 @@ def build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _iter_direct_imports(node: object, seen: set[int] | None = None):
+def _iter_direct_imports(node: object, seen: set[int] | None = None) -> Iterator[ImportEdge]:
     if seen is None:
         seen = set()
 
     if node is None or isinstance(node, (str, int, float, bool)):
         return
 
-    if dataclasses.is_dataclass(node):
-        yield from _iter_direct_imports(dataclasses.asdict(node), seen)
+    if not isinstance(node, type) and dataclasses.is_dataclass(node):
+        for field in dataclasses.fields(node):
+            yield from _iter_direct_imports(getattr(node, field.name), seen)
         return
 
     if isinstance(node, dict):
@@ -237,7 +261,7 @@ def _iter_direct_imports(node: object, seen: set[int] | None = None):
         importer = node.get("importer")
         imported = node.get("imported")
         if isinstance(importer, str) and isinstance(imported, str):
-            yield importer, imported
+            yield ModuleName(importer), ModuleName(imported)
 
         for value in node.values():
             yield from _iter_direct_imports(value, seen)
