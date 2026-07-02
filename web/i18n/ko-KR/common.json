@@ -202,6 +202,7 @@
   "mainNav.integrations": "연동",
   "mainNav.marketplace": "마켓플레이스",
   "mainNav.webApps.noResults": "웹 앱을 찾을 수 없습니다",
+  "mainNav.webApps.openApp": "{{name}} 웹 앱 열기",
   "mainNav.webApps.searchPlaceholder": "웹 앱 검색",
   "mainNav.workspace.credits": "{{count}} 크레딧",
   "mainNav.workspace.creditsUnit": "크레딧",

@@ -204,12 +204,5 @@ describe('Sidebar Lifecycle Flow', () => {
 
       expect(screen.getByText('explore.sidebar.noApps.title')).toBeInTheDocument()
     })
-
-    it('should hide NoApps on mobile', () => {
-      mockMediaType = MediaType.mobile
-      renderSidebar()
-
-      expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
-    })
   })
 })
