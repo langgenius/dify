@@ -42,6 +42,7 @@ from controllers.console.workspace.plugin import (
     PluginUploadFromGithubApi,
     PluginUploadFromPkgApi,
 )
+from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from models.account import Account, TenantAccountRole, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 
@@ -478,12 +479,23 @@ class TestPluginListInstallationsFromIdsApi:
             app.test_request_context("/", json=payload),
             patch(
                 "controllers.console.workspace.plugin.PluginService.list_installations_from_ids",
-                return_value=[{"id": "p1"}],
+                return_value=[PluginInstallation.model_validate(_plugin_category_list_item())],
             ),
         ):
             result = method(api, "t1")
 
-        assert "plugins" in result
+        assert result["plugins"][0]["id"] == "entity-1"
+        assert result["plugins"][0]["plugin_id"] == "test-author/test-plugin"
+        assert result["plugins"][0]["plugin_unique_identifier"] == "test-author/test-plugin:1.0.0@checksum"
+        assert result["plugins"][0]["version"] == "1.0.0"
+        assert result["plugins"][0]["declaration"]["name"] == "test-plugin"
+        assert "name" not in result["plugins"][0]
+        assert "installation_id" not in result["plugins"][0]
+        assert "latest_version" not in result["plugins"][0]
+        assert "latest_unique_identifier" not in result["plugins"][0]
+        assert "status" not in result["plugins"][0]
+        assert "deprecated_reason" not in result["plugins"][0]
+        assert "alternative_plugin_id" not in result["plugins"][0]
 
     def test_daemon_error(self, app: Flask):
         api = PluginListInstallationsFromIdsApi()
