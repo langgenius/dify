@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
-import { AgentWorkingDirectoryBreadcrumb } from './working-directory-breadcrumb'
+import { AGENT_WORKING_DIRECTORY_ROOT_PATH, AgentWorkingDirectoryBreadcrumb } from './working-directory-breadcrumb'
 
 type AgentWorkingDirectoryPanelProps = {
   source: AgentWorkingDirectorySource
@@ -182,7 +182,7 @@ export function AgentWorkingDirectoryPanel({
 }: AgentWorkingDirectoryPanelProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [directoryPath, setDirectoryPath] = useState<AgentWorkingDirectoryPath>('.')
+  const [directoryPath, setDirectoryPath] = useState<AgentWorkingDirectoryPath>(AGENT_WORKING_DIRECTORY_ROOT_PATH)
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const [loadedFolderPaths, setLoadedFolderPaths] = useState<string[]>([])
   const [openFolderPaths, setOpenFolderPaths] = useState<string[]>([])

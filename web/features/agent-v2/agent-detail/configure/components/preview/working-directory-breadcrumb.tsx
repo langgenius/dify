@@ -9,7 +9,13 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 
-export type AgentWorkingDirectoryPath = '.' | '~' | string
+export const AGENT_WORKING_DIRECTORY_HOME_PATH = '~'
+export const AGENT_WORKING_DIRECTORY_ROOT_PATH = '.'
+
+export type AgentWorkingDirectoryPath
+  = | typeof AGENT_WORKING_DIRECTORY_HOME_PATH
+    | typeof AGENT_WORKING_DIRECTORY_ROOT_PATH
+    | string
 
 type AgentWorkingDirectoryBreadcrumbItemData = {
   iconClassName: string
@@ -17,17 +23,15 @@ type AgentWorkingDirectoryBreadcrumbItemData = {
   path: AgentWorkingDirectoryPath
 }
 
-const HOME_DIRECTORY_PATH = '~'
-
 const normalizeWorkingDirectoryPath = (path: AgentWorkingDirectoryPath) => {
-  if (path === '.' || path === HOME_DIRECTORY_PATH)
+  if (path === AGENT_WORKING_DIRECTORY_ROOT_PATH || path === AGENT_WORKING_DIRECTORY_HOME_PATH)
     return path
 
   return path.replace(/^\.\/+/, '').replace(/^\/+|\/+$/g, '')
 }
 
 function buildPathFromSegments(segments: string[]) {
-  return segments.length ? segments.join('/') : '.'
+  return segments.length ? segments.join('/') : AGENT_WORKING_DIRECTORY_ROOT_PATH
 }
 
 function getBreadcrumbItems({
@@ -43,13 +47,13 @@ function getBreadcrumbItems({
   const homeItem: AgentWorkingDirectoryBreadcrumbItemData = {
     iconClassName: 'i-ri-folder-3-line',
     label: homeLabel,
-    path: HOME_DIRECTORY_PATH,
+    path: AGENT_WORKING_DIRECTORY_HOME_PATH,
   }
 
-  if (normalizedPath === HOME_DIRECTORY_PATH)
+  if (normalizedPath === AGENT_WORKING_DIRECTORY_HOME_PATH)
     return [homeItem]
 
-  const segments = normalizedPath === '.'
+  const segments = normalizedPath === AGENT_WORKING_DIRECTORY_ROOT_PATH
     ? []
     : normalizedPath.split('/').filter(Boolean)
 
@@ -58,7 +62,7 @@ function getBreadcrumbItems({
     {
       iconClassName: 'i-ri-folder-3-line',
       label: workingDirectoryLabel,
-      path: '.',
+      path: AGENT_WORKING_DIRECTORY_ROOT_PATH,
     },
     ...segments.map((segment, index) => ({
       iconClassName: 'i-ri-folder-3-line',
