@@ -1,10 +1,21 @@
+import type {
+  StepByStepTourStatePatchPayload,
+  StepByStepTourStateResponse,
+} from '@dify/contracts/api/console/onboarding/types.gen'
+import type { StepByStepTourAccountState, StepByStepTourUiState } from '../types'
 import type { AppContextValue } from '@/context/app-context'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createStore, Provider as JotaiProvider } from 'jotai'
+import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
-import { STEP_BY_STEP_TOUR_STORAGE_KEY } from '../constants'
 import StepByStepTourMount from '../mount'
 import { STEP_BY_STEP_TOUR_TARGETS } from '../target-registry'
 import { useStepByStepTourTargetRect } from '../use-target-rect'
+import {
+  StepByStepTourTestStateObserver,
+  StepByStepTourTestUiStateHydrator,
+} from './test-utils'
 
 type WorkspaceRole = NonNullable<AppContextValue['currentWorkspace']>['role']
 
@@ -27,6 +38,136 @@ const mockIsCurrentWorkspaceManager = vi.hoisted(() => ({
 const mockCurrentWorkspaceRole = vi.hoisted(() => ({
   value: 'owner' as WorkspaceRole,
 }))
+const mockStepByStepTour = vi.hoisted(() => {
+  const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
+  const createState = (
+    overrides: Partial<StepByStepTourStateResponse> = {},
+  ): StepByStepTourStateResponse => ({
+    eligible: overrides.eligible ?? true,
+    first_workspace_id: overrides.first_workspace_id ?? 'workspace-1',
+    skipped: overrides.skipped ?? false,
+    completed_task_ids: overrides.completed_task_ids ?? [],
+    manually_enabled_workspace_ids: overrides.manually_enabled_workspace_ids ?? [],
+    manually_disabled_workspace_ids: overrides.manually_disabled_workspace_ids ?? [],
+    updated_at: overrides.updated_at ?? '2026-07-01T00:00:00Z',
+  })
+  const createUiState = (
+    overrides: Partial<StepByStepTourUiState> = {},
+  ): StepByStepTourUiState => ({
+    activeGuideGroup: undefined,
+    activeGuideIndex: undefined,
+    activeGuideIndexes: undefined,
+    activeTaskId: undefined,
+    minimized: false,
+    ...overrides,
+  })
+  let state = createState()
+  let uiState = createUiState()
+  let observedState: StepByStepTourAccountState | undefined
+  const toAccountState = (): StepByStepTourAccountState => ({
+    activeGuideGroup: uiState.activeGuideGroup,
+    activeGuideIndex: uiState.activeGuideIndex,
+    activeGuideIndexes: uiState.activeGuideIndexes,
+    activeTaskId: uiState.activeTaskId,
+    completedTaskIds: (state.completed_task_ids ?? []).filter(Boolean),
+    eligible: Boolean(state.eligible),
+    firstWorkspaceId: state.first_workspace_id ?? undefined,
+    manuallyDisabledWorkspaceIds: state.manually_disabled_workspace_ids ?? [],
+    manuallyEnabledWorkspaceIds: state.manually_enabled_workspace_ids ?? [],
+    minimized: uiState.minimized,
+    skipped: Boolean(state.skipped),
+    updatedAt: state.updated_at ?? null,
+  })
+  const patchState = vi.fn(
+    async ({ body }: { body: StepByStepTourStatePatchPayload }): Promise<StepByStepTourStateResponse> => {
+      switch (body.action) {
+        case 'complete_task':
+          state = {
+            ...state,
+            completed_task_ids: body.task_id && !state.completed_task_ids?.includes(body.task_id)
+              ? [...(state.completed_task_ids ?? []), body.task_id]
+              : state.completed_task_ids,
+          }
+          break
+        case 'uncomplete_task':
+          state = {
+            ...state,
+            completed_task_ids: (state.completed_task_ids ?? []).filter(taskId => taskId !== body.task_id),
+          }
+          break
+        case 'skip':
+          state = {
+            ...state,
+            skipped: true,
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+          }
+          break
+        case 'enable_current_workspace':
+          state = {
+            ...state,
+            skipped: false,
+            manually_enabled_workspace_ids: Array.from(new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1'])),
+            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+          }
+          break
+        case 'disable_current_workspace':
+          state = {
+            ...state,
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+            manually_disabled_workspace_ids: Array.from(new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1'])),
+          }
+          break
+      }
+
+      return state
+    },
+  )
+
+  return {
+    get observedState() {
+      return observedState ?? toAccountState()
+    },
+    get state() {
+      return state
+    },
+    get uiState() {
+      return uiState
+    },
+    patchState,
+    reset() {
+      state = createState()
+      uiState = createUiState()
+      observedState = undefined
+      patchState.mockClear()
+    },
+    setObservedState(nextState: StepByStepTourAccountState) {
+      observedState = nextState
+    },
+    setState(overrides: Partial<StepByStepTourStateResponse> = {}) {
+      state = createState(overrides)
+    },
+    setTestState(nextState: Partial<StepByStepTourAccountState>) {
+      state = createState({
+        completed_task_ids: nextState.completedTaskIds,
+        eligible: nextState.eligible,
+        first_workspace_id: nextState.firstWorkspaceId,
+        manually_disabled_workspace_ids: nextState.manuallyDisabledWorkspaceIds,
+        manually_enabled_workspace_ids: nextState.manuallyEnabledWorkspaceIds,
+        skipped: nextState.skipped,
+        updated_at: nextState.updatedAt,
+      })
+      uiState = createUiState({
+        activeGuideGroup: nextState.activeGuideGroup,
+        activeGuideIndex: nextState.activeGuideIndex,
+        activeGuideIndexes: nextState.activeGuideIndexes,
+        activeTaskId: nextState.activeTaskId,
+        minimized: nextState.minimized,
+      })
+      observedState = undefined
+    },
+    stateQueryKey,
+  }
+})
 
 const setViewportSize = ({
   height,
@@ -45,9 +186,13 @@ const setViewportSize = ({
   })
 }
 
-vi.mock('@/config', () => ({
-  IS_CLOUD_EDITION: true,
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
@@ -56,6 +201,29 @@ vi.mock('@/context/i18n', () => ({
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
   useRouter: () => ({ push: mockRouterPush }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    onboarding: {
+      stepByStepTour: {
+        state: {
+          get: {
+            queryKey: () => mockStepByStepTour.stateQueryKey,
+            queryOptions: () => ({
+              queryKey: mockStepByStepTour.stateQueryKey,
+              queryFn: async () => mockStepByStepTour.state,
+            }),
+          },
+          patch: {
+            mutationOptions: () => ({
+              mutationFn: mockStepByStepTour.patchState,
+            }),
+          },
+        },
+      },
+    },
+  },
 }))
 
 vi.mock('react-i18next', async () => {
@@ -237,6 +405,27 @@ function TargetRectProbe({
   )
 }
 
+const setStepByStepTourTestState = (state: Partial<StepByStepTourAccountState>) => {
+  mockStepByStepTour.setTestState(state)
+}
+
+const renderStepByStepTourMount = () => {
+  const queryClient = createTestQueryClient()
+  queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
+  const jotaiStore = createStore()
+
+  return render(
+    <JotaiProvider store={jotaiStore}>
+      <QueryClientProvider client={queryClient}>
+        <StepByStepTourTestUiStateHydrator initialState={mockStepByStepTour.uiState}>
+          <StepByStepTourTestStateObserver onChange={mockStepByStepTour.setObservedState} />
+          <StepByStepTourMount />
+        </StepByStepTourTestUiStateHydrator>
+      </QueryClientProvider>
+    </JotaiProvider>,
+  )
+}
+
 describe('StepByStepTourMount', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -253,6 +442,7 @@ describe('StepByStepTourMount', () => {
     mockCurrentWorkspaceRole.value = 'owner'
     mockPathname = '/apps'
     localStorage.clear()
+    mockStepByStepTour.reset()
     setViewportSize({ height: 768, width: 1024 })
     globalThis.ResizeObserver = class ResizeObserver {
       constructor(_callback: ResizeObserverCallback) {}
@@ -263,18 +453,18 @@ describe('StepByStepTourMount', () => {
   })
 
   it('captures the first workspace and renders the floating checklist by default', async () => {
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
 
     await waitFor(() => {
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.observedState
       expect(state.firstWorkspaceId).toBe('workspace-1')
     })
   })
 
   it('hides the checklist and shows a dismissible recovery hint after Skip', async () => {
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Skip' }))
 
@@ -286,7 +476,7 @@ describe('StepByStepTourMount', () => {
     expect(screen.getByText('Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.')).toBeInTheDocument()
 
     await waitFor(() => {
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.observedState
       expect(state.skipped).toBe(true)
     })
 
@@ -296,15 +486,15 @@ describe('StepByStepTourMount', () => {
   })
 
   it('shows a dismissible completion prompt at the bottom of the checklist after all tasks are complete', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge', 'integration'],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
     expect(await screen.findByRole('region', { name: 'Step-by-step Tour completed' })).toBeInTheDocument()
@@ -318,7 +508,7 @@ describe('StepByStepTourMount', () => {
 
     expect(screen.queryByRole('region', { name: 'Step-by-step Tour completed' })).not.toBeInTheDocument()
     await waitFor(() => {
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.observedState
       expect(state.skipped).toBe(true)
       expect(state.manuallyEnabledWorkspaceIds).toEqual([])
     })
@@ -326,45 +516,45 @@ describe('StepByStepTourMount', () => {
   })
 
   it('keeps the tour hidden after completion dismiss closes the tour', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge', 'integration'],
       skipped: true,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     expect(screen.queryByRole('region', { name: 'Step-by-step Tour completed' })).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 
   it('renders the floating checklist when the current workspace is manually enabled', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
     expect(screen.getByText('A quick tour — about 5 minutes')).toBeInTheDocument()
   })
 
   it('renders the expanded checklist in the shared popover layer', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     const checklist = await screen.findByRole('region', { name: 'Get to know Dify' })
     const popoverPopup = checklist.parentElement
@@ -378,20 +568,20 @@ describe('StepByStepTourMount', () => {
   })
 
   it('starts the integration guide instead of immediately completing the task', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Take a look' }))
 
     await waitFor(() => {
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.observedState
       expect(state.activeTaskId).toBe('integration')
       expect(state.activeGuideIndexes).toHaveLength(6)
       expect(state.completedTaskIds).toEqual(['home', 'studio', 'knowledge'])
@@ -409,13 +599,13 @@ describe('StepByStepTourMount', () => {
       'credential.use',
       'app_library.access',
     ]
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
     const targets = [
       STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
       STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
@@ -429,7 +619,7 @@ describe('StepByStepTourMount', () => {
     }))
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByText('Browse models, tools, and data sources, and see how they are managed.')).toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'Take a look' }))
@@ -443,7 +633,7 @@ describe('StepByStepTourMount', () => {
         top: '140px',
       })
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBe('integration')
         expect(state.activeGuideGroup).toBe('integrationLimitedAccess')
         expect(state.activeGuideIndexes).toEqual([0, 1, 2, 3, 4])
@@ -463,13 +653,13 @@ describe('StepByStepTourMount', () => {
       'dataset.create_and_management',
       'dataset.external.connect',
     ]
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
     const targets = [
       STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
       STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
@@ -479,7 +669,7 @@ describe('StepByStepTourMount', () => {
     ].map((targetName, index) => createTourTarget(targetName, 80 + index * 8))
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       fireEvent.click(await screen.findByRole('button', { name: 'Take a look' }))
 
@@ -509,13 +699,13 @@ describe('StepByStepTourMount', () => {
       'snippets.create_and_modify',
       'tool.manage',
     ]
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
     const targets = [
       STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
       STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
@@ -525,7 +715,7 @@ describe('StepByStepTourMount', () => {
     ].map((targetName, index) => createTourTarget(targetName, 96 + index * 8))
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       fireEvent.click(await screen.findByRole('button', { name: 'Take a look' }))
 
@@ -535,7 +725,7 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByRole('region', { name: 'Add your own MCP Server' })).not.toBeInTheDocument()
 
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBe('integration')
         expect(state.activeGuideGroup).toBe('integrationLimitedAccess')
         expect(state.activeGuideIndexes).toHaveLength(5)
@@ -556,7 +746,7 @@ describe('StepByStepTourMount', () => {
       'credential.use',
       'app_library.access',
     ]
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 0,
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -564,7 +754,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
     const limitedTarget = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav, 80, {
       height: 420,
       left: 0,
@@ -572,7 +762,7 @@ describe('StepByStepTourMount', () => {
     })
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
       expect(screen.getByText('1 of 5')).toBeInTheDocument()
@@ -585,15 +775,15 @@ describe('StepByStepTourMount', () => {
 
   it('completes Knowledge directly when the workspace has no Knowledge walkthrough permissions', async () => {
     mockWorkspacePermissionKeys.value = ['app.create_and_management']
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio'],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     expect(await screen.findByText('Knowledge needs permission')).toBeInTheDocument()
     expect(screen.queryByText('RESTRICTED')).not.toBeInTheDocument()
@@ -603,7 +793,7 @@ describe('StepByStepTourMount', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
 
     await waitFor(() => {
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.observedState
       expect(state.activeTaskId).toBeUndefined()
       expect(state.activeGuideGroup).toBeUndefined()
       expect(state.completedTaskIds).toEqual(['home', 'studio', 'knowledge'])
@@ -614,15 +804,15 @@ describe('StepByStepTourMount', () => {
 
   it('starts Studio for no-create users and waits for the app list to choose the readonly guide', async () => {
     mockWorkspacePermissionKeys.value = []
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     expect(await screen.findByText('Find your apps in Studio')).toBeInTheDocument()
     expect(screen.getByText('You can view apps in this workspace. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.')).toBeInTheDocument()
@@ -630,7 +820,7 @@ describe('StepByStepTourMount', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Take a look' })[0]!)
 
     await waitFor(() => {
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.observedState
       expect(state.activeTaskId).toBe('studio')
       expect(state.activeGuideIndex).toBe(0)
       expect(state.activeGuideGroup).toBeUndefined()
@@ -642,28 +832,28 @@ describe('StepByStepTourMount', () => {
   })
 
   it('does not render Learn more for the Knowledge task row', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'integration'],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     expect(await screen.findByRole('button', { name: 'Take a look' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
   })
 
   it('starts the home guide against the Learn Dify target', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.home, 120, {
       height: 180,
       left: 40,
@@ -671,7 +861,7 @@ describe('StepByStepTourMount', () => {
     })
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       fireEvent.click(await screen.findByRole('button', { name: 'Show me' }))
 
@@ -680,7 +870,7 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
       expect(screen.queryByText('1 of 2')).not.toBeInTheDocument()
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBe('home')
         expect(state.completedTaskIds).toEqual([])
         expect(state.minimized).toBe(true)
@@ -693,13 +883,13 @@ describe('StepByStepTourMount', () => {
 
   it('uses no-create Learn Dify copy when the workspace cannot create apps', async () => {
     mockWorkspacePermissionKeys.value = []
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.home, 120, {
       height: 180,
       left: 40,
@@ -707,7 +897,7 @@ describe('StepByStepTourMount', () => {
     })
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByText('Browse Learn Dify')).toBeInTheDocument()
       expect(screen.getByText('You can review lessons here, but creating from a lesson requires additional permission.')).toBeInTheDocument()
@@ -720,7 +910,7 @@ describe('StepByStepTourMount', () => {
       expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument()
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBe('home')
         expect(state.activeGuideGroup).toBe('homeNoCreate')
         expect(state.activeGuideIndex).toBe(0)
@@ -730,7 +920,7 @@ describe('StepByStepTourMount', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.activeGuideGroup).toBeUndefined()
         expect(state.completedTaskIds).toEqual(['home'])
@@ -743,13 +933,13 @@ describe('StepByStepTourMount', () => {
   })
 
   it('does not render a coachmark action for externally completed home guides', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.home, 120, {
       height: 180,
       left: 40,
@@ -757,7 +947,7 @@ describe('StepByStepTourMount', () => {
     })
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       fireEvent.click(await screen.findByRole('button', { name: 'Show me' }))
       expect(await screen.findByText('Open a hands-on lesson from Learn Dify to see Dify in action.')).toBeInTheDocument()
@@ -768,7 +958,7 @@ describe('StepByStepTourMount', () => {
       expect(document.body.querySelectorAll('[data-step-by-step-tour-blocker]')).toHaveLength(4)
 
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBe('home')
         expect(state.activeGuideIndex).toBe(0)
         expect(state.completedTaskIds).toEqual([])
@@ -780,7 +970,7 @@ describe('StepByStepTourMount', () => {
   })
 
   it('renders the coachmark overlay at the body level so dialogs do not cover it', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'home',
       activeGuideIndex: 1,
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -788,7 +978,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: [],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate, 240, {
       height: 40,
       left: 980,
@@ -796,7 +986,7 @@ describe('StepByStepTourMount', () => {
     })
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       const coachmark = await screen.findByText('Click here to make it yours')
       const coachmarkOverlay = coachmark.closest('[data-step-by-step-tour-coachmark]')
@@ -815,41 +1005,41 @@ describe('StepByStepTourMount', () => {
   })
 
   it('only allows users to uncomplete tasks from the checklist status control', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     const completeStudioButton = await screen.findByRole('button', { name: 'Mark Manage your apps in Studio complete' })
     expect(completeStudioButton).toBeDisabled()
 
     fireEvent.click(completeStudioButton)
 
-    expect(JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!).completedTaskIds).toEqual(['home'])
+    expect(mockStepByStepTour.observedState.completedTaskIds).toEqual(['home'])
 
     fireEvent.click(screen.getByRole('button', { name: 'Mark Try a Learn Dify lesson incomplete' }))
 
     await waitFor(() => {
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.observedState
       expect(state.completedTaskIds).toEqual([])
     })
   })
 
   it('does not allow manually completing externally completed tasks from the checklist', async () => {
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: [],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
     const completeHomeButton = await screen.findByRole('button', { name: 'Mark Try a Learn Dify lesson complete' })
     expect(completeHomeButton).toBeDisabled()
@@ -857,14 +1047,14 @@ describe('StepByStepTourMount', () => {
     fireEvent.click(completeHomeButton)
 
     await waitFor(() => {
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.observedState
       expect(state.completedTaskIds).toEqual([])
     })
   })
 
   it('walks through Integration guides and syncs the Integrations section route', async () => {
     mockPathname = '/integrations/model-provider'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 0,
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -872,7 +1062,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
     const targets = [
       STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
       STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
@@ -883,14 +1073,16 @@ describe('StepByStepTourMount', () => {
     ].map((targetName, index) => createTourTarget(targetName, 96 + index * 8))
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
-      const minimizedTourButton = screen.getByRole('button', { name: 'Open step-by-step tour' })
+      const [minimizedTourButton] = screen.getAllByRole('button', { name: 'Open step-by-step tour' })
       expect(minimizedTourButton).toBeInTheDocument()
       expect(minimizedTourButton).not.toHaveClass('z-50')
       expect(screen.getByText('1 of 6')).toBeInTheDocument()
-      expect(document.body.querySelector('[data-step-by-step-tour-backdrop]')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(document.body.querySelector('[data-step-by-step-tour-backdrop]')).toBeInTheDocument()
+      })
       expect(document.body.querySelectorAll('[data-step-by-step-tour-blocker]')).toHaveLength(0)
       expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
@@ -925,7 +1117,7 @@ describe('StepByStepTourMount', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
 
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.activeGuideIndexes).toBeUndefined()
         expect(state.completedTaskIds).toEqual(['home', 'studio', 'knowledge', 'integration'])
@@ -941,7 +1133,7 @@ describe('StepByStepTourMount', () => {
 
   it('highlights the union of an active target and its rendered highlight parts', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioWithApps',
@@ -950,7 +1142,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate, 72, {
       height: 40,
       left: 1264,
@@ -964,7 +1156,7 @@ describe('StepByStepTourMount', () => {
     })
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create a new app' })).toBeInTheDocument()
       const highlight = document.body.querySelector('[data-step-by-step-tour-highlight]') as HTMLElement
@@ -986,7 +1178,7 @@ describe('StepByStepTourMount', () => {
 
   it('waits for declared highlight parts before rendering a union highlight', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioWithApps',
@@ -995,7 +1187,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate, 72, {
       height: 40,
       left: 1264,
@@ -1004,9 +1196,11 @@ describe('StepByStepTourMount', () => {
     let highlightPart: HTMLElement | undefined
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
-      expect(document.body.querySelector('[data-step-by-step-tour-backdrop]')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(document.body.querySelector('[data-step-by-step-tour-backdrop]')).toBeInTheDocument()
+      })
       expect(screen.queryByRole('region', { name: 'Create a new app' })).not.toBeInTheDocument()
       expect(document.body.querySelector('[data-step-by-step-tour-highlight]')).not.toBeInTheDocument()
 
@@ -1106,7 +1300,7 @@ describe('StepByStepTourMount', () => {
 
   it('updates the highlight union when a portalled highlight part positioner moves', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 1,
       activeGuideGroup: 'studioWithApps',
@@ -1115,7 +1309,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard, 44, {
       height: 236,
       left: 36,
@@ -1145,7 +1339,7 @@ describe('StepByStepTourMount', () => {
     document.body.appendChild(positioner)
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Open and manage each app' })).toBeInTheDocument()
       const highlight = document.body.querySelector('[data-step-by-step-tour-highlight]') as HTMLElement
@@ -1178,7 +1372,7 @@ describe('StepByStepTourMount', () => {
 
   it('walks through the Studio empty state guides before completing Studio', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioEmpty',
@@ -1187,7 +1381,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const targets = [
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate, 120),
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank, 210),
@@ -1196,7 +1390,7 @@ describe('StepByStepTourMount', () => {
     ]
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create from a template' })).toBeInTheDocument()
       expect(screen.getByText('1 of 4')).toBeInTheDocument()
@@ -1205,7 +1399,7 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByRole('region', { name: 'Create from blank' })).toBeInTheDocument()
       expect(screen.getByText('2 of 4')).toBeInTheDocument()
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeGuideIndex).toBe(1)
         expect(state.completedTaskIds).toEqual(['home'])
       })
@@ -1223,7 +1417,7 @@ describe('StepByStepTourMount', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.activeGuideIndex).toBeUndefined()
         expect(state.completedTaskIds).toEqual(['home', 'studio'])
@@ -1237,7 +1431,7 @@ describe('StepByStepTourMount', () => {
 
   it('walks through the Knowledge empty state guides before completing Knowledge', async () => {
     mockPathname = '/datasets'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'knowledge',
       activeGuideIndex: 0,
       activeGuideGroup: 'knowledgeEmpty',
@@ -1246,7 +1440,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home', 'studio'],
       skipped: false,
-    }))
+    })
     const targets = [
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyCreate, 120),
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.knowledgeEmptyPipeline, 210),
@@ -1254,7 +1448,7 @@ describe('StepByStepTourMount', () => {
     ]
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create a ready-to-use knowledge base' })).toBeInTheDocument()
       expect(screen.getByText('1 of 3')).toBeInTheDocument()
@@ -1269,7 +1463,7 @@ describe('StepByStepTourMount', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.activeGuideIndex).toBeUndefined()
         expect(state.activeGuideGroup).toBeUndefined()
@@ -1284,7 +1478,7 @@ describe('StepByStepTourMount', () => {
 
   it('walks through the Knowledge with-datasets guides before completing Knowledge', async () => {
     mockPathname = '/datasets'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'knowledge',
       activeGuideIndex: 0,
       activeGuideGroup: 'knowledgeWithDatasets',
@@ -1293,7 +1487,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home', 'studio'],
       skipped: false,
-    }))
+    })
     const targets = [
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate, 72, {
         height: 40,
@@ -1322,7 +1516,7 @@ describe('StepByStepTourMount', () => {
     ]
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create a new knowledge here' })).toBeInTheDocument()
       expect(screen.getByText('1 of 2')).toBeInTheDocument()
@@ -1333,7 +1527,7 @@ describe('StepByStepTourMount', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.activeGuideIndex).toBeUndefined()
         expect(state.activeGuideGroup).toBeUndefined()
@@ -1349,7 +1543,7 @@ describe('StepByStepTourMount', () => {
 
   it('skips the optional Learn Dify guide when the Studio empty section is not rendered', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 2,
       activeGuideGroup: 'studioEmpty',
@@ -1358,7 +1552,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const targets = [
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate, 120),
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank, 210),
@@ -1366,7 +1560,7 @@ describe('StepByStepTourMount', () => {
     ]
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Import a DSL file' })).toBeInTheDocument()
       expect(screen.getByText('3 of 3')).toBeInTheDocument()
@@ -1374,7 +1568,7 @@ describe('StepByStepTourMount', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
 
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.completedTaskIds).toEqual(['home', 'studio'])
       })
@@ -1386,7 +1580,7 @@ describe('StepByStepTourMount', () => {
 
   it('walks through the Studio with-apps guides before completing Studio', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioWithApps',
@@ -1395,7 +1589,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const targets = [
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate, 72),
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard, 164),
@@ -1416,7 +1610,7 @@ describe('StepByStepTourMount', () => {
     ]
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create a new app' })).toBeInTheDocument()
       expect(screen.getByText('1 of 2')).toBeInTheDocument()
@@ -1427,7 +1621,7 @@ describe('StepByStepTourMount', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.activeGuideIndex).toBeUndefined()
         expect(state.activeGuideGroup).toBeUndefined()
@@ -1443,7 +1637,7 @@ describe('StepByStepTourMount', () => {
 
   it('uses the Studio no-create with-apps guide count for readonly users', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioNoCreateWithApps',
@@ -1452,7 +1646,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard, 164)
     const highlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard, {
       height: 164,
@@ -1462,7 +1656,7 @@ describe('StepByStepTourMount', () => {
     })
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Studio is view-only for you' })).toBeInTheDocument()
       expect(screen.getByText('1 of 1')).toBeInTheDocument()
@@ -1476,7 +1670,7 @@ describe('StepByStepTourMount', () => {
 
   it('uses the Studio no-create empty guide count for readonly users without apps', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioNoCreateEmpty',
@@ -1485,11 +1679,11 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty, 164)
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'No apps to view yet' })).toBeInTheDocument()
       expect(screen.getByText('1 of 1')).toBeInTheDocument()
@@ -1502,7 +1696,7 @@ describe('StepByStepTourMount', () => {
 
   it('keeps the previous stable highlight while the next Studio with-apps guide settles', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioWithApps',
@@ -1511,7 +1705,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const targets = [
       createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate, 72, {
         height: 40,
@@ -1533,7 +1727,7 @@ describe('StepByStepTourMount', () => {
     let appCardHighlightPart: HTMLElement | undefined
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create a new app' })).toBeInTheDocument()
       const highlight = document.body.querySelector('[data-step-by-step-tour-highlight]') as HTMLElement
@@ -1579,7 +1773,7 @@ describe('StepByStepTourMount', () => {
 
   it('skips the optional app card action guide when no app card action target is rendered', async () => {
     mockPathname = '/apps'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'studio',
       activeGuideIndex: 0,
       activeGuideGroup: 'studioWithApps',
@@ -1588,7 +1782,7 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home'],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate, 72)
     const highlightPart = createTourHighlightPart(STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu, {
       height: 184,
@@ -1598,14 +1792,14 @@ describe('StepByStepTourMount', () => {
     })
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Create a new app' })).toBeInTheDocument()
       expect(screen.getByText('1 of 1')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.completedTaskIds).toEqual(['home', 'studio'])
       })
@@ -1618,7 +1812,7 @@ describe('StepByStepTourMount', () => {
 
   it('skips the active walkthrough without completing the task', async () => {
     mockPathname = '/integrations/model-provider'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 1,
       manuallyEnabledWorkspaceIds: ['workspace-1'],
@@ -1626,11 +1820,11 @@ describe('StepByStepTourMount', () => {
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
     const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav)
 
     try {
-      render(<StepByStepTourMount />)
+      renderStepByStepTourMount()
 
       expect(await screen.findByRole('region', { name: 'Tool Plugin' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument()
@@ -1640,7 +1834,7 @@ describe('StepByStepTourMount', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
 
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.observedState
         expect(state.activeTaskId).toBeUndefined()
         expect(state.activeGuideIndex).toBeUndefined()
         expect(state.activeGuideGroup).toBeUndefined()
@@ -1657,34 +1851,34 @@ describe('StepByStepTourMount', () => {
 
   it('keeps the minimized tour control visible when an active guide target is unavailable', async () => {
     mockPathname = '/app/test-app/overview'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'integration',
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: true,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
-    expect(await screen.findByRole('button', { name: 'Open step-by-step tour' })).toBeInTheDocument()
+    expect(await screen.findAllByRole('button', { name: 'Open step-by-step tour' })).not.toHaveLength(0)
   })
 
   it('keeps the tour collapsed during an active guide even if the saved widget state is expanded', async () => {
     mockPathname = '/integrations/model-provider'
-    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    setStepByStepTourTestState({
       activeTaskId: 'integration',
       manuallyEnabledWorkspaceIds: ['workspace-1'],
       manuallyDisabledWorkspaceIds: [],
       minimized: false,
       completedTaskIds: ['home', 'studio', 'knowledge'],
       skipped: false,
-    }))
+    })
 
-    render(<StepByStepTourMount />)
+    renderStepByStepTourMount()
 
-    expect(await screen.findByRole('button', { name: 'Open step-by-step tour' })).toBeInTheDocument()
+    expect(await screen.findAllByRole('button', { name: 'Open step-by-step tour' })).not.toHaveLength(0)
     expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
   })
 })

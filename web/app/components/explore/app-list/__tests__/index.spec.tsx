@@ -1,13 +1,21 @@
+import type {
+  StepByStepTourStatePatchPayload,
+  StepByStepTourStateResponse,
+} from '@dify/contracts/api/console/onboarding/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { StepByStepTourAccountState, StepByStepTourUiState } from '@/app/components/step-by-step-tour/types'
 import type { Banner as BannerType } from '@/models/app'
 import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
-import { STEP_BY_STEP_TOUR_STORAGE_KEY } from '@/app/components/step-by-step-tour/constants'
+import {
+  StepByStepTourTestStateObserver,
+  StepByStepTourTestUiStateHydrator,
+} from '@/app/components/step-by-step-tour/__tests__/test-utils'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
@@ -36,6 +44,107 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
+const mockStepByStepTour = vi.hoisted(() => {
+  const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
+  const createState = (
+    overrides: Partial<StepByStepTourStateResponse> = {},
+  ): StepByStepTourStateResponse => ({
+    eligible: true,
+    first_workspace_id: 'workspace-1',
+    skipped: false,
+    completed_task_ids: [],
+    manually_enabled_workspace_ids: ['workspace-1'],
+    manually_disabled_workspace_ids: [],
+    updated_at: '2026-07-01T00:00:00Z',
+    ...overrides,
+  })
+  const createUiState = (
+    overrides: Partial<StepByStepTourUiState> = {},
+  ): StepByStepTourUiState => ({
+    activeGuideGroup: undefined,
+    activeGuideIndex: undefined,
+    activeGuideIndexes: undefined,
+    activeTaskId: undefined,
+    minimized: false,
+    ...overrides,
+  })
+  let state = createState()
+  let uiState: StepByStepTourUiState = createUiState()
+  let observedState: StepByStepTourAccountState | undefined
+  const patchState = vi.fn(
+    async ({ body }: { body: StepByStepTourStatePatchPayload }): Promise<StepByStepTourStateResponse> => {
+      switch (body.action) {
+        case 'complete_task':
+          state = {
+            ...state,
+            completed_task_ids: body.task_id && !state.completed_task_ids?.includes(body.task_id)
+              ? [...(state.completed_task_ids ?? []), body.task_id]
+              : state.completed_task_ids,
+          }
+          break
+        case 'uncomplete_task':
+          state = {
+            ...state,
+            completed_task_ids: (state.completed_task_ids ?? []).filter(taskId => taskId !== body.task_id),
+          }
+          break
+        case 'skip':
+          state = {
+            ...state,
+            skipped: true,
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+          }
+          break
+        case 'enable_current_workspace':
+          state = {
+            ...state,
+            skipped: false,
+            manually_enabled_workspace_ids: Array.from(new Set([...(state.manually_enabled_workspace_ids ?? []), 'workspace-1'])),
+            manually_disabled_workspace_ids: (state.manually_disabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+          }
+          break
+        case 'disable_current_workspace':
+          state = {
+            ...state,
+            manually_enabled_workspace_ids: (state.manually_enabled_workspace_ids ?? []).filter(id => id !== 'workspace-1'),
+            manually_disabled_workspace_ids: Array.from(new Set([...(state.manually_disabled_workspace_ids ?? []), 'workspace-1'])),
+          }
+          break
+      }
+
+      return state
+    },
+  )
+
+  return {
+    get observedState() {
+      return observedState
+    },
+    get state() {
+      return state
+    },
+    get uiState() {
+      return uiState
+    },
+    patchState,
+    reset() {
+      state = createState()
+      uiState = createUiState()
+      observedState = undefined
+      patchState.mockClear()
+    },
+    setObservedState(nextState: StepByStepTourAccountState) {
+      observedState = nextState
+    },
+    setState(overrides: Partial<StepByStepTourStateResponse> = {}) {
+      state = createState(overrides)
+    },
+    setUiState(overrides: Partial<StepByStepTourUiState> = {}) {
+      uiState = createUiState(overrides)
+    },
+    stateQueryKey,
+  }
+})
 const toastMocks = vi.hoisted(() => {
   const record = vi.fn()
   const api = Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })), {
@@ -111,6 +220,24 @@ vi.mock('@/service/client', () => ({
             initialData: response,
             select: options.select,
           }
+        },
+      },
+    },
+    onboarding: {
+      stepByStepTour: {
+        state: {
+          get: {
+            queryKey: () => mockStepByStepTour.stateQueryKey,
+            queryOptions: () => ({
+              queryKey: mockStepByStepTour.stateQueryKey,
+              queryFn: async () => mockStepByStepTour.state,
+            }),
+          },
+          patch: {
+            mutationOptions: () => ({
+              mutationFn: mockStepByStepTour.patchState,
+            }),
+          },
         },
       },
     },
@@ -299,6 +426,11 @@ const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
 
 const mockAppCreatePermission = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
+    currentWorkspace: {
+      id: 'workspace-1',
+      name: 'Solar Studio',
+      role: 'owner',
+    },
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
   })
@@ -332,6 +464,7 @@ const renderAppList = (
     queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
   if (options.enableExploreBanner && !mockBannersLoading)
     queryClient.setQueryData(exploreBannersQueryKey, mockBanners)
+  queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
 
   const mockFetchAppList = fetchAppList as unknown as Mock
   const mockFetchBanners = fetchBanners as unknown as Mock
@@ -359,7 +492,12 @@ const renderAppList = (
 
   const Wrapped = ({ children }: { children: ReactNode }) => (
     <JotaiProvider store={jotaiStore}>
-      <SystemFeaturesWrapper>{children}</SystemFeaturesWrapper>
+      <SystemFeaturesWrapper>
+        <StepByStepTourTestUiStateHydrator initialState={mockStepByStepTour.uiState}>
+          <StepByStepTourTestStateObserver onChange={mockStepByStepTour.setObservedState} />
+          {children}
+        </StepByStepTourTestUiStateHydrator>
+      </SystemFeaturesWrapper>
     </JotaiProvider>
   )
   const rendered = renderWithNuqs(
@@ -397,6 +535,7 @@ describe('AppList', () => {
     mockIsLoading = false
     mockIsError = false
     mockConfig.isCloudEdition = false
+    mockStepByStepTour.reset()
   })
 
   afterEach(() => {
@@ -679,8 +818,8 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void, onPending?: () => void }) => {
         options.onPending?.()
       })
@@ -715,8 +854,8 @@ describe('AppList', () => {
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
-      };
-      (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
+      }
+      ;(fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
         options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
@@ -736,15 +875,11 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+      mockStepByStepTour.setUiState({
         activeTaskId: 'home',
         activeGuideIndex: 0,
-        manuallyEnabledWorkspaceIds: ['workspace-1'],
-        manuallyDisabledWorkspaceIds: [],
         minimized: true,
-        completedTaskIds: [],
-        skipped: false,
-      }))
+      })
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
@@ -756,10 +891,10 @@ describe('AppList', () => {
         STEP_BY_STEP_TOUR_TARGETS.homeTryAppCreate,
       )
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
-        expect(state.activeTaskId).toBe('home')
-        expect(state.activeGuideIndex).toBe(1)
-        expect(state.completedTaskIds).toEqual([])
+        const state = mockStepByStepTour.observedState
+        expect(state?.activeTaskId).toBe('home')
+        expect(state?.activeGuideIndex).toBe(1)
+        expect(state?.completedTaskIds).toEqual([])
       })
     })
 
@@ -769,15 +904,11 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+      mockStepByStepTour.setUiState({
         activeTaskId: 'home',
         activeGuideIndex: 0,
-        manuallyEnabledWorkspaceIds: ['workspace-1'],
-        manuallyDisabledWorkspaceIds: [],
         minimized: true,
-        completedTaskIds: [],
-        skipped: false,
-      }))
+      })
 
       renderAppList(false, undefined, undefined, { isCloudEdition: true })
 
@@ -786,12 +917,12 @@ describe('AppList', () => {
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
       expect(screen.queryByTestId('try-app-create')).not.toBeInTheDocument()
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
-        expect(state.activeTaskId).toBeUndefined()
-        expect(state.activeGuideIndex).toBeUndefined()
-        expect(state.activeGuideGroup).toBeUndefined()
-        expect(state.completedTaskIds).toEqual(['home'])
-        expect(state.minimized).toBe(false)
+        const state = mockStepByStepTour.observedState
+        expect(state?.activeTaskId).toBeUndefined()
+        expect(state?.activeGuideIndex).toBeUndefined()
+        expect(state?.activeGuideGroup).toBeUndefined()
+        expect(state?.completedTaskIds).toEqual(['home'])
+        expect(state?.minimized).toBe(false)
       })
     })
 
@@ -801,15 +932,11 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+      mockStepByStepTour.setUiState({
         activeTaskId: 'home',
         activeGuideIndex: 0,
-        manuallyEnabledWorkspaceIds: ['workspace-1'],
-        manuallyDisabledWorkspaceIds: [],
         minimized: true,
-        completedTaskIds: [],
-        skipped: false,
-      }));
+      });
       (fetchAppDetail as unknown as Mock).mockResolvedValue({ export_data: 'yaml-content', mode: AppModeEnum.CHAT })
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
         options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
@@ -822,10 +949,10 @@ describe('AppList', () => {
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
-        expect(state.activeTaskId).toBeUndefined()
-        expect(state.activeGuideIndex).toBeUndefined()
-        expect(state.completedTaskIds).toEqual(['home'])
+        const state = mockStepByStepTour.observedState
+        expect(state?.activeTaskId).toBeUndefined()
+        expect(state?.activeGuideIndex).toBeUndefined()
+        expect(state?.completedTaskIds).toEqual(['home'])
       })
     })
 
@@ -835,15 +962,11 @@ describe('AppList', () => {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+      mockStepByStepTour.setUiState({
         activeTaskId: 'home',
         activeGuideIndex: 0,
-        manuallyEnabledWorkspaceIds: ['workspace-1'],
-        manuallyDisabledWorkspaceIds: [],
         minimized: true,
-        completedTaskIds: [],
-        skipped: false,
-      }))
+      })
 
       renderAppList(true, undefined, undefined, { isCloudEdition: true })
 
@@ -861,10 +984,10 @@ describe('AppList', () => {
       fireEvent.click(screen.getByTestId('hide-create'))
 
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
-        expect(state.activeTaskId).toBeUndefined()
-        expect(state.activeGuideIndex).toBeUndefined()
-        expect(state.completedTaskIds).toEqual([])
+        const state = mockStepByStepTour.observedState
+        expect(state?.activeTaskId).toBeUndefined()
+        expect(state?.activeGuideIndex).toBeUndefined()
+        expect(state?.completedTaskIds).toEqual([])
       })
     })
   })

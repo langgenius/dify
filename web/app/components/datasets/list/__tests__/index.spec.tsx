@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
+import type { StepByStepTourAccountState } from '@/app/components/step-by-step-tour/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { STEP_BY_STEP_TOUR_STORAGE_KEY } from '@/app/components/step-by-step-tour/constants'
 import List from '../index'
 
 const mockPush = vi.fn()
@@ -12,11 +12,53 @@ let mockAppContextState = {
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
 }
 let mockIsCurrentWorkspaceOwner = true
+const mockStepByStepTour = vi.hoisted(() => {
+  const createState = (
+    overrides: Partial<StepByStepTourAccountState> = {},
+  ): StepByStepTourAccountState => ({
+    activeGuideGroup: undefined,
+    activeGuideIndex: undefined,
+    activeGuideIndexes: undefined,
+    activeTaskId: undefined,
+    completedTaskIds: ['home', 'studio'],
+    eligible: true,
+    firstWorkspaceId: 'workspace-1',
+    manuallyDisabledWorkspaceIds: [],
+    manuallyEnabledWorkspaceIds: ['workspace-1'],
+    minimized: true,
+    skipped: false,
+    updatedAt: null,
+    ...overrides,
+  })
+  let state = createState()
+
+  return {
+    get state() {
+      return state
+    },
+    reset() {
+      state = createState()
+    },
+    setState(nextState: StepByStepTourAccountState) {
+      state = nextState
+    },
+    setTestState(overrides: Partial<StepByStepTourAccountState> = {}) {
+      state = createState(overrides)
+    },
+  }
+})
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,
   }),
+}))
+
+vi.mock('@/app/components/step-by-step-tour/storage', () => ({
+  useSetStepByStepTourAccountState: () => (nextState: StepByStepTourAccountState) => {
+    mockStepByStepTour.setState(nextState)
+  },
+  useStepByStepTourAccountStateValue: () => mockStepByStepTour.state,
 }))
 
 // Mock app context
@@ -131,6 +173,7 @@ describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     localStorage.clear()
+    mockStepByStepTour.reset()
     mockAppContextState = {
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
@@ -302,15 +345,11 @@ describe('List', () => {
     })
 
     it('should activate the Knowledge empty walkthrough for users with all empty-state permissions', async () => {
-      localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+      mockStepByStepTour.setTestState({
         activeTaskId: 'knowledge',
         activeGuideIndex: 0,
-        manuallyEnabledWorkspaceIds: ['workspace-1'],
-        manuallyDisabledWorkspaceIds: [],
         minimized: true,
-        completedTaskIds: ['home', 'studio'],
-        skipped: false,
-      }))
+      })
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
       vi.mocked(useDatasetList).mockReturnValue({
         data: { pages: [{ data: [], total: 0 }] },
@@ -323,7 +362,7 @@ describe('List', () => {
       render(<List />)
 
       await waitFor(() => {
-        const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+        const state = mockStepByStepTour.state
         expect(state.activeGuideGroup).toBe('knowledgeEmpty')
         expect(state.activeGuideIndex).toBe(0)
       })
@@ -335,15 +374,11 @@ describe('List', () => {
         isCurrentWorkspaceManager: true,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
-      localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+      mockStepByStepTour.setTestState({
         activeTaskId: 'knowledge',
         activeGuideIndex: 0,
-        manuallyEnabledWorkspaceIds: ['workspace-1'],
-        manuallyDisabledWorkspaceIds: [],
         minimized: true,
-        completedTaskIds: ['home', 'studio'],
-        skipped: false,
-      }))
+      })
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
       vi.mocked(useDatasetList).mockReturnValue({
         data: { pages: [{ data: [], total: 0 }] },
@@ -358,7 +393,7 @@ describe('List', () => {
       await waitFor(() => {
         expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
       })
-      const state = JSON.parse(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)!)
+      const state = mockStepByStepTour.state
       expect(state.activeGuideGroup).toBeUndefined()
     })
 

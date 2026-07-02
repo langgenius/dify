@@ -1,9 +1,9 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { StepByStepTourAccountState } from '@/app/components/step-by-step-tour/types'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
-import { STEP_BY_STEP_TOUR_STORAGE_KEY } from '@/app/components/step-by-step-tour/constants'
 import { getStepByStepTourTargetSelector, STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
@@ -30,6 +30,41 @@ const mockAppStarredListQueryOptions = vi.hoisted(() => vi.fn((options: unknown)
 const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
   onlineUsersMap: {},
 })))
+const mockStepByStepTour = vi.hoisted(() => {
+  const createState = (
+    overrides: Partial<StepByStepTourAccountState> = {},
+  ): StepByStepTourAccountState => ({
+    activeGuideGroup: undefined,
+    activeGuideIndex: undefined,
+    activeGuideIndexes: undefined,
+    activeTaskId: undefined,
+    completedTaskIds: ['home'],
+    eligible: true,
+    firstWorkspaceId: 'workspace-1',
+    manuallyDisabledWorkspaceIds: [],
+    manuallyEnabledWorkspaceIds: ['workspace-1'],
+    minimized: true,
+    skipped: false,
+    updatedAt: null,
+    ...overrides,
+  })
+  let state = createState()
+
+  return {
+    get state() {
+      return state
+    },
+    reset() {
+      state = createState()
+    },
+    setState(nextState: StepByStepTourAccountState) {
+      state = nextState
+    },
+    setTestState(overrides: Partial<StepByStepTourAccountState> = {}) {
+      state = createState(overrides)
+    },
+  }
+})
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
@@ -68,6 +103,13 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
+}))
+
+vi.mock('@/app/components/step-by-step-tour/storage', () => ({
+  useSetStepByStepTourAccountState: () => (nextState: StepByStepTourAccountState) => {
+    mockStepByStepTour.setState(nextState)
+  },
+  useStepByStepTourAccountStateValue: () => mockStepByStepTour.state,
 }))
 
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
@@ -404,21 +446,18 @@ const setActiveStudioStepByStepTour = (
   activeGuideIndex: number,
   activeGuideGroup: 'studioWithApps' | 'studioNoCreateEmpty' | 'studioNoCreateWithApps' | undefined = 'studioWithApps',
 ) => {
-  localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+  mockStepByStepTour.setTestState({
     activeTaskId: 'studio',
     activeGuideGroup,
     activeGuideIndex,
-    manuallyEnabledWorkspaceIds: ['workspace-1'],
-    manuallyDisabledWorkspaceIds: [],
     minimized: true,
-    completedTaskIds: ['home'],
-    skipped: false,
-  }))
+  })
 }
 
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockStepByStepTour.reset()
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDragging = false
