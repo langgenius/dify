@@ -173,9 +173,7 @@ class TestOnToolEnd:
         independent_session.commit.assert_called_once()
         caller_session.execute.assert_not_called()
 
-    def test_on_tool_end_non_parent_child_index(
-        self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture
-    ):
+    def test_on_tool_end_non_parent_child_index(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
         caller_session = mocker.Mock()
 
         independent_session = mocker.MagicMock()
