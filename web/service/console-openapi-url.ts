@@ -3,7 +3,9 @@ type QueryArrayCompatibilityRule = {
   fields: readonly string[]
 }
 
-// Bridge oRPC indexed query arrays to Flask handlers that read repeated keys with getlist().
+// Keep oRPC query-array compatibility at the console OpenAPI transport boundary instead of
+// making backend handlers accept multiple serialized forms. oRPC v2 supports custom query
+// parameter serialization, so this bridge can be removed once we configure repeated keys there.
 const repeatedQueryArrayRules: readonly QueryArrayCompatibilityRule[] = [
   { path: /\/agent$/, fields: ['tag_ids', 'creator_ids'] },
   { path: /\/agent\/[^/]+\/logs$/, fields: ['sources', 'statuses'] },
