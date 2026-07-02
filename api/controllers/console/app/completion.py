@@ -117,15 +117,12 @@ edit workspace files, run validation or debugging commands, make exploratory che
 Use only the current Build chat message history to identify changes that need to be persisted. Do not inspect, test, or
 validate old config unless the message history already shows that the old config is invalid.
 
-Persist only the build-draft config resources that need to change, using the Agent config CLI usage provided in the
-runtime prompt:
+Only update the build-draft config note when the current Build chat contains durable context that later runs need.
+Do not create, update, delete, inspect, or fill gaps in other Agent config resources, including config files, config
+skills, config env, tools, models, knowledge, or prompt settings.
 
-- config files for reusable artifacts that should be available later,
-- config skills for reusable procedures or tools that should be available later,
-- config env when environment keys or values need to be recorded,
-- config note for concise durable context when useful.
-
-When updating the config note, record only durable context needed by later runs, such as:
+When updating the config note with the Agent config CLI usage provided in the runtime prompt, record only durable
+context needed by later runs, such as:
 
 - what you installed or configured outside the workspace for this agent,
 - where those external updates live, including CLI tools, packages, and persistent $HOME paths,
