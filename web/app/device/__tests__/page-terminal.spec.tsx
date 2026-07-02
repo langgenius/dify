@@ -73,56 +73,56 @@ async function reachTerminal(rejectWith: unknown) {
   render(<DevicePage />)
   const input = screen.getByRole('textbox')
   fireEvent.change(input, { target: { value: VALID_CODE } })
-  fireEvent.click(screen.getByRole('button', { name: /Continue/i }))
+  fireEvent.click(screen.getByRole('button', { name: /deviceFlow.codeEntry.continue/i }))
 }
 
 describe('error_expired terminal state', () => {
-  it('shows "Code no longer valid" heading', async () => {
+  it('shows "errorExpired.title" heading', async () => {
     await reachTerminal(new Error('expired'))
-    await screen.findByText('Code no longer valid')
+    await screen.findByText('deviceFlow.errorExpired.title')
   })
 
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new Error('expired'))
-    await screen.findByText('Code no longer valid')
-    fireEvent.click(screen.getByRole('button', { name: /Try a different code/i }))
+    await screen.findByText('deviceFlow.errorExpired.title')
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.errorExpired.tryDifferentCode/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('Code no longer valid')).not.toBeInTheDocument()
+    expect(screen.queryByText('deviceFlow.errorExpired.title')).not.toBeInTheDocument()
   })
 })
 
 describe('error_rate_limited terminal state', () => {
-  it('shows "Too many attempts" heading', async () => {
+  it('shows "errorRateLimited.title" heading', async () => {
     await reachTerminal(new MockDeviceFlowError('rate_limited', 429))
-    await screen.findByText('Too many attempts')
+    await screen.findByText('deviceFlow.errorRateLimited.title')
   })
 
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new MockDeviceFlowError('rate_limited', 429))
-    await screen.findByText('Too many attempts')
-    fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
+    await screen.findByText('deviceFlow.errorRateLimited.title')
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.tryAgain/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('Too many attempts')).not.toBeInTheDocument()
+    expect(screen.queryByText('deviceFlow.errorRateLimited.title')).not.toBeInTheDocument()
   })
 })
 
 describe('error_lookup_failed terminal state', () => {
-  it('shows "Could not verify the code" heading', async () => {
+  it('shows "errorLookupFailed.title" heading', async () => {
     await reachTerminal(new MockDeviceFlowError('server_error', 500))
-    await screen.findByText('Could not verify the code')
+    await screen.findByText('deviceFlow.errorLookupFailed.title')
   })
 
   it('ghost button resets to code_entry', async () => {
     await reachTerminal(new MockDeviceFlowError('server_error', 500))
-    await screen.findByText('Could not verify the code')
-    fireEvent.click(screen.getByRole('button', { name: /Try again/i }))
+    await screen.findByText('deviceFlow.errorLookupFailed.title')
+    fireEvent.click(screen.getByRole('button', { name: /deviceFlow.tryAgain/i }))
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText('Could not verify the code')).not.toBeInTheDocument()
+    expect(screen.queryByText('deviceFlow.errorLookupFailed.title')).not.toBeInTheDocument()
   })
 })
 
 describe('sso_error inline banner on the code-entry page', () => {
-  const SSO_BANNER_COPY = /identity is linked to a Dify account/i
+  const SSO_BANNER_COPY = 'deviceFlow.ssoError.emailBelongsToDifyAccount'
 
   it('shows the error banner with friendly copy when sso_error is present', async () => {
     mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
@@ -135,7 +135,7 @@ describe('sso_error inline banner on the code-entry page', () => {
     render(<DevicePage />)
     await screen.findByText(SSO_BANNER_COPY)
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Continue/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /deviceFlow.codeEntry.continue/i })).toBeInTheDocument()
   })
 
   it('does not surface the raw backend error code', async () => {
