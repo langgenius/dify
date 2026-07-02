@@ -11,6 +11,10 @@ from .pause_reason import HumanInputRequired, PauseReason
 from .session_binding import default_session_binding
 
 
+class HumanInputPauseReasonResolutionError(LookupError):
+    """Raised when a graph pause reason cannot be resolved into Dify-owned form state."""
+
+
 def enrich_graph_pause_reasons(
     *,
     reasons: Sequence[HitlRequired | PauseReason],
@@ -38,11 +42,13 @@ def _enrich_hitl_required(
     reason: HitlRequired,
     form_repository: HumanInputFormSubmissionRepository,
     variable_pool: ReadOnlyVariablePool | None,
-) -> HumanInputRequired | None:
+) -> HumanInputRequired:
     form_id = default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
     record = form_repository.get_by_form_id(form_id)
     if record is None:
-        return None
+        raise HumanInputPauseReasonResolutionError(
+            f"missing human input form while enriching pause reason: form_id={form_id}, session_id={reason.session_id}"
+        )
 
     return HumanInputRequired(
         form_id=record.form_id,

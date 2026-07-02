@@ -1,7 +1,12 @@
+from unittest.mock import Mock
+
 import pytest
 
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import FormDisposition, enrich_human_input_pause_reasons
+from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
+from graphon.entities.pause_reason import HitlRequired
 
 _HUMAN_INPUT_REASON = {"TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
 
@@ -61,3 +66,21 @@ def test_pause_reason_payload_carries_approval_channels_through_factory():
 
     assert payload.approval_channels == ["console"]
     assert payload.form_token is None
+
+
+def test_enrich_graph_pause_reasons_raises_when_hitl_form_record_is_missing():
+    form_repository = Mock(spec=HumanInputFormSubmissionRepository)
+    form_repository.get_by_form_id.return_value = None
+
+    with pytest.raises(LookupError, match="form-123"):
+        enrich_graph_pause_reasons(
+            reasons=[
+                HitlRequired(
+                    session_id="form-123",
+                    node_id="node-1",
+                    node_title="Ask Name",
+                )
+            ],
+            form_repository=form_repository,
+            variable_pool=None,
+        )
