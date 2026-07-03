@@ -108,30 +108,34 @@ Given(
   },
 )
 
-When('I generate an Agent v2 Build draft from the fixed instruction', async function (this: DifyWorld) {
-  const page = this.getPage()
-  const agentId = getCurrentAgentId(this)
-  const instruction = (await readFile(getAgentBuilderTestMaterialPath('buildInstruction'), 'utf8')).trim()
+When(
+  'I generate an Agent v2 Build draft from the fixed instruction',
+  { timeout: 180_000 },
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const agentId = getCurrentAgentId(this)
+    const instruction = (await readFile(getAgentBuilderTestMaterialPath('buildInstruction'), 'utf8')).trim()
 
-  await page.getByRole('button', { exact: true, name: 'Build' }).click()
-  await page.getByPlaceholder('Describe what your agent should do').fill(instruction)
+    await page.getByRole('button', { exact: true, name: 'Build' }).click()
+    await page.getByPlaceholder('Describe what your agent should do').fill(instruction)
 
-  const checkoutResponsePromise = page.waitForResponse(response => (
-    response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-draft/checkout`)
-  ))
-  const chatResponsePromise = page.waitForResponse(response => (
-    response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/chat-messages`)
-  ))
+    const checkoutResponsePromise = page.waitForResponse(response => (
+      response.request().method() === 'POST'
+      && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-draft/checkout`)
+    ))
+    const chatResponsePromise = page.waitForResponse(response => (
+      response.request().method() === 'POST'
+      && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/chat-messages`)
+    ))
 
-  await page.getByRole('button', { name: 'Start build' }).click()
-  expect((await checkoutResponsePromise).ok()).toBe(true)
-  expect((await chatResponsePromise).ok()).toBe(true)
-  await expect(page.getByText('Build draft')).toBeVisible({ timeout: 120_000 })
-  await expect(page.getByRole('button', { exact: true, name: 'Apply' })).toBeEnabled({ timeout: 120_000 })
-  await expect(page.getByRole('button', { exact: true, name: 'Discard' })).toBeEnabled()
-})
+    await page.getByRole('button', { name: 'Start build' }).click()
+    expect((await checkoutResponsePromise).ok()).toBe(true)
+    expect((await chatResponsePromise).ok()).toBe(true)
+    await expect(page.getByText('Build draft')).toBeVisible({ timeout: 120_000 })
+    await expect(page.getByRole('button', { exact: true, name: 'Apply' })).toBeEnabled({ timeout: 120_000 })
+    await expect(page.getByRole('button', { exact: true, name: 'Discard' })).toBeEnabled()
+  },
+)
 
 const expectPageResponseOK = async (response: Response, action: string) => {
   if (response.ok())

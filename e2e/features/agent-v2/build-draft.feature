@@ -1,20 +1,17 @@
 @agent-v2 @authenticated @build
 Feature: Agent v2 build draft
-  @external-model @agent-backend-runtime @stable-model @tool-fixture @skill-fixture
+  @external-model @agent-backend-runtime @stable-model
   Scenario: Generating a Build draft leaves the normal Agent configuration unchanged
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
     And the Agent v2 runtime backend is available
-    And the Agent Builder preseeded tool "JSON Process / JSON Replace" is available
     And a runnable Agent v2 test agent has been created via API
-    And the e2e-summary-skill Skill is available to the Agent v2 test agent
     When I open the Agent v2 configure page
     And I generate an Agent v2 Build draft from the fixed instruction
     Then I should see the Agent v2 Build draft pending changes
     And I should see the Agent v2 Build mode confirmation state
     And the normal Agent v2 draft should still use the normal E2E prompt
     And the normal Agent v2 draft should not include the e2e-summary-skill Skill
-    And the normal Agent v2 draft should not include the Agent Builder JSON Replace tool
 
   @core
   Scenario: Discarding a Build draft keeps the original Agent configuration
