@@ -988,9 +988,7 @@ def test_run_remote_script_complete_passes_config_env_values_to_shellctl_env() -
     commands = FakeCommands(run_handler=run_handler)
     layer, _provider = _layer(
         commands=commands,
-        config=DifyShellLayerConfig(
-            env=[DifyShellEnvVarConfig(name="API_TOKEN", value="inline-secret-value")]
-        ),
+        config=DifyShellLayerConfig(env=[DifyShellEnvVarConfig(name="API_TOKEN", value="inline-secret-value")]),
     )
     _bind_execution_context(layer)
     layer.runtime_state = _runtime_state()
