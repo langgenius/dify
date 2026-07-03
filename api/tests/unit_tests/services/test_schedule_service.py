@@ -1,7 +1,6 @@
 import unittest
 from datetime import UTC, datetime
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -503,7 +502,10 @@ def session_mock() -> MagicMock:
 
 
 def _workflow(**kwargs: Any) -> Workflow:
-    return cast(Workflow, SimpleNamespace(**kwargs))
+    workflow = Mock(spec=Workflow)
+    for key, value in kwargs.items():
+        setattr(workflow, key, value)
+    return workflow
 
 
 def test_to_schedule_config_should_build_from_cron_mode() -> None:
