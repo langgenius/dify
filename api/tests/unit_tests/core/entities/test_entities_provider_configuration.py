@@ -1149,7 +1149,7 @@ def test_switch_active_provider_credential_success_and_failures() -> None:
 def test_get_custom_model_record_supports_plugin_id_alias() -> None:
     configuration = _build_provider_configuration(provider_name="langgenius/openai/openai")
     session = Mock()
-    custom_model_record = SimpleNamespace(id="model-1")
+    custom_model_record = SimpleNamespace(id="model-1", provider_name="openai")
     session.execute.return_value = _exec_result(scalars_all=[custom_model_record])
 
     result = configuration._get_custom_model_record(ModelType.LLM, "gpt-4o", session)
@@ -1276,7 +1276,9 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
     session.flush.side_effect = lambda: None
-    provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
+    provider_model_record = SimpleNamespace(
+        id="model-1", credential_id="cred-1", provider_name="openai", updated_at=None
+    )
     credential_record = SimpleNamespace(id="cred-1", encrypted_config="{}", credential_name="Old", updated_at=None)
 
     with _patched_session(session):
@@ -1325,7 +1327,9 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
     lb_config = SimpleNamespace(id="lb-1")
-    provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
+    provider_model_record = SimpleNamespace(
+        id="model-1", credential_id="cred-1", provider_name="openai", updated_at=None
+    )
     session.execute.side_effect = [
         _exec_result(scalar_one_or_none=credential_record),
         _exec_result(scalars_all=[lb_config]),
@@ -1345,7 +1349,9 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
         model_name="stored-model",
         model_type=ModelType.TEXT_EMBEDDING,
     )
-    provider_model_record = SimpleNamespace(id="model-2", credential_id="cred-2", updated_at=None)
+    provider_model_record = SimpleNamespace(
+        id="model-2", credential_id="cred-2", provider_name="openai", updated_at=None
+    )
     session.execute.side_effect = [
         _exec_result(scalar_one_or_none=None),
         _exec_result(scalar_one_or_none=mismatched_credential_record),
@@ -1445,7 +1451,7 @@ def test_delete_custom_model_and_model_setting_methods() -> None:
     )
 
     session = Mock()
-    provider_model_record = SimpleNamespace(id="model-1")
+    provider_model_record = SimpleNamespace(id="model-1", provider_name="openai")
     credential_record = SimpleNamespace(id="cred-1")
     lb_config = SimpleNamespace(id="lb-1")
     session.execute.side_effect = [
@@ -2095,7 +2101,9 @@ def test_delete_custom_model_credential_removes_custom_model_record_when_last_cr
     configuration = _build_provider_configuration()
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
-    provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
+    provider_model_record = SimpleNamespace(
+        id="model-1", credential_id="cred-1", provider_name="openai", updated_at=None
+    )
     session.execute.side_effect = [
         _exec_result(scalar_one_or_none=credential_record),
         _exec_result(scalars_all=[]),
