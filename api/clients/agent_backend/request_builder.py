@@ -355,11 +355,14 @@ class AgentBackendRunRequestBuilder:
         )
 
         if run_input.tools is not None and run_input.tools.tools:
+            plugin_tool_deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+            if include_shell:
+                plugin_tool_deps["shell"] = DIFY_SHELL_LAYER_ID
             layers.append(
                 RunLayerSpec(
                     name=DIFY_PLUGIN_TOOLS_LAYER_ID,
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    deps=plugin_tool_deps,
                     metadata=run_input.metadata,
                     config=run_input.tools,
                 )
@@ -582,11 +585,14 @@ class AgentBackendRunRequestBuilder:
         )
 
         if run_input.tools is not None and run_input.tools.tools:
+            plugin_tool_deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+            if include_shell:
+                plugin_tool_deps["shell"] = DIFY_SHELL_LAYER_ID
             layers.append(
                 RunLayerSpec(
                     name=DIFY_PLUGIN_TOOLS_LAYER_ID,
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    deps=plugin_tool_deps,
                     metadata=run_input.metadata,
                     config=run_input.tools,
                 )

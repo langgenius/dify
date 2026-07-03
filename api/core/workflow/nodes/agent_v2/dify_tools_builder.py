@@ -11,6 +11,7 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginToolCredentialType,
     DifyPluginToolParameter,
     DifyPluginToolParameterForm,
+    DifyPluginToolParameterType,
     DifyPluginToolsLayerConfig,
 )
 from sqlalchemy import select
@@ -404,7 +405,7 @@ class WorkflowAgentDifyToolsBuilder:
             credentials=self._normalize_credentials(runtime.credentials, tool_name=exposed_name),
             runtime_parameters=runtime_parameters,
             parameters=parameters,
-            parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
+            parameters_json_schema=self._plugin_parameters_json_schema(tool_runtime, parameters),
         )
 
     def _to_core_backend_tool_config(
@@ -457,6 +458,41 @@ class WorkflowAgentDifyToolsBuilder:
         return description
 
     @staticmethod
+    def _plugin_parameters_json_schema(
+        tool_runtime: Tool,
+        parameters: list[DifyPluginToolParameter],
+    ) -> dict[str, Any]:
+        schema = tool_runtime.get_llm_parameters_json_schema()
+        properties = schema.setdefault("properties", {})
+        required = schema.setdefault("required", [])
+        if not isinstance(properties, dict) or not isinstance(required, list):
+            raise WorkflowAgentDifyToolsBuildError(
+                "agent_tool_declaration_invalid",
+                f"Dify Plugin Tool {tool_runtime.entity.identity.name!r} has invalid parameter schema.",
+            )
+
+        for parameter in parameters:
+            if parameter.form is not DifyPluginToolParameterForm.LLM:
+                continue
+            if parameter.type is DifyPluginToolParameterType.FILE:
+                properties[parameter.name] = _plugin_file_input_schema(parameter.llm_description or "")
+            elif parameter.type in {
+                DifyPluginToolParameterType.FILES,
+                DifyPluginToolParameterType.SYSTEM_FILES,
+            }:
+                properties[parameter.name] = {
+                    "type": "array",
+                    "items": _plugin_file_input_schema(parameter.llm_description or ""),
+                    "description": parameter.llm_description or "",
+                }
+            else:
+                continue
+
+            if parameter.required and parameter.name not in required:
+                required.append(parameter.name)
+        return schema
+
+    @staticmethod
     def _runtime_parameters(
         tool_runtime: Tool,
         parameters: list[DifyPluginToolParameter],
@@ -498,3 +534,37 @@ class WorkflowAgentDifyToolsBuilder:
                 ),
             )
         return normalized
+
+
+def _plugin_file_input_schema(description: str) -> dict[str, Any]:
+    return {
+        "description": description,
+        "anyOf": [
+            {
+                "type": "string",
+                "minLength": 1,
+                "description": "HTTP(S) URL or sandbox-local file path.",
+            },
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["transfer_method", "url"],
+                "properties": {
+                    "transfer_method": {"type": "string", "enum": ["remote_url"]},
+                    "url": {"type": "string", "minLength": 1},
+                },
+            },
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["transfer_method", "reference"],
+                "properties": {
+                    "transfer_method": {
+                        "type": "string",
+                        "enum": ["local_file", "tool_file", "datasource_file"],
+                    },
+                    "reference": {"type": "string", "minLength": 1},
+                },
+            },
+        ],
+    }
