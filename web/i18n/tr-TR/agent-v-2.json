@@ -181,7 +181,7 @@
   "agentDetail.configure.rightPanel.learnMore": "Daha fazla bilgi",
   "agentDetail.configure.rightPanel.modeLabel": "Aracı yapılandırma modu",
   "agentDetail.configure.rightPanel.preview": "Önizleme",
-  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview, Community sürümünde desteklenmez. Preview kullanmak için SaaS veya Enterprise sürümünü kullanın.",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview yalnızca Dify Cloud ve Enterprise üzerinde kullanılabilir.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview, tamamlanan ajanı kullanıcılarınızın göreceği şekilde, temiz yanıtlar ve sohbet özellikleriyle çalıştırır.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Ajanınızı önizleyin",
   "agentDetail.configure.skills.add": "Beceri ekle",

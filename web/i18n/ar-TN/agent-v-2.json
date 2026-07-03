@@ -181,7 +181,7 @@
   "agentDetail.configure.rightPanel.learnMore": "معرفة المزيد",
   "agentDetail.configure.rightPanel.modeLabel": "وضع تكوين الوكيل",
   "agentDetail.configure.rightPanel.preview": "معاينة",
-  "agentDetail.configure.rightPanel.previewDisabledTip": "ميزة Preview غير مدعومة في إصدار المجتمع. لاستخدام Preview، استخدم SaaS أو إصدار المؤسسات.",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview متاح فقط على Dify Cloud وEnterprise.",
   "agentDetail.configure.rightPanel.previewTipBody": "يشغل Preview الوكيل المكتمل كما سيراه المستخدمون، مع ردود واضحة وميزات الدردشة.",
   "agentDetail.configure.rightPanel.previewTipTitle": "عاين وكيلك",
   "agentDetail.configure.skills.add": "إضافة مهارة",

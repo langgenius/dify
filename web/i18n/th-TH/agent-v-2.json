@@ -181,7 +181,7 @@
   "agentDetail.configure.rightPanel.learnMore": "เรียนรู้เพิ่มเติม",
   "agentDetail.configure.rightPanel.modeLabel": "โหมดการกำหนดค่าเอเจนต์",
   "agentDetail.configure.rightPanel.preview": "แสดงตัวอย่าง",
-  "agentDetail.configure.rightPanel.previewDisabledTip": "รุ่น Community ไม่รองรับฟีเจอร์ Preview หากต้องการใช้ Preview โปรดใช้ SaaS หรือรุ่น Enterprise",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview พร้อมใช้งานเฉพาะบน Dify Cloud และ Enterprise เท่านั้น",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview เรียกใช้เอเจนต์ที่เสร็จแล้วในแบบที่ผู้ใช้จะเห็น พร้อมคำตอบที่ชัดเจนและฟีเจอร์แชท",
   "agentDetail.configure.rightPanel.previewTipTitle": "ดูตัวอย่างเอเจนต์",
   "agentDetail.configure.skills.add": "เพิ่มทักษะ",

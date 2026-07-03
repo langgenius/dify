@@ -181,7 +181,7 @@
   "agentDetail.configure.rightPanel.learnMore": "Saiba mais",
   "agentDetail.configure.rightPanel.modeLabel": "Modo de configuração do agente",
   "agentDetail.configure.rightPanel.preview": "Pré-visualização",
-  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview não está disponível na edição Community. Para usar Preview, use SaaS ou a edição Enterprise.",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview está disponível apenas no Dify Cloud e Enterprise.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview executa o agente finalizado como seus usuários o verão, com respostas claras e recursos de chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Pré-visualize seu agente",
   "agentDetail.configure.skills.add": "Adicionar habilidade",

@@ -181,7 +181,7 @@
   "agentDetail.configure.rightPanel.learnMore": "Дізнатися більше",
   "agentDetail.configure.rightPanel.modeLabel": "Режим налаштування агента",
   "agentDetail.configure.rightPanel.preview": "Перегляд",
-  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview недоступний у редакції Community. Щоб використовувати Preview, скористайтеся SaaS або редакцією Enterprise.",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview доступний лише в Dify Cloud та Enterprise.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview запускає готового агента так, як його побачать користувачі, з чистими відповідями та функціями чату.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Попередній перегляд агента",
   "agentDetail.configure.skills.add": "Додати навичку",

@@ -181,7 +181,7 @@
   "agentDetail.configure.rightPanel.learnMore": "Tìm hiểu thêm",
   "agentDetail.configure.rightPanel.modeLabel": "Chế độ cấu hình tác nhân",
   "agentDetail.configure.rightPanel.preview": "Xem trước",
-  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview không khả dụng trong phiên bản Community. Để sử dụng Preview, hãy dùng SaaS hoặc phiên bản Enterprise.",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview chỉ khả dụng trên Dify Cloud và Enterprise.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview chạy agent hoàn chỉnh theo cách người dùng sẽ thấy, với câu trả lời rõ ràng và các tính năng chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Xem trước agent",
   "agentDetail.configure.skills.add": "Thêm kỹ năng",

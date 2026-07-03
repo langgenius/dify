@@ -181,7 +181,7 @@
   "agentDetail.configure.rightPanel.learnMore": "Pelajari selengkapnya",
   "agentDetail.configure.rightPanel.modeLabel": "Mode konfigurasi agen",
   "agentDetail.configure.rightPanel.preview": "Pratinjau",
-  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview tidak tersedia di edisi Community. Untuk menggunakan Preview, gunakan SaaS atau edisi Enterprise.",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview hanya tersedia di Dify Cloud dan Enterprise.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview menjalankan agent yang sudah selesai seperti yang akan dilihat pengguna, dengan balasan rapi dan fitur chat.",
   "agentDetail.configure.rightPanel.previewTipTitle": "Pratinjau agen Anda",
   "agentDetail.configure.skills.add": "Tambahkan keterampilan",

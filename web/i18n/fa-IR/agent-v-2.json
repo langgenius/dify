@@ -181,7 +181,7 @@
   "agentDetail.configure.rightPanel.learnMore": "بیشتر بدانید",
   "agentDetail.configure.rightPanel.modeLabel": "حالت پیکربندی عامل",
   "agentDetail.configure.rightPanel.preview": "پیش‌نمایش",
-  "agentDetail.configure.rightPanel.previewDisabledTip": "قابلیت Preview در نسخه Community پشتیبانی نمی‌شود. برای استفاده از Preview، از SaaS یا نسخه Enterprise استفاده کنید.",
+  "agentDetail.configure.rightPanel.previewDisabledTip": "Preview فقط در Dify Cloud و Enterprise در دسترس است.",
   "agentDetail.configure.rightPanel.previewTipBody": "Preview عامل تکمیل‌شده را همان‌طور که کاربران می‌بینند اجرا می‌کند، با پاسخ‌های تمیز و قابلیت‌های گفتگو.",
   "agentDetail.configure.rightPanel.previewTipTitle": "پیش‌نمایش عامل",
   "agentDetail.configure.skills.add": "افزودن مهارت",
