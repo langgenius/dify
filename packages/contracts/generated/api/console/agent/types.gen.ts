@@ -417,6 +417,11 @@ export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
 }
 
+export type SandboxInfoResponse = {
+  session_id: string
+  workspace_cwd: string
+}
+
 export type SandboxListResponse = {
   entries?: Array<SandboxFileEntryResponse>
   path: string
@@ -2975,6 +2980,24 @@ export type GetAgentByAgentIdReferencingWorkflowsResponses = {
 
 export type GetAgentByAgentIdReferencingWorkflowsResponse
   = GetAgentByAgentIdReferencingWorkflowsResponses[keyof GetAgentByAgentIdReferencingWorkflowsResponses]
+
+export type GetAgentByAgentIdSandboxData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    conversation_id: string
+  }
+  url: '/agent/{agent_id}/sandbox'
+}
+
+export type GetAgentByAgentIdSandboxResponses = {
+  200: SandboxInfoResponse
+}
+
+export type GetAgentByAgentIdSandboxResponse
+  = GetAgentByAgentIdSandboxResponses[keyof GetAgentByAgentIdSandboxResponses]
 
 export type GetAgentByAgentIdSandboxFilesData = {
   body?: never
