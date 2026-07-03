@@ -44,7 +44,7 @@ dependencies = [
     "resend>=2.27.0,<3.0.0",
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]==0.7.0",
-    "graphon==0.5.3",
+    "graphon==0.6.0",
     "httpx-sse==0.4.3",
     "json-repair==0.59.4",
 ]

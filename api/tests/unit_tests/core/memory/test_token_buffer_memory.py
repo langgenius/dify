@@ -629,6 +629,7 @@ class TestGetHistoryPromptMessages:
         msg.parent_message_id = None
 
         mock_user_file = MagicMock()
+        mock_user_file.message_id = msg.id  # must match so batched grouping keys it to this message
         mock_user_prompt = UserPromptMessage(content="from build")
         mock_assistant_prompt = AssistantPromptMessage(content="answer")
 
@@ -679,6 +680,7 @@ class TestGetHistoryPromptMessages:
         msg.parent_message_id = None
 
         mock_assistant_file = MagicMock()
+        mock_assistant_file.message_id = msg.id  # must match so batched grouping keys it to this message
         mock_user_prompt = UserPromptMessage(content="query")
         mock_assistant_prompt = AssistantPromptMessage(content="built")
 
@@ -713,6 +715,40 @@ class TestGetHistoryPromptMessages:
         mock_build.assert_called_once()
         call_kwargs = mock_build.call_args[1]
         assert call_kwargs["is_user_message"] is False
+
+    def test_message_files_loaded_with_constant_query_count(self):
+        """Regression guard against N+1: message files must be batch-loaded.
+
+        Regardless of the number of messages in the thread, file loading must use a
+        constant number of queries (1 messages query + 2 batched file queries),
+        never 2 queries per message.
+        """
+        mem = self._make_memory()
+
+        messages = [_make_message() for _ in range(5)]
+        for m in messages:
+            m.parent_message_id = None
+
+        scalars_calls = {"n": 0}
+
+        def scalars_side_effect(stmt):
+            r = MagicMock()
+            # First call returns the thread messages; the batched file queries return none.
+            r.all.return_value = messages if scalars_calls["n"] == 0 else []
+            scalars_calls["n"] += 1
+            return r
+
+        with (
+            patch("core.memory.token_buffer_memory.db") as mock_db,
+            patch("core.memory.token_buffer_memory.extract_thread_messages", return_value=messages),
+            patch("core.memory.token_buffer_memory.FileUploadConfigManager.convert", return_value=None),
+        ):
+            mock_db.session.scalars.side_effect = scalars_side_effect
+            mem.get_history_prompt_messages()
+
+        # 1 (messages) + 2 (batched user/assistant files) = 3, independent of message count.
+        # Before this fix it would have been 1 + 2 * 5 = 11 (an N+1 pattern).
+        assert scalars_calls["n"] == 3
 
     def test_token_pruning_removes_oldest_messages(self):
         """If tokens exceed limit, oldest messages are removed until within limit."""
