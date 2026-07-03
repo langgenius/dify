@@ -39,7 +39,7 @@ def reset_celery_warm_shutdown_state() -> None:
 
 
 def _on_worker_shutting_down(*args: object, **kwargs: object) -> None:
-    """Send abort commands for active workflow tasks before Celery exits."""
+    """Set the warm-shutdown abort command and log the active workflow run count."""
     how = kwargs.get("how")
     if not _is_warm_shutdown(how):
         logger.debug("Skip workflow abort during non-warm Celery shutdown: how=%s", how)
