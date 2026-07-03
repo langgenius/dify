@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
@@ -19,12 +18,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { agentComposerOriginalConfigAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
+import { DocsLink } from '../common/docs-link'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
@@ -235,6 +236,7 @@ function AgentFileItem({
 
 function AgentBuildNoteFileRow() {
   const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
   const tooltip = t('agentDetail.configure.files.buildNote.tooltip')
 
   return (
@@ -259,11 +261,14 @@ function AgentBuildNoteFileRow() {
           )}
         />
         <TooltipContent className="w-[230px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-          <div className="title-xs-semi-bold text-text-primary">
-            {BUILD_NOTE_FILE_NAME}
-          </div>
-          <p className="mt-1 body-xs-regular text-text-secondary">
-            {tooltip}
+          <p className="body-xs-regular text-text-secondary">
+            <Trans
+              i18nKey="agentDetail.configure.files.buildNote.richTooltip"
+              ns="agentV2"
+              components={{
+                docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
+              }}
+            />
           </p>
         </TooltipContent>
       </Tooltip>

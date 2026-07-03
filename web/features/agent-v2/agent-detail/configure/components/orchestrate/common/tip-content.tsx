@@ -1,30 +1,11 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
+import { DocsLink } from './docs-link'
 
 type AgentConfigureTipContentProps = {
   type: 'prompt' | 'skills' | 'files' | 'tools' | 'knowledge' | 'env'
-}
-
-function DocsLink({
-  children,
-  href,
-}: {
-  children?: ReactNode
-  href: string
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-text-accent hover:underline"
-    >
-      {children}
-    </a>
-  )
 }
 
 export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps) {
