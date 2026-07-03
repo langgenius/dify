@@ -731,7 +731,7 @@ function AgentPreviewChatSession({
   }, [chatList, doSend])
   const isEmptyChat = chatList.length === 0
   const hasInstructions = !!config.pre_prompt.trim()
-  const sendButtonLoading = !conversationId && (isSendPending || isResponding)
+  const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">
       <ChatInputArea

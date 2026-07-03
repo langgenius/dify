@@ -418,11 +418,9 @@ describe('AgentPreviewChat', () => {
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
   })
 
-  it('should not show the send button loading state while preparing a later build message', async () => {
+  it('should not show the send button loading state while an icon send button prepares the run', async () => {
     const saveDraftBeforeRun = vi.fn(() => new Promise<void>(() => {}))
     renderPreviewChat({
-      conversationId: 'conversation-1',
-      sendButtonLabel: 'Start build',
       onSaveDraftBeforeRun: saveDraftBeforeRun,
     })
 
@@ -437,7 +435,7 @@ describe('AgentPreviewChat', () => {
     expect(handleSendMock).not.toHaveBeenCalled()
   })
 
-  it('should not show the send button loading state while a later build message is responding', async () => {
+  it('should not show the send button loading state while an icon send button is responding', async () => {
     useChatMock.mockImplementationOnce((
       _config: unknown,
       _formSettings: unknown,
@@ -459,10 +457,7 @@ describe('AgentPreviewChat', () => {
       }
     })
 
-    renderPreviewChat({
-      conversationId: 'conversation-1',
-      sendButtonLabel: 'Start build',
-    })
+    renderPreviewChat()
 
     await waitFor(() => expect(screen.getByTestId('mock-chat')).toBeInTheDocument())
 
