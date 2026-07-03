@@ -31,6 +31,30 @@ def test_serialize_workspace_uses_supplied_owner_and_member_count():
     }
 
 
+@patch("services.platform_admin_service.TenantService")
+@patch("services.platform_admin_service.db")
+def test_create_workspace_passes_explicit_session_to_tenant_service(mock_db, mock_tenant_service):
+    tenant = SimpleNamespace(id="tenant-1", name="Managed Workspace")
+    mock_db.session.execute.return_value.scalar_one_or_none.return_value = None
+    mock_tenant_service.create_tenant.return_value = tenant
+
+    result = PlatformAdminService.create_workspace(
+        name="Managed Workspace",
+        owner_email=None,
+        owner_name=None,
+        inviter=SimpleNamespace(name="Platform Admin"),
+        language="en-US",
+    )
+
+    mock_tenant_service.create_tenant.assert_called_once_with(
+        name="Managed Workspace",
+        is_from_dashboard=True,
+        session=mock_db.session,
+    )
+    assert result == (tenant, None)
+
+
+@patch("services.platform_admin_service.db")
 @patch("services.platform_admin_service.send_invite_member_mail_task")
 @patch("services.platform_admin_service.RegisterService")
 @patch("services.platform_admin_service.TenantService")
@@ -45,6 +69,7 @@ def test_assign_workspace_owner_registers_pending_owner_and_returns_invite_url(
     mock_tenant_service,
     mock_register_service,
     mock_mail_task,
+    mock_db,
 ):
     mock_dify_config.CONSOLE_WEB_URL = "http://localhost"
     tenant = SimpleNamespace(id="tenant-1", name="Managed Workspace")
@@ -72,13 +97,15 @@ def test_assign_workspace_owner_registers_pending_owner_and_returns_invite_url(
         status=AccountStatus.PENDING,
         is_setup=True,
         create_workspace_required=False,
+        session=mock_db.session,
     )
     mock_tenant_service.create_tenant_member.assert_called_once_with(
         tenant,
         account,
+        mock_db.session,
         role=TenantAccountRole.OWNER,
     )
-    mock_tenant_service.switch_tenant.assert_called_once_with(account, tenant.id)
+    mock_tenant_service.switch_tenant.assert_called_once_with(account, tenant.id, session=mock_db.session)
     mock_mail_task.delay.assert_called_once_with(
         language="en-US",
         to="owner@example.com",
@@ -87,6 +114,62 @@ def test_assign_workspace_owner_registers_pending_owner_and_returns_invite_url(
         workspace_name="Managed Workspace",
     )
     assert result == "http://localhost/activate?email=owner%40example.com&token=invite-token"
+
+
+@patch("services.platform_admin_service.send_invite_member_mail_task")
+@patch("services.platform_admin_service.RegisterService")
+@patch("services.platform_admin_service.TenantService")
+@patch("services.platform_admin_service.db")
+@patch(
+    "services.platform_admin_service.PlatformAdminService._get_account_by_email_with_case_fallback",
+    return_value=None,
+)
+def test_invite_member_registers_pending_member_with_explicit_session(
+    mock_get_account,
+    mock_db,
+    mock_tenant_service,
+    mock_register_service,
+    mock_mail_task,
+):
+    tenant = SimpleNamespace(id="tenant-1", name="Managed Workspace")
+    inviter = SimpleNamespace(name="Platform Admin")
+    account = SimpleNamespace(email="member@example.com", interface_language="en-US")
+    mock_register_service.register.return_value = account
+    mock_register_service.generate_invite_token.return_value = "invite-token"
+
+    result = PlatformAdminService.invite_member(
+        tenant=tenant,
+        email="Member@Example.com",
+        language="en-US",
+        role=TenantAccountRole.NORMAL,
+        inviter=inviter,
+    )
+
+    mock_get_account.assert_called_once_with("member@example.com")
+    mock_register_service.register.assert_called_once_with(
+        email="member@example.com",
+        name="member",
+        language="en-US",
+        status=AccountStatus.PENDING,
+        is_setup=True,
+        create_workspace_required=False,
+        session=mock_db.session,
+    )
+    mock_tenant_service.create_tenant_member.assert_called_once_with(
+        tenant,
+        account,
+        mock_db.session,
+        TenantAccountRole.NORMAL,
+    )
+    mock_tenant_service.switch_tenant.assert_called_once_with(account, tenant.id, session=mock_db.session)
+    mock_mail_task.delay.assert_called_once_with(
+        language="en-US",
+        to="member@example.com",
+        token="invite-token",
+        inviter_name="Platform Admin",
+        workspace_name="Managed Workspace",
+    )
+    assert result == "invite-token"
 
 
 @patch("services.platform_admin_service.TenantService")

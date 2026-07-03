@@ -154,7 +154,7 @@ class PlatformAdminService:
         if existing_tenant:
             abort(400, description="Workspace name already exists.")
 
-        tenant = TenantService.create_tenant(name=normalized_name, is_from_dashboard=True)
+        tenant = TenantService.create_tenant(name=normalized_name, is_from_dashboard=True, session=db.session)
         invitation_url = None
 
         if owner_email:
@@ -189,6 +189,7 @@ class PlatformAdminService:
                 status=AccountStatus.PENDING,
                 is_setup=True,
                 create_workspace_required=False,
+                session=db.session,
             )
             should_send_invite = True
         elif account.status in {AccountStatus.PENDING, AccountStatus.UNINITIALIZED}:
@@ -198,10 +199,10 @@ class PlatformAdminService:
             account.name = owner_name
             db.session.commit()
 
-        TenantService.create_tenant_member(tenant, account, role=TenantAccountRole.OWNER)
+        TenantService.create_tenant_member(tenant, account, db.session, role=TenantAccountRole.OWNER)
 
         if should_send_invite:
-            TenantService.switch_tenant(account, tenant.id)
+            TenantService.switch_tenant(account, tenant.id, session=db.session)
             token = RegisterService.generate_invite_token(tenant, account)
             send_invite_member_mail_task.delay(
                 language=account.interface_language or get_valid_language(language),
@@ -239,15 +240,16 @@ class PlatformAdminService:
                 status=AccountStatus.PENDING,
                 is_setup=True,
                 create_workspace_required=False,
+                session=db.session,
             )
-            TenantService.create_tenant_member(tenant, account, role)
-            TenantService.switch_tenant(account, tenant.id)
+            TenantService.create_tenant_member(tenant, account, db.session, role)
+            TenantService.switch_tenant(account, tenant.id, session=db.session)
         else:
             tenant_join = db.session.query(TenantAccountJoin).filter_by(
                 tenant_id=tenant.id, account_id=account.id
             ).first()
             if not tenant_join:
-                TenantService.create_tenant_member(tenant, account, role)
+                TenantService.create_tenant_member(tenant, account, db.session, role)
 
             if account.status == AccountStatus.ACTIVE:
                 raise AccountAlreadyInTenantError("Account already in tenant.")
@@ -255,7 +257,7 @@ class PlatformAdminService:
             if account.status not in {AccountStatus.PENDING, AccountStatus.UNINITIALIZED}:
                 raise ValueError("Only active or pending accounts can be invited.")
 
-            TenantService.switch_tenant(account, tenant.id)
+            TenantService.switch_tenant(account, tenant.id, session=db.session)
 
         token = RegisterService.generate_invite_token(tenant, account)
         send_invite_member_mail_task.delay(
