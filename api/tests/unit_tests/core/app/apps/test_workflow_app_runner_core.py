@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -176,6 +177,66 @@ class TestWorkflowBasedAppRunner:
 
         assert graph is not None
         assert variable_pool is graph_runtime_state.variable_pool
+
+    def test_get_graph_and_variable_pool_for_single_node_run_does_not_mutate_graph_dict(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        # `workflow.graph_dict` is a shared, read-only mapping; single-node run must filter a
+        # copy rather than mutate it (see issue #38353).
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+
+        graph_config = {
+            "nodes": [
+                {"id": "node-1", "data": {"type": "start", "version": "1"}},
+                {"id": "node-2", "data": {"type": "llm", "version": "1"}},
+            ],
+            "edges": [{"source": "node-1", "target": "node-2"}],
+        }
+        workflow = SimpleNamespace(tenant_id="tenant", id="workflow", graph_dict=graph_config)
+
+        captured: dict[str, Any] = {}
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.Graph.init",
+            lambda **kwargs: captured.update(kwargs) or SimpleNamespace(),
+        )
+
+        class _NodeCls:
+            @staticmethod
+            def extract_variable_selector_to_variable_mapping(graph_config, config):
+                return {}
+
+        from core.app.apps import workflow_app_runner
+
+        monkeypatch.setattr(workflow_app_runner, "resolve_workflow_node_class", lambda **_kwargs: _NodeCls)
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.load_into_variable_pool", lambda **kwargs: None)
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            lambda **kwargs: None,
+        )
+
+        runner._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id="node-1",
+            user_inputs={},
+            graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="iteration_id",
+            node_type_label="iteration",
+            user_id="00000000-0000-0000-0000-000000000001",
+        )
+
+        # The shared workflow graph dict is left intact...
+        assert graph_config["nodes"] == [
+            {"id": "node-1", "data": {"type": "start", "version": "1"}},
+            {"id": "node-2", "data": {"type": "llm", "version": "1"}},
+        ]
+        assert graph_config["edges"] == [{"source": "node-1", "target": "node-2"}]
+        # ...while the graph that is actually built uses the filtered copy (only the target node).
+        assert [node["id"] for node in captured["graph_config"]["nodes"]] == ["node-1"]
+        assert captured["graph_config"]["edges"] == []
 
     def test_get_graph_and_variable_pool_for_single_node_run_includes_trace_session_id(
         self, monkeypatch: pytest.MonkeyPatch
