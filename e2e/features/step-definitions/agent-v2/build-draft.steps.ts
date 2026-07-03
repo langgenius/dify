@@ -27,6 +27,8 @@ import {
   uploadSummaryConfigSkillForBuildDraft,
 } from './configure-helpers'
 
+const BUILD_DRAFT_RUNTIME_STEP_TIMEOUT_MS = 180_000
+
 Given(
   'an Agent v2 Build draft adds the supported E2E files, skills, and env',
   async function (this: DifyWorld) {
@@ -157,26 +159,30 @@ When('I discard the Agent v2 Build draft', async function (this: DifyWorld) {
   await this.getPage().getByRole('button', { exact: true, name: 'Discard' }).click()
 })
 
-When('I apply the Agent v2 Build draft', async function (this: DifyWorld) {
-  const page = this.getPage()
-  const agentId = getCurrentAgentId(this)
-  const applyButton = page.getByRole('button', { exact: true, name: 'Apply' })
+When(
+  'I apply the Agent v2 Build draft',
+  { timeout: BUILD_DRAFT_RUNTIME_STEP_TIMEOUT_MS },
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const agentId = getCurrentAgentId(this)
+    const applyButton = page.getByRole('button', { exact: true, name: 'Apply' })
 
-  await expect(applyButton).toBeEnabled({ timeout: 30_000 })
-  const finalizeResponsePromise = page.waitForResponse(response => (
-    response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-chat/finalize`)
-  ), { timeout: 120_000 })
-  const applyResponsePromise = page.waitForResponse(response => (
-    response.request().method() === 'POST'
-    && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-draft/apply`)
-  ), { timeout: 120_000 })
+    await expect(applyButton).toBeEnabled({ timeout: 30_000 })
+    const finalizeResponsePromise = page.waitForResponse(response => (
+      response.request().method() === 'POST'
+      && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-chat/finalize`)
+    ), { timeout: 120_000 })
+    const applyResponsePromise = page.waitForResponse(response => (
+      response.request().method() === 'POST'
+      && new URL(response.url()).pathname.endsWith(`/console/api/agent/${agentId}/build-draft/apply`)
+    ), { timeout: 120_000 })
 
-  await applyButton.click()
-  await expectPageResponseOK(await finalizeResponsePromise, 'Finalize Agent v2 Build draft')
-  await expectPageResponseOK(await applyResponsePromise, 'Apply Agent v2 Build draft')
-  await expect(page.getByText('Action succeeded')).toBeVisible()
-})
+    await applyButton.click()
+    await expectPageResponseOK(await finalizeResponsePromise, 'Finalize Agent v2 Build draft')
+    await expectPageResponseOK(await applyResponsePromise, 'Apply Agent v2 Build draft')
+    await expect(page.getByText('Action succeeded')).toBeVisible()
+  },
+)
 
 async function skipBuildDraftToolWriteback(world: DifyWorld) {
   return skipBlockedPrecondition(

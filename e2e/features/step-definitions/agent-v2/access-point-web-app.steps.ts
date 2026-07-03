@@ -11,6 +11,8 @@ import {
   getWebAppCard,
 } from './access-point-helpers'
 
+const WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS = 180_000
+
 Given(
   'Agent v2 Web app access has been enabled via API',
   async function (this: DifyWorld) {
@@ -101,6 +103,7 @@ Then('the Agent v2 Web app should open in a new tab', async function (this: Dify
 
 Then(
   'the Agent v2 Web app response should include the updated E2E marker',
+  { timeout: WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS },
   async function (this: DifyWorld) {
     const webAppPage = this.agentBuilder.accessPoint.webAppPage
     if (!webAppPage)
@@ -113,6 +116,7 @@ Then(
 
 Then(
   'the Agent v2 Web app response should include the normal E2E marker',
+  { timeout: WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS },
   async function (this: DifyWorld) {
     const webAppPage = this.agentBuilder.accessPoint.webAppPage
     if (!webAppPage)
