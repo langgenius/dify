@@ -213,6 +213,8 @@ Feature: Create dataset
 
 External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` reads `E2E_EXTERNAL_RUNTIME_SEED_SPECS`, defaulting to `agent-v2:external-runtime`, and runs the matching seed packs before the external suite. `pnpm -C e2e e2e:external` reads `E2E_EXTERNAL_RUNTIME_TAGS`, defaulting to `(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview`.
 
+Some external runtime scenarios need feature-owned services in addition to a real model or tool provider. Do not overload `@external-model` or `@external-tool` to mean those services are available. For Agent v2, scenarios that require the standalone `dify-agent` run server use the feature tag `@agent-backend-runtime` plus the explicit step `the Agent v2 runtime backend is available`. Run them with `E2E_START_AGENT_BACKEND=1` to let E2E start `dify-agent` and the shellctl local sandbox required by its `dify.config`/`dify.shell` runtime layers, or set `E2E_AGENT_BACKEND_URL`/`AGENT_BACKEND_BASE_URL` when an existing server should be reused.
+
 Keep scenarios short and declarative. Each step should describe **what** the user does, not **how** the UI works.
 
 ### Step definition conventions

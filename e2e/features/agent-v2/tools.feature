@@ -26,10 +26,11 @@ Feature: Agent v2 tools
     Then I should see the Agent v2 OAuth2 tool authorized in the Tools section
     And the Agent v2 OAuth2 tool credential should remain saved in the Agent v2 draft
 
-  @service-api-runtime @external-model @stable-model @tool-fixture
+  @service-api-runtime @external-model @agent-backend-runtime @stable-model @tool-fixture
   Scenario: JSON Replace tool runtime returns the replacement marker
     Given I am signed in as the default E2E admin
     And Agent v2 JSON Replace runtime verification is available
+    And the Agent v2 runtime backend is available
     And the Agent Builder stable chat model is available
     And the Agent Builder preseeded tool "JSON Process / JSON Replace" is available
     And a runnable Agent v2 test agent has been created via API

@@ -5,6 +5,7 @@ import {
   skipMissingPreseededAgentPublishedWebApp,
   skipMissingPreseededAgentWorkflowReference,
 } from '../../agent-v2/support/preflight/access'
+import { skipMissingAgentBackendRuntime } from '../../agent-v2/support/preflight/agent-backend'
 import {
   skipMissingPreseededAgent,
   skipMissingPreseededAgentDriveSkill,
@@ -41,6 +42,12 @@ Given('the Agent Builder broken chat model is available', async function (this: 
     return brokenModel
 
   this.agentBuilder.preflight.brokenModel = brokenModel
+})
+
+Given('the Agent v2 runtime backend is available', async function (this: DifyWorld) {
+  const runtimeBackend = await skipMissingAgentBackendRuntime(this)
+  if (runtimeBackend === 'skipped')
+    return runtimeBackend
 })
 
 Given(

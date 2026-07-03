@@ -58,10 +58,11 @@ Feature: Agent v2 publish
     And the normal Agent v2 draft should use the normal E2E prompt
     And the Agent v2 publish action should be available for unpublished changes
 
-  @web-app-runtime @external-model @published-web-app @stable-model
+  @web-app-runtime @external-model @agent-backend-runtime @published-web-app @stable-model
   Scenario: Published Agent v2 answers through Web app
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
@@ -72,10 +73,11 @@ Feature: Agent v2 publish
     Then the Agent v2 Web app response should include the normal E2E marker
     When I close the Agent v2 Web app
 
-  @web-app-runtime @external-model @published-web-app @stable-model
+  @web-app-runtime @external-model @agent-backend-runtime @published-web-app @stable-model
   Scenario: Published Web app remains isolated from unpublished Agent v2 draft edits
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page
@@ -90,10 +92,11 @@ Feature: Agent v2 publish
     And the Agent v2 Web app response should not include the updated E2E marker
     When I close the Agent v2 Web app
 
-  @web-app-runtime @external-model @published-web-app @stable-model
+  @web-app-runtime @external-model @agent-backend-runtime @published-web-app @stable-model
   Scenario: Published Web app uses the latest Agent v2 published configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page

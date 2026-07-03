@@ -1,9 +1,10 @@
 @agent-v2 @authenticated @build
 Feature: Agent v2 build draft
-  @external-model @stable-model @tool-fixture @skill-fixture
+  @external-model @agent-backend-runtime @stable-model @tool-fixture @skill-fixture
   Scenario: Generating a Build draft leaves the normal Agent configuration unchanged
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And the Agent Builder preseeded tool "JSON Process / JSON Replace" is available
     And a runnable Agent v2 test agent has been created via API
     And the e2e-summary-skill Skill is available to the Agent v2 test agent
@@ -58,10 +59,11 @@ Feature: Agent v2 build draft
     And the Agent v2 draft should not include the supported Build draft config
     And the Agent v2 Build draft should no longer be active
 
-  @external-model @stable-model
+  @external-model @agent-backend-runtime @stable-model
   Scenario: Applying a pending Build draft updates the normal Agent configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And an Agent v2 Build draft uses the updated E2E prompt with the stable E2E model
     When I open the Agent v2 configure page
@@ -76,10 +78,11 @@ Feature: Agent v2 build draft
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
-  @external-model @stable-model @skill-fixture
+  @external-model @agent-backend-runtime @stable-model @skill-fixture
   Scenario: Applying a Build draft updates supported configuration sections
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And an Agent v2 Build draft adds the supported E2E files, skills, and env
     When I open the Agent v2 configure page
@@ -103,10 +106,11 @@ Feature: Agent v2 build draft
     And I should see the supported E2E environment variable in Advanced Settings
     And the Agent v2 Build draft should no longer be active
 
-  @external-model @stable-model @skill-fixture
+  @external-model @agent-backend-runtime @stable-model @skill-fixture
   Scenario: Applying a Build draft with an existing Skill keeps a single Skill entry
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And an Agent v2 Build draft includes the existing e2e-summary-skill Skill
     When I open the Agent v2 configure page

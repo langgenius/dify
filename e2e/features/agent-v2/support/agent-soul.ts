@@ -42,6 +42,11 @@ export const updatedAgentSoulConfig: AgentSoulConfig = {
   },
 }
 
+const stableAgentModelSettings = {
+  max_tokens: 4096,
+  temperature: 0,
+}
+
 const getAgentModelPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
 
@@ -71,10 +76,7 @@ export function createAgentSoulConfigWithModel(
       plugin_id: getAgentModelPluginId(model.provider),
       model_provider: model.provider,
       model: model.name,
-      model_settings: {
-        temperature: 0,
-        max_tokens: 512,
-      },
+      model_settings: stableAgentModelSettings,
     },
   }
 }

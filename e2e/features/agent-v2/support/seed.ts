@@ -56,9 +56,9 @@ import {
   normalAgentSoulConfig,
 } from './agent-soul'
 import {
-  asRecord,
   buildQuery,
   findConsoleResourceByName,
+  isRecord,
   matchesNameOrLabel,
 } from './preflight/common'
 import { splitToolDisplayName } from './preflight/tools'
@@ -85,6 +85,7 @@ const oauthToolCredentialIdEnv = 'E2E_OAUTH_TOOL_CREDENTIAL_ID'
 const oauthToolProviderEnv = 'E2E_OAUTH_TOOL_PROVIDER'
 const oauthToolNameEnv = 'E2E_OAUTH_TOOL_NAME'
 const activeModelStatus = 'active'
+const stableModelCredentialName = 'E2E Stable Model'
 const agentV2MarketplacePluginIds = [
   'langgenius/openai',
   'langgenius/json_process',
@@ -114,7 +115,7 @@ const parseJsonEnv = (envName: string) => {
 
   try {
     const value = JSON.parse(raw) as unknown
-    if (!asRecord(value))
+    if (!isRecord(value))
       return { ok: false as const, reason: `${envName} must be a JSON object.` }
 
     return { ok: true as const, value }
@@ -162,10 +163,79 @@ const resolveProvider = async (config: StableModel) => {
     const response = await ctx.get(`/console/api/workspaces/current/model-providers?${buildQuery({ model_type: config.type })}`)
     await expectApiResponseOK(response, `Resolve model provider ${config.provider}`)
     const body = (await response.json()) as ModelProviderListResponse
+    const provider = body.data.find(item => matchesProviderLabel(item, config.provider))
+
     return {
       availableProviders: body.data.map(provider => provider.provider),
-      provider: body.data.find(provider => matchesProviderLabel(provider, config.provider))?.provider,
+      credential: provider?.custom_configuration.available_credentials?.find(
+        credential => credential.credential_name === stableModelCredentialName,
+      ),
+      provider: provider?.provider,
     }
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+const selectCustomProviderCredential = async (provider: string, credentialId?: string) => {
+  const ctx = await createApiContext()
+  try {
+    if (credentialId) {
+      const switchResponse = await ctx.post(
+        `/console/api/workspaces/current/model-providers/${provider}/credentials/switch`,
+        {
+          data: { credential_id: credentialId },
+        },
+      )
+      await expectApiResponseOK(switchResponse, `Switch model provider credential for ${provider}`)
+    }
+
+    const preferredResponse = await ctx.post(
+      `/console/api/workspaces/current/model-providers/${provider}/preferred-provider-type`,
+      {
+        data: { preferred_provider_type: 'custom' },
+      },
+    )
+    await expectApiResponseOK(preferredResponse, `Select custom provider credential for ${provider}`)
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+const upsertStableProviderCredential = async (
+  provider: string,
+  credentials: Record<string, unknown>,
+  credentialId?: string,
+) => {
+  const ctx = await createApiContext()
+  try {
+    if (credentialId) {
+      const updateResponse = await ctx.put(
+        `/console/api/workspaces/current/model-providers/${provider}/credentials`,
+        {
+          data: {
+            credential_id: credentialId,
+            credentials,
+            name: stableModelCredentialName,
+          },
+        },
+      )
+      await expectApiResponseOK(updateResponse, `Update model provider credential for ${provider}`)
+      return
+    }
+
+    const createResponse = await ctx.post(
+      `/console/api/workspaces/current/model-providers/${provider}/credentials`,
+      {
+        data: {
+          credentials,
+          name: stableModelCredentialName,
+        },
+      },
+    )
+    await expectApiResponseOK(createResponse, `Create model provider credential for ${provider}`)
   }
   finally {
     await ctx.dispose()
@@ -192,7 +262,7 @@ const seedStableModel = async (context: SeedContext) => {
   if (!credentials.ok)
     return blocked(title, `${config.provider}/${config.name} is not active; ${credentials.reason}`)
 
-  const { availableProviders, provider } = await resolveProvider(config)
+  const { availableProviders, credential, provider } = await resolveProvider(config)
   if (!provider) {
     const available = availableProviders.length > 0
       ? availableProviders.join(', ')
@@ -203,34 +273,34 @@ const seedStableModel = async (context: SeedContext) => {
     )
   }
 
-  const ctx = await createApiContext()
   try {
-    try {
-      const createResponse = await ctx.post(
-        `/console/api/workspaces/current/model-providers/${provider}/credentials`,
-        {
-          data: {
-            credentials: credentials.value,
-            name: 'E2E Stable Model',
-          },
-        },
-      )
-      await expectApiResponseOK(createResponse, `Create model provider credential for ${provider}`)
-
-      const preferredResponse = await ctx.post(
-        `/console/api/workspaces/current/model-providers/${provider}/preferred-provider-type`,
-        {
-          data: { preferred_provider_type: 'custom' },
-        },
-      )
-      await expectApiResponseOK(preferredResponse, `Select custom provider credential for ${provider}`)
-    }
-    catch (error) {
-      return blocked(title, error instanceof Error ? error.message : String(error))
-    }
+    await upsertStableProviderCredential(provider, credentials.value, credential?.credential_id)
+    await selectCustomProviderCredential(provider, credential?.credential_id)
   }
-  finally {
-    await ctx.dispose()
+  catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!message.includes(`Credential with name '${stableModelCredentialName}' already exists.`))
+      return blocked(title, message)
+
+    const refreshed = await resolveProvider(config)
+    if (!refreshed.provider || !refreshed.credential) {
+      return blocked(
+        title,
+        `Credential ${stableModelCredentialName} already exists for ${provider}, but the seed could not resolve its credential id.`,
+      )
+    }
+
+    try {
+      await upsertStableProviderCredential(
+        refreshed.provider,
+        credentials.value,
+        refreshed.credential.credential_id,
+      )
+      await selectCustomProviderCredential(refreshed.provider, refreshed.credential.credential_id)
+    }
+    catch (retryError) {
+      return blocked(title, retryError instanceof Error ? retryError.message : String(retryError))
+    }
   }
 
   const seeded = await findStableModel(config)
@@ -345,7 +415,12 @@ const getDatasetDocuments = async (datasetId: string) => {
   }
 }
 
-const datasetHasMarker = async (datasetId: string, marker: string) => {
+const requiredKnowledgeSegmentTokens = [
+  agentBuilderFixedInputs.customKnowledgeQuery,
+  agentBuilderExpectedTokens.knowledgeReply,
+]
+
+const datasetHasKnowledgeSegment = async (datasetId: string) => {
   const documents = await getDatasetDocuments(datasetId)
   const ctx = await createApiContext()
   try {
@@ -353,15 +428,19 @@ const datasetHasMarker = async (datasetId: string, marker: string) => {
       const response = await ctx.get(
         `/console/api/datasets/${datasetId}/documents/${document.id}/segments?${buildQuery({
           enabled: 'true',
-          keyword: marker,
+          keyword: agentBuilderExpectedTokens.knowledgeReply,
           limit: '20',
           page: '1',
         })}`,
       )
-      await expectApiResponseOK(response, `Check dataset marker ${marker}`)
+      await expectApiResponseOK(response, `Check dataset knowledge segment ${agentBuilderExpectedTokens.knowledgeReply}`)
       const body = (await response.json()) as ConsoleSegmentListResponse
-      if (body.data.some(segment => segment.enabled && segment.content.includes(marker)))
+      if (body.data.some(segment =>
+        segment.enabled
+        && requiredKnowledgeSegmentTokens.every(token => segment.content.includes(token)),
+      )) {
         return true
+      }
     }
 
     return false
@@ -470,8 +549,8 @@ const seedReadyKnowledge = async (context: SeedContext) => {
   const wasCreated = !dataset
   dataset ??= await createDataset(title)
 
-  const hasMarker = await datasetHasMarker(dataset.id, agentBuilderExpectedTokens.knowledgeReply)
-  if (!hasMarker)
+  const hasKnowledgeSegment = await datasetHasKnowledgeSegment(dataset.id)
+  if (!hasKnowledgeSegment)
     await addKnowledgeDocument(dataset.id)
 
   const indexing = await waitForDatasetCompleted(dataset.id)
@@ -482,12 +561,12 @@ const seedReadyKnowledge = async (context: SeedContext) => {
     )
   }
 
-  return datasetHasMarker(dataset.id, agentBuilderExpectedTokens.knowledgeReply)
+  return datasetHasKnowledgeSegment(dataset.id)
     .then((ready) => {
       if (!ready) {
         return blocked(
           title,
-          `Dataset "${title}" does not expose marker ${agentBuilderExpectedTokens.knowledgeReply} after indexing.`,
+          `Dataset "${title}" does not expose an indexed segment containing ${requiredKnowledgeSegmentTokens.join(' and ')} after indexing.`,
         )
       }
 

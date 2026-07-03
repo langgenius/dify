@@ -162,10 +162,11 @@ Feature: Agent v2 Access Point
     When I refresh the current page
     Then Agent v2 Backend service API access should be in service
 
-  @service-api-runtime @external-model @backend-api-access @stable-model
+  @service-api-runtime @external-model @agent-backend-runtime @backend-api-access @stable-model
   Scenario: Published Agent v2 answers through Backend service API
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And Agent v2 Backend service API access has been enabled with a key via API
     When I open the Agent v2 configure page
@@ -174,10 +175,11 @@ Feature: Agent v2 Access Point
     When I send the Agent v2 Backend service API minimal request
     Then the Agent v2 Backend service API request should succeed with the normal E2E marker
 
-  @service-api-runtime @external-model @backend-api-access @stable-model
+  @service-api-runtime @external-model @agent-backend-runtime @backend-api-access @stable-model
   Scenario: Disabled Backend service API rejects requests and restored access succeeds
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
     And a runnable Agent v2 test agent has been created via API
     And the Agent v2 draft has been published via API
     And Agent v2 Backend service API access has been enabled with a key via API

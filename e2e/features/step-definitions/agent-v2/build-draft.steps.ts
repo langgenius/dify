@@ -113,7 +113,7 @@ When('I generate an Agent v2 Build draft from the fixed instruction', async func
   const agentId = getCurrentAgentId(this)
   const instruction = (await readFile(getAgentBuilderTestMaterialPath('buildInstruction'), 'utf8')).trim()
 
-  await page.getByRole('button', { name: 'Build' }).click()
+  await page.getByRole('button', { exact: true, name: 'Build' }).click()
   await page.getByPlaceholder('Describe what your agent should do').fill(instruction)
 
   const checkoutResponsePromise = page.waitForResponse(response => (

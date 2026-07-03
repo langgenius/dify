@@ -230,6 +230,37 @@ When('I send the Agent v2 Backend service API knowledge request', async function
   })
 })
 
+const stringifyServiceApiBody = (body: unknown) => {
+  try {
+    return JSON.stringify(body)
+  }
+  catch {
+    return String(body)
+  }
+}
+
+const expectServiceApiResponseOK = (
+  response: NonNullable<DifyWorld['agentBuilder']['accessPoint']['serviceApiResponse']>,
+  action: string,
+) => {
+  if (response.ok)
+    return
+
+  throw new Error(`${action} failed with ${response.status}: ${stringifyServiceApiBody(response.body)}`)
+}
+
+const expectServiceApiResponseIncludes = (
+  response: NonNullable<DifyWorld['agentBuilder']['accessPoint']['serviceApiResponse']>,
+  expectedToken: string,
+  action: string,
+) => {
+  expectServiceApiResponseOK(response, action)
+
+  const body = stringifyServiceApiBody(response.body)
+  if (!body.includes(expectedToken))
+    throw new Error(`${action} response did not include ${expectedToken}: ${body}`)
+}
+
 Then(
   'the Agent v2 Backend service API request should be rejected while disabled',
   async function (this: DifyWorld) {
@@ -250,8 +281,11 @@ Then(
     if (!response)
       throw new Error('No Agent v2 Backend service API response was recorded.')
 
-    expect(response.ok).toBe(true)
-    expect(JSON.stringify(response.body)).toContain(agentBuilderExpectedTokens.knowledgeReply)
+    expectServiceApiResponseIncludes(
+      response,
+      agentBuilderExpectedTokens.knowledgeReply,
+      'Agent v2 Backend service API knowledge request',
+    )
   },
 )
 
@@ -262,7 +296,10 @@ Then(
     if (!response)
       throw new Error('No Agent v2 Backend service API response was recorded.')
 
-    expect(response.ok).toBe(true)
-    expect(JSON.stringify(response.body)).toContain(agentBuilderExpectedTokens.agentReply)
+    expectServiceApiResponseIncludes(
+      response,
+      agentBuilderExpectedTokens.agentReply,
+      'Agent v2 Backend service API request',
+    )
   },
 )
