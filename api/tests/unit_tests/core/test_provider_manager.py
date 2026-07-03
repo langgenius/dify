@@ -418,6 +418,53 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
 
+def test_get_configurations_does_not_duplicate_legacy_alias_records(mocker: MockerFixture):
+    manager = _build_provider_manager(mocker)
+    provider_entity = Mock()
+    provider_entity.provider = "langgenius/openai/openai"
+    provider_entity.configurate_methods = ["customizable-model"]
+    provider_entity.supported_model_types = [ModelType.LLM]
+    provider_factory = Mock()
+    provider_factory.get_providers.return_value = [provider_entity]
+    model_record = SimpleNamespace(
+        id="model-1",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_id="cred-1",
+    )
+    credential_record = SimpleNamespace(
+        id="cred-1",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_name="primary",
+    )
+    custom_configuration = SimpleNamespace(provider=None, models=[])
+    system_configuration = SimpleNamespace(enabled=False, quota_configurations=[], current_quota_type=None)
+
+    with (
+        patch.object(manager, "_get_all_providers", return_value={}),
+        patch.object(manager, "_init_trial_provider_records", return_value={}),
+        patch.object(manager, "_get_all_provider_models", return_value={"openai": [model_record]}),
+        patch.object(manager, "_get_all_preferred_model_providers", return_value={}),
+        patch.object(manager, "_get_all_provider_model_settings", return_value={}),
+        patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
+        patch.object(manager, "_get_all_provider_model_credentials", return_value={"openai": [credential_record]}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
+        patch.object(manager, "_to_custom_configuration", return_value=custom_configuration) as mock_to_custom,
+        patch.object(manager, "_to_system_configuration", return_value=system_configuration),
+        patch.object(manager, "_to_model_settings", return_value=[]),
+        patch("core.provider_manager.ModelProviderFactory", return_value=provider_factory),
+        patch("core.provider_manager.ProviderConfiguration", return_value=Mock()),
+    ):
+        manager.get_configurations("tenant-id")
+
+    args = mock_to_custom.call_args.args
+    assert args[3] == [model_record]
+    assert args[4] == [credential_record]
+
+
 def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerFixture, mock_provider_entity):
     manager = _build_provider_manager(mocker)
     provider_configuration = Mock()

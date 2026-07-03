@@ -73,6 +73,19 @@ _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{ten
 _PROVIDER_CONFIGURATION_CACHE_SOURCE_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:v:{version}"
 
 
+def _append_unique_records[T](records: list[T], extra_records: Sequence[T]) -> list[T]:
+    seen_record_ids = {id(record) for record in records}
+    for record in extra_records:
+        record_id = id(record)
+        if record_id in seen_record_ids:
+            continue
+
+        records.append(record)
+        seen_record_ids.add(record_id)
+
+    return records
+
+
 class ProviderConfigurationCacheSource(StrEnum):
     PROVIDER_MODELS = "provider_models"
     PREFERRED_MODEL_PROVIDERS = "preferred_model_providers"
@@ -713,7 +726,8 @@ class ProviderManager:
             provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider, [])
             provider_id_entity = ModelProviderID(provider_name)
             if provider_id_entity.is_langgenius():
-                provider_model_records.extend(
+                _append_unique_records(
+                    provider_model_records,
                     provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, [])
                 )
             provider_model_credentials = provider_name_to_provider_model_credentials_dict.get(
@@ -721,7 +735,8 @@ class ProviderManager:
             )
             provider_id_entity = ModelProviderID(provider_name)
             if provider_id_entity.is_langgenius():
-                provider_model_credentials.extend(
+                _append_unique_records(
+                    provider_model_credentials,
                     provider_name_to_provider_model_credentials_dict.get(provider_id_entity.provider_name, [])
                 )
 
@@ -776,11 +791,13 @@ class ProviderManager:
 
             if provider_id_entity.is_langgenius():
                 if provider_model_settings is not None:
-                    provider_model_settings.extend(
+                    _append_unique_records(
+                        provider_model_settings,
                         provider_name_to_provider_model_settings_dict.get(provider_id_entity.provider_name, [])
                     )
                 if provider_load_balancing_configs is not None:
-                    provider_load_balancing_configs.extend(
+                    _append_unique_records(
+                        provider_load_balancing_configs,
                         provider_name_to_provider_load_balancing_model_configs_dict.get(
                             provider_id_entity.provider_name, []
                         )

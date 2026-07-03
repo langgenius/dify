@@ -826,6 +826,24 @@ class ProviderConfiguration(BaseModel):
         if preferred_model_providers_changed:
             self._invalidate_provider_configuration_cache(preferred_model_providers=True)
 
+    def _get_custom_model_records(
+        self,
+        model_type: ModelType,
+        model: str,
+        session: Session,
+    ) -> list[ProviderModel]:
+        """
+        Get custom model records across canonical and legacy provider names.
+        """
+        stmt = select(ProviderModel).where(
+            ProviderModel.tenant_id == self.tenant_id,
+            ProviderModel.provider_name.in_(self._get_provider_names()),
+            ProviderModel.model_name == model,
+            ProviderModel.model_type == model_type,
+        )
+
+        return list(session.execute(stmt).scalars().all())
+
     def _get_custom_model_record(
         self,
         model_type: ModelType,
@@ -833,23 +851,20 @@ class ProviderConfiguration(BaseModel):
         session: Session,
     ) -> ProviderModel | None:
         """
-        Get custom model credentials.
+        Get the preferred custom model record.
         """
-        # get provider model
+        provider_model_records = self._get_custom_model_records(model_type=model_type, model=model, session=session)
+        if not provider_model_records:
+            return None
 
-        model_provider_id = ModelProviderID(self.provider.provider)
-        provider_names = [self.provider.provider]
-        if model_provider_id.is_langgenius():
-            provider_names.append(model_provider_id.provider_name)
-
-        stmt = select(ProviderModel).where(
-            ProviderModel.tenant_id == self.tenant_id,
-            ProviderModel.provider_name.in_(provider_names),
-            ProviderModel.model_name == model,
-            ProviderModel.model_type == model_type,
+        return next(
+            (
+                record
+                for record in provider_model_records
+                if getattr(record, "provider_name", None) == self.provider.provider
+            ),
+            provider_model_records[0],
         )
-
-        return session.execute(stmt).scalar_one_or_none()
 
     def _get_specific_custom_model_credential(
         self, model_type: ModelType, model: str, credential_id: str
@@ -1220,7 +1235,15 @@ class ProviderConfiguration(BaseModel):
                     session.delete(lb_config)
 
                 # Check if this is the currently active credential
-                provider_model_record = self._get_custom_model_record(model_type, model, session=session)
+                provider_model_records = self._get_custom_model_records(model_type, model, session=session)
+                provider_model_record = next(
+                    (
+                        record
+                        for record in provider_model_records
+                        if getattr(record, "provider_name", None) == self.provider.provider
+                    ),
+                    provider_model_records[0] if provider_model_records else None,
+                )
 
                 # Check available credentials count BEFORE deleting
                 # if this is the last credential, we need to delete the custom model record
@@ -1235,13 +1258,13 @@ class ProviderConfiguration(BaseModel):
 
                 if provider_model_record and available_credentials_count <= 1:
                     # If all credentials are deleted, delete the custom model record
-                    session.delete(provider_model_record)
-                    provider_model_credentials_cache = ProviderCredentialsCache(
-                        tenant_id=self.tenant_id,
-                        identity_id=provider_model_record.id,
-                        cache_type=ProviderCredentialsCacheType.MODEL,
-                    )
-                    provider_model_credentials_cache.delete()
+                    for record in provider_model_records:
+                        session.delete(record)
+                        ProviderCredentialsCache(
+                            tenant_id=self.tenant_id,
+                            identity_id=record.id,
+                            cache_type=ProviderCredentialsCacheType.MODEL,
+                        ).delete()
                 elif provider_model_record and provider_model_record.credential_id == credential_id:
                     provider_model_record.credential_id = None
                     provider_model_record.updated_at = naive_utc_now()
@@ -1385,7 +1408,7 @@ class ProviderConfiguration(BaseModel):
         load_balancing_configs_deleted = False
         with Session(db.engine) as session:
             # get provider model
-            provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
+            provider_model_records = self._get_custom_model_records(model_type=model_type, model=model, session=session)
 
             credential_stmt = select(ProviderModelCredential).where(
                 ProviderModelCredential.tenant_id == self.tenant_id,
@@ -1417,17 +1440,15 @@ class ProviderConfiguration(BaseModel):
                 for credential_record in credential_records:
                     session.delete(credential_record)
 
-                if provider_model_record:
+                for provider_model_record in provider_model_records:
                     session.delete(provider_model_record)
-                    provider_model_credentials_cache = ProviderCredentialsCache(
+                    ProviderCredentialsCache(
                         tenant_id=self.tenant_id,
                         identity_id=provider_model_record.id,
                         cache_type=ProviderCredentialsCacheType.MODEL,
-                    )
+                    ).delete()
 
-                    provider_model_credentials_cache.delete()
-
-                provider_model_record_deleted = provider_model_record is not None
+                provider_model_record_deleted = bool(provider_model_records)
                 provider_model_credentials_deleted = bool(credential_records)
                 load_balancing_configs_deleted = bool(load_balancing_configs)
                 has_deleted_records = (
