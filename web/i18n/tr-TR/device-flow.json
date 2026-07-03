@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Kod doğrulanamadı",
   "errorRateLimited.body": "Bir süre bekleyip tekrar deneyin.",
   "errorRateLimited.title": "Çok fazla deneme yapıldı",
+  "errorSso.backToLoginOptions": "← Oturum açma seçeneklerine dön",
+  "errorSso.title": "Oturum açma tamamlanamadı",
   "ssoError.default": "Tek oturum açma (SSO) tamamlanamadı. Tekrar deneyin.",
   "ssoError.emailBelongsToDifyAccount": "Bu kimlik bir Dify hesabına bağlı. Bunun yerine “Dify hesabıyla oturum aç” seçeneğini kullanın.",
   "success.goToConsole": "Dify konsoluna git →",
