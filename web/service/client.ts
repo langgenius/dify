@@ -8,13 +8,13 @@ import type {
   PrecheckReleaseRequest,
 } from '@dify/contracts/enterprise/types.gen'
 import type { ClientLink } from '@orpc/client'
-import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
-import type { JsonifiedClient } from '@orpc/openapi-client'
+import type { RouterContract, RouterContractClient } from '@orpc/contract'
+import type { JsonifiedClient } from '@orpc/openapi'
 import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
-import { OpenAPILink } from '@orpc/openapi-client/fetch'
+import { OpenAPILink } from '@orpc/openapi/fetch'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import {
   API_PREFIX,
@@ -26,7 +26,6 @@ import { isClient } from '@/utils/client'
 // eslint-disable-next-line no-restricted-imports
 import { request } from './base'
 import { createConsoleDynamicLink } from './console-link'
-import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
 
 function getMarketplaceHeaders() {
   return new Headers({
@@ -59,18 +58,28 @@ export function getBaseURL(path: string) {
   return url
 }
 
+function getOpenAPILinkURL(path: string) {
+  const url = getBaseURL(path)
+
+  return {
+    origin: url.origin,
+    url: `${url.pathname}${url.search}` as `/${string}`,
+  }
+}
+
 export type ConsoleClientContext = TanstackQueryOperationContext & {
   silent?: boolean
 }
 
 type ConsoleClientLink = ClientLink<ConsoleClientContext>
 
-function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLink {
+function createConsoleOpenAPILink(contract: RouterContract): ConsoleClientLink {
   return new OpenAPILink<ConsoleClientContext>(contract, {
-    url: getBaseURL(API_PREFIX),
-    fetch: (input, init, options) => {
+    ...getOpenAPILinkURL(API_PREFIX),
+    fetch: (url, init, options) => {
+      const input = new Request(url, init)
       return request(
-        normalizeConsoleOpenAPIURL(input.url),
+        url,
         init,
         {
           fetchCompat: true,
@@ -88,10 +97,10 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
 }
 
 const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
-  url: MARKETPLACE_API_PREFIX,
+  ...getOpenAPILinkURL(MARKETPLACE_API_PREFIX),
   headers: () => (getMarketplaceHeaders()),
-  fetch: (request, init) => {
-    return globalThis.fetch(request, {
+  fetch: (url, init) => {
+    return globalThis.fetch(url, {
       ...init,
       cache: 'no-store',
     })
@@ -103,7 +112,7 @@ const marketplaceLink = new OpenAPILink(marketplaceRouterContract, {
   ],
 })
 
-export const marketplaceClient: JsonifiedClient<ContractRouterClient<typeof marketplaceRouterContract>> = createORPCClient(marketplaceLink)
+export const marketplaceClient: JsonifiedClient<RouterContractClient<typeof marketplaceRouterContract>> = createORPCClient(marketplaceLink)
 export const marketplaceQuery = createTanstackQueryUtils(marketplaceClient, { path: ['marketplace'] })
 
 const APP_DEPLOY_SOURCE_APPS_PAGE_SIZE = 100
@@ -123,7 +132,7 @@ type AppDeployInvalidationOptions = {
   developerApiSettings?: boolean
 }
 
-type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>>>
+type ConsoleQueryUtils = RouterUtils<JsonifiedClient<RouterContractClient<typeof consoleRouterContract, ConsoleClientContext>>>
 
 function isTagType(type: string | null | undefined): type is TagType {
   return type === 'app' || type === 'knowledge' || type === 'snippet'
@@ -358,11 +367,11 @@ async function invalidateReleaseMutationQueries(
 
 const consoleLink = createConsoleDynamicLink<ConsoleClientContext>(createConsoleOpenAPILink)
 
-export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>> = createORPCClient(consoleLink)
+export const consoleClient: JsonifiedClient<RouterContractClient<typeof consoleRouterContract, ConsoleClientContext>> = createORPCClient(consoleLink)
 
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(consoleClient, {
   path: ['console'],
-  experimental_defaults: {
+  scoped: {
     apps: {
       byAppId: {
         workflows: {

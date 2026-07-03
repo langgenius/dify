@@ -326,6 +326,7 @@ export default defineConfig({
     },
     'zod',
     {
+      compatibilityVersion: 2,
       name: 'orpc',
       contracts: {
         strategy: 'single',

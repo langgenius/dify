@@ -1,6 +1,6 @@
 'use client'
 
-import type { SandboxFileEntryResponse, SandboxListResponse, SandboxReadResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { SandboxFileEntryResponse, SandboxReadResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { skipToken, useQueries, useQuery } from '@tanstack/react-query'
@@ -223,15 +223,20 @@ export function AgentWorkingDirectoryPanel({
   const fileListQueryOptions = getFileListQueryOptions('.')
   const fileListQuery = useQuery({
     ...fileListQueryOptions,
-    queryFn: async (context): Promise<SandboxListResponse> => {
+    queryFn: async (context) => {
       try {
-        return await fileListQueryOptions.queryFn(context)
+        const queryFn = fileListQueryOptions.queryFn
+        return await queryFn({
+          ...context,
+          queryKey: fileListQueryOptions.queryKey,
+        } as Parameters<typeof queryFn>[0])
       }
       catch (error) {
         if (await isNoActiveSessionError(error)) {
           return {
             entries: [],
             path: '.',
+            truncated: false,
           }
         }
 
@@ -247,15 +252,20 @@ export function AgentWorkingDirectoryPanel({
 
           return {
             ...queryOptions,
-            queryFn: async (context): Promise<SandboxListResponse> => {
+            queryFn: async (context) => {
               try {
-                return await queryOptions.queryFn(context)
+                const queryFn = queryOptions.queryFn
+                return await queryFn({
+                  ...context,
+                  queryKey: queryOptions.queryKey,
+                } as Parameters<typeof queryFn>[0])
               }
               catch (error) {
                 if (await isNoActiveSessionError(error)) {
                   return {
                     entries: [],
                     path,
+                    truncated: false,
                   }
                 }
 

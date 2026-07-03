@@ -54,10 +54,7 @@ const invalidateSnippetWorkflowQueries = async (
     }),
   ])
 }
-export const useSnippetPublishedWorkflow = (
-  snippetId: string,
-  onSuccess?: (publishedWorkflow: SnippetWorkflow) => void,
-) => {
+export const useSnippetPublishedWorkflow = (snippetId: string) => {
   const queryOptions = snippetWorkflowContract.workflows.publish.get.queryOptions({
     input: {
       params: { snippet_id: snippetId },
@@ -65,14 +62,14 @@ export const useSnippetPublishedWorkflow = (
     enabled: !!snippetId,
   })
 
-  return useQuery({
-    ...queryOptions,
-    queryFn: async (context) => {
+  return useQuery<SnippetWorkflow | undefined>({
+    queryKey: [...queryOptions.queryKey, snippetId],
+    enabled: !!snippetId,
+    queryFn: async () => {
       try {
-        const publishedWorkflow = await queryOptions.queryFn(context)
-        if (publishedWorkflow)
-          onSuccess?.(publishedWorkflow)
-        return publishedWorkflow
+        return await consoleClient.snippets.bySnippetId.workflows.publish.get({
+          params: { snippet_id: snippetId },
+        })
       }
       catch (error) {
         if (isNotFoundError(error))

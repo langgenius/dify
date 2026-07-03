@@ -43,12 +43,6 @@ type ApiJob = {
   document: SwaggerDocument
   outputPath: string
   plugins?: UserConfig['plugins']
-  source?: {
-    callback: () => void
-    enabled: true
-    path: null
-    serialize: () => string
-  }
 }
 
 type ApiContractOperation = {
@@ -400,24 +394,6 @@ const writeConsoleRouterContract = (segments: string[]) => {
   fs.writeFileSync(routerPath, consoleRouterContractContent(segments))
 }
 
-const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
-  return {
-    clean: false,
-    document,
-    outputPath: 'generated/api/console',
-    plugins: [],
-    source: {
-      callback: () => {
-        writeConsoleContractEntry(segments)
-        writeConsoleRouterContract(segments)
-      },
-      enabled: true,
-      path: null,
-      serialize: () => '',
-    },
-  }
-}
-
 const splitConsoleDocument = (document: SwaggerDocument) => {
   const pathsBySegment = new Map<string, Record<string, Record<string, unknown>>>()
 
@@ -434,7 +410,10 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
     outputPath: `generated/api/console/${toKebabCase(segment)}`,
   }))
 
-  return [...jobs, createConsoleContractEntryJob(document, segments)]
+  writeConsoleContractEntry(segments)
+  writeConsoleRouterContract(segments)
+
+  return jobs
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
@@ -465,7 +444,6 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       suffix: '.gen',
     },
     path: job.outputPath,
-    ...(job.source ? { source: job.source } : {}),
   },
   plugins: job.plugins ?? [
     {
@@ -494,6 +472,7 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       },
     },
     {
+      compatibilityVersion: 2,
       contracts: {
         contractName: {
           casing: 'camelCase',

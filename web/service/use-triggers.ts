@@ -521,9 +521,9 @@ export const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity)
 
 export const useAllTriggerPlugins = (enabled = true) => {
   return useQuery<TriggerWithProvider[]>({
-    queryKey: consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }),
+    queryKey: consoleQuery.workspaces.current.triggers.get.queryKey(),
     queryFn: async () => {
-      const response = await consoleClient.workspaces.current.triggers.get({})
+      const response = await consoleClient.workspaces.current.triggers.get()
       return response.map(normalizeTriggerProvider).map(convertToTriggerWithProvider)
     },
     enabled,
@@ -531,7 +531,7 @@ export const useAllTriggerPlugins = (enabled = true) => {
 }
 
 export const useInvalidateAllTriggerPlugins = () => {
-  return useInvalid(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }))
+  return useInvalid(consoleQuery.workspaces.current.triggers.get.queryKey())
 }
 
 // ===== Trigger Subscriptions Management =====

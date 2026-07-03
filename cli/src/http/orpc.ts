@@ -1,15 +1,24 @@
-import type { ContractRouterClient } from '@orpc/contract'
-import type { JsonifiedClient } from '@orpc/openapi-client'
+import type { RouterContractClient } from '@orpc/contract'
+import type { JsonifiedClient } from '@orpc/openapi'
 import type { HttpClient } from './types.js'
 import { contract } from '@dify/contracts/api/openapi/orpc.gen'
 import { createORPCClient } from '@orpc/client'
-import { OpenAPILink } from '@orpc/openapi-client/fetch'
+import { OpenAPILink } from '@orpc/openapi/fetch'
 import { isBaseError, unknownError } from '@/errors/base'
 import { classifyResponse } from './error-mapper.js'
 
 // Contract-typed oRPC client for the public OpenAPI surface. `JsonifiedClient` reshapes the
 // contract types to what survives JSON transport (e.g. Date -> string), matching the wire.
-export type OpenApiClient = JsonifiedClient<ContractRouterClient<typeof contract>>
+export type OpenApiClient = JsonifiedClient<RouterContractClient<typeof contract>>
+
+const openApiLinkUrl = (baseURL: string) => {
+  const url = new URL(baseURL)
+
+  return {
+    origin: url.origin,
+    url: `${url.pathname}${url.search}` as `/${string}`,
+  }
+}
 
 // An oRPC client routed through the CLI's HttpClient, so every call reuses the one transport
 // policy (UA+bearer, retry, timeout). Errors become the CLI's model at the two transport seams,
@@ -18,9 +27,11 @@ export type OpenApiClient = JsonifiedClient<ContractRouterClient<typeof contract
 //     oRPC to decode only 2xx responses;
 //   - link wrapper: the one residual throw (a 2xx body oRPC can't decode) -> mapOrpcError.
 export function createOpenApiClient(http: HttpClient): OpenApiClient {
+  const linkUrl = openApiLinkUrl(http.baseURL)
   const link = new OpenAPILink(contract, {
-    url: http.baseURL,
-    fetch: async (req, init) => {
+    ...linkUrl,
+    fetch: async (url, init) => {
+      const req = new Request(url, init)
       const res = await http.request(req, init)
       if (!res.ok)
         throw await classifyResponse(req, res)

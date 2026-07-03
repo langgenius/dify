@@ -67,9 +67,7 @@ export const useSnippetInit = (snippetId: string) => {
       nodesDefaultConfigs: normalizeNodesDefaultConfigs(nodesDefaultConfigs),
     })
   })
-  const publishedWorkflowQuery = useSnippetPublishedWorkflow(snippetId, (publishedWorkflow) => {
-    workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
-  })
+  const publishedWorkflowQuery = useSnippetPublishedWorkflow(snippetId)
 
   useEffect(() => {
     if (publishedWorkflowQuery.isLoading)
