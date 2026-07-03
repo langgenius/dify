@@ -33,8 +33,11 @@ from core.workflow.human_input_policy import (
     resolve_human_input_pause_reason_inputs,
     resolve_variable_select_input_options,
 )
+from core.workflow.nodes.human_input.pause_reason import (
+    DifyHITLEventType,
+    HumanInputRequired,
+)
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
@@ -494,7 +497,7 @@ def _build_pause_event(
     human_input_form_ids = [
         form_id
         for reason in reasons
-        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
+        if reason.get("TYPE") == DifyHITLEventType.HUMAN_INPUT_REQUIRED
         for form_id in [reason.get("form_id")]
         if isinstance(form_id, str)
     ]

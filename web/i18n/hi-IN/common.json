@@ -202,6 +202,7 @@
   "mainNav.integrations": "इंटीग्रेशन",
   "mainNav.marketplace": "मार्केटप्लेस",
   "mainNav.webApps.noResults": "कोई वेब ऐप नहीं मिला",
+  "mainNav.webApps.openApp": "{{name}} वेब ऐप खोलें",
   "mainNav.webApps.searchPlaceholder": "वेब ऐप खोजें",
   "mainNav.workspace.credits": "{{count}} क्रेडिट",
   "mainNav.workspace.creditsUnit": "क्रेडिट",

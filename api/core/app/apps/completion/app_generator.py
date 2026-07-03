@@ -8,6 +8,7 @@ from typing import Any, Literal, overload
 from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
@@ -36,6 +37,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -46,6 +48,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -56,6 +59,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -65,6 +69,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
     def generate(
         self,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -175,6 +180,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             def worker_with_context():
                 return context.run(
                     self._generate_worker,
+                    session=session,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
@@ -200,6 +206,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
+        session: Session,
         application_generate_entity: CompletionAppGenerateEntity,
         queue_manager: AppQueueManager,
         message_id: str,
@@ -220,6 +227,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 # chatbot app
                 runner = CompletionAppRunner()
                 runner.run(
+                    session=session,
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     message=message,
@@ -245,6 +253,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
     def generate_more_like_this(
         self,
+        session: Session,
         app_model: App,
         message_id: str,
         user: Account | EndUser,
@@ -343,6 +352,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             def worker_with_context():
                 return context.run(
                     self._generate_worker,
+                    session=session,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
