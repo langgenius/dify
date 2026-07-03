@@ -44,6 +44,7 @@ jobs:
       api-changed: ${{ steps.changes.outputs.api }}
       cli-changed: ${{ steps.changes.outputs.cli }}
       e2e-changed: ${{ steps.changes.outputs.e2e }}
+      external-e2e-changed: ${{ steps.changes.outputs.external_e2e }}
       web-changed: ${{ steps.changes.outputs.web }}
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
@@ -99,6 +100,25 @@ jobs:
               - 'docker/envs/middleware.env.example'
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
+            external_e2e:
+              - 'e2e/features/agent-v2/**'
+              - 'e2e/scripts/**'
+              - 'e2e/support/**'
+              - '.github/workflows/web-e2e.yml'
+              - '.github/actions/setup-web/**'
+              - 'dify-agent/**'
+              - 'api/clients/agent_backend/**'
+              - 'api/core/app/apps/agent_app/**'
+              - 'api/core/workflow/nodes/agent_v2/**'
+              - 'api/controllers/console/agent/**'
+              - 'api/services/agent/**'
+              - 'api/core/plugin/**'
+              - 'api/services/plugin/**'
+              - 'api/core/tools/**'
+              - 'api/services/tools/**'
+              - 'web/features/agent-v2/**'
+              - 'web/app/(commonLayout)/roster/**'
+              - 'web/app/components/workflow/nodes/agent-v2/**'
             vdb:
               - 'api/core/rag/datasource/**'
               - 'api/tests/integration_tests/vdb/**'
@@ -322,10 +342,10 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed == 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && (needs.check-changes.outputs.e2e-changed == 'true' || needs.check-changes.outputs.external-e2e-changed == 'true')
     uses: ./.github/workflows/web-e2e.yml
     with:
-      run-external-runtime: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      run-external-runtime: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-changes.outputs.external-e2e-changed == 'true' }}
     secrets: inherit
 
   web-e2e-skip:
@@ -333,7 +353,7 @@ jobs:
     needs:
       - pre_job
       - check-changes
-    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed != 'true'
+    if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed != 'true' && needs.check-changes.outputs.external-e2e-changed != 'true'
     runs-on: depot-ubuntu-24.04
     steps:
       - name: Report skipped web full-stack e2e
@@ -352,7 +372,7 @@ jobs:
       - name: Finalize Web Full-Stack E2E status
         env:
           SHOULD_SKIP_WORKFLOW: ${{ needs.pre_job.outputs.should_skip }}
-          TESTS_CHANGED: ${{ needs.check-changes.outputs.e2e-changed }}
+          TESTS_CHANGED: ${{ needs.check-changes.outputs.e2e-changed == 'true' || needs.check-changes.outputs.external-e2e-changed == 'true' }}
           RUN_RESULT: ${{ needs.web-e2e-run.result }}
           SKIP_RESULT: ${{ needs.web-e2e-skip.result }}
         run: |
