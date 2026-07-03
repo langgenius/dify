@@ -356,6 +356,46 @@ def test_builds_plugin_tool_with_files_llm_parameter_schema():
     assert schema["required"] == ["documents"]
 
 
+def test_builds_builtin_compat_plugin_tool_with_files_llm_parameter_schema():
+    runtime_provider = FakeRuntimeProvider(_files_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "langgenius/dify-gmail/dify-gmail",
+                    "provider_type": "builtin",
+                    "provider": "langgenius/dify-gmail/dify-gmail",
+                    "tool_name": "add_attachment_to_draft",
+                    "credential_type": "api-key",
+                    "credential_id": "credential-1",
+                }
+            ]
+        }
+    )
+
+    result = builder.build_layers(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        tools=tools,
+        invoke_from=InvokeFrom.DEBUGGER,
+    )
+
+    assert result.plugin_tools is not None
+    assert result.core_tools is None
+    prepared = result.plugin_tools.tools[0]
+    assert prepared.plugin_id == "langgenius/dify-gmail"
+    assert prepared.provider == "dify-gmail"
+    assert prepared.tool_name == "add_attachment_to_draft"
+    files_schema = prepared.parameters_json_schema["properties"]["documents"]
+    assert files_schema["type"] == "array"
+    assert files_schema["items"]["anyOf"][0]["description"] == "HTTP(S) URL or sandbox-local file path."
+    assert prepared.parameters_json_schema["required"] == ["documents"]
+    assert runtime_provider.last_agent_tool is not None
+    assert runtime_provider.last_agent_tool.provider_type.value == "builtin"
+
+
 def test_build_layers_routes_plugin_direct_and_builtin_via_core() -> None:
     runtime_provider = FakeRuntimeProvider(_tool())
     builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)

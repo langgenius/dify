@@ -352,7 +352,9 @@ class WorkflowAgentDifyToolsBuilder:
     @staticmethod
     def _tool_layer_destination(tool_config: AgentSoulDifyToolConfig) -> Literal["plugin", "core"]:
         provider_type = ToolProviderType.value_of(tool_config.provider_type)
-        if provider_type is ToolProviderType.PLUGIN:
+        if provider_type is ToolProviderType.PLUGIN or (
+            provider_type is ToolProviderType.BUILT_IN and _is_plugin_provider_id(tool_config.provider_id)
+        ):
             return "plugin"
         if provider_type in {
             ToolProviderType.BUILT_IN,
@@ -534,6 +536,13 @@ class WorkflowAgentDifyToolsBuilder:
                 ),
             )
         return normalized
+
+
+def _is_plugin_provider_id(provider_id: str | None) -> bool:
+    if not provider_id:
+        return False
+    parts = provider_id.split("/")
+    return len(parts) == 3 and all(parts)
 
 
 def _plugin_file_input_schema(description: str) -> dict[str, Any]:
