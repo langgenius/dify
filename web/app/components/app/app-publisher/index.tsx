@@ -38,7 +38,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
+import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
@@ -46,7 +46,7 @@ import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { AccessControl } from '../app-access-control'
+import AccessControl from '../app-access-control'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
@@ -231,7 +231,7 @@ export function AppPublisher({
       const { installed_apps } = await fetchInstalledAppList(appDetail.id)
       if (installed_apps?.length > 0)
         return `${basePath}${buildInstalledAppPath(installed_apps[0]!.id)}`
-      throw new Error('No app found in Explore')
+      throw new Error(t('notPublishedYet', { ns: 'app' }))
     }, {
       onError: (err) => {
         toast.error(`${err.message || err}`)

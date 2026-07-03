@@ -20,9 +20,16 @@ import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 
+type AudioRecorderWithPermission = typeof Recorder & {
+  getPermission: () => Promise<void>
+}
+
+type SendAcceptance = void | boolean | Promise<void | boolean>
+
 type ChatInputAreaProps = {
   readonly?: boolean
   botName?: string
+  customPlaceholder?: string
   showFeatureBar?: boolean
   showFileUpload?: boolean
   featureBarReadonly?: boolean
@@ -31,11 +38,12 @@ type ChatInputAreaProps = {
   visionConfig?: FileUpload
   speechToTextConfig?: EnableType
   onSend?: OnSend
-  inputs?: Record<string, any>
+  inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
   theme?: Theme | null
   isResponding?: boolean
   disabled?: boolean
+  sendButtonLabel?: string
   /**
    * Controls whether pressing Enter sends the message.
    * - true (default): Enter sends, Shift+Enter inserts newline
@@ -44,10 +52,11 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendOnEnter = true }: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
+  const canSend = !!query.trim()
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
   const { handleDragFileEnter, handleDragFileLeave, handleDragFileOver, handleDropFile, handleClipboardPasteFile, isDragActive } = useFile(visionConfig!, false)
@@ -55,29 +64,45 @@ const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, feat
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+  const queryRef = useRef('')
   const handleQueryChange = useCallback((value: string) => {
+    queryRef.current = value
     setQuery(value)
     setTimeout(handleTextareaResize, 0)
   }, [handleTextareaResize])
+  const resetAcceptedMessage = useCallback((acceptedQuery: string, acceptedFiles: ReturnType<typeof filesStore.getState>['files']) => {
+    const { files, setFiles } = filesStore.getState()
+    if (queryRef.current === acceptedQuery)
+      handleQueryChange('')
+    if (files === acceptedFiles)
+      setFiles([])
+  }, [filesStore, handleQueryChange])
   const handleSend = () => {
+    if (!canSend)
+      return
+
     if (isResponding) {
       toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return
     }
     if (onSend) {
-      const { files, setFiles } = filesStore.getState()
+      const { files } = filesStore.getState()
       if (files.some(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
         toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
         return
       }
-      if (!query || !query.trim()) {
-        toast.info(t('errorMessage.queryRequired', { ns: 'appAnnotation' }))
-        return
-      }
       if (checkInputsForm(inputs, inputsForm)) {
-        onSend(query, files)
-        handleQueryChange('')
-        setFiles([])
+        const sendResult = onSend(query, files) as SendAcceptance
+        if (sendResult instanceof Promise) {
+          sendResult.then((accepted) => {
+            if (accepted !== false)
+              resetAcceptedMessage(query, files)
+          }).catch(noop)
+          return
+        }
+
+        if (sendResult !== false)
+          resetAcceptedMessage(query, files)
       }
     }
   }
@@ -130,13 +155,13 @@ const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, feat
     }
   }
   const handleShowVoiceInput = useCallback(() => {
-    (Recorder as any).getPermission().then(() => {
+    ;(Recorder as AudioRecorderWithPermission).getPermission().then(() => {
       setShowVoiceInput(true)
     }, () => {
       toast.error(t('voiceInput.notAllow', { ns: 'common' }))
     })
   }, [t])
-  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} theme={theme} />)
+  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} sendButtonLabel={sendButtonLabel} disabled={!canSend} theme={theme} />)
   return (
     <>
       <div className={cn('relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md', isDragActive && 'border border-dashed border-components-option-card-option-selected-border', disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none')}>
@@ -147,7 +172,28 @@ const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, feat
               <div ref={textValueRef} className="pointer-events-none invisible absolute size-auto p-1 body-lg-regular leading-6 whitespace-pre">
                 {query}
               </div>
-              <Textarea ref={ref => textareaRef.current = ref as any} className={cn('w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden')} placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')} autoFocus minRows={1} value={query} onChange={e => handleQueryChange(e.target.value)} onKeyDown={handleKeyDown} onCompositionStart={handleCompositionStart} onCompositionEnd={handleCompositionEnd} onPaste={handleClipboardPasteFile} onDragEnter={handleDragFileEnter} onDragLeave={handleDragFileLeave} onDragOver={handleDragFileOver} onDrop={handleDropFile} readOnly={readonly} />
+              <Textarea
+                ref={(ref) => {
+                  textareaRef.current = ref ?? undefined
+                }}
+                className={cn('w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden')}
+                placeholder={!readonly && customPlaceholder?.trim() ? customPlaceholder : decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
+                // Existing chat behavior focuses the composer as soon as it opens.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                minRows={1}
+                value={query}
+                onChange={e => handleQueryChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
+                onPaste={handleClipboardPasteFile}
+                onDragEnter={handleDragFileEnter}
+                onDragLeave={handleDragFileLeave}
+                onDragOver={handleDragFileOver}
+                onDrop={handleDropFile}
+                readOnly={readonly}
+              />
             </div>
             {!isMultipleLine && operation}
           </div>

@@ -33,7 +33,7 @@ export function WorkflowReferencesTable({
   const workflowReferences = workflowReferencesQuery.data?.data ?? []
 
   return (
-    <div className="overflow-x-auto">
+    <div className="min-w-0 overflow-x-auto">
       <table className="w-full min-w-[1212px] table-fixed border-collapse">
         <colgroup>
           <col className="w-[572px]" />
@@ -145,6 +145,8 @@ function WorkflowAccessRow({
       <td className="px-3">
         <Link
           href={getWorkflowReferenceHref(reference)}
+          target="_blank"
+          rel="noopener noreferrer"
           aria-label={t('agentDetail.access.workflow.openInStudioFor', { name: reference.app_name })}
           className="inline-flex items-center gap-0.5 rounded-sm text-text-secondary hover:text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >

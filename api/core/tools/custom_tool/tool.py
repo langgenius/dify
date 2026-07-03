@@ -6,6 +6,7 @@ from typing import Any, Union, override
 from urllib.parse import urlencode
 
 import httpx
+from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
@@ -379,6 +380,7 @@ class ApiTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

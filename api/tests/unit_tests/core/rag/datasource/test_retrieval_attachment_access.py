@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -148,6 +149,7 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypat
 
     with bind_file_access_scope(scope):
         results = retrieval.knowledge_retrieval(
+            MagicMock(),
             KnowledgeRetrievalRequest(
                 tenant_id=tenant_id,
                 user_id=str(uuid4()),
@@ -156,7 +158,7 @@ def test_knowledge_retrieval_grants_returned_segments_to_current_scope(monkeypat
                 dataset_ids=[dataset_id],
                 query="desktop picture",
                 retrieval_mode="multiple",
-            )
+            ),
         )
         current_scope = get_current_file_access_scope()
 

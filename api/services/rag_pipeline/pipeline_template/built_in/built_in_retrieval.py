@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, override
 
 from flask import current_app
+from sqlalchemy.orm import Session
 
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
@@ -21,13 +22,15 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return PipelineTemplateType.BUILTIN
 
     @override
-    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+    def get_pipeline_templates(
+        self, session: Session, language: str, current_tenant_id: str | None = None
+    ) -> dict[str, Any]:
         del current_tenant_id
         result = self.fetch_pipeline_templates_from_builtin(language)
         return result
 
     @override
-    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
+    def get_pipeline_template_detail(self, session: Session, template_id: str) -> dict[str, Any] | None:
         result = self.fetch_pipeline_template_detail_from_builtin(template_id)
         return result
 

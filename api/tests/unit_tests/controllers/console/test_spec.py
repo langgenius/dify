@@ -1,6 +1,8 @@
 from inspect import unwrap
 from unittest.mock import patch
 
+import pytest
+
 import controllers.console.spec as spec_module
 
 
@@ -22,23 +24,17 @@ class TestSpecSchemaDefinitionsApi:
         assert status == 200
         assert resp == schema_definitions
 
-    def test_get_exception_returns_empty_list(self):
+    def test_get_exception_returns_empty_list(self, caplog: pytest.LogCaptureFixture):
         api = spec_module.SpecSchemaDefinitionsApi()
         method = unwrap(api.get)
 
-        with (
-            patch.object(
-                spec_module,
-                "SchemaManager",
-                side_effect=Exception("boom"),
-            ),
-            patch.object(
-                spec_module.logger,
-                "exception",
-            ) as log_exception,
+        with patch.object(
+            spec_module,
+            "SchemaManager",
+            side_effect=Exception("boom"),
         ):
             resp, status = method(api)
 
         assert status == 200
         assert resp == []
-        log_exception.assert_called_once()
+        assert "boom" in caplog.text

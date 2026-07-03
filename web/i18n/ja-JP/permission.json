@@ -28,6 +28,8 @@
   "accessRule.noDescription": "説明なし",
   "accessRule.noRules": "アクセスルールがありません",
   "accessRule.noUserAccessSettings": "個別権限設定がありません",
+  "accessRule.onlyMe": "自分のみ",
+  "accessRule.onlyMeDescription": "このリソースにアクセスできるのは自分だけです。",
   "accessRule.permission": "権限",
   "accessRule.resourceOpenScope": "リソース公開範囲",
   "accessRule.resourceOpenScopeDescription": "このリソースを公開する対象を選択します。各メンバーが実行できる操作はロール権限で決まります。",

@@ -4,7 +4,7 @@ import { colorScheme } from '@/sys/io/color'
 
 function prereleaseWarning(channel: Channel): readonly string[] {
   return [
-    `WARNING: This build is a ${channel} release. It is not stable`,
+    `WARNING: This build is a(n) ${channel} release. It is not stable`,
     '         and may have bugs. For production use, install or wait for the stable channel.',
   ]
 }

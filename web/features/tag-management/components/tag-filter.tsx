@@ -1,5 +1,5 @@
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxRootProps } from '@langgenius/dify-ui/combobox'
-import type { Tag, TagType } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { useQuery } from '@tanstack/react-query'
@@ -19,6 +19,7 @@ type TagFilterProps = {
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
   showLeadingIcon?: boolean
+  triggerClassName?: string
 }
 export const TagFilter = ({
   type,
@@ -26,12 +27,13 @@ export const TagFilter = ({
   onChange,
   onOpenTagManagement = () => {},
   showLeadingIcon = true,
+  triggerClassName,
 }: TagFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
 
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.get.queryOptions({
     input: {
       query: {
         type,
@@ -76,8 +78,9 @@ export const TagFilter = ({
           aria-label={triggerLabel}
           icon={false}
           className={cn(
-            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-components-input-bg-normal',
+            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left whitespace-nowrap select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-components-input-bg-normal',
             !!value.length && 'pr-6 shadow-xs',
+            triggerClassName,
           )}
         >
           <span className="flex w-full min-w-0 items-center gap-1">

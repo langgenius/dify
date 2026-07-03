@@ -132,8 +132,30 @@ export const getVars = (value: string) => {
 // example: /dify
 export const basePath = env.NEXT_PUBLIC_BASE_PATH
 
-export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>) {
-  const searchParams = new URLSearchParams({ source: encodeURIComponent(window.location.origin) })
+type MarketplaceUrlOptions = {
+  source?: string
+}
+
+const getUrlOrigin = (url?: string) => {
+  if (!url)
+    return undefined
+
+  try {
+    return new URL(url).origin
+  }
+  catch {
+    return undefined
+  }
+}
+
+const marketplaceSource = getUrlOrigin(env.NEXT_PUBLIC_WEB_PREFIX)
+
+export function getMarketplaceUrl(path: string, params?: Record<string, string | undefined>, options?: MarketplaceUrlOptions) {
+  const searchParams = new URLSearchParams()
+  const source = getUrlOrigin(options?.source) ?? marketplaceSource
+  if (source)
+    searchParams.set('source', source)
+
   if (params) {
     Object.keys(params).forEach((key) => {
       const value = params[key]
@@ -141,7 +163,9 @@ export function getMarketplaceUrl(path: string, params?: Record<string, string |
         searchParams.append(key, value)
     })
   }
-  return `${MARKETPLACE_URL_PREFIX}${path}?${searchParams.toString()}`
+
+  const queryString = searchParams.toString()
+  return queryString ? `${MARKETPLACE_URL_PREFIX}${path}?${queryString}` : `${MARKETPLACE_URL_PREFIX}${path}`
 }
 
 export const replaceSpaceWithUnderscoreInVarNameInput = (input: HTMLInputElement) => {

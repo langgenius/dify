@@ -74,6 +74,7 @@ type CloudPath =
   | '/cloud/use-dify/nodes/output'
   | '/cloud/use-dify/nodes/parameter-extractor'
   | '/cloud/use-dify/nodes/question-classifier'
+  | '/cloud/use-dify/nodes/start'
   | '/cloud/use-dify/nodes/template'
   | '/cloud/use-dify/nodes/tools'
   | '/cloud/use-dify/nodes/trigger/overview'
@@ -170,6 +171,7 @@ type UseDifyPath =
   | '/use-dify/nodes/output'
   | '/use-dify/nodes/parameter-extractor'
   | '/use-dify/nodes/question-classifier'
+  | '/use-dify/nodes/start'
   | '/use-dify/nodes/template'
   | '/use-dify/nodes/tools'
   | '/use-dify/nodes/trigger/overview'
@@ -356,6 +358,7 @@ type SelfHostPath =
   | '/self-host/use-dify/nodes/output'
   | '/self-host/use-dify/nodes/parameter-extractor'
   | '/self-host/use-dify/nodes/question-classifier'
+  | '/self-host/use-dify/nodes/start'
   | '/self-host/use-dify/nodes/template'
   | '/self-host/use-dify/nodes/tools'
   | '/self-host/use-dify/nodes/trigger/overview'
@@ -588,6 +591,7 @@ export const docPathProductAvailability: Record<string, readonly DocsProduct[]> 
   '/use-dify/nodes/output': ['cloud', 'self-host'],
   '/use-dify/nodes/parameter-extractor': ['cloud', 'self-host'],
   '/use-dify/nodes/question-classifier': ['cloud', 'self-host'],
+  '/use-dify/nodes/start': ['cloud', 'self-host'],
   '/use-dify/nodes/template': ['cloud', 'self-host'],
   '/use-dify/nodes/tools': ['cloud', 'self-host'],
   '/use-dify/nodes/trigger/overview': ['cloud', 'self-host'],

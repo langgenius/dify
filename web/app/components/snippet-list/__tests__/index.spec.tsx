@@ -262,11 +262,24 @@ describe('SnippetList', () => {
     expect(screen.getByRole('link', { name: 'common.menus.apps' })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('heading', { name: 'workflow.tabs.snippets' })).toBeInTheDocument()
     expect(screen.getByText('app.studio.filters.creators')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i })).toBeInTheDocument()
     expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('workflow.tabs.searchSnippets')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'snippet.create' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Sales Snippet/ })).toHaveAttribute('href', '/snippets/snippet-1/orchestrate')
     expect(screen.getByTestId('tag-management-modal')).toBeInTheDocument()
+  })
+
+  it('lays out snippet cards with auto-fill grid columns', () => {
+    renderList()
+
+    const card = screen.getByRole('link', { name: /Sales Snippet/ }).closest('article')
+    const grid = card?.parentElement
+
+    expect(grid).toHaveClass(
+      'grid',
+      'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+    )
   })
 
   it('passes creator, tag, and search filters to the snippets list query', () => {
@@ -283,6 +296,42 @@ describe('SnippetList', () => {
       tag_ids: ['tag-1', 'tag-2'],
       creator_ids: ['creator-1', 'creator-2'],
     }, {
+      enabled: true,
+    })
+  })
+
+  it('does not pass published state to the snippets list query by default', () => {
+    renderList()
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.not.objectContaining({
+      is_published: expect.any(Boolean),
+    }), {
+      enabled: true,
+    })
+  })
+
+  it('passes published state when selecting the published filter', () => {
+    renderList()
+
+    fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /workflow\.common\.published/i }))
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(expect.objectContaining({
+      is_published: true,
+    }), {
+      enabled: true,
+    })
+  })
+
+  it('passes draft state when selecting the draft filter', () => {
+    renderList()
+
+    fireEvent.click(screen.getByRole('button', { name: /workflow\.common\.published \/ snippet\.draft/i }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /snippet\.draft/i }))
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenLastCalledWith(expect.objectContaining({
+      is_published: false,
+    }), {
       enabled: true,
     })
   })
@@ -319,6 +368,18 @@ describe('SnippetList', () => {
 
     renderList()
 
+    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
+  })
+
+  it('fetches snippets without create action for users with snippet management permission', () => {
+    mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+
+    renderList()
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
+      enabled: true,
+    })
+    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
   })
 
