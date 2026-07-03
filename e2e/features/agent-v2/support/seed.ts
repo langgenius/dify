@@ -103,7 +103,7 @@ const matchesProviderLabel = (provider: { label?: { en_US?: string | null, zh_Ha
   || provider.label?.zh_Hans === expected
 
 const stableModelConfig = (): StableModel => ({
-  name: process.env.E2E_STABLE_MODEL_NAME?.trim() || 'gpt-5-nano',
+  name: process.env.E2E_STABLE_MODEL_NAME?.trim() || 'gpt-5.5',
   provider: process.env.E2E_STABLE_MODEL_PROVIDER?.trim() || 'openai',
   type: process.env.E2E_STABLE_MODEL_TYPE?.trim() || 'llm',
 })
@@ -417,6 +417,7 @@ const getDatasetDocuments = async (datasetId: string) => {
 
 const requiredKnowledgeSegmentTokens = [
   agentBuilderFixedInputs.customKnowledgeQuery,
+  agentBuilderFixedInputs.knowledgeRuntimeQuery,
   agentBuilderExpectedTokens.knowledgeReply,
 ]
 

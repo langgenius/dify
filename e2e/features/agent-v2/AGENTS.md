@@ -159,7 +159,7 @@ Treat preseeded Agent Builder resources as environment contracts. Preflight can 
 
 Use `the Agent v2 runtime backend is available` before scenarios tagged `@agent-backend-runtime`. The step checks the standalone `dify-agent` run server through `E2E_AGENT_BACKEND_URL`, `AGENT_BACKEND_BASE_URL`, or the default `http://127.0.0.1:5050` when `E2E_START_AGENT_BACKEND=1`. The E2E runner starts this service with `uv run --project dify-agent --extra server uvicorn dify_agent.server.app:app --host 127.0.0.1 --port 5050` only when `E2E_START_AGENT_BACKEND=1` is explicit. Because Agent App runtime always carries the `dify.config` layer and that layer depends on `dify.shell`, the same runner path also starts the `dify-agent/docker/local-sandbox` shellctl container on `E2E_SHELLCTL_PORT` (default `5004`) and injects `DIFY_AGENT_SHELLCTL_ENTRYPOINT` into the Agent backend. Missing or unreachable runtime backend or shellctl sandbox should be reported as a blocked precondition, not discovered later as a `/build-chat/finalize` 400 or Web app response timeout.
 
-Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios, model-backed build-mode assertions, and Workflow Agent v2 node setup because the backend rejects Agent nodes without model config. Do not add the model preflight to pure navigation or identity checks unless the setup API itself requires model config. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5-nano` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
+Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios, model-backed build-mode assertions, and Workflow Agent v2 node setup because the backend rejects Agent nodes without model config. Do not add the model preflight to pure navigation or identity checks unless the setup API itself requires model config. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5.5` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
 
 Keep `@stable-model` on Build draft apply scenarios that click `Apply`. The current product path calls `/build-chat/finalize` before applying the draft, and the backend returns `model is required` when the Agent Soul has no model config. Discard-only and pending-draft isolation scenarios can stay model-free when they do not finalize the Build draft.
 
@@ -169,7 +169,7 @@ Override the default selector only when a scenario or environment explicitly nee
 
 ```bash
 E2E_STABLE_MODEL_PROVIDER=openai
-E2E_STABLE_MODEL_NAME=gpt-5-nano
+E2E_STABLE_MODEL_NAME=gpt-5.5
 E2E_STABLE_MODEL_TYPE=llm
 ```
 

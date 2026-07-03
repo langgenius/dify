@@ -187,6 +187,7 @@ export async function skipMissingReadyPreseededDataset(
   if (resourceName === agentBuilderPreseededResources.agentKnowledgeBase) {
     const requiredTokens = [
       agentBuilderFixedInputs.customKnowledgeQuery,
+      agentBuilderFixedInputs.knowledgeRuntimeQuery,
       agentBuilderExpectedTokens.knowledgeReply,
     ]
     const hasExpectedToken = await datasetHasEnabledSegmentContainingTokens(

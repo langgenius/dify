@@ -225,7 +225,7 @@ When('I send the Agent v2 Backend service API knowledge request', async function
 
   this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
     apiKey,
-    query: agentBuilderFixedInputs.customKnowledgeQuery,
+    query: agentBuilderFixedInputs.knowledgeRuntimeQuery,
     serviceApiBaseURL,
   })
 })
