@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
@@ -64,7 +66,7 @@ class TestWorkflowBasedAppRunner:
             start_at=0.0,
         )
 
-        with pytest.raises(ValueError, match="nodes or edges not found"):
+        with pytest.raises(ValidationError, match="nodes"):
             runner._init_graph(
                 graph_config={},
                 graph_runtime_state=runtime_state,
@@ -72,7 +74,7 @@ class TestWorkflowBasedAppRunner:
                 invoke_from=InvokeFrom.DEBUGGER,
             )
 
-        with pytest.raises(ValueError, match="nodes in workflow graph must be a list"):
+        with pytest.raises(ValidationError, match="nodes"):
             runner._init_graph(
                 graph_config={"nodes": {}, "edges": []},
                 graph_runtime_state=runtime_state,
@@ -80,7 +82,7 @@ class TestWorkflowBasedAppRunner:
                 invoke_from=InvokeFrom.DEBUGGER,
             )
 
-        with pytest.raises(ValueError, match="edges in workflow graph must be a list"):
+        with pytest.raises(ValidationError, match="edges"):
             runner._init_graph(
                 graph_config={"nodes": [], "edges": {}},
                 graph_runtime_state=runtime_state,
@@ -176,6 +178,71 @@ class TestWorkflowBasedAppRunner:
 
         assert graph is not None
         assert variable_pool is graph_runtime_state.variable_pool
+
+    def test_get_graph_and_variable_pool_for_single_node_run_does_not_mutate_inputs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        graph_config = {
+            "nodes": [
+                {"id": "node-1", "data": {"type": "start", "version": "1"}},
+                {"id": "node-child", "data": {"type": "start", "version": "1", "iteration_id": "node-1"}},
+                {"id": "outside", "data": {"type": "start", "version": "1"}},
+            ],
+            "edges": [
+                {"id": "edge-1", "source": "node-1", "target": "node-child"},
+                {"id": "edge-2", "source": "outside", "target": "node-1"},
+            ],
+        }
+        expected_graph_config = deepcopy(graph_config)
+        workflow = SimpleNamespace(tenant_id="tenant", id="workflow", graph_dict=graph_config)
+        user_inputs = {"question": "hello"}
+        expected_user_inputs = dict(user_inputs)
+        captured_graph_config = {}
+
+        def fake_graph_init(**kwargs):
+            captured_graph_config["value"] = kwargs["graph_config"]
+            return SimpleNamespace()
+
+        class _NodeCls:
+            @staticmethod
+            def extract_variable_selector_to_variable_mapping(graph_config, config):
+                return {}
+
+        from core.app.apps import workflow_app_runner
+
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", fake_graph_init)
+        monkeypatch.setattr(workflow_app_runner, "resolve_workflow_node_class", lambda **_kwargs: _NodeCls)
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.load_into_variable_pool",
+            lambda **kwargs: kwargs["user_inputs"].update({"from_loader": "local-only"}),
+        )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            lambda **kwargs: kwargs["user_inputs"].update({"from_mapping": "local-only"}),
+        )
+
+        graph, variable_pool = runner._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id="node-1",
+            user_inputs=user_inputs,
+            graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="iteration_id",
+            node_type_label="iteration",
+            user_id="00000000-0000-0000-0000-000000000001",
+        )
+
+        assert graph is not None
+        assert variable_pool is graph_runtime_state.variable_pool
+        assert workflow.graph_dict == expected_graph_config
+        assert user_inputs == expected_user_inputs
+        assert captured_graph_config["value"] is not workflow.graph_dict
+        assert [node["id"] for node in captured_graph_config["value"]["nodes"]] == ["node-1", "node-child"]
+        assert captured_graph_config["value"]["edges"] == [{"id": "edge-1", "source": "node-1", "target": "node-child"}]
 
     def test_get_graph_and_variable_pool_for_single_node_run_includes_trace_session_id(
         self, monkeypatch: pytest.MonkeyPatch
@@ -279,18 +346,11 @@ class TestWorkflowBasedAppRunner:
             def extract_variable_selector_to_variable_mapping(graph_config, config):
                 return {}
 
-        def _validate_node_config(value):
-            return {"id": value["id"], "data": SimpleNamespace(**value["data"])}
-
         def _graph_init(**kwargs):
             variable_pool = graph_runtime_state.variable_pool
             assert variable_pool.get(["sys", "conversation_id"]) is not None
             return SimpleNamespace()
 
-        monkeypatch.setattr(
-            "core.app.apps.workflow_app_runner.NodeConfigDictAdapter.validate_python",
-            _validate_node_config,
-        )
         monkeypatch.setattr(
             "core.app.apps.workflow_app_runner.Graph.init",
             _graph_init,

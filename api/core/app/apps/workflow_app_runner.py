@@ -3,7 +3,7 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.agent_strategy import AgentStrategyInfo
@@ -54,6 +54,11 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.graph_config import NodeConfigDictAdapter
+from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.base_node_data import BaseNodeData
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.entities.pause_reason import HumanInputRequired
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -92,6 +97,67 @@ from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 logger = logging.getLogger(__name__)
 
 
+class _WorkflowGraphNodeData(BaseNodeData):
+    """Node data fields the runner needs before concrete node validation."""
+
+    start_node_id: str | None = None
+    iteration_id: str | None = None
+    loop_id: str | None = None
+
+    def parent_id_for(self, key: str) -> str | None:
+        match key:
+            case "iteration_id":
+                return self.iteration_id
+            case "loop_id":
+                return self.loop_id
+            case _:
+                return None
+
+
+class _WorkflowGraphNodeConfig(BaseModel):
+    """Top-level node wrapper used for runner graph filtering."""
+
+    id: str
+    data: _WorkflowGraphNodeData
+
+    model_config = ConfigDict(extra="allow", strict=True)
+
+    def to_graph_node_config(self) -> dict[str, Any]:
+        return {
+            **self.model_dump(mode="python", exclude={"data"}, exclude_unset=True),
+            "data": self.data.model_dump(mode="python", exclude_unset=True),
+        }
+
+    def to_typed_node_config(self) -> NodeConfigDict:
+        return cast(NodeConfigDict, {**self.model_dump(mode="python", exclude={"data"}), "data": self.data})
+
+
+class _WorkflowGraphEdgeConfig(BaseModel):
+    """Top-level edge wrapper used for selecting a single-node subgraph."""
+
+    source: str | None = None
+    target: str | None = None
+
+    model_config = ConfigDict(extra="allow", strict=True)
+
+
+class _WorkflowGraphConfig(BaseModel):
+    """Validated graph config boundary for runner methods.
+
+    Workflow graph payloads are persisted JSON mappings with extra metadata used
+    by graphon, so validation is intentionally limited to the top-level graph
+    shape this runner needs before passing the mapping onward.
+    """
+
+    nodes: list[_WorkflowGraphNodeConfig]
+    edges: list[_WorkflowGraphEdgeConfig]
+
+    model_config = ConfigDict(extra="allow", strict=True)
+
+    def to_graph_config(self) -> dict[str, Any]:
+        return self.model_dump(mode="python", exclude_unset=True)
+
+
 class WorkflowBasedAppRunner:
     def __init__(
         self,
@@ -127,14 +193,7 @@ class WorkflowBasedAppRunner:
         """
         Init graph
         """
-        if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
-
-        if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
-
-        if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
+        graph_config = _WorkflowGraphConfig.model_validate(graph_config).to_graph_config()
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
@@ -249,6 +308,8 @@ class WorkflowBasedAppRunner:
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
+        The workflow graph and user inputs are treated as caller-owned data; the
+        narrowed graph config used for execution is built locally.
 
         Args:
             workflow: The workflow instance
@@ -262,47 +323,39 @@ class WorkflowBasedAppRunner:
             A tuple containing (graph, variable_pool)
         """
         # fetch workflow graph
-        graph_config = workflow.graph_dict
-        if not graph_config:
-            raise ValueError("workflow graph not found")
+        source_graph_config = _WorkflowGraphConfig.model_validate(workflow.graph_dict)
 
-        graph_config = cast(dict[str, Any], graph_config)
-
-        if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
-
-        if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
-
-        if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
+        node_user_inputs = dict(user_inputs)
 
         # filter nodes only in the specified node type (iteration or loop)
-        main_node_config = next((n for n in graph_config.get("nodes", []) if n.get("id") == node_id), None)
-        start_node_id = main_node_config.get("data", {}).get("start_node_id") if main_node_config else None
-        node_configs = [
+        main_node_config = next((node for node in source_graph_config.nodes if node.id == node_id), None)
+        start_node_id = main_node_config.data.start_node_id if main_node_config else None
+        selected_node_configs = [
             node
-            for node in graph_config.get("nodes", [])
-            if node.get("id") == node_id
-            or node.get("data", {}).get(node_type_filter_key, "") == node_id
-            or (start_node_id and node.get("id") == start_node_id)
+            for node in source_graph_config.nodes
+            if node.id == node_id
+            or node.data.parent_id_for(node_type_filter_key) == node_id
+            or (start_node_id and node.id == start_node_id)
         ]
 
-        graph_config["nodes"] = node_configs
-
-        node_ids = [node.get("id") for node in node_configs]
+        node_ids = [node.id for node in selected_node_configs]
 
         # filter edges only in the specified node type
-        edge_configs = [
+        selected_edge_configs = [
             edge
-            for edge in graph_config.get("edges", [])
-            if (edge.get("source") is None or edge.get("source") in node_ids)
-            and (edge.get("target") is None or edge.get("target") in node_ids)
+            for edge in source_graph_config.edges
+            if (edge.source is None or edge.source in node_ids) and (edge.target is None or edge.target in node_ids)
         ]
 
-        graph_config["edges"] = edge_configs
+        node_configs = [node.to_graph_node_config() for node in selected_node_configs]
+        edge_configs = [edge.model_dump(mode="python", exclude_unset=True) for edge in selected_edge_configs]
+        graph_config = {
+            **source_graph_config.to_graph_config(),
+            "nodes": node_configs,
+            "edges": edge_configs,
+        }
 
-        typed_node_configs = [NodeConfigDictAdapter.validate_python(node) for node in node_configs]
+        typed_node_configs = selected_node_configs
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
@@ -327,7 +380,7 @@ class WorkflowBasedAppRunner:
 
         target_node_config = None
         for node in typed_node_configs:
-            if node["id"] == node_id:
+            if node.id == node_id:
                 target_node_config = node
                 break
 
@@ -335,8 +388,8 @@ class WorkflowBasedAppRunner:
             raise ValueError(f"{node_type_label} node id not found in workflow graph")
 
         # Get node class
-        node_type = target_node_config["data"].type
-        node_version = str(target_node_config["data"].version)
+        node_type = target_node_config.data.type
+        node_version = str(target_node_config.data.version)
         node_cls = resolve_workflow_node_class(node_type=node_type, node_version=node_version)
 
         # Use the variable pool from graph_runtime_state instead of creating a new one
@@ -349,22 +402,22 @@ class WorkflowBasedAppRunner:
                 selector
                 for node_config in typed_node_configs
                 for selector in get_node_creation_preload_selectors(
-                    node_type=node_config["data"].type,
-                    node_data=node_config["data"],
+                    node_type=node_config.data.type,
+                    node_data=node_config.data,
                 )
             ],
         )
 
         try:
             variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, config=target_node_config
+                graph_config=graph_config, config=target_node_config.to_typed_node_config()
             )
         except NotImplementedError:
             variable_mapping = {}
         variable_mapping = inject_default_system_variable_mappings(
-            node_id=target_node_config["id"],
+            node_id=target_node_config.id,
             node_type=node_type,
-            node_data=target_node_config["data"],
+            node_data=target_node_config.data,
             variable_mapping=variable_mapping,
         )
 
@@ -372,12 +425,12 @@ class WorkflowBasedAppRunner:
             variable_loader=self._variable_loader,
             variable_pool=variable_pool,
             variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
+            user_inputs=node_user_inputs,
         )
 
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
+            user_inputs=node_user_inputs,
             variable_pool=variable_pool,
             tenant_id=workflow.tenant_id,
         )
