@@ -4,7 +4,7 @@ import pytest
 from pytest_mock import MockerFixture
 from werkzeug.exceptions import NotFound
 
-from models import Account
+from models import Account, Tag, TagBinding, Tenant
 from models.enums import TagType
 from models.snippet import CustomizedSnippet
 from services.tag_service import TagBindingCreatePayload, TagBindingDeletePayload, TagService, UpdateTagPayload
@@ -12,9 +12,11 @@ from services.tag_service import TagBindingCreatePayload, TagBindingDeletePayloa
 
 @pytest.fixture
 def current_user(mocker: MockerFixture):
-    user = MagicMock(spec=Account)
+    user = Account(name="Test User", email="user@example.com")
     user.id = "user-1"
-    user.current_tenant_id = "tenant-1"
+    tenant = Tenant(name="Test Tenant")
+    tenant.id = "tenant-1"
+    user._current_tenant = tenant
     mocker.patch("services.tag_service.current_user", user)
     return user
 
@@ -87,7 +89,8 @@ def test_delete_tag_binding_does_not_commit_when_no_rows_deleted(mocker: MockerF
 
 
 def test_update_tags_scopes_lookup_to_current_tenant_and_type(current_user, db_session):
-    tag = SimpleNamespace(id="tag-1", name="old", type=TagType.KNOWLEDGE)
+    tag = Tag(tenant_id="tenant-1", type=TagType.KNOWLEDGE, name="old", created_by="user-1")
+    tag.id = "tag-1"
     db_session.scalar.side_effect = [tag, None]
 
     result = TagService.update_tags(UpdateTagPayload(name="new"), "tag-1", db_session, tag_type=TagType.KNOWLEDGE)
@@ -124,8 +127,10 @@ def test_get_tag_binding_count_scopes_lookup_to_current_tenant_and_type(current_
 
 
 def test_delete_tag_scopes_lookup_and_bindings_to_current_tenant(current_user, db_session):
-    tag = SimpleNamespace(id="tag-1", name="old", type=TagType.KNOWLEDGE)
-    binding = SimpleNamespace(id="binding-1")
+    tag = Tag(tenant_id="tenant-1", type=TagType.KNOWLEDGE, name="old", created_by="user-1")
+    tag.id = "tag-1"
+    binding = TagBinding(tenant_id="tenant-1", tag_id="tag-1", target_id="snippet-1", created_by="user-1")
+    binding.id = "binding-1"
     db_session.scalar.return_value = tag
     db_session.scalars.return_value.all.return_value = [binding]
 
@@ -159,7 +164,7 @@ def test_get_target_ids_by_tag_ids_returns_empty_without_query_for_empty_input(d
 
 
 def test_check_target_exists_accepts_existing_snippet(current_user, db_session):
-    snippet = MagicMock(spec=CustomizedSnippet)
+    snippet = CustomizedSnippet(tenant_id="tenant-1", name="Test Snippet", type="node")
     snippet.id = "snippet-1"
     db_session.scalar.return_value = snippet
 
