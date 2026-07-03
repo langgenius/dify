@@ -6,6 +6,16 @@ import { useModelModalHandler, useRefreshModel } from '@/app/components/header/a
 import { useDeleteModel } from '@/service/use-models'
 import { useAuthService } from './use-auth-service'
 
+type ProviderCredentialOperationPayload = {
+  credential_id: string
+}
+
+type ModelCredentialOperationPayload = {
+  credential_id: string
+  model: string
+  model_type: CustomModel['model_type']
+}
+
 export const useAuth = (provider: ModelProvider, configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields, extra: {
   isModelCredential?: boolean
   onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
@@ -30,6 +40,18 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
     setDeleteModel(model)
     pendingOperationModel.current = model
   }, [])
+  const resolveModelContext = useCallback((model?: CustomModel | null): CustomModel | undefined => {
+    if (model)
+      return model
+
+    if (!currentCustomConfigurationModelFixedFields)
+      return undefined
+
+    return {
+      model: currentCustomConfigurationModelFixedFields.__model_name,
+      model_type: currentCustomConfigurationModelFixedFields.__model_type,
+    }
+  }, [currentCustomConfigurationModelFixedFields])
   const openConfirmDelete = useCallback((credential?: Credential, model?: CustomModel) => {
     if (credential)
       handleSetDeleteCredentialId(credential.credential_id)
@@ -51,18 +73,32 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
       return
     try {
       handleSetDoingAction(true)
-      await getActiveCredentialService(!!model)({
-        credential_id: credential.credential_id,
-        model: model?.model,
-        model_type: model?.model_type,
-      })
+      const modelContext = model ?? (isModelCredential ? resolveModelContext() : undefined)
+      if (modelContext) {
+        const activeModelCredential = getActiveCredentialService(true) as (
+          payload: ModelCredentialOperationPayload,
+        ) => Promise<unknown>
+        await activeModelCredential({
+          credential_id: credential.credential_id,
+          model: modelContext.model,
+          model_type: modelContext.model_type,
+        })
+      }
+      else {
+        const activeProviderCredential = getActiveCredentialService(false) as (
+          payload: ProviderCredentialOperationPayload,
+        ) => Promise<unknown>
+        await activeProviderCredential({
+          credential_id: credential.credential_id,
+        })
+      }
       toast.success(t('api.actionSuccess', { ns: 'common' }))
       handleRefreshModel(provider, undefined, true)
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [getActiveCredentialService, t, handleSetDoingAction])
+  }, [getActiveCredentialService, isModelCredential, resolveModelContext, t, handleSetDoingAction])
   const handleConfirmDelete = useCallback(async () => {
     if (doingActionRef.current)
       return
@@ -74,12 +110,30 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
       handleSetDoingAction(true)
       let payload: any = {}
       if (pendingOperationCredentialId.current) {
-        payload = {
-          credential_id: pendingOperationCredentialId.current,
-          model: pendingOperationModel.current?.model,
-          model_type: pendingOperationModel.current?.model_type,
+        if (isModelCredential) {
+          const modelContext = resolveModelContext(pendingOperationModel.current)
+          if (!modelContext)
+            return
+
+          payload = {
+            credential_id: pendingOperationCredentialId.current,
+            model: modelContext.model,
+            model_type: modelContext.model_type,
+          }
+          const deleteModelCredential = getDeleteCredentialService(true) as (
+            payload: ModelCredentialOperationPayload,
+          ) => Promise<unknown>
+          await deleteModelCredential(payload)
         }
-        await getDeleteCredentialService(!!isModelCredential)(payload)
+        else {
+          payload = {
+            credential_id: pendingOperationCredentialId.current,
+          }
+          const deleteProviderCredential = getDeleteCredentialService(false) as (
+            payload: ProviderCredentialOperationPayload,
+          ) => Promise<unknown>
+          await deleteProviderCredential(payload)
+        }
       }
       if (!pendingOperationCredentialId.current && pendingOperationModel.current) {
         payload = {
@@ -96,7 +150,7 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
     finally {
       handleSetDoingAction(false)
     }
-  }, [t, handleSetDoingAction, getDeleteCredentialService, isModelCredential, closeConfirmDelete, handleRefreshModel, provider, configurationMethod, deleteModelService])
+  }, [t, handleSetDoingAction, getDeleteCredentialService, isModelCredential, closeConfirmDelete, handleRefreshModel, provider, configurationMethod, deleteModelService, resolveModelContext])
   const handleSaveCredential = useCallback(async (payload: Record<string, any>) => {
     if (doingActionRef.current)
       return

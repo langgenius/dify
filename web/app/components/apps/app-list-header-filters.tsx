@@ -66,6 +66,7 @@ export function AppListHeaderFilters({
           triggerClassName="min-w-0"
         />
         <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
+        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <SearchInput
           className="w-50 max-w-full"
           value={keywords}
@@ -74,11 +75,11 @@ export function AppListHeaderFilters({
         />
       </div>
       <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
-        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <Link
           href="/snippets"
-          className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold whitespace-nowrap text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="inline-flex h-8 cursor-pointer items-center justify-center gap-1 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         >
+          <span aria-hidden className="i-ri-braces-line size-4 shrink-0" />
           {t('studio.viewSnippets', { ns: 'app' })}
         </Link>
         {showCreateButton && (

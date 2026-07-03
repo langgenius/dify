@@ -1,6 +1,7 @@
 from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import Mock
 
 import pytest
 from flask import Flask
@@ -1061,8 +1062,8 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
     account = SimpleNamespace(id=account_id, timezone="UTC")
     with app.test_request_context(
         "/console/api/agent/00000000-0000-0000-0000-000000000001/logs"
-        "?page=2&limit=5&keyword=hello&statuses[]=success&statuses[]=failed&sources[]=webapp:app-1"
-        "&sources[]=workflow:app-2:workflow-1:v1:node-1&sort_by=created_at&sort_order=asc"
+        "?page=2&limit=5&keyword=hello&statuses=success&statuses=failed&sources=webapp:app-1"
+        "&sources=workflow:app-2:workflow-1:v1:node-1&sort_by=created_at&sort_order=asc"
     ):
         logs = unwrap(AgentLogsApi.get)(AgentLogsApi(), "tenant-1", account, agent_id)
 
@@ -1348,13 +1349,16 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
     monkeypatch.setattr(completion_controller, "_create_chat_message", create_chat_message)
     monkeypatch.setattr(completion_controller, "_stop_chat_message", stop_chat_message)
 
+    session = Mock()
+
     with app.test_request_context(json={"inputs": {}, "query": "hello"}):
         assert unwrap(AgentChatMessageApi.post)(
-            AgentChatMessageApi(), "tenant-1", SimpleNamespace(id=account_id), agent_id
+            AgentChatMessageApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id
         ) == {"result": "generated"}
 
     assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
     create_call = cast(dict[str, object], captured["create"])
+    assert create_call["session"] is session
     assert create_call["app_model"] is app_model
     assert cast(SimpleNamespace, create_call["current_user"]).id == account_id
 
@@ -1383,13 +1387,16 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     monkeypatch.setattr(completion_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
     monkeypatch.setattr(completion_controller, "_create_build_chat_finalization_message", create_finalization_message)
 
+    session = Mock()
+
     with app.test_request_context():
         assert unwrap(AgentBuildChatFinalizeApi.post)(
-            AgentBuildChatFinalizeApi(), "tenant-1", SimpleNamespace(id=account_id), agent_id
+            AgentBuildChatFinalizeApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id
         ) == {"result": "generated"}
 
     assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
     finalize_call = cast(dict[str, object], captured["finalize"])
+    assert finalize_call["session"] is session
     assert finalize_call["app_model"] is app_model
     assert finalize_call["current_tenant_id"] == "tenant-1"
     assert finalize_call["agent_id"] == agent_id
@@ -1429,6 +1436,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
             current_user=SimpleNamespace(id=account_id),
             app_model=app_model,
             agent_id="agent-1",
+            session=Mock(),
         )
 
     assert result == ({"result": "success"}, 200)
@@ -1518,7 +1526,11 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
         json={"inputs": {}, "query": "hello", "response_mode": "streaming"},
         headers={"X-Trace-Id": "trace-1"},
     ):
-        result = completion_controller._create_chat_message(current_user=current_user, app_model=app_model)
+        result = completion_controller._create_chat_message(
+            current_user=current_user,
+            app_model=app_model,
+            session=Mock(),
+        )
 
     assert result == {"response": {"answer": "ok"}}
     assert captured["app_model"] is app_model
@@ -1558,6 +1570,7 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation(
                 current_user=SimpleNamespace(id=account_id),
                 app_model=app_model,
                 agent_id="agent-1",
+                session=Mock(),
             )
 
 
@@ -1643,6 +1656,7 @@ def test_agent_chat_helper_maps_generation_errors(
             completion_controller._create_chat_message(
                 current_user=SimpleNamespace(id="account-1"),
                 app_model=app_model,
+                session=Mock(),
             )
 
 

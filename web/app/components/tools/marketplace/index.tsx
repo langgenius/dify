@@ -1,6 +1,6 @@
+import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { ToolsContentInset } from '../content-inset'
 import type { useMarketplace } from './hooks'
-import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiArrowRightUpLine,
