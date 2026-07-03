@@ -410,6 +410,20 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
         name: 'send build message',
       }))
       await waitFor(() => expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new'))
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.open',
+      })).not.toBeInTheDocument()
+
+      fireEvent.click(await screen.findByRole('button', {
+        name: 'complete build conversation',
+      }))
+      fireEvent.click(await screen.findByRole('button', {
+        name: 'send build message',
+      }))
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.workingDirectory.open',
+      })).toBeInTheDocument()
+
       fireEvent.click(await screen.findByRole('button', {
         name: 'agentV2.agentDetail.configure.workingDirectory.open',
       }))

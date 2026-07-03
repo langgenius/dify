@@ -809,7 +809,7 @@ describe('AgentConfigurePage', () => {
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
     })
 
-    it('should keep the working directory action visible when the build chat has a conversation', async () => {
+    it('should show the working directory action after the first build reply completes', async () => {
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
         data: {
@@ -859,6 +859,14 @@ describe('AgentConfigurePage', () => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       })
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'open working directory' })).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+
+      expect(screen.getByRole('button', { name: 'open working directory' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+
       expect(screen.getByRole('button', { name: 'open working directory' })).toBeInTheDocument()
     })
 
