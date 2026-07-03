@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import {
   DialogCloseButton,
@@ -12,7 +13,6 @@ import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { AgentFileTree } from '../files/tree'
-import { countAgentFileNodes } from '../utils'
 
 type AgentSkillFileNode = AgentFileNode
 
@@ -26,7 +26,9 @@ type AgentSkillDetailSection = {
 export type AgentSkillDetail = {
   description: string
   fileCount?: number
+  fileListTitle?: string
   files: AgentSkillFileNode[]
+  folderOpenState?: (context: { file: AgentSkillFileNode, depth: number }) => boolean
   filePreview?: {
     binary?: boolean
     content?: string
@@ -38,20 +40,30 @@ export type AgentSkillDetail = {
     isImage?: boolean
     isLoading?: boolean
   }
+  onFolderOpenChange?: (context: { file: AgentSkillFileNode, depth: number, open: boolean }) => void
   onSelectFile?: (file: AgentSkillFileNode) => void
+  renderFolderSuffix?: (context: { file: AgentSkillFileNode, depth: number }) => ReactNode
   selectedFileId?: string
   sections: AgentSkillDetailSection[]
 }
 
+const keepSkillFoldersClosed = () => false
+
 function AgentSkillFileList({
+  fileListTitle,
   files,
-  fileCount,
+  folderOpenState,
+  onFolderOpenChange,
   onSelectFile,
+  renderFolderSuffix,
   selectedFileId,
 }: {
+  fileListTitle?: string
   files: AgentSkillFileNode[]
-  fileCount: number
+  folderOpenState?: AgentSkillDetail['folderOpenState']
+  onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
   onSelectFile?: (file: AgentSkillFileNode) => void
+  renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
 }) {
   const { t } = useTranslation('agentV2')
@@ -61,7 +73,11 @@ function AgentSkillFileList({
       files={files}
       selectedFileId={selectedFileId}
       labelledBy="agent-skill-detail-files-heading"
-      className="h-[258px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+      className="h-full bg-background-section p-1"
+      scrollAreaClassName="flex-1"
+      folderOpenStrategy={keepSkillFoldersClosed}
+      folderOpenState={folderOpenState}
+      onFolderOpenChange={onFolderOpenChange}
       renderFile={onSelectFile
         ? ({ file, selected, children }) => (
             <FileTreeFile selected={selected} onClick={() => onSelectFile(file)}>
@@ -69,17 +85,12 @@ function AgentSkillFileList({
             </FileTreeFile>
           )
         : undefined}
+      renderFolderSuffix={renderFolderSuffix}
       header={(
         <>
-          <h3 id="agent-skill-detail-files-heading" className="sr-only">
-            {t('agentDetail.configure.skills.detail.files')}
+          <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
+            {fileListTitle ?? t('agentDetail.configure.skills.detail.files')}
           </h3>
-          <div
-            aria-hidden="true"
-            className="px-2 py-1 system-2xs-semibold-uppercase text-text-tertiary"
-          >
-            {t('agentDetail.configure.skills.detail.fileCount', { count: fileCount })}
-          </div>
         </>
       )}
     />
@@ -138,7 +149,7 @@ function AgentFilePreviewContent({
 
   if (isLoading || isDownloadLoading) {
     return (
-      <div className="flex min-h-40 items-center justify-center">
+      <div className="flex min-h-40 flex-1 items-center justify-center">
         <Loading type="area" />
       </div>
     )
@@ -146,7 +157,7 @@ function AgentFilePreviewContent({
 
   if (isError || isDownloadError) {
     return (
-      <p className="system-sm-regular text-text-tertiary">
+      <p className="px-4 system-sm-regular text-text-tertiary">
         {t('agentDetail.configure.files.preview.failed')}
       </p>
     )
@@ -154,11 +165,11 @@ function AgentFilePreviewContent({
 
   if (isImage && downloadUrl) {
     return (
-      <div className="flex min-h-40 items-start justify-center">
+      <div className="flex min-h-40 flex-1 items-start justify-center overflow-auto px-2 pb-4">
         <img
           src={downloadUrl}
           alt={fileName ?? ''}
-          className="max-h-[560px] max-w-full rounded-lg object-contain"
+          className="max-h-140 max-w-full rounded-lg object-contain"
         />
       </div>
     )
@@ -167,7 +178,7 @@ function AgentFilePreviewContent({
   if (binary) {
     if (downloadUrl) {
       return (
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 px-4">
           <span className="system-sm-regular text-text-tertiary">
             {t('agentDetail.configure.files.preview.unsupported')}
           </span>
@@ -185,7 +196,7 @@ function AgentFilePreviewContent({
     }
 
     return (
-      <p className="system-sm-regular text-text-tertiary">
+      <p className="px-4 system-sm-regular text-text-tertiary">
         {t('agentDetail.configure.files.preview.empty')}
       </p>
     )
@@ -193,16 +204,26 @@ function AgentFilePreviewContent({
 
   if (!content) {
     return (
-      <p className="system-sm-regular text-text-tertiary">
+      <p className="px-4 system-sm-regular text-text-tertiary">
         {t('agentDetail.configure.files.preview.empty')}
       </p>
     )
   }
 
+  const lines = content.split('\n')
+
   return (
-    <pre className="m-0 pb-4 font-mono text-xs leading-5 break-words whitespace-pre-wrap text-text-secondary">
-      {content}
-    </pre>
+    <div className="flex min-h-0 flex-1 overflow-auto px-2 pb-4">
+      <pre
+        aria-hidden="true"
+        className="m-0 w-7 shrink-0 pr-2 text-right font-mono text-[13px] leading-[22px] text-text-quaternary select-none"
+      >
+        {lines.map((_, index) => String(index + 1).padStart(2, '0')).join('\n')}
+      </pre>
+      <pre className="m-0 min-w-max flex-1 font-mono text-[13px] leading-[22px] whitespace-pre text-text-primary">
+        {content}
+      </pre>
+    </div>
   )
 }
 
@@ -214,28 +235,46 @@ export function AgentSkillDetailDialog({
   detail: AgentSkillDetail
 }) {
   const { t } = useTranslation('agentV2')
-  const fileCount = detail.fileCount ?? countAgentFileNodes(detail.files)
+  const previewTitle = detail.filePreview?.fileName
 
   return (
-    <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed" className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl p-0">
-      <DialogCloseButton className="top-5 right-5" />
-      <div className="shrink-0 border-b-[0.5px] border-components-panel-border-subtle pt-6 pr-14 pb-3 pl-6">
-        <DialogTitle className="title-xl-semi-bold text-text-primary">
-          {skillName}
-        </DialogTitle>
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+    <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed" className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0">
+      <div className="flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section">
+        <DialogDescription className="sr-only">
           {detail.description}
         </DialogDescription>
+        <DialogTitle className="sr-only">
+          {previewTitle || skillName}
+        </DialogTitle>
+        <div className="min-h-0 w-full">
+          <AgentSkillFileList
+            fileListTitle={detail.fileListTitle}
+            files={detail.files}
+            folderOpenState={detail.folderOpenState}
+            onFolderOpenChange={detail.onFolderOpenChange}
+            selectedFileId={detail.selectedFileId}
+            onSelectFile={detail.onSelectFile}
+            renderFolderSuffix={detail.renderFolderSuffix}
+          />
+        </div>
       </div>
-
-      <div className="flex min-h-0 flex-1 items-start">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-start gap-2 px-4 pt-3.5 pb-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {!!previewTitle && (
+              <h2 className="min-w-0 truncate system-xl-semibold text-text-primary" title={previewTitle}>
+                {previewTitle}
+              </h2>
+            )}
+          </div>
+          <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
+        </div>
         <ScrollArea
-          className="relative min-h-0 flex-1 self-stretch overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"
+          className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"
           label={t('agentDetail.configure.skills.detail.contentRegion')}
           slotClassNames={{
-            viewport: 'overscroll-contain outline-none focus-visible:outline-none mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
-            content: 'flex min-h-full w-full max-w-full min-w-0 flex-col gap-2 px-6 pt-4 pb-0',
-            scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
+            viewport: 'overscroll-contain outline-none focus-visible:outline-none',
+            content: 'flex min-h-full w-full max-w-full min-w-0 flex-col gap-2',
           }}
         >
           {detail.filePreview && (
@@ -252,17 +291,11 @@ export function AgentSkillDetailDialog({
             />
           )}
           {detail.sections.map(section => (
-            <AgentSkillDetailSectionBlock key={section.id} section={section} />
+            <div key={section.id} className="px-4">
+              <AgentSkillDetailSectionBlock section={section} />
+            </div>
           ))}
         </ScrollArea>
-        <div className="flex w-56 max-w-56 min-w-0 shrink-0 items-start justify-center p-4 pl-2">
-          <AgentSkillFileList
-            files={detail.files}
-            fileCount={fileCount}
-            selectedFileId={detail.selectedFileId}
-            onSelectFile={detail.onSelectFile}
-          />
-        </div>
       </div>
     </DialogContent>
   )

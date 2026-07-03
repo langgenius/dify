@@ -105,7 +105,7 @@ class HitTestingService:
     @classmethod
     def retrieve(
         cls,
-        session: Session | scoped_session,
+        session: Session,
         dataset: Dataset,
         query: str,
         account: Account,
@@ -131,6 +131,7 @@ class HitTestingService:
             metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions_raw)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
+                session=session,
                 dataset_ids=[dataset.id],
                 query=query,
                 metadata_filtering_mode="manual",
@@ -190,7 +191,7 @@ class HitTestingService:
     @classmethod
     def external_retrieve(
         cls,
-        session: Session | scoped_session,
+        session: Session,
         dataset: Dataset,
         query: str,
         account: Account,
@@ -206,6 +207,7 @@ class HitTestingService:
         start = time.perf_counter()
 
         all_documents = RetrievalService.external_retrieve(
+            session=session,
             dataset_id=dataset.id,
             query=cls.escape_query_for_search(query),
             external_retrieval_model=external_retrieval_model,

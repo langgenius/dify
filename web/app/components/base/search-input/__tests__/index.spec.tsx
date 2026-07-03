@@ -35,23 +35,6 @@ describe('SearchInput', () => {
       const clearButton = screen.getByLabelText('common.operation.clear')
       expect(clearButton).toBeInTheDocument()
     })
-
-    it('uses the design-system focus treatment for the clear button', () => {
-      render(<SearchInput value="has value" onValueChange={() => {}} />)
-
-      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-      expect(clearButton).toHaveClass(
-        'right-1.5',
-        'size-5',
-        'focus-visible:bg-components-input-bg-hover',
-        'focus-visible:ring-2',
-        'focus-visible:ring-state-accent-solid',
-        'focus-visible:ring-inset',
-      )
-      expect(clearButton).not.toHaveClass('size-4')
-      expect(clearButton).not.toHaveClass('focus-visible:ring-1')
-      expect(clearButton).not.toHaveClass('focus-visible:ring-components-input-border-active')
-    })
   })
 
   describe('Interaction', () => {

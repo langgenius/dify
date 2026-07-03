@@ -196,38 +196,44 @@ def _dummy_workflow():
     )
 
 
-def test_app_list_query_normalizes_orpc_bracket_tag_ids(app_module):
+def test_app_list_query_reads_repeated_tag_ids(app_module):
     first_tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
     second_tag_id = "3c39395b-6d1f-4030-8b17-eaa7cc85221c"
     query_args = MultiDict(
         [
             ("page", "1"),
             ("limit", "30"),
-            ("tag_ids[1]", second_tag_id),
-            ("tag_ids[0]", first_tag_id),
+            ("tag_ids", first_tag_id),
+            ("tag_ids", second_tag_id),
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
     assert query.tag_ids == [first_tag_id, second_tag_id]
 
 
-def test_app_list_query_normalizes_orpc_bracket_creator_ids(app_module):
+def test_app_list_query_reads_repeated_creator_ids(app_module):
     first_creator_id = "9e8959cf-a67b-4d34-9906-1d687517b248"
     second_creator_id = "1886f96a-5bf0-42bf-961d-8d2129049076"
     query_args = MultiDict(
         [
             ("page", "1"),
             ("limit", "30"),
-            ("creator_ids[1]", second_creator_id),
-            ("creator_ids[0]", first_creator_id),
+            ("creator_ids", first_creator_id),
+            ("creator_ids", second_creator_id),
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
     assert query.creator_ids == [first_creator_id, second_creator_id]
 
@@ -243,16 +249,12 @@ def test_app_list_query_preserves_regular_query_params(app_module):
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
-    assert normalized == {
-        "page": "2",
-        "limit": "50",
-        "mode": "chat",
-        "name": "Sales Copilot",
-        "is_created_by_me": "true",
-    }
     assert query.page == 2
     assert query.limit == 50
     assert query.mode == "chat"
@@ -261,59 +263,67 @@ def test_app_list_query_preserves_regular_query_params(app_module):
     assert query.tag_ids is None
 
 
-def test_app_list_query_normalizes_empty_bracket_tag_ids_to_none(app_module):
+def test_app_list_query_normalizes_empty_repeated_tag_ids_to_none(app_module):
     query_args = MultiDict(
         [
-            ("tag_ids[0]", ""),
-            ("tag_ids[1]", "   "),
+            ("tag_ids", ""),
+            ("tag_ids", "   "),
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
-    assert normalized == {"tag_ids": ["", "   "]}
     assert query.tag_ids is None
 
 
-def test_app_list_query_rejects_invalid_bracket_tag_id(app_module):
-    normalized = app_module._normalize_app_list_query_args(MultiDict([("tag_ids[0]", "not-a-uuid")]))
-
+def test_app_list_query_rejects_invalid_repeated_tag_id(app_module):
     with pytest.raises(ValidationError):
-        app_module.AppListQuery.model_validate(normalized)
+        app_module.query_params_from_request(
+            app_module.AppListQuery,
+            list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+            args=MultiDict([("tag_ids", "not-a-uuid")]),
+        )
 
 
-def test_app_list_query_rejects_invalid_bracket_creator_id(app_module):
-    normalized = app_module._normalize_app_list_query_args(MultiDict([("creator_ids[0]", "not-a-uuid")]))
-
+def test_app_list_query_rejects_invalid_repeated_creator_id(app_module):
     with pytest.raises(ValidationError):
-        app_module.AppListQuery.model_validate(normalized)
+        app_module.query_params_from_request(
+            app_module.AppListQuery,
+            list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+            args=MultiDict([("creator_ids", "not-a-uuid")]),
+        )
 
 
-def test_app_list_query_sorts_bracket_tag_ids_by_index(app_module):
-    first_tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
-    second_tag_id = "3c39395b-6d1f-4030-8b17-eaa7cc85221c"
-    third_tag_id = "9d5ec0f7-4f2b-4e7f-9c13-1e7a034d0eb1"
+def test_app_list_query_ignores_indexed_tag_ids(app_module):
+    tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
     query_args = MultiDict(
         [
-            ("tag_ids[2]", third_tag_id),
-            ("tag_ids[1]", second_tag_id),
-            ("tag_ids[0]", first_tag_id),
+            ("tag_ids[0]", tag_id),
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
-    assert query.tag_ids == [first_tag_id, second_tag_id, third_tag_id]
+    assert query.tag_ids is None
 
 
-def test_app_list_query_rejects_flat_tag_ids(app_module):
+def test_app_list_query_accepts_single_repeated_tag_id(app_module):
     tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
-    normalized = app_module._normalize_app_list_query_args(MultiDict([("tag_ids", tag_id)]))
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=MultiDict([("tag_ids", tag_id)]),
+    )
 
-    with pytest.raises(ValidationError):
-        app_module.AppListQuery.model_validate(normalized)
+    assert query.tag_ids == [tag_id]
 
 
 def test_create_app_endpoint_rejects_agent_mode(app_module, monkeypatch: pytest.MonkeyPatch):
@@ -379,6 +389,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         title="Public Site",
         icon_type="image",
         icon="site-icon",
+        input_placeholder="Ask anything",
         created_at=timestamp,
         updated_at=timestamp,
     )
@@ -421,6 +432,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["model_config"]["retriever_resource"] == {"enabled": True}
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
     assert serialized["site"]["icon_url"] == "signed:site-icon"
+    assert serialized["site"]["input_placeholder"] == "Ask anything"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
     assert serialized["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
     assert serialized["bound_agent_id"] == "agent-1"

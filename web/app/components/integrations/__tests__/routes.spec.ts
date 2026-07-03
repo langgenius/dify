@@ -46,6 +46,7 @@ describe('integration routes', () => {
     [undefined, { type: 'redirect', destination: '/integrations/model-provider' }],
     [[], { type: 'redirect', destination: '/integrations/model-provider' }],
     [['model-provider'], { type: 'section', section: 'provider' }],
+    [['model-provider', 'plugins'], { type: 'redirect', destination: '/integrations/model-provider' }],
     [['tools'], { type: 'redirect', destination: '/integrations/tools/built-in' }],
     [['tools', 'built-in'], { type: 'section', section: 'builtin' }],
     [['tool', 'api'], { type: 'redirect', destination: '/integrations/tools/api' }],
@@ -57,6 +58,10 @@ describe('integration routes', () => {
     [['trigger'], { type: 'section', section: 'trigger' }],
     [['agent-strategy'], { type: 'section', section: 'agent-strategy' }],
     [['extension'], { type: 'section', section: 'extension' }],
+    [['agent-strategy', 'plugins'], { type: 'redirect', destination: '/integrations/agent-strategy' }],
+    [['trigger', 'plugins'], { type: 'redirect', destination: '/integrations/trigger' }],
+    [['tools', 'built-in', 'plugins'], { type: 'redirect', destination: '/integrations/tools/built-in' }],
+    [['data-source', 'plugins'], { type: 'redirect', destination: '/integrations/data-source' }],
     [['model-providers'], { type: 'not-found' }],
     [['data-sources'], { type: 'not-found' }],
     [['api-extensions'], { type: 'not-found' }],
@@ -78,6 +83,30 @@ describe('integration routes', () => {
     })).toEqual({
       type: 'redirect',
       destination: '/integrations/tools/api?q=slack&tags=a&tags=b',
+    })
+  })
+
+  it('preserves marketplace install query params when redirecting nested marketplace callbacks', () => {
+    expect(getIntegrationRouteTargetBySlug(['agent-strategy', 'plugins'], {
+      'package-ids': '["junjiem/mcp_see_agent"]',
+    })).toEqual({
+      type: 'redirect',
+      destination: '/integrations/agent-strategy?package-ids=%5B%22junjiem%2Fmcp_see_agent%22%5D',
+    })
+  })
+
+  it('preserves marketplace install query params when redirecting model and data source callbacks', () => {
+    expect(getIntegrationRouteTargetBySlug(['model-provider', 'plugins'], {
+      'package-ids': '["langgenius/openai"]',
+    })).toEqual({
+      type: 'redirect',
+      destination: '/integrations/model-provider?package-ids=%5B%22langgenius%2Fopenai%22%5D',
+    })
+    expect(getIntegrationRouteTargetBySlug(['data-source', 'plugins'], {
+      'package-ids': '["langgenius/notion_datasource"]',
+    })).toEqual({
+      type: 'redirect',
+      destination: '/integrations/data-source?package-ids=%5B%22langgenius%2Fnotion_datasource%22%5D',
     })
   })
 

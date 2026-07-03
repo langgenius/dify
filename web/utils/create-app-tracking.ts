@@ -3,7 +3,6 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { AppModeEnum } from '@/types/app'
 
 const CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY = 'create_app_external_attribution'
-const CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS = ['utm_source', 'utm_campaign', 'slug'] as const
 
 const EXTERNAL_UTM_SOURCE_MAP = {
   'blog': 'blog',
@@ -32,17 +31,16 @@ type CreateAppSource
 
 export type TrackCreateAppParams = {
   source: CreateAppSource
-  appMode: AppModeEnum
+  appMode: string
   templateId?: string
 }
 
 type ExternalCreateAppAttribution = {
-  utmSource: typeof EXTERNAL_UTM_SOURCE_MAP[keyof typeof EXTERNAL_UTM_SOURCE_MAP]
-  utmCampaign?: string
-}
-
-const serializeBootstrapValue = (value: unknown) => {
-  return JSON.stringify(value).replace(/</g, '\\u003c')
+  // Raw utm_source from the link (e.g. "dify_blog"), reported as-is to stay consistent
+  // with the registration event. EXTERNAL_UTM_SOURCE_MAP is only used to gate which
+  // sources count as external, not to rewrite the reported value.
+  utmSource: string
+  slug?: string
 }
 
 const normalizeString = (value?: string | null) => {
@@ -91,73 +89,14 @@ const formatCreateAppTime = (date: Date) => {
   return `${padTimeValue(date.getMonth() + 1)}-${padTimeValue(date.getDate())}-${padTimeValue(date.getHours())}:${padTimeValue(date.getMinutes())}:${padTimeValue(date.getSeconds())}`
 }
 
-const mapOriginalCreateAppMode = (appMode: AppModeEnum): OriginalCreateAppMode => {
+const mapOriginalCreateAppMode = (appMode: string): OriginalCreateAppMode => {
   if (appMode === AppModeEnum.WORKFLOW)
     return 'workflow'
 
-  if (appMode === AppModeEnum.AGENT_CHAT)
+  if (appMode === AppModeEnum.AGENT_CHAT || appMode === 'agent')
     return 'agent'
 
   return 'chatflow'
-}
-
-export const runCreateAppAttributionBootstrap = (
-  sourceMap = EXTERNAL_UTM_SOURCE_MAP,
-  storageKey = CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY,
-  queryKeys = CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS,
-) => {
-  try {
-    if (typeof window === 'undefined' || !window.sessionStorage)
-      return
-
-    const searchParams = new URLSearchParams(window.location.search)
-    const rawSource = searchParams.get('utm_source')
-
-    if (!rawSource)
-      return
-
-    const normalizedSource = rawSource.trim().toLowerCase()
-    const mappedSource = sourceMap[normalizedSource as keyof typeof sourceMap]
-
-    if (!mappedSource)
-      return
-
-    const normalizedSlug = searchParams.get('slug')?.trim()
-    const normalizedCampaign = searchParams.get('utm_campaign')?.trim()
-    const utmCampaign = normalizedSlug || normalizedCampaign
-    const attribution = utmCampaign
-      ? { utmSource: mappedSource, utmCampaign }
-      : { utmSource: mappedSource }
-
-    window.sessionStorage.setItem(storageKey, JSON.stringify(attribution))
-
-    const nextSearchParams = new URLSearchParams(window.location.search)
-    let hasChanges = false
-
-    queryKeys.forEach((key) => {
-      if (!nextSearchParams.has(key))
-        return
-
-      nextSearchParams.delete(key)
-      hasChanges = true
-    })
-
-    if (!hasChanges)
-      return
-
-    const nextSearch = nextSearchParams.toString()
-    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`
-
-    try {
-      window.history.replaceState(window.history.state, '', nextUrl)
-    }
-    catch {}
-  }
-  catch {}
-}
-
-export const buildCreateAppAttributionBootstrapScript = () => {
-  return `(${runCreateAppAttributionBootstrap.toString()})(${serializeBootstrapValue(EXTERNAL_UTM_SOURCE_MAP)}, ${serializeBootstrapValue(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY)}, ${serializeBootstrapValue(CREATE_APP_EXTERNAL_ATTRIBUTION_QUERY_KEYS)});`
 }
 
 export const extractExternalCreateAppAttribution = ({
@@ -168,36 +107,37 @@ export const extractExternalCreateAppAttribution = ({
   utmInfo?: Record<string, unknown> | null
 }) => {
   const rawSource = getSearchParamValue(searchParams, 'utm_source') ?? getObjectStringValue(utmInfo?.utm_source)
-  const mappedSource = mapExternalUtmSource(rawSource)
 
-  if (!mappedSource)
+  // Gate on known external sources, but keep the raw value for reporting.
+  if (!rawSource || !mapExternalUtmSource(rawSource))
     return null
 
-  const utmCampaign = getSearchParamValue(searchParams, 'slug')
+  const slug = getSearchParamValue(searchParams, 'slug')
     ?? getSearchParamValue(searchParams, 'utm_campaign')
     ?? getObjectStringValue(utmInfo?.slug)
     ?? getObjectStringValue(utmInfo?.utm_campaign)
 
   return {
-    utmSource: mappedSource,
-    ...(utmCampaign ? { utmCampaign } : {}),
+    utmSource: rawSource,
+    ...(slug ? { slug } : {}),
   } satisfies ExternalCreateAppAttribution
 }
 
 const readRememberedExternalCreateAppAttribution = (): ExternalCreateAppAttribution | null => {
   const attribution = parseJSONRecord(window.sessionStorage.getItem(CREATE_APP_EXTERNAL_ATTRIBUTION_STORAGE_KEY))
-  const utmSource = mapExternalUtmSource(
-    getObjectStringValue(attribution?.utmSource) ?? getObjectStringValue(attribution?.utm_source),
-  )
+  const rawSource = getObjectStringValue(attribution?.utmSource) ?? getObjectStringValue(attribution?.utm_source)
 
-  if (!utmSource)
+  // Gate on known external sources, but keep the raw value for reporting.
+  if (!rawSource || !mapExternalUtmSource(rawSource))
     return null
 
-  const utmCampaign = getObjectStringValue(attribution?.utmCampaign) ?? getObjectStringValue(attribution?.utm_campaign)
+  const slug = getObjectStringValue(attribution?.slug)
+    ?? getObjectStringValue(attribution?.utmCampaign)
+    ?? getObjectStringValue(attribution?.utm_campaign)
 
   return {
-    utmSource,
-    ...(utmCampaign ? { utmCampaign } : {}),
+    utmSource: rawSource,
+    ...(slug ? { slug } : {}),
   }
 }
 
@@ -252,7 +192,7 @@ export const buildCreateAppEventPayload = (
     ...(externalAttribution
       ? {
           utm_source: externalAttribution.utmSource,
-          ...(externalAttribution.utmCampaign ? { utm_campaign: externalAttribution.utmCampaign } : {}),
+          ...(externalAttribution.slug ? { slug: externalAttribution.slug } : {}),
         }
       : {}),
   } satisfies Record<string, string>

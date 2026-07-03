@@ -76,7 +76,7 @@ vi.mock('@/service/client', () => ({
       },
     },
     apps: {
-      list: {
+      get: {
         queryOptions: (options: {
           input?: { query?: { limit?: number } }
           select?: (response: {
@@ -96,7 +96,7 @@ vi.mock('@/service/client', () => ({
             total: 0,
           }
           return {
-            queryKey: ['console', 'apps', 'list', options.input],
+            queryKey: ['console', 'apps', 'get', options.input],
             queryFn: () => Promise.resolve(response),
             initialData: response,
             select: options.select,
@@ -106,10 +106,14 @@ vi.mock('@/service/client', () => ({
     },
     explore: {
       apps: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', 'get', input],
+        },
       },
       banners: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', 'get', input],
+        },
       },
     },
   },
@@ -206,7 +210,7 @@ const mockMemberRole = (hasEditPermission: boolean) => {
 }
 
 const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
 const homeContinueWorkAppsInput = {
   query: {
     page: 1,
@@ -217,7 +221,7 @@ const homeContinueWorkAppsInput = {
 
 const createHomeQueryClient = () => {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['console', 'apps', 'list', homeContinueWorkAppsInput], {
+  queryClient.setQueryData(['console', 'apps', 'get', homeContinueWorkAppsInput], {
     data: [],
     has_more: false,
     limit: 8,

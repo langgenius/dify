@@ -407,7 +407,7 @@ class TestWorkflowRunApi:
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             with pytest.raises(NotWorkflowAppError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
     def test_rate_limit(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -423,7 +423,7 @@ class TestWorkflowRunApi:
 
         with app.test_request_context("/workflows/run", method="POST", json={"inputs": {}}):
             with pytest.raises(InvokeRateLimitHttpError):
-                handler(api, app_model=app_model, end_user=end_user)
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user)
 
 
 class TestWorkflowRunByIdApi:
@@ -441,7 +441,7 @@ class TestWorkflowRunByIdApi:
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
             with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, workflow_id="w1")
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user, workflow_id="w1")
 
     def test_draft_workflow(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -457,7 +457,7 @@ class TestWorkflowRunByIdApi:
 
         with app.test_request_context("/workflows/1/run", method="POST", json={"inputs": {}}):
             with pytest.raises(BadRequest):
-                handler(api, app_model=app_model, end_user=end_user, workflow_id="w1")
+                handler(api, session=Mock(), app_model=app_model, end_user=end_user, workflow_id="w1")
 
 
 class TestWorkflowTaskStopApi:
