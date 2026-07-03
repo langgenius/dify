@@ -516,9 +516,18 @@ class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
     autoPlay: str | None = None
 
 
+class AgentSuggestedQuestionsAfterAnswerModelConfig(AgentFlexibleConfig):
+    """Legacy Chat App model config used only for follow-up question generation."""
+
+    provider: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    mode: str | None = Field(default=None, max_length=64)
+    completion_params: dict[str, Any] | None = None
+
+
 class AgentSuggestedQuestionsAfterAnswerFeatureConfig(AgentFeatureToggleConfig):
     prompt: str | None = None
-    model: AgentSoulModelConfig | None = None
+    model: AgentSuggestedQuestionsAfterAnswerModelConfig | None = None
 
 
 class AgentModerationIOConfig(AgentFlexibleConfig):
