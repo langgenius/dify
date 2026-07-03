@@ -158,6 +158,8 @@ from rich import print
 
 response = httpx.get("https://example.com", timeout=10)
 print(f"[green]status:[/green] {response.status_code}")"""
+_SHELL_LAYER_SUFFIX_PROMPT = """Environment variables may contain API keys, tokens, or credentials.
+You may refer to environment variable names when needed."""
 
 
 class ShellToolErrorObservation(TypedDict):
@@ -253,6 +255,11 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     @override
     def prefix_prompts(self) -> Sequence[PydanticAIPrompt[object]]:
         return [_shell_layer_prefix_prompt]
+
+    @property
+    @override
+    def suffix_prompts(self) -> Sequence[PydanticAIPrompt[object]]:
+        return [_shell_layer_suffix_prompt]
 
     @property
     @override
@@ -752,6 +759,10 @@ async def render_prompt_observation_from_result(
 
 def _shell_layer_prefix_prompt() -> str:
     return _SHELL_LAYER_PREFIX_PROMPT
+
+
+def _shell_layer_suffix_prompt() -> str:
+    return _SHELL_LAYER_SUFFIX_PROMPT
 
 
 def _metadata_dict(
