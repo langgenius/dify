@@ -3,7 +3,7 @@ name: Web Full-Stack E2E
 on:
   workflow_call:
     inputs:
-      run-agent-v2-external-runtime:
+      run-external-runtime:
         required: false
         type: boolean
         default: false
@@ -56,13 +56,15 @@ jobs:
           E2E_INIT_PASSWORD: E2eInit12345
         run: vp run e2e:full
 
-      - name: Run Agent V2 external runtime E2E tests
-        if: ${{ inputs.run-agent-v2-external-runtime }}
+      - name: Run external runtime E2E tests
+        if: ${{ inputs.run-external-runtime }}
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
           E2E_ADMIN_NAME: E2E Admin
           E2E_ADMIN_PASSWORD: E2eAdmin12345
+          E2E_EXTERNAL_RUNTIME_SEED_SPECS: ${{ vars.E2E_EXTERNAL_RUNTIME_SEED_SPECS }}
+          E2E_EXTERNAL_RUNTIME_TAGS: ${{ vars.E2E_EXTERNAL_RUNTIME_TAGS }}
           E2E_FORCE_WEB_BUILD: "1"
           E2E_INIT_PASSWORD: E2eInit12345
           E2E_MARKETPLACE_API_URL: ${{ vars.E2E_MARKETPLACE_API_URL }}
@@ -74,7 +76,7 @@ jobs:
           E2E_STABLE_MODEL_TYPE: ${{ vars.E2E_STABLE_MODEL_TYPE }}
         run: |
           if [[ -z "${E2E_MODEL_PROVIDER_CREDENTIALS_JSON}" ]]; then
-            echo "E2E_MODEL_PROVIDER_CREDENTIALS_JSON is required for Agent V2 external runtime E2E." >&2
+            echo "E2E_MODEL_PROVIDER_CREDENTIALS_JSON is required for external runtime E2E." >&2
             exit 1
           fi
 
@@ -85,8 +87,8 @@ jobs:
 
           trap 'vp run e2e:middleware:down' EXIT
           vp run e2e:middleware:up
-          vp run seed -- --pack agent-v2 --profile external-runtime
-          vp run e2e -- --tags "@agent-v2 and (@external-model or @external-tool) and not @feature-gated and not @skip and not @preview"
+          vp run e2e:external:prepare
+          vp run e2e:external
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}

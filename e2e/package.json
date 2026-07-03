@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "e2e": "tsx ./scripts/run-cucumber.ts",
+    "e2e:external": "tsx ./scripts/run-external-runtime.ts",
+    "e2e:external:prepare": "tsx ./scripts/prepare-external-runtime.ts",
     "e2e:full": "tsx ./scripts/run-cucumber.ts --full",
     "e2e:full:headed": "tsx ./scripts/run-cucumber.ts --full --headed",
     "e2e:headed": "tsx ./scripts/run-cucumber.ts --headed",

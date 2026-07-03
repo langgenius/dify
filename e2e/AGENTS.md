@@ -53,6 +53,12 @@ pnpm -C e2e e2e:full
 # run a tagged subset
 pnpm -C e2e e2e -- --tags @smoke
 
+# prepare external runtime seed resources for opt-in external suites
+pnpm -C e2e e2e:external:prepare
+
+# run scenarios that call real external providers
+pnpm -C e2e e2e:external
+
 # headed browser
 pnpm -C e2e e2e:headed -- --tags @smoke
 
@@ -201,7 +207,11 @@ Feature: Create dataset
   - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
   - `@authenticated` — optional intent tag for readability or selective runs; it does not currently change hook behavior on its own
 - `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
+- `@external-model` — scenario execution can call a real model provider. Use this only for runtime requests, not for scenarios that only require an active model fixture.
+- `@external-tool` — scenario execution can call a real third-party tool provider. Use this only for runtime tool execution, not for plugin installation, discovery, or local deterministic tools.
 - `@skip` — excluded from all runs
+
+External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` reads `E2E_EXTERNAL_RUNTIME_SEED_SPECS`, defaulting to `agent-v2:external-runtime`, and runs the matching seed packs before the external suite. `pnpm -C e2e e2e:external` reads `E2E_EXTERNAL_RUNTIME_TAGS`, defaulting to `(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview`.
 
 Keep scenarios short and declarative. Each step should describe **what** the user does, not **how** the UI works.
 
