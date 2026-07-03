@@ -503,6 +503,7 @@ class TestBaseAgentRunnerInit:
         message = mocker.MagicMock(id="msg1", conversation_id="conv1")
 
         runner = BaseAgentRunner(
+            session=session,
             tenant_id="tenant",
             application_generate_entity=app_generate,
             conversation=mocker.MagicMock(),

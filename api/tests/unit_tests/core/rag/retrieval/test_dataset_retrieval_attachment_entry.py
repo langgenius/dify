@@ -30,7 +30,7 @@ def test_knowledge_retrieval_allows_attachment_only_requests() -> None:
         patch.object(retrieval, "_get_available_datasets", return_value=[available_dataset]),
         patch.object(retrieval, "multiple_retrieve", return_value=[]) as mock_multiple,
     ):
-        result = retrieval.knowledge_retrieval(request)
+        result = retrieval.knowledge_retrieval(MagicMock(), request)
 
     assert result == []
     mock_multiple.assert_called_once()
