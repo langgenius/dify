@@ -6,11 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -307,7 +307,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     ``human_input_required`` events are available.
     """
 
-    TYPE: Literal[PauseReasonType.HUMAN_INPUT_REQUIRED] = PauseReasonType.HUMAN_INPUT_REQUIRED
+    TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
     form_id: str
     node_id: str
     node_title: str

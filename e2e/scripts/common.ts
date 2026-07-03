@@ -1,3 +1,4 @@
+import type { Buffer } from 'node:buffer'
 import type { ChildProcess } from 'node:child_process'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -42,6 +43,7 @@ export const webEnvExampleFile = path.join(webDir, '.env.example')
 export const apiEnvExampleFile = path.join(apiDir, 'tests', 'integration_tests', '.env.example')
 export const e2eWebEnvOverrides = {
   NEXT_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/console/api',
+  NEXT_PUBLIC_ENABLE_AGENT_V2: 'true',
   NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/api',
 } satisfies Record<string, string>
 
@@ -105,6 +107,23 @@ export const runCommandOrThrow = async (options: RunCommandOptions) => {
   }
 
   return result
+}
+
+export const getTcpPortListenerDescription = async (port: number) => {
+  if (process.platform === 'win32')
+    return ''
+
+  const result = await runCommand({
+    command: 'lsof',
+    args: ['-nP', `-iTCP:${port}`, '-sTCP:LISTEN'],
+    cwd: rootDir,
+    stdio: 'pipe',
+  })
+
+  if (result.exitCode !== 0)
+    return ''
+
+  return result.stdout.trim()
 }
 
 const forwardSignalsToChild = (childProcess: ChildProcess) => {

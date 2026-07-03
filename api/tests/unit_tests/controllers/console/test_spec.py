@@ -1,6 +1,8 @@
 from inspect import unwrap
 from unittest.mock import patch
 
+import pytest
+
 import controllers.console.spec as spec_module
 
 
@@ -22,7 +24,7 @@ class TestSpecSchemaDefinitionsApi:
         assert status == 200
         assert resp == schema_definitions
 
-    def test_get_exception_returns_empty_list(self, caplog):
+    def test_get_exception_returns_empty_list(self, caplog: pytest.LogCaptureFixture):
         api = spec_module.SpecSchemaDefinitionsApi()
         method = unwrap(api.get)
 

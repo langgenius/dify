@@ -82,6 +82,17 @@ describe('create-app-tracking', () => {
       })
     })
 
+    it('should map the current backend agent mode into the canonical app mode bucket', () => {
+      expect(buildCreateAppEventPayload({
+        source: 'explore_template_list',
+        appMode: 'agent',
+      }, null, new Date(2026, 3, 13, 9, 8, 8))).toEqual({
+        source: 'explore_template_list',
+        app_mode: 'agent',
+        time: '04-13-09:08:08',
+      })
+    })
+
     it('should fold legacy non-agent modes into chatflow', () => {
       expect(buildCreateAppEventPayload({
         source: 'studio_blank',

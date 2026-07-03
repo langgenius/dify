@@ -5,7 +5,7 @@ description: Write, update, or review Dify end-to-end tests under `e2e/` that us
 
 # Dify E2E Cucumber + Playwright
 
-Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS.md`](../../../e2e/AGENTS.md) as the canonical guide for local architecture and conventions, then apply Playwright/Cucumber best practices only where they fit the current suite.
+Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS.md`](../../../e2e/AGENTS.md) as the canonical package guide for local architecture and conventions, then read any feature-scoped `AGENTS.md` that owns the target area. Apply Playwright/Cucumber best practices only where they fit the current suite.
 
 ## Scope
 
@@ -24,6 +24,8 @@ Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS
 3. Read [`references/playwright-best-practices.md`](references/playwright-best-practices.md) only when locator, assertion, isolation, or waiting choices are involved.
 4. Read [`references/cucumber-best-practices.md`](references/cucumber-best-practices.md) only when scenario wording, step granularity, tags, or expression design are involved.
 5. Re-check official Playwright or Cucumber docs with the available documentation tools before introducing a new framework pattern.
+
+Keep this skill focused on Cucumber, Playwright, and package-level E2E guidance. Put feature-specific conventions in the owning feature's `AGENTS.md` instead of adding them here.
 
 ## Local Rules
 
@@ -59,7 +61,7 @@ Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS
    - Do not use `waitForTimeout`, manual polling, or raw visibility checks when a locator action or retrying assertion already expresses the behavior.
 5. Validate narrowly.
    - Run the narrowest tagged scenario or flow that exercises the change.
-   - Run `pnpm -C e2e check`.
+   - Run `vpr lint --fix --quiet` from the repository root and `pnpm -C e2e type-check`.
    - Broaden verification only when the change affects hooks, tags, setup, or shared step semantics.
 
 ## Review Checklist

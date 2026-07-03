@@ -28,7 +28,7 @@ export const useExploreAppList = (options: { enabled?: boolean } = {}) => {
   const exploreAppsLanguage = exploreAppsInput?.query?.language
 
   return useQuery<ExploreAppListData>({
-    queryKey: [...consoleQuery.explore.apps.queryKey({ input: exploreAppsInput }), exploreAppsLanguage],
+    queryKey: [...consoleQuery.explore.apps.get.queryKey({ input: exploreAppsInput }), exploreAppsLanguage],
     queryFn: async () => {
       const { categories, recommended_apps } = await fetchAppList(exploreAppsLanguage)
       return {
@@ -48,7 +48,7 @@ export const useLearnDifyAppList = () => {
   const learnDifyAppsLanguage = learnDifyAppsInput?.query?.language
 
   return useQuery({
-    queryKey: [...consoleQuery.explore.learnDifyApps.queryKey({ input: learnDifyAppsInput }), learnDifyAppsLanguage],
+    queryKey: [...consoleQuery.explore.apps.learnDify.get.queryKey({ input: learnDifyAppsInput }), learnDifyAppsLanguage],
     queryFn: async () => {
       const { recommended_apps } = await fetchLearnDifyAppList(learnDifyAppsLanguage)
       return [...recommended_apps].sort((a, b) => a.position - b.position)
@@ -58,7 +58,7 @@ export const useLearnDifyAppList = () => {
 
 export const useGetInstalledApps = () => {
   return useQuery({
-    queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
+    queryKey: consoleQuery.installedApps.get.queryKey({ input: {} }),
     queryFn: () => {
       return fetchInstalledAppList()
     },
@@ -68,11 +68,11 @@ export const useGetInstalledApps = () => {
 export const useUninstallApp = () => {
   const client = useQueryClient()
   return useMutation({
-    mutationKey: consoleQuery.explore.uninstallInstalledApp.mutationKey(),
+    mutationKey: consoleQuery.installedApps.byInstalledAppId.delete.mutationKey(),
     mutationFn: (appId: string) => uninstallApp(appId),
     onSuccess: () => {
       client.invalidateQueries({
-        queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
+        queryKey: consoleQuery.installedApps.get.queryKey({ input: {} }),
       })
     },
   })
@@ -81,11 +81,11 @@ export const useUninstallApp = () => {
 export const useUpdateAppPinStatus = () => {
   const client = useQueryClient()
   return useMutation({
-    mutationKey: consoleQuery.explore.updateInstalledApp.mutationKey(),
+    mutationKey: consoleQuery.installedApps.byInstalledAppId.patch.mutationKey(),
     mutationFn: ({ appId, isPinned }: { appId: string, isPinned: boolean }) => updatePinStatus(appId, isPinned),
     onSuccess: () => {
       client.invalidateQueries({
-        queryKey: consoleQuery.explore.installedApps.queryKey({ input: {} }),
+        queryKey: consoleQuery.installedApps.get.queryKey({ input: {} }),
       })
     },
   })
@@ -102,7 +102,7 @@ export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
 
   return useQuery({
     queryKey: [
-      ...consoleQuery.explore.appAccessMode.queryKey({ input: appAccessModeInput }),
+      ...consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.queryKey({ input: appAccessModeInput }),
       webappAuthEnabled,
       installedAppId,
     ],
@@ -122,11 +122,11 @@ export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
 }
 
 export const useGetInstalledAppParams = (appId: string | null) => {
-  const installedAppParamsInput = { params: { appId: appId ?? '' } }
-  const installedAppId = installedAppParamsInput.params.appId
+  const installedAppParamsInput = { params: { installed_app_id: appId ?? '' } }
+  const installedAppId = installedAppParamsInput.params.installed_app_id
 
   return useQuery({
-    queryKey: [...consoleQuery.explore.installedAppParameters.queryKey({ input: installedAppParamsInput }), installedAppId],
+    queryKey: [...consoleQuery.installedApps.byInstalledAppId.parameters.get.queryKey({ input: installedAppParamsInput }), installedAppId],
     queryFn: () => {
       if (!installedAppId)
         return Promise.reject(new Error('App ID is required to get app params'))
@@ -137,11 +137,11 @@ export const useGetInstalledAppParams = (appId: string | null) => {
 }
 
 export const useGetInstalledAppMeta = (appId: string | null) => {
-  const installedAppMetaInput = { params: { appId: appId ?? '' } }
-  const installedAppId = installedAppMetaInput.params.appId
+  const installedAppMetaInput = { params: { installed_app_id: appId ?? '' } }
+  const installedAppId = installedAppMetaInput.params.installed_app_id
 
   return useQuery({
-    queryKey: [...consoleQuery.explore.installedAppMeta.queryKey({ input: installedAppMetaInput }), installedAppId],
+    queryKey: [...consoleQuery.installedApps.byInstalledAppId.meta.get.queryKey({ input: installedAppMetaInput }), installedAppId],
     queryFn: () => {
       if (!installedAppId)
         return Promise.reject(new Error('App ID is required to get app meta'))

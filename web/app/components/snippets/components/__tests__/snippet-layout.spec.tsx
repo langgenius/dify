@@ -42,7 +42,7 @@ describe('SnippetLayout', () => {
   })
 
   describe('Layout', () => {
-    it('should render the detail content without the app detail sidebar navigation', () => {
+    it('should render the detail content without owning sidebar navigation', () => {
       render(
         <SnippetLayout
           snippetId="snippet-1"

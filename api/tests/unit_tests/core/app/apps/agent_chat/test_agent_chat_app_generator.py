@@ -236,6 +236,7 @@ class TestAgentChatAppGeneratorWorker:
 
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
+            session=mocker.MagicMock(),
             context=mocker.MagicMock(),
             application_generate_entity=mocker.MagicMock(),
             queue_manager=queue_manager,
@@ -266,6 +267,7 @@ class TestAgentChatAppGeneratorWorker:
 
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
+            session=mocker.MagicMock(),
             context=mocker.MagicMock(),
             application_generate_entity=mocker.MagicMock(),
             queue_manager=queue_manager,
@@ -292,6 +294,7 @@ class TestAgentChatAppGeneratorWorker:
         with caplog.at_level(logging.ERROR, logger="core.app.apps.agent_chat.app_generator"):
             generator._generate_worker(
                 flask_app=mocker.MagicMock(),
+                session=mocker.MagicMock(),
                 context=mocker.MagicMock(),
                 application_generate_entity=mocker.MagicMock(),
                 queue_manager=queue_manager,

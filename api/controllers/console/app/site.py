@@ -22,6 +22,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.datetime_utils import naive_utc_now
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Site
 from models.account import Account
@@ -127,7 +128,7 @@ class AppSite(Resource):
         site.updated_at = naive_utc_now()
         db.session.commit()
 
-        return AppSiteResponse.model_validate(site, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppSiteResponse, site)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
@@ -156,4 +157,4 @@ class AppSiteAccessTokenReset(Resource):
         site.updated_at = naive_utc_now()
         db.session.commit()
 
-        return AppSiteResponse.model_validate(site, from_attributes=True).model_dump(mode="json")
+        return dump_response(AppSiteResponse, site)

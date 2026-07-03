@@ -17,6 +17,7 @@ from controllers.console.wraps import (
 )
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.login import login_required
 from models import Account
 from services.billing_service import BillingService
@@ -35,8 +36,12 @@ class BillingResponse(RootModel[dict[str, Any]]):
     root: dict[str, Any]
 
 
+class BillingInvoiceResponse(ResponseModel):
+    url: str
+
+
 register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)
-register_response_schema_models(console_ns, BillingResponse)
+register_response_schema_models(console_ns, BillingResponse, BillingInvoiceResponse)
 
 
 @console_ns.route("/billing/subscription")
@@ -57,7 +62,7 @@ class Subscription(Resource):
 
 @console_ns.route("/billing/invoices")
 class Invoices(Resource):
-    @console_ns.response(200, "Success", console_ns.models[BillingResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[BillingInvoiceResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

@@ -6,6 +6,8 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import GraphEngineEvent, GraphRunPausedEvent
@@ -126,12 +128,20 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             SystemVariableKey.WORKFLOW_EXECUTION_ID,
         )
         assert workflow_run_id is not None
+        # NOTE(QuantumGhost): Dify owns the pause-reason semantics that cross the
+        # persistence boundary. Graphon session ids are translated back to form ids
+        # here so repository/model layers only handle Dify-owned pause reasons.
+        pause_reasons = enrich_graph_pause_reasons(
+            reasons=event.reasons,
+            form_repository=HumanInputFormSubmissionRepository(),
+            variable_pool=self.graph_runtime_state.variable_pool,
+        )
         repo = self._get_repo()
         repo.create_workflow_pause(
             workflow_run_id=workflow_run_id,
             state_owner_user_id=self._state_owner_user_id,
             state=state.dumps(),
-            pause_reasons=event.reasons,
+            pause_reasons=pause_reasons,
         )
 
     @override

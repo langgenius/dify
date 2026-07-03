@@ -336,6 +336,174 @@ def _insert_load_balancing_model_config(
         )
 
 
+def test_data_migrate_group_registers_dataset_permission_rbac_migration(command_module) -> None:
+    command = command_module.data_migrate.commands["rbac-migrate-dataset-permissions"]
+
+    assert command is command_module.migrate_dataset_permissions_to_rbac
+    assert "operator_account_id" not in {param.name for param in command.params}
+
+
+def test_dataset_permission_rbac_migration_help_mentions_binding_clear_side_effect(command_module) -> None:
+    result = CliRunner().invoke(
+        command_module.data_migrate,
+        ["rbac-migrate-dataset-permissions", "--help"],
+    )
+
+    assert result.exit_code == 0
+    normalized_output = " ".join(result.output.split())
+    assert "clears existing per-user policy bindings" in normalized_output
+    assert "recreates legacy partial-member default bindings" in normalized_output
+
+
+def test_dataset_permission_rbac_migration_maps_legacy_permissions_to_enum_scopes() -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+
+    assert (
+        rbac_module._rbac_dataset_scope_for_legacy_permission(rbac_module.DatasetPermissionEnum.ALL_TEAM)
+        is rbac_module.RBACResourceWhitelistScope.ALL
+    )
+    assert (
+        rbac_module._rbac_dataset_scope_for_legacy_permission(rbac_module.DatasetPermissionEnum.PARTIAL_TEAM)
+        is rbac_module.RBACResourceWhitelistScope.SPECIFIC
+    )
+    assert rbac_module._dataset_permission_enum("partial_members") is rbac_module.DatasetPermissionEnum.PARTIAL_TEAM
+    assert rbac_module._dataset_permission_enum(None) is rbac_module.DatasetPermissionEnum.ONLY_ME
+
+
+def test_dataset_permission_rbac_migration_uses_dataset_creator_as_operator(
+    command_module,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    dataset_row = SimpleNamespace(
+        id="dataset-1",
+        tenant_id="tenant-1",
+        permission="only_me",
+        created_by="creator-account-1",
+    )
+    execute_results = [[dataset_row], [], []]
+    calls: list[dict[str, object]] = []
+    session_closed = False
+
+    class FakeExecuteResult:
+        def __init__(self, rows: list[object]) -> None:
+            self._rows = rows
+
+        def all(self) -> list[object]:
+            return self._rows
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            nonlocal session_closed
+            session_closed = True
+            pass
+
+        def execute(self, stmt):
+            return FakeExecuteResult(execute_results.pop(0))
+
+    class FakeSessionFactory:
+        @staticmethod
+        def create_session() -> FakeSession:
+            return FakeSession()
+
+    def fake_replace_whitelist(**kwargs):
+        assert session_closed is True
+        calls.append(kwargs)
+
+    monkeypatch.setattr(rbac_module, "session_factory", FakeSessionFactory)
+    monkeypatch.setattr(rbac_module.RBACService.DatasetAccess, "replace_whitelist", fake_replace_whitelist)
+
+    command_module.migrate_dataset_permissions_to_rbac.callback(
+        tenant_id=None,
+        dataset_id=None,
+        batch_size=500,
+        dry_run=False,
+    )
+
+    assert calls[0]["tenant_id"] == "tenant-1"
+    assert calls[0]["account_id"] == "creator-account-1"
+    assert calls[0]["dataset_id"] == "dataset-1"
+    assert calls[0]["payload"].scope is rbac_module.RBACResourceWhitelistScope.SPECIFIC
+
+
+def test_dataset_permission_rbac_migration_dry_run_outputs_structured_proposed_changes(
+    command_module,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rbac_module = importlib.import_module("commands.rbac")
+    dataset_row = SimpleNamespace(
+        id="dataset-1",
+        tenant_id="tenant-1",
+        permission="partial_members",
+        created_by="creator-account-1",
+    )
+    permission_row = SimpleNamespace(dataset_id="dataset-1", account_id="member-account-1")
+    execute_results = [[dataset_row], [permission_row], []]
+
+    class FakeExecuteResult:
+        def __init__(self, rows: list[object]) -> None:
+            self._rows = rows
+
+        def all(self) -> list[object]:
+            return self._rows
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            pass
+
+        def execute(self, stmt):
+            return FakeExecuteResult(execute_results.pop(0))
+
+    class FakeSessionFactory:
+        @staticmethod
+        def create_session() -> FakeSession:
+            return FakeSession()
+
+    monkeypatch.setattr(rbac_module, "session_factory", FakeSessionFactory)
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_whitelist",
+        lambda **kwargs: pytest.fail("dry-run must not replace whitelist"),
+    )
+    monkeypatch.setattr(
+        rbac_module.RBACService.DatasetAccess,
+        "replace_user_access_policies",
+        lambda **kwargs: pytest.fail("dry-run must not replace user access policies"),
+    )
+
+    result = CliRunner().invoke(
+        command_module.data_migrate,
+        ["rbac-migrate-dataset-permissions", "--dry-run"],
+    )
+
+    assert result.exit_code == 0
+    events = [json.loads(line) for line in result.output.splitlines() if line.startswith("{")]
+    assert [event["action"] for event in events] == ["replace_whitelist", "replace_user_access_policies"]
+    assert events[0]["before"] == {
+        "legacy_dataset_permission": "partial_members",
+        "legacy_partial_member_ids": ["member-account-1"],
+    }
+    assert events[0]["after"] == {"rbac_whitelist_scope": "specific"}
+    assert events[0]["call"] == {
+        "method": "RBACService.DatasetAccess.replace_whitelist",
+        "kwargs": {
+            "tenant_id": "tenant-1",
+            "account_id": "creator-account-1",
+            "dataset_id": "dataset-1",
+            "payload": {"scope": "specific"},
+        },
+    }
+    assert events[1]["target_account_id"] == "member-account-1"
+    assert events[1]["after"] == {"rbac_user_access_policy_ids": ["default"]}
+    assert events[1]["call"]["kwargs"]["payload"] == {"access_policy_ids": ["default"]}
+
+
 def test_data_migrate_command_defaults_output_to_stdout_stream(
     command_module,
     monkeypatch: pytest.MonkeyPatch,

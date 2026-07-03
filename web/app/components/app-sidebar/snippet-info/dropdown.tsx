@@ -49,7 +49,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
 
   const initialValue = React.useMemo(() => ({
     name: snippet.name,
-    description: snippet.description,
+    description: snippet.description ?? undefined,
   }), [snippet.description, snippet.name])
 
   const handleOpenEditDialog = React.useCallback(() => {
@@ -58,7 +58,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   }, [])
 
   const handleExportSnippet = React.useCallback(async () => {
-    if (!canManageSnippet)
+    if (!canCreateAndModifySnippet)
       return
 
     setOpen(false)
@@ -70,7 +70,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     catch {
       toast.error(t('exportFailed'))
     }
-  }, [canManageSnippet, exportSnippetMutation, snippet.id, snippet.name, t])
+  }, [canCreateAndModifySnippet, exportSnippetMutation, snippet.id, snippet.name, t])
 
   const handleEditSnippet = React.useCallback(async ({ name, description }: {
     name: string
@@ -80,7 +80,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
       params: { snippetId: snippet.id },
       body: {
         name,
-        description: description || undefined,
+        description,
       },
     }, {
       onSuccess: () => {
@@ -125,18 +125,20 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
           popupClassName="w-[180px] p-1"
         >
           {canCreateAndModifySnippet && (
-            <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
-              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-              <span className="grow">{t('menu.editInfo')}</span>
-            </DropdownMenuItem>
-          )}
-          {canManageSnippet && (
             <>
+              <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
+                <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+                <span className="grow">{t('menu.editInfo')}</span>
+              </DropdownMenuItem>
               <DropdownMenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
                 <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
                 <span className="grow">{t('menu.exportSnippet')}</span>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1! bg-divider-subtle" />
+            </>
+          )}
+          {canManageSnippet && (
+            <>
+              {canCreateAndModifySnippet && <DropdownMenuSeparator className="my-1! bg-divider-subtle" />}
               <DropdownMenuItem
                 className="mx-0 gap-2"
                 variant="destructive"

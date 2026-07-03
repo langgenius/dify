@@ -22,6 +22,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Check changed files
         id: changed-files
@@ -29,6 +30,8 @@ jobs:
         with:
           files: |
             api/**
+            scripts/check_no_new_getattr.py
+            scripts/ast_grep_rules/no_new_getattr.yml
             .github/workflows/style.yml
 
       - name: Setup UV and Python
@@ -50,6 +53,18 @@ jobs:
       - name: Run Response Contract Linter
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
+
+      - name: Fetch merge target ref for getattr guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+
+      - name: Bind merge target branch for getattr guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: git show-ref --verify --quiet refs/heads/main || git branch main origin/main
+
+      - name: Run No New Getattr Guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --project api python scripts/check_no_new_getattr.py --mode ci --merge-target main
 
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'

@@ -1,0 +1,23 @@
+from dify_agent.adapters.shell.config import ShellAdapterSettings
+from dify_agent.adapters.shell.protocols import ShellProviderProtocol
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
+
+
+def create_shell_provider(settings: ShellAdapterSettings | None = None) -> ShellProviderProtocol:
+    """Return the shell provider selected by ``DIFY_AGENT_SHELL_PROVIDER``."""
+    resolved = settings or ShellAdapterSettings()
+    provider = resolved.shell_provider.strip().lower()
+    match provider:
+        case "shellctl":
+            entrypoint = (resolved.shellctl_entrypoint or "").strip()
+            if not entrypoint:
+                raise ValueError("DIFY_AGENT_SHELLCTL_ENTRYPOINT is required for the 'shellctl' shell provider.")
+            return ShellctlProvider(
+                entrypoint=entrypoint,
+                token=resolved.shellctl_auth_token or "",
+            )
+        case _:
+            raise ValueError(f"Unknown shell provider: {resolved.shell_provider!r}.")
+
+
+__all__ = ["create_shell_provider"]
