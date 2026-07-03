@@ -87,8 +87,11 @@ class WorkflowRunService:
                 )
             ).all()
             for message in messages:
+                run_id = message.workflow_run_id
+                if run_id is None:
+                    continue
                 # setdefault mirrors scalar()'s single-row-per-run semantics.
-                messages_by_run_id.setdefault(message.workflow_run_id, message)
+                messages_by_run_id.setdefault(run_id, message)
 
         with_message_workflow_runs = []
         for workflow_run in workflow_runs:
