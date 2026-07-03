@@ -19,15 +19,6 @@ async function enableAgentApiAccessWithKey(world: DifyWorld) {
 }
 
 Given(
-  'Agent v2 Backend service API access has been enabled via API',
-  async function (this: DifyWorld) {
-    const apiAccess = await setAgentApiAccess(getCurrentAgentId(this), true)
-
-    this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
-  },
-)
-
-Given(
   'Agent v2 Backend service API access has been enabled with a key via API',
   async function (this: DifyWorld) {
     await enableAgentApiAccessWithKey(this)
@@ -179,26 +170,6 @@ Then('the Agent v2 API Reference should open in a new tab', async function (this
   await expect(apiReferencePage).toHaveURL(/developing-with-apis/)
   await apiReferencePage.close()
   this.agentBuilder.accessPoint.apiReferencePage = undefined
-})
-
-When('I disable Agent v2 Backend service API access', async function (this: DifyWorld) {
-  await getServiceApiCard(this).getByLabel('Toggle Backend service API access').click()
-})
-
-Then('Agent v2 Backend service API access should be out of service', async function (this: DifyWorld) {
-  const serviceApiCard = getServiceApiCard(this)
-
-  await expect(serviceApiCard.getByText('Out of service')).toBeVisible({ timeout: 30_000 })
-})
-
-When('I enable Agent v2 Backend service API access', async function (this: DifyWorld) {
-  await getServiceApiCard(this).getByLabel('Toggle Backend service API access').click()
-})
-
-Then('Agent v2 Backend service API access should be in service', async function (this: DifyWorld) {
-  const serviceApiCard = getServiceApiCard(this)
-
-  await expect(serviceApiCard.getByText('In service')).toBeVisible({ timeout: 30_000 })
 })
 
 When('I send the Agent v2 Backend service API minimal request', async function (this: DifyWorld) {
