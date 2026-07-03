@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from models.enums import TagType
 from models.model import Account, Tag
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow
@@ -40,7 +41,7 @@ def test_input_fields_list_parses_json_or_returns_empty() -> None:
 
 
 def test_tags_returns_query_results_or_empty(monkeypatch: pytest.MonkeyPatch) -> None:
-    tag = Tag()
+    tag = Tag(type=TagType.SNIPPET, name="test-tag", created_by="creator-id")
     tag.id = "tag-1"
     tags = [tag]
     session = Mock(scalars=Mock(return_value=Mock(all=Mock(return_value=tags))))
@@ -54,12 +55,10 @@ def test_tags_returns_query_results_or_empty(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_account_properties_and_author_name(monkeypatch: pytest.MonkeyPatch) -> None:
-    account = Account()
+    account = Account(name="Ada", email="ada@example.com")
     account.id = "account-1"
-    account.name = "Ada"
-    updated_account = Account()
+    updated_account = Account(name="Grace", email="grace@example.com")
     updated_account.id = "account-2"
-    updated_account.name = "Grace"
     session = Mock(
         get=Mock(side_effect=lambda _model, account_id: account if account_id == "account-1" else updated_account)
     )
