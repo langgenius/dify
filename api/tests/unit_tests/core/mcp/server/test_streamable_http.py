@@ -101,7 +101,7 @@ class TestHandleMCPRequest:
         self.mock_request.root.id = 123
 
         result = handle_mcp_request(
-            self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -115,7 +115,7 @@ class TestHandleMCPRequest:
         self.mock_request.root.id = 123
 
         result = handle_mcp_request(
-            self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -162,7 +162,7 @@ class TestHandleMCPRequest:
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
         result = handle_mcp_request(
-            self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
+            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2025-06-18"
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -180,7 +180,7 @@ class TestHandleMCPRequest:
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
         result = handle_mcp_request(
-            self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
+            Mock(), self.app, self.mock_request, self.user_input_form, self.mcp_server, self.end_user, 123, "2024-11-05"
         )
 
         assert isinstance(result, types.JSONRPCResponse)
@@ -376,7 +376,7 @@ class TestIndividualHandlers:
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        result = handle_call_tool(app, mock_request, [], Mock(spec=EndUser), "2025-06-18")
+        result = handle_call_tool(Mock(), app, mock_request, [], Mock(spec=EndUser), "2025-06-18")
 
         assert result.structuredContent == {"answer": "test answer"}
         assert result.content[0].text == "test answer"
@@ -395,7 +395,7 @@ class TestIndividualHandlers:
 
         mock_app_generate.generate.return_value = {"answer": "test answer"}
 
-        result = handle_call_tool(app, mock_request, [], Mock(spec=EndUser), "2024-11-05")
+        result = handle_call_tool(Mock(), app, mock_request, [], Mock(spec=EndUser), "2024-11-05")
 
         assert result.structuredContent is None
         assert result.content[0].text == "test answer"
