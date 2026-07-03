@@ -7,6 +7,9 @@ on:
         required: false
         type: boolean
         default: false
+    secrets:
+      CODECOV_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -19,6 +22,8 @@ jobs:
   test:
     name: Web Full-Stack E2E
     runs-on: depot-ubuntu-24.04-4
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -95,6 +100,42 @@ jobs:
           vp run e2e:middleware:up
           vp run e2e:external:prepare
           vp run e2e:external
+
+      - name: Upload preserved web E2E test results to Codecov
+        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' && hashFiles('e2e/cucumber-report-non-external/junit.xml') != '' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: e2e/cucumber-report-non-external/junit.xml
+          disable_search: true
+          report_type: test_results
+          flags: web-e2e
+          name: web-e2e
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
+
+      - name: Upload web E2E test results to Codecov
+        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' && hashFiles('e2e/cucumber-report/junit.xml') != '' && (!inputs.run-external-runtime || hashFiles('e2e/cucumber-report-non-external/junit.xml') == '') }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: e2e/cucumber-report/junit.xml
+          disable_search: true
+          report_type: test_results
+          flags: web-e2e
+          name: web-e2e
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
+
+      - name: Upload external runtime E2E test results to Codecov
+        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' && inputs.run-external-runtime && hashFiles('e2e/cucumber-report-non-external/junit.xml') != '' && hashFiles('e2e/cucumber-report/junit.xml') != '' }}
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: e2e/cucumber-report/junit.xml
+          disable_search: true
+          report_type: test_results
+          flags: web-e2e-external
+          name: web-e2e-external
+        env:
+          CODECOV_TOKEN: ${{ env.CODECOV_TOKEN }}
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}

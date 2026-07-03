@@ -12,6 +12,7 @@ const config = {
     'summary',
     'html:./cucumber-report/report.html',
     'json:./cucumber-report/report.json',
+    'junit:./cucumber-report/junit.xml',
   ],
   import: ['./tsx-register.js', 'features/**/*.ts'],
   parallel: 1,
