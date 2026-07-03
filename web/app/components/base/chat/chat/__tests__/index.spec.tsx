@@ -968,6 +968,22 @@ describe('Chat', () => {
       expect(screen.getByTestId('chat-footer')).toHaveClass('bg-chat-input-mask')
     })
 
+    it('should let footer blank space pass pointer events through', () => {
+      renderChat({ noChatInput: false })
+      const footer = screen.getByTestId('chat-footer')
+      expect(footer).toHaveClass('pointer-events-none')
+      expect(footer.firstElementChild).toHaveClass('pointer-events-none')
+    })
+
+    it('should keep the stop responding button clickable inside the pass-through footer', () => {
+      renderChat({
+        isResponding: true,
+        noStopResponding: false,
+        noChatInput: true,
+      })
+      expect(screen.getByRole('button', { name: /stopResponding/i })).toHaveClass('pointer-events-auto')
+    })
+
     it('should apply chatFooterClassName when footer has content', () => {
       renderChat({
         noChatInput: false,

@@ -1217,6 +1217,22 @@ List workflow apps that reference this Agent App's bound Agent (read-only)
 | 200 | Referencing workflows listed successfully | **application/json**: [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse)<br> |
 | 404 | Agent not found |  |
 
+### [GET] /agent/{agent_id}/sandbox
+Get basic information for an Agent App conversation sandbox
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| conversation_id | query | Agent App conversation ID | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Sandbox information returned | **application/json**: [SandboxInfoResponse](#sandboxinforesponse)<br> |
+
 ### [GET] /agent/{agent_id}/sandbox/files
 List a directory in an Agent App conversation sandbox
 
@@ -20395,6 +20411,13 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | name | string |  | Yes |
 | size | integer |  | No |
 | type | string, <br>**Available values:** "dir", "file", "other", "symlink" | *Enum:* `"dir"`, `"file"`, `"other"`, `"symlink"` | Yes |
+
+#### SandboxInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| session_id | string |  | Yes |
+| workspace_cwd | string |  | Yes |
 
 #### SandboxListResponse
 

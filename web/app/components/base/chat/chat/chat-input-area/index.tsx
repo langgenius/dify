@@ -167,7 +167,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
   const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} sendButtonLabel={sendButtonLabel} sendButtonLoading={sendButtonLoading} disabled={!canSend} theme={theme} />)
   return (
     <>
-      <div className={cn('relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md', isDragActive && 'border border-dashed border-components-option-card-option-selected-border', disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none')}>
+      <div className={cn('pointer-events-auto relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md', isDragActive && 'border border-dashed border-components-option-card-option-selected-border', disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none')}>
         <div className="relative max-h-[158px] overflow-x-hidden overflow-y-auto px-[9px] pt-[9px]">
           <FileListInChatInput fileConfig={visionConfig!} />
           <div ref={wrapperRef} className="flex items-center justify-between">
@@ -212,7 +212,11 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
           </div>
         </div>
       )}
-      {showFeatureBar && (<FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={featureBarReadonly ? noop : onFeatureBarClick} hideEditEntrance={featureBarReadonly} />)}
+      {showFeatureBar && (
+        <div className="pointer-events-auto">
+          <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={featureBarReadonly ? noop : onFeatureBarClick} hideEditEntrance={featureBarReadonly} />
+        </div>
+      )}
     </>
   )
 }

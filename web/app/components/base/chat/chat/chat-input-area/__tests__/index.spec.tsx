@@ -316,7 +316,12 @@ describe('ChatInputArea', () => {
 
     it('should apply disabled styles when the disabled prop is true', () => {
       const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} disabled />)
-      expect(container.firstChild).toHaveClass('opacity-50')
+      expect(container.firstChild).toHaveClass('pointer-events-none', 'opacity-50')
+    })
+
+    it('should restore pointer events on the input surface', () => {
+      const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} />)
+      expect(container.firstChild).toHaveClass('pointer-events-auto')
     })
 
     it('should apply drag-active styles when a file is being dragged over', () => {

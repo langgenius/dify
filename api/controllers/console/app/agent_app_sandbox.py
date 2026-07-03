@@ -44,6 +44,10 @@ class AgentSandboxListQuery(BaseModel):
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
 
 
+class AgentSandboxInfoQuery(BaseModel):
+    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+
+
 class AgentSandboxFileQuery(BaseModel):
     conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
@@ -91,6 +95,11 @@ class SandboxListResponse(ResponseModel):
     truncated: bool = False
 
 
+class SandboxInfoResponse(ResponseModel):
+    session_id: str
+    workspace_cwd: str
+
+
 class SandboxReadResponse(ResponseModel):
     path: str
     size: int | None = None
@@ -114,7 +123,13 @@ register_schema_models(
     AgentSandboxUploadPayload,
     WorkflowAgentSandboxUploadPayload,
 )
-register_response_schema_models(console_ns, SandboxListResponse, SandboxReadResponse, SandboxUploadResponse)
+register_response_schema_models(
+    console_ns,
+    SandboxInfoResponse,
+    SandboxListResponse,
+    SandboxReadResponse,
+    SandboxUploadResponse,
+)
 
 
 def _handle(exc: Exception) -> tuple[dict[str, object], int]:
@@ -131,6 +146,30 @@ def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     if isinstance(exc, DifyAgentTimeoutError | DifyAgentClientError):
         return {"code": "agent_backend_unreachable", "message": str(exc)}, 502
     raise exc
+
+
+@console_ns.route("/agent/<uuid:agent_id>/sandbox")
+class AgentAppSandboxInfoResource(Resource):
+    @console_ns.doc("get_agent_app_sandbox_info")
+    @console_ns.doc(description="Get basic information for an Agent App conversation sandbox")
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxInfoQuery)})
+    @console_ns.response(200, "Sandbox information returned", console_ns.models[SandboxInfoResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        query = query_params_from_request(AgentSandboxInfoQuery)
+        try:
+            result = AgentAppSandboxService().get_info(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                conversation_id=query.conversation_id,
+            )
+        except Exception as exc:
+            return _handle(exc)
+        return result.model_dump()
 
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files")

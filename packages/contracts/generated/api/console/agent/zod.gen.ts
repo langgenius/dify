@@ -186,6 +186,14 @@ export const zAgentPublishPayload = z.object({
 })
 
 /**
+ * SandboxInfoResponse
+ */
+export const zSandboxInfoResponse = z.object({
+  session_id: z.string(),
+  workspace_cwd: z.string(),
+})
+
+/**
  * SandboxReadResponse
  */
 export const zSandboxReadResponse = z.object({
@@ -3376,6 +3384,19 @@ export const zGetAgentByAgentIdReferencingWorkflowsPath = z.object({
  * Referencing workflows listed successfully
  */
 export const zGetAgentByAgentIdReferencingWorkflowsResponse = zAgentReferencingWorkflowsResponse
+
+export const zGetAgentByAgentIdSandboxPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdSandboxQuery = z.object({
+  conversation_id: z.string().min(1),
+})
+
+/**
+ * Sandbox information returned
+ */
+export const zGetAgentByAgentIdSandboxResponse = zSandboxInfoResponse
 
 export const zGetAgentByAgentIdSandboxFilesPath = z.object({
   agent_id: z.uuid(),
