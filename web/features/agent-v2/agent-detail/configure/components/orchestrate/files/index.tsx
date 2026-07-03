@@ -14,11 +14,11 @@ import {
   FileTreeIcon,
   FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerOriginalConfigAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
@@ -185,7 +185,7 @@ function AgentFileItem({
               aria-current={selected ? 'true' : undefined}
               className={cn(
                 'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
-                isBuildNoteFile ? 'pr-1' : 'pr-7',
+                'pr-7',
               )}
             />
           )}
@@ -219,6 +219,7 @@ function AgentFileItem({
           }}
         />
       </Dialog>
+      {isBuildNoteFile && <AgentBuildNoteInfotip />}
       {!readOnly && !file.virtualContent && (
         <button
           type="button"
@@ -236,8 +237,6 @@ function AgentFileItem({
 
 function AgentBuildNoteFileRow() {
   const { t } = useTranslation('agentV2')
-  const docLink = useDocLink()
-  const tooltip = t('agentDetail.configure.files.buildNote.tooltip')
 
   return (
     <>
@@ -249,30 +248,31 @@ function AgentBuildNoteFileRow() {
         <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
         <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
       </FileTreeBadge>
-      <Tooltip>
-        <TooltipTrigger
-          render={(
-            <span
-              aria-label={tooltip}
-              className="ml-auto flex size-5 shrink-0 items-center justify-center p-0.5 text-text-quaternary"
-            >
-              <span aria-hidden className="i-ri-question-line size-4" />
-            </span>
-          )}
-        />
-        <TooltipContent className="w-[230px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]">
-          <p className="body-xs-regular text-text-secondary">
-            <Trans
-              i18nKey="agentDetail.configure.files.buildNote.richTooltip"
-              ns="agentV2"
-              components={{
-                docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
-              }}
-            />
-          </p>
-        </TooltipContent>
-      </Tooltip>
     </>
+  )
+}
+
+function AgentBuildNoteInfotip() {
+  const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
+
+  return (
+    <Infotip
+      aria-label={t('agentDetail.configure.files.buildNote.tooltip')}
+      className="absolute top-1/2 right-1 z-10 size-5 -translate-y-1/2"
+      iconClassName="size-4"
+      popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
+    >
+      <p className="body-xs-regular text-text-secondary">
+        <Trans
+          i18nKey="agentDetail.configure.files.buildNote.richTooltip"
+          ns="agentV2"
+          components={{
+            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
+          }}
+        />
+      </p>
+    </Infotip>
   )
 }
 

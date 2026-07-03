@@ -396,7 +396,7 @@ describe('AgentFiles', () => {
     }))
   })
 
-  it('should show generated build note metadata with an explanatory tooltip', async () => {
+  it('should show generated build note metadata with an explanatory infotip', async () => {
     const user = userEvent.setup()
     renderAgentFiles({
       initialOriginalConfig: {
@@ -406,9 +406,9 @@ describe('AgentFiles', () => {
 
     expect(screen.getByText('agentV2.agentDetail.configure.files.buildNote.generated')).toBeInTheDocument()
 
-    await user.hover(screen.getByLabelText('agentV2.agentDetail.configure.files.buildNote.tooltip'))
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.buildNote.tooltip' }))
 
-    expect(await screen.findByText('agentV2.agentDetail.configure.files.buildNote.tooltip')).toBeInTheDocument()
+    expect(await screen.findByText('agentDetail.configure.files.buildNote.richTooltip')).toBeInTheDocument()
   })
 
   it('should keep flat config files visible without drive-prefix filtering and disable add in read-only mode', () => {
