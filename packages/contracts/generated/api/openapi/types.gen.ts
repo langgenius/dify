@@ -347,6 +347,7 @@ export type OpenApiErrorCode
     | 'unknown'
     | 'unsupported_file_type'
     | 'unsupported_media_type'
+    | 'upgrade_required'
 
 export type Package = {
   plugin_unique_identifier: string
