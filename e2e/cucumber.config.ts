@@ -1,4 +1,5 @@
 import type { IConfiguration } from '@cucumber/cucumber'
+import './scripts/env-register'
 
 const hasCliTags = process.argv.some(arg => arg === '--tags' || arg.startsWith('--tags='))
 const defaultTags = process.env.E2E_CUCUMBER_TAGS

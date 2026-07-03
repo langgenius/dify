@@ -272,7 +272,7 @@ export const startApi = async () => {
   })
 }
 
-export const startCelery = async () => {
+export const startCelery = async ({ queues = 'workflow_based_app_execution' } = {}) => {
   const env = await getApiEnvironment()
 
   await runForegroundProcess({
@@ -291,7 +291,7 @@ export const startCelery = async () => {
       '--loglevel',
       'INFO',
       '-Q',
-      'workflow_based_app_execution',
+      queues,
     ],
     cwd: apiDir,
     env,
@@ -404,18 +404,20 @@ export const startMiddleware = async () => {
 }
 
 const printUsage = () => {
-  console.log('Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|api|celery|web>')
+  console.log('Usage: tsx ./scripts/setup.ts <reset|middleware-up|middleware-down|api|celery [--queues queues]|web>')
 }
 
 const main = async () => {
   const command = process.argv[2]
+  const queuesIndex = process.argv.indexOf('--queues')
+  const queues = queuesIndex === -1 ? undefined : process.argv[queuesIndex + 1]
 
   switch (command) {
     case 'api':
       await startApi()
       return
     case 'celery':
-      await startCelery()
+      await startCelery({ queues })
       return
     case 'middleware-down':
       await stopMiddleware()

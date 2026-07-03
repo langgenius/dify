@@ -107,7 +107,7 @@ const expectKnowledgeRetrievalDraft = async (
         mode: query.mode,
         name: knowledgeSet.name,
         retrievalMode: retrieval.mode,
-        value: query.value,
+        value: query.value ?? undefined,
       }
     },
     { timeout: 30_000 },
@@ -149,6 +149,8 @@ When(
     await selectPreseededKnowledgeBase(this, dialog)
     await expect(dialog.getByText(getPreseededKnowledgeBase(this).name, { exact: true }))
       .toBeVisible()
+    await this.getPage().keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
   },
 )
 
@@ -164,6 +166,8 @@ When(
     await selectPreseededKnowledgeBase(this, dialog)
     await expect(dialog.getByText(getPreseededKnowledgeBase(this).name, { exact: true }))
       .toBeVisible()
+    await this.getPage().keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
   },
 )
 

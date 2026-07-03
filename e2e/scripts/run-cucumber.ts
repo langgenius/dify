@@ -6,6 +6,7 @@ import { startWebServer, stopWebServer } from '../support/web-server'
 import { apiURL, baseURL, reuseExistingWebServer } from '../test-env'
 import { e2eDir, isMainModule, runCommand } from './common'
 import { resetState, startMiddleware, stopMiddleware } from './setup'
+import './env-register'
 
 type RunOptions = {
   forwardArgs: string[]
