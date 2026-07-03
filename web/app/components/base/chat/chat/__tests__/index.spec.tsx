@@ -46,17 +46,21 @@ vi.mock('../chat-input-area', () => ({
     customPlaceholder,
     disabled,
     readonly,
+    footerNotice,
   }: {
     customPlaceholder?: string
     disabled?: boolean
     readonly?: boolean
+    footerNotice?: string
   }) => (
     <div
       data-testid="chat-input-area"
       data-custom-placeholder={customPlaceholder}
       data-disabled={String(!!disabled)}
       data-readonly={String(!!readonly)}
-    />
+    >
+      {footerNotice}
+    </div>
   ),
 }))
 
@@ -886,6 +890,15 @@ describe('Chat', () => {
         onFeatureBarClick,
       })
       expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+    })
+
+    it('should pass footer notice to ChatInputArea', () => {
+      renderChat({
+        noChatInput: false,
+        footerNotice: 'Agent runs in a Linux sandbox.',
+      })
+
+      expect(screen.getByTestId('chat-input-area')).toHaveTextContent('Agent runs in a Linux sandbox.')
     })
 
     it('should pass inputs and inputsForm to ChatInputArea', () => {

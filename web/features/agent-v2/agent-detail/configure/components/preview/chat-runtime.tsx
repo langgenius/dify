@@ -746,6 +746,7 @@ function AgentPreviewChatSession({
   const hasInstructions = !!config.pre_prompt.trim()
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
   const sandboxNotice = t('agentDetail.configure.preview.sandboxNotice')
+  const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">
       <ChatInputArea
@@ -760,7 +761,7 @@ function AgentPreviewChatSession({
         inputs={inputs}
         inputsForm={inputsForm}
         sendButtonLabel={sendButtonLabel}
-        footerNotice={sandboxNotice}
+        footerNotice={showSandboxNotice ? sandboxNotice : undefined}
       />
     </div>
   )
@@ -788,7 +789,6 @@ function AgentPreviewChatSession({
       )}
       inputPlaceholder={inputPlaceholder}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
-      footerNotice={sandboxNotice}
       showFileUpload={false}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}

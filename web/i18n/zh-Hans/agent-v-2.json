@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "终端用户认证",
   "agentDetail.configure.preview.inputPlaceholder": "向 {{name}} 发送消息",
   "agentDetail.configure.preview.restart": "重新开始预览",
+  "agentDetail.configure.preview.sandboxNotice": "Agent 运行在 Linux 沙盒中。",
   "agentDetail.configure.preview.title": "预览",
   "agentDetail.configure.prompt.copied": "提示词已复制",
   "agentDetail.configure.prompt.copy": "复制提示词",

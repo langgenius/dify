@@ -751,6 +751,12 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Feature Bar', () => {
+    it('should render footer notice when provided', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} footerNotice="Agent runs in a Linux sandbox." />)
+
+      expect(screen.getByText('Agent runs in a Linux sandbox.')).toBeInTheDocument()
+    })
+
     it('should render feature bar when showFeatureBar is true', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} showFeatureBar />)
       expect(screen.getByText(/feature.bar.empty/i)).toBeTruthy()

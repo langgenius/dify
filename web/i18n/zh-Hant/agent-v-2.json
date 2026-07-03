@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "終端使用者驗證",
   "agentDetail.configure.preview.inputPlaceholder": "傳訊息給 {{name}}",
   "agentDetail.configure.preview.restart": "重新開始預覽",
+  "agentDetail.configure.preview.sandboxNotice": "Agent 執行於 Linux 沙盒中。",
   "agentDetail.configure.preview.title": "預覽",
   "agentDetail.configure.prompt.copied": "提示詞已複製",
   "agentDetail.configure.prompt.copy": "複製提示詞",

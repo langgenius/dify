@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "Son kullanıcı kimlik doğrulaması",
   "agentDetail.configure.preview.inputPlaceholder": "{{name}} ile mesajlaş",
   "agentDetail.configure.preview.restart": "Önizlemeyi yeniden başlat",
+  "agentDetail.configure.preview.sandboxNotice": "Agent bir Linux korumalı alanında çalışır.",
   "agentDetail.configure.preview.title": "Önizleme",
   "agentDetail.configure.prompt.copied": "İstem kopyalandı",
   "agentDetail.configure.prompt.copy": "İstemi kopyala",

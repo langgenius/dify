@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "مصادقة المستخدم النهائي",
   "agentDetail.configure.preview.inputPlaceholder": "إرسال رسالة إلى {{name}}",
   "agentDetail.configure.preview.restart": "إعادة تشغيل المعاينة",
+  "agentDetail.configure.preview.sandboxNotice": "يعمل Agent داخل صندوق رمل Linux.",
   "agentDetail.configure.preview.title": "معاينة",
   "agentDetail.configure.prompt.copied": "تم نسخ المطالبة",
   "agentDetail.configure.prompt.copy": "نسخ المطالبة",

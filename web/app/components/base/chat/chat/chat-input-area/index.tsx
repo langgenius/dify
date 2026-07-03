@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { Theme } from '../../embedded-chatbot/theme/theme-context'
 import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
@@ -45,6 +46,7 @@ type ChatInputAreaProps = {
   disabled?: boolean
   sendButtonLabel?: string
   sendButtonLoading?: boolean
+  footerNotice?: ReactNode
   /**
    * Controls whether pressing Enter sends the message.
    * - true (default): Enter sends, Shift+Enter inserts newline
@@ -53,7 +55,7 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendButtonLoading, sendOnEnter = true }: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendButtonLoading, footerNotice, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
@@ -202,6 +204,14 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
         </div>
         {isMultipleLine && (<div className="px-[9px]">{operation}</div>)}
       </div>
+      {footerNotice && (
+        <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
+          <div className="flex items-center gap-1">
+            <div className="i-ri-information-line size-3.5 shrink-0 text-text-accent" />
+            <div className="body-xs-medium text-text-accent">{footerNotice}</div>
+          </div>
+        </div>
+      )}
       {showFeatureBar && (<FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={featureBarReadonly ? noop : onFeatureBarClick} hideEditEntrance={featureBarReadonly} />)}
     </>
   )

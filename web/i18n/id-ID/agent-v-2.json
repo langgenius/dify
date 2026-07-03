@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "Autentikasi pengguna akhir",
   "agentDetail.configure.preview.inputPlaceholder": "Kirim pesan ke {{name}}",
   "agentDetail.configure.preview.restart": "Mulai ulang pratinjau",
+  "agentDetail.configure.preview.sandboxNotice": "Agent berjalan di sandbox Linux.",
   "agentDetail.configure.preview.title": "Pratinjau",
   "agentDetail.configure.prompt.copied": "Prompt disalin",
   "agentDetail.configure.prompt.copy": "Salin prompt",

@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "Xác thực người dùng cuối",
   "agentDetail.configure.preview.inputPlaceholder": "Nhắn cho {{name}}",
   "agentDetail.configure.preview.restart": "Khởi động lại bản xem trước",
+  "agentDetail.configure.preview.sandboxNotice": "Agent chạy trong sandbox Linux.",
   "agentDetail.configure.preview.title": "Xem trước",
   "agentDetail.configure.prompt.copied": "Đã sao chép lời nhắc",
   "agentDetail.configure.prompt.copy": "Sao chép lời nhắc",
