@@ -1,5 +1,6 @@
 import datetime
 import uuid
+import zlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, call, patch
 
@@ -128,6 +129,61 @@ class TestFetchLatestPluginVersion:
 
 
 class TestPluginModelProviderCache:
+    def test_store_cached_plugin_model_providers_compresses_large_payload(self) -> None:
+        """Large provider metadata payloads are compressed before being stored in Redis."""
+        large_provider = _build_provider_entity()
+        large_provider.label = I18nObject(en_US="OpenAI " * 10000)
+        raw_payload = TypeAdapter(list[ProviderEntity]).dump_json([large_provider])
+        cache_key = _provider_cache_key("tenant-1", 0)
+
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.dify_config") as mock_config,
+        ):
+            mock_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL = 86400
+
+            from core.plugin.plugin_service import PluginService
+
+            PluginService._store_cached_plugin_model_providers("tenant-1", 0, [large_provider])
+
+        redis_client.setex.assert_called_once()
+        stored_key, ttl, stored_payload = redis_client.setex.call_args.args
+        assert stored_key == cache_key
+        assert ttl == 86400
+        assert isinstance(stored_payload, bytes)
+        prefix = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX
+        assert stored_payload.startswith(prefix)
+        assert len(stored_payload) < len(raw_payload)
+        assert zlib.decompress(stored_payload[len(prefix) :]) == raw_payload
+
+    def test_fetch_plugin_model_providers_reads_compressed_cached_provider_without_calling_daemon(self) -> None:
+        """Compressed tenant cache entries are decoded before provider schema validation."""
+        cached_provider = _build_provider_entity()
+        cached_provider.label = I18nObject(en_US="OpenAI " * 10000)
+        cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider])
+        generation_key = _provider_generation_key("tenant-1")
+        cache_key = _provider_cache_key("tenant-1", 0)
+
+        from core.plugin.plugin_service import PluginService
+
+        compressed_payload = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zlib.compress(
+            cached_payload, level=1
+        )
+
+        with patch(f"{MODULE}.redis_client") as redis_client:
+            redis_client.get.return_value = None
+            redis_client.mget.return_value = [compressed_payload]
+            client = Mock()
+
+            result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
+        assert result[0].label.en_us == "OpenAI " * 10000
+        client.fetch_model_providers.assert_not_called()
+        redis_client.setex.assert_not_called()
+        redis_client.get.assert_called_once_with(generation_key)
+        redis_client.mget.assert_called_once_with([cache_key])
+
     def test_fetch_plugin_model_providers_returns_cached_provider_without_calling_daemon(self) -> None:
         """A valid tenant cache entry is reused across runtime calls without plugin daemon access."""
         cached_provider = _build_provider_entity()
