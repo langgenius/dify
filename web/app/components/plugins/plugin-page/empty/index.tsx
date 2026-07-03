@@ -144,7 +144,7 @@ const Empty = ({
         )}
       >
         {Array.from({ length: placeholderItemCount }, (_, i) => (
-          <div key={i} className={cn(isIntegrationsCategory ? 'h-24 rounded-lg bg-background-section-burn' : 'h-24 rounded-xl bg-components-card-bg')} />
+          <div key={i} className={cn(isIntegrationsCategory ? 'h-24 rounded-lg bg-background-section-burn/30' : 'h-24 rounded-xl bg-components-card-bg')} />
         ))}
       </div>
       <div aria-hidden className="pointer-events-none absolute inset-0 z-20 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
