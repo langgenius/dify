@@ -232,7 +232,7 @@ class TestDslCheckDependencies:
         app_model, account = _app_and_account(db_session_with_containers, mode="chat")
 
         api = AppDslCheckDependenciesApi()
-        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dependencies"):
+        with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dependencies:check"):
             result, code = unwrap(api.get)(api, app_id=app_model.id, auth_data=auth_for(account, app_model=app_model))
 
         assert code == 200

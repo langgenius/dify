@@ -753,14 +753,14 @@ export const zGetAppsByAppIdQuery = z.object({
  */
 export const zGetAppsByAppIdResponse = zAppDescribeResponse
 
-export const zGetAppsByAppIdDependenciesPath = z.object({
+export const zGetAppsByAppIdDependenciesCheckPath = z.object({
   app_id: z.string(),
 })
 
 /**
  * Dependencies checked
  */
-export const zGetAppsByAppIdDependenciesResponse = zCheckDependenciesResult
+export const zGetAppsByAppIdDependenciesCheckResponse = zCheckDependenciesResult
 
 export const zGetAppsByAppIdDslPath = z.object({
   app_id: z.string(),

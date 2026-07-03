@@ -107,7 +107,7 @@ describe('AppDslClient.checkDependencies', () => {
 
     const result = await makeClient(stub.url).checkDependencies('app-1')
 
-    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/dependencies')
+    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/dependencies:check')
     expect(result.leaked_dependencies).toEqual([])
   })
 })

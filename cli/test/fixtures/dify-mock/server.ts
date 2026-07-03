@@ -315,7 +315,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     return c.json({ data: DSL_YAML })
   })
 
-  app.get('/openapi/v1/apps/:id/dependencies', (c) => {
+  app.get('/openapi/v1/apps/:id/dependencies:check', (c) => {
     const id = c.req.param('id')
     const found = APPS.find(a => a.id === id)
     if (found === undefined)

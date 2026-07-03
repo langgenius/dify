@@ -641,28 +641,28 @@ export type GetAppsByAppIdResponses = {
 
 export type GetAppsByAppIdResponse = GetAppsByAppIdResponses[keyof GetAppsByAppIdResponses]
 
-export type GetAppsByAppIdDependenciesData = {
+export type GetAppsByAppIdDependenciesCheckData = {
   body?: never
   path: {
     app_id: string
   }
   query?: never
-  url: '/apps/{app_id}/dependencies'
+  url: '/apps/{app_id}/dependencies:check'
 }
 
-export type GetAppsByAppIdDependenciesErrors = {
+export type GetAppsByAppIdDependenciesCheckErrors = {
   default: ErrorBody
 }
 
-export type GetAppsByAppIdDependenciesError
-  = GetAppsByAppIdDependenciesErrors[keyof GetAppsByAppIdDependenciesErrors]
+export type GetAppsByAppIdDependenciesCheckError
+  = GetAppsByAppIdDependenciesCheckErrors[keyof GetAppsByAppIdDependenciesCheckErrors]
 
-export type GetAppsByAppIdDependenciesResponses = {
+export type GetAppsByAppIdDependenciesCheckResponses = {
   200: CheckDependenciesResult
 }
 
-export type GetAppsByAppIdDependenciesResponse
-  = GetAppsByAppIdDependenciesResponses[keyof GetAppsByAppIdDependenciesResponses]
+export type GetAppsByAppIdDependenciesCheckResponse
+  = GetAppsByAppIdDependenciesCheckResponses[keyof GetAppsByAppIdDependenciesCheckResponses]
 
 export type GetAppsByAppIdDslData = {
   body?: never

@@ -109,7 +109,7 @@ User-scoped operations
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
-### [GET] /apps/{app_id}/dependencies
+### [GET] /apps/{app_id}/dependencies:check
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |

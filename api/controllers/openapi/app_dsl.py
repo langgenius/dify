@@ -153,7 +153,7 @@ class AppDslExportApi(Resource):
         return AppDslExportResponse(data=data), 200
 
 
-@openapi_ns.route("/apps/<string:app_id>/dependencies")
+@openapi_ns.route("/apps/<string:app_id>/dependencies:check")
 class AppDslCheckDependenciesApi(Resource):
     """Check for leaked plugin dependencies after a DSL import.
 

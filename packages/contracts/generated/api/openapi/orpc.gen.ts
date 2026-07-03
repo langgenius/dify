@@ -12,8 +12,8 @@ import {
   zGetAccountResponse,
   zGetAccountSessionsQuery,
   zGetAccountSessionsResponse,
-  zGetAppsByAppIdDependenciesPath,
-  zGetAppsByAppIdDependenciesResponse,
+  zGetAppsByAppIdDependenciesCheckPath,
+  zGetAppsByAppIdDependenciesCheckResponse,
   zGetAppsByAppIdDslPath,
   zGetAppsByAppIdDslQuery,
   zGetAppsByAppIdDslResponse,
@@ -168,15 +168,19 @@ export const get5 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getAppsByAppIdDependencies',
-    path: '/apps/{app_id}/dependencies',
+    operationId: 'getAppsByAppIdDependenciesCheck',
+    path: '/apps/{app_id}/dependencies:check',
     tags: ['openapi'],
   })
-  .input(z.object({ params: zGetAppsByAppIdDependenciesPath }))
-  .output(zGetAppsByAppIdDependenciesResponse)
+  .input(z.object({ params: zGetAppsByAppIdDependenciesCheckPath }))
+  .output(zGetAppsByAppIdDependenciesCheckResponse)
+
+export const check = {
+  get: get5,
+}
 
 export const dependencies = {
-  get: get5,
+  check,
 }
 
 export const get6 = oc

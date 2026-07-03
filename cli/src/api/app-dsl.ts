@@ -52,7 +52,7 @@ export class AppDslClient {
   }
 
   async checkDependencies(appId: string): Promise<CheckDependenciesResult> {
-    return this.orpc.apps.byAppId.dependencies.get({
+    return this.orpc.apps.byAppId.dependencies.check.get({
       params: { app_id: appId },
     })
   }
