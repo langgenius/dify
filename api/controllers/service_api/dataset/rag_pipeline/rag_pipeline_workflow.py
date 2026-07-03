@@ -5,6 +5,7 @@ from uuid import UUID
 from flask import request
 from pydantic import BaseModel, Field, RootModel
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -16,6 +17,7 @@ from controllers.common.schema import (
     register_schema_model,
     register_schema_models,
 )
+from controllers.console.app.wraps import with_session
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.dataset.rag_pipeline.serializers import serialize_upload_file
@@ -264,7 +266,8 @@ class PipelineRunApi(DatasetApiResource):
         "Pipeline run successfully",
         service_api_ns.models[GeneratedAppResponse.__name__],
     )
-    def post(self, tenant_id: str, dataset_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id: str, dataset_id: UUID):
         """Resource for running a rag pipeline."""
         dataset_id_str = str(dataset_id)
         # Verify dataset ownership
@@ -282,6 +285,7 @@ class PipelineRunApi(DatasetApiResource):
         pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
+                session=session,
                 pipeline=pipeline,
                 user=current_user,
                 args=payload.model_dump(),
