@@ -1236,13 +1236,19 @@ class ProviderConfiguration(BaseModel):
                 if provider_model_record and available_credentials_count <= 1:
                     # If all credentials are deleted, delete the custom model record
                     session.delete(provider_model_record)
+                    provider_model_credentials_cache = ProviderCredentialsCache(
+                        tenant_id=self.tenant_id,
+                        identity_id=provider_model_record.id,
+                        cache_type=ProviderCredentialsCacheType.MODEL,
+                    )
+                    provider_model_credentials_cache.delete()
                 elif provider_model_record and provider_model_record.credential_id == credential_id:
                     provider_model_record.credential_id = None
                     provider_model_record.updated_at = naive_utc_now()
                     provider_model_credentials_cache = ProviderCredentialsCache(
                         tenant_id=self.tenant_id,
                         identity_id=provider_model_record.id,
-                        cache_type=ProviderCredentialsCacheType.PROVIDER,
+                        cache_type=ProviderCredentialsCacheType.MODEL,
                     )
                     provider_model_credentials_cache.delete()
 
@@ -1351,31 +1357,84 @@ class ProviderConfiguration(BaseModel):
 
     def delete_custom_model(self, model_type: ModelType, model: str):
         """
-        Delete custom model.
+        Delete custom model and the credentials/configs that belong to that model.
+
+        A custom model can be reconstructed from provider model credentials even
+        after its ProviderModel row is removed, so removing a model must clean up
+        the model-scoped credentials and load balancing configs in the same write.
+
         :param model_type: model type
         :param model: model name
         :return:
         """
-        provider_models_changed = False
+        provider_model_record_deleted = False
+        provider_model_credentials_deleted = False
+        load_balancing_configs_deleted = False
         with Session(db.engine) as session:
             # get provider model
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
 
-            # delete provider model
-            if provider_model_record:
-                session.delete(provider_model_record)
-                session.commit()
-                provider_models_changed = True
+            credential_stmt = select(ProviderModelCredential).where(
+                ProviderModelCredential.tenant_id == self.tenant_id,
+                ProviderModelCredential.provider_name.in_(self._get_provider_names()),
+                ProviderModelCredential.model_name == model,
+                ProviderModelCredential.model_type == model_type,
+            )
+            credential_records = session.execute(credential_stmt).scalars().all()
 
-                provider_model_credentials_cache = ProviderCredentialsCache(
-                    tenant_id=self.tenant_id,
-                    identity_id=provider_model_record.id,
-                    cache_type=ProviderCredentialsCacheType.MODEL,
+            lb_stmt = select(LoadBalancingModelConfig).where(
+                LoadBalancingModelConfig.tenant_id == self.tenant_id,
+                LoadBalancingModelConfig.provider_name.in_(self._get_provider_names()),
+                LoadBalancingModelConfig.model_name == model,
+                LoadBalancingModelConfig.model_type == model_type,
+                LoadBalancingModelConfig.credential_source_type == CredentialSourceType.CUSTOM_MODEL,
+            )
+            load_balancing_configs = session.execute(lb_stmt).scalars().all()
+
+            try:
+                for lb_config in load_balancing_configs:
+                    lb_credentials_cache = ProviderCredentialsCache(
+                        tenant_id=self.tenant_id,
+                        identity_id=lb_config.id,
+                        cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL,
+                    )
+                    lb_credentials_cache.delete()
+                    session.delete(lb_config)
+
+                for credential_record in credential_records:
+                    session.delete(credential_record)
+
+                if provider_model_record:
+                    session.delete(provider_model_record)
+                    provider_model_credentials_cache = ProviderCredentialsCache(
+                        tenant_id=self.tenant_id,
+                        identity_id=provider_model_record.id,
+                        cache_type=ProviderCredentialsCacheType.MODEL,
+                    )
+
+                    provider_model_credentials_cache.delete()
+
+                provider_model_record_deleted = provider_model_record is not None
+                provider_model_credentials_deleted = bool(credential_records)
+                load_balancing_configs_deleted = bool(load_balancing_configs)
+                has_deleted_records = (
+                    provider_model_record_deleted
+                    or provider_model_credentials_deleted
+                    or load_balancing_configs_deleted
                 )
 
-                provider_model_credentials_cache.delete()
-        if provider_models_changed:
-            self._invalidate_provider_configuration_cache(provider_models=True)
+                if has_deleted_records:
+                    session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+        if provider_model_record_deleted or provider_model_credentials_deleted or load_balancing_configs_deleted:
+            self._invalidate_provider_configuration_cache(
+                provider_models=provider_model_record_deleted,
+                provider_model_credentials=provider_model_credentials_deleted,
+                provider_load_balancing_configs=load_balancing_configs_deleted,
+            )
 
     def _get_provider_model_setting(
         self, model_type: ModelType, model: str, session: Session

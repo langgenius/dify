@@ -25,6 +25,7 @@ from core.entities.provider_entities import (
     SystemConfiguration,
     SystemConfigurationStatus,
 )
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -1336,6 +1337,7 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
                 configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
     assert provider_model_record.credential_id is None
     assert mock_cache.return_value.delete.call_count == 2
+    assert mock_cache.call_args_list[-1].kwargs["cache_type"] == ProviderCredentialsCacheType.MODEL
 
     session = Mock()
     mismatched_credential_record = SimpleNamespace(
@@ -1428,13 +1430,45 @@ def test_delete_custom_model_and_model_setting_methods() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
     provider_model_record = SimpleNamespace(id="model-1")
+    credential_record = SimpleNamespace(id="cred-1")
+    lb_config = SimpleNamespace(id="lb-1")
+    session.execute.side_effect = [
+        _exec_result(scalars_all=[credential_record]),
+        _exec_result(scalars_all=[lb_config]),
+    ]
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
-    session.delete.assert_called_once_with(provider_model_record)
+            with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+                with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
+                    configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
+    session.delete.assert_any_call(provider_model_record)
+    session.delete.assert_any_call(credential_record)
+    session.delete.assert_any_call(lb_config)
     session.commit.assert_called_once()
-    mock_cache.return_value.delete.assert_called_once()
+    assert mock_cache.return_value.delete.call_count == 2
+    mock_invalidate.assert_called_once_with(
+        provider_models=True,
+        provider_model_credentials=True,
+        provider_load_balancing_configs=True,
+    )
+
+    session = Mock()
+    residual_credential_record = SimpleNamespace(id="cred-2")
+    session.execute.side_effect = [
+        _exec_result(scalars_all=[residual_credential_record]),
+        _exec_result(scalars_all=[]),
+    ]
+    with _patched_session(session):
+        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
+            with patch.object(ProviderConfiguration, "_invalidate_provider_configuration_cache") as mock_invalidate:
+                configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
+    session.delete.assert_called_once_with(residual_credential_record)
+    session.commit.assert_called_once()
+    mock_invalidate.assert_called_once_with(
+        provider_models=False,
+        provider_model_credentials=True,
+        provider_load_balancing_configs=False,
+    )
 
     session = Mock()
     existing = SimpleNamespace(enabled=False, updated_at=None)
