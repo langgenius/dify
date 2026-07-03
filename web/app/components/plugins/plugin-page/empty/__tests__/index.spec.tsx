@@ -118,6 +118,12 @@ const createMockFile = (name: string, type = 'application/octet-stream'): File =
   return new File(['test'], name, { type })
 }
 
+const integrationsSkeletonBackground = [
+  'radial-gradient(ellipse at 50% 48%,',
+  'var(--color-background-section-burn) 0%,',
+  'var(--color-components-panel-bg) 58%)',
+].join(' ')
+
 // Helper to wait for useEffect to complete (single tick)
 const flushEffects = async () => {
   await act(async () => {})
@@ -210,7 +216,8 @@ describe('Empty Component', () => {
 
       const skeletonGrid = container.querySelector('.grid')
       expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
-      expect(skeletonGrid).toHaveStyle({ background: 'radial-gradient(ellipse at 50% 48%, #F3F4F7 0%, #FFFFFF 58%)' })
+      expect(skeletonGrid).toHaveAttribute('style', `background: ${integrationsSkeletonBackground};`)
+      expect(container.querySelector('.h-\\[72px\\].rounded-lg')).toHaveClass('bg-background-section/50')
       expect(container.querySelector('.i-custom-vender-integrations-extension-active')).toHaveClass('size-6', 'shrink-0')
     })
   })

@@ -46,6 +46,12 @@ const ExtensionEmptyIcon = () => (
   <span aria-hidden className="i-custom-vender-integrations-extension-active size-6 shrink-0" />
 )
 
+const integrationsSkeletonBackground = [
+  'radial-gradient(ellipse at 50% 48%,',
+  'var(--color-background-section-burn) 0%,',
+  'var(--color-components-panel-bg) 58%)',
+].join(' ')
+
 type EmptyProps = {
   canInstall?: boolean
   contentInset?: PluginPageContentInset
@@ -143,11 +149,11 @@ const Empty = ({
           contentFrameClassName,
         )}
         style={isIntegrationsCategory
-          ? { background: 'radial-gradient(ellipse at 50% 48%, #F3F4F7 0%, #FFFFFF 58%)' }
+          ? { background: integrationsSkeletonBackground }
           : undefined}
       >
         {Array.from({ length: isIntegrationsCategory ? 22 : 20 }).fill(0).map((_, i) => (
-          <div key={i} className={cn(isIntegrationsCategory ? 'h-[72px] rounded-lg bg-[#F9FAFB]/[0.52]' : 'h-24 rounded-xl bg-components-card-bg')} />
+          <div key={i} className={cn(isIntegrationsCategory ? 'h-[72px] rounded-lg bg-background-section/50' : 'h-24 rounded-xl bg-components-card-bg')} />
         ))}
       </div>
       {/* mask */}
