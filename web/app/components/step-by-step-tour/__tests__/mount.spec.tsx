@@ -9,6 +9,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createTestQueryClient } from '@/__tests__/utils/mock-system-features'
 import { Plan } from '@/app/components/billing/type'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { defaultSystemFeatures } from '@/features/system-features/config'
 import StepByStepTourMount from '../mount'
 import { STEP_BY_STEP_TOUR_TARGETS } from '../target-registry'
 import { useStepByStepTourTargetRect } from '../use-target-rect'
@@ -37,6 +39,9 @@ const mockIsCurrentWorkspaceManager = vi.hoisted(() => ({
 }))
 const mockCurrentWorkspaceRole = vi.hoisted(() => ({
   value: 'owner' as WorkspaceRole,
+}))
+const mockEnableLearnApp = vi.hoisted(() => ({
+  value: true,
 }))
 const mockStepByStepTour = vi.hoisted(() => {
   const stateQueryKey = ['console', 'onboarding', 'step-by-step-tour', 'state'] as const
@@ -205,6 +210,11 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'system-features'],
+      },
+    },
     onboarding: {
       stepByStepTour: {
         state: {
@@ -254,17 +264,18 @@ vi.mock('react-i18next', async () => {
       'common.stepByStepTour.guides.integration.updateSettings.title': 'Update Settings',
       'common.stepByStepTour.guides.home.create.description': 'Click here to make it yours',
       'common.stepByStepTour.guides.home.noCreate.description': 'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
-      'common.stepByStepTour.guides.home.noCreate.title': 'Browse lessons in Learn Dify',
+      'common.stepByStepTour.guides.home.noCreate.title': 'Browse Learn Dify',
+      'common.stepByStepTour.guides.home.pick.description': 'Pick a lesson to see how it works.',
       'common.stepByStepTour.guides.knowledge.empty.connect.description': 'Already have a knowledge base elsewhere? Connect it via API — no data migration needed.',
       'common.stepByStepTour.guides.knowledge.empty.connect.title': 'Connect to an external knowledge base',
       'common.stepByStepTour.guides.knowledge.empty.create.description': 'Fastest way to get going. Upload documents and Dify handles chunking, indexing, and embedding for you. You can switch to custom anytime.',
       'common.stepByStepTour.guides.knowledge.empty.create.title': 'Create a ready-to-use knowledge base',
       'common.stepByStepTour.guides.knowledge.empty.pipeline.description': 'Define your own chunking, cleanup, and indexing flow when you need finer control over how documents become searchable.',
       'common.stepByStepTour.guides.knowledge.empty.pipeline.title': 'Build a custom knowledge base',
-      'common.stepByStepTour.guides.knowledge.withDatasets.create.description': 'Click Create to set up a new Knowledge base — start from a ready-to-use template, build a custom one from your own documents, or connect to an external knowledge base.',
-      'common.stepByStepTour.guides.knowledge.withDatasets.create.title': 'Create a new knowledge here',
-      'common.stepByStepTour.guides.knowledge.withDatasets.manage.description': 'Click a card to open the Knowledge base and manage its documents. Hover a card and click ··· in the corner to edit or delete it.',
-      'common.stepByStepTour.guides.knowledge.withDatasets.manage.title': 'Open or manage this knowledge',
+      'common.stepByStepTour.guides.knowledge.withDatasets.create.description': 'Use Create to add a new knowledge base — start ready-to-use, build a custom one from your documents, or connect to an external knowledge base.',
+      'common.stepByStepTour.guides.knowledge.withDatasets.create.title': 'Create a new knowledge base',
+      'common.stepByStepTour.guides.knowledge.withDatasets.manage.description': 'Tap any knowledge base to open its document management page — update documents, retrieval settings, and access from there.',
+      'common.stepByStepTour.guides.knowledge.withDatasets.manage.title': 'Open and manage each knowledge base',
       'common.stepByStepTour.guides.primaryActionLabel': 'Got it',
       'common.stepByStepTour.guides.studio.empty.blank.description': 'Start from an empty canvas when you already know what to build.',
       'common.stepByStepTour.guides.studio.empty.blank.title': 'Create from blank',
@@ -276,7 +287,7 @@ vi.mock('react-i18next', async () => {
       'common.stepByStepTour.guides.studio.empty.template.title': 'Create from a template',
       'common.stepByStepTour.guides.studio.noCreate.empty.description': 'You can view apps in this workspace, but there are no apps here yet. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.',
       'common.stepByStepTour.guides.studio.noCreate.empty.title': 'No apps to view yet',
-      'common.stepByStepTour.guides.studio.noCreate.withApps.description': 'You can browse and open apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
+      'common.stepByStepTour.guides.studio.noCreate.withApps.description': 'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
       'common.stepByStepTour.guides.studio.noCreate.withApps.title': 'Studio is view-only for you',
       'common.stepByStepTour.guides.studio.withApps.create.description': 'Use Create to add a new app — pick from a template, start from blank, or import a DSL file.',
       'common.stepByStepTour.guides.studio.withApps.create.title': 'Create a new app',
@@ -300,17 +311,17 @@ vi.mock('react-i18next', async () => {
       'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
       'common.stepByStepTour.tasks.home.description': 'Open a hands-on lesson from Learn Dify to see Dify in action.',
       'common.stepByStepTour.tasks.home.noCreate.title': 'Browse Learn Dify',
-      'common.stepByStepTour.tasks.home.noCreate.description': 'You can review lessons here, but creating from a lesson requires additional permission.',
+      'common.stepByStepTour.tasks.home.noCreate.description': 'You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.',
       'common.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
       'common.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
       'common.stepByStepTour.tasks.studio.description': 'All your apps live in Studio — edit, organize, and publish them here.',
       'common.stepByStepTour.tasks.studio.noCreate.title': 'Find your apps in Studio',
-      'common.stepByStepTour.tasks.studio.noCreate.description': 'You can view apps in this workspace. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.',
+      'common.stepByStepTour.tasks.studio.noCreate.description': 'You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.',
       'common.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
       'common.stepByStepTour.tasks.knowledge.title': 'Add your own data',
       'common.stepByStepTour.tasks.knowledge.description': 'Build a knowledge base so your apps answer from your documents.',
       'common.stepByStepTour.tasks.knowledge.noPermission.title': 'Knowledge needs permission',
-      'common.stepByStepTour.tasks.knowledge.noPermission.description': 'To create or manage knowledge bases, switch to a workspace where you have access or contact your Workspace Owner or Admin.',
+      'common.stepByStepTour.tasks.knowledge.noPermission.description': 'To create or manage knowledge bases, switch to a workspace where you have access or contact your admin.',
       'common.stepByStepTour.tasks.knowledge.noPermission.primaryActionLabel': 'Got it',
       'common.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
       'common.stepByStepTour.tasks.integration.title': 'Explore integrations',
@@ -412,6 +423,10 @@ const setStepByStepTourTestState = (state: Partial<StepByStepTourAccountState>) 
 const renderStepByStepTourMount = () => {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
+  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
+    ...defaultSystemFeatures,
+    enable_learn_app: mockEnableLearnApp.value,
+  })
   const jotaiStore = createStore()
 
   return render(
@@ -440,6 +455,7 @@ describe('StepByStepTourMount', () => {
     ]
     mockIsCurrentWorkspaceManager.value = true
     mockCurrentWorkspaceRole.value = 'owner'
+    mockEnableLearnApp.value = true
     mockPathname = '/apps'
     localStorage.clear()
     mockStepByStepTour.reset()
@@ -543,6 +559,52 @@ describe('StepByStepTourMount', () => {
 
     expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
     expect(screen.getByText('A quick tour — about 5 minutes')).toBeInTheDocument()
+  })
+
+  it('uses a three-step checklist when Learn Dify is disabled', async () => {
+    mockEnableLearnApp.value = false
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: [],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
+    expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
+    expect(screen.getByText('Manage your apps in Studio')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '3')
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Take a look' })[0]!)
+
+    expect(mockRouterPush).toHaveBeenCalledWith('/apps')
+    await waitFor(() => {
+      const state = mockStepByStepTour.observedState
+      expect(state.activeTaskId).toBe('studio')
+      expect(state.completedTaskIds).toEqual([])
+    })
+  })
+
+  it('treats the three-step tour as complete when Learn Dify is disabled', async () => {
+    mockEnableLearnApp.value = false
+    setStepByStepTourTestState({
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: ['studio', 'knowledge', 'integration'],
+      skipped: false,
+    })
+
+    renderStepByStepTourMount()
+
+    expect(await screen.findByRole('region', { name: 'Step-by-step Tour completed' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuemax', '3')
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '3')
+    expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
   })
 
   it('renders the expanded checklist in the shared popover layer', async () => {
@@ -787,7 +849,7 @@ describe('StepByStepTourMount', () => {
 
     expect(await screen.findByText('Knowledge needs permission')).toBeInTheDocument()
     expect(screen.queryByText('RESTRICTED')).not.toBeInTheDocument()
-    expect(screen.getByText('To create or manage knowledge bases, switch to a workspace where you have access or contact your Workspace Owner or Admin.')).toBeInTheDocument()
+    expect(screen.getByText('To create or manage knowledge bases, switch to a workspace where you have access or contact your admin.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Mark Knowledge needs permission complete' })).toBeDisabled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
@@ -815,7 +877,7 @@ describe('StepByStepTourMount', () => {
     renderStepByStepTourMount()
 
     expect(await screen.findByText('Find your apps in Studio')).toBeInTheDocument()
-    expect(screen.getByText('You can view apps in this workspace. To create or edit apps, switch workspaces or ask your Workspace Owner or Admin for access.')).toBeInTheDocument()
+    expect(screen.getByText('You can browse apps in this workspace, but creating or editing apps requires permission. Switch to a workspace where you have access, or contact your Workspace Owner or Admin.')).toBeInTheDocument()
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Take a look' })[0]!)
 
@@ -866,7 +928,7 @@ describe('StepByStepTourMount', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Show me' }))
 
       expect(mockRouterPush).toHaveBeenCalledWith('/')
-      expect(await screen.findByRole('region', { name: 'Open a hands-on lesson from Learn Dify to see Dify in action.' })).toBeInTheDocument()
+      expect(await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' })).toBeInTheDocument()
       expect(screen.queryByText('Try a Learn Dify lesson')).not.toBeInTheDocument()
       expect(screen.queryByText('1 of 2')).not.toBeInTheDocument()
       await waitFor(() => {
@@ -900,11 +962,11 @@ describe('StepByStepTourMount', () => {
       renderStepByStepTourMount()
 
       expect(await screen.findByText('Browse Learn Dify')).toBeInTheDocument()
-      expect(screen.getByText('You can review lessons here, but creating from a lesson requires additional permission.')).toBeInTheDocument()
+      expect(screen.getByText('You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.')).toBeInTheDocument()
       fireEvent.click(await screen.findByRole('button', { name: 'Show me' }))
 
       expect(mockRouterPush).toHaveBeenCalledWith('/')
-      expect(await screen.findByRole('region', { name: 'Browse lessons in Learn Dify' })).toBeInTheDocument()
+      expect(await screen.findByRole('region', { name: 'Browse Learn Dify' })).toBeInTheDocument()
       expect(screen.getByText('You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.')).toBeInTheDocument()
       expect(screen.getByText('1 of 1')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument()
@@ -950,7 +1012,7 @@ describe('StepByStepTourMount', () => {
       renderStepByStepTourMount()
 
       fireEvent.click(await screen.findByRole('button', { name: 'Show me' }))
-      expect(await screen.findByText('Open a hands-on lesson from Learn Dify to see Dify in action.')).toBeInTheDocument()
+      expect(await screen.findByText('Pick a lesson to see how it works.')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Show me' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Got it' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Skip' })).not.toBeInTheDocument()
@@ -1125,6 +1187,61 @@ describe('StepByStepTourMount', () => {
       })
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(screen.getByRole('region', { name: 'Step-by-step Tour completed' })).toBeInTheDocument()
+    }
+    finally {
+      targets.forEach(target => target.remove())
+    }
+  })
+
+  it('skips the optional Integration update settings guide when its target is unavailable', async () => {
+    mockPathname = '/integrations/model-provider'
+    setStepByStepTourTestState({
+      activeTaskId: 'integration',
+      activeGuideIndex: 0,
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: true,
+      completedTaskIds: ['home', 'studio', 'knowledge'],
+      skipped: false,
+    })
+    const targets = [
+      STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
+      STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
+      STEP_BY_STEP_TOUR_TARGETS.integrationMcpNav,
+      STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
+      STEP_BY_STEP_TOUR_TARGETS.integrationTriggerNav,
+    ].map((targetName, index) => createTourTarget(targetName, 96 + index * 8))
+
+    try {
+      renderStepByStepTourMount()
+
+      expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
+      expect(screen.getByText('1 of 5')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'Tool Plugin' })).toBeInTheDocument()
+      expect(screen.getByText('2 of 5')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'MCP' })).toBeInTheDocument()
+      expect(screen.getByText('3 of 5')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'Data Source' })).toBeInTheDocument()
+      expect(screen.getByText('4 of 5')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'Trigger' })).toBeInTheDocument()
+      expect(screen.getByText('5 of 5')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+
+      await waitFor(() => {
+        const state = mockStepByStepTour.observedState
+        expect(state.activeTaskId).toBeUndefined()
+        expect(state.completedTaskIds).toEqual(['home', 'studio', 'knowledge', 'integration'])
+      })
+      expect(screen.queryByRole('region', { name: 'Update Settings' })).not.toBeInTheDocument()
     }
     finally {
       targets.forEach(target => target.remove())
@@ -1518,11 +1635,11 @@ describe('StepByStepTourMount', () => {
     try {
       renderStepByStepTourMount()
 
-      expect(await screen.findByRole('region', { name: 'Create a new knowledge here' })).toBeInTheDocument()
+      expect(await screen.findByRole('region', { name: 'Create a new knowledge base' })).toBeInTheDocument()
       expect(screen.getByText('1 of 2')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
-      expect(await screen.findByRole('region', { name: 'Open or manage this knowledge' })).toBeInTheDocument()
+      expect(await screen.findByRole('region', { name: 'Open and manage each knowledge base' })).toBeInTheDocument()
       expect(screen.getByText('2 of 2')).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))

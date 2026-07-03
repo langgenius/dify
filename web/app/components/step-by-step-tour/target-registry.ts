@@ -236,7 +236,7 @@ export const STEP_BY_STEP_TOUR_GUIDES: Partial<Record<StepByStepTourTaskId, Step
       taskId: 'home',
       target: STEP_BY_STEP_TOUR_TARGETS.home,
       title: 'stepByStepTour.tasks.home.title',
-      description: 'stepByStepTour.tasks.home.description',
+      description: 'stepByStepTour.guides.home.pick.description',
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.tasks.home.primaryActionLabel',
       completionMode: 'external',
@@ -309,6 +309,7 @@ export const STEP_BY_STEP_TOUR_GUIDES: Partial<Record<StepByStepTourTaskId, Step
       learnMoreLabel: 'stepByStepTour.learnMore',
       primaryActionLabel: 'stepByStepTour.guides.primaryActionLabel',
       integrationSection: 'builtin',
+      optional: true,
     },
   ],
 }

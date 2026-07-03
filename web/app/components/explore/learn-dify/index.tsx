@@ -16,6 +16,7 @@ type LearnDifyProps = {
   canCreate?: boolean
   className?: string
   dismissible?: boolean
+  forceVisible?: boolean
   itemLimit?: number
   loadingFallback?: React.ReactNode
   onCreate?: (app: App) => void
@@ -152,7 +153,7 @@ const LearnDify = (props: LearnDifyProps) => {
   if (!systemFeatures.enable_learn_app)
     return null
 
-  if (props.dismissible === false)
+  if (props.dismissible === false || props.forceVisible)
     return <LearnDifyContent {...props} />
 
   return <DismissibleLearnDify {...props} />

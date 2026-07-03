@@ -12,11 +12,13 @@ const LearnDify = dynamic(() => import('@/app/components/explore/learn-dify'), {
 export function ExploreRecommendations({
   canCreate,
   continueWorkApps,
+  forceShowLearnDify,
   onCreate,
   onTry,
 }: {
   canCreate: boolean
   continueWorkApps: WorkspaceApp[]
+  forceShowLearnDify?: boolean
   onCreate: (app: App) => void
   onTry: (params: TryAppSelection) => void
 }) {
@@ -26,6 +28,7 @@ export function ExploreRecommendations({
       <LearnDify
         canCreate={canCreate}
         className="pb-0"
+        forceVisible={forceShowLearnDify}
         onCreate={onCreate}
         onTry={onTry}
         stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home}

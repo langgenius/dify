@@ -251,6 +251,9 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
   const shouldCompleteHomeTourOnCreateRef = useRef(false)
   const isSubmittingHomeTourCreateRef = useRef(false)
   const isShowTryAppPanel = !!currentTryApp
+  const shouldForceShowLearnDifyForTour = stepByStepTourAccountState.activeTaskId === HOME_STEP_BY_STEP_TOUR_TASK_ID
+    && !stepByStepTourAccountState.completedTaskIds.includes(HOME_STEP_BY_STEP_TOUR_TASK_ID)
+    && (stepByStepTourAccountState.activeGuideIndex ?? 0) === 0
   const abandonHomeTour = useCallback(() => {
     if (
       stepByStepTourAccountState.activeTaskId !== HOME_STEP_BY_STEP_TOUR_TASK_ID
@@ -471,6 +474,7 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
                 <ExploreRecommendations
                   canCreate={canCreateApp}
                   continueWorkApps={homeQueries.continueWorkApps}
+                  forceShowLearnDify={shouldForceShowLearnDifyForTour}
                   onCreate={handleCreateFromLearnDify}
                   onTry={handleTryAppFromLearnDify}
                 />
