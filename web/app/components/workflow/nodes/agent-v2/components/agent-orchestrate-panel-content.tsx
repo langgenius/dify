@@ -467,6 +467,9 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     || isApplyingInlineBuildDraft
     || discardBuildDraftMutation.isPending
     || isRefreshingDebugConversation
+  const showWorkingDirectoryAction = buildDraft.isActive
+    || !!workflowRunId
+    || !!conversationIds[rightPanelChatMode]
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return
@@ -539,6 +542,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onOpenWorkingDirectory={workingDirectoryPanel.openWorkingDirectory}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRestartCurrentChatDisabled}
+              showWorkingDirectoryAction={showWorkingDirectoryAction}
               showChatFeaturesAction={false}
               trailingAction={(
                 <button
