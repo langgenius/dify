@@ -728,7 +728,7 @@ class ProviderManager:
             if provider_id_entity.is_langgenius():
                 _append_unique_records(
                     provider_model_records,
-                    provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, [])
+                    provider_name_to_provider_model_records_dict.get(provider_id_entity.provider_name, []),
                 )
             provider_model_credentials = provider_name_to_provider_model_credentials_dict.get(
                 provider_entity.provider, []
@@ -737,7 +737,7 @@ class ProviderManager:
             if provider_id_entity.is_langgenius():
                 _append_unique_records(
                     provider_model_credentials,
-                    provider_name_to_provider_model_credentials_dict.get(provider_id_entity.provider_name, [])
+                    provider_name_to_provider_model_credentials_dict.get(provider_id_entity.provider_name, []),
                 )
 
             # Convert to custom configuration
@@ -793,14 +793,14 @@ class ProviderManager:
                 if provider_model_settings is not None:
                     _append_unique_records(
                         provider_model_settings,
-                        provider_name_to_provider_model_settings_dict.get(provider_id_entity.provider_name, [])
+                        provider_name_to_provider_model_settings_dict.get(provider_id_entity.provider_name, []),
                     )
                 if provider_load_balancing_configs is not None:
                     _append_unique_records(
                         provider_load_balancing_configs,
                         provider_name_to_provider_load_balancing_model_configs_dict.get(
                             provider_id_entity.provider_name, []
-                        )
+                        ),
                     )
 
             # Convert to model settings
