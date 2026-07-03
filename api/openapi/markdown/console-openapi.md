@@ -12476,6 +12476,7 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
+| 403 | Insufficient permissions |  |
 
 ### [POST] /workspaces/switch
 #### Request Body
