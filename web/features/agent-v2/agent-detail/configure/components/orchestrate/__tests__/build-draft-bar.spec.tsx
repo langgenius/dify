@@ -128,6 +128,19 @@ describe('AgentBuildDraftBar', () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
     const onDiscard = vi.fn()
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockReturnValue({
+        bottom: 50,
+        height: 50,
+        left: 0,
+        right: 432,
+        top: 0,
+        width: 432,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      })
 
     render(
       <AgentBuildDraftBar
@@ -138,8 +151,13 @@ describe('AgentBuildDraftBar', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":5}' }))
+    const changesTrigger = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.changesToApply:{"count":5}' })
 
+    await user.click(changesTrigger)
+
+    const changesPanelId = changesTrigger.getAttribute('aria-controls')
+    expect(changesPanelId).toBeTruthy()
+    expect(document.getElementById(changesPanelId!)).toHaveStyle({ width: '432px' })
     expect(screen.getByText('agentV2.agentDetail.configure.skills.label')).toBeInTheDocument()
     expect(screen.getByText('tender-analyzer')).toBeInTheDocument()
     expect(screen.getByText('figma-code-connect')).toBeInTheDocument()
@@ -155,6 +173,8 @@ describe('AgentBuildDraftBar', () => {
 
     expect(onDiscard).toHaveBeenCalledTimes(1)
     expect(onApply).toHaveBeenCalledTimes(1)
+
+    getBoundingClientRectSpy.mockRestore()
   })
 
   it('should keep both actions enabled when there are no build draft changes', async () => {
