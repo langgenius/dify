@@ -677,6 +677,82 @@ class AgentSoulKnowledgeConfig(BaseModel):
 
     sets: list[AgentKnowledgeSetConfig] = Field(default_factory=list)
 
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_flat_config(cls, value: Any) -> Any:
+        """Accept persisted flat knowledge snapshots and convert them to sets."""
+        if not isinstance(value, dict) or "sets" in value:
+            return value
+
+        datasets = value.get("datasets")
+        if not isinstance(datasets, list) or not datasets:
+            return {"sets": []}
+
+        query_config = value.get("query_config") if isinstance(value.get("query_config"), dict) else {}
+        query_mode = value.get("query_mode")
+        if query_mode not in {AgentKnowledgeQueryMode.USER_QUERY.value, AgentKnowledgeQueryMode.GENERATED_QUERY.value}:
+            query_mode = AgentKnowledgeQueryMode.GENERATED_QUERY.value
+
+        retrieval_mode = query_config.get("retrieval_model")
+        if retrieval_mode not in {"single", "multiple"}:
+            retrieval_mode = "multiple"
+
+        score_threshold = None
+        if query_config.get("score_threshold_enabled") is True:
+            score_threshold = query_config.get("score_threshold")
+
+        reranking_model = cls._legacy_reranking_model(query_config.get("reranking_model"))
+        return {
+            "sets": [
+                {
+                    "id": "legacy_knowledge",
+                    "name": "Knowledge",
+                    "datasets": datasets,
+                    "query": {
+                        "mode": query_mode,
+                        "value": query_config.get("query")
+                        if query_mode == AgentKnowledgeQueryMode.USER_QUERY.value
+                        else None,
+                    },
+                    "retrieval": {
+                        "mode": retrieval_mode,
+                        "top_k": query_config.get("top_k", 4),
+                        "score_threshold": score_threshold,
+                        "reranking_mode": query_config.get("reranking_mode", "reranking_model"),
+                        "reranking_enable": query_config.get(
+                            "reranking_enabled", query_config.get("reranking_enable", True)
+                        ),
+                        "reranking_model": reranking_model,
+                        "weights": query_config.get("weights"),
+                        "model": query_config.get("model"),
+                    },
+                    "metadata_filtering": cls._legacy_metadata_filtering(query_config),
+                }
+            ]
+        }
+
+    @staticmethod
+    def _legacy_reranking_model(value: Any) -> dict[str, Any] | None:
+        if not isinstance(value, dict):
+            return None
+        provider = value.get("provider") or value.get("reranking_provider_name")
+        model = value.get("model") or value.get("reranking_model_name")
+        if not provider or not model:
+            return None
+        return {"provider": provider, "model": model}
+
+    @staticmethod
+    def _legacy_metadata_filtering(query_config: dict[str, Any]) -> dict[str, Any]:
+        mode = query_config.get("metadata_filtering_mode", "disabled")
+        if mode not in {"disabled", "automatic", "manual"}:
+            mode = "disabled"
+        result: dict[str, Any] = {"mode": mode}
+        if mode == "automatic":
+            result["model_config"] = query_config.get("metadata_model_config")
+        elif mode == "manual":
+            result["conditions"] = query_config.get("metadata_filtering_conditions")
+        return result
+
     @model_validator(mode="after")
     def validate_unique_sets(self) -> Self:
         set_ids = [item.id.strip() for item in self.sets]

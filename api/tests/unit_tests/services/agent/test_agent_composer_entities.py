@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -164,6 +166,44 @@ def test_knowledge_query_mode_uses_stable_backend_enums():
     )
 
     assert config.knowledge.sets[0].query.mode == AgentKnowledgeQueryMode.GENERATED_QUERY
+
+
+def test_legacy_flat_knowledge_snapshot_is_migrated_from_json():
+    config = AgentSoulConfig.model_validate_json(
+        json.dumps(
+            {
+                "knowledge": {
+                    "datasets": [
+                        {
+                            "id": "dataset-1",
+                            "name": "南京服务中心知识库",
+                            "description": "南京服务中心知识库",
+                        }
+                    ],
+                    "query_mode": "generated_query",
+                    "query_config": {
+                        "query": None,
+                        "top_k": 4,
+                        "score_threshold": 0.6,
+                        "score_threshold_enabled": False,
+                        "reranking_mode": "reranking_model",
+                        "reranking_enabled": False,
+                    },
+                }
+            }
+        )
+    )
+
+    knowledge_set = config.knowledge.sets[0]
+    assert knowledge_set.id == "legacy_knowledge"
+    assert knowledge_set.name == "Knowledge"
+    assert knowledge_set.datasets[0].id == "dataset-1"
+    assert knowledge_set.query.mode == AgentKnowledgeQueryMode.GENERATED_QUERY
+    assert knowledge_set.query.value is None
+    assert knowledge_set.retrieval.mode == "multiple"
+    assert knowledge_set.retrieval.top_k == 4
+    assert knowledge_set.retrieval.score_threshold is None
+    assert knowledge_set.retrieval.reranking_enable is False
 
 
 @pytest.mark.parametrize(
