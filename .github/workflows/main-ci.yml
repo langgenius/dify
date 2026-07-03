@@ -21,8 +21,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  run-autofix:
+    name: Run Autofix
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/autofix.yml
+    permissions:
+      contents: write
+      pull-requests: write
+
   pre_job:
     name: Skip Duplicate Checks
+    needs: run-autofix
+    if: always() && (needs.run-autofix.result == 'success' || needs.run-autofix.result == 'skipped' || needs.run-autofix.result == 'failure')
     runs-on: depot-ubuntu-24.04
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip || 'false' }}
