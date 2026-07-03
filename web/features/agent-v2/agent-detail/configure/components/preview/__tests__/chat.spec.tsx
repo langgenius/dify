@@ -31,6 +31,7 @@ vi.mock('@/next/dynamic', async () => {
       onStopResponding: () => void
       sendButtonLabel?: string
       sendButtonLoading?: boolean
+      showPromptLog?: boolean
     }) {
       const [sent, setSent] = useState(false)
 
@@ -39,6 +40,7 @@ vi.mock('@/next/dynamic', async () => {
           data-testid="mock-chat"
           data-send-button-label={props.sendButtonLabel ?? ''}
           data-send-button-loading={String(!!props.sendButtonLoading)}
+          data-show-prompt-log={String(!!props.showPromptLog)}
         >
           <span>{`sessionSent:${sent ? 'yes' : 'no'}`}</span>
           <button
@@ -628,6 +630,16 @@ describe('AgentPreviewChat', () => {
       }),
       expect.any(Object),
     )
+  })
+
+  it('should keep prompt log action hidden in the build chat runtime', async () => {
+    renderPreviewChat({
+      draftType: 'debug_build',
+    })
+
+    await waitFor(() => expect(screen.getByTestId('mock-chat')).toBeInTheDocument())
+
+    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-show-prompt-log', 'false')
   })
 
   it('should send build chat inputs from the prepared build draft snapshot', async () => {

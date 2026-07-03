@@ -782,7 +782,6 @@ function AgentPreviewChatSession({
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       onStopResponding={doStopResponding}
       noChatInput={isEmptyChat}
-      showPromptLog
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
