@@ -1427,6 +1427,56 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
     assert stop_call == {"current_user_id": account_id, "app_model": app_model, "task_id": "task-1"}
 
 
+def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
+    class ClosableStream:
+        def __init__(self) -> None:
+            self.closed = False
+            self._chunks = iter(
+                [
+                    "event: ping\n\n",
+                    (
+                        'data: {"event":"error","message":"Incorrect API key provided",'
+                        '"code":"completion_request_error","status":400}\n\n'
+                    ),
+                ]
+            )
+
+        def __iter__(self):
+            return self
+
+        def __next__(self) -> str:
+            return next(self._chunks)
+
+        def close(self) -> None:
+            self.closed = True
+
+    stream = ClosableStream()
+
+    with pytest.raises(CompletionRequestError) as exc_info:
+        completion_controller._raise_agent_stream_error_before_response(stream)
+
+    assert "Incorrect API key provided" in exc_info.value.description
+    assert stream.closed is True
+
+
+def test_agent_chat_stream_preflight_preserves_first_normal_event() -> None:
+    stream = iter(
+        [
+            "event: ping\n\n",
+            'data: {"event":"message","answer":"hello"}\n\n',
+            'data: {"event":"message_end"}\n\n',
+        ]
+    )
+
+    wrapped = completion_controller._raise_agent_stream_error_before_response(stream)
+
+    assert list(wrapped) == [
+        "event: ping\n\n",
+        'data: {"event":"message","answer":"hello"}\n\n',
+        'data: {"event":"message_end"}\n\n',
+    ]
+
+
 def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
