@@ -24,7 +24,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I refresh the current page
     Then I should see the Agent v2 Custom query Knowledge Retrieval settings
 
-  @service-api-runtime @stable-model @backend-api-access
+  @service-api-runtime @external-model @stable-model @backend-api-access
   Scenario: Agent decide Knowledge Retrieval answers through Backend service API
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
@@ -40,7 +40,7 @@ Feature: Agent v2 Knowledge Retrieval
     When I send the Agent v2 Backend service API knowledge request
     Then the Agent v2 Backend service API response should include the knowledge E2E marker
 
-  @service-api-runtime @stable-model @backend-api-access
+  @service-api-runtime @external-model @stable-model @backend-api-access
   Scenario: Custom query Knowledge Retrieval answers through Backend service API
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available

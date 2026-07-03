@@ -19,7 +19,7 @@ Use API setup for prerequisite state, then use Playwright only for user-observab
 Use tags in three layers:
 
 - Capability tags describe the product area: `@build`, `@files`, `@advanced-settings`, `@agent-edit`, `@publish`, `@access-point`, `@output-variables`, and similar tags.
-- Execution-scope tags describe how the scenario should be selected: `@core`, `@infra`, `@web-app-runtime`, `@service-api-runtime`, `@preview`, and `@feature-gated`.
+- Execution-scope tags describe how the scenario should be selected: `@core`, `@infra`, `@web-app-runtime`, `@service-api-runtime`, `@preview`, `@feature-gated`, `@external-model`, and `@external-tool`.
 - Narrow fixture or sub-surface tags describe a specific dependency or slice: `@stable-model`, `@skill-fixture`, `@web-app-access`, `@workflow-reference`, `@files-limits`, and similar tags.
 
 - `@agent-v2` — required capability tag for all Agent v2 scenarios.
@@ -48,6 +48,8 @@ Use tags in three layers:
 - `@published-web-app` — fixed or scenario-owned published Web app access dependency.
 - `@web-app-runtime` — published public Web app runtime behavior. Use it for scenarios that open the public Web app and assert real chat responses. Access Point URL, launch, customization, and settings surfaces remain `@access-point` behavior unless they send messages through the public Web app.
 - `@service-api-runtime` — Backend service API runtime behavior. Use it for scenarios that call the published service API and assert real chat responses. Endpoint display, copy, API key, and API reference surfaces remain `@access-point` behavior.
+- `@external-model` — the scenario sends a request that can invoke a real model provider, such as Agent chat messages, Build chat generation/finalization, published Web app chat, or Backend service API chat. Do not use this for scenarios that only require a configured active model.
+- `@external-tool` — the scenario executes a real external tool provider at runtime. Do not use this for plugin installation, tool discovery, tool configuration persistence, or local deterministic tools.
 - `@feature-gated` — product capability is optional. This tag alone does not skip execution; the scenario must include an explicit step that returns `skipped` with a blocked-precondition reason when the feature is unavailable.
 
 Use feature-level `@core` only when every scenario in the file is stable, non-runtime, and not feature-gated. If a feature file mixes stable scenarios with runtime, Preview, or feature-gated scenarios, put `@core` only on the stable scenarios. Keep runtime tags scenario-level so the regular core suite cannot inherit them accidentally.

@@ -44,6 +44,8 @@ const parseArgs = (argv: string[]): RunOptions => {
 const hasCustomTags = (forwardArgs: string[]) =>
   forwardArgs.some(arg => arg === '--tags' || arg.startsWith('--tags='))
 
+const fullNonExternalTags = 'not @skip and not @preview and not @external-model and not @external-tool'
+
 const readLogTail = async (logFilePath: string) => {
   const content = await readFile(logFilePath, 'utf8').catch(() => '')
 
@@ -180,7 +182,7 @@ const main = async () => {
     }
 
     if (startMiddlewareForRun && !hasCustomTags(forwardArgs))
-      cucumberEnv.E2E_CUCUMBER_TAGS = 'not @skip and not @preview'
+      cucumberEnv.E2E_CUCUMBER_TAGS = fullNonExternalTags
 
     const result = await runCommand({
       command: 'npx',

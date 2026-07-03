@@ -826,7 +826,7 @@ const seedOAuthToolAgent = async (context: SeedContext) => {
   return wasCreated ? created(title, resource) : updated(title, resource)
 }
 
-export const createAgentV2SeedTasks = (): SeedTask[] => [
+const agentV2BaseSeedTasks = (): SeedTask[] => [
   {
     id: 'marketplace-plugins',
     title: 'Agent V2 marketplace plugins',
@@ -849,6 +849,10 @@ export const createAgentV2SeedTasks = (): SeedTask[] => [
     title: agentBuilderPreseededResources.agentKnowledgeBase,
     run: seedReadyKnowledge,
   },
+]
+
+const agentV2FullSeedTasks = (): SeedTask[] => [
+  ...agentV2BaseSeedTasks(),
   {
     id: 'indexing-knowledge',
     title: agentBuilderPreseededResources.indexingKnowledgeBase,
@@ -909,3 +913,13 @@ export const createAgentV2SeedTasks = (): SeedTask[] => [
     run: seedWorkflowReference,
   },
 ]
+
+export const createAgentV2SeedTasks = (profile: string = 'full'): SeedTask[] => {
+  if (profile === 'full')
+    return agentV2FullSeedTasks()
+
+  if (profile === 'external-runtime')
+    return agentV2BaseSeedTasks()
+
+  throw new Error(`Unknown Agent V2 seed profile "${profile}".`)
+}

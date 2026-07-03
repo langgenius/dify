@@ -15,6 +15,7 @@ type SeedOptions = {
   allowBlocked: boolean
   dryRun: boolean
   pack: string
+  profile: string
 }
 
 const parseArgs = (argv: string[]): SeedOptions => {
@@ -22,6 +23,7 @@ const parseArgs = (argv: string[]): SeedOptions => {
     allowBlocked: false,
     dryRun: false,
     pack: 'agent-v2',
+    profile: 'full',
   }
 
   for (const [index, arg] of argv.entries()) {
@@ -37,14 +39,22 @@ const parseArgs = (argv: string[]): SeedOptions => {
       options.dryRun = true
     if (arg === '--allow-blocked')
       options.allowBlocked = true
+    if (arg === '--profile') {
+      options.profile = argv[index + 1] || options.profile
+      continue
+    }
+    if (arg.startsWith('--profile=')) {
+      options.profile = arg.slice('--profile='.length)
+      continue
+    }
   }
 
   return options
 }
 
-const getTasks = (pack: string) => {
+const getTasks = (pack: string, profile: string) => {
   if (pack === 'agent-v2')
-    return createAgentV2SeedTasks()
+    return createAgentV2SeedTasks(profile)
 
   throw new Error(`Unknown seed pack "${pack}".`)
 }
@@ -125,11 +135,14 @@ const main = async () => {
     console.warn(`[seed] bootstrapping auth state against ${baseURL}`)
     await ensureAuth()
 
-    const results = await runSeedTasks(getTasks(options.pack), {
+    const results = await runSeedTasks(getTasks(options.pack, options.profile), {
       dryRun: options.dryRun,
       resources: new Map(),
     })
-    const reportPath = await writeSeedReport(options.pack, results)
+    const reportName = options.profile === 'full'
+      ? options.pack
+      : `${options.pack}-${options.profile}`
+    const reportPath = await writeSeedReport(reportName, results)
     const blockedCount = results.filter(result => result.status === 'blocked').length
 
     console.warn(`[seed] report ${reportPath}`)
