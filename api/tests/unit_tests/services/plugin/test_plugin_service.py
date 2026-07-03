@@ -166,8 +166,8 @@ class TestPluginModelProviderCache:
 
         from core.plugin.plugin_service import PluginService
 
-        compressed_payload = (
-            PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zlib.compress(cached_payload, level=1)
+        compressed_payload = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zlib.compress(
+            cached_payload, level=1
         )
 
         with patch(f"{MODULE}.redis_client") as redis_client:

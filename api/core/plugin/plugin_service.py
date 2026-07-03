@@ -155,9 +155,7 @@ class PluginService:
         return cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zlib.compress(payload, level=1)
 
     @classmethod
-    def _decode_plugin_model_providers_cache_payload(
-        cls, payload: bytes | bytearray | str
-    ) -> bytes | bytearray | str:
+    def _decode_plugin_model_providers_cache_payload(cls, payload: bytes | bytearray | str) -> bytes | bytearray | str:
         if isinstance(payload, str):
             return payload
 
