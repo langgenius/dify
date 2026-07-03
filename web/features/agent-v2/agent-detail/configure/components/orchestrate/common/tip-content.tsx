@@ -5,7 +5,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
 type AgentConfigureTipContentProps = {
-  type: 'prompt' | 'skills' | 'files' | 'tools' | 'env'
+  type: 'prompt' | 'skills' | 'files' | 'tools' | 'knowledge' | 'env'
 }
 
 function DocsLink({
@@ -47,13 +47,15 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
 
   if (type === 'skills') {
     return (
-      <Trans
-        i18nKey="agentDetail.configure.skills.richTip"
-        ns="agentV2"
-        components={{
-          docLink: <DocsLink href={docLink()} />,
-        }}
-      />
+      <span className="whitespace-pre-line">
+        <Trans
+          i18nKey="agentDetail.configure.skills.richTip"
+          ns="agentV2"
+          components={{
+            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#skills')} />,
+          }}
+        />
+      </span>
     )
   }
 
@@ -64,13 +66,27 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
           i18nKey="agentDetail.configure.tools.richTip"
           ns="agentV2"
           components={{
-            pluginDocLink: <DocsLink href={docLink('/develop-plugin/getting-started/getting-started-dify-plugin')} />,
-            buildDocLink: <DocsLink href={docLink('/use-dify/build/agent')} />,
+            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#tools')} />,
           }}
         />
       </span>
     )
   }
+
+  if (type === 'knowledge') {
+    return (
+      <Trans
+        i18nKey="agentDetail.configure.knowledgeRetrieval.richTip"
+        ns="agentV2"
+        components={{
+          docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#knowledge-retrieval')} />,
+        }}
+      />
+    )
+  }
+
+  if (type === 'files')
+    return <span className="whitespace-pre-line">{t('agentDetail.configure.files.tip')}</span>
 
   return <>{t(`agentDetail.configure.${type}.tip`)}</>
 }
