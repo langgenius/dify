@@ -13,9 +13,9 @@ import uuid
 import pytest
 from flask import Flask
 
-# 0.1.0 < MIN_DIFYCTL_VERSION (0.2.0); 0.2.0 is exactly the floor (allowed).
+# 0.1.0 < MIN_DIFYCTL_VERSION (0.2.0-alpha); 0.2.0-alpha is exactly the floor (allowed).
 OLD_UA = "difyctl/0.1.0 (darwin; arm64; stable)"
-CURRENT_UA = "difyctl/0.2.0 (darwin; arm64; stable)"
+CURRENT_UA = "difyctl/0.2.0-alpha (darwin; arm64; stable)"
 
 
 @pytest.fixture

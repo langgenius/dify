@@ -1,7 +1,7 @@
 {
   "name": "@langgenius/difyctl",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.0-alpha",
   "description": "Dify command-line interface",
   "difyctl": {
     "channel": "alpha",

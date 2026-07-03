@@ -60,7 +60,7 @@ describe('release-naming compat-check (compat 1.16.0..1.16.0)', () => {
 describe('release-naming github-env', () => {
   it('emits difyctlTag = tagPrefix + version', () => {
     const { stdout } = run(['github-env'])
-    expect(stdout).toMatch(/^difyctlTag=difyctl-v0\.2\.0$/m)
+    expect(stdout).toMatch(/^difyctlTag=difyctl-v0\.2\.0-alpha$/m)
   })
 
   it('still emits the existing trace fields', () => {
@@ -76,7 +76,7 @@ describe('release-naming edge channel', () => {
   })
 
   it('edge-version derives <pkgcore>-edge.<sha> from the package version', () => {
-    // package.json version is 0.2.0 -> core 0.2.0
+    // package.json version is 0.2.0-alpha -> core 0.2.0
     expect(run(['edge-version', '2fd7b82']).stdout.trim()).toBe('0.2.0-edge.2fd7b82')
   })
 

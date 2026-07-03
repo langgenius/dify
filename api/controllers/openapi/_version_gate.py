@@ -21,7 +21,7 @@ from controllers.openapi._errors import ErrorBody, OpenApiErrorCode
 
 # Oldest difyctl this server serves. Bumped in lockstep with breaking
 # /openapi/v1 changes (paired with difyctl's own version + its MIN_DIFY_VERSION).
-MIN_DIFYCTL_VERSION: Final = "0.2.0"
+MIN_DIFYCTL_VERSION: Final = "0.2.0-alpha"
 
 _UPGRADE_HINT: Final = "Upgrade difyctl: https://docs.dify.ai/en/cli/install"
 
