@@ -8,7 +8,7 @@ import { createContext, createElement, useContext, useMemo } from 'react'
 
 export type AgentBuildDraftChangedKey = keyof AgentSoulConfigFormState
 
-export type AgentBuildDraftChangeOperation = 'added' | 'removed' | 'updated'
+type AgentBuildDraftChangeOperation = 'added' | 'removed' | 'updated'
 
 export type AgentBuildDraftChangeItem = {
   id: string
