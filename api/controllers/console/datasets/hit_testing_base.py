@@ -2,6 +2,7 @@ import logging
 from typing import Any, cast
 
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -108,6 +109,7 @@ class DatasetsHitTestingBase:
 
     @staticmethod
     def perform_hit_testing(
+        session: Session,
         dataset: Dataset,
         args: dict[str, Any],
         current_user: Account | None = None,
@@ -116,7 +118,7 @@ class DatasetsHitTestingBase:
         try:
             current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
             response = HitTestingService.retrieve(
-                session=db.session,
+                session=session,
                 dataset=dataset,
                 query=cast(str, args.get("query")),
                 account=current_user,

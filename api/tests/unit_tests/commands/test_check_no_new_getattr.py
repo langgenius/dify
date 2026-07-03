@@ -144,6 +144,7 @@ def test_style_workflow_wires_no_new_getattr_guard() -> None:
         job_text,
     )
     assert checkout_step is not None
+    assert "fetch-depth: 0" in checkout_step.group("step")
 
     changed_files_step = re.search(
         r"(?ms)^      - name: Check changed files\n.*?^          files: \|\n(?P<files>(?:^            \S[^\n]*\n)+)",

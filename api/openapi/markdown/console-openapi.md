@@ -21199,6 +21199,7 @@ Tag type
 | created_at | integer |  | No |
 | current | boolean |  | Yes |
 | id | string |  | Yes |
+| last_opened_at | integer |  | No |
 | name | string |  | No |
 | plan | string |  | No |
 | status | string |  | No |

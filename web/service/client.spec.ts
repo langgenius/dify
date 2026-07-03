@@ -4,6 +4,7 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
 
 const loadGetBaseURL = async (isClientValue: boolean) => {
   vi.resetModules()
@@ -291,6 +292,46 @@ describe('consoleQuery transport context', () => {
       }),
     )
     expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
+  })
+})
+
+// Scenario: console OpenAPI query arrays follow backend parser expectations.
+describe('normalizeConsoleOpenAPIURL', () => {
+  it('should serialize repeated-only query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/agent/agent-1/logs?sources%5B1%5D=debug&sources%5B0%5D=api&statuses%5B0%5D=success&keyword=test',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('sources')).toEqual(['api', 'debug'])
+    expect(searchParams.getAll('statuses')).toEqual(['success'])
+    expect(searchParams.get('keyword')).toBe('test')
+    expect(searchParams.has('sources[0]')).toBe(false)
+    expect(searchParams.has('statuses[0]')).toBe(false)
+  })
+
+  it('should serialize app list query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/apps?tag_ids%5B0%5D=tag-1&creator_ids%5B0%5D=user-1',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
+    expect(searchParams.getAll('creator_ids')).toEqual(['user-1'])
+    expect(searchParams.has('tag_ids[0]')).toBe(false)
+    expect(searchParams.has('creator_ids[0]')).toBe(false)
+  })
+
+  it('should serialize snippet list query arrays as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/workspaces/current/customized-snippets?tag_ids%5B0%5D=tag-1&creators%5B0%5D=user-1',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tag_ids')).toEqual(['tag-1'])
+    expect(searchParams.getAll('creators')).toEqual(['user-1'])
+    expect(searchParams.has('tag_ids[0]')).toBe(false)
+    expect(searchParams.has('creators[0]')).toBe(false)
   })
 })
 

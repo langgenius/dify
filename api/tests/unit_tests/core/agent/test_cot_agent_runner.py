@@ -80,6 +80,7 @@ def runner(mocker: MockerFixture):
     runner.agent_callback = None
     runner.memory = None
     runner.history_prompt_messages = []
+    runner.session = MagicMock()
 
     return runner
 
@@ -163,7 +164,7 @@ class TestFormatAssistantMessage:
 class TestHandleInvokeAction:
     def test_handle_invoke_action_tool_not_present(self, runner: DummyRunner):
         action = AgentScratchpadUnit.Action(action_name="missing", action_input={})
-        response, meta = runner._handle_invoke_action(action, {}, [])
+        response, meta = runner._handle_invoke_action(runner.session, action, {}, [])
         assert "there is not a tool named" in response
 
     def test_tool_with_json_string_args(self, runner: DummyRunner, mocker: MockerFixture):
@@ -176,7 +177,7 @@ class TestHandleInvokeAction:
             return_value=("result", [], MagicMock(to_dict=lambda: {})),
         )
 
-        response, meta = runner._handle_invoke_action(action, tool_instances, [])
+        response, meta = runner._handle_invoke_action(runner.session, action, tool_instances, [])
         assert response == "result"
 
 
@@ -200,7 +201,7 @@ class TestRun:
             return_value=[],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert isinstance(results, list)
 
     def test_run_with_action_and_tool_invocation(self, runner: DummyRunner, mocker: MockerFixture):
@@ -222,7 +223,7 @@ class TestRun:
         runner.agent_callback = None
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(message, "query", {"tool": MagicMock()}))
+            list(runner.run(runner.session, message, "query", {"tool": MagicMock()}))
 
     def test_run_respects_max_iteration_boundary(self, runner: DummyRunner, mocker: MockerFixture):
         runner.app_config.agent.max_iteration = 1
@@ -244,7 +245,7 @@ class TestRun:
         runner.agent_callback = None
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(message, "query", {"tool": MagicMock()}))
+            list(runner.run(runner.session, message, "query", {"tool": MagicMock()}))
 
     def test_run_basic_flow(self, runner: DummyRunner, mocker: MockerFixture):
         message = MagicMock()
@@ -255,7 +256,7 @@ class TestRun:
             return_value=[],
         )
 
-        results = list(runner.run(message, "query", {"name": "John"}))
+        results = list(runner.run(runner.session, message, "query", {"name": "John"}))
         assert results
 
     def test_run_max_iteration_error(self, runner: DummyRunner, mocker: MockerFixture):
@@ -271,7 +272,7 @@ class TestRun:
         )
 
         with pytest.raises(AgentMaxIterationError):
-            list(runner.run(message, "query", {}))
+            list(runner.run(runner.session, message, "query", {}))
 
     def test_run_increase_usage_aggregation(self, runner: DummyRunner, mocker: MockerFixture):
         message = MagicMock()
@@ -320,7 +321,7 @@ class TestRun:
         fake_prompt_tool.name = "tool"
         runner._init_prompt_tools = MagicMock(return_value=({"tool": MagicMock()}, [fake_prompt_tool]))
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         final_usage = results[-1].delta.usage
         assert final_usage is not None
         assert final_usage.prompt_tokens == 2
@@ -339,7 +340,7 @@ class TestRun:
             return_value=[],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert results[-1].delta.message.content == ""
 
     def test_run_usage_missing_key_branch(self, runner: DummyRunner, mocker: MockerFixture):
@@ -353,7 +354,7 @@ class TestRun:
 
         runner.model_instance.invoke_llm = MagicMock(return_value=[])
 
-        list(runner.run(message, "query", {}))
+        list(runner.run(runner.session, message, "query", {}))
 
     def test_run_prompt_tool_update_branch(self, runner: DummyRunner, mocker: MockerFixture):
         message = MagicMock()
@@ -383,7 +384,7 @@ class TestRun:
         runner.update_prompt_message_tool = MagicMock()
         runner.agent_callback = None
 
-        list(runner.run(message, "query", {}))
+        list(runner.run(runner.session, message, "query", {}))
 
         runner.update_prompt_message_tool.assert_called_once()
 
@@ -435,7 +436,7 @@ class TestHandleInvokeActionExtended:
         )
 
         message_file_ids = []
-        response, meta = runner._handle_invoke_action(action, tool_instances, message_file_ids)
+        response, meta = runner._handle_invoke_action(runner.session, action, tool_instances, message_file_ids)
 
         assert response == "ok"
         assert message_file_ids == ["file1"]
@@ -505,7 +506,7 @@ class TestRunAdditionalBranches:
             return_value=["thinking"],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert any(hasattr(r, "delta") for r in results)
 
     def test_run_with_final_answer_action_string(self, runner: DummyRunner, mocker: MockerFixture):
@@ -519,7 +520,7 @@ class TestRunAdditionalBranches:
             return_value=[action],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert results[-1].delta.message.content == "done"
 
     def test_run_with_final_answer_action_dict(self, runner: DummyRunner, mocker: MockerFixture):
@@ -533,7 +534,7 @@ class TestRunAdditionalBranches:
             return_value=[action],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert json.loads(results[-1].delta.message.content) == {"a": 1}
 
     def test_run_with_string_final_answer(self, runner: DummyRunner, mocker: MockerFixture):
@@ -548,5 +549,5 @@ class TestRunAdditionalBranches:
             return_value=[action],
         )
 
-        results = list(runner.run(message, "query", {}))
+        results = list(runner.run(runner.session, message, "query", {}))
         assert results[-1].delta.message.content == "12345"
