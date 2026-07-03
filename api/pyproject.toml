@@ -42,6 +42,7 @@ dependencies = [
     "opentelemetry-propagator-b3>=1.41.1,<2.0.0",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
+    "zstandard>=0.25.0,<1.0.0",
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]==0.7.0",
     "graphon==0.6.0",
