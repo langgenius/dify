@@ -4,7 +4,7 @@
 #   docker build -f docker/local-sandbox/Dockerfile -t dify-agent-local-sandbox:local .
 #
 # This image merges the former shellctl-only image with the sandbox-visible
-# Agent Stub client CLI. It runs shellctl by default, and shellctl-managed jobs
+# Agent Stub client CLI. It runs `shellctl serve` by default, and shellctl-managed jobs
 # can call `dify-agent ...` without installing extra packages at runtime.
 
 FROM python:3.12-slim-bookworm AS base
@@ -13,7 +13,7 @@ ARG NODE_VERSION=22.22.1
 ARG PNPM_VERSION=11.9.0
 ARG UV_VERSION=0.8.9
 ARG DIFY_AGENT_TOOL_SPEC=.[grpc]
-ARG SHELL_SESSION_MANAGER_TOOL_SPEC=shell-session-manager
+ARG SHELL_SESSION_MANAGER_TOOL_SPEC=shell-session-manager==2.4.0
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
