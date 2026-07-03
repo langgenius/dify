@@ -484,7 +484,8 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
                 "secret_refs": [
                     {"variable": "TOKEN", "credential_id": "credential-1"},
                     {"name": "API_KEY", "provider_credential_id": "credential-2"},
-                    {"name": "EDITABLE_TOKEN", "value": "credential-3"},
+                    {"name": "EDITABLE_TOKEN", "value": "inline-secret-value"},
+                    {"name": "LEGACY_SECRET_REF", "id": "credential-3"},
                     {"ref": "missing-name"},
                 ],
             },
@@ -501,11 +502,12 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     assert config["env"] == [
         {"name": "PROJECT_NAME", "value": "demo"},
         {"name": "RETRY_COUNT", "value": "3"},
+        {"name": "EDITABLE_TOKEN", "value": "inline-secret-value"},
     ]
     assert config["secret_refs"] == [
         {"name": "TOKEN", "ref": "credential-1"},
         {"name": "API_KEY", "ref": "credential-2"},
-        {"name": "EDITABLE_TOKEN", "ref": "credential-3"},
+        {"name": "LEGACY_SECRET_REF", "ref": "credential-3"},
     ]
     assert config["sandbox"] is None
 
@@ -602,6 +604,35 @@ def test_build_shell_layer_config_maps_cli_tool_scoped_env():
             "install_commands": ["apt-get install -y gh"],
             "env": [{"name": "GH_HOST", "value": "github.com"}],
             "secret_refs": [{"name": "GITHUB_TOKEN", "ref": "credential-1"}],
+        }
+    ]
+
+
+def test_build_shell_layer_config_maps_cli_tool_inline_secret_value_to_env():
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "tools": {
+                "cli_tools": [
+                    {
+                        "name": "github",
+                        "command": "apt-get install -y gh",
+                        "env": {
+                            "secret_refs": [{"name": "GITHUB_TOKEN", "value": "ghp_" + "x" * 300}],
+                        },
+                    }
+                ]
+            }
+        }
+    )
+
+    config = build_shell_layer_config(agent_soul).model_dump(mode="json")
+
+    assert config["cli_tools"] == [
+        {
+            "name": "github",
+            "install_commands": ["apt-get install -y gh"],
+            "env": [{"name": "GITHUB_TOKEN", "value": "ghp_" + "x" * 300}],
+            "secret_refs": [],
         }
     ]
 
