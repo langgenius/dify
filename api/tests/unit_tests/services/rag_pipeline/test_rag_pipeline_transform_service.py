@@ -107,7 +107,7 @@ def test_deal_dependencies_installs_missing_marketplace_plugins(mocker: MockerFi
     install_mock.assert_called_once_with("tenant-1", ["missing-plugin:1.0.0"])
 
 
-def test_transform_to_empty_pipeline_updates_dataset_and_commits(
+def test_transform_to_empty_pipeline_updates_dataset_and_flushes(
     mocker: MockerFixture, pipeline_session: Session
 ) -> None:
     service = RagPipelineTransformService()
@@ -125,10 +125,14 @@ def test_transform_to_empty_pipeline_updates_dataset_and_commits(
     )
     session.add(dataset)
     session.commit()
+    flush_spy = mocker.spy(session, "flush")
+    commit_spy = mocker.spy(session, "commit")
 
     result = service._transform_to_empty_pipeline(dataset, session)
-    pipeline = session.scalar(select(Pipeline).where(Pipeline.id == dataset.pipeline_id))
 
+    assert flush_spy.call_count == 2
+    commit_spy.assert_not_called()
+    pipeline = session.scalar(select(Pipeline).where(Pipeline.id == dataset.pipeline_id))
     assert pipeline is not None
     assert result == {"pipeline_id": pipeline.id, "dataset_id": dataset.id, "status": "success"}
     assert dataset.pipeline_id == pipeline.id
@@ -369,7 +373,6 @@ def test_transform_dataset_full_flow(mocker: MockerFixture) -> None:
 
     mocker.patch.object(service, "_deal_dependencies")
     mocker.patch.object(service, "_deal_document_data")
-    session_mock.commit = mocker.Mock()
 
     # Mock current_user to have the same tenant_id as dataset
     mock_current_user = SimpleNamespace(current_tenant_id="t1")
@@ -383,6 +386,8 @@ def test_transform_dataset_full_flow(mocker: MockerFixture) -> None:
     assert result["pipeline_id"] == "p-new"
     assert dataset.runtime_mode == "rag_pipeline"
     assert dataset.chunk_structure == "text_model"
+    session_mock.flush.assert_called_once_with()
+    session_mock.commit.assert_not_called()
 
 
 def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create(mocker: MockerFixture) -> None:

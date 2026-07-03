@@ -96,7 +96,7 @@ class RagPipelineTransformService:
         # deal document data
         self._deal_document_data(dataset, session)
 
-        session.commit()
+        session.flush()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset_id,
@@ -304,7 +304,7 @@ class RagPipelineTransformService:
         dataset.updated_by = current_user.id
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
         session.add(dataset)
-        session.commit()
+        session.flush()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset.id,
