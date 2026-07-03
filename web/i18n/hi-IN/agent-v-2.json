@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "अंतिम-उपयोगकर्ता प्रमाणीकरण",
   "agentDetail.configure.preview.inputPlaceholder": "{{name}} को संदेश भेजें",
   "agentDetail.configure.preview.restart": "पूर्वावलोकन पुनः आरंभ करें",
+  "agentDetail.configure.preview.sandboxNotice": "Agent Linux सैंडबॉक्स में चलता है.",
   "agentDetail.configure.preview.title": "पूर्वावलोकन",
   "agentDetail.configure.prompt.copied": "प्रॉम्प्ट कॉपी हो गया",
   "agentDetail.configure.prompt.copy": "प्रॉम्प्ट कॉपी करें",

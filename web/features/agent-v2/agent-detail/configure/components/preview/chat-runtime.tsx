@@ -24,6 +24,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -586,6 +587,7 @@ function AgentPreviewChatSession({
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
+  const { t } = useTranslation('agentV2')
   const queryClient = useQueryClient()
   const { userProfile } = useAppContext()
   const prompt = useAtomValue(agentComposerPromptAtom)
@@ -687,6 +689,17 @@ function AgentPreviewChatSession({
             })
           },
           onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
+          onUnhandledEvent: (event) => {
+            if (event.event !== 'error' || typeof event.message !== 'string')
+              return
+
+            return {
+              conversationId: typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
+              messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
+              errorMessage: event.message,
+              errorCode: typeof event.code === 'string' ? event.code : undefined,
+            }
+          },
           onConversationComplete: (completedConversationId, workflowRunId) => {
             if (completedConversationId && completedConversationId !== conversationId)
               onCurrentSessionConversationIdChange(completedConversationId)
@@ -732,6 +745,8 @@ function AgentPreviewChatSession({
   const isEmptyChat = chatList.length === 0
   const hasInstructions = !!config.pre_prompt.trim()
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
+  const sandboxNotice = t('agentDetail.configure.preview.sandboxNotice')
+  const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">
       <ChatInputArea
@@ -746,6 +761,7 @@ function AgentPreviewChatSession({
         inputs={inputs}
         inputsForm={inputsForm}
         sendButtonLabel={sendButtonLabel}
+        footerNotice={showSandboxNotice ? sandboxNotice : undefined}
       />
     </div>
   )

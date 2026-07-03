@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "Autenticación de usuario final",
   "agentDetail.configure.preview.inputPlaceholder": "Enviar mensaje a {{name}}",
   "agentDetail.configure.preview.restart": "Reiniciar vista previa",
+  "agentDetail.configure.preview.sandboxNotice": "El agente se ejecuta en un sandbox de Linux.",
   "agentDetail.configure.preview.title": "Vista previa",
   "agentDetail.configure.prompt.copied": "Prompt copiado",
   "agentDetail.configure.prompt.copy": "Copiar prompt",

@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "احراز هویت کاربر نهایی",
   "agentDetail.configure.preview.inputPlaceholder": "ارسال پیام به {{name}}",
   "agentDetail.configure.preview.restart": "راه‌اندازی مجدد پیش‌نمایش",
+  "agentDetail.configure.preview.sandboxNotice": "Agent در یک سندباکس لینوکس اجرا می‌شود.",
   "agentDetail.configure.preview.title": "پیش‌نمایش",
   "agentDetail.configure.prompt.copied": "پرامپت کپی شد",
   "agentDetail.configure.prompt.copy": "کپی پرامپت",

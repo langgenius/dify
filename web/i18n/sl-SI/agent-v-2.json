@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "Preverjanje pristnosti končnega uporabnika",
   "agentDetail.configure.preview.inputPlaceholder": "Pošlji sporočilo za {{name}}",
   "agentDetail.configure.preview.restart": "Znova zaženi predogled",
+  "agentDetail.configure.preview.sandboxNotice": "Agent se izvaja v peskovniku Linux.",
   "agentDetail.configure.preview.title": "Predogled",
   "agentDetail.configure.prompt.copied": "Poziv kopiran",
   "agentDetail.configure.prompt.copy": "Kopiraj poziv",

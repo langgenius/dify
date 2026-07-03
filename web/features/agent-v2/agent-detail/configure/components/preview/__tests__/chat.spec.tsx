@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
@@ -32,6 +32,8 @@ vi.mock('@/next/dynamic', async () => {
       sendButtonLabel?: string
       sendButtonLoading?: boolean
       showPromptLog?: boolean
+      footerNotice?: string
+      chatNode?: ReactNode
     }) {
       const [sent, setSent] = useState(false)
 
@@ -41,7 +43,9 @@ vi.mock('@/next/dynamic', async () => {
           data-send-button-label={props.sendButtonLabel ?? ''}
           data-send-button-loading={String(!!props.sendButtonLoading)}
           data-show-prompt-log={String(!!props.showPromptLog)}
+          data-footer-notice={props.footerNotice ?? ''}
         >
+          {props.chatNode}
           <span>{`sessionSent:${sent ? 'yes' : 'no'}`}</span>
           <button
             type="button"
@@ -60,6 +64,14 @@ vi.mock('@/next/dynamic', async () => {
     },
   }
 })
+
+vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
+  default: ({ footerNotice }: { footerNotice?: ReactNode }) => (
+    <div data-testid="agent-preview-chat-input">
+      {footerNotice}
+    </div>
+  ),
+}))
 
 vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   useChat: useChatMock.mockImplementation((
@@ -395,6 +407,32 @@ describe('AgentPreviewChat', () => {
     })
   })
 
+  it('should map agent SSE error events to chat send errors', async () => {
+    renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    expect(callbacks.onUnhandledEvent({
+      event: 'error',
+      conversation_id: 'conversation-1',
+      message_id: 'message-1',
+      code: 'agent_run_failed',
+      message: 'Agent execution failed',
+    })).toEqual({
+      conversationId: 'conversation-1',
+      messageId: 'message-1',
+      errorCode: 'agent_run_failed',
+      errorMessage: 'Agent execution failed',
+    })
+    expect(callbacks.onUnhandledEvent({
+      event: 'unknown',
+      message: 'Ignored',
+    })).toBeUndefined()
+  })
+
   it('should show the send button loading state while preparing a build run', async () => {
     let resolveSaveDraftBeforeRun: () => void = () => {}
     const saveDraftBeforeRun = vi.fn(() => new Promise<void>((resolve) => {
@@ -640,6 +678,20 @@ describe('AgentPreviewChat', () => {
     await waitFor(() => expect(screen.getByTestId('mock-chat')).toBeInTheDocument())
 
     expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-show-prompt-log', 'false')
+  })
+
+  it('should hide the sandbox notice after the first send starts', async () => {
+    renderPreviewChat({
+      renderEmptyState: ({ inputNode }) => <div>{inputNode}</div>,
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('agentV2.agentDetail.configure.preview.sandboxNotice')).not.toBeInTheDocument()
+    })
   })
 
   it('should send build chat inputs from the prepared build draft snapshot', async () => {

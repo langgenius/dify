@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "End-user authentication",
   "agentDetail.configure.preview.inputPlaceholder": "Message {{name}}",
   "agentDetail.configure.preview.restart": "Restart preview",
+  "agentDetail.configure.preview.sandboxNotice": "Agent runs in a Linux sandbox.",
   "agentDetail.configure.preview.title": "Preview",
   "agentDetail.configure.prompt.copied": "Prompt copied",
   "agentDetail.configure.prompt.copy": "Copy prompt",

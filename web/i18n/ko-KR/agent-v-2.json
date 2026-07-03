@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "최종 사용자 인증",
   "agentDetail.configure.preview.inputPlaceholder": "{{name}}에게 메시지 보내기",
   "agentDetail.configure.preview.restart": "미리보기 다시 시작",
+  "agentDetail.configure.preview.sandboxNotice": "Agent는 Linux 샌드박스에서 실행됩니다.",
   "agentDetail.configure.preview.title": "미리보기",
   "agentDetail.configure.prompt.copied": "프롬프트를 복사했습니다",
   "agentDetail.configure.prompt.copy": "프롬프트 복사",

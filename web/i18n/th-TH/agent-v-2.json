@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "การยืนยันตัวตนของผู้ใช้ปลายทาง",
   "agentDetail.configure.preview.inputPlaceholder": "ส่งข้อความถึง {{name}}",
   "agentDetail.configure.preview.restart": "เริ่มการแสดงตัวอย่างใหม่",
+  "agentDetail.configure.preview.sandboxNotice": "Agent ทำงานในแซนด์บ็อกซ์ Linux",
   "agentDetail.configure.preview.title": "แสดงตัวอย่าง",
   "agentDetail.configure.prompt.copied": "คัดลอกพรอมต์แล้ว",
   "agentDetail.configure.prompt.copy": "คัดลอกพรอมต์",

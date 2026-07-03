@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "Аутентификация конечного пользователя",
   "agentDetail.configure.preview.inputPlaceholder": "Написать {{name}}",
   "agentDetail.configure.preview.restart": "Перезапустить предпросмотр",
+  "agentDetail.configure.preview.sandboxNotice": "Agent работает в песочнице Linux.",
   "agentDetail.configure.preview.title": "Предпросмотр",
   "agentDetail.configure.prompt.copied": "Промпт скопирован",
   "agentDetail.configure.prompt.copy": "Копировать промпт",

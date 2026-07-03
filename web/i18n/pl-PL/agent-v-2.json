@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "Uwierzytelnianie użytkownika końcowego",
   "agentDetail.configure.preview.inputPlaceholder": "Wyślij wiadomość do {{name}}",
   "agentDetail.configure.preview.restart": "Uruchom podgląd ponownie",
+  "agentDetail.configure.preview.sandboxNotice": "Agent działa w piaskownicy Linux.",
   "agentDetail.configure.preview.title": "Podgląd",
   "agentDetail.configure.prompt.copied": "Prompt skopiowany",
   "agentDetail.configure.prompt.copy": "Kopiuj prompt",

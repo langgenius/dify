@@ -143,6 +143,7 @@
   "agentDetail.configure.preview.endUserAuth": "Authenticatie eindgebruiker",
   "agentDetail.configure.preview.inputPlaceholder": "Bericht sturen naar {{name}}",
   "agentDetail.configure.preview.restart": "Voorbeeld opnieuw starten",
+  "agentDetail.configure.preview.sandboxNotice": "De agent wordt uitgevoerd in een Linux-sandbox.",
   "agentDetail.configure.preview.title": "Voorbeeld",
   "agentDetail.configure.prompt.copied": "Prompt gekopieerd",
   "agentDetail.configure.prompt.copy": "Prompt kopiëren",

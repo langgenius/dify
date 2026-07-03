@@ -73,6 +73,7 @@ export type ChatProps = {
   inputPlaceholderBotName?: string
   sendButtonLabel?: string
   sendButtonLoading?: boolean
+  footerNotice?: ReactNode
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
@@ -123,6 +124,7 @@ const Chat: FC<ChatProps> = ({
   inputPlaceholderBotName,
   sendButtonLabel,
   sendButtonLoading,
+  footerNotice,
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
@@ -267,6 +269,7 @@ const Chat: FC<ChatProps> = ({
                   readonly={readonly}
                   sendButtonLabel={sendButtonLabel}
                   sendButtonLoading={sendButtonLoading}
+                  footerNotice={footerNotice}
                   sendOnEnter={sendOnEnter}
                 />
               )
