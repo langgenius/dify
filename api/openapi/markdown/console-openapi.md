@@ -14553,8 +14553,19 @@ Soft lifecycle state for Agent records.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
-| model | [AgentSoulModelConfig](#agentsoulmodelconfig) |  | No |
+| model | [AgentSuggestedQuestionsAfterAnswerModelConfig](#agentsuggestedquestionsafteranswermodelconfig) |  | No |
 | prompt | string |  | No |
+
+#### AgentSuggestedQuestionsAfterAnswerModelConfig
+
+Legacy Chat App model config used only for follow-up question generation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
 
 #### AgentTextToSpeechFeatureConfig
 
