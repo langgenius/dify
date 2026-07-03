@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 
-from constants import HIDDEN_VALUE
 from controllers.console import console_ns
 from controllers.console.workspace.endpoint import (
     DeprecatedEndpointCreateApi,
@@ -32,7 +31,7 @@ def _endpoint_entity() -> EndpointEntityWithInstance:
         tenant_id="t1",
         plugin_id="p1",
         settings={
-            "api_key": "plain-secret",
+            "api_key": "pl********et",
             "enabled": True,
             "ids": ["a", "b"],
             "nested": {"limit": 3},
@@ -147,7 +146,7 @@ class TestEndpointListApi:
         assert endpoint["created_at"] == "2026-01-01T00:00:00Z"
         assert endpoint["updated_at"] == "2026-01-01T00:00:00Z"
         assert endpoint["settings"] == {
-            "api_key": HIDDEN_VALUE,
+            "api_key": "pl********et",
             "enabled": True,
             "ids": ["a", "b"],
             "nested": {"limit": 3},
@@ -164,7 +163,7 @@ class TestEndpointListApi:
         assert endpoint["enabled"] is True
         assert endpoint["url"] == "https://example.test/hook-1"
         assert endpoint["hook_id"] == "hook-1"
-        assert endpoint_entity.settings["api_key"] == "plain-secret"
+        assert endpoint_entity.settings["api_key"] == "pl********et"
 
     def test_list_invalid_query(self, app: Flask):
         api = EndpointListApi()
@@ -192,7 +191,7 @@ class TestEndpointListForSinglePluginApi:
             result = method(api, "t1", "u1")
 
         assert result["endpoints"][0]["id"] == "e1"
-        assert result["endpoints"][0]["settings"]["api_key"] == HIDDEN_VALUE
+        assert result["endpoints"][0]["settings"]["api_key"] == "pl********et"
         assert result["endpoints"][0]["settings"]["nested"] == {"limit": 3}
 
     def test_list_for_plugin_missing_param(self, app: Flask):

@@ -9,13 +9,12 @@ marks only the legacy paths as deprecated.
 from datetime import datetime
 from enum import StrEnum
 from http import HTTPStatus
-from typing import Any, Self
+from typing import Any
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
-from constants import HIDDEN_VALUE
 from controllers.common.fields import SuccessResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -114,9 +113,6 @@ class EndpointProviderConfigResponse(ResponseModel):
     url: str | None = None
     placeholder: EndpointProviderConfigI18nResponse | None = None
 
-    def is_secret_input(self) -> bool:
-        return self.type == ProviderConfigType.SECRET_INPUT
-
 
 class EndpointDeclarationResponse(ResponseModel):
     path: str
@@ -127,9 +123,6 @@ class EndpointDeclarationResponse(ResponseModel):
 class EndpointProviderDeclarationResponse(ResponseModel):
     settings: list[EndpointProviderConfigResponse] = Field(default_factory=list)
     endpoints: list[EndpointDeclarationResponse] | None = Field(default_factory=list)
-
-    def secret_setting_names(self) -> set[str]:
-        return {setting.name for setting in self.settings if setting.is_secret_input()}
 
 
 class EndpointListItemResponse(ResponseModel):
@@ -145,19 +138,6 @@ class EndpointListItemResponse(ResponseModel):
     enabled: bool
     url: str
     hook_id: str
-
-    @model_validator(mode="after")
-    def mask_secret_settings(self) -> Self:
-        secret_names = self.declaration.secret_setting_names()
-        if not secret_names:
-            return self
-
-        settings = dict(self.settings)
-        for secret_name in secret_names:
-            if secret_name in settings:
-                settings[secret_name] = HIDDEN_VALUE
-        self.settings = settings
-        return self
 
 
 class EndpointListResponse(ResponseModel):
