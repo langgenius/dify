@@ -1234,7 +1234,7 @@ describe('Form', () => {
 
       expect(screen.getByText('API Key'))!.toBeInTheDocument()
       expect(screen.getByText('Region'))!.toBeInTheDocument()
-      expect(screen.getByText('Model'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Model' }))!.toBeInTheDocument()
       expect(screen.getByText('Agree'))!.toBeInTheDocument()
       expect(screen.getByLabelText('Enter your API key here'))!.toBeInTheDocument()
       expect(screen.getByLabelText('Select region'))!.toBeInTheDocument()
@@ -1546,7 +1546,7 @@ describe('Form', () => {
 
       expect(screen.getByText('API Key Fallback'))!.toBeInTheDocument()
       expect(screen.getByText('Region Fallback'))!.toBeInTheDocument()
-      expect(screen.getByText('Model Fallback'))!.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Model Fallback' }))!.toBeInTheDocument()
       expect(screen.getByText('Agree Fallback'))!.toBeInTheDocument()
     })
 

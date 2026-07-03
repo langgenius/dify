@@ -1,4 +1,4 @@
-import type { Tag } from '@/contract/console/tags'
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -27,8 +27,8 @@ type TagItemEditorProps = {
 }
 export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   const { t } = useTranslation()
-  const updateTagMutation = useMutation(consoleQuery.tags.update.mutationOptions())
-  const deleteTagMutation = useMutation(consoleQuery.tags.delete.mutationOptions())
+  const updateTagMutation = useMutation(consoleQuery.tags.byTagId.patch.mutationOptions())
+  const deleteTagMutation = useMutation(consoleQuery.tags.byTagId.delete.mutationOptions())
   const [isEditing, setIsEditing] = useState(false)
   const editTag = (tagId: string, name: string) => {
     if (name === tag.name) {
@@ -43,7 +43,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
 
     updateTagMutation.mutate({
       params: {
-        tagId,
+        tag_id: tagId,
       },
       body: {
         name,
@@ -67,7 +67,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
 
     deleteTagMutation.mutate({
       params: {
-        tagId,
+        tag_id: tagId,
       },
     }, {
       onSuccess: () => {
@@ -84,38 +84,38 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
   }, { wait: 200 })
   return (
     <>
-      <div className={cn('flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pr-1 pl-2 text-sm leading-5 text-text-secondary')}>
+      <div className={cn('flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pr-1 pl-2 text-sm/5 text-text-secondary')}>
         {!isEditing && (
           <>
-            <div className="text-sm leading-5 text-text-secondary">
+            <div className="text-sm/5 text-text-secondary">
               {tag.name}
             </div>
             <Tooltip>
               <TooltipTrigger>
-                <div className="shrink-0 px-1 text-sm leading-4.5 font-medium text-text-tertiary">{tag.binding_count}</div>
+                <div className="shrink-0 px-1 text-sm/4.5 font-medium text-text-tertiary">{tag.binding_count}</div>
               </TooltipTrigger>
               <TooltipContent>{t('common.tagBound', { ns: 'workflow' })}</TooltipContent>
             </Tooltip>
             <button
               type="button"
               aria-label={`${t('operation.edit', { ns: 'common' })} ${tag.name}`}
-              className="group/edit shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="group/edit shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => setIsEditing(true)}
             >
-              <span aria-hidden="true" className="i-ri-edit-line h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary" />
+              <span aria-hidden="true" className="i-ri-edit-line size-3 text-text-tertiary group-hover/edit:text-text-secondary" />
             </button>
             <button
               type="button"
               aria-label={`${t('operation.remove', { ns: 'common' })} ${tag.name}`}
-              className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              className="group/remove shrink-0 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               onClick={() => {
-                if (tag.binding_count)
+                if (Number(tag.binding_count ?? 0) > 0)
                   setShowRemoveModal(true)
                 else
                   handleRemove()
               }}
             >
-              <span aria-hidden="true" className="i-ri-delete-bin-line h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary" />
+              <span aria-hidden="true" className="i-ri-delete-bin-line size-3 text-text-tertiary group-hover/remove:text-text-secondary" />
             </button>
           </>
         )}

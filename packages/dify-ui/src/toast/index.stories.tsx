@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ReactNode } from 'react'
-import { toast } from '.'
+import * as React from 'react'
+import { toast, ToastHost } from '.'
 
 const buttonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs transition-colors hover:bg-state-base-hover'
 const cardClassName = 'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
@@ -14,7 +14,7 @@ const ExampleCard = ({
   eyebrow: string
   title: string
   description: string
-  children: ReactNode
+  children: React.ReactNode
 }) => {
   return (
     <section className={cardClassName}>
@@ -117,6 +117,15 @@ const StackExamples = () => {
     })
   }
 
+  const createVaryingHeightStack = () => {
+    toast.info('Long background toast', {
+      description: 'This longer toast intentionally spans multiple lines so the collapsed stack can be checked against the shorter frontmost toast height without panel overflow.',
+    })
+    toast.success('Short front toast', {
+      description: 'Short message.',
+    })
+  }
+
   return (
     <ExampleCard
       eyebrow="Stack"
@@ -128,6 +137,9 @@ const StackExamples = () => {
       </button>
       <button type="button" className={buttonClassName} onClick={createBurst}>
         Stress the stack
+      </button>
+      <button type="button" className={buttonClassName} onClick={createVaryingHeightStack}>
+        Varying heights
       </button>
     </ExampleCard>
   )
@@ -192,11 +204,14 @@ const PromiseExamples = () => {
 
 const ActionExamples = () => {
   const createActionToast = () => {
-    toast.warning('Project archived', {
+    let archivedToastId = ''
+    archivedToastId = toast.warning('Project archived', {
       description: 'You can restore it from workspace settings for the next 30 days.',
+      timeout: 10000,
       actionProps: {
         children: 'Undo',
         onClick: () => {
+          toast.dismiss(archivedToastId)
           toast.success('Project restored', {
             description: 'The workspace is active again.',
           })
@@ -228,6 +243,32 @@ const ActionExamples = () => {
       </button>
       <button type="button" className={buttonClassName} onClick={createLongCopyToast}>
         Long content
+      </button>
+    </ExampleCard>
+  )
+}
+
+const DeduplicateExamples = () => {
+  const saveCountRef = React.useRef(0)
+
+  const saveDraft = () => {
+    saveCountRef.current += 1
+    toast.success('Draft saved', {
+      id: 'draft-save-status',
+      description: saveCountRef.current === 1
+        ? 'Click again while this toast is visible to update the same mounted toast.'
+        : `Same toast updated ${saveCountRef.current} times.`,
+    })
+  }
+
+  return (
+    <ExampleCard
+      eyebrow="Deduplicated"
+      title="Same-id upsert"
+      description="Matches the Base UI deduplicated toast example: repeated triggers use a stable id, so the visible toast is updated instead of adding another stack item."
+    >
+      <button type="button" className={buttonClassName} onClick={saveDraft}>
+        Save draft
       </button>
     </ExampleCard>
   )
@@ -272,28 +313,32 @@ const UpdateExamples = () => {
 
 const ToastDocsDemo = () => {
   return (
-    <div className="min-h-screen bg-background-default-subtle px-6 py-12">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <div className="space-y-3">
-          <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
-            Base UI toast docs
+    <React.Fragment>
+      <ToastHost />
+      <div className="min-h-screen bg-background-default-subtle px-6 py-12">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+          <div className="space-y-3">
+            <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">
+              Base UI toast docs
+            </div>
+            <h2 className="text-[24px] leading-8 font-semibold text-text-primary">
+              Shared stacked toast examples
+            </h2>
+            <p className="max-w-3xl text-sm leading-6 text-text-secondary">
+              Each example card below triggers the same shared toast viewport in the top-right corner, so you can review stacking, state transitions, actions, and tone variants the same way the official Base UI documentation demonstrates toast behavior.
+            </p>
           </div>
-          <h2 className="text-[24px] leading-8 font-semibold text-text-primary">
-            Shared stacked toast examples
-          </h2>
-          <p className="max-w-3xl text-sm leading-6 text-text-secondary">
-            Each example card below triggers the same shared toast viewport in the top-right corner, so you can review stacking, state transitions, actions, and tone variants the same way the official Base UI documentation demonstrates toast behavior.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <VariantExamples />
-          <StackExamples />
-          <PromiseExamples />
-          <ActionExamples />
-          <UpdateExamples />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <VariantExamples />
+            <StackExamples />
+            <PromiseExamples />
+            <ActionExamples />
+            <DeduplicateExamples />
+            <UpdateExamples />
+          </div>
         </div>
       </div>
-    </div>
+    </React.Fragment>
   )
 }
 

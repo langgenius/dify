@@ -24,6 +24,7 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -33,12 +34,15 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities import RetrievalSourceMetadata
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
+from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -50,7 +54,6 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -74,6 +77,7 @@ from graphon.graph_events import (
     NodeRunLoopNextEvent,
     NodeRunLoopStartedEvent,
     NodeRunLoopSucceededEvent,
+    NodeRunReasoningChunkEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
@@ -104,7 +108,7 @@ class WorkflowBasedAppRunner:
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
-        if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+        if invoke_from.runs_as_account():
             return UserFrom.ACCOUNT
         return UserFrom.END_USER
 
@@ -118,6 +122,7 @@ class WorkflowBasedAppRunner:
         tenant_id: str = "",
         user_id: str = "",
         root_node_id: str | None = None,
+        trace_session_id: str | None = None,
     ) -> Graph:
         """
         Init graph
@@ -138,6 +143,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,
+            trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow_id,
@@ -171,6 +177,7 @@ class WorkflowBasedAppRunner:
         single_loop_run: Any | None = None,
         *,
         user_id: str,
+        trace_session_id: str | None = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -208,6 +215,7 @@ class WorkflowBasedAppRunner:
                 node_type_filter_key="iteration_id",
                 node_type_label="iteration",
                 user_id=user_id,
+                trace_session_id=trace_session_id,
             )
         elif single_loop_run:
             graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
@@ -218,6 +226,7 @@ class WorkflowBasedAppRunner:
                 node_type_filter_key="loop_id",
                 node_type_label="loop",
                 user_id=user_id,
+                trace_session_id=trace_session_id,
             )
         else:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
@@ -236,6 +245,7 @@ class WorkflowBasedAppRunner:
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
         user_id: str = "",
+        trace_session_id: str | None = None,
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
@@ -301,6 +311,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
@@ -417,10 +428,15 @@ class WorkflowBasedAppRunner:
             case GraphRunPausedEvent():
                 runtime_state = workflow_entry.graph_engine.graph_runtime_state
                 paused_nodes = runtime_state.get_paused_nodes()
-                self._enqueue_human_input_notifications(event.reasons)
+                enriched_reasons = enrich_graph_pause_reasons(
+                    reasons=event.reasons,
+                    form_repository=HumanInputFormSubmissionRepository(),
+                    variable_pool=runtime_state.variable_pool,
+                )
+                self._enqueue_human_input_notifications(enriched_reasons)
                 self._publish_event(
                     QueueWorkflowPausedEvent(
-                        reasons=event.reasons,
+                        reasons=enriched_reasons,
                         outputs=event.outputs,
                         paused_nodes=paused_nodes,
                     )
@@ -435,6 +451,7 @@ class WorkflowBasedAppRunner:
                         rendered_content=event.rendered_content,
                         action_id=event.action_id,
                         action_text=event.action_text,
+                        submitted_data=event.submitted_data,
                     )
                 )
             case NodeRunHumanInputFormTimeoutEvent():
@@ -564,6 +581,16 @@ class WorkflowBasedAppRunner:
                     QueueTextChunkEvent(
                         text=event.chunk,
                         from_variable_selector=list(event.selector),
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
+                )
+            case NodeRunReasoningChunkEvent():
+                self._publish_event(
+                    QueueReasoningChunkEvent(
+                        reasoning=event.chunk,
+                        from_node_id=event.node_id,
+                        is_final=event.is_final,
                         in_iteration_id=event.in_iteration_id,
                         in_loop_id=event.in_loop_id,
                     )

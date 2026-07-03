@@ -94,7 +94,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
             {
               iconProvider && !isEmpty && (
                 <ModelIcon
-                  className="mr-1 h-4! w-4!"
+                  className="mr-1 size-4!"
                   provider={iconProvider}
                   modelName={currentModel?.model || modelAndParameter.model}
                 />
@@ -102,8 +102,8 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
             }
             {
               (!iconProvider || isEmpty) && (
-                <div className="mr-1 flex h-4 w-4 items-center justify-center rounded-sm">
-                  <span className="i-custom-vender-line-shapes-cube-outline h-4 w-4 text-text-accent" />
+                <div className="mr-1 flex size-4 items-center justify-center rounded-sm">
+                  <span className="i-custom-vender-line-shapes-cube-outline size-4 text-text-accent" />
                 </div>
               )
             }
@@ -129,7 +129,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
                 </div>
               )
             }
-            <span className={`i-ri-arrow-down-s-line h-3 w-3 ${isEmpty ? 'text-text-accent' : 'text-text-tertiary'}`} />
+            <span className={`i-ri-arrow-down-s-line size-3 ${isEmpty ? 'text-text-accent' : 'text-text-tertiary'}`} />
             {
               !isEmpty && !isActive && statusLabelKey && (
                 <Tooltip>

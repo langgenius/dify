@@ -12,7 +12,7 @@ import { getCanonicalClassLabel, getDisplayClassLabel } from './class-label-util
 
 const i18nPrefix = 'nodes.questionClassifiers'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   headerClassName?: string
   nodeId: string
@@ -23,7 +23,7 @@ type Props = {
   readonly?: boolean
   filterVar: (payload: Var, valueSelector: ValueSelector) => boolean
   onLabelEditStart?: () => void
-}
+}>
 
 const ClassItem: FC<Props> = ({
   className,
@@ -115,7 +115,7 @@ const ClassItem: FC<Props> = ({
       )
     : readonly
       ? (
-          <div className="-ml-1 px-1 py-0.5 text-left text-xs leading-4 font-semibold text-text-secondary">
+          <div className="-ml-1 px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary">
             {displayLabel}
           </div>
         )
@@ -124,7 +124,7 @@ const ClassItem: FC<Props> = ({
             type="button"
             aria-label={displayLabel}
             className={cn(
-              '-ml-1 rounded px-1 py-0.5 text-left text-xs leading-4 font-semibold text-text-secondary transition-colors',
+              '-ml-1 rounded px-1 py-0.5 text-left text-xs/4 font-semibold text-text-secondary transition-colors',
               'cursor-text hover:bg-state-base-hover',
             )}
             onDoubleClick={handleLabelEditStart}

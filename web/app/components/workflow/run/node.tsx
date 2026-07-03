@@ -28,24 +28,24 @@ import { useDocLink } from '@/context/i18n'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
-import { AgentLogTrigger } from './agent-log'
+import { AgentLogTrigger } from './agent-log/agent-log-trigger'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
 
 type Props = {
-  className?: string
-  nodeInfo: NodeTracing
-  allExecutions?: NodeTracing[]
-  inMessage?: boolean
-  hideInfo?: boolean
-  hideProcessDetail?: boolean
-  onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
-  onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
-  onShowRetryDetail?: (detail: NodeTracing[]) => void
-  onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
-  notShowIterationNav?: boolean
-  notShowLoopNav?: boolean
+  readonly className?: string
+  readonly nodeInfo: NodeTracing
+  readonly allExecutions?: NodeTracing[]
+  readonly inMessage?: boolean
+  readonly hideInfo?: boolean
+  readonly hideProcessDetail?: boolean
+  readonly onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
+  readonly onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
+  readonly onShowRetryDetail?: (detail: NodeTracing[]) => void
+  readonly onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+  readonly notShowIterationNav?: boolean
+  readonly notShowLoopNav?: boolean
 }
 
 const NodePanel: FC<Props> = ({
@@ -126,7 +126,7 @@ const NodePanel: FC<Props> = ({
           {!hideProcessDetail && (
             <RiArrowRightSLine
               className={cn(
-                'mr-1 h-4 w-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
+                'mr-1 size-4 shrink-0 text-text-quaternary transition-all group-hover:text-text-tertiary',
                 !collapseState && 'rotate-90',
               )}
             />
@@ -156,24 +156,24 @@ const NodePanel: FC<Props> = ({
             </div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
+            <RiCheckboxCircleFill className="ml-2 size-3.5 shrink-0 text-text-success" />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-destructive" />
+            <RiErrorWarningFill className="ml-2 size-3.5 shrink-0 text-text-destructive" />
           )}
           {nodeInfo.status === 'stopped' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'paused' && (
-            <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiPauseCircleFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
-            <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
+            <RiAlertFill className={cn('ml-2 size-4 shrink-0 text-text-warning-secondary', inMessage && 'size-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
             <div className="flex shrink-0 items-center text-[13px] leading-[16px] font-medium text-text-accent">
               <span className="mr-2 text-xs font-normal">Running</span>
-              <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
+              <RiLoader2Line className="size-3.5 animate-spin" />
             </div>
           )}
         </div>

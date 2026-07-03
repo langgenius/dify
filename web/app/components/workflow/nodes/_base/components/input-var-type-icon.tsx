@@ -13,10 +13,10 @@ import {
 import * as React from 'react'
 import { InputVarType } from '../../../types'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   type: InputVarType
-}
+}>
 
 const getIcon = (type: InputVarType) => {
   return ({

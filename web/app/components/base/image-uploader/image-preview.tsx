@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
 import { useTranslation } from 'react-i18next'
 import { downloadUrl } from '@/utils/download'
 
@@ -168,10 +168,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     }
   }, [handleMouseUp])
 
-  useHotkeys('up', zoomIn)
-  useHotkeys('down', zoomOut)
-  useHotkeys('left', onPrev || noop)
-  useHotkeys('right', onNext || noop)
+  useHotkey('ArrowUp', zoomIn)
+  useHotkey('ArrowDown', zoomOut)
+  useHotkey('ArrowLeft', onPrev || noop)
+  useHotkey('ArrowRight', onNext || noop)
 
   const copyImageLabel = t('operation.copyImage', { ns: 'common' })
   const zoomOutLabel = t('operation.zoomOut', { ns: 'common' })
@@ -190,14 +190,14 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       disablePointerDismissal
     >
       <DialogContent
-        className="image-preview-container inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-x-0! translate-y-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
+        className="image-preview-container inset-0! top-0! left-0! flex h-dvh! max-h-none! w-screen! max-w-none! translate-0! items-center justify-center overflow-hidden! rounded-none! border-none! bg-black/80 p-8! shadow-none!"
         backdropClassName="bg-transparent!"
       >
         <div
           aria-label={title}
           data-testid="image-preview-container"
           tabIndex={-1}
-          className="flex h-full w-full items-center justify-center"
+          className="flex size-full items-center justify-center"
           onClick={e => e.stopPropagation()}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
@@ -223,12 +223,12 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               <button
                 type="button"
                 aria-label={copyImageLabel}
-                className="absolute top-6 right-48 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute top-6 right-48 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={imageCopy}
               >
                 {isCopied
-                  ? <span className="i-ri-file-copy-line h-4 w-4 text-green-500" aria-hidden="true" />
-                  : <span className="i-ri-file-copy-line h-4 w-4 text-gray-500" aria-hidden="true" />}
+                  ? <span className="i-ri-file-copy-line size-4 text-green-500" aria-hidden="true" />
+                  : <span className="i-ri-file-copy-line size-4 text-gray-500" aria-hidden="true" />}
               </button>
             )}
           />
@@ -242,10 +242,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               <button
                 type="button"
                 aria-label={zoomOutLabel}
-                className="absolute top-6 right-40 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute top-6 right-40 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomOut}
               >
-                <span className="i-ri-zoom-out-line h-4 w-4 text-gray-500" aria-hidden="true" />
+                <span className="i-ri-zoom-out-line size-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />
@@ -259,10 +259,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               <button
                 type="button"
                 aria-label={zoomInLabel}
-                className="absolute top-6 right-32 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute top-6 right-32 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={zoomIn}
               >
-                <span className="i-ri-zoom-in-line h-4 w-4 text-gray-500" aria-hidden="true" />
+                <span className="i-ri-zoom-in-line size-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />
@@ -276,10 +276,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               <button
                 type="button"
                 aria-label={downloadLabel}
-                className="absolute top-6 right-24 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute top-6 right-24 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={downloadImage}
               >
-                <span className="i-ri-download-cloud-2-line h-4 w-4 text-gray-500" aria-hidden="true" />
+                <span className="i-ri-download-cloud-2-line size-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />
@@ -293,10 +293,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
               <button
                 type="button"
                 aria-label={openInNewTabLabel}
-                className="absolute top-6 right-16 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
+                className="absolute top-6 right-16 flex size-8 cursor-pointer items-center justify-center rounded-lg"
                 onClick={openInNewTab}
               >
-                <span className="i-ri-add-box-line h-4 w-4 text-gray-500" aria-hidden="true" />
+                <span className="i-ri-add-box-line size-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />
@@ -313,7 +313,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
                 className="absolute top-6 right-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
                 onClick={onCancel}
               >
-                <span className="i-ri-close-line h-4 w-4 text-gray-500" aria-hidden="true" />
+                <span className="i-ri-close-line size-4 text-gray-500" aria-hidden="true" />
               </button>
             )}
           />

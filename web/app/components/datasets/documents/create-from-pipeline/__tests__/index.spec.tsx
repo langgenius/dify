@@ -4,7 +4,7 @@ import type { Node } from '@/app/components/workflow/types'
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, DocumentItem, FileItem } from '@/models/datasets'
 import type { InitialDocumentDetail, OnlineDriveFile } from '@/models/pipeline'
-import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
@@ -19,6 +19,7 @@ import {
   useOnlineDrive,
   useWebsiteCrawl,
 } from '../hooks'
+import CreateFromPipeline from '../index'
 import { StepOneContent, StepThreeContent, StepTwoContent } from '../steps'
 import { StepOnePreview, StepTwoPreview } from '../steps/preview-panel'
 import {
@@ -37,14 +38,44 @@ const mockPlan = {
   type: 'professional',
 }
 
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+const mockRouterReplace = vi.fn()
+
 vi.mock('@/context/provider-context', () => ({
   useProviderContextSelector: (selector: (state: { plan: typeof mockPlan, enableBilling: boolean }) => unknown) =>
     selector({ plan: mockPlan, enableBilling: true }),
 }))
 
+let mockCurrentUserId = 'user-1'
+let mockWorkspacePermissionKeys = ['dataset.create_and_management']
+let mockIsLoadingWorkspacePermissionKeys = false
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: {
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+    isLoadingWorkspacePermissionKeys: boolean
+  }) => unknown) => {
+    return selector({
+      userProfile: { id: mockCurrentUserId },
+      workspacePermissionKeys: mockWorkspacePermissionKeys,
+      isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    })
+  },
+}))
+
+vi.mock('@/service/use-billing', () => ({
+  useCurrentPlanVectorSpace: () => ({
+    data: {
+      size: mockPlan.usage.vectorSpace,
+      limit: mockPlan.total.vectorSpace,
+    },
+    isFetching: false,
+  }),
+}))
+
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id: string } }) => unknown) =>
-    selector({ dataset: { pipeline_id: 'test-pipeline-id' } }),
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { id: string, pipeline_id: string, permission_keys: string[] } }) => unknown) =>
+    selector({ dataset: { id: 'test-dataset-id', pipeline_id: 'test-pipeline-id', permission_keys: mockDatasetPermissionKeys } }),
 }))
 
 // Mock API services
@@ -94,7 +125,7 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
   useRouter: () => ({
     push: vi.fn(),
-    replace: vi.fn(),
+    replace: mockRouterReplace,
     back: vi.fn(),
   }),
   usePathname: () => '/datasets/test-dataset-id/documents/create-from-pipeline',
@@ -222,6 +253,26 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
   type: 'file',
   ...overrides,
 } as OnlineDriveFile)
+
+beforeEach(() => {
+  mockDatasetPermissionKeys = ['dataset.acl.use']
+  mockCurrentUserId = 'user-1'
+  mockWorkspacePermissionKeys = ['dataset.create_and_management']
+  mockIsLoadingWorkspacePermissionKeys = false
+  mockRouterReplace.mockClear()
+})
+
+describe('CreateFromPipeline permission guard', () => {
+  it('should redirect when existing dataset cannot add documents', async () => {
+    mockDatasetPermissionKeys = ['dataset.acl.edit']
+
+    render(<CreateFromPipeline />)
+
+    await waitFor(() => {
+      expect(mockRouterReplace).toHaveBeenCalledWith('/datasets/test-dataset-id/documents')
+    })
+  })
+})
 
 // Hook Tests - useAddDocumentsSteps
 describe('useAddDocumentsSteps', () => {

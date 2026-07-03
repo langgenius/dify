@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -31,21 +32,21 @@ class TestWebhookServiceExtractionFallbacks:
         self,
         flask_app: Flask,
         monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        warning_mock = MagicMock()
-        monkeypatch.setattr(service_module.logger, "warning", warning_mock)
         webhook_trigger = MagicMock()
 
-        with flask_app.test_request_context(
-            "/webhook",
-            method="POST",
-            headers={"Content-Type": "application/vnd.custom"},
-            data="plain content",
-        ):
-            result = WebhookService.extract_webhook_data(webhook_trigger)
+        with caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"):
+            with flask_app.test_request_context(
+                "/webhook",
+                method="POST",
+                headers={"Content-Type": "application/vnd.custom"},
+                data="plain content",
+            ):
+                result = WebhookService.extract_webhook_data(webhook_trigger)
 
-        assert result["body"] == {"raw": "plain content"}
-        warning_mock.assert_called_once()
+            assert result["body"] == {"raw": "plain content"}
+            assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
     def test_extract_webhook_data_should_raise_for_request_too_large(
         self,
@@ -171,14 +172,13 @@ class TestWebhookServiceValidationAndConversion:
     def test_validate_json_value_should_return_original_for_unmapped_supported_segment_type(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        warning_mock = MagicMock()
-        monkeypatch.setattr(service_module.logger, "warning", warning_mock)
+        with caplog.at_level(logging.WARNING, logger="services.trigger.webhook_service"):
+            result = WebhookService._validate_json_value("param", {"x": 1}, "unsupported-type")
 
-        result = WebhookService._validate_json_value("param", {"x": 1}, "unsupported-type")
-
-        assert result == {"x": 1}
-        warning_mock.assert_called_once()
+            assert result == {"x": 1}
+            assert any(r.levelno >= logging.WARNING for r in caplog.records)
 
     def test_validate_and_convert_value_should_wrap_conversion_errors(self) -> None:
         with pytest.raises(ValueError, match="validation failed"):

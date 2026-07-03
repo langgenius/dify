@@ -1,10 +1,14 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, renderHook } from '@testing-library/react'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
+
+const useTimestampMock = vi.hoisted(() =>
+  vi.fn(() => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') })),
+)
 
 vi.mock('@/service/base', () => ({
   sseGet: vi.fn(),
@@ -31,7 +35,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') }),
+  default: useTimestampMock,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -68,6 +72,7 @@ type HookCallbacks = {
   onWorkflowPaused: (workflowPaused: Record<string, unknown>) => void
   onTTSChunk: (messageId: string, audio: string) => void
   onTTSEnd: (messageId: string, audio: string) => void
+  onReasoning: (chunk: { data: { message_id?: string, reasoning: string, node_id?: string, is_final?: boolean } }) => void
 }
 type UseChatFormSettings = NonNullable<Parameters<typeof useChat>[1]>
 
@@ -88,6 +93,21 @@ describe('useChat', () => {
     expect(result.current.chatList).toEqual([])
     expect(result.current.isResponding).toBe(false)
     expect(result.current.suggestedQuestions).toEqual([])
+  })
+
+  it('should pass timestamp options to timestamp formatter', () => {
+    renderHook(() => useChat(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { timezone: 'UTC' },
+    ))
+
+    expect(useTimestampMock).toHaveBeenCalledWith({ timezone: 'UTC' })
   })
 
   it('should initialize with opening statement and suggested questions', () => {
@@ -333,6 +353,74 @@ describe('useChat', () => {
       expect(result.current.chatList[1]!.id).toBe('m-1')
     })
 
+    it('should process inputs with the per-send input form override', () => {
+      vi.mocked(ssePost).mockImplementation(async () => undefined)
+      const { result } = renderHook(() => useChat(undefined, {
+        inputs: {},
+        inputsForm: [{
+          type: InputVarType.textInput,
+          label: 'City',
+          variable: 'city',
+          required: true,
+          hide: false,
+        }],
+      }))
+
+      act(() => {
+        result.current.handleSend('test-url', {
+          query: 'hello',
+          inputs: {
+            enabled: undefined,
+          },
+          overrideInputsForm: [{
+            type: InputVarType.checkbox,
+            label: 'Enabled',
+            variable: 'enabled',
+            required: true,
+            hide: false,
+          }],
+        }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            inputs: {
+              enabled: false,
+            },
+          }),
+        }),
+        expect.any(Object),
+      )
+    })
+
+    it('should settle a send once when the SSE stream errors', () => {
+      let callbacks: HookCallbacks
+      const onSendSettled = vi.fn()
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hello' }, {
+          onSendSettled,
+        })
+      })
+
+      act(() => {
+        callbacks.onError()
+        callbacks.onCompleted(true)
+      })
+
+      expect(result.current.isResponding).toBe(false)
+      expect(onSendSettled).toHaveBeenCalledTimes(1)
+      expect(onSendSettled).toHaveBeenCalledWith(true)
+    })
+
     it('should handle onThought and different workflow events', async () => {
       let callbacks: HookCallbacks
 
@@ -411,7 +499,7 @@ describe('useChat', () => {
 
         // Human input required
         callbacks.onHumanInputRequired({ data: { node_id: 'n-human' } })
-        callbacks.onHumanInputRequired({ data: { node_id: 'n-human', updated: true } }) // update existing
+        callbacks.onHumanInputRequired({ data: { node_id: 'n-human', updated: true, form_content: '{{#$output.answer#}}', inputs: [] } }) // update existing
 
         // setTimeout for timeout form
         callbacks.onHumanInputFormTimeout({ data: { node_id: 'n-human', expiration_time: 123456 } })
@@ -437,6 +525,10 @@ describe('useChat', () => {
       const lastResponse = result.current.chatList[1]
       expect(lastResponse!.humanInputFormDataList).toHaveLength(0) // Removed when filled
       expect(lastResponse!.humanInputFilledFormDataList).toHaveLength(2)
+      expect(lastResponse!.humanInputFilledFormDataList![0]).toEqual(expect.objectContaining({
+        form_content: '{{#$output.answer#}}',
+        inputs: [],
+      }))
       expect(sseGet).toHaveBeenCalled() // from workflowPaused
       expect(lastResponse!.annotation?.id).toBe('anno-1')
       expect(lastResponse!.content).toBe('Replaced content')
@@ -487,6 +579,7 @@ describe('useChat', () => {
           answer_tokens: 10,
           message_tokens: 5,
           provider_response_latency: 0.5,
+          workflow_run_id: 'workflow-run-from-history',
           inputs: {},
           query: 'hi',
         }],
@@ -521,7 +614,7 @@ describe('useChat', () => {
 
       expect(onGetConversationMessages).toHaveBeenCalled()
       expect(onGetSuggestedQuestions).toHaveBeenCalled()
-      expect(onConversationComplete).toHaveBeenCalledWith('c-1')
+      expect(onConversationComplete).toHaveBeenCalledWith('c-1', 'workflow-run-from-history')
 
       const updatedResponse = result.current.chatList[1]
       expect(updatedResponse!.content).toBe('Updated answer from history') // Fetched from mock
@@ -680,6 +773,29 @@ describe('useChat', () => {
       const lastResponse = result.current.chatList[1]
       expect(lastResponse!.workflowProcess?.tracing).toBeDefined()
       expect(lastResponse!.workflowProcess?.status).toBe('failed')
+    })
+
+    it('should store workflow finished error on workflow process state', async () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'failed workflow' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-err', task_id: 't-err' })
+        callbacks.onWorkflowFinished({ data: { status: 'failed', error: 'Invalid upload file' } })
+      })
+
+      const lastResponse = result.current.chatList[1]
+      expect(lastResponse!.workflowProcess?.status).toBe('failed')
+      expect(lastResponse!.workflowProcess?.error).toBe('Invalid upload file')
     })
 
     it('should insert and then replace child QA when sending with parent_message_id', () => {
@@ -1059,6 +1175,44 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(false)
     })
 
+    it('should settle a resume once when the event stream errors', () => {
+      let callbacks: HookCallbacks
+      const onSendSettled = vi.fn()
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-resume-error',
+          content: 'initial',
+          isAnswer: true,
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleResume('m-resume-error', 'wr-error', {
+          isPublicAPI: true,
+          onSendSettled,
+        })
+      })
+
+      act(() => {
+        callbacks.onError()
+        callbacks.onCompleted(true)
+      })
+
+      expect(onSendSettled).toHaveBeenCalledTimes(1)
+      expect(onSendSettled).toHaveBeenCalledWith(true)
+      expect(result.current.isResponding).toBe(false)
+    })
+
     it('should abort previous workflow event stream when resuming again', () => {
       const callbacksList: HookCallbacks[] = []
       vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
@@ -1168,7 +1322,7 @@ describe('useChat', () => {
         await callbacks.onCompleted()
       })
 
-      expect(onConversationComplete).toHaveBeenCalledWith('c-resume')
+      expect(onConversationComplete).toHaveBeenCalledWith('c-resume', 'wr-1')
       expect(onGetSuggestedQuestions).toHaveBeenCalled()
       expect(result.current.suggestedQuestions).toEqual([])
     })
@@ -1266,7 +1420,7 @@ describe('useChat', () => {
 
   describe('createAudioPlayerManager branch cases', () => {
     it('should handle ttsUrl generation for appId with installed apps', async () => {
-      vi.mocked(usePathname).mockReturnValue('/explore/installed/app')
+      vi.mocked(usePathname).mockReturnValue('/installed/app-1')
       vi.mocked(useParams).mockReturnValue({ appId: 'app-1' } as ReturnType<typeof useParams>)
 
       let callbacks: HookCallbacks
@@ -1441,6 +1595,45 @@ describe('useChat', () => {
       renderHook(() => useChat(undefined, undefined, undefined, undefined, true, clearChatListCallback))
 
       expect(clearChatListCallback).toHaveBeenCalledWith(false)
+    })
+
+    it('should keep the first send after a reset acknowledgement', () => {
+      let clearChatList = true
+      const clearChatListCallback = vi.fn((nextClearChatList: boolean) => {
+        clearChatList = nextClearChatList
+      })
+      const { rerender, result } = renderHook(() => useChat(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        clearChatList,
+        clearChatListCallback,
+      ))
+
+      expect(clearChatListCallback).toHaveBeenCalledWith(false)
+
+      rerender()
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'first after reset' }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            query: 'first after reset',
+          }),
+        }),
+        expect.any(Object),
+      )
+      expect(result.current.chatList).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          content: 'first after reset',
+          isAnswer: false,
+        }),
+      ]))
     })
   })
 
@@ -2405,5 +2598,99 @@ describe('useChat', () => {
       result.current.handleAnnotationRemoved(1)
     })
     expect(result.current.chatList[1]!.annotation?.id).toBe('')
+  })
+
+  describe('reasoning (separated mode)', () => {
+    it('accumulates reasoning deltas per node and marks finished on is_final (handleSend)', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hi' }, {})
+      })
+      act(() => {
+        callbacks.onData('answer', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })
+      })
+
+      act(() => {
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'let me ', node_id: 'llm' } })
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'think', node_id: 'llm' } })
+      })
+
+      const responseItem = result.current.chatList[1]!
+      expect(responseItem.reasoningContent).toEqual({ llm: 'let me think' })
+      expect(responseItem.reasoningFinished).toBeUndefined()
+      // answer stays clean — reasoning never leaks into content
+      expect(responseItem.content).toBe('answer')
+
+      act(() => {
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: '', node_id: 'llm', is_final: true } })
+      })
+      expect(result.current.chatList[1]!.reasoningContent).toEqual({ llm: 'let me think' })
+      expect(result.current.chatList[1]!.reasoningFinished).toBe(true)
+    })
+
+    it('keys reasoning by node and falls back to "_" when node_id is absent (handleSend)', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hi' }, {})
+      })
+      act(() => {
+        callbacks.onData('answer', true, { messageId: 'm-1', conversationId: 'c-1', taskId: 't-1' })
+      })
+
+      act(() => {
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'a', node_id: 'llm-1' } })
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'b', node_id: 'llm-2' } })
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'c' } })
+      })
+
+      expect(result.current.chatList[1]!.reasoningContent).toEqual({ 'llm-1': 'a', 'llm-2': 'b', '_': 'c' })
+    })
+
+    it('accumulates reasoning onto an existing answer node on resume (handleResume / sseGet)', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-1',
+          content: 'initial',
+          isAnswer: true,
+          message_files: [],
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+
+      act(() => {
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'resumed ', node_id: 'llm' } })
+        callbacks.onReasoning({ data: { message_id: 'm-1', reasoning: 'thought', node_id: 'llm', is_final: true } })
+      })
+
+      const responseItem = result.current.chatList.find(item => item.id === 'm-1')!
+      expect(responseItem.reasoningContent).toEqual({ llm: 'resumed thought' })
+      expect(responseItem.reasoningFinished).toBe(true)
+    })
   })
 })

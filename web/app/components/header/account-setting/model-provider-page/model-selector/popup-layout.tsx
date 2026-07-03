@@ -47,7 +47,7 @@ export function ModelSelectorSearchHeader({
       >
         <span
           className={`
-            mr-0.5 i-ri-search-line h-4 w-4 shrink-0
+            mr-0.5 i-ri-search-line size-4 shrink-0
             ${inputValue ? 'text-text-tertiary' : 'text-text-quaternary'}
           `}
           aria-hidden="true"
@@ -66,7 +66,7 @@ export function ModelSelectorSearchHeader({
               onClick={() => onInputValueChange('')}
               onPointerDown={event => event.preventDefault()}
             >
-              <span className="i-custom-vender-solid-general-x-circle h-3.5 w-3.5" aria-hidden="true" />
+              <span className="i-custom-vender-solid-general-x-circle size-3.5" aria-hidden="true" />
             </button>
           )
         }
@@ -93,7 +93,7 @@ export function ModelSelectorScrollBody({
       >
         <ScrollAreaContent className="min-w-0 overflow-x-hidden">{children}</ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="z-2 data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+      <ScrollAreaScrollbar className="z-2">
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollAreaRoot>
@@ -113,6 +113,32 @@ export function CompatibleModelsNotice() {
   )
 }
 
+type ShowIncompatibleModelsButtonProps = {
+  showIncompatibleModels: boolean
+  onClick: () => void
+}
+
+export function ShowIncompatibleModelsButton({
+  showIncompatibleModels,
+  onClick,
+}: ShowIncompatibleModelsButtonProps) {
+  const { t } = useTranslation()
+
+  return (
+    <button
+      type="button"
+      className="flex h-10 w-full cursor-pointer items-center px-4 text-left system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+      onClick={onClick}
+    >
+      <span className="min-w-0 truncate">
+        {showIncompatibleModels
+          ? t('modelProvider.selector.hideIncompatibleModels', { ns: 'common' })
+          : t('modelProvider.selector.showIncompatibleModels', { ns: 'common' })}
+      </span>
+    </button>
+  )
+}
+
 type ModelProviderSettingsFooterProps = {
   onOpenSettings: () => void
 }
@@ -129,7 +155,7 @@ export function ModelProviderSettingsFooter({
         className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
         onClick={onOpenSettings}
       >
-        <span className="i-ri-equalizer-2-line h-4 w-4 shrink-0" />
+        <span className="i-ri-equalizer-2-line size-4 shrink-0" />
         <span className="system-xs-medium">{t('modelProvider.selector.modelProviderSettings', { ns: 'common' })}</span>
       </button>
     </div>

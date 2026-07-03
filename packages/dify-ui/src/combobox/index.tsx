@@ -1,11 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { formLabelClassName, textControlCompoundFocusClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
@@ -31,7 +32,6 @@ export type ComboboxRootHighlightEventDetails = BaseCombobox.Root.HighlightEvent
 
 const comboboxPopupClassName = [
   'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
-  'data-side-top:origin-bottom data-side-bottom:origin-top data-side-left:origin-right data-side-right:origin-left',
 ]
 
 const comboboxListClassName = [
@@ -40,7 +40,7 @@ const comboboxListClassName = [
 ]
 
 const comboboxItemClassName = [
-  'mx-1 grid min-h-8 cursor-pointer select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden transition-colors',
+  'grid min-h-8 cursor-pointer select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden transition-colors',
   'hover:bg-state-base-hover-alt hover:text-text-primary',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-selected:text-text-primary',
@@ -50,9 +50,9 @@ const comboboxItemClassName = [
 
 const comboboxTriggerVariants = cva(
   [
-    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden transition-colors',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-open:bg-state-base-hover-alt',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden transition-colors',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+    'focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active',
     'data-placeholder:text-components-input-text-placeholder',
     'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
@@ -80,7 +80,7 @@ type ComboboxTriggerProps
     & VariantProps<typeof comboboxTriggerVariants>
     & {
       className?: string
-      icon?: ReactNode | false
+      icon?: React.ReactNode | false
     }
 
 export function ComboboxTrigger({
@@ -101,7 +101,7 @@ export function ComboboxTrigger({
         {children}
       </span>
       {icon !== false && (
-        <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
+        <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-popup-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
           {icon ?? <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />}
         </BaseCombobox.Icon>
       )}
@@ -113,9 +113,9 @@ const comboboxInputGroupVariants = cva(
   [
     'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
+    textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
-    'data-open:border-components-input-border-active data-open:bg-components-input-bg-active',
+    'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
     'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal',
@@ -198,7 +198,7 @@ const comboboxControlVariants = cva(
   [
     'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent group-data-disabled/combobox:focus-visible:ring-0',
     'group-data-readonly/combobox:hidden',
@@ -207,9 +207,9 @@ const comboboxControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'mr-1 size-4',
-        medium: 'mr-1.5 size-5',
-        large: 'mr-2 size-5',
+        small: 'me-1 size-4',
+        medium: 'me-1.5 size-5',
+        large: 'me-2 size-5',
       },
     },
     defaultVariants: {
@@ -286,7 +286,7 @@ export function ComboboxIcon({
 }
 
 type ComboboxContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -365,7 +365,7 @@ export function ComboboxItem({
   )
 }
 
-export type ComboboxItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type ComboboxItemTextProps = React.ComponentProps<'span'>
 
 export function ComboboxItemText({
   className,
@@ -383,7 +383,7 @@ export function ComboboxItemIndicator({
   className,
   children,
   ...props
-}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: ReactNode }) {
+}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: React.ReactNode }) {
   return (
     <BaseCombobox.ItemIndicator
       className={cn(overlayIndicatorClassName, className)}
@@ -400,7 +400,7 @@ export function ComboboxLabel({
 }: BaseCombobox.Label.Props) {
   return (
     <BaseCombobox.Label
-      className={cn('mb-1 block text-text-secondary system-sm-medium', className)}
+      className={cn(formLabelClassName, className)}
       {...props}
     />
   )
@@ -436,7 +436,7 @@ export function ComboboxEmpty({
 }: BaseCombobox.Empty.Props) {
   return (
     <BaseCombobox.Empty
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
+      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0', className)}
       {...props}
     />
   )
@@ -488,7 +488,7 @@ export function ComboboxChipRemove({
     <BaseCombobox.ChipRemove
       type={type}
       aria-label={props['aria-label'] ?? (props['aria-labelledby'] ? undefined : 'Remove selected item')}
-      className={cn('flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active', className)}
+      className={cn('flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid', className)}
       {...props}
     >
       {children ?? <span className="i-ri-close-line size-3" aria-hidden="true" />}

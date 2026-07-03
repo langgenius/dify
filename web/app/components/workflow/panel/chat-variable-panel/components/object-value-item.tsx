@@ -9,11 +9,11 @@ import ActionButton from '@/app/components/base/action-button'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
-type Props = {
+type Props = Readonly<{
   index: number
   list: any[]
   onChange: (list: any[]) => void
-}
+}>
 
 const typeList = [
   ChatVarType.String,
@@ -53,7 +53,7 @@ const ObjectValueItem: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft[index].type = type
         if (type === ChatVarType.Number)
-          draft[index].value = isNaN(Number(draft[index].value)) ? undefined : Number(draft[index].value)
+          draft[index].value = Number.isNaN(Number(draft[index].value)) ? undefined : Number(draft[index].value)
         else
           draft[index].value = draft[index].value ? String(draft[index].value) : undefined
       })
@@ -64,7 +64,7 @@ const ObjectValueItem: FC<Props> = ({
   const handleValueChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const newList = produce(list, (draft: any[]) => {
-        draft[index].value = draft[index].type === ChatVarType.String ? e.target.value : isNaN(Number(e.target.value)) ? undefined : Number(e.target.value)
+        draft[index].value = draft[index].type === ChatVarType.String ? e.target.value : Number.isNaN(Number(e.target.value)) ? undefined : Number(e.target.value)
       })
       onChange(newList)
     }
@@ -131,7 +131,7 @@ const ObjectValueItem: FC<Props> = ({
               className="group hover:bg-state-destructive-hover!"
               onClick={handleItemRemove(index)}
             >
-              <span className="i-ri-delete-bin-line h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
+              <span className="i-ri-delete-bin-line size-4 text-text-tertiary group-hover:text-text-destructive" />
             </ActionButton>
           </div>
         )}

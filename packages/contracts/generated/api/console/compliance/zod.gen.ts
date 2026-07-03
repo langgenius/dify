@@ -2,6 +2,11 @@
 
 import * as z from 'zod'
 
+/**
+ * ComplianceDownloadResponse
+ */
+export const zComplianceDownloadResponse = z.record(z.string(), z.unknown())
+
 export const zGetComplianceDownloadQuery = z.object({
   doc_name: z.string(),
 })
@@ -9,4 +14,4 @@ export const zGetComplianceDownloadQuery = z.object({
 /**
  * Success
  */
-export const zGetComplianceDownloadResponse = z.record(z.string(), z.unknown())
+export const zGetComplianceDownloadResponse = zComplianceDownloadResponse

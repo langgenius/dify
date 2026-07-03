@@ -376,7 +376,7 @@ describe('InstallBundle', () => {
       // Change step to installed
       fireEvent.click(screen.getByTestId('change-to-installed'))
 
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
     })
 
     it('should maintain installPlugin title for readyToInstall step', () => {
@@ -464,7 +464,7 @@ describe('InstallBundle', () => {
 
       fireEvent.click(screen.getByTestId('change-to-installed'))
 
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
     })
 
     it('should return installPlugin title for all other steps', () => {
@@ -536,7 +536,7 @@ describe('InstallBundle', () => {
       fireEvent.click(screen.getByTestId('change-to-installed'))
 
       expect(screen.getByTestId('current-step')).toHaveTextContent(InstallStep.installed)
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
     })
 
     it('should handle step change to uploadFailed', () => {
@@ -815,7 +815,7 @@ describe('InstallBundle', () => {
 
       // Change to installed
       fireEvent.click(screen.getByTestId('change-to-installed'))
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
 
       // Change to uploadFailed
       fireEvent.click(screen.getByTestId('change-to-upload-failed'))
@@ -909,7 +909,7 @@ describe('InstallBundle', () => {
       // ReadyToInstall should still exist
       expect(screen.getByTestId('ready-to-install')).toBeInTheDocument()
       // Title should be updated
-      expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+      expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
     })
   })
 })

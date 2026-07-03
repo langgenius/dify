@@ -2,6 +2,7 @@
  * @vitest-environment node
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { resolveCookieRewriteLocalScopeKey, toScopedLocalCookieName } from './cookies'
 import { buildUpstreamUrl, createDevProxyApp, isAllowedDevOrigin } from './server'
 
 describe('dev proxy server', () => {
@@ -153,6 +154,66 @@ describe('dev proxy server', () => {
       throw new Error('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe('access_token=abc; refresh_token=def')
+  })
+
+  // Scenario: scoped Dify auth cookies should prevent stale local cookies from leaking across targets.
+  it('should proxy target-scoped auth cookies and override stale CSRF headers', async () => {
+    // Arrange
+    const cookieRewrite = {
+      hostPrefixCookies: ['access_token', 'csrf_token', 'refresh_token'],
+      localCookieScope: 'target-origin' as const,
+      csrfHeader: {
+        cookieName: 'csrf_token',
+        headerName: 'X-CSRF-Token',
+      },
+    }
+    const targetUrl = new URL('https://cloud.example.com')
+    const localScopeKey = resolveCookieRewriteLocalScopeKey(cookieRewrite, targetUrl)!
+    const accessTokenCookieName = toScopedLocalCookieName('access_token', localScopeKey)
+    const csrfTokenCookieName = toScopedLocalCookieName('csrf_token', localScopeKey)
+    const otherScopeAccessTokenCookieName = toScopedLocalCookieName('access_token', 'other')
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('ok', {
+      status: 200,
+      headers: [
+        ['set-cookie', '__Host-access_token=next; Path=/console/api; Domain=cloud.example.com; Secure; SameSite=None'],
+      ],
+    }))
+    const app = createDevProxyApp({
+      routes: [
+        {
+          paths: '/console/api',
+          target: targetUrl.origin,
+          cookieRewrite,
+        },
+      ],
+      fetchImpl,
+    })
+
+    // Act
+    const response = await app.request('http://127.0.0.1:5001/console/api/apps', {
+      headers: {
+        'Cookie': [
+          `${accessTokenCookieName}=current-access`,
+          `${csrfTokenCookieName}=current-csrf`,
+          'access_token=legacy-access',
+          'csrf_token=legacy-csrf',
+          `${otherScopeAccessTokenCookieName}=other-access`,
+          'theme=dark',
+        ].join('; '),
+        'X-CSRF-Token': 'legacy-csrf',
+      },
+    })
+
+    // Assert
+    const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
+    if (!(requestHeaders instanceof Headers))
+      throw new Error('Expected proxy request headers to be Headers')
+
+    expect(requestHeaders.get('cookie')).toBe('__Host-access_token=current-access; __Host-csrf_token=current-csrf; theme=dark')
+    expect(requestHeaders.get('x-csrf-token')).toBe('current-csrf')
+    expect(response.headers.getSetCookie()).toEqual([
+      `${accessTokenCookieName}=next; Path=/; SameSite=Lax`,
+    ])
   })
 
   // Scenario: custom route paths should support independent upstream targets.

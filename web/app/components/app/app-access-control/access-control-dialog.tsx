@@ -32,7 +32,7 @@ const AccessControlDialog = ({
           className,
         )}
       >
-        <DialogCloseButton className="top-5 right-5 h-8 w-8" />
+        <DialogCloseButton className="top-5 right-5 size-8" />
         {children}
       </DialogContent>
     </Dialog>

@@ -2,7 +2,7 @@ import base64
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, override
 
 from sqlalchemy import select
 
@@ -18,6 +18,7 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from extensions.otel import trace_span
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
@@ -72,21 +73,27 @@ class _LazyEmbeddings(Embeddings):
             self._real = CacheEmbedding(embedding_model)
         return self._real
 
+    @override
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         return self._ensure().embed_documents(texts)
 
+    @override
     def embed_multimodal_documents(self, multimodel_documents: list[dict[str, Any]]) -> list[list[float]]:
         return self._ensure().embed_multimodal_documents(multimodel_documents)
 
+    @override
     def embed_query(self, text: str) -> list[float]:
         return self._ensure().embed_query(text)
 
+    @override
     def embed_multimodal_query(self, multimodel_document: dict[str, Any]) -> list[float]:
         return self._ensure().embed_multimodal_query(multimodel_document)
 
+    @override
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
         return await self._ensure().aembed_documents(texts)
 
+    @override
     async def aembed_query(self, text: str) -> list[float]:
         return await self._ensure().aembed_query(text)
 
@@ -238,6 +245,10 @@ class Vector:
 
     def search_by_vector(self, query: str, **kwargs: Any) -> list[Document]:
         query_vector = self._embeddings.embed_query(query)
+        return self._search_by_vector_traced(query_vector, **kwargs)
+
+    @trace_span()
+    def _search_by_vector_traced(self, query_vector: list[float], **kwargs) -> list[Document]:
         return self._vector_processor.search_by_vector(query_vector, **kwargs)
 
     def search_by_file(self, file_id: str, **kwargs: Any) -> list[Document]:
@@ -254,7 +265,7 @@ class Vector:
                 "file_id": file_id,
             }
         )
-        return self._vector_processor.search_by_vector(multimodal_vector, **kwargs)
+        return self._search_by_vector_traced(multimodal_vector, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)

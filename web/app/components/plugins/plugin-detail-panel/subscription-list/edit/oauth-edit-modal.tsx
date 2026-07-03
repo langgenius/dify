@@ -15,11 +15,11 @@ import { useUpdateTriggerSubscription } from '@/service/use-triggers'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
-type Props = {
+type Props = Readonly<{
   onClose: () => void
   subscription: TriggerSubscription
   pluginDetail?: PluginDetail
-}
+}>
 
 const normalizeFormType = (type: string): FormTypeEnum => {
   switch (type) {
@@ -168,7 +168,7 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
             <DialogTitle data-testid="modal-title" className="title-2xl-semi-bold text-text-primary">
               {title}
             </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 h-8 w-8 rounded-lg" />
+            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginDetail && (

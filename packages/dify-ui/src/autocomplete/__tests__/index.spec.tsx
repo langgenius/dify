@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   Autocomplete,
@@ -6,19 +6,19 @@ import {
   AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteGroup,
+  AutocompleteGroupLabel,
   AutocompleteInput,
   AutocompleteInputGroup,
   AutocompleteItem,
   AutocompleteItemIndicator,
   AutocompleteItemText,
-  AutocompleteLabel,
   AutocompleteList,
   AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
 } from '../index'
 
-const renderWithSafeViewport = (ui: ReactNode) => render(
+const renderWithSafeViewport = (ui: React.ReactNode) => render(
   <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
     {ui}
   </div>,
@@ -31,13 +31,13 @@ const renderAutocomplete = ({
   open = false,
   defaultValue = 'workflow',
 }: {
-  children?: ReactNode
+  children?: React.ReactNode
   open?: boolean
   defaultValue?: string
 } = {}) => renderWithSafeViewport(
   <Autocomplete open={open} defaultValue={defaultValue} items={['workflow', 'dataset']}>
     {children ?? (
-      <>
+      <React.Fragment>
         <AutocompleteInputGroup data-testid="input-group">
           <AutocompleteInput aria-label="Search suggestions" data-testid="input" />
           <AutocompleteClear data-testid="clear" />
@@ -65,7 +65,7 @@ const renderAutocomplete = ({
           </AutocompleteList>
           <AutocompleteEmpty data-testid="empty">No suggestions</AutocompleteEmpty>
         </AutocompleteContent>
-      </>
+      </React.Fragment>
     )}
   </Autocomplete>,
 )
@@ -150,7 +150,7 @@ describe('Autocomplete wrappers', () => {
     it('should rely on aria-labelledby when provided instead of injecting fallback labels', async () => {
       const screen = await renderAutocomplete({
         children: (
-          <>
+          <React.Fragment>
             <span id="clear-label">Clear from label</span>
             <span id="trigger-label">Trigger from label</span>
             <AutocompleteInputGroup>
@@ -158,7 +158,7 @@ describe('Autocomplete wrappers', () => {
               <AutocompleteClear aria-labelledby="clear-label" />
               <AutocompleteTrigger aria-labelledby="trigger-label" />
             </AutocompleteInputGroup>
-          </>
+          </React.Fragment>
         ),
       })
 
@@ -218,6 +218,8 @@ describe('Autocomplete wrappers', () => {
       await expect.element(screen.getByText('Workflow')).toHaveClass('system-sm-medium')
       await expect.element(screen.getByTestId('status')).toHaveClass('text-text-tertiary')
       await expect.element(screen.getByTestId('empty')).toHaveClass('system-sm-regular')
+      await expect.element(screen.getByTestId('empty')).toHaveClass('empty:p-0')
+      expect(screen.getByTestId('empty').element().getBoundingClientRect().height).toBe(0)
       expect(screen.getByText('Workflow').element().parentElement?.querySelector('.i-ri-arrow-right-line')).toHaveAttribute('aria-hidden', 'true')
     })
 
@@ -230,7 +232,7 @@ describe('Autocomplete wrappers', () => {
           <AutocompleteContent popupProps={{ 'role': 'dialog', 'aria-label': 'autocomplete popup' }}>
             <AutocompleteList role="listbox" aria-label="autocomplete list">
               <AutocompleteGroup items={['workflow']}>
-                <AutocompleteLabel className="custom-label">Resources</AutocompleteLabel>
+                <AutocompleteGroupLabel className="custom-label">Resources</AutocompleteGroupLabel>
                 <AutocompleteSeparator className="custom-separator" data-testid="separator" />
                 <AutocompleteItem value="workflow" className="custom-item">
                   <AutocompleteItemText className="custom-text">Workflow</AutocompleteItemText>
@@ -247,6 +249,35 @@ describe('Autocomplete wrappers', () => {
       await expect.element(screen.getByRole('option', { name: 'Workflow' })).toHaveClass('custom-item')
       await expect.element(screen.getByText('Workflow')).toHaveClass('custom-text')
       await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
+    })
+
+    it('should navigate function-rendered items with arrow keys', async () => {
+      const screen = await renderWithSafeViewport(
+        <Autocomplete open defaultValue="" items={['workflow', 'dataset', 'app']}>
+          <AutocompleteInputGroup>
+            <AutocompleteInput aria-label="Search resources" />
+          </AutocompleteInputGroup>
+          <AutocompleteContent>
+            <AutocompleteList>
+              {(item: string) => (
+                <AutocompleteItem key={item} value={item}>
+                  <AutocompleteItemText>{item}</AutocompleteItemText>
+                </AutocompleteItem>
+              )}
+            </AutocompleteList>
+          </AutocompleteContent>
+        </Autocomplete>,
+      )
+
+      const input = asHTMLElement(screen.getByRole('combobox', { name: 'Search resources' }).element())
+
+      input.focus()
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      await expect.element(screen.getByRole('option', { name: 'workflow' })).toHaveAttribute('data-highlighted')
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+
+      await expect.element(screen.getByRole('option', { name: 'dataset' })).toHaveAttribute('data-highlighted')
     })
   })
 })

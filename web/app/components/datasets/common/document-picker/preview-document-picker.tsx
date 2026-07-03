@@ -15,12 +15,12 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import FileIcon from '../document-file-icon'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value?: DocumentItem
   files: DocumentItem[]
   onChange: (value: DocumentItem) => void
-}
+}>
 
 const PreviewDocumentPicker: FC<Props> = ({
   className,
@@ -50,7 +50,7 @@ const PreviewDocumentPicker: FC<Props> = ({
       <PopoverTrigger
         nativeButton={false}
         render={(
-          <div className={cn('flex h-6 items-center rounded-md px-1 select-none hover:bg-state-base-hover', open && 'bg-state-base-hover', className)}>
+          <div className={cn('flex h-6 items-center rounded-md px-1 select-none hover:bg-state-base-hover data-popup-open:bg-state-base-hover', className)}>
             <FileIcon name={name} extension={extension} size="lg" />
             <div className="ml-1 flex flex-col items-start">
               <div className="flex items-center space-x-0.5">

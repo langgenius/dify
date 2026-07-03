@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
+import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo, VersionProps } from '../../../types'
 import type { ExposeRefs } from './install-multi'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -18,18 +18,19 @@ import {
 } from '../../../types'
 import checkTaskStatus from '../../base/check-task-status'
 import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
+import { getPluginKey } from './hooks/use-install-multi-state'
 import InstallMulti from './install-multi'
 
 const i18nPrefix = 'installModal'
 
-type Props = {
+type Props = Readonly<{
   allPlugins: Dependency[]
   onStartToInstall?: () => void
-  onInstalled: (plugins: Plugin[], installStatus: InstallStatus[]) => void
+  onInstalled: (plugins: Plugin[], installStatus: InstallStatus[], versionInfo: VersionProps[]) => void
   onCancel: () => void
   isFromMarketPlace?: boolean
   isHideButton?: boolean
-}
+}>
 
 const Install: FC<Props> = ({
   allPlugins,
@@ -73,6 +74,16 @@ const Install: FC<Props> = ({
   }, [onCancel, stop])
 
   const { handleRefetch } = usePluginTaskList()
+  const getSelectedVersionInfo = useCallback(() => {
+    return selectedPlugins.map((plugin) => {
+      const pluginDetail = installedInfo?.[getPluginKey(plugin)]
+      return {
+        hasInstalled: !!pluginDetail,
+        installedVersion: pluginDetail?.installedVersion,
+        toInstallVersion: plugin.version,
+      }
+    })
+  }, [installedInfo, selectedPlugins])
 
   // Install from marketplace and github
   const { mutate: installOrUpdate, isPending: isInstalling } = useInstallOrUpdate({
@@ -85,7 +96,7 @@ const Install: FC<Props> = ({
             success: r.status === TaskStatus.success,
             isFromMarketPlace: allPlugins[selectedIndexes[i]!]!.type === 'marketplace',
           })
-        }))
+        }), getSelectedVersionInfo())
         const hasInstallSuccess = res.some(r => r.status === TaskStatus.success)
         if (hasInstallSuccess) {
           refreshPluginList(undefined, true)
@@ -113,7 +124,7 @@ const Install: FC<Props> = ({
           isFromMarketPlace: allPlugins[selectedIndexes[index]!]!.type === 'marketplace',
         }
       }))
-      onInstalled(selectedPlugins, installStatus)
+      onInstalled(selectedPlugins, installStatus, getSelectedVersionInfo())
       const hasInstallSuccess = installStatus.some(r => r.success)
       if (hasInstallSuccess) {
         emit('plugin:install:success', selectedPlugins.map((p) => {
@@ -211,7 +222,7 @@ const Install: FC<Props> = ({
               disabled={!canInstall || isInstalling || selectedPlugins.length === 0 || !canInstallPluginFromMarketplace}
               onClick={handleInstall}
             >
-              {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+              {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
               <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
             </Button>
           </div>

@@ -157,7 +157,7 @@ const ViewWorkflowHistory = () => {
               aria-label={t('changeHistory.title', { ns: 'workflow' })}
               disabled={nodesReadOnly}
               className={
-                cn('box-border inline-flex h-8 max-h-8 min-h-8 w-8 max-w-8 min-w-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', open && 'bg-state-accent-active text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
+                cn('box-border inline-flex size-8 max-h-8 min-h-8 max-w-8 min-w-8 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-accent-active data-popup-open:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
               }
               onClick={() => {
                 if (nodesReadOnly)
@@ -169,8 +169,8 @@ const ViewWorkflowHistory = () => {
               <TipPopup
                 title={t('changeHistory.title', { ns: 'workflow' })}
               >
-                <span className="flex h-full w-full shrink-0 items-center justify-center">
-                  <span className="i-ri-history-line h-4 w-4 shrink-0" />
+                <span className="flex size-full shrink-0 items-center justify-center">
+                  <span className="i-ri-history-line size-4 shrink-0" />
                 </span>
               </TipPopup>
             </button>
@@ -190,9 +190,9 @@ const ViewWorkflowHistory = () => {
                   <button
                     type="button"
                     aria-label={t('operation.close', { ns: 'common' })}
-                    className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
+                    className="flex size-6 shrink-0 cursor-pointer items-center justify-center"
                   >
-                    <RiCloseLine className="h-4 w-4 text-text-secondary" />
+                    <RiCloseLine className="size-4 text-text-secondary" />
                   </button>
                 )}
                 onClick={() => {
@@ -210,7 +210,7 @@ const ViewWorkflowHistory = () => {
               {
                 !calculateChangeList.statesCount && (
                   <div className="py-12">
-                    <RiHistoryLine className="mx-auto mb-2 h-8 w-8 text-text-tertiary" />
+                    <RiHistoryLine className="mx-auto mb-2 size-8 text-text-tertiary" />
                     <div className="text-center text-[13px] text-text-tertiary">
                       {t('changeHistory.placeholder', { ns: 'workflow' })}
                     </div>

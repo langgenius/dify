@@ -18,6 +18,9 @@ import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
+import PermissionSelector from '@/app/components/base/permission-selector'
+import { PermissionLevel } from '@/models/permission'
+import { useMembers } from '@/service/use-common'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useAddPluginCredentialHook,
@@ -56,6 +59,15 @@ const ApiKeyModal = ({
     setDoingAction(value)
   }, [])
   const { data = [], isLoading } = useGetPluginCredentialSchemaHook(pluginPayload, CredentialTypeEnum.API_KEY)
+  const [permission, setPermission] = useState<PermissionLevel | undefined>(
+    (editValues?.__visibility__ as PermissionLevel) ?? PermissionLevel.allTeamMembers,
+  )
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
+    (editValues?.__partial_member_list__ as string[]) ?? [],
+  )
+  // Only need member list when creating (the permission selector is hidden on edit).
+  const { data: membersData } = useMembers()
+  const memberList = membersData?.accounts ?? []
   const mergedData = useMemo(() => {
     if (formSchemasFromProps?.length)
       return formSchemasFromProps
@@ -98,10 +110,14 @@ const ApiKeyModal = ({
       const {
         __name__,
         __credential_id__,
+        __visibility__,
+        __partial_member_list__,
+        __created_by__,
         ...restValues
       } = values
 
       handleSetDoingAction(true)
+      // Visibility is settable only at creation. On edit we don't send it.
       if (editValues) {
         await updatePluginCredential({
           credentials: restValues,
@@ -110,10 +126,17 @@ const ApiKeyModal = ({
         })
       }
       else {
+        const permissionPayload = {
+          visibility: permission,
+          ...(permission === PermissionLevel.partialMembers
+            ? { partial_member_list: selectedMemberIDs.map(id => ({ user_id: id })) }
+            : {}),
+        }
         await addPluginCredential({
           credentials: restValues,
           type: CredentialTypeEnum.API_KEY,
           name: __name__ || '',
+          ...permissionPayload,
         })
       }
       toast.success(t('api.actionSuccess', { ns: 'common' }))
@@ -125,7 +148,7 @@ const ApiKeyModal = ({
     finally {
       handleSetDoingAction(false)
     }
-  }, [addPluginCredential, onClose, onOpenChange, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction])
+  }, [addPluginCredential, onClose, onOpenChange, onUpdate, updatePluginCredential, t, editValues, handleSetDoingAction, permission, selectedMemberIDs])
 
   const isDisabled = disabled || isLoading || doingAction
   const handleOpenChange = useCallback((nextOpen: boolean) => {
@@ -152,7 +175,7 @@ const ApiKeyModal = ({
               {t('auth.useApiAuthDesc', { ns: 'plugin' })}
             </div>
             <DialogCloseButton
-              className="top-5 right-5 h-8 w-8 rounded-lg"
+              className="top-5 right-5 size-8 rounded-lg"
             />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
@@ -176,6 +199,22 @@ const ApiKeyModal = ({
                 />
               )
             }
+            {!isLoading && !editValues && (
+              <div className="mt-4 px-1">
+                <div className="mb-1 system-sm-semibold text-text-secondary">
+                  {t('auth.whoCanUse', { ns: 'plugin' })}
+                </div>
+                <PermissionSelector
+                  disabled={disabled}
+                  permission={permission}
+                  value={selectedMemberIDs}
+                  memberList={memberList}
+                  onChange={v => setPermission(v)}
+                  onMemberSelect={setSelectedMemberIDs}
+                  hidePartialMembers
+                />
+              </div>
+            )}
           </div>
           <div className="flex shrink-0 justify-between p-6 pt-5">
             <div />

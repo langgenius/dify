@@ -4,14 +4,15 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ParamItem from '.'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value?: number
   onChange: (key: string, value: number) => void
   enable: boolean
   hasSwitch?: boolean
   onSwitchChange?: (key: string, enable: boolean) => void
-}
+  disabled?: boolean
+}>
 
 const VALUE_LIMIT = {
   default: 0.7,
@@ -39,6 +40,7 @@ const ScoreThresholdItem: FC<Props> = ({
   onChange,
   hasSwitch,
   onSwitchChange,
+  disabled = false,
 }) => {
   const { t } = useTranslation()
   const handleParamChange = (key: string, nextValue: number) => {
@@ -56,6 +58,7 @@ const ScoreThresholdItem: FC<Props> = ({
       value={safeValue}
       enable={enable}
       onChange={handleParamChange}
+      disabled={disabled}
       hasSwitch={hasSwitch}
       onSwitchChange={onSwitchChange}
     />

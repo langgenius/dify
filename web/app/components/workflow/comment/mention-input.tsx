@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { UserProfile } from '@/contract/console/workflow-comment'
+import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -165,8 +165,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
     state.setMentionableUsersLoading(appId, true)
     try {
-      const response = await consoleClient.workflowComments.mentionUsers({
-        params: { appId },
+      const response = await consoleClient.apps.byAppId.workflow.comments.mentionUsers.get({
+        params: { app_id: appId },
       })
       workflowStore.getState().setMentionableUsersCache(appId, response.users)
     }
@@ -518,7 +518,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         <div
           aria-hidden
           className={cn(
-            'pointer-events-none absolute inset-0 z-0 overflow-hidden p-1 leading-6 break-words whitespace-pre-wrap',
+            'pointer-events-none absolute inset-0 z-0 overflow-hidden p-1 leading-6 wrap-break-word whitespace-pre-wrap',
             'body-lg-regular text-text-primary',
           )}
           style={{ paddingRight, paddingBottom }}
@@ -557,14 +557,14 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
           >
             <div
               className={cn(
-                'z-20 flex h-8 w-8 items-center justify-center rounded-lg transition-opacity',
+                'z-20 flex size-8 items-center justify-center rounded-lg transition-opacity',
                 shouldDisableMentionButton
                   ? 'cursor-not-allowed opacity-40'
                   : 'cursor-pointer hover:bg-state-base-hover',
               )}
               onClick={shouldDisableMentionButton ? undefined : handleMentionButtonClick}
             >
-              <RiAtLine className="h-4 w-4 text-text-tertiary" />
+              <RiAtLine className="size-4 text-text-tertiary" />
             </div>
             <Button
               className="z-20 ml-2 w-8 px-0"
@@ -573,8 +573,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
               onClick={handleSubmit}
             >
               {loading
-                ? <RiLoader2Line className="h-4 w-4 animate-spin text-components-button-primary-text" />
-                : <RiArrowUpLine className="h-4 w-4 text-components-button-primary-text" />}
+                ? <RiLoader2Line className="size-4 animate-spin text-components-button-primary-text" />
+                : <RiArrowUpLine className="size-4 text-components-button-primary-text" />}
             </Button>
           </div>
         )}
@@ -582,18 +582,18 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
         {isEditing && (
           <div
             ref={setActionContainerRef}
-            className="absolute right-1 bottom-0 left-1 z-20 flex items-end justify-between"
+            className="absolute inset-x-1 bottom-0 z-20 flex items-end justify-between"
           >
             <div
               className={cn(
-                'z-20 flex h-8 w-8 items-center justify-center rounded-lg transition-opacity',
+                'z-20 flex size-8 items-center justify-center rounded-lg transition-opacity',
                 shouldDisableMentionButton
                   ? 'cursor-not-allowed opacity-40'
                   : 'cursor-pointer hover:bg-state-base-hover',
               )}
               onClick={shouldDisableMentionButton ? undefined : handleMentionButtonClick}
             >
-              <RiAtLine className="h-4 w-4 text-text-tertiary" />
+              <RiAtLine className="size-4 text-text-tertiary" />
             </div>
             <div
               ref={setActionRightRef}
@@ -609,10 +609,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
                 onClick={() => handleSubmit()}
                 className="gap-1"
               >
-                {loading && <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                {loading && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
                 <span>{t('operation.save', { ns: 'common' })}</span>
                 {!loading && (
-                  <EnterKey className="h-4 w-4" />
+                  <EnterKey className="size-4" />
                 )}
               </Button>
             </div>
@@ -622,7 +622,7 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
       {showMentionDropdown && filteredMentionUsers.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed z-[9999] max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
+          className="fixed z-9999 max-h-[248px] w-[280px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg/95 shadow-lg backdrop-blur-[10px]"
           style={{
             left: dropdownPosition.x,
             [dropdownPosition.placement === 'top' ? 'bottom' : 'top']: dropdownPosition.placement === 'top'

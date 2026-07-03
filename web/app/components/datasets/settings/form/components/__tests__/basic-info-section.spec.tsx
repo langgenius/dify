@@ -7,6 +7,18 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
 
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useSuspenseQuery: () => ({
+      data: {
+        rbac_enabled: false,
+      },
+    }),
+  }
+})
+
 // Mock app-context
 vi.mock('@/context/app-context', () => ({
   useSelector: () => ({
@@ -105,8 +117,8 @@ describe('BasicInfoSection', () => {
   }
 
   const mockMemberList: Member[] = [
-    { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
-    { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+    { id: 'user-1', name: 'User 1', email: 'user1@example.com', role: 'owner', roles: [], avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
+    { id: 'user-2', name: 'User 2', email: 'user2@example.com', role: 'admin', roles: [], avatar: '', avatar_url: '', last_login_at: '', created_at: '', status: 'active' },
   ]
 
   const mockIconInfo: IconInfo = {
@@ -118,7 +130,6 @@ describe('BasicInfoSection', () => {
 
   const defaultProps = {
     currentDataset: mockDataset,
-    isCurrentWorkspaceDatasetOperator: false,
     name: 'Test Dataset',
     setName: vi.fn(),
     description: 'Test description',
@@ -127,7 +138,7 @@ describe('BasicInfoSection', () => {
     showAppIconPicker: false,
     handleOpenAppIconPicker: vi.fn(),
     handleSelectAppIcon: vi.fn(),
-    handleCloseAppIconPicker: vi.fn(),
+    setShowAppIconPicker: vi.fn(),
     permission: DatasetPermission.onlyMe,
     setPermission: vi.fn(),
     selectedMemberIDs: ['user-1'],
@@ -346,9 +357,9 @@ describe('BasicInfoSection', () => {
       expect(disabledElement)!.toBeInTheDocument()
     })
 
-    it('should be disabled when user is dataset operator', () => {
+    it('should be disabled when form is readonly from dataset ACL editability', () => {
       const { container } = render(
-        <BasicInfoSection {...defaultProps} isCurrentWorkspaceDatasetOperator={true} />,
+        <BasicInfoSection {...defaultProps} readonly />,
       )
 
       const disabledElement = container.querySelector('[class*="cursor-not-allowed"]')

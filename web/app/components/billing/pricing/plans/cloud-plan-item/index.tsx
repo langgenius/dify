@@ -18,6 +18,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import { ALL_PLANS } from '../../../config'
 import { useEducationDiscount } from '../../../hooks/use-education-discount'
 import { Plan } from '../../../type'
@@ -55,7 +56,9 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isCurrent = plan === currentPlan
   const isCurrentPaidPlan = isCurrent && !isFreePlan
   const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
+  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
+  const canManageBillingSubscription = hasPermission(workspacePermissionKeys, BillingPermission.SubscriptionManage)
   const { enableEducationPlan, isEducationAccount } = useProviderContext()
   const isEducationDiscountMode = enableEducationPlan && isEducationAccount
   const isEducationDiscountSupportedPlan = plan === Plan.professional && isYear
@@ -87,20 +90,16 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     if (isPlanDisabled)
       return
 
-    if (isEducationDiscountMode && isEducationDiscountSupportedPlan && !isCurrentPaidPlan) {
-      await handleEducationDiscount()
-      return
-    }
-
-    if (!isCurrentWorkspaceManager) {
-      toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
-      return
-    }
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
+        if (!canManageBillingSubscription) {
+          toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
+          return
+        }
+
         await openAsyncWindow(async () => {
-          const res = await consoleClient.billing.invoices()
+          const res = await consoleClient.billing.invoices.get()
           if (res.url)
             return res.url
           throw new Error('Failed to open billing page')
@@ -114,6 +113,16 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
 
       if (isFreePlan)
         return
+
+      if (!canManageBilling) {
+        toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
+        return
+      }
+
+      if (isEducationDiscountMode && isEducationDiscountSupportedPlan) {
+        await handleEducationDiscount()
+        return
+      }
 
       const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
       // Adb Block additional tracking block the gtag, so we need to redirect directly

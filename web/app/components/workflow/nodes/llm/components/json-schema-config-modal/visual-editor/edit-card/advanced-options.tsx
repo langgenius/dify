@@ -1,9 +1,9 @@
 import type { FC } from 'react'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Textarea from '@/app/components/base/textarea'
 
 export type AdvancedOptionsType = {
   enum: string
@@ -22,8 +22,8 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
   // const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [enumValue, setEnumValue] = useState(options.enum)
 
-  const handleEnumChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setEnumValue(e.target.value)
+  const handleEnumChange = useCallback((value: string) => {
+    setEnumValue(value)
   }, [])
 
   const handleEnumBlur = useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
@@ -48,13 +48,14 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
         </div>
         <div className="flex flex-col">
           <div className="flex h-6 items-center system-xs-medium text-text-secondary">
-            Enum
+            {t('nodes.llm.jsonSchema.enum', { ns: 'workflow' })}
           </div>
           <Textarea
+            aria-label={t('nodes.llm.jsonSchema.enum', { ns: 'workflow' })}
             size="small"
             className="min-h-6"
             value={enumValue}
-            onChange={handleEnumChange}
+            onValueChange={handleEnumChange}
             onBlur={handleEnumBlur}
             placeholder="abcd, 1, 1.5, etc."
           />

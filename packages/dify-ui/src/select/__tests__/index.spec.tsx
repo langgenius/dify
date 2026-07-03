@@ -1,8 +1,20 @@
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '../index'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectGroupLabel,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
+const renderWithSafeViewport = (ui: React.ReactNode) => render(
   <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
     {ui}
   </div>,
@@ -84,6 +96,26 @@ describe('Select wrappers', () => {
   })
 
   describe('SelectTrigger', () => {
+    it('should use SelectLabel as the trigger accessible name', async () => {
+      const screen = await renderWithSafeViewport(
+        <Select defaultValue="seattle">
+          <SelectLabel>City</SelectLabel>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      await expect.element(screen.getByRole('combobox', { name: 'City' })).toBeInTheDocument()
+      await expect.element(screen.getByText('City')).toHaveClass('py-1', 'system-sm-medium', 'text-text-secondary')
+    })
+
     it('should forward native trigger props when trigger props are provided', async () => {
       const screen = await renderOpenSelect({
         triggerProps: {
@@ -142,7 +174,7 @@ describe('Select wrappers', () => {
       })
 
       await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-readonly')
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-transparent')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-components-input-bg-normal')
     })
 
     it('should hide arrow icon via CSS when Root is readOnly', async () => {
@@ -174,11 +206,33 @@ describe('Select wrappers', () => {
     it('should include open state feedback classes', async () => {
       const screen = await renderOpenSelect()
 
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-open:bg-state-base-hover-alt')
+      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-popup-open:bg-state-base-hover-alt')
     })
   })
 
   describe('SelectContent', () => {
+    it('should render SelectGroupLabel for grouped options without naming the trigger', async () => {
+      const screen = await renderWithSafeViewport(
+        <Select open defaultValue="seattle">
+          <SelectTrigger aria-label="city select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+            <SelectGroup>
+              <SelectGroupLabel className="custom-label">Popular cities</SelectGroupLabel>
+              <SelectItem value="seattle">
+                <SelectItemText>Seattle</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>,
+      )
+
+      await expect.element(screen.getByRole('combobox', { name: 'city select' })).toBeInTheDocument()
+      await expect.element(screen.getByText('Popular cities')).toHaveClass('custom-label')
+    })
+
     it('should use positioning attributes when placement is not provided', async () => {
       const screen = await renderOpenSelect()
 
@@ -254,6 +308,41 @@ describe('Select wrappers', () => {
 
       await expect.element(screen.getByRole('option', { name: 'Seattle' })).toBeInTheDocument()
       await expect.element(screen.getByRole('option', { name: 'New York' })).toBeInTheDocument()
+    })
+
+    it('should navigate items with arrow keys', async () => {
+      const screen = await render(
+        <Select defaultValue="seattle">
+          <SelectTrigger aria-label="city select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent listProps={{ 'role': 'listbox', 'aria-label': 'select list' }}>
+            <SelectItem value="seattle">
+              <SelectItemText>Seattle</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="new-york">
+              <SelectItemText>New York</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+            <SelectItem value="tokyo">
+              <SelectItemText>Tokyo</SelectItemText>
+              <SelectItemIndicator />
+            </SelectItem>
+          </SelectContent>
+        </Select>,
+      )
+
+      const trigger = asHTMLElement(screen.getByRole('combobox', { name: 'city select' }).element())
+
+      trigger.focus()
+      trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      await expect.element(screen.getByRole('option', { name: 'Seattle' })).toHaveAttribute('data-highlighted')
+
+      const highlightedItem = asHTMLElement(screen.getByRole('option', { name: 'Seattle' }).element())
+      highlightedItem.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+
+      await expect.element(screen.getByRole('option', { name: 'New York' })).toHaveAttribute('data-highlighted')
     })
 
     it('should not call onValueChange when disabled item is clicked', async () => {

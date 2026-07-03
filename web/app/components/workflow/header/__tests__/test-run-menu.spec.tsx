@@ -67,10 +67,6 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   }
 })
 
-vi.mock('../shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span>{keys.join('+')}</span>,
-}))
-
 const createOption = (overrides: Partial<TriggerOption> = {}): TriggerOption => ({
   id: 'user-input',
   type: TriggerType.UserInput,

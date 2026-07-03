@@ -4,8 +4,16 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type BillingInvoiceResponse = {
+  url: string
+}
+
 export type PartnerTenantsPayload = {
   click_id: string
+}
+
+export type BillingResponse = {
+  [key: string]: unknown
 }
 
 export type GetBillingInvoicesData = {
@@ -16,9 +24,7 @@ export type GetBillingInvoicesData = {
 }
 
 export type GetBillingInvoicesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BillingInvoiceResponse
 }
 
 export type GetBillingInvoicesResponse
@@ -34,18 +40,11 @@ export type PutBillingPartnersByPartnerKeyTenantsData = {
 }
 
 export type PutBillingPartnersByPartnerKeyTenantsErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type PutBillingPartnersByPartnerKeyTenantsError
-  = PutBillingPartnersByPartnerKeyTenantsErrors[keyof PutBillingPartnersByPartnerKeyTenantsErrors]
-
 export type PutBillingPartnersByPartnerKeyTenantsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BillingResponse
 }
 
 export type PutBillingPartnersByPartnerKeyTenantsResponse
@@ -54,14 +53,15 @@ export type PutBillingPartnersByPartnerKeyTenantsResponse
 export type GetBillingSubscriptionData = {
   body?: never
   path?: never
-  query?: never
+  query: {
+    interval: 'month' | 'year'
+    plan: 'professional' | 'team'
+  }
   url: '/billing/subscription'
 }
 
 export type GetBillingSubscriptionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BillingResponse
 }
 
 export type GetBillingSubscriptionResponse

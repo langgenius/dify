@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
 from constants.languages import get_valid_language, languages
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import SimpleResultDataResponse, VerificationTokenResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
@@ -14,6 +15,8 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
+from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.password import valid_password
@@ -57,7 +60,24 @@ class EmailRegisterResetPayload(BaseModel):
         return validate_timezone_string(value)
 
 
+class EmailRegisterTokenPairResponse(ResponseModel):
+    access_token: str
+    refresh_token: str
+    csrf_token: str
+
+
+class EmailRegisterResetResponse(ResponseModel):
+    result: str
+    data: EmailRegisterTokenPairResponse
+
+
 register_schema_models(console_ns, EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload)
+register_response_schema_models(
+    console_ns,
+    SimpleResultDataResponse,
+    VerificationTokenResponse,
+    EmailRegisterResetResponse,
+)
 
 
 @console_ns.route("/email-register/send-email")
@@ -65,6 +85,8 @@ class EmailRegisterSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
+    @console_ns.expect(console_ns.models[EmailRegisterSendPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     def post(self):
         args = EmailRegisterSendPayload.model_validate(console_ns.payload)
         normalized_email = args.email.lower()
@@ -73,13 +95,13 @@ class EmailRegisterSendEmailApi(Resource):
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
         language = "en-US"
-        if args.language in languages:
+        if args.language is not None and args.language in languages:
             language = args.language
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
             raise AccountInFreezeError()
 
-        account = AccountService.get_account_by_email_with_case_fallback(args.email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, args.email)
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
         return {"result": "success", "data": token}
 
@@ -89,6 +111,8 @@ class EmailRegisterCheckApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
+    @console_ns.expect(console_ns.models[EmailRegisterValidityPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
     def post(self):
         args = EmailRegisterValidityPayload.model_validate(console_ns.payload)
 
@@ -129,6 +153,8 @@ class EmailRegisterResetApi(Resource):
     @setup_required
     @email_password_login_enabled
     @email_register_enabled
+    @console_ns.expect(console_ns.models[EmailRegisterResetPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[EmailRegisterResetResponse.__name__])
     def post(self):
         args = EmailRegisterResetPayload.model_validate(console_ns.payload)
 
@@ -150,7 +176,7 @@ class EmailRegisterResetApi(Resource):
         email = register_data.get("email", "")
         normalized_email = email.lower()
 
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
 
         if account:
             raise EmailAlreadyInUseError()
@@ -161,7 +187,7 @@ class EmailRegisterResetApi(Resource):
             timezone=args.timezone,
             language=args.language,
         )
-        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account=account, session=db.session, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
@@ -180,6 +206,7 @@ class EmailRegisterResetApi(Resource):
                 password=password,
                 interface_language=get_valid_language(language),
                 timezone=timezone,
+                session=db.session,
             )
         except AccountRegisterError:
             raise AccountInFreezeError()

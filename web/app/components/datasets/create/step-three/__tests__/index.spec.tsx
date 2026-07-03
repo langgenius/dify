@@ -176,7 +176,7 @@ describe('StepThree', () => {
       const { container } = renderStepThree()
 
       const outerDiv = container.firstChild as HTMLElement
-      expect(outerDiv).toHaveClass('flex', 'h-full', 'max-h-full', 'w-full', 'justify-center', 'overflow-y-auto')
+      expect(outerDiv).toHaveClass('flex', 'size-full', 'max-h-full', 'justify-center', 'overflow-y-auto')
     })
   })
 
@@ -597,7 +597,7 @@ describe('StepThree', () => {
 
       const outerDiv = container.firstChild as HTMLElement
       expect(outerDiv).toHaveClass('flex')
-      expect(outerDiv).toHaveClass('h-full')
+      expect(outerDiv).toHaveClass('size-full')
       expect(outerDiv).toHaveClass('justify-center')
     })
 

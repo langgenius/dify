@@ -1,19 +1,30 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { Plan, SelfHostedPlan } from '../../type'
 import PlanComp from '../index'
+
+const setEducationVerifyingMock = vi.hoisted(() => vi.fn())
+const mockConfig = vi.hoisted(() => ({
+  isCloudEdition: true,
+}))
 
 let currentPath = '/billing'
 
 const push = vi.fn()
 let isCurrentWorkspaceManager = true
+let workspacePermissionKeys = ['billing.manage']
 let assignedHref = ''
 const originalLocation = window.location
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push }),
   usePathname: () => currentPath,
+}))
+
+vi.mock('@/config', () => ({
+  get IS_CLOUD_EDITION() {
+    return mockConfig.isCloudEdition
+  },
 }))
 
 const setShowAccountSettingModalMock = vi.fn()
@@ -32,11 +43,22 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     userProfile: { email: 'user@example.com' },
     isCurrentWorkspaceManager,
+    workspacePermissionKeys,
   }),
+}))
+
+vi.mock('@/app/education-apply/storage', () => ({
+  useSetEducationVerifying: () => setEducationVerifyingMock,
 }))
 
 vi.mock('@/service/billing', () => ({
   fetchSubscriptionUrls: vi.fn(),
+}))
+
+vi.mock('@/service/use-billing', () => ({
+  useCurrentPlanVectorSpace: () => ({
+    data: undefined,
+  }),
 }))
 
 const fetchSubscriptionUrlsMock = vi.mocked(fetchSubscriptionUrls)
@@ -107,6 +129,8 @@ describe('PlanComp', () => {
     currentPath = '/billing'
     isPending = false
     isCurrentWorkspaceManager = true
+    workspacePermissionKeys = ['billing.manage']
+    mockConfig.isCloudEdition = true
     assignedHref = ''
     providerContextMock.mockReturnValue({
       plan: planMock,
@@ -137,7 +161,7 @@ describe('PlanComp', () => {
 
     await waitFor(() => expect(mutateAsyncMock).toHaveBeenCalled())
     await waitFor(() => expect(push).toHaveBeenCalledWith('/education-apply?token=token'))
-    expect(localStorage.removeItem).toHaveBeenCalledWith(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+    expect(setEducationVerifyingMock).toHaveBeenCalledWith(null)
   })
 
   it('shows modal when education verify fails', async () => {
@@ -234,8 +258,9 @@ describe('PlanComp', () => {
     expect(screen.queryByText('education.useEducationDiscount')).not.toBeInTheDocument()
   })
 
-  it('does not show education discount button for non-manager sandbox education accounts', () => {
+  it('does not show education discount button without billing manage permission', () => {
     isCurrentWorkspaceManager = false
+    workspacePermissionKeys = []
     providerContextMock.mockReturnValue({
       plan: { ...planMock, type: Plan.sandbox },
       enableEducationPlan: true,
@@ -306,6 +331,21 @@ describe('PlanComp', () => {
     render(<PlanComp loc="billing-page" />)
 
     expect(screen.queryByText('education.toVerified')).not.toBeInTheDocument()
+  })
+
+  it('does not show cloud-only plan actions in self-hosted edition', () => {
+    mockConfig.isCloudEdition = false
+    providerContextMock.mockReturnValue({
+      plan: { ...planMock, type: Plan.sandbox },
+      enableEducationPlan: true,
+      allowRefreshEducationVerify: false,
+      isEducationAccount: false,
+    })
+    render(<PlanComp loc="billing-page" />)
+
+    expect(screen.queryByText('education.toVerified')).not.toBeInTheDocument()
+    expect(screen.queryByText('education.useEducationDiscount')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('plan-upgrade-btn')).not.toBeInTheDocument()
   })
 
   it('handles modal onConfirm and onCancel callbacks', async () => {

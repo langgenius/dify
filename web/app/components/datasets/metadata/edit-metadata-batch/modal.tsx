@@ -19,14 +19,14 @@ import AddedMetadataItem from './add-row'
 import EditMetadataBatchItem from './edit-row'
 
 const i18nPrefix = 'metadata.batchEditMetadata'
-type Props = {
+type Props = Readonly<{
   datasetId: string
   documentNum: number
   list: MetadataItemInBatchEdit[]
   onSave: (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
   onHide: () => void
   onShowManage: () => void
-}
+}>
 const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSave, onHide, onShowManage }) => {
   const { t } = useTranslation()
   const [templeList, setTempleList] = useState<MetadataItemWithEdit[]>(list)
@@ -96,7 +96,7 @@ const EditMetadataBatchModal: FC<Props> = ({ datasetId, documentNum, list, onSav
           onHide()
       }}
     >
-      <DialogContent className="w-full !max-w-[640px] overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-[640px]! overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })}

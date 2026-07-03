@@ -38,7 +38,7 @@ import Field from './field'
 
 const i18nPrefix = 'metadata.datasetMetadata'
 
-type Props = {
+type Props = Readonly<{
   userMetadata: MetadataItemWithValueLength[]
   builtInMetadata: BuiltInMetadataItem[]
   isBuiltInEnabled: boolean
@@ -47,7 +47,7 @@ type Props = {
   onAdd: (payload: BuiltInMetadataItem) => void
   onRename: (payload: MetadataItemWithValueLength) => void
   onRemove: (metaDataId: string) => void
-}
+}>
 
 type ItemProps = {
   readonly?: boolean
@@ -212,12 +212,12 @@ const DatasetMetadataDrawer: FC<Props> = ({
           <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-[420px]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
-                <DrawerTitle className="text-lg leading-6 font-medium text-text-primary">
+                <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t('metadata.metadata', { ns: 'dataset' })}
                 </DrawerTitle>
                 <DrawerCloseButton
                   aria-label={t('operation.close', { ns: 'common' })}
-                  className="h-6 w-6 rounded-md"
+                  className="size-6 rounded-md"
                 />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">

@@ -47,8 +47,8 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
 }))
 
 vi.mock('@/app/components/plugins/provider-card', () => ({
-  default: ({ payload }: { payload: Plugin }) => (
-    <div data-testid={`mock-provider-card-${payload.plugin_id}`}>
+  default: ({ className, payload }: { className?: string, payload: Plugin }) => (
+    <div data-testid={`mock-provider-card-${payload.plugin_id}`} className={className}>
       {payload.name}
     </div>
   ),
@@ -56,6 +56,12 @@ vi.mock('@/app/components/plugins/provider-card', () => ({
 
 vi.mock('../hooks', () => ({
   useMarketplaceAllPlugins: vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canInstallPlugin: true,
+  }),
 }))
 
 describe('InstallFromMarketplace Component', () => {
@@ -112,11 +118,12 @@ describe('InstallFromMarketplace Component', () => {
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
 
       // Assert
-      expect(screen.getByText('common.modelProvider.installDataSourceProvider')).toBeInTheDocument()
+      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
       expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url?theme=light')
+      expect(screen.getByTestId('mock-link')).toHaveAttribute('href', 'https://marketplace.url/plugins/datasource?theme=light')
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-provider-card-plugin-1')).toBeInTheDocument()
+      expect(screen.getByTestId('mock-list')).toHaveClass('grid', 'grid-cols-3', 'gap-2')
+      expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-[146px]')
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
@@ -145,7 +152,7 @@ describe('InstallFromMarketplace Component', () => {
         isLoading: false,
       })
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-      const toggleHeader = screen.getByText('common.modelProvider.installDataSourceProvider')
+      const toggleHeader = screen.getByText('common.modelProvider.installDataSource')
 
       // Act (Collapse)
       fireEvent.click(toggleHeader)
@@ -165,13 +172,30 @@ describe('InstallFromMarketplace Component', () => {
         isLoading: true,
       })
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-      const toggleHeader = screen.getByText('common.modelProvider.installDataSourceProvider')
+      const toggleHeader = screen.getByText('common.modelProvider.installDataSource')
 
       // Act (Collapse)
       fireEvent.click(toggleHeader)
 
       // Assert
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('should use the marketplace callback action when provided', () => {
+      // Arrange
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: mockPlugins,
+        isLoading: false,
+      })
+      const onOpenMarketplace = vi.fn()
+      render(<InstallFromMarketplace providers={mockProviders} searchText="" onOpenMarketplace={onOpenMarketplace} />)
+
+      // Act
+      fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.difyMarketplace' }))
+
+      // Assert
+      expect(onOpenMarketplace).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('link', { name: 'plugin.marketplace.difyMarketplace' })).not.toBeInTheDocument()
     })
   })
 })

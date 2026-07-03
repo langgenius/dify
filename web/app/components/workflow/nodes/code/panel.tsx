@@ -79,7 +79,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
                         onClick={handleSyncFunctionSignature}
                         aria-label={t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}
                       >
-                        <span className="i-ri-refresh-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                        <span className="i-ri-refresh-line size-4 text-text-tertiary" aria-hidden="true" />
                       </TooltipTrigger>
                       <TooltipContent>{t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })}</TooltipContent>
                     </Tooltip>
@@ -89,7 +89,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
                       className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                       onClick={handleAddVariable}
                     >
-                      <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+                      <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
                     </button>
                   </div>
                 )
@@ -135,7 +135,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
               className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
               onClick={handleAddOutputVariable}
             >
-              <span className="i-ri-add-line h-4 w-4 text-text-tertiary" aria-hidden="true" />
+              <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
             </button>
           )}
           required

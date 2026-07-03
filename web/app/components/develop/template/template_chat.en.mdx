@@ -83,6 +83,12 @@ Chat applications support session persistence, allowing previous chat history to
         - Query parameter: via URL query parameter <code>trace_id</code>.<br/>
         - Request Body: via request body field <code>trace_id</code> (i.e., this field).<br/>
       </Property>
+      <Property name='trace_session_id' type='string' key='trace_session_id'>
+        (Optional) Trace session ID for observability grouping. Tracing providers that support session grouping can use this value as the exported session identifier. It does not change conversation_id, workflow_run_id, trace_id, or span relationships. Supports the following three ways to pass, in order of priority:<br/>
+        - Header: via HTTP Header <code>X-Trace-Session-Id</code>, highest priority.<br/>
+        - Query parameter: via URL query parameter <code>trace_session_id</code>.<br/>
+        - Request Body: via request body field <code>trace_session_id</code> (i.e., this field).<br/>
+      </Property>
     </Properties>
 
     ### Response

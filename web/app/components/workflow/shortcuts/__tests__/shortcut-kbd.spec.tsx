@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { ShortcutKbd } from '../shortcut-kbd'
 
 describe('ShortcutKbd', () => {
-  it('renders shortcut chords as separate keycaps with the legacy visual classes', () => {
+  it('renders shortcut chords as separate design-system keycaps', () => {
     const { container } = render(
       <ShortcutKbd
         shortcut="workflow.copy"
@@ -14,7 +14,7 @@ describe('ShortcutKbd', () => {
     )
 
     const wrapper = container.firstElementChild
-    expect(wrapper).toHaveClass('flex', 'items-center', 'gap-0.5', 'ml-2')
+    expect(wrapper).toHaveClass('inline-flex', 'items-center', 'gap-0.5', 'ml-2')
 
     const keys = container.querySelectorAll('kbd')
     expect(keys).toHaveLength(2)

@@ -4,6 +4,7 @@ import { sleep } from '@/utils'
 import { TaskStatus } from '../../types'
 
 const INTERVAL = 10 * 1000 // 10 seconds
+const isUnfinishedStatus = (status: TaskStatus) => status === TaskStatus.pending || status === TaskStatus.running
 
 type Params = {
   taskId: string
@@ -34,7 +35,7 @@ function checkTaskStatus() {
       }
     }
     nextStatus = plugin.status
-    if (nextStatus === TaskStatus.running) {
+    if (isUnfinishedStatus(nextStatus)) {
       await sleep(INTERVAL)
       return await doCheckStatus({
         taskId,

@@ -37,7 +37,7 @@ import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 
-type Props = {
+type Props = Readonly<{
   showBackButton?: boolean
   collection: Collection | ToolWithProvider
   isBuiltIn?: boolean
@@ -49,7 +49,7 @@ type Props = {
   onSave?: (value: Record<string, any>) => void
   credentialId?: string
   onAuthorizationItemClick?: (id: string) => void
-}
+}>
 
 const SettingBuiltInTool: FC<Props> = ({
   showBackButton = false,
@@ -181,9 +181,9 @@ const SettingBuiltInTool: FC<Props> = ({
       }}
     >
       <DrawerPortal>
-        <DrawerBackdrop className="bg-transparent" />
+        <DrawerBackdrop className="bg-background-overlay" />
         <DrawerViewport>
-          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-16 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-6 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[420px] data-[swipe-direction=right]:max-w-[420px] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               {isLoading && <Loading type="app" />}
               {!isLoading && (
@@ -192,7 +192,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   <div className="relative border-b border-divider-subtle p-4 pb-3">
                     <div className="absolute top-3 right-3">
                       <ActionButton onClick={onHide}>
-                        <RiCloseLine className="h-4 w-4" />
+                        <RiCloseLine className="size-4" />
                       </ActionButton>
                     </div>
                     {showBackButton && (
@@ -200,12 +200,12 @@ const SettingBuiltInTool: FC<Props> = ({
                         className="mb-2 flex cursor-pointer items-center gap-1 system-xs-semibold-uppercase text-text-accent-secondary"
                         onClick={onHide}
                       >
-                        <RiArrowLeftLine className="h-4 w-4" />
+                        <RiArrowLeftLine className="size-4" />
                         {t('detailPanel.operation.back', { ns: 'plugin' })}
                       </div>
                     )}
                     <div className="flex items-center gap-1">
-                      <Icon size="tiny" className="h-6 w-6" src={collection.icon} />
+                      <Icon size="tiny" className="size-6" src={collection.icon} />
                       <OrgInfo
                         packageNameClassName="w-auto"
                         orgName={collection.author}

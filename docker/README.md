@@ -66,6 +66,9 @@ For users migrating from the `docker-legacy` setup:
 - `.env` contains local startup values copied from `.env.example` and any local changes.
 - `envs/*.env.example` files contain optional advanced configuration grouped by theme.
 
+Keep the root `.env.example` limited to variables required to start the default Docker Compose deployment.
+Do not add optional, advanced, provider-specific, or service-specific variables there; place them in the appropriate `envs/*.env.example` file instead.
+
 Docker Compose reads `envs/*.env` files when present, then reads `.env` last so values in `.env` take precedence.
 
 #### Key Modules and Customization
@@ -80,7 +83,8 @@ The root `.env.example` file contains the essential startup settings. Optional a
 
 1. **Common Variables**:
 
-   - `CONSOLE_API_URL`, `CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, `APP_WEB_URL`: URLs for the API and frontend services.
+   - `CONSOLE_API_URL`, `CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, `APP_WEB_URL`: public URLs for the API and frontend services.
+   - `SERVER_CONSOLE_API_URL`: internal URL used by the web service for server-side console API requests. Keep the default `http://api:5001` for standard Docker Compose deployments, and only change it when your web service must reach the API through a different internal address.
    - `FILES_URL`, `INTERNAL_FILES_URL`: Public and internal base URLs for file downloads and previews.
    - `ENDPOINT_URL_TEMPLATE`, `NEXT_PUBLIC_SOCKET_URL`, `TRIGGER_URL`: Additional service URLs. 
    
@@ -128,7 +132,8 @@ The root `.env.example` file contains the essential startup settings. Optional a
 
 ### Environment Variables Synchronization
 
-When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example` or the optional files under `envs/`.
+When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example` only when they are required for startup,
+or in the optional files under `envs/` for advanced, provider-specific, and service-specific settings.
 
 If you use the default workflow, review `.env.example` and keep your `.env` aligned with essential startup values.
 

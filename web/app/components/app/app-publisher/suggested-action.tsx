@@ -56,9 +56,9 @@ const SuggestedAction = ({
       onClick={handleClick}
       {...props}
     >
-      <div className="relative h-4 w-4 shrink-0">{icon}</div>
+      <div className="relative size-4 shrink-0">{icon}</div>
       <div className="shrink grow basis-0 system-sm-medium">{children}</div>
-      <RiArrowRightUpLine className="h-3.5 w-3.5 shrink-0" />
+      <RiArrowRightUpLine className="size-3.5 shrink-0" />
     </a>
   )
 

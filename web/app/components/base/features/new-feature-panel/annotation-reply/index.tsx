@@ -15,10 +15,10 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { usePathname, useRouter } from '@/next/navigation'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const AnnotationReply = ({
   disabled,
@@ -80,7 +80,7 @@ const AnnotationReply = ({
       <FeatureCard
         icon={(
           <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
-            <MessageFast className="h-4 w-4 text-text-primary-on-surface" />
+            <MessageFast className="size-4 text-text-primary-on-surface" />
           </div>
         )}
         title={t('feature.annotation.title', { ns: 'appDebug' })}
@@ -112,7 +112,7 @@ const AnnotationReply = ({
               {isHovering && (
                 <div className="flex items-center justify-between">
                   <Button className="w-[178px]" onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
-                    <RiEqualizer2Line className="mr-1 h-4 w-4" />
+                    <RiEqualizer2Line className="mr-1 size-4" />
                     {t('operation.params', { ns: 'common' })}
                   </Button>
                   <Button
@@ -121,7 +121,7 @@ const AnnotationReply = ({
                       router.push(`/app/${appId}/annotations`)
                     }}
                   >
-                    <RiExternalLinkLine className="mr-1 h-4 w-4" />
+                    <RiExternalLinkLine className="mr-1 size-4" />
                     {t('feature.annotation.cacheManagement', { ns: 'appDebug' })}
                   </Button>
                 </div>

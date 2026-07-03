@@ -149,7 +149,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - NotionIcon renders svg when page_icon is null
-      const notionIcon = document.querySelector('.h-5.w-5')
+      const notionIcon = document.querySelector('.size-5')
       expect(notionIcon)!.toBeInTheDocument()
     })
 
@@ -1071,7 +1071,7 @@ describe('PageSelector', () => {
       render(<PageSelector {...props} />)
 
       // Assert - NotionIcon renders svg (RiFileTextLine) when page_icon is null
-      const notionIcon = document.querySelector('.h-5.w-5')
+      const notionIcon = document.querySelector('.size-5')
       expect(notionIcon)!.toBeInTheDocument()
     })
 

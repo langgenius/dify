@@ -1,12 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { Field } from '@base-ui/react/field'
-import { Fieldset } from '@base-ui/react/fieldset'
-import { useId, useState } from 'react'
+import * as React from 'react'
 import { CheckboxGroup } from '.'
 import { Checkbox } from '../checkbox'
+import {
+  FieldDescription,
+  FieldItem,
+  FieldLabel,
+  FieldRoot,
+} from '../field'
+import { FieldsetLegend, FieldsetRoot } from '../fieldset'
 
 const meta = {
-  title: 'Base/UI/CheckboxGroup',
+  title: 'Base/Form/CheckboxGroup',
   component: CheckboxGroup,
   parameters: {
     layout: 'centered',
@@ -24,8 +29,8 @@ type Story = StoryObj<typeof meta>
 
 function DocumentSelectionDemo() {
   const documentIds = ['doc-1', 'doc-2', 'doc-3']
-  const [selected, setSelected] = useState<string[]>(['doc-1'])
-  const groupLabelId = useId()
+  const [selected, setSelected] = React.useState<string[]>(['doc-1'])
+  const groupLabelId = React.useId()
 
   return (
     <CheckboxGroup
@@ -72,14 +77,14 @@ function DynamicFormFieldDemo() {
     { value: 'pdf', label: 'PDF' },
     { value: 'html', label: 'HTML' },
   ]
-  const [selected, setSelected] = useState<string[]>(['markdown'])
+  const [selected, setSelected] = React.useState<string[]>(['markdown'])
 
   return (
-    <Field.Root name="allowed_file_types" className="flex w-80 flex-col gap-2">
-      <Field.Description className="body-xs-regular text-text-tertiary">
+    <FieldRoot name="allowed_file_types" className="flex w-80 flex-col gap-2">
+      <FieldDescription className="body-xs-regular text-text-tertiary">
         This mirrors Dify dynamic form fields where checkbox options are controlled by schema and persisted as a string array.
-      </Field.Description>
-      <Fieldset.Root
+      </FieldDescription>
+      <FieldsetRoot
         render={(
           <CheckboxGroup
             value={selected}
@@ -88,19 +93,19 @@ function DynamicFormFieldDemo() {
           />
         )}
       >
-        <Fieldset.Legend className="system-sm-medium text-text-secondary">
+        <FieldsetLegend className="system-sm-medium text-text-secondary">
           Allowed file types
-        </Fieldset.Legend>
+        </FieldsetLegend>
         {options.map(option => (
-          <Field.Item key={option.value}>
-            <Field.Label className="flex items-center gap-2 system-sm-medium text-text-secondary">
+          <FieldItem key={option.value}>
+            <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
               <Checkbox value={option.value} />
               {option.label}
-            </Field.Label>
-          </Field.Item>
+            </FieldLabel>
+          </FieldItem>
         ))}
-      </Fieldset.Root>
-    </Field.Root>
+      </FieldsetRoot>
+    </FieldRoot>
   )
 }
 

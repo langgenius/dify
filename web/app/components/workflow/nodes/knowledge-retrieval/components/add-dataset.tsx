@@ -7,13 +7,15 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import SelectDataset from '@/app/components/app/configuration/dataset-config/select-dataset'
 
-type Props = {
+type Props = Readonly<{
   selectedIds: string[]
+  modal?: boolean
   onChange: (dataSets: DataSet[]) => void
-}
+}>
 
 const AddDataset: FC<Props> = ({
   selectedIds,
+  modal,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -34,10 +36,11 @@ const AddDataset: FC<Props> = ({
         className="cursor-pointer rounded-md border-none bg-transparent p-1 outline-hidden select-none hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         onClick={showModal}
       >
-        <span aria-hidden="true" className="i-ri-add-line h-4 w-4 text-text-tertiary" />
+        <span aria-hidden="true" className="i-ri-add-line size-4 text-text-tertiary" />
       </button>
       <SelectDataset
         isShow={isShowModal}
+        modal={modal}
         onClose={hideModal}
         selectedIds={selectedIds}
         onSelect={handleSelect}

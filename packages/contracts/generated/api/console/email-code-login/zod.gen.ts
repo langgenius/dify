@@ -11,6 +11,14 @@ export const zEmailPayload = z.object({
 })
 
 /**
+ * SimpleResultDataResponse
+ */
+export const zSimpleResultDataResponse = z.object({
+  data: z.string(),
+  result: z.string(),
+})
+
+/**
  * EmailCodeLoginPayload
  */
 export const zEmailCodeLoginPayload = z.object({
@@ -21,16 +29,23 @@ export const zEmailCodeLoginPayload = z.object({
   token: z.string(),
 })
 
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
 export const zPostEmailCodeLoginBody = zEmailPayload
 
 /**
  * Success
  */
-export const zPostEmailCodeLoginResponse = z.record(z.string(), z.unknown())
+export const zPostEmailCodeLoginResponse = zSimpleResultDataResponse
 
 export const zPostEmailCodeLoginValidityBody = zEmailCodeLoginPayload
 
 /**
  * Success
  */
-export const zPostEmailCodeLoginValidityResponse = z.record(z.string(), z.unknown())
+export const zPostEmailCodeLoginValidityResponse = zSimpleResultResponse

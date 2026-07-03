@@ -15,6 +15,7 @@ import useActionMenu from './use-action-menu'
 export type ActionMenuProps = {
   isShowDelete: boolean
   isNamedVersion: boolean
+  canImportExportDSL: boolean
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
   handleClickActionMenuItem: (operation: VersionHistoryContextMenuOptions) => void
@@ -36,12 +37,12 @@ const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
         nativeButton={false}
         render={<Button nativeButton={false} size="small" className="px-1" onClick={e => e.stopPropagation()} />}
       >
-        <RiMoreFill className="h-4 w-4" />
+        <RiMoreFill className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="w-[184px] shadow-shadow-shadow-5"
+        popupClassName="w-max min-w-[184px] max-w-[calc(100vw-24px)] shadow-shadow-shadow-5"
       >
         {
           options.map(option => (

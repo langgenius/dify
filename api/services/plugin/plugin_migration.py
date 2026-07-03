@@ -22,6 +22,7 @@ from core.helper import marketplace
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
 from extensions.ext_database import db
 from models.account import Tenant
@@ -29,7 +30,6 @@ from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID
 from models.tools import BuiltinToolProvider
 from models.workflow import Workflow
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,6 @@ class PluginMigration:
 
                     # Use lock when updating counter
                     with counter_lock:
-                        nonlocal handled_tenant_count
                         handled_tenant_count += 1
                         click.echo(
                             click.style(
@@ -389,17 +388,19 @@ class PluginMigration:
                     for plugin_id in batch_plugin_ids
                     if plugin_id not in installed_plugins_ids and plugin_id in plugins["plugins"]
                 ]
-                manager.install_from_identifiers(
-                    tenant_id,
-                    batch_plugin_identifiers,
-                    PluginInstallationSource.Marketplace,
-                    metas=[
-                        {
-                            "plugin_unique_identifier": identifier,
-                        }
-                        for identifier in batch_plugin_identifiers
-                    ],
-                )
+                if batch_plugin_identifiers:
+                    manager.install_from_identifiers(
+                        tenant_id,
+                        batch_plugin_identifiers,
+                        PluginInstallationSource.Marketplace,
+                        metas=[
+                            {
+                                "plugin_unique_identifier": identifier,
+                            }
+                            for identifier in batch_plugin_identifiers
+                        ],
+                    )
+                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
 
         with open(extracted_plugins) as f:
             """
@@ -595,6 +596,7 @@ class PluginMigration:
                         for identifier in batch_plugin_identifiers
                     ],
                 )
+                PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             except Exception:
                 # add to failed
                 failed.extend(batch_plugin_identifiers)
@@ -609,6 +611,7 @@ class PluginMigration:
             while not done:
                 status = manager.fetch_plugin_installation_task(tenant_id, task_id)
                 if status.status in [PluginInstallTaskStatus.Failed, PluginInstallTaskStatus.Success]:
+                    PluginService.invalidate_plugin_model_providers_cache(tenant_id)
                     for plugin in status.plugins:
                         if plugin.status == PluginInstallTaskStatus.Success:
                             success.append(reverse_map[plugin.plugin_unique_identifier])

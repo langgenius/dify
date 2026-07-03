@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverContent,
@@ -13,11 +12,11 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useMembers } from '@/service/use-common'
 
-type Props = {
+type Props = Readonly<{
   value?: string
   onSelect: (value: string) => void
   exclude?: string[]
-}
+}>
 
 const MemberSelector: FC<Props> = ({
   value,
@@ -56,7 +55,7 @@ const MemberSelector: FC<Props> = ({
         render={(
           <div
             data-testid="member-selector-trigger"
-            className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}
+            className="group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
           >
             {!currentValue && (
               <div className="grow p-1 system-sm-regular text-components-input-text-placeholder">{t('members.transferModal.transferPlaceholder', { ns: 'common' })}</div>
@@ -68,7 +67,7 @@ const MemberSelector: FC<Props> = ({
                 <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
               </>
             )}
-            <div className={cn('i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
+            <div className="i-ri-arrow-down-s-line size-4 text-text-quaternary group-hover:text-text-secondary group-data-popup-open:text-text-secondary" />
           </div>
         )}
       />

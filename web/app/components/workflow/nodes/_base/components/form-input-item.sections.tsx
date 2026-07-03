@@ -26,7 +26,7 @@ type MultiSelectFieldProps = {
 }
 
 const LoadingIndicator = () => (
-  <RiLoader4Line className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-secondary motion-reduce:animate-none" aria-hidden="true" />
+  <RiLoader4Line className="mr-1 size-3.5 shrink-0 animate-spin text-text-secondary motion-reduce:animate-none" aria-hidden="true" />
 )
 
 export const MultiSelectField: FC<MultiSelectFieldProps> = ({
@@ -75,7 +75,7 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
             >
               <div className="flex min-w-0 items-center">
                 {item.icon && (
-                  <img src={item.icon} alt="" width={16} height={16} className="mr-2 h-4 w-4 shrink-0" />
+                  <img src={item.icon} alt="" width={16} height={16} className="mr-2 size-4 shrink-0" />
                 )}
                 <SelectItemText>
                   {item.name}

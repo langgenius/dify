@@ -317,6 +317,20 @@ describe('InstallFromGitHub', () => {
       })
     })
 
+    it('should submit the repo URL form from the set URL step', async () => {
+      render(<InstallFromGitHub {...defaultProps} />)
+
+      const input = getRepoUrlInput()
+      const form = input.closest('form')
+      fireEvent.change(input, { target: { value: 'https://github.com/owner/repo' } })
+
+      expect(form).toBeInTheDocument()
+      expect(getNextButton()).toHaveAttribute('type', 'submit')
+      fireEvent.submit(form!)
+
+      expect(await screen.findByRole('button', { name: 'Select Version' })).toBeInTheDocument()
+    })
+
     it('should update selectedVersion when version is selected', async () => {
       render(<InstallFromGitHub {...defaultProps} updatePayload={createUpdatePayload()} />)
 

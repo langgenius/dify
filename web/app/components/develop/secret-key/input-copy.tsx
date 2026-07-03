@@ -44,7 +44,7 @@ const InputCopy = ({
         <div className="relative h-full grow text-[13px]">
           <button
             type="button"
-            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate border-none bg-transparent py-0 pr-2 pl-2 text-left"
+            className="r-0 absolute top-0 left-0 w-full cursor-pointer truncate border-none bg-transparent px-2 py-0 text-left"
             aria-label={copyLabel}
             onClick={handleCopy}
           >

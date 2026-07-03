@@ -15,13 +15,16 @@ import {
   useNodes,
   useStoreApi,
 } from 'reactflow'
+import { FlowType } from '@/types/common'
 import {
   useIsChatMode,
   useNodeDataUpdate,
   useWorkflow,
   useWorkflowVariables,
 } from '../../hooks'
+import { useHooksStore } from '../../hooks-store/store'
 import { useWorkflowStore } from '../../store'
+import { filterSnippetSystemVars, isSnippetCanvas } from '../_base/hooks/snippet-input-field-vars'
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()
@@ -127,6 +130,7 @@ export const useGetAvailableVars = () => {
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
+  const isSnippetFlow = useHooksStore(s => s.configsMap?.flowType) === FlowType.snippet || isSnippetCanvas()
   const getAvailableVars = useCallback((nodeId: string, handleId: string, filterVar: (v: Var) => boolean, hideEnv = false) => {
     const availableNodes: Node[] = []
     const currentNode = nodes.find(node => node.id === nodeId)!
@@ -138,7 +142,7 @@ export const useGetAvailableVars = () => {
     const parentNode = nodes.find(node => node.id === currentNode.parentId)
 
     if (hideEnv) {
-      return getNodeAvailableVars({
+      const availableVars = getNodeAvailableVars({
         parentNode,
         beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
         isChatMode,
@@ -151,15 +155,17 @@ export const useGetAvailableVars = () => {
           vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
         }))
         .filter(item => item.vars.length > 0)
+
+      return filterSnippetSystemVars(availableVars, isSnippetFlow)
     }
 
-    return getNodeAvailableVars({
+    return filterSnippetSystemVars(getNodeAvailableVars({
       parentNode,
       beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
       isChatMode,
       filterVar,
-    })
-  }, [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
+    }), isSnippetFlow)
+  }, [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode, isSnippetFlow])
 
   return getAvailableVars
 }

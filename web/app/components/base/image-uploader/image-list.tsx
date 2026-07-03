@@ -60,10 +60,10 @@ const ImageList: FC<ImageListProps> = ({
                   <button
                     type="button"
                     aria-label={t('operation.retry', { ns: 'common' })}
-                    className="h-5 w-5 border-none bg-transparent p-0 text-white focus-visible:ring-1 focus-visible:ring-white focus-visible:outline-hidden"
+                    className="size-5 border-none bg-transparent p-0 text-white focus-visible:ring-1 focus-visible:ring-white focus-visible:outline-hidden"
                     onClick={() => onReUpload?.(item._id)}
                   >
-                    <span className="i-custom-vender-line-arrows-refresh-ccw-01 h-5 w-5" aria-hidden="true" />
+                    <span className="i-custom-vender-line-arrows-refresh-ccw-01 size-5" aria-hidden="true" />
                   </button>
                 )}
               </div>
@@ -87,7 +87,7 @@ const ImageList: FC<ImageListProps> = ({
               data-testid="image-error-container"
             >
               {item.progress > -1 && (
-                <span className="i-ri-loader-2-line h-5 w-5 animate-spin text-white" data-testid="image-loader" />
+                <span className="i-ri-loader-2-line size-5 animate-spin text-white" data-testid="image-loader" />
               )}
               {item.progress === -1 && (
                 <Tooltip>
@@ -125,14 +125,14 @@ const ImageList: FC<ImageListProps> = ({
             <button
               type="button"
               className={cn(
-                'absolute -top-[9px] -right-[9px] z-10 h-[18px] w-[18px] items-center justify-center border-none bg-transparent p-0',
+                'absolute top-[-9px] right-[-9px] z-10 h-[18px] w-[18px] items-center justify-center border-none bg-transparent p-0',
                 'rounded-2xl shadow-lg hover:bg-state-base-hover',
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}
               onClick={() => onRemove?.(item._id)}
               aria-label={t('operation.remove', { ns: 'common' })}
             >
-              <span className="i-ri-close-line h-3 w-3 text-text-tertiary" aria-hidden="true" />
+              <span className="i-ri-close-line size-3 text-text-tertiary" aria-hidden="true" />
             </button>
           )}
         </div>

@@ -8,19 +8,12 @@ import {
   zGetFilesByFileIdPreviewResponse,
   zGetFilesSupportTypeResponse,
   zGetFilesUploadResponse,
+  zPostFilesUploadBody,
   zPostFilesUploadResponse,
 } from './zod.gen'
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFilesSupportType',
@@ -52,6 +45,7 @@ export const post = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
 
 export const upload = {
@@ -59,16 +53,8 @@ export const upload = {
   post,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const get3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFilesByFileIdPreview',

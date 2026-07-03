@@ -55,6 +55,20 @@ describe('DebugInfo', () => {
     expect(trigger).toBeDisabled()
   })
 
+  it('uses caller-provided trigger classes without default icon padding', () => {
+    render(
+      <DebugInfo
+        triggerClassName="h-8 w-full py-1 pr-1 pl-2 text-components-menu-item-text"
+        triggerContent="Debugging"
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Debugging' })
+
+    expect(trigger).toHaveClass('h-8', 'w-full', 'py-1', 'pr-1', 'pl-2', 'text-components-menu-item-text')
+    expect(trigger).not.toHaveClass('p-2', 'text-components-button-secondary-text')
+  })
+
   it('opens a popover with debug metadata and masks the key when info is available', async () => {
     mockDebugKey.data = {
       host: '127.0.0.1',
@@ -74,11 +88,12 @@ describe('DebugInfo', () => {
     await user.click(trigger)
 
     expect(screen.getByText('plugin.debugInfo.title')).toBeInTheDocument()
+    expect(screen.getByText('plugin.debugInfo.title').closest('.w-\\[360px\\]')).toHaveClass('rounded-2xl', 'shadow-2xl')
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
       'https://docs.example.com/develop-plugin/features-and-specs/plugin-types/remote-debug-a-plugin',
     )
-    expect(screen.getByTestId('kv-URL')).toHaveTextContent('URL:127.0.0.1:5001')
+    expect(screen.getByTestId('kv-Port')).toHaveTextContent('Port:127.0.0.1:5001')
     expect(screen.getByTestId('kv-Key')).toHaveTextContent('Key:12345678********87654321')
   })
 })

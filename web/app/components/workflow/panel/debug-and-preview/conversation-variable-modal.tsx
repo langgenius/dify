@@ -23,10 +23,10 @@ import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 
-type Props = {
+type Props = Readonly<{
   conversationID: string
   onHide: () => void
-}
+}>
 
 const ConversationVariableModal = ({
   conversationID,
@@ -84,9 +84,9 @@ const ConversationVariableModal = ({
           className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={onHide}
         >
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" aria-hidden="true" />
+          <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
         </button>
-        <div className="flex h-full w-full">
+        <div className="flex size-full">
           {/* LEFT */}
           <div className="flex h-full w-[224px] shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
             <div className="shrink-0 pt-5 pr-4 pb-3 pl-5 system-xl-semibold text-text-primary">{t('chatVariable.panelTitle', { ns: 'workflow' })}</div>
@@ -98,7 +98,7 @@ const ConversationVariableModal = ({
                   className={cn('group mb-0.5 flex w-full cursor-pointer items-center rounded-lg border-none bg-transparent p-2 text-left hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden', currentVar.id === chatVar.id && 'bg-state-base-hover')}
                   onClick={() => setCurrentVar(chatVar)}
                 >
-                  <BubbleX className={cn('mr-1 h-4 w-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')} aria-hidden="true" />
+                  <BubbleX className={cn('mr-1 size-4 shrink-0 text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')} aria-hidden="true" />
                   <div title={chatVar.name} className={cn('truncate system-sm-medium text-text-tertiary group-hover:text-util-colors-teal-teal-700', currentVar.id === chatVar.id && 'text-util-colors-teal-teal-700')}>{chatVar.name}</div>
                 </button>
               ))}
@@ -137,10 +137,10 @@ const ConversationVariableModal = ({
                       <div className="flex items-center p-1">
                         {!isCopied
                           ? (
-                              <Copy className="h-4 w-4 cursor-pointer text-text-tertiary" onClick={handleCopy} />
+                              <Copy className="size-4 cursor-pointer text-text-tertiary" onClick={handleCopy} />
                             )
                           : (
-                              <CopyCheck className="h-4 w-4 text-text-tertiary" />
+                              <CopyCheck className="size-4 text-text-tertiary" />
                             )}
                       </div>
                     </div>

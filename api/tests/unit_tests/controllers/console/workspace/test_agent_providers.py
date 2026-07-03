@@ -1,19 +1,12 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
-import pytest
 from flask import Flask
 
-from controllers.console.error import AccountNotFound
 from controllers.console.workspace.agent_providers import (
     AgentProviderApi,
     AgentProviderListApi,
 )
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestAgentProviderListApi:
@@ -28,15 +21,11 @@ class TestAgentProviderListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch(
                 "controllers.console.workspace.agent_providers.AgentService.list_agent_providers",
                 return_value=providers,
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, user)
 
         assert result == providers
 
@@ -50,31 +39,13 @@ class TestAgentProviderListApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch(
                 "controllers.console.workspace.agent_providers.AgentService.list_agent_providers",
                 return_value=[],
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, user)
 
         assert result == []
-
-    def test_get_account_not_found(self, app: Flask):
-        api = AgentProviderListApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                side_effect=AccountNotFound(),
-            ),
-        ):
-            with pytest.raises(AccountNotFound):
-                method(api)
 
 
 class TestAgentProviderApi:
@@ -90,15 +61,11 @@ class TestAgentProviderApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch(
                 "controllers.console.workspace.agent_providers.AgentService.get_agent_provider",
                 return_value=provider_data,
             ),
         ):
-            result = method(api, provider_name)
+            result = method(api, tenant_id, user, provider_name)
 
         assert result == provider_data
 
@@ -113,28 +80,10 @@ class TestAgentProviderApi:
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                return_value=(user, tenant_id),
-            ),
-            patch(
                 "controllers.console.workspace.agent_providers.AgentService.get_agent_provider",
                 return_value=None,
             ),
         ):
-            result = method(api, provider_name)
+            result = method(api, tenant_id, user, provider_name)
 
         assert result is None
-
-    def test_get_account_not_found(self, app: Flask):
-        api = AgentProviderApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.agent_providers.current_account_with_tenant",
-                side_effect=AccountNotFound(),
-            ),
-        ):
-            with pytest.raises(AccountNotFound):
-                method(api, "openai")

@@ -51,8 +51,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: any) => <div>{`indicator:${color}`}</div>,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: any) => <div>{`indicator:${status}`}</div>,
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -253,15 +253,15 @@ describe('agent path', () => {
       const { rerender, container } = render(<ModelBar />)
 
       expect(container).toHaveTextContent('no-model:0')
-      expect(screen.getByText('indicator:red')).toBeInTheDocument()
+      expect(screen.getByText('indicator:error')).toBeInTheDocument()
 
       rerender(<ModelBar provider="openai" model="gpt-4o" />)
       expect(container).toHaveTextContent('openai/gpt-4o:1')
-      expect(screen.queryByText('indicator:red')).not.toBeInTheDocument()
+      expect(screen.queryByText('indicator:error')).not.toBeInTheDocument()
 
       rerender(<ModelBar provider="openai" model="gpt-4.1" />)
       expect(container).toHaveTextContent('openai/gpt-4.1:1')
-      expect(screen.getByText('indicator:red')).toBeInTheDocument()
+      expect(screen.getByText('indicator:error')).toBeInTheDocument()
     })
 
     it('should render tool icons across loading, marketplace fallback, authorization warning, and fetch-error states', async () => {
@@ -276,7 +276,7 @@ describe('agent path', () => {
       unmount()
       const secondRender = render(<ToolIcon id="tool-1" providerName="author/tool-b" />)
       expect(screen.getByText('app-icon:#fff:B')).toBeInTheDocument()
-      expect(screen.getByText('indicator:yellow')).toBeInTheDocument()
+      expect(screen.getByText('indicator:warning')).toBeInTheDocument()
 
       mockBuiltInTools = undefined
       secondRender.rerender(<ToolIcon id="tool-2" providerName="author/tool-c" />)
@@ -301,7 +301,7 @@ describe('agent path', () => {
       expect(screen.getByText('workflow.nodes.agent.model')).toBeInTheDocument()
       expect(screen.getByText('workflow.nodes.agent.toolbox')).toBeInTheDocument()
       expect(container).toHaveTextContent('openai/gpt-4o:1')
-      expect(screen.getByText('indicator:yellow')).toBeInTheDocument()
+      expect(screen.getByText('indicator:warning')).toBeInTheDocument()
     })
 
     it('should render the panel, update the selected strategy, and expose memory plus output vars', async () => {

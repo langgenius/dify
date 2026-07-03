@@ -22,6 +22,11 @@ export const inputVariants = cva(
   },
 )
 
+/**
+ * @deprecated Use `@langgenius/dify-ui/input` for primitive inputs and
+ * `@langgenius/dify-ui/field` for form composition. Search inputs should use
+ * a dedicated composition built on the primitive input.
+ */
 export type InputProps = {
   showLeftIcon?: boolean
   showClearIcon?: boolean
@@ -36,6 +41,11 @@ export type InputProps = {
 
 const removeLeadingZeros = (value: string) => value.replace(/^(-?)0+(?=\d)/, '$1')
 
+/**
+ * @deprecated Use `@langgenius/dify-ui/input` for primitive inputs and
+ * `@langgenius/dify-ui/field` for form composition. Search inputs should use
+ * a dedicated composition built on the primitive input.
+ */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   size,
   disabled,
@@ -82,7 +92,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   }
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
-      {showLeftIcon && <span className={cn('absolute top-1/2 left-2 i-ri-search-line h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
+      {showLeftIcon && <span className={cn('absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
       <input
         ref={ref}
         style={styleCss}
@@ -115,17 +125,17 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
           className={cn('group absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer border-none bg-transparent p-px')}
           onClick={onClear}
         >
-          <span className="i-ri-close-circle-fill h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" aria-hidden="true" />
+          <span className="i-ri-close-circle-fill size-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" aria-hidden="true" />
         </button>
       )}
       {destructive && (
-        <span className="absolute top-1/2 right-2 i-ri-error-warning-line h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
+        <span className="absolute top-1/2 right-2 i-ri-error-warning-line size-4 -translate-y-1/2 text-text-destructive-secondary" />
       )}
       {showCopyIcon && (
         <div className={cn('group absolute top-1/2 right-0 -translate-y-1/2 cursor-pointer')}>
           <CopyFeedbackNew
             content={String(value ?? '')}
-            className="h-7! w-7! hover:bg-transparent"
+            className="size-7! hover:bg-transparent"
           />
         </div>
       )}

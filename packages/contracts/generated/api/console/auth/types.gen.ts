@@ -4,11 +4,19 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type DatasourceCredentialsResponse = {
+  result: unknown
+}
+
 export type DatasourceCredentialPayload = {
   credentials: {
     [key: string]: unknown
   }
   name?: string | null
+}
+
+export type SimpleResultResponse = {
+  result: string
 }
 
 export type DatasourceCustomClientPayload = {
@@ -47,9 +55,7 @@ export type GetAuthPluginDatasourceDefaultListData = {
 }
 
 export type GetAuthPluginDatasourceDefaultListResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasourceCredentialsResponse
 }
 
 export type GetAuthPluginDatasourceDefaultListResponse
@@ -63,9 +69,7 @@ export type GetAuthPluginDatasourceListData = {
 }
 
 export type GetAuthPluginDatasourceListResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasourceCredentialsResponse
 }
 
 export type GetAuthPluginDatasourceListResponse
@@ -81,9 +85,7 @@ export type GetAuthPluginDatasourceByProviderIdData = {
 }
 
 export type GetAuthPluginDatasourceByProviderIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasourceCredentialsResponse
 }
 
 export type GetAuthPluginDatasourceByProviderIdResponse
@@ -99,9 +101,7 @@ export type PostAuthPluginDatasourceByProviderIdData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAuthPluginDatasourceByProviderIdResponse
@@ -117,9 +117,7 @@ export type DeleteAuthPluginDatasourceByProviderIdCustomClientData = {
 }
 
 export type DeleteAuthPluginDatasourceByProviderIdCustomClientResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteAuthPluginDatasourceByProviderIdCustomClientResponse
@@ -135,9 +133,7 @@ export type PostAuthPluginDatasourceByProviderIdCustomClientData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdCustomClientResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAuthPluginDatasourceByProviderIdCustomClientResponse
@@ -153,9 +149,7 @@ export type PostAuthPluginDatasourceByProviderIdDefaultData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdDefaultResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAuthPluginDatasourceByProviderIdDefaultResponse
@@ -171,9 +165,7 @@ export type PostAuthPluginDatasourceByProviderIdDeleteData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAuthPluginDatasourceByProviderIdDeleteResponse
@@ -189,9 +181,7 @@ export type PostAuthPluginDatasourceByProviderIdUpdateData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdUpdateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: SimpleResultResponse
 }
 
 export type PostAuthPluginDatasourceByProviderIdUpdateResponse
@@ -207,9 +197,7 @@ export type PostAuthPluginDatasourceByProviderIdUpdateNameData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdUpdateNameResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostAuthPluginDatasourceByProviderIdUpdateNameResponse

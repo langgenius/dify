@@ -17,6 +17,7 @@ describe('MenuDialog', () => {
 
       // Assert
       expect(screen.getByTestId('dialog-content')).toBeInTheDocument()
+      expect(screen.getByRole('dialog').children).toHaveLength(1)
     })
 
     it('should not render children when show is false', () => {

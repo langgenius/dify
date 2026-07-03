@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { Plugin, PluginManifestInMarket } from '../../../types'
+import type { InstallPackageResponse, Plugin, PluginManifestInMarket } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
@@ -20,20 +20,22 @@ import { pluginManifestInMarketToPluginProps } from '../../utils'
 
 const i18nPrefix = 'installModal'
 
-type Props = {
+type Props = Readonly<{
   uniqueIdentifier: string
   payload: PluginManifestInMarket | Plugin
   onCancel: () => void
   onStartToInstall?: () => void
+  onTaskStarted: () => void
   onInstalled: (notRefresh?: boolean) => void
   onFailed: (message?: string) => void
-}
+}>
 
 const Installed: FC<Props> = ({
   uniqueIdentifier,
   payload,
   onCancel,
   onStartToInstall,
+  onTaskStarted,
   onInstalled,
   onFailed,
 }) => {
@@ -55,7 +57,7 @@ const Installed: FC<Props> = ({
     check,
     stop,
   } = checkTaskStatus()
-  const { handleRefetch } = usePluginTaskList(payload.category)
+  const { handleInstallTaskStart } = usePluginTaskList(payload.category)
 
   useEffect(() => {
     if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
@@ -75,22 +77,29 @@ const Installed: FC<Props> = ({
     try {
       let taskId
       let isInstalled
+      let installResponse: InstallPackageResponse | undefined
       if (hasInstalled) {
-        const {
-          all_installed,
-          task_id,
-        } = await updatePackageFromMarketPlace({
+        const response = await updatePackageFromMarketPlace({
           original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
           new_plugin_unique_identifier: uniqueIdentifier,
         })
+        installResponse = response
+        const {
+          all_installed,
+          task_id,
+        } = response
+        handleInstallTaskStart(response)
         taskId = task_id
         isInstalled = all_installed
       }
       else {
+        const response = await installPackageFromMarketPlace(uniqueIdentifier)
+        installResponse = response
         const {
           all_installed,
           task_id,
-        } = await installPackageFromMarketPlace(uniqueIdentifier)
+        } = response
+        handleInstallTaskStart(response)
         taskId = task_id
         isInstalled = all_installed
       }
@@ -100,7 +109,10 @@ const Installed: FC<Props> = ({
         return
       }
 
-      handleRefetch()
+      if (installResponse?.task) {
+        onTaskStarted()
+        return
+      }
 
       const { status, error } = await check({
         taskId,
@@ -129,7 +141,10 @@ const Installed: FC<Props> = ({
     return isEqualOrLaterThanVersion(langGeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
   }, [langGeniusVersionInfo.current_version, pluginDeclaration])
 
-  const { canInstall } = useInstallPluginLimit({ ...payload, from: 'marketplace' })
+  const {
+    canInstall,
+    isLoading: isInstallLimitLoading,
+  } = useInstallPluginLimit({ ...payload, from: 'marketplace' })
   return (
     <>
       <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
@@ -152,7 +167,7 @@ const Installed: FC<Props> = ({
                 toInstallVersion={toInstallVersion}
               />
             )}
-            limitedInstall={!canInstall}
+            limitedInstall={!isInstallLimitLoading && !canInstall}
           />
         </div>
       </div>
@@ -166,10 +181,10 @@ const Installed: FC<Props> = ({
         <Button
           variant="primary"
           className="flex min-w-[72px] space-x-0.5"
-          disabled={isInstalling || isLoading || !canInstall}
+          disabled={isInstalling || isLoading || isInstallLimitLoading || !canInstall}
           onClick={handleInstall}
         >
-          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
+          {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
         </Button>
       </div>

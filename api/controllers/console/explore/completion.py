@@ -3,10 +3,12 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.schema import register_schema_models
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -15,8 +17,10 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import NotChatAppError, NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.console.wraps import with_current_user, with_current_user_id
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -28,9 +32,8 @@ from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.datetime_utils import naive_utc_now
-from libs.login import current_user
 from models import Account
-from models.model import AppMode
+from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
@@ -43,7 +46,7 @@ logger = logging.getLogger(__name__)
 class CompletionMessageExplorePayload(BaseModel):
     inputs: dict[str, Any]
     query: str = ""
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="explore_app")
 
@@ -51,7 +54,7 @@ class CompletionMessageExplorePayload(BaseModel):
 class ChatMessagePayload(BaseModel):
     inputs: dict[str, Any]
     query: str
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     conversation_id: str | None = None
     parent_message_id: str | None = None
     retriever_from: str = Field(default="explore_app")
@@ -72,6 +75,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
+register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 # define completion api for user
@@ -81,8 +85,13 @@ register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessageP
 )
 class CompletionApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
-    def post(self, installed_app):
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @with_current_user
+    @with_session
+    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -96,10 +105,13 @@ class CompletionApi(InstalledAppResource):
         db.session.commit()
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -130,18 +142,19 @@ class CompletionApi(InstalledAppResource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @with_current_user_id
+    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
-
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
 
         AppTaskService.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
-            user_id=current_user.id,
+            user_id=current_user_id,
             app_mode=AppMode.value_of(app_model.mode),
         )
 
@@ -154,8 +167,13 @@ class CompletionStopApi(InstalledAppResource):
 )
 class ChatApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    def post(self, installed_app):
+    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @with_current_user
+    @with_session
+    def post(self, session: Session, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
@@ -169,10 +187,13 @@ class ChatApi(InstalledAppResource):
         db.session.commit()
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -205,19 +226,20 @@ class ChatApi(InstalledAppResource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(InstalledAppResource):
-    def post(self, installed_app, task_id):
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @with_current_user_id
+    def post(self, current_user_id: str, installed_app: InstalledApp, task_id: str):
         app_model = installed_app.app
+        if app_model is None:
+            raise AppUnavailableError()
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
-
         AppTaskService.stop_task(
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
-            user_id=current_user.id,
+            user_id=current_user_id,
             app_mode=app_mode,
         )
 

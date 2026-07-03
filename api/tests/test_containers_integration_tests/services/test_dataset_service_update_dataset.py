@@ -189,7 +189,7 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_api_id": external_api.id,
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user)
+        result = DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
 
         db_session_with_containers.refresh(dataset)
         updated_binding = db_session_with_containers.query(ExternalKnowledgeBindings).filter_by(id=binding_id).first()
@@ -221,7 +221,7 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name", "external_knowledge_api_id": str(uuid4())}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user)
+            DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
 
         assert "External knowledge id is required" in str(context.value)
         db_session_with_containers.rollback()
@@ -245,7 +245,7 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name", "external_knowledge_id": "knowledge_id"}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user)
+            DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
 
         assert "External knowledge api id is required" in str(context.value)
         db_session_with_containers.rollback()
@@ -272,7 +272,7 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user)
+            DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
 
         assert "External knowledge binding not found" in str(context.value)
         db_session_with_containers.rollback()
@@ -303,7 +303,7 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": "text-embedding-ada-002",
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user)
+        result = DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
         db_session_with_containers.refresh(dataset)
 
         assert dataset.name == "new_name"
@@ -338,7 +338,7 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": None,
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user)
+        result = DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
         db_session_with_containers.refresh(dataset)
 
         assert dataset.name == "new_name"
@@ -371,7 +371,7 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task:
-            result = DatasetService.update_dataset(dataset.id, update_data, user)
+            result = DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
             mock_task.delay.assert_called_once_with(dataset.id, "remove")
 
         db_session_with_containers.refresh(dataset)
@@ -418,7 +418,7 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
 
-            result = DatasetService.update_dataset(dataset.id, update_data, user)
+            result = DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
 
             mock_model_manager.return_value.get_model_instance.assert_called_once_with(
                 tenant_id=tenant.id,
@@ -426,7 +426,7 @@ class TestDatasetServiceUpdateDataset:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model="text-embedding-ada-002",
             )
-            mock_get_binding.assert_called_once_with("openai", "text-embedding-ada-002")
+            mock_get_binding.assert_called_once_with("openai", "text-embedding-ada-002", db_session_with_containers)
             mock_task.delay.assert_called_once_with(dataset.id, "add")
 
         db_session_with_containers.refresh(dataset)
@@ -462,7 +462,7 @@ class TestDatasetServiceUpdateDataset:
             "retrieval_model": "new_model",
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user)
+        result = DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
         db_session_with_containers.refresh(dataset)
 
         assert dataset.name == "new_name"
@@ -514,7 +514,7 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
 
-            result = DatasetService.update_dataset(dataset.id, update_data, user)
+            result = DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
 
             mock_model_manager.return_value.get_model_instance.assert_called_once_with(
                 tenant_id=tenant.id,
@@ -522,7 +522,7 @@ class TestDatasetServiceUpdateDataset:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model="text-embedding-3-small",
             )
-            mock_get_binding.assert_called_once_with("openai", "text-embedding-3-small")
+            mock_get_binding.assert_called_once_with("openai", "text-embedding-3-small", db_session_with_containers)
             mock_task.delay.assert_called_once_with(dataset.id, "update")
             mock_regenerate_task.delay.assert_called_once_with(
                 dataset.id,
@@ -545,7 +545,7 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name"}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(str(uuid4()), update_data, user)
+            DatasetService.update_dataset(db_session_with_containers, str(uuid4()), update_data, user)
 
         assert "Dataset not found" in str(context.value)
 
@@ -568,7 +568,7 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name"}
 
         with pytest.raises(NoPermissionError):
-            DatasetService.update_dataset(dataset.id, update_data, outsider)
+            DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, outsider)
 
     def test_update_internal_dataset_embedding_model_error(self, db_session_with_containers: Session):
         """Test error when embedding model is not available."""
@@ -595,6 +595,6 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 
             with pytest.raises(Exception) as context:
-                DatasetService.update_dataset(dataset.id, update_data, user)
+                DatasetService.update_dataset(db_session_with_containers, dataset.id, update_data, user)
 
         assert "No Embedding Model available".lower() in str(context.value).lower()

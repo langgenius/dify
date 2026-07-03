@@ -181,7 +181,7 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
         </div>
         {isCallBatchAPI && allFailedTaskList.length > 0 && (
           <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-xs">
-            <span aria-hidden className="i-ri-error-warning-fill h-4 w-4 text-text-destructive" />
+            <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
             <div className="system-sm-medium text-text-secondary">{t('generation.batchFailed.info', { ns: 'share', num: allFailedTaskList.length })}</div>
             <div className="h-3.5 w-px bg-divider-regular"></div>
             <button

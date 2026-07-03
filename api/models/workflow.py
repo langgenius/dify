@@ -25,6 +25,13 @@ from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.nodes.human_input.pause_reason import (
+    HumanInputRequired,
+)
+from core.workflow.nodes.human_input.pause_reason import (
+    PauseReason as DifyPauseReason,
+)
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
@@ -32,7 +39,8 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,
@@ -112,6 +120,7 @@ class WorkflowType(StrEnum):
     WORKFLOW = "workflow"
     CHAT = "chat"
     RAG_PIPELINE = "rag-pipeline"
+    SNIPPET = "snippet"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowType":
@@ -138,6 +147,26 @@ class WorkflowType(StrEnum):
 
         app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
+
+
+class WorkflowKind(StrEnum):
+    STANDARD = "standard"
+    SNIPPET = "snippet"
+
+    @classmethod
+    def value_of(cls, value: str) -> "WorkflowKind":
+        for kind in cls:
+            if kind.value == value:
+                return kind
+        raise ValueError(f"invalid workflow kind value {value}")
+
+
+def resolve_workflow_kind(kind: str | WorkflowKind | None) -> WorkflowKind:
+    if kind is None:
+        return WorkflowKind.STANDARD
+    if isinstance(kind, WorkflowKind):
+        return kind
+    return WorkflowKind.value_of(kind)
 
 
 class _InvalidGraphDefinitionError(Exception):
@@ -187,6 +216,12 @@ class Workflow(Base):  # bug
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[WorkflowType] = mapped_column(EnumText(WorkflowType, length=255), nullable=False)
+    kind: Mapped[WorkflowKind | None] = mapped_column(
+        EnumText(WorkflowKind, length=255),
+        nullable=True,
+        default=WorkflowKind.STANDARD,
+        server_default=sa.text("'standard'"),
+    )
     version: Mapped[str] = mapped_column(String(255), nullable=False)
     marked_name: Mapped[str] = mapped_column(String(255), default="", server_default="")
     marked_comment: Mapped[str] = mapped_column(String(255), default="", server_default="")
@@ -228,12 +263,14 @@ class Workflow(Base):  # bug
         rag_pipeline_variables: list[dict],
         marked_name: str = "",
         marked_comment: str = "",
+        kind: str | None = WorkflowKind.STANDARD.value,
     ) -> "Workflow":
         workflow = Workflow()
         workflow.id = str(uuid4())
         workflow.tenant_id = tenant_id
         workflow.app_id = app_id
         workflow.type = WorkflowType(type)
+        workflow.kind = resolve_workflow_kind(kind)
         workflow.version = version
         workflow.graph = graph
         workflow.features = features
@@ -254,6 +291,14 @@ class Workflow(Base):  # bug
     @property
     def updated_by_account(self):
         return db.session.get(Account, self.updated_by) if self.updated_by else None
+
+    @property
+    def kind_or_standard(self) -> str:
+        return self.resolved_kind.value
+
+    @property
+    def resolved_kind(self) -> WorkflowKind:
+        return resolve_workflow_kind(self.kind)
 
     @property
     def graph_dict(self) -> Mapping[str, Any]:
@@ -543,13 +588,16 @@ class Workflow(Base):  # bug
         def decrypt_func(
             var: VariableBase,
         ) -> StringVariable | IntegerVariable | FloatVariable | SecretVariable:
-            if isinstance(var, SecretVariable):
-                return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-            elif isinstance(var, (StringVariable, IntegerVariable, FloatVariable)):
-                return var
-            else:
-                # Other variable types are not supported for environment variables
-                raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
+            match var:
+                case SecretVariable():
+                    return var.model_copy(
+                        update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
+                    )
+                case StringVariable() | IntegerVariable() | FloatVariable():
+                    return var
+                case _:
+                    # Other variable types are not supported for environment variables
+                    raise AssertionError(f"Unexpected variable type for environment variable: {type(var)}")
 
         decrypted_results: list[SecretVariable | StringVariable | IntegerVariable | FloatVariable] = [
             decrypt_func(var) for var in results
@@ -1209,6 +1257,7 @@ class WorkflowAppLogCreatedFrom(StrEnum):
     SERVICE_API = "service-api"
     WEB_APP = "web-app"
     INSTALLED_APP = "installed-app"
+    OPENAPI = "openapi"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowAppLogCreatedFrom":
@@ -1637,31 +1686,32 @@ class WorkflowDraftVariable(Base):
         # rather than their serialized forms.
         # However, multiple components in the codebase depend on
         # `WorkflowEntry.handle_special_values`, making a comprehensive migration challenging.
-        if isinstance(value, dict):
-            if not maybe_file_object(value):
-                return cast(Any, value)
-            tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
-            return build_file_from_stored_mapping(
-                file_mapping=cast(dict[str, Any], value),
-                tenant_id=tenant_id,
-            )
-        elif isinstance(value, list) and value:
-            value_list = cast(list[Any], value)
-            first: Any = value_list[0]
-            if not maybe_file_object(first):
-                return cast(Any, value)
-            tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
-            file_list: list[File] = []
-            for item in value_list:
-                file_list.append(
-                    build_file_from_stored_mapping(
-                        file_mapping=cast(dict[str, Any], item),
-                        tenant_id=tenant_id,
-                    )
+        match value:
+            case dict():
+                if not maybe_file_object(value):
+                    return cast(Any, value)
+                tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+                return build_file_from_stored_mapping(
+                    file_mapping=cast(dict[str, Any], value),
+                    tenant_id=tenant_id,
                 )
-            return cast(Any, file_list)
-        else:
-            return cast(Any, value)
+            case list() if value:
+                value_list = value
+                first: Any = value_list[0]
+                if not maybe_file_object(first):
+                    return cast(Any, value)
+                tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+                file_list: list[File] = []
+                for item in value_list:
+                    file_list.append(
+                        build_file_from_stored_mapping(
+                            file_mapping=cast(dict[str, Any], item),
+                            tenant_id=tenant_id,
+                        )
+                    )
+                return cast(Any, file_list)
+            case _:
+                return cast(Any, value)
 
     def build_segment_from_serialized_value(self, segment_type: SegmentType, value: Any) -> Segment:
         # Persisted draft variable rows may contain historical file payloads.
@@ -1670,13 +1720,14 @@ class WorkflowDraftVariable(Base):
         # serialized JSON blob.
         match segment_type:
             case SegmentType.FILE:
-                if isinstance(value, File):
-                    return build_segment_with_type(segment_type, value)
-                elif isinstance(value, dict):
-                    file = self._rebuild_file_types(value)
-                    return build_segment_with_type(segment_type, file)
-                else:
-                    raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+                match value:
+                    case File():
+                        return build_segment_with_type(segment_type, value)
+                    case dict():
+                        file = self._rebuild_file_types(value)
+                        return build_segment_with_type(segment_type, file)
+                    case _:
+                        raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
             case SegmentType.ARRAY_FILE:
                 if not isinstance(value, list):
                     raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
@@ -1691,25 +1742,26 @@ class WorkflowDraftVariable(Base):
         # structural reconstruction. Persisted draft-variable payloads should go
         # through `build_segment_from_serialized_value()` so file metadata is
         # rebuilt from canonical storage records.
-        if isinstance(value, dict):
-            if not maybe_file_object(value):
-                return cast(Any, value)
-            normalized_file = dict(value)
-            normalized_file.pop("tenant_id", None)
-            return build_file_from_mapping_without_lookup(file_mapping=normalized_file)
-        elif isinstance(value, list) and value:
-            value_list = cast(list[Any], value)
-            first: Any = value_list[0]
-            if not maybe_file_object(first):
-                return cast(Any, value)
-            file_list: list[File] = []
-            for item in value_list:
-                normalized_file = dict(cast(dict[str, Any], item))
+        match value:
+            case dict():
+                if not maybe_file_object(value):
+                    return cast(Any, value)
+                normalized_file = dict(value)
                 normalized_file.pop("tenant_id", None)
-                file_list.append(build_file_from_mapping_without_lookup(file_mapping=normalized_file))
-            return cast(Any, file_list)
-        else:
-            return cast(Any, value)
+                return build_file_from_mapping_without_lookup(file_mapping=normalized_file)
+            case list() if value:
+                value_list = value
+                first: Any = value_list[0]
+                if not maybe_file_object(first):
+                    return cast(Any, value)
+                file_list: list[File] = []
+                for item in value_list:
+                    normalized_file = dict(cast(dict[str, Any], item))
+                    normalized_file.pop("tenant_id", None)
+                    file_list.append(build_file_from_mapping_without_lookup(file_mapping=normalized_file))
+                return cast(Any, file_list)
+            case _:
+                return cast(Any, value)
 
     @classmethod
     def build_segment_with_type(cls, segment_type: SegmentType, value: Any) -> Segment:
@@ -1718,13 +1770,14 @@ class WorkflowDraftVariable(Base):
         # their serialized dictionary or list representations, respectively.
         match segment_type:
             case SegmentType.FILE:
-                if isinstance(value, File):
-                    return build_segment_with_type(segment_type, value)
-                elif isinstance(value, dict):
-                    file = cls.rebuild_file_types(value)
-                    return build_segment_with_type(segment_type, file)
-                else:
-                    raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+                match value:
+                    case File():
+                        return build_segment_with_type(segment_type, value)
+                    case dict():
+                        file = cls.rebuild_file_types(value)
+                        return build_segment_with_type(segment_type, file)
+                    case _:
+                        raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
             case SegmentType.ARRAY_FILE:
                 if not isinstance(value, list):
                     raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
@@ -1816,6 +1869,8 @@ class WorkflowDraftVariable(Base):
         variable.file_id = file_id
         variable._set_selector(list(variable_utils.to_selector(node_id, name)))
         variable.node_execution_id = node_execution_id
+        variable.visible = True
+        variable.is_default_value = False
         return variable
 
     @classmethod
@@ -2059,7 +2114,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
 
     type_: Mapped[PauseReasonType] = mapped_column(EnumText(PauseReasonType), nullable=False)
 
-    # form_id is not empty if and if only type_ == PauseReasonType.HUMAN_INPUT_REQUIRED
+    # form_id is not empty if and only if type_ is one of the Human Input pause variants.
     #
     form_id: Mapped[str] = mapped_column(
         String(36),
@@ -2097,24 +2152,43 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     )
 
     @classmethod
-    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
-        if isinstance(pause_reason, HumanInputRequired):
-            return cls(
-                pause_id=pause_id,
-                type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
-                form_id=pause_reason.form_id,
-                node_id=pause_reason.node_id,
-            )
-        elif isinstance(pause_reason, SchedulingPause):
-            return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
-        else:
-            raise AssertionError(f"Unknown pause reason type: {pause_reason}")
+    def from_entity(
+        cls,
+        *,
+        pause_id: str,
+        pause_reason: GraphonPauseReason | DifyPauseReason,
+    ) -> "WorkflowPauseReason":
+        match pause_reason:
+            case HitlRequired():
+                return cls(
+                    pause_id=pause_id,
+                    type_=PauseReasonType.HITL_REQUIRED,
+                    form_id=default_session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id),
+                    node_id=pause_reason.node_id,
+                )
+            case HumanInputRequired():
+                return cls(
+                    pause_id=pause_id,
+                    type_=PauseReasonType.HITL_REQUIRED,
+                    form_id=pause_reason.form_id,
+                    node_id=pause_reason.node_id,
+                )
+            case SchedulingPause():
+                return cls(pause_id=pause_id, type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message)
+            case _:
+                raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
-    def to_entity(self) -> PauseReason:
-        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+    def to_entity(self) -> DifyPauseReason | GraphonPauseReason:
+        if self.type_ == PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED:
             return HumanInputRequired(
                 form_id=self.form_id,
                 form_content="",
+                node_id=self.node_id,
+                node_title="",
+            )
+        elif self.type_ == PauseReasonType.HITL_REQUIRED:
+            return HitlRequired(
+                session_id=default_session_binding.issue_session_id_for_form(form_id=self.form_id),
                 node_id=self.node_id,
                 node_title="",
             )

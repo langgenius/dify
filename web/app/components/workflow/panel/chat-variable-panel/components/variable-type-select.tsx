@@ -57,7 +57,7 @@ const VariableTypeSelector = <T extends string, >({
           >
             {value}
           </div>
-          <span className="ml-0.5 i-ri-arrow-down-s-line h-4 w-4 text-text-quaternary" aria-hidden="true" />
+          <span className="ml-0.5 i-ri-arrow-down-s-line size-4 text-text-quaternary" aria-hidden="true" />
         </div>
       </SelectTrigger>
       <SelectContent placement="bottom-start" popupClassName={cn('bg-components-panel-bg-blur', popupClassName)}>

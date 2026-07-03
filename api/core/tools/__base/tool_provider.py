@@ -11,8 +11,10 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolProviderCredentialValidationError
 
 
-class ToolProviderController(ABC):
-    def __init__(self, entity: ToolProviderEntity):
+class ToolProviderController[ToolProviderEntityT: ToolProviderEntity, ToolProviderToolT: Tool | None](ABC):
+    entity: ToolProviderEntityT
+
+    def __init__(self, entity: ToolProviderEntityT):
         self.entity = entity
 
     def get_credentials_schema(self) -> list[ProviderConfig]:
@@ -24,7 +26,7 @@ class ToolProviderController(ABC):
         return deepcopy(self.entity.credentials_schema)
 
     @abstractmethod
-    def get_tool(self, tool_name: str) -> Tool:
+    def get_tool(self, tool_name: str) -> ToolProviderToolT:
         """
         returns a tool that the provider can provide
 

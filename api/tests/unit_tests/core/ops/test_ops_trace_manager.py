@@ -262,7 +262,7 @@ def workflow_repo_fixture(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.fixture
-def trace_task_message(monkeypatch, mock_db):
+def trace_task_message(monkeypatch: pytest.MonkeyPatch, mock_db):
     message_data = make_message_data()
     monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda msg_id: message_data)
     configure_db_scalar(mock_db, message_file=FakeMessageFile(), workflow_app_log=SimpleNamespace(id="log-id"))
@@ -353,7 +353,7 @@ def test_get_ops_trace_instance_invalid_provider(mock_db, monkeypatch: pytest.Mo
     assert OpsTraceManager.get_ops_trace_instance("app-id") is None
 
 
-def test_get_ops_trace_instance_success(monkeypatch, mock_db):
+def test_get_ops_trace_instance_success(monkeypatch: pytest.MonkeyPatch, mock_db):
     app = SimpleNamespace(id="app-id", tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
     mock_db.get.return_value = app
     monkeypatch.setattr(
@@ -497,7 +497,7 @@ def test_trace_task_dataset_retrieval_trace(trace_task_message):
     assert result.documents == [{"doc": "value"}]
 
 
-def test_trace_task_tool_trace(monkeypatch, mock_db):
+def test_trace_task_tool_trace(monkeypatch: pytest.MonkeyPatch, mock_db):
     custom_message = make_message_data(agent_thoughts=[make_agent_thought("tool-a", datetime(2025, 2, 20, 12, 1, 0))])
     monkeypatch.setattr("core.ops.ops_trace_manager.get_message_data", lambda _: custom_message)
     configure_db_scalar(mock_db, message_file=FakeMessageFile())

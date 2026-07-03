@@ -28,6 +28,7 @@ const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 const mockFetchAppDetail = vi.mocked(fetchAppDetail)
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 const mockTemplateApp: App = {
   app_id: 'template-1',
@@ -66,6 +67,15 @@ vi.mock('@/app/education-apply/hooks', () => ({
   useEducationInit: () => {
     educationInitCalls++
   },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useAppContext: () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -193,6 +203,7 @@ describe('Apps', () => {
     vi.clearAllMocks()
     documentTitleCalls = []
     educationInitCalls = 0
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSearchParams = new URLSearchParams()
     mockReplace.mockClear()
     mockFetchAppDetail.mockResolvedValue({
@@ -262,8 +273,8 @@ describe('Apps', () => {
     })
 
     it('should track template preview creation after a successful import', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
 
       renderWithClient(<Apps />)
@@ -275,7 +286,9 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(mockFetchAppDetail).toHaveBeenCalledWith('template-1')
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'studio_template_preview',
           appMode: AppModeEnum.CHAT,
+          templateId: 'template-1',
         })
       })
     })
@@ -284,8 +297,8 @@ describe('Apps', () => {
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
         options.onPending?.()
       })
-      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
       })
 
       renderWithClient(<Apps />)
@@ -299,7 +312,9 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(mockHandleImportDSLConfirm).toHaveBeenCalledTimes(1)
         expect(mockTrackCreateApp).toHaveBeenCalledWith({
-          appMode: AppModeEnum.CHAT,
+          source: 'studio_template_preview',
+          appMode: AppModeEnum.WORKFLOW,
+          templateId: 'template-1',
         })
       })
     })
@@ -347,6 +362,14 @@ describe('Apps', () => {
       expect(screen.getByTestId('template-id')).toHaveTextContent('tpl-42')
     })
 
+    it('should not render the template modal without app.create_and_management permission', () => {
+      mockWorkspacePermissionKeys = []
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      expect(screen.queryByTestId('marketplace-template-modal')).not.toBeInTheDocument()
+    })
+
     it('should not render the template modal when no template-id is present', () => {
       renderWithClient(<Apps />)
 
@@ -365,8 +388,8 @@ describe('Apps', () => {
     })
 
     it('should import DSL from marketplace template on confirm', async () => {
-      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.()
+      mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.CHAT })
       })
       mockSearchParams = new URLSearchParams('template-id=tpl-42')
       renderWithClient(<Apps />)
@@ -378,13 +401,31 @@ describe('Apps', () => {
           { mode: 'yaml-content', yaml_content: 'yaml-dsl-content' },
           expect.objectContaining({ onSuccess: expect.any(Function) }),
         )
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'external',
+          appMode: AppModeEnum.CHAT,
+          templateId: 'tpl-42',
+        })
         expect(mockReplace).toHaveBeenCalled()
       })
     })
 
-    it('should show DSL confirm modal when marketplace import is pending', async () => {
+    it('should not open create modal from template preview without app.create_and_management permission', async () => {
+      mockWorkspacePermissionKeys = []
+      renderWithClient(<Apps />)
+
+      fireEvent.click(screen.getByTestId('open-preview'))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+
+      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
+    })
+
+    it('should track marketplace template creation after confirming a pending import', async () => {
       mockHandleImportDSL.mockImplementation(async (_payload: unknown, options: { onPending?: () => void }) => {
         options.onPending?.()
+      })
+      mockHandleImportDSLConfirm.mockImplementation(async (options: { onSuccess?: (payload: { app_mode: AppModeEnum }) => void }) => {
+        options.onSuccess?.({ app_mode: AppModeEnum.WORKFLOW })
       })
       mockSearchParams = new URLSearchParams('template-id=tpl-42')
       renderWithClient(<Apps />)
@@ -394,6 +435,16 @@ describe('Apps', () => {
       await waitFor(() => {
         expect(screen.getByTestId('dsl-confirm-modal')).toBeInTheDocument()
         expect(mockReplace).toHaveBeenCalled()
+      })
+
+      fireEvent.click(screen.getByTestId('confirm-dsl'))
+
+      await waitFor(() => {
+        expect(mockTrackCreateApp).toHaveBeenCalledWith({
+          source: 'external',
+          appMode: AppModeEnum.WORKFLOW,
+          templateId: 'tpl-42',
+        })
       })
     })
   })

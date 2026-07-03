@@ -1,17 +1,17 @@
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { InputVarType } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   inputsForms: any[]
   inputs: Record<string, any>
   inputsRef: any
   onFormChange: (value: Record<string, any>) => void
-}
+}>
 const AppInputsForm = ({
   inputsForms,
   inputs,
@@ -55,8 +55,9 @@ const AppInputsForm = ({
     if (form.type === InputVarType.paragraph) {
       return (
         <Textarea
+          aria-label={label}
           value={inputs[variable] || ''}
-          onChange={e => handleFormChange(variable, e.target.value)}
+          onValueChange={value => handleFormChange(variable, value)}
           placeholder={label}
         />
       )

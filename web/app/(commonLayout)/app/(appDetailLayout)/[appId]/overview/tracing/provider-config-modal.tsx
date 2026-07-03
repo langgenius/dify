@@ -28,7 +28,7 @@ import { docURL } from './config'
 import Field from './field'
 import { TracingProvider } from './type'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   type: TracingProvider
   payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig | null
@@ -36,7 +36,7 @@ type Props = {
   onCancel: () => void
   onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => void
   onChosen: (provider: TracingProvider) => void
-}
+}>
 
 const I18N_PREFIX = 'tracing.configProvider'
 
@@ -649,7 +649,7 @@ const ProviderConfigModal: FC<Props> = ({
                           href={docURL[type]}
                         >
                           <span>{t(`${I18N_PREFIX}.viewDocsLink`, { ns: 'app', key: t(`tracing.${type}.title`, { ns: 'app' }) })}</span>
-                          <LinkExternal02 className="h-3 w-3" />
+                          <LinkExternal02 className="size-3" />
                         </a>
                         <div className="flex items-center">
                           {isEdit && (
@@ -683,7 +683,7 @@ const ProviderConfigModal: FC<Props> = ({
                     </div>
                     <div className="border-t-[0.5px] border-divider-regular">
                       <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
-                        <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
+                        <Lock01 className="mr-1 size-3 text-text-tertiary" />
                         {t('modelProvider.encrypted.front', { ns: 'common' })}
                         <a
                           className="mx-1 text-primary-600"

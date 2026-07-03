@@ -3,13 +3,13 @@
 import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiArrowLeftRightLine, RiExternalLinkLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import PluginMutationModel from '@/app/components/plugins/plugin-mutation-model'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
@@ -34,6 +34,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
     version: string
     pluginUniqueIden: string
   }>()
+  const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
   const pluginDetails = useCheckInstalled({
     pluginIds: [pluginId!],
     enabled: true,
@@ -64,7 +65,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { t } = useTranslation()
 
   // Guard against null/undefined uniqueIdentifier to prevent app crash
-  if (!uniqueIdentifier || !pluginId)
+  if (!uniqueIdentifier || !pluginId || !canUpdatePlugin)
     return null
 
   const content = (
@@ -99,7 +100,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
               <span className="system-xs-regular text-xs text-text-accent">
                 {t('nodes.agent.installPlugin.changelog', { ns: 'workflow' })}
               </span>
-              <RiExternalLinkLine className="size-3 text-text-accent" />
+              <span className="i-ri-external-link-line size-3 text-text-accent" />
             </Link>
           )}
         />
@@ -127,7 +128,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
               text={(
                 <>
                   <div>{pluginDetail.version}</div>
-                  <RiArrowLeftRightLine className="ml-1 h-3 w-3 text-text-tertiary" />
+                  <span className="ml-1 i-ri-arrow-left-right-line size-3 text-text-tertiary" />
                 </>
               )}
               hasRedCornerMark={true}

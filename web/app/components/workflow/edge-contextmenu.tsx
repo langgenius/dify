@@ -1,63 +1,44 @@
 import {
-  ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
 } from '@langgenius/dify-ui/context-menu'
-import {
-  memo,
-  useMemo,
-} from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import { useEdgesInteractions, usePanelInteractions } from './hooks'
+import { useEdgesInteractions } from './hooks'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
-const EdgeContextmenu = () => {
+export function EdgeContextmenu({
+  onClose,
+}: {
+  onClose: () => void
+}) {
   const { t } = useTranslation()
-  const edgeMenu = useStore(s => s.edgeMenu)
+  const contextMenuTarget = useStore(s => s.contextMenuTarget)
+  const edgeId = contextMenuTarget?.type === 'edge' ? contextMenuTarget.edgeId : undefined
   const { handleEdgeDeleteById } = useEdgesInteractions()
-  const { handleEdgeContextmenuCancel } = usePanelInteractions()
   const edges = useEdges()
-  const currentEdgeExists = !edgeMenu || edges.some(edge => edge.id === edgeMenu.edgeId)
+  const currentEdgeExists = !edgeId || edges.some(edge => edge.id === edgeId)
 
-  const anchor = useMemo(() => {
-    if (!edgeMenu || !currentEdgeExists)
-      return null
-
-    return {
-      getBoundingClientRect: () => DOMRect.fromRect({
-        width: 0,
-        height: 0,
-        x: edgeMenu.clientX,
-        y: edgeMenu.clientY,
-      }),
-    }
-  }, [currentEdgeExists, edgeMenu])
-
-  if (!edgeMenu || !currentEdgeExists || !anchor)
+  if (!edgeId || !currentEdgeExists)
     return null
 
   return (
-    <ContextMenu
-      open={!!edgeMenu}
-      onOpenChange={open => !open && handleEdgeContextmenuCancel()}
+    <ContextMenuContent
+      popupClassName="rounded-lg"
+      sideOffset={4}
     >
-      <ContextMenuContent
-        positionerProps={{ anchor }}
-        popupClassName="rounded-lg"
+      <ContextMenuItem
+        variant="destructive"
+        className="justify-between gap-4 px-3"
+        onClick={() => {
+          handleEdgeDeleteById(edgeId)
+          onClose()
+        }}
       >
-        <ContextMenuItem
-          variant="destructive"
-          className="justify-between gap-4 px-3"
-          onClick={() => handleEdgeDeleteById(edgeMenu.edgeId)}
-        >
-          <span>{t('common:operation.delete')}</span>
-          <ShortcutKbd shortcut="workflow.delete" />
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+        <span>{t('common:operation.delete')}</span>
+        <ShortcutKbd shortcut="workflow.delete" />
+      </ContextMenuItem>
+    </ContextMenuContent>
   )
 }
-
-export default memo(EdgeContextmenu)

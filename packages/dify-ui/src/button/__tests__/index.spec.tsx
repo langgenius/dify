@@ -1,3 +1,5 @@
+import type * as React from 'react'
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Button } from '../index'
 
@@ -106,14 +108,21 @@ describe('Button', () => {
       expect(screen.getByRole('button').element().querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     })
 
-    it('auto-disables when loading', async () => {
+    it('keeps loading buttons focusable by default', async () => {
       const screen = await render(<Button loading>Click me</Button>)
-      await expect.element(screen.getByRole('button')).toBeDisabled()
+      const button = screen.getByRole('button').element()
+
+      expect(button).not.toHaveAttribute('disabled')
+      expect((button as HTMLButtonElement).disabled).toBe(false)
+      expect(button).toHaveAttribute('aria-disabled', 'true')
+
+      asHTMLElement(button).focus()
+      expect(button).toHaveFocus()
     })
 
-    it('sets aria-busy when loading', async () => {
+    it('does not set aria-busy when loading', async () => {
       const screen = await render(<Button loading>Click me</Button>)
-      await expect.element(screen.getByRole('button')).toHaveAttribute('aria-busy', 'true')
+      await expect.element(screen.getByRole('button')).not.toHaveAttribute('aria-busy')
     })
 
     it('does not set aria-busy when not loading', async () => {
@@ -128,10 +137,17 @@ describe('Button', () => {
       await expect.element(screen.getByRole('button')).toBeDisabled()
     })
 
-    it('keeps focusable when loading with focusableWhenDisabled', async () => {
-      const screen = await render(<Button loading focusableWhenDisabled>Loading</Button>)
+    it('does not keep normal disabled buttons focusable by default', async () => {
+      const screen = await render(<Button disabled>Click me</Button>)
       const button = screen.getByRole('button').element()
-      expect(button).toHaveAttribute('aria-disabled', 'true')
+
+      expect(button).toBeDisabled()
+      expect(button).not.toHaveAttribute('aria-disabled')
+    })
+
+    it('allows loading focusability to be opted out', async () => {
+      const screen = await render(<Button loading focusableWhenDisabled={false}>Loading</Button>)
+      await expect.element(screen.getByRole('button')).toBeDisabled()
     })
   })
 
@@ -155,6 +171,35 @@ describe('Button', () => {
       const screen = await render(<Button onClick={onClick} loading>Click me</Button>)
       asHTMLElement(screen.getByRole('button').element()).click()
       expect(onClick).not.toHaveBeenCalled()
+    })
+
+    it('does not submit a form when a loading submit button is clicked', async () => {
+      const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault())
+      const screen = await render(
+        <form onSubmit={onSubmit}>
+          <Button type="submit" loading>Submit</Button>
+        </form>,
+      )
+
+      asHTMLElement(screen.getByRole('button', { name: 'Submit' }).element()).click()
+
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('does not implicitly submit a form through a loading submit button', async () => {
+      const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault())
+      const screen = await render(
+        <form onSubmit={onSubmit}>
+          <label htmlFor="name">Name</label>
+          <input id="name" />
+          <Button type="submit" loading>Submit</Button>
+        </form>,
+      )
+
+      asHTMLElement(screen.getByRole('textbox', { name: 'Name' }).element()).focus()
+      await userEvent.keyboard('{Enter}')
+
+      expect(onSubmit).not.toHaveBeenCalled()
     })
   })
 

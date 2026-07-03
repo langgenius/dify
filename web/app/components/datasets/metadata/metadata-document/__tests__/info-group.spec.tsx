@@ -5,6 +5,7 @@ import { DataType } from '../../types'
 import InfoGroup from '../info-group'
 
 type InputCombinedProps = {
+  label: string
   value: string | number | null
   onChange: (value: string | number) => void
   type: DataType
@@ -43,9 +44,9 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 // Mock InputCombined
 vi.mock('../../edit-metadata-batch/input-combined', () => ({
-  default: ({ value, onChange, type }: InputCombinedProps) => (
+  default: ({ label, value, onChange, type }: InputCombinedProps) => (
     <input
-      aria-label={`Metadata ${type} value`}
+      aria-label={label}
       data-type={type}
       value={value || ''}
       onChange={e => onChange(e.target.value)}

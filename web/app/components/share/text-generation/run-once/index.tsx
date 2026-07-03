@@ -7,6 +7,7 @@ import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
@@ -18,7 +19,6 @@ import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uplo
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -159,10 +159,11 @@ const RunOnce: FC<IRunOnceProps> = ({
                     )}
                     {item.type === 'paragraph' && (
                       <Textarea
+                        aria-label={item.name}
                         className="h-[104px] sm:text-xs"
                         placeholder={item.name}
                         value={inputs[item.key] as string}
-                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                        onValueChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
                       />
                     )}
                     {item.type === 'number' && (
@@ -256,14 +257,14 @@ const RunOnce: FC<IRunOnceProps> = ({
                   ? (
                       <>
                         {runControl?.isStopping
-                          ? <RiLoader2Line className="mr-1 h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
-                          : <StopCircle className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />}
+                          ? <RiLoader2Line className="mr-1 size-4 shrink-0 animate-spin" aria-hidden="true" />
+                          : <StopCircle className="mr-1 size-4 shrink-0" aria-hidden="true" />}
                         <span className="text-[13px]">{stopLabel}</span>
                       </>
                     )
                   : (
                       <>
-                        <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
+                        <RiPlayLargeLine className="mr-1 size-4 shrink-0" aria-hidden="true" />
                         <span className="text-[13px]">{t('generation.run', { ns: 'share' })}</span>
                       </>
                     )}

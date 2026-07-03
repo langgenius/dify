@@ -1,4 +1,4 @@
-import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CommentsPanel from '../index'
 
@@ -130,7 +130,7 @@ describe('CommentsPanel', () => {
 
   it('resolves a comment and syncs list refresh', async () => {
     const { container } = render(<CommentsPanel />)
-    const resolveIcons = container.querySelectorAll('.h-4.w-4.cursor-pointer.text-text-tertiary')
+    const resolveIcons = container.querySelectorAll('.size-4.cursor-pointer.text-text-tertiary')
     expect(resolveIcons.length).toBeGreaterThan(0)
 
     fireEvent.click(resolveIcons[0]!)

@@ -41,7 +41,7 @@ export default function SocialAuth(props: SocialAuthProps) {
           >
             <>
               <span className={
-                cn(style.githubIcon, 'mr-2 h-5 w-5')
+                cn(style.githubIcon, 'mr-2 size-5')
               }
               />
               <span className="truncate leading-normal">{t('withGitHub', { ns: 'login' })}</span>
@@ -57,7 +57,7 @@ export default function SocialAuth(props: SocialAuthProps) {
           >
             <>
               <span className={
-                cn(style.googleIcon, 'mr-2 h-5 w-5')
+                cn(style.googleIcon, 'mr-2 size-5')
               }
               />
               <span className="truncate leading-normal">{t('withGoogle', { ns: 'login' })}</span>

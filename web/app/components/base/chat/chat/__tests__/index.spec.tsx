@@ -42,9 +42,18 @@ vi.mock('../question', () => ({
 }))
 
 vi.mock('../chat-input-area', () => ({
-  default: ({ disabled, readonly }: { disabled?: boolean, readonly?: boolean }) => (
+  default: ({
+    customPlaceholder,
+    disabled,
+    readonly,
+  }: {
+    customPlaceholder?: string
+    disabled?: boolean
+    readonly?: boolean
+  }) => (
     <div
       data-testid="chat-input-area"
+      data-custom-placeholder={customPlaceholder}
       data-disabled={String(!!disabled)}
       data-readonly={String(!!readonly)}
     />
@@ -828,6 +837,14 @@ describe('Chat', () => {
       expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
     })
 
+    it('should pass appData.site.input_placeholder as customPlaceholder to ChatInputArea', () => {
+      renderChat({
+        appData: { site: { input_placeholder: 'Ask the assistant' } } as unknown as ChatProps['appData'],
+        noChatInput: false,
+      })
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-custom-placeholder', 'Ask the assistant')
+    })
+
     it('should pass Bot as default botName when appData.site.title is missing', () => {
       renderChat({
         appData: {} as unknown as ChatProps['appData'],
@@ -936,6 +953,22 @@ describe('Chat', () => {
         noChatInput: true,
       })
       expect(screen.getByTestId('chat-footer')).toHaveClass('bg-chat-input-mask')
+    })
+
+    it('should let footer blank space pass pointer events through', () => {
+      renderChat({ noChatInput: false })
+      const footer = screen.getByTestId('chat-footer')
+      expect(footer).toHaveClass('pointer-events-none')
+      expect(footer.firstElementChild).toHaveClass('pointer-events-none')
+    })
+
+    it('should keep the stop responding button clickable inside the pass-through footer', () => {
+      renderChat({
+        isResponding: true,
+        noStopResponding: false,
+        noChatInput: true,
+      })
+      expect(screen.getByRole('button', { name: /stopResponding/i })).toHaveClass('pointer-events-auto')
     })
 
     it('should apply chatFooterClassName when footer has content', () => {

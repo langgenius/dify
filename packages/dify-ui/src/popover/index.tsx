@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
@@ -16,7 +16,7 @@ export const PopoverDescription = BasePopover.Description
 export const createPopoverHandle = BasePopover.createHandle
 
 type PopoverContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -57,6 +57,7 @@ export function PopoverContent({
         <BasePopover.Popup
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            'outline-hidden focus:outline-hidden focus-visible:outline-hidden',
             'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
             popupClassName,
           )}

@@ -8,13 +8,14 @@ from uuid import uuid4
 import yaml
 from flask_login import current_user
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
+from core.plugin.plugin_service import PluginService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType
@@ -22,14 +23,13 @@ from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.plugin.plugin_migration import PluginMigration
-from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
 
 class RagPipelineTransformService:
-    def transform_dataset(self, dataset_id: str):
-        dataset = db.session.get(Dataset, dataset_id)
+    def transform_dataset(self, dataset_id: str, session: Session):
+        dataset = session.get(Dataset, dataset_id)
         if not dataset:
             raise ValueError("Dataset not found")
         if dataset.pipeline_id and dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE:
@@ -44,11 +44,11 @@ class RagPipelineTransformService:
         indexing_technique = dataset.indexing_technique
 
         if not datasource_type and not indexing_technique:
-            return self._transform_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset, session=session)
 
         doc_form = dataset.doc_form
         if not doc_form:
-            return self._transform_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset, session=session)
         retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
@@ -80,7 +80,7 @@ class RagPipelineTransformService:
             workflow_data["graph"] = graph
             pipeline_yaml["workflow"] = workflow_data
         # create pipeline
-        pipeline = self._create_pipeline(pipeline_yaml)
+        pipeline = self._create_pipeline(pipeline_yaml, session=session)
 
         # save chunk structure to dataset
         if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
@@ -94,9 +94,9 @@ class RagPipelineTransformService:
         dataset.pipeline_id = pipeline.id
 
         # deal document data
-        self._deal_document_data(dataset)
+        self._deal_document_data(dataset, session)
 
-        db.session.commit()
+        session.flush()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset_id,
@@ -194,6 +194,7 @@ class RagPipelineTransformService:
     def _create_pipeline(
         self,
         data: dict[str, Any],
+        session: Session,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         pipeline_data = data.get("rag_pipeline", {})
@@ -226,8 +227,8 @@ class RagPipelineTransformService:
         )
         pipeline.id = str(uuid4())
 
-        db.session.add(pipeline)
-        db.session.flush()
+        session.add(pipeline)
+        session.flush()
         # create draft workflow
         draft_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
@@ -253,11 +254,11 @@ class RagPipelineTransformService:
             conversation_variables=conversation_variables,
             rag_pipeline_variables=rag_pipeline_variables_list,
         )
-        db.session.add(draft_workflow)
-        db.session.add(published_workflow)
-        db.session.flush()
+        session.add(draft_workflow)
+        session.add(published_workflow)
+        session.flush()
         pipeline.workflow_id = published_workflow.id
-        db.session.add(pipeline)
+        session.add(pipeline)
         return pipeline
 
     def _deal_dependencies(self, pipeline_yaml: dict[str, Any], tenant_id: str):
@@ -288,35 +289,35 @@ class RagPipelineTransformService:
             logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
-    def _transform_to_empty_pipeline(self, dataset: Dataset):
+    def _transform_to_empty_pipeline(self, dataset: Dataset, session: Session):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
             description=dataset.description,
             created_by=current_user.id,
         )
-        db.session.add(pipeline)
-        db.session.flush()
+        session.add(pipeline)
+        session.flush()
 
         dataset.pipeline_id = pipeline.id
         dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
         dataset.updated_by = current_user.id
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
-        db.session.add(dataset)
-        db.session.commit()
+        session.add(dataset)
+        session.flush()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset.id,
             "status": "success",
         }
 
-    def _deal_document_data(self, dataset: Dataset):
+    def _deal_document_data(self, dataset: Dataset, session: Session):
         file_node_id = "1752479895761"
         notion_node_id = "1752489759475"
         jina_node_id = "1752491761974"
         firecrawl_node_id = "1752565402678"
 
-        documents = db.session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
+        documents = session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
 
         for document in documents:
             data_source_info_dict = document.data_source_info_dict
@@ -326,7 +327,7 @@ class RagPipelineTransformService:
                 document.data_source_type = DataSourceType.LOCAL_FILE
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
-                    file = db.session.get(UploadFile, file_id)
+                    file = session.get(UploadFile, file_id)
                     if file:
                         data_source_info = json.dumps(
                             {
@@ -350,8 +351,8 @@ class RagPipelineTransformService:
                             datasource_node_id=file_node_id,
                         )
                         document_pipeline_execution_log.created_at = document.created_at
-                        db.session.add(document)
-                        db.session.add(document_pipeline_execution_log)
+                        session.add(document)
+                        session.add(document_pipeline_execution_log)
             elif document.data_source_type == DataSourceType.NOTION_IMPORT:
                 document.data_source_type = DataSourceType.ONLINE_DOCUMENT
                 data_source_info = json.dumps(
@@ -378,8 +379,8 @@ class RagPipelineTransformService:
                     datasource_node_id=notion_node_id,
                 )
                 document_pipeline_execution_log.created_at = document.created_at
-                db.session.add(document)
-                db.session.add(document_pipeline_execution_log)
+                session.add(document)
+                session.add(document_pipeline_execution_log)
             elif document.data_source_type == DataSourceType.WEBSITE_CRAWL:
                 data_source_info = json.dumps(
                     {
@@ -406,5 +407,5 @@ class RagPipelineTransformService:
                     datasource_node_id=datasource_node_id,
                 )
                 document_pipeline_execution_log.created_at = document.created_at
-                db.session.add(document)
-                db.session.add(document_pipeline_execution_log)
+                session.add(document)
+                session.add(document_pipeline_execution_log)

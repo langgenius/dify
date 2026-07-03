@@ -36,7 +36,7 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             </span>
             <Infotip
               aria-label={t('subscription.list.tip', { ns: 'pluginTrigger' })}
-              className="h-3.5 w-3.5"
+              className="size-3.5"
               iconClassName="h-full w-full"
             >
               {t('subscription.list.tip', { ns: 'pluginTrigger' })}
@@ -65,9 +65,9 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
             >
               <div className="flex items-center">
                 {selectedId === subscription.id && (
-                  <RiCheckLine className="mr-2 h-4 w-4 shrink-0 text-text-accent" />
+                  <RiCheckLine className="mr-2 size-4 shrink-0 text-text-accent" />
                 )}
-                <RiWebhookLine className={cn('mr-1.5 h-3.5 w-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')} />
+                <RiWebhookLine className={cn('mr-1.5 size-3.5 text-text-secondary', selectedId !== subscription.id && 'ml-6')} />
                 <span className="system-md-regular leading-6 text-text-secondary">
                   {subscription.name}
                 </span>

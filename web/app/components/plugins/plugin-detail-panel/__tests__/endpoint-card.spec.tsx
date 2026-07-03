@@ -72,8 +72,8 @@ vi.mock('@/service/use-endpoints', () => ({
   }),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <span data-testid="indicator" data-color={color} />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <span data-testid="indicator" data-status={status} />,
 }))
 
 vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
@@ -176,7 +176,7 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={mockEndpointData} handleChange={mockHandleChange} />)
 
       expect(screen.getByText('plugin.detailPanel.serviceOk'))!.toBeInTheDocument()
-      expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-color', 'green')
+      expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-status', 'success')
     })
 
     it('should show disabled status when not enabled', () => {
@@ -184,7 +184,7 @@ describe('EndpointCard', () => {
       render(<EndpointCard pluginDetail={mockPluginDetail} data={disabledData} handleChange={mockHandleChange} />)
 
       expect(screen.getByText('plugin.detailPanel.disabled'))!.toBeInTheDocument()
-      expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-color', 'gray')
+      expect(screen.getByTestId('indicator'))!.toHaveAttribute('data-status', 'disabled')
     })
   })
 

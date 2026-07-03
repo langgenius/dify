@@ -1,10 +1,12 @@
 'use client'
 
-import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
+import type { PluginCategoryEnum, PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
 import type { InstallState } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { FieldControl, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -28,11 +30,12 @@ type SelectOption = {
 
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
+  installContextCategory?: PluginCategoryEnum
   onClose: () => void
   onSuccess: () => void
 }
 
-const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
+const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, installContextCategory, onClose, onSuccess }) => {
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
   const { refreshPluginList } = useRefreshPluginList()
@@ -167,7 +170,9 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
           foldAnimInto()
       }}
     >
-      <DialogContent className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, `shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px]
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className={cn('w-[560px] max-w-none! overflow-hidden! text-left align-middle', cn(modalClassName, `shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px]
         border-components-panel-border bg-components-panel-bg p-0`))}
       >
         <DialogCloseButton />
@@ -188,29 +193,31 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
                 payload={manifest}
                 isFailed={[InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installFailed].includes(state.step)}
                 errMsg={errorMsg}
+                installContextCategory={installContextCategory}
                 onCancel={onClose}
               />
             )
           : (
               <div className={`flex min-h-0 flex-1 flex-col items-start justify-center self-stretch overflow-y-auto px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}>
                 {state.step === InstallStepFromGitHub.setUrl && (
-                  <>
-                    <label
-                      htmlFor="repoUrl"
-                      className="flex flex-col items-start justify-center self-stretch text-text-secondary"
-                    >
-                      <span className="system-sm-semibold">{t('installFromGitHub.gitHubRepo', { ns: 'plugin' })}</span>
-                    </label>
-                    <input
-                      autoFocus
-                      type="url"
-                      id="repoUrl"
-                      name="repoUrl"
-                      value={state.repoUrl}
-                      onChange={e => setState(prevState => ({ ...prevState, repoUrl: e.target.value }))}
-                      className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border border-components-input-border-active bg-components-input-bg-active p-2 system-sm-regular text-ellipsis text-components-input-text-filled outline-hidden"
-                      placeholder="Please enter GitHub repo URL"
-                    />
+                  <Form
+                    onFormSubmit={handleUrlSubmit}
+                    className="flex flex-col items-start gap-4 self-stretch"
+                  >
+                    <FieldRoot name="repoUrl" className="gap-4 self-stretch">
+                      <FieldLabel className="flex w-full flex-col items-start justify-center p-0 text-text-secondary">
+                        <span className="system-sm-semibold">{t('installFromGitHub.gitHubRepo', { ns: 'plugin' })}</span>
+                      </FieldLabel>
+                      <FieldControl
+                        autoFocus
+                        type="text"
+                        inputMode="url"
+                        value={state.repoUrl}
+                        onValueChange={value => setState(prevState => ({ ...prevState, repoUrl: value }))}
+                        className="flex grow items-center gap-0.5 self-stretch overflow-hidden rounded-lg border-components-input-border-active bg-components-input-bg-active p-2 text-ellipsis"
+                        placeholder="Please enter GitHub repo URL"
+                      />
+                    </FieldRoot>
                     <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
                       <Button
                         variant="secondary"
@@ -221,14 +228,14 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
                       </Button>
                       <Button
                         variant="primary"
+                        type="submit"
                         className="min-w-18"
-                        onClick={handleUrlSubmit}
                         disabled={!state.repoUrl.trim()}
                       >
                         {t('installModal.next', { ns: 'plugin' })}
                       </Button>
                     </div>
-                  </>
+                  </Form>
                 )}
                 {state.step === InstallStepFromGitHub.selectPackage && (
                   <SelectPackage

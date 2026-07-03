@@ -16,10 +16,11 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
 import { IS_CE_EDITION, validPassword } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import { updateUserProfile } from '@/service/common'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
-import { commonQueryKeys, userProfileQueryOptions } from '@/service/use-common'
+import { normalizeAppPagination } from '@/service/use-apps'
 import DeleteAccount from '../delete-account'
 
 import AvatarWithEdit from './AvatarWithEdit'
@@ -35,7 +36,7 @@ const descriptionClassName = `
 export default function AccountPage() {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { data: appList } = useQuery(consoleQuery.apps.list.queryOptions({
+  const { data: appList } = useQuery(consoleQuery.apps.get.queryOptions({
     input: {
       query: {
         page: 1,
@@ -43,13 +44,14 @@ export default function AccountPage() {
         name: '',
       },
     },
+    select: normalizeAppPagination,
   }))
   const apps = appList?.data || []
   const queryClient = useQueryClient()
   // Cache is warmed by AppContextProvider's useSuspenseQuery; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
-  const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: commonQueryKeys.userProfile })
+  const mutateUserProfile = () => queryClient.invalidateQueries({ queryKey: userProfileQueryOptions().queryKey })
   const { isEducationAccount } = useProviderContext()
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
   const [editName, setEditName] = useState('')
@@ -159,14 +161,14 @@ export default function AccountPage() {
       <div className="pt-2 pb-3">
         <h4 className="title-2xl-semi-bold text-text-primary">{t('account.myAccount', { ns: 'common' })}</h4>
       </div>
-      <div className="mb-8 flex items-center rounded-xl bg-gradient-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
+      <div className="mb-8 flex items-center rounded-xl bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 p-6">
         <AvatarWithEdit avatar={userProfile.avatar_url} name={userProfile.name} onSave={mutateUserProfile} size="3xl" />
         <div className="ml-4">
           <p className="system-xl-semibold text-text-primary">
             {userProfile.name}
             {isEducationAccount && (
-              <PremiumBadge size="s" color="blue" className="ml-1 !px-2">
-                <RiGraduationCapFill aria-hidden="true" className="mr-1 h-3 w-3" />
+              <PremiumBadge size="s" color="blue" className="ml-1 px-2!">
+                <RiGraduationCapFill aria-hidden="true" className="mr-1 size-3" />
                 <span className="system-2xs-medium">EDU</span>
               </PremiumBadge>
             )}
@@ -209,7 +211,7 @@ export default function AccountPage() {
           </div>
         )
       }
-      <div className="mb-6 border-[1px] border-divider-subtle" />
+      <div className="mb-6 border border-divider-subtle" />
       <div className="mb-8">
         <div className={titleClassName}>{t('account.langGeniusAccount', { ns: 'common' })}</div>
         <div className={descriptionClassName}>{t('account.langGeniusAccountTip', { ns: 'common' })}</div>

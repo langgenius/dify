@@ -1,11 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { textControlCompoundFocusClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
@@ -30,7 +31,6 @@ export type AutocompleteRootHighlightEventDetails = BaseAutocomplete.Root.Highli
 
 const autocompletePopupClassName = [
   'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
-  'data-side-top:origin-bottom data-side-bottom:origin-top data-side-left:origin-right data-side-right:origin-left',
 ]
 
 const autocompleteListClassName = [
@@ -50,7 +50,7 @@ const autocompleteInputGroupVariants = cva(
   [
     'group/autocomplete flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
+    textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
@@ -136,7 +136,7 @@ const autocompleteControlVariants = cva(
   [
     'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent group-data-disabled/autocomplete:focus-visible:ring-0',
     'group-data-readonly/autocomplete:hidden',
@@ -145,9 +145,9 @@ const autocompleteControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'mr-1 size-4',
-        medium: 'mr-1.5 size-5',
-        large: 'mr-2 size-5',
+        small: 'me-1 size-4',
+        medium: 'me-1.5 size-5',
+        large: 'me-2 size-5',
       },
     },
     defaultVariants: {
@@ -224,7 +224,7 @@ export function AutocompleteIcon({
 }
 
 type AutocompleteContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -303,7 +303,7 @@ export function AutocompleteItem({
   )
 }
 
-export type AutocompleteItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type AutocompleteItemTextProps = React.ComponentProps<'span'>
 
 export function AutocompleteItemText({
   className,
@@ -317,7 +317,7 @@ export function AutocompleteItemText({
   )
 }
 
-export function AutocompleteLabel({
+export function AutocompleteGroupLabel({
   className,
   ...props
 }: BaseAutocomplete.GroupLabel.Props) {
@@ -347,7 +347,7 @@ export function AutocompleteEmpty({
 }: BaseAutocomplete.Empty.Props) {
   return (
     <BaseAutocomplete.Empty
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
+      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:h-0 empty:p-0', className)}
       {...props}
     />
   )
@@ -369,7 +369,7 @@ export function AutocompleteItemIndicator({
   className,
   children,
   ...props
-}: HTMLAttributes<HTMLSpanElement>) {
+}: React.ComponentProps<'span'>) {
   return (
     <span
       className={cn(overlayIndicatorClassName, className)}

@@ -5,6 +5,7 @@ import type { ParentChildConfig } from '../hooks'
 import type { ParentMode, PreProcessingRule, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -96,7 +97,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
       actions={(
         <>
           <Button variant="secondary-accent" onClick={onPreview}>
-            <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
+            <RiSearchEyeLine className="mr-0.5 size-4" />
             {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
           </Button>
           <Button variant="ghost" onClick={onReset}>
@@ -115,36 +116,39 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             </div>
             <Divider className="grow" bgStyle="gradient" />
           </div>
-          <RadioCard
-            className="mt-1"
-            icon={<img src={Note.src} alt="" />}
-            title={t('stepTwo.paragraph', { ns: 'datasetCreation' })}
-            description={t('stepTwo.paragraphTip', { ns: 'datasetCreation' })}
-            isChosen={parentChildConfig.chunkForContext === 'paragraph'}
-            onChosen={() => onChunkForContextChange('paragraph')}
-            chosenConfig={(
-              <div className="flex gap-3">
-                <DelimiterInput
-                  value={parentChildConfig.parent.delimiter}
-                  tooltip={t('stepTwo.parentChildDelimiterTip', { ns: 'datasetCreation' })!}
-                  onChange={e => onParentDelimiterChange(e.target.value)}
-                />
-                <MaxLengthInput
-                  unit="characters"
-                  value={parentChildConfig.parent.maxLength}
-                  onChange={onParentMaxLengthChange}
-                />
-              </div>
-            )}
-          />
-          <RadioCard
-            className="mt-2"
-            icon={<img src={FileList.src} alt="" />}
-            title={t('stepTwo.fullDoc', { ns: 'datasetCreation' })}
-            description={t('stepTwo.fullDocTip', { ns: 'datasetCreation' })}
-            onChosen={() => onChunkForContextChange('full-doc')}
-            isChosen={parentChildConfig.chunkForContext === 'full-doc'}
-          />
+          <RadioGroup<ParentMode>
+            aria-label={t('stepTwo.parentChunkForContext', { ns: 'datasetCreation' })}
+            value={parentChildConfig.chunkForContext}
+            onValueChange={value => onChunkForContextChange(value)}
+            className="mt-1 flex-col items-stretch gap-2"
+          >
+            <RadioCard
+              value="paragraph"
+              icon={<img src={Note.src} alt="" />}
+              title={t('stepTwo.paragraph', { ns: 'datasetCreation' })}
+              description={t('stepTwo.paragraphTip', { ns: 'datasetCreation' })}
+              chosenConfig={(
+                <div className="flex gap-3">
+                  <DelimiterInput
+                    value={parentChildConfig.parent.delimiter}
+                    tooltip={t('stepTwo.parentChildDelimiterTip', { ns: 'datasetCreation' })!}
+                    onChange={e => onParentDelimiterChange(e.target.value)}
+                  />
+                  <MaxLengthInput
+                    unit="characters"
+                    value={parentChildConfig.parent.maxLength}
+                    onChange={onParentMaxLengthChange}
+                  />
+                </div>
+              )}
+            />
+            <RadioCard
+              value="full-doc"
+              icon={<img src={FileList.src} alt="" />}
+              title={t('stepTwo.fullDoc', { ns: 'datasetCreation' })}
+              description={t('stepTwo.fullDocTip', { ns: 'datasetCreation' })}
+            />
+          </RadioGroup>
         </div>
 
         {/* Child chunk for retrieval */}

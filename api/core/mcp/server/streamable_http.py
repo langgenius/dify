@@ -3,6 +3,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any, NotRequired, TypedDict, cast
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -26,6 +28,7 @@ class ToolArgumentsDict(TypedDict):
 
 
 def handle_mcp_request(
+    session: Session,
     app: App,
     request: mcp_types.ClientRequest,
     user_input_form: list[VariableEntity],
@@ -72,20 +75,21 @@ def handle_mcp_request(
 
     try:
         # Dispatch request to appropriate handler based on instance type
-        if isinstance(request_root, mcp_types.InitializeRequest):
-            return create_success_response(handle_initialize(mcp_server.description))
-        elif isinstance(request_root, mcp_types.ListToolsRequest):
-            return create_success_response(
-                handle_list_tools(
-                    app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
+        match request_root:
+            case mcp_types.InitializeRequest():
+                return create_success_response(handle_initialize(mcp_server.description))
+            case mcp_types.ListToolsRequest():
+                return create_success_response(
+                    handle_list_tools(
+                        app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
+                    )
                 )
-            )
-        elif isinstance(request_root, mcp_types.CallToolRequest):
-            return create_success_response(handle_call_tool(app, request, user_input_form, end_user))
-        elif isinstance(request_root, mcp_types.PingRequest):
-            return create_success_response(handle_ping())
-        else:
-            return create_error_response(mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}")
+            case mcp_types.CallToolRequest():
+                return create_success_response(handle_call_tool(session, app, request, user_input_form, end_user))
+            case mcp_types.PingRequest():
+                return create_success_response(handle_ping())
+            case _:
+                return create_error_response(mcp_types.METHOD_NOT_FOUND, f"Method not found: {request_type.__name__}")
 
     except ValueError as e:
         logger.exception("Invalid params")
@@ -136,6 +140,7 @@ def handle_list_tools(
 
 
 def handle_call_tool(
+    session: Session,
     app: App,
     request: mcp_types.ClientRequest,
     user_input_form: list[VariableEntity],
@@ -149,6 +154,7 @@ def handle_call_tool(
         raise ValueError("End user not found")
 
     response = AppGenerateService.generate(
+        session,
         app,
         end_user,
         args,
@@ -202,12 +208,13 @@ def extract_answer_from_response(app: App, response: Any) -> str:
     """Extract answer from app generate response"""
     answer = ""
 
-    if isinstance(response, RateLimitGenerator):
-        answer = process_streaming_response(response)
-    elif isinstance(response, Mapping):
-        answer = process_mapping_response(app, response)
-    else:
-        logger.warning("Unexpected response type: %s", type(response))
+    match response:
+        case RateLimitGenerator():
+            answer = process_streaming_response(response)
+        case Mapping():
+            answer = process_mapping_response(app, response)
+        case _:
+            logger.warning("Unexpected response type: %s", type(response))
 
     return answer
 

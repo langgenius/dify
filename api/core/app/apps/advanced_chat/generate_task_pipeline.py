@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
@@ -42,6 +41,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
@@ -63,6 +63,7 @@ from core.app.entities.task_entities import (
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     StreamResponse,
     WorkflowPauseStreamResponse,
     WorkflowTaskState,
@@ -73,9 +74,9 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -161,16 +162,17 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             stream=stream,
         )
 
-        if isinstance(user, EndUser):
-            self._user_id = user.id
-            user_session_id = user.session_id
-            self._created_by_role = CreatorUserRole.END_USER
-        elif isinstance(user, Account):
-            self._user_id = user.id
-            user_session_id = user.id
-            self._created_by_role = CreatorUserRole.ACCOUNT
-        else:
-            raise NotImplementedError(f"User type not supported: {type(user)}")
+        match user:
+            case EndUser():
+                self._user_id = user.id
+                user_session_id = user.session_id
+                self._created_by_role = CreatorUserRole.END_USER
+            case Account():
+                self._user_id = user.id
+                user_session_id = user.id
+                self._created_by_role = CreatorUserRole.ACCOUNT
+            case _:
+                raise NotImplementedError(f"User type not supported: {type(user)}")
 
         self._workflow_system_variables = build_system_variables(
             query=message.query,
@@ -473,6 +475,17 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
             )
 
+        # Collect terminal reasoning (separated mode) per LLM node id for persistence. This is the
+        # authoritative source (outputs.reasoning_content), decoupled from the live delta stream.
+        # Accumulate across iteration/loop passes (same node_id) to match the live stream, which
+        # appends every pass under the same key — overwriting would keep only the last pass.
+        if event.node_type == BuiltinNodeTypes.LLM:
+            reasoning_content = (event.outputs or {}).get("reasoning_content")
+            if isinstance(reasoning_content, str) and reasoning_content:
+                self._task_state.metadata.reasoning[event.node_id] = (
+                    self._task_state.metadata.reasoning.get(event.node_id, "") + reasoning_content
+                )
+
         node_finish_resp = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
@@ -533,6 +546,27 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._task_state.answer += delta_text
         yield self._message_cycle_manager.message_to_stream_response(
             answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
+        )
+
+    def _handle_reasoning_chunk_event(
+        self, event: QueueReasoningChunkEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle out-of-band reasoning chunk events.
+
+        Pure emit: reasoning is streamed on its own channel and never written to the
+        answer. The terminal marker (is_final) may carry an empty reasoning string, in
+        which case it is still forwarded as the "thinking finished" signal.
+        """
+        if not event.reasoning and not event.is_final:
+            return
+        yield ReasoningChunkStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            data=ReasoningChunkStreamResponse.Data(
+                message_id=self._message_id,
+                reasoning=event.reasoning,
+                node_id=event.from_node_id,
+                is_final=event.is_final,
+            ),
         )
 
     def _handle_iteration_start_event(
@@ -872,6 +906,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueuePingEvent: self._handle_ping_event,
             QueueErrorEvent: self._handle_error_event,
             QueueTextChunkEvent: self._handle_text_chunk_event,
+            QueueReasoningChunkEvent: self._handle_reasoning_chunk_event,
             # Workflow events
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
@@ -1009,11 +1044,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if message.status == MessageStatus.PAUSED:
             message.status = MessageStatus.NORMAL
 
-        # If there are assistant files, remove markdown image links from answer
         answer_text = self._task_state.answer
-        if self._recorded_files:
-            # Remove markdown image links since we're storing files separately
-            answer_text = re.sub(r"!\[.*?\]\(.*?\)", "", answer_text).strip()
 
         message.answer = answer_text
         message.updated_at = naive_utc_now()

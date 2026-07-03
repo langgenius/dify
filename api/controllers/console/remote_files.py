@@ -1,6 +1,5 @@
-import urllib.parse
-
 import httpx
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -11,12 +10,15 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from core.helper import ssrf_proxy
+from controllers.console.wraps import with_current_user
+from core.file import remote_fetcher
 from extensions.ext_database import db
 from fields.file_fields import FileWithSignedUrl, RemoteFileInfo
 from graphon.file import helpers as file_helpers
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from services.file_service import FileService
 
 
@@ -24,14 +26,19 @@ class RemoteFileUploadPayload(BaseModel):
     url: str = Field(..., description="URL to fetch")
 
 
+register_schema_models(console_ns, RemoteFileUploadPayload)
+register_response_schema_models(console_ns, FileWithSignedUrl, RemoteFileInfo)
+
+
 @console_ns.route("/remote-files/<path:url>")
 class GetRemoteFileInfo(Resource):
+    @console_ns.response(200, "Success", console_ns.models[RemoteFileInfo.__name__])
     @login_required
     def get(self, url: str):
-        decoded_url = urllib.parse.unquote(url)
-        resp = ssrf_proxy.head(decoded_url)
+        decoded_url = helpers.decode_remote_url(url, request.query_string)
+        resp = remote_fetcher.make_request("HEAD", decoded_url)
         if resp.status_code != httpx.codes.OK:
-            resp = ssrf_proxy.get(decoded_url, timeout=3)
+            resp = remote_fetcher.make_request("GET", decoded_url, timeout=3)
         resp.raise_for_status()
         return RemoteFileInfo(
             file_type=resp.headers.get("Content-Type", "application/octet-stream"),
@@ -41,16 +48,19 @@ class GetRemoteFileInfo(Resource):
 
 @console_ns.route("/remote-files/upload")
 class RemoteFileUpload(Resource):
+    @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileWithSignedUrl.__name__])
     @login_required
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         payload = RemoteFileUploadPayload.model_validate(console_ns.payload)
         url = payload.url
 
         # Try to fetch remote file metadata/content first
         try:
-            resp = ssrf_proxy.head(url=url)
+            resp = remote_fetcher.make_request("HEAD", url=url)
             if resp.status_code != httpx.codes.OK:
-                resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
+                resp = remote_fetcher.make_request("GET", url=url, timeout=3, follow_redirects=True)
             if resp.status_code != httpx.codes.OK:
                 # Normalize into a user-friendly error message expected by tests
                 raise RemoteFileUploadError(f"Failed to fetch file from {url}: {resp.text}")
@@ -64,15 +74,14 @@ class RemoteFileUpload(Resource):
             raise FileTooLargeError()
 
         # Load content if needed
-        content = resp.content if resp.request.method == "GET" else ssrf_proxy.get(url).content
+        content = resp.content if resp.request.method == "GET" else remote_fetcher.make_request("GET", url).content
 
         try:
-            user, _ = current_account_with_tenant()
             upload_file = FileService(db.engine).upload_file(
                 filename=file_info.filename,
                 content=content,
                 mimetype=file_info.mimetype,
-                user=user,
+                user=current_user,
                 source_url=url,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:

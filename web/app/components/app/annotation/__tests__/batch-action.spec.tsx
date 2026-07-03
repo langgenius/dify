@@ -6,14 +6,14 @@ describe('BatchAction', () => {
   const baseProps = {
     selectedIds: ['1', '2', '3'],
     onBatchDelete: vi.fn(),
-    onCancel: vi.fn(),
+    onSelectedIdsChange: vi.fn(),
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should show the selected count and trigger cancel action', () => {
+  it('should show the selected count and clear selection through selection change', () => {
     render(<BatchAction {...baseProps} className="custom-class" />)
 
     expect(screen.getByText('3')).toBeInTheDocument()
@@ -21,7 +21,7 @@ describe('BatchAction', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-    expect(baseProps.onCancel).toHaveBeenCalledTimes(1)
+    expect(baseProps.onSelectedIdsChange).toHaveBeenCalledWith([])
   })
 
   it('should confirm before running batch delete', async () => {

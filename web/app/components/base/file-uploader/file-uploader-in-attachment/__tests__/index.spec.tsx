@@ -164,6 +164,29 @@ describe('FileUploaderInAttachmentWrapper', () => {
     expect(linkButton.closest('button')).toBeInTheDocument()
   })
 
+  it('should keep upload button layout stable when remote_url popup opens', () => {
+    render(
+      <FileUploaderInAttachmentWrapper
+        onChange={vi.fn()}
+        fileConfig={createFileConfig()}
+      />,
+    )
+
+    const localButton = screen.getByText(/fileUploader\.uploadFromComputer/).closest('button')
+    const linkButton = screen.getByText(/fileUploader\.pasteFileLink/).closest('button')
+    const uploadGroup = localButton?.parentElement?.parentElement
+
+    expect(uploadGroup?.children).toHaveLength(2)
+
+    fireEvent.click(linkButton!)
+
+    expect(uploadGroup?.children).toHaveLength(2)
+    expect(linkButton).toHaveAttribute('data-popup-open')
+    expect(localButton?.parentElement).toHaveClass('min-w-0', 'flex-1')
+    expect(linkButton?.parentElement).toHaveClass('min-w-0', 'flex-1')
+    expect(linkButton).toHaveClass('w-full', 'min-w-0')
+  })
+
   it('should disable upload buttons when file limit is reached', () => {
     const files = [
       createFile({ id: 'f1' }),

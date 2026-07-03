@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   Combobox,
@@ -24,7 +24,7 @@ import {
   ComboboxValue,
 } from '../index'
 
-const renderWithSafeViewport = (ui: ReactNode) => render(
+const renderWithSafeViewport = (ui: React.ReactNode) => render(
   <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
     {ui}
   </div>,
@@ -36,12 +36,12 @@ const renderSelectLikeCombobox = ({
   children,
   open = false,
 }: {
-  children?: ReactNode
+  children?: React.ReactNode
   open?: boolean
 } = {}) => renderWithSafeViewport(
   <Combobox open={open} defaultValue="workflow" items={['workflow', 'dataset']}>
     {children ?? (
-      <>
+      <React.Fragment>
         <ComboboxLabel data-testid="label">Resource type</ComboboxLabel>
         <ComboboxTrigger aria-label="Resource type" data-testid="trigger">
           <ComboboxValue placeholder="Select resource" />
@@ -68,7 +68,7 @@ const renderSelectLikeCombobox = ({
           </ComboboxList>
           <ComboboxEmpty data-testid="empty">No options</ComboboxEmpty>
         </ComboboxContent>
-      </>
+      </React.Fragment>
     )}
   </Combobox>,
 )
@@ -77,12 +77,12 @@ const renderInputCombobox = ({
   children,
   open = false,
 }: {
-  children?: ReactNode
+  children?: React.ReactNode
   open?: boolean
 } = {}) => renderWithSafeViewport(
   <Combobox open={open} defaultValue="workflow" items={['workflow', 'dataset']}>
     {children ?? (
-      <>
+      <React.Fragment>
         <ComboboxInputGroup data-testid="input-group">
           <ComboboxInput aria-label="Search resources" data-testid="input" />
           <ComboboxClear data-testid="clear" />
@@ -96,7 +96,7 @@ const renderInputCombobox = ({
             </ComboboxItem>
           </ComboboxList>
         </ComboboxContent>
-      </>
+      </React.Fragment>
     )}
   </Combobox>,
 )
@@ -208,7 +208,7 @@ describe('Combobox wrappers', () => {
     it('should rely on aria-labelledby when provided instead of injecting fallback labels', async () => {
       const screen = await renderInputCombobox({
         children: (
-          <>
+          <React.Fragment>
             <span id="clear-label">Clear from label</span>
             <span id="trigger-label">Trigger from label</span>
             <ComboboxInputGroup>
@@ -216,7 +216,7 @@ describe('Combobox wrappers', () => {
               <ComboboxClear aria-labelledby="clear-label" />
               <ComboboxInputTrigger aria-labelledby="trigger-label" />
             </ComboboxInputGroup>
-          </>
+          </React.Fragment>
         ),
       })
 
@@ -273,9 +273,12 @@ describe('Combobox wrappers', () => {
     it('should render item text indicator status and empty wrappers with design classes', async () => {
       const screen = await renderSelectLikeCombobox({ open: true })
 
+      expect(screen.getByRole('option', { name: 'Workflow' }).element().className).not.toContain('mx-1')
       await expect.element(screen.getByTestId('list').getByText('Workflow')).toHaveClass('system-sm-medium')
       await expect.element(screen.getByTestId('status')).toHaveClass('text-text-tertiary')
       await expect.element(screen.getByTestId('empty')).toHaveClass('system-sm-regular')
+      await expect.element(screen.getByTestId('empty')).toHaveClass('empty:p-0')
+      expect(screen.getByTestId('empty').element().getBoundingClientRect().height).toBe(0)
       expect(screen.getByTestId('list').getByText('Workflow').element().parentElement?.querySelector('.i-ri-check-line')).toHaveAttribute('aria-hidden', 'true')
     })
 
@@ -306,6 +309,36 @@ describe('Combobox wrappers', () => {
       await expect.element(screen.getByTestId('custom-list').getByText('Workflow')).toHaveClass('custom-text')
       await expect.element(screen.getByTestId('indicator')).toHaveClass('custom-indicator')
     })
+
+    it('should navigate function-rendered items with arrow keys', async () => {
+      const screen = await renderWithSafeViewport(
+        <Combobox defaultValue="workflow" items={['workflow', 'dataset', 'app']}>
+          <ComboboxInputGroup>
+            <ComboboxInput aria-label="Search resources" />
+          </ComboboxInputGroup>
+          <ComboboxContent>
+            <ComboboxList>
+              {(item: string) => (
+                <ComboboxItem key={item} value={item}>
+                  <ComboboxItemText>{item}</ComboboxItemText>
+                  <ComboboxItemIndicator />
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxContent>
+        </Combobox>,
+      )
+
+      const input = asHTMLElement(screen.getByRole('combobox', { name: 'Search resources' }).element())
+
+      input.focus()
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+      await expect.element(screen.getByRole('option', { name: 'workflow' })).toHaveAttribute('data-highlighted')
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
+
+      await expect.element(screen.getByRole('option', { name: 'dataset' })).toHaveAttribute('data-highlighted')
+    })
   })
 
   describe('Multiple selection chips', () => {
@@ -313,19 +346,21 @@ describe('Combobox wrappers', () => {
       const screen = await renderWithSafeViewport(
         <Combobox multiple defaultValue={['maya']} items={['maya', 'nora']}>
           <ComboboxInputGroup>
-            <ComboboxValue>
-              {(selectedValue: string[]) => (
-                <ComboboxChips className="custom-chips" data-testid="chips">
-                  {selectedValue.map(item => (
-                    <ComboboxChip key={item} className="custom-chip">
-                      <span>{item}</span>
-                      <ComboboxChipRemove data-testid="remove-chip" />
-                    </ComboboxChip>
-                  ))}
-                </ComboboxChips>
-              )}
-            </ComboboxValue>
-            <ComboboxInput aria-label="Reviewers" />
+            <ComboboxChips className="custom-chips" data-testid="chips">
+              <ComboboxValue>
+                {(selectedValue: string[]) => (
+                  <React.Fragment>
+                    {selectedValue.map(item => (
+                      <ComboboxChip key={item} className="custom-chip">
+                        <span>{item}</span>
+                        <ComboboxChipRemove data-testid="remove-chip" />
+                      </ComboboxChip>
+                    ))}
+                    <ComboboxInput aria-label="Reviewers" />
+                  </React.Fragment>
+                )}
+              </ComboboxValue>
+            </ComboboxChips>
           </ComboboxInputGroup>
         </Combobox>,
       )
@@ -340,19 +375,21 @@ describe('Combobox wrappers', () => {
       const screen = await renderWithSafeViewport(
         <Combobox multiple defaultValue={['maya']} items={['maya']}>
           <ComboboxInputGroup>
-            <ComboboxValue>
-              {(selectedValue: string[]) => (
-                <ComboboxChips>
-                  {selectedValue.map(item => (
-                    <ComboboxChip key={item}>
-                      <span id="remove-maya">Remove Maya</span>
-                      <ComboboxChipRemove aria-labelledby="remove-maya" />
-                    </ComboboxChip>
-                  ))}
-                </ComboboxChips>
-              )}
-            </ComboboxValue>
-            <ComboboxInput aria-label="Reviewers" />
+            <ComboboxChips>
+              <ComboboxValue>
+                {(selectedValue: string[]) => (
+                  <React.Fragment>
+                    {selectedValue.map(item => (
+                      <ComboboxChip key={item}>
+                        <span id="remove-maya">Remove Maya</span>
+                        <ComboboxChipRemove aria-labelledby="remove-maya" />
+                      </ComboboxChip>
+                    ))}
+                    <ComboboxInput aria-label="Reviewers" />
+                  </React.Fragment>
+                )}
+              </ComboboxValue>
+            </ComboboxChips>
           </ComboboxInputGroup>
         </Combobox>,
       )

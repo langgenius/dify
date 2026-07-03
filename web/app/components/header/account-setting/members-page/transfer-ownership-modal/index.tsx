@@ -9,10 +9,10 @@ import { useAppContext } from '@/context/app-context'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import MemberSelector from './member-selector'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   onClose: () => void
-}
+}>
 enum STEP {
   start = 'start',
   verify = 'verify',
@@ -111,7 +111,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
           aria-label={t('operation.close', { ns: 'common' })}
           onClick={onClose}
         >
-          <span className="i-ri-close-line h-5 w-5 text-text-tertiary" aria-hidden="true" />
+          <span className="i-ri-close-line size-5 text-text-tertiary" aria-hidden="true" />
         </button>
         {step === STEP.start && (
           <>

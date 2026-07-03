@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { WorkflowShortcutId } from '../shortcuts/definitions'
+import type { WorkflowCanvasShortcutId } from '../shortcuts/definitions'
 import {
   Tooltip,
   TooltipContent,
@@ -11,7 +11,7 @@ import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 type TipPopupProps = {
   title: string
   children: ReactElement
-  shortcut?: WorkflowShortcutId
+  shortcut?: WorkflowCanvasShortcutId
 }
 const TipPopup = ({
   title,

@@ -20,7 +20,7 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
         variant="primary"
         className="w-full"
       >
-        <RiAddLine className="mr-1 h-4 w-4" />
+        <RiAddLine className="mr-1 size-4" />
         {t('nodes.dataSource.add', { ns: 'workflow' })}
       </Button>
     )
@@ -54,9 +54,9 @@ const DataSourceEmptyNode = ({ id, data }: NodeProps) => {
         )}
         >
           <BlockSelector
-            asChild
             onSelect={handleReplaceNode}
             trigger={renderTrigger}
+            renderTriggerAsButtonRoot
             noBlocks
             noTools
             popupClassName="w-[320px]"

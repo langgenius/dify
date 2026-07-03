@@ -368,9 +368,9 @@ describe('Dropdown', () => {
         // Act - Open dropdown
         fireEvent.click(button)
 
-        // Assert - Open state: should have bg-state-base-hover
+        // Assert - Open state is exposed declaratively via data-popup-open
         await waitFor(() => {
-          expect(button)!.toHaveClass('bg-state-base-hover')
+          expect(button).toHaveAttribute('data-popup-open')
         })
       })
     })

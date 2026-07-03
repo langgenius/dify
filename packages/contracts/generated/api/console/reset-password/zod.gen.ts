@@ -10,9 +10,17 @@ export const zEmailPayload = z.object({
   language: z.string().nullish(),
 })
 
+/**
+ * SimpleResultDataResponse
+ */
+export const zSimpleResultDataResponse = z.object({
+  data: z.string(),
+  result: z.string(),
+})
+
 export const zPostResetPasswordBody = zEmailPayload
 
 /**
  * Success
  */
-export const zPostResetPasswordResponse = z.record(z.string(), z.unknown())
+export const zPostResetPasswordResponse = zSimpleResultDataResponse

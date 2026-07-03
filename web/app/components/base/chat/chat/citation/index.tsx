@@ -112,7 +112,7 @@ const Citation: FC<CitationProps> = ({
               {
                 !showMore
                   ? `+ ${resourcesLength - limitNumberInOneLine}`
-                  : <div className="i-ri-arrow-down-s-line h-4 w-4 rotate-180 text-text-tertiary" />
+                  : <div className="i-ri-arrow-down-s-line size-4 rotate-180 text-text-tertiary" />
               }
             </div>
           )

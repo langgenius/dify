@@ -1,3 +1,6 @@
+import type {
+  useNodesSyncDraft,
+} from './use-nodes-sync-draft'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,13 +10,16 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { downloadBlob } from '@/utils/download'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import {
+  useNodesSyncDraftByCanEdit,
+} from './use-nodes-sync-draft'
 
-export const useDSL = () => {
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+
+const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
   const [exporting, setExporting] = useState(false)
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const workflowStore = useWorkflowStore()
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
   const handleExportDSL = useCallback(async (include = false) => {
@@ -65,4 +71,10 @@ export const useDSL = () => {
     exportCheck,
     handleExportDSL,
   }
+}
+
+export const useDSLByCanEdit = (canEdit: boolean) => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+
+  return useDSLBase(doSyncWorkflowDraft)
 }

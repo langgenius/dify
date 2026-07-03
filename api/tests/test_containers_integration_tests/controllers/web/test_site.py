@@ -13,6 +13,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.web.site import AppSiteApi, AppSiteInfo
 from models import Tenant, TenantStatus
 from models.model import App, AppMode, CustomizeTokenStrategy, Site
+from services.feature_service import FeatureModel
 
 
 @pytest.fixture
@@ -51,6 +52,7 @@ def _create_site(db_session: Session, app_id: str) -> Site:
         default_language="en",
         chat_color_theme="light",
         chat_color_theme_inverted=False,
+        input_placeholder="Ask the app",
         customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
         code=f"code-{app_id[-6:]}",
         prompt_public=False,
@@ -70,7 +72,7 @@ class TestAppSiteApi:
         app_model = _create_app(db_session_with_containers, tenant.id)
         _create_site(db_session_with_containers, app_model.id)
         end_user = SimpleNamespace(id="eu-1")
-        mock_features.return_value = SimpleNamespace(can_replace_logo=False)
+        mock_features.return_value = FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True)
 
         with app.test_request_context("/site"):
             result = AppSiteApi().get(app_model, end_user)
@@ -78,6 +80,7 @@ class TestAppSiteApi:
         assert result["app_id"] == app_model.id
         assert result["plan"] == "basic"
         assert result["enable_site"] is True
+        assert result["site"]["input_placeholder"] == "Ask the app"
 
     def test_missing_site_raises_forbidden(self, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
@@ -98,7 +101,7 @@ class TestAppSiteApi:
         app_model = _create_app(db_session_with_containers, tenant.id)
         _create_site(db_session_with_containers, app_model.id)
         end_user = SimpleNamespace(id="eu-1")
-        mock_features.return_value = SimpleNamespace(can_replace_logo=False)
+        mock_features.return_value = FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True)
 
         with app.test_request_context("/site"):
             with pytest.raises(Forbidden):

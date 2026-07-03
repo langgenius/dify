@@ -10,13 +10,13 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { renameDocumentName } from '@/service/datasets'
 
-type Props = {
+type Props = Readonly<{
   datasetId: string
   documentId: string
   name: string
   onClose: () => void
   onSaved: () => void
-}
+}>
 
 const RenameModal: FC<Props> = ({
   documentId,

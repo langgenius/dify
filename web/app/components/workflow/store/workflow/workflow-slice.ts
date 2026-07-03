@@ -10,8 +10,13 @@ import type { FileUploadConfigResponse } from '@/models/common'
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
   resultText?: string
+  resultTextSelectorKey?: string
+  // separated-mode reasoning deltas per LLM node id (live preview only)
+  reasoningContent?: Record<string, string>
+  // true once the terminal reasoning marker arrived
+  reasoningFinished?: boolean
   // human input form schema or data cached when node is in 'Paused' status
-  extraContentAndFormData?: Record<string, any>
+  extraContentAndFormData?: Record<string, unknown>
 }
 
 type MousePosition = {
@@ -26,6 +31,8 @@ export type WorkflowSliceShape = {
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   isListening: boolean
   setIsListening: (listening: boolean) => void
+  canvasReadOnly: boolean
+  setCanvasReadOnly: (readOnly: boolean) => void
   listeningTriggerType: TriggerNodeType | null
   setListeningTriggerType: (triggerType: TriggerNodeType | null) => void
   listeningTriggerNodeId: string | null
@@ -70,6 +77,8 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
   isListening: false,
   setIsListening: listening => set(() => ({ isListening: listening })),
+  canvasReadOnly: false,
+  setCanvasReadOnly: canvasReadOnly => set(() => ({ canvasReadOnly })),
   listeningTriggerType: null,
   setListeningTriggerType: triggerType => set(() => ({ listeningTriggerType: triggerType })),
   listeningTriggerNodeId: null,
@@ -92,17 +101,8 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   setSelection: selection => set(() => ({ selection })),
   bundleNodeSize: null,
   setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
-  controlMode: (() => {
-    const storedControlMode = localStorage.getItem('workflow-operation-mode')
-    if (storedControlMode === 'pointer' || storedControlMode === 'hand' || storedControlMode === 'comment')
-      return storedControlMode
-
-    return 'pointer'
-  })(),
-  setControlMode: (controlMode) => {
-    set(() => ({ controlMode }))
-    localStorage.setItem('workflow-operation-mode', controlMode)
-  },
+  controlMode: 'pointer',
+  setControlMode: controlMode => set(() => ({ controlMode })),
   pendingComment: null,
   setPendingComment: pendingComment => set(() => ({ pendingComment })),
   isCommentPlacing: false,

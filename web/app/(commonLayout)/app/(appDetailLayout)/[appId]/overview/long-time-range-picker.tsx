@@ -13,11 +13,11 @@ type TimePeriodOption = {
   name: string
 }
 
-type Props = {
+type Props = Readonly<{
   periodMapping: { [key: string]: { value: number, name: TimePeriodName } }
   onSelect: (payload: PeriodParams) => void
   queryDateFormat: string
-}
+}>
 
 const today = dayjs()
 

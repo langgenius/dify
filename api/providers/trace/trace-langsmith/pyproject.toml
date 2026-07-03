@@ -2,7 +2,7 @@
 name = "dify-trace-langsmith"
 version = "0.0.1"
 dependencies = [
-    "langsmith~=0.7.30",
+    "langsmith==0.8.18",
 ]
 description = "Dify ops tracing provider (LangSmith)."
 

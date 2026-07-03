@@ -2,12 +2,13 @@ import copy
 import logging
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from libs.login import current_account_with_tenant
+from libs.login import resolve_account_fallback
+from models import Account
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from models.enums import DatasetMetadataType
 from services.dataset_service import DocumentService
@@ -21,13 +22,19 @@ logger = logging.getLogger(__name__)
 
 class MetadataService:
     @staticmethod
-    def create_metadata(dataset_id: str, metadata_args: MetadataArgs) -> DatasetMetadata:
+    def create_metadata(
+        session: Session,
+        dataset_id: str,
+        metadata_args: MetadataArgs,
+        current_user: Account | None = None,  # TODO: the service_api is not migrated yet
+        current_tenant_id: str | None = None,
+    ) -> DatasetMetadata:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
-        current_user, current_tenant_id = current_account_with_tenant()
+        current_user, current_tenant_id = resolve_account_fallback(current_user, current_tenant_id)
         # check if metadata name already exists
-        if db.session.scalar(
+        if session.scalar(
             select(DatasetMetadata)
             .where(
                 DatasetMetadata.tenant_id == current_tenant_id,
@@ -47,20 +54,27 @@ class MetadataService:
             name=metadata_args.name,
             created_by=current_user.id,
         )
-        db.session.add(metadata)
-        db.session.commit()
+        session.add(metadata)
+        session.commit()
         return metadata
 
     @staticmethod
-    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  # type: ignore
+    def update_metadata_name(
+        session: Session,
+        dataset_id: str,
+        metadata_id: str,
+        name: str,
+        current_user: Account | None = None,
+        current_tenant_id: str | None = None,  # TODO: the service_api is not migrated yet
+    ) -> DatasetMetadata | None:
         # check if metadata name is too long
         if len(name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
 
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
-        current_user, current_tenant_id = current_account_with_tenant()
-        if db.session.scalar(
+        current_user, current_tenant_id = resolve_account_fallback(current_user, current_tenant_id)
+        if session.scalar(
             select(DatasetMetadata)
             .where(
                 DatasetMetadata.tenant_id == current_tenant_id,
@@ -75,7 +89,7 @@ class MetadataService:
                 raise ValueError("Metadata name already exists in Built-in fields.")
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.scalar(
+            metadata = session.scalar(
                 select(DatasetMetadata)
                 .where(DatasetMetadata.id == metadata_id, DatasetMetadata.dataset_id == dataset_id)
                 .limit(1)
@@ -88,12 +102,12 @@ class MetadataService:
             metadata.updated_at = naive_utc_now()
 
             # update related documents
-            dataset_metadata_bindings = db.session.scalars(
+            dataset_metadata_bindings = session.scalars(
                 select(DatasetMetadataBinding).where(DatasetMetadataBinding.metadata_id == metadata_id)
             ).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
-                documents = DocumentService.get_document_by_ids(document_ids)
+                documents = DocumentService.get_document_by_ids(document_ids, session)
                 for document in documents:
                     if not document.doc_metadata:
                         doc_metadata = {}
@@ -102,35 +116,36 @@ class MetadataService:
                     value = doc_metadata.pop(old_name, None)
                     doc_metadata[name] = value
                     document.doc_metadata = doc_metadata
-                    db.session.add(document)
-            db.session.commit()
+                    session.add(document)
+            session.commit()
             return metadata
         except Exception:
             logger.exception("Update metadata name failed")
+            return None
         finally:
             redis_client.delete(lock_key)
 
     @staticmethod
-    def delete_metadata(dataset_id: str, metadata_id: str):
+    def delete_metadata(session: Session, dataset_id: str, metadata_id: str):
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset_id, None)
-            metadata = db.session.scalar(
+            metadata = session.scalar(
                 select(DatasetMetadata)
                 .where(DatasetMetadata.id == metadata_id, DatasetMetadata.dataset_id == dataset_id)
                 .limit(1)
             )
             if metadata is None:
                 raise ValueError("Metadata not found.")
-            db.session.delete(metadata)
+            session.delete(metadata)
 
             # deal related documents
-            dataset_metadata_bindings = db.session.scalars(
+            dataset_metadata_bindings = session.scalars(
                 select(DatasetMetadataBinding).where(DatasetMetadataBinding.metadata_id == metadata_id)
             ).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
-                documents = DocumentService.get_document_by_ids(document_ids)
+                documents = DocumentService.get_document_by_ids(document_ids, session)
                 for document in documents:
                     if not document.doc_metadata:
                         doc_metadata = {}
@@ -138,8 +153,8 @@ class MetadataService:
                         doc_metadata = copy.deepcopy(document.doc_metadata)
                     doc_metadata.pop(metadata.name, None)
                     document.doc_metadata = doc_metadata
-                    db.session.add(document)
-            db.session.commit()
+                    session.add(document)
+            session.commit()
             return metadata
         except Exception:
             logger.exception("Delete metadata failed")
@@ -157,14 +172,14 @@ class MetadataService:
         ]
 
     @staticmethod
-    def enable_built_in_field(dataset: Dataset):
+    def enable_built_in_field(session: Session, dataset: Dataset):
         if dataset.built_in_field_enabled:
             return
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
-            db.session.add(dataset)
-            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
+            session.add(dataset)
+            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id, session)
             if documents:
                 for document in documents:
                     if not document.doc_metadata:
@@ -177,23 +192,23 @@ class MetadataService:
                     doc_metadata[BuiltInField.last_update_date] = document.last_update_date.timestamp()
                     doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
                     document.doc_metadata = doc_metadata
-                    db.session.add(document)
+                    session.add(document)
             dataset.built_in_field_enabled = True
-            db.session.commit()
+            session.commit()
         except Exception:
             logger.exception("Enable built-in field failed")
         finally:
             redis_client.delete(lock_key)
 
     @staticmethod
-    def disable_built_in_field(dataset: Dataset):
+    def disable_built_in_field(session: Session, dataset: Dataset):
         if not dataset.built_in_field_enabled:
             return
         lock_key = f"dataset_metadata_lock_{dataset.id}"
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
-            db.session.add(dataset)
-            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
+            session.add(dataset)
+            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id, session)
             document_ids = []
             if documents:
                 for document in documents:
@@ -207,22 +222,31 @@ class MetadataService:
                     doc_metadata.pop(BuiltInField.last_update_date, None)
                     doc_metadata.pop(BuiltInField.source, None)
                     document.doc_metadata = doc_metadata
-                    db.session.add(document)
+                    session.add(document)
                     document_ids.append(document.id)
             dataset.built_in_field_enabled = False
-            db.session.commit()
+            session.commit()
         except Exception:
             logger.exception("Disable built-in field failed")
         finally:
             redis_client.delete(lock_key)
 
     @staticmethod
-    def update_documents_metadata(dataset: Dataset, metadata_args: MetadataOperationData):
+    def update_documents_metadata(
+        session: Session,
+        dataset: Dataset,
+        metadata_args: MetadataOperationData,
+        current_user: Account | None = None,  # TODO: the service_api is not migrated yet
+        current_tenant_id: str | None = None,
+    ):
+        current_user, current_tenant_id = resolve_account_fallback(
+            current_user, current_tenant_id, fallback_tenant_id=dataset.tenant_id
+        )
         for operation in metadata_args.operation_data:
             lock_key = f"document_metadata_lock_{operation.document_id}"
             try:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
-                document = DocumentService.get_document(dataset.id, operation.document_id)
+                document = DocumentService.get_document(dataset.id, operation.document_id, session=session)
                 if document is None:
                     raise ValueError("Document not found.")
                 if operation.partial_update:
@@ -238,21 +262,20 @@ class MetadataService:
                     doc_metadata[BuiltInField.last_update_date] = document.last_update_date.timestamp()
                     doc_metadata[BuiltInField.source] = MetadataDataSource[document.data_source_type]
                 document.doc_metadata = doc_metadata
-                db.session.add(document)
+                session.add(document)
 
                 # deal metadata binding (in the same transaction as the doc_metadata update)
                 if not operation.partial_update:
-                    db.session.execute(
+                    session.execute(
                         delete(DatasetMetadataBinding).where(
                             DatasetMetadataBinding.document_id == operation.document_id
                         )
                     )
 
-                current_user, current_tenant_id = current_account_with_tenant()
                 for metadata_value in operation.metadata_list:
                     # check if binding already exists
                     if operation.partial_update:
-                        existing_binding = db.session.scalar(
+                        existing_binding = session.scalar(
                             select(DatasetMetadataBinding)
                             .where(
                                 DatasetMetadataBinding.document_id == operation.document_id,
@@ -270,10 +293,10 @@ class MetadataService:
                         metadata_id=metadata_value.id,
                         created_by=current_user.id,
                     )
-                    db.session.add(dataset_metadata_binding)
-                db.session.commit()
+                    session.add(dataset_metadata_binding)
+                session.commit()
             except Exception:
-                db.session.rollback()
+                session.rollback()
                 logger.exception("Update documents metadata failed")
                 raise
             finally:
@@ -293,14 +316,14 @@ class MetadataService:
             redis_client.set(lock_key, 1, ex=3600)
 
     @staticmethod
-    def get_dataset_metadatas(dataset: Dataset):
+    def get_dataset_metadatas(session: Session, dataset: Dataset):
         return {
             "doc_metadata": [
                 {
                     "id": item.get("id"),
                     "name": item.get("name"),
                     "type": item.get("type"),
-                    "count": db.session.scalar(
+                    "count": session.scalar(
                         select(func.count(DatasetMetadataBinding.id)).where(
                             DatasetMetadataBinding.metadata_id == item.get("id"),
                             DatasetMetadataBinding.dataset_id == dataset.id,

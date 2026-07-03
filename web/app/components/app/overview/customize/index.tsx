@@ -13,11 +13,12 @@ type IShareLinkProps = {
   onClose: () => void
   api_base_url: string
   appId: string
-  mode: AppModeEnum
+  mode?: AppModeEnum
+  sourceCodeRepository?: 'webapp-conversation' | 'webapp-text-generator'
 }
 
 const StepNum: FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="mr-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
+  <div className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
     {children}
   </div>
 )
@@ -38,10 +39,12 @@ const CustomizeModal: FC<IShareLinkProps> = ({
   appId,
   api_base_url,
   mode,
+  sourceCodeRepository,
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
+  const repository = sourceCodeRepository ?? (isChatApp ? 'webapp-conversation' : 'webapp-text-generator')
   const apiDocLink = docLink('/use-dify/publish/developing-with-apis')
 
   return (
@@ -67,7 +70,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               <div className="flex flex-col">
                 <div className="text-text-primary">{t(`${prefixCustomize}.way1.step1`, { ns: 'appOverview' })}</div>
                 <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step1Tip`, { ns: 'appOverview' })}</div>
-                <Button render={<a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target="_blank" rel="noopener noreferrer" />}>
+                <Button nativeButton={false} render={<a href={`https://github.com/langgenius/${repository}`} target="_blank" rel="noopener noreferrer" aria-label={t(`${prefixCustomize}.way1.step1Operation`, { ns: 'appOverview' })} />}>
                   <GithubIcon className="mr-2 text-text-secondary" />
                   {t(`${prefixCustomize}.way1.step1Operation`, { ns: 'appOverview' })}
                 </Button>
@@ -78,7 +81,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               <div className="flex flex-col">
                 <div className="text-text-primary">{t(`${prefixCustomize}.way1.step2`, { ns: 'appOverview' })}</div>
                 <div className="mt-1 mb-2 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step2Tip`, { ns: 'appOverview' })}</div>
-                <Button render={<a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer" />}>
+                <Button nativeButton={false} render={<a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer" aria-label={t(`${prefixCustomize}.way1.step2Operation`, { ns: 'appOverview' })} />}>
                   <div className="mr-1.5 border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
                   <span>{t(`${prefixCustomize}.way1.step2Operation`, { ns: 'appOverview' })}</span>
                 </Button>
@@ -113,11 +116,12 @@ const CustomizeModal: FC<IShareLinkProps> = ({
             </Tag>
             <p className="my-2 system-sm-medium text-text-secondary">{t(`${prefixCustomize}.way2.name`, { ns: 'appOverview' })}</p>
             <Button
-              render={<a href={apiDocLink} target="_blank" rel="noopener noreferrer" />}
+              nativeButton={false}
+              render={<a href={apiDocLink} target="_blank" rel="noopener noreferrer" aria-label={t(`${prefixCustomize}.way2.operation`, { ns: 'appOverview' })} />}
               className="mt-2"
             >
               <span className="text-sm text-text-secondary">{t(`${prefixCustomize}.way2.operation`, { ns: 'appOverview' })}</span>
-              <span aria-hidden="true" className="ml-1 i-heroicons-arrow-top-right-on-square h-4 w-4 shrink-0 text-text-secondary" />
+              <span aria-hidden="true" className="ml-1 i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary" />
             </Button>
           </div>
         </div>

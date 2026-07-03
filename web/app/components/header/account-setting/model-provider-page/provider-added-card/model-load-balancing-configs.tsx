@@ -9,6 +9,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useMemo } from 'react'
@@ -21,7 +22,6 @@ import s from '@/app/components/custom/style.module.css'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
-import Indicator from '../../../indicator'
 import { ConfigurationMethodEnum } from '../declarations'
 import CooldownTimer from './cooldown-timer'
 
@@ -148,14 +148,14 @@ const ModelLoadBalancingConfigs = ({
       >
         <div className="flex items-center gap-2 px-[15px] py-3 select-none">
           <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-util-colors-indigo-indigo-100 bg-util-colors-indigo-indigo-50 text-util-colors-blue-blue-600">
-            <div className="i-custom-vender-line-financeandecommerce-balance h-4 w-4" />
+            <div className="i-custom-vender-line-financeAndECommerce-balance h-4 w-4" />
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
               {t('modelProvider.loadBalancing', { ns: 'common' })}
               <Infotip
                 aria-label={t('modelProvider.loadBalancingInfo', { ns: 'common' })}
-                className="h-3 w-3"
+                className="size-3"
                 iconClassName="h-full w-full"
                 popupClassName="max-w-[300px]"
               >
@@ -185,7 +185,7 @@ const ModelLoadBalancingConfigs = ({
               return (
                 <div key={config.id || index} className="group flex h-10 items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg px-3 shadow-xs">
                   <div className="flex grow items-center">
-                    <div className="mr-2 flex h-3 w-3 items-center justify-center">
+                    <div className="mr-2 flex size-3 items-center justify-center">
                       {(config.in_cooldown && Boolean(config.ttl))
                         ? (
                             <CooldownTimer secondsRemaining={config.ttl} onFinish={() => clearCountdown(index)} />
@@ -194,7 +194,7 @@ const ModelLoadBalancingConfigs = ({
                             <Tooltip>
                               <TooltipTrigger
                                 render={(
-                                  <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
+                                  <StatusDot status={credential?.not_allowed_to_use ? 'disabled' : 'success'} />
                                 )}
                               />
                               <TooltipContent>
@@ -223,11 +223,11 @@ const ModelLoadBalancingConfigs = ({
                             <TooltipTrigger
                               render={(
                                 <span
-                                  className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
+                                  className="flex size-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
                                   onClick={() => updateConfigEntry(index, () => undefined)}
                                   data-testid={`load-balancing-remove-${config.id || index}`}
                                 >
-                                  <div className="i-ri-indeterminate-circle-line h-4 w-4" />
+                                  <div className="i-ri-indeterminate-circle-line size-4" />
                                 </span>
                               )}
                             />
@@ -271,7 +271,7 @@ const ModelLoadBalancingConfigs = ({
         {
           draftConfig.enabled && validDraftConfigList.length < 2 && (
             <div className="flex h-[34px] items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
-              <div className="i-custom-vender-solid-alertsandfeedback-alert-triangle mr-1 h-3 w-3 text-[#f79009]" />
+              <div className="mr-1 i-custom-vender-solid-alertsAndFeedback-alert-triangle h-3 w-3 text-[#f79009]" />
               {t('modelProvider.loadBalancingLeastKeyWarning', { ns: 'common' })}
             </div>
           )
@@ -282,7 +282,7 @@ const ModelLoadBalancingConfigs = ({
         <GridMask canvasClassName="rounded-xl!">
           <div className="mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md">
             <div
-              className={cn('text-gradient text-sm leading-tight font-semibold', s.textGradient)}
+              className={cn('text-gradient text-sm/tight font-semibold', s.textGradient)}
             >
               {t('modelProvider.upgradeForLoadBalancing', { ns: 'common' })}
             </div>

@@ -1,16 +1,17 @@
 'use client'
-import type { Props as PaginationProps } from '@/app/components/base/pagination'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useBoolean } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Pagination from '@/app/components/base/pagination'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import s from '../style.module.css'
 import { DocumentTableRow, SortHeader } from './document-list/components'
@@ -18,6 +19,15 @@ import { useDocumentActions, useDocumentSelection, useDocumentSort } from './doc
 import RenameModal from './rename-modal'
 
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
+
+type PaginationProps = {
+  className?: string
+  current: number
+  total: number
+  limit?: number
+  onChange: (page: number) => void
+  onLimitChange?: (limit: number) => void
+}
 
 type DocumentListProps = {
   embeddingAvailable: boolean
@@ -48,7 +58,16 @@ const DocumentList = ({
   onSortChange,
 }: DocumentListProps) => {
   const { t } = useTranslation()
+  const pageSize = pagination.limit ?? 10
+  const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
   const datasetConfig = useDatasetDetailContext(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: datasetConfig?.maintainer,
+    workspacePermissionKeys,
+  }), [datasetConfig?.maintainer, datasetConfig?.permission_keys, currentUserId, workspacePermissionKeys])
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
@@ -111,7 +130,7 @@ const DocumentList = ({
   }, [onUpdate])
 
   return (
-    <div className="relative mt-3 flex h-full w-full flex-col">
+    <div className="relative mt-3 flex size-full flex-col">
       <CheckboxGroup
         value={selectedIds}
         onValueChange={nextSelectedIds => onSelectedIdChange(nextSelectedIds)}
@@ -119,7 +138,7 @@ const DocumentList = ({
         className="relative h-0 grow overflow-x-auto"
       >
         <table className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}>
-          <thead className="h-8 border-b border-divider-subtle text-xs leading-8 font-medium text-text-tertiary uppercase">
+          <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
             <tr>
               <td className="w-12">
                 <div className="flex items-center" onClick={e => e.stopPropagation()}>
@@ -184,22 +203,39 @@ const DocumentList = ({
         <BatchAction
           className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedIds}
-          onArchive={handleAction(DocumentActionType.archive)}
-          onBatchSummary={handleAction(DocumentActionType.summary)}
-          onBatchEnable={handleAction(DocumentActionType.enable)}
-          onBatchDisable={handleAction(DocumentActionType.disable)}
-          onBatchDownload={downloadableSelectedIds.length > 0 ? handleBatchDownload : undefined}
-          onBatchDelete={handleAction(DocumentActionType.delete)}
-          onEditMetadata={showEditModal}
-          onBatchReIndex={hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
+          onArchive={datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.archive) : undefined}
+          onBatchSummary={datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.summary) : undefined}
+          onBatchEnable={datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.enable) : undefined}
+          onBatchDisable={datasetACLCapabilities.canEdit ? handleAction(DocumentActionType.disable) : undefined}
+          onBatchDownload={datasetACLCapabilities.canDocumentDownload && downloadableSelectedIds.length > 0 ? handleBatchDownload : undefined}
+          onBatchDelete={datasetACLCapabilities.canDeleteFile ? handleAction(DocumentActionType.delete) : undefined}
+          onEditMetadata={datasetACLCapabilities.canEdit ? showEditModal : undefined}
+          onBatchReIndex={datasetACLCapabilities.canEdit && hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
           onCancel={clearSelection}
         />
       )}
 
       {!!pagination.total && (
         <Pagination
-          {...pagination}
-          className="w-full shrink-0"
+          className="shrink-0"
+          page={pagination.current + 1}
+          totalPages={totalPages}
+          onPageChange={page => pagination.onChange(page - 1)}
+          labels={{
+            previous: t('pagination.previous', { ns: 'common' }),
+            next: t('pagination.next', { ns: 'common' }),
+            editPageNumber: (page, totalPages) => t('pagination.editPageNumber', { ns: 'common', page, totalPages }),
+            pageNumberInput: t('pagination.pageNumber', { ns: 'common' }),
+          }}
+          pageSize={pagination.onLimitChange
+            ? {
+                value: pageSize,
+                options: [10, 25, 50],
+                onValueChange: pagination.onLimitChange,
+                label: t('pagination.perPage', { ns: 'common' }),
+                ariaLabel: t('pagination.perPage', { ns: 'common' }),
+              }
+            : undefined}
         />
       )}
 

@@ -21,11 +21,11 @@ import AnnotationFull from '@/app/components/billing/annotation-full'
 import { useProviderContext } from '@/context/provider-context'
 import EditItem, { EditItemType } from './edit-item'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   onHide: () => void
   onAdd: (payload: AnnotationItemBasic) => void
-}
+}>
 
 const AddAnnotationModal: FC<Props> = ({
   isShow,
@@ -103,7 +103,7 @@ const AddAnnotationModal: FC<Props> = ({
                     </DrawerTitle>
                     <DrawerCloseButton
                       aria-label={t('operation.close', { ns: 'common' })}
-                      className="h-6 w-6 rounded-md"
+                      className="size-6 rounded-md"
                     />
                   </div>
                 </div>
@@ -127,7 +127,7 @@ const AddAnnotationModal: FC<Props> = ({
                       <AnnotationFull />
                     </div>
                   )}
-                  <div className="flex h-16 items-center justify-between rounded-br-xl rounded-bl-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
+                  <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
                     <label className="flex items-center space-x-2">
                       <Checkbox checked={isCreateNext} onCheckedChange={setIsCreateNext} />
                       <span>{t('addModal.createNext', { ns: 'appAnnotation' })}</span>

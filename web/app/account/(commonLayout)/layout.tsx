@@ -1,21 +1,25 @@
 import type { ReactNode } from 'react'
 import * as React from 'react'
-import { AppInitializer } from '@/app/components/app-initializer'
+import { CommonLayoutHydrationBoundary } from '@/app/(commonLayout)/hydration-boundary'
 import AmplitudeProvider from '@/app/components/base/amplitude'
-import GA, { GaType } from '@/app/components/base/ga'
+import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
+import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
+import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import { AppContextProvider } from '@/context/app-context-provider'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
 import Header from './header'
 
-const Layout = ({ children }: { children: ReactNode }) => {
+const Layout = async ({ children }: { children: ReactNode }) => {
   return (
     <>
-      <GA gaType={GaType.admin} />
+      <GoogleAnalyticsScripts />
       <AmplitudeProvider />
-      <AppInitializer>
+      <OAuthRegistrationAnalytics />
+      <EducationVerifyActionRecorder />
+      <CommonLayoutHydrationBoundary>
         <AppContextProvider>
           <EventEmitterContextProvider>
             <ProviderContextProvider>
@@ -30,7 +34,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
             </ProviderContextProvider>
           </EventEmitterContextProvider>
         </AppContextProvider>
-      </AppInitializer>
+      </CommonLayoutHydrationBoundary>
     </>
   )
 }

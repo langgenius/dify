@@ -1,5 +1,6 @@
 import type { LLMNodeType } from '../types'
 import { AppModeEnum } from '@/types/app'
+import { FlowType } from '@/types/common'
 import { EditionType, PromptRole } from '../../../types'
 import nodeDefault from '../default'
 
@@ -40,6 +41,36 @@ describe('llm default node validation', () => {
 
   it('should return a valid result when the provider and prompt are configured', () => {
     const result = nodeDefault.checkValid(createPayload(), t)
+
+    expect(result.isValid).toBe(true)
+    expect(result.errorMessage).toBe('')
+  })
+
+  it('should require sys.query in memory user prompt outside snippet flows', () => {
+    const result = nodeDefault.checkValid(createPayload({
+      memory: {
+        window: {
+          enabled: false,
+          size: 10,
+        },
+        query_prompt_template: 'custom prompt',
+      },
+    }), t, { flowType: FlowType.appFlow })
+
+    expect(result.isValid).toBe(false)
+    expect(result.errorMessage).toBe('nodes.llm.sysQueryInUser')
+  })
+
+  it('should not require sys.query in memory user prompt for snippet flows', () => {
+    const result = nodeDefault.checkValid(createPayload({
+      memory: {
+        window: {
+          enabled: false,
+          size: 10,
+        },
+        query_prompt_template: 'custom prompt',
+      },
+    }), t, { flowType: FlowType.snippet })
 
     expect(result.isValid).toBe(true)
     expect(result.errorMessage).toBe('')

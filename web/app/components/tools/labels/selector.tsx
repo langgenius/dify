@@ -1,6 +1,5 @@
-import type { FC } from 'react'
-import type { Label } from '@/app/components/tools/labels/constant'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -8,7 +7,7 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useDebounceFn } from 'ahooks'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
@@ -19,10 +18,10 @@ type LabelSelectorProps = {
   onChange: (v: string[]) => void
 }
 
-const LabelSelector: FC<LabelSelectorProps> = ({
+function LabelSelector({
   value,
   onChange,
-}) => {
+}: LabelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -39,20 +38,8 @@ const LabelSelector: FC<LabelSelectorProps> = ({
     handleSearch()
   }
 
-  const filteredLabelList = useMemo(() => {
-    return labelList.filter(label => label.name.includes(searchKeywords))
-  }, [labelList, searchKeywords])
-
-  const selectedLabels = useMemo(() => {
-    return value.map(v => labelList.find(l => l.name === v)?.label).join(', ')
-  }, [value, labelList])
-
-  const selectLabel = (label: Label) => {
-    if (value.includes(label.name))
-      onChange(value.filter(v => v !== label.name))
-    else
-      onChange([...value, label.name])
-  }
+  const filteredLabelList = labelList.filter(label => label.name.includes(searchKeywords))
+  const selectedLabels = value.map(v => labelList.find(l => l.name === v)?.label).join(', ')
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -60,15 +47,15 @@ const LabelSelector: FC<LabelSelectorProps> = ({
         <PopoverTrigger
           className={cn(
             'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 text-left hover:bg-components-input-bg-hover',
-            open && 'bg-components-input-bg-hover hover:bg-components-input-bg-hover',
+            'data-popup-open:bg-components-input-bg-hover data-popup-open:hover:bg-components-input-bg-hover',
           )}
         >
-          <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
+          <div className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
             {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
             {!!value.length && selectedLabels}
           </div>
           <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-            <span className="i-ri-arrow-down-s-line h-4 w-4" />
+            <span className="i-ri-arrow-down-s-line size-4" />
           </div>
         </PopoverTrigger>
         <PopoverContent
@@ -86,7 +73,12 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                 onClear={() => handleKeywordsChange('')}
               />
             </div>
-            <div className="max-h-[264px] overflow-y-auto p-1">
+            <CheckboxGroup
+              aria-label={t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
+              value={value}
+              onValueChange={nextValue => onChange(nextValue)}
+              className="max-h-[264px] overflow-y-auto p-1"
+            >
               {filteredLabelList.map(label => (
                 <label
                   key={label.name}
@@ -94,19 +86,18 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                 >
                   <Checkbox
                     className="shrink-0"
-                    checked={value.includes(label.name)}
-                    onCheckedChange={() => selectLabel(label)}
+                    value={label.name}
                   />
-                  <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
+                  <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
                 </label>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="h-6 w-6 text-text-quaternary" />
+                  <Tag03 className="size-6 text-text-quaternary" />
                   <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}
-            </div>
+            </CheckboxGroup>
           </div>
         </PopoverContent>
       </div>

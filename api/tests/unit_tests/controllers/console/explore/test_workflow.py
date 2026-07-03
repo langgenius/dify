@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,12 +13,6 @@ from controllers.console.explore.workflow import (
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from models.model import AppMode
 from services.errors.llm import InvokeRateLimitError
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 @pytest.fixture
@@ -61,15 +56,9 @@ class TestInstalledAppWorkflowRunApi:
         api = InstalledAppWorkflowRunApi()
         method = unwrap(api.post)
 
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.explore.workflow.current_account_with_tenant",
-                return_value=(MagicMock(), None),
-            ),
-        ):
+        with app.test_request_context("/"):
             with pytest.raises(NotWorkflowAppError):
-                method(non_workflow_installed_app)
+                method(api, MagicMock(), MagicMock(), non_workflow_installed_app)
 
     def test_success(self, app: Flask, installed_workflow_app, user, payload):
         api = InstalledAppWorkflowRunApi()
@@ -78,17 +67,14 @@ class TestInstalledAppWorkflowRunApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.explore.workflow.current_account_with_tenant",
-                return_value=(user, None),
-            ),
-            patch(
                 "controllers.console.explore.workflow.AppGenerateService.generate",
                 return_value=MagicMock(),
             ) as generate_mock,
         ):
-            result = method(installed_workflow_app)
+            result = method(api, MagicMock(), user, installed_workflow_app)
 
             generate_mock.assert_called_once()
+            assert generate_mock.call_args.kwargs["user"] is user
             assert result is not None
 
     def test_rate_limit_error(self, app: Flask, installed_workflow_app, user, payload):
@@ -98,16 +84,12 @@ class TestInstalledAppWorkflowRunApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.explore.workflow.current_account_with_tenant",
-                return_value=(user, None),
-            ),
-            patch(
                 "controllers.console.explore.workflow.AppGenerateService.generate",
                 side_effect=InvokeRateLimitError("rate limit"),
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(installed_workflow_app)
+                method(api, MagicMock(), user, installed_workflow_app)
 
     def test_unexpected_exception(self, app: Flask, installed_workflow_app, user, payload):
         api = InstalledAppWorkflowRunApi()
@@ -116,16 +98,12 @@ class TestInstalledAppWorkflowRunApi:
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.explore.workflow.current_account_with_tenant",
-                return_value=(user, None),
-            ),
-            patch(
                 "controllers.console.explore.workflow.AppGenerateService.generate",
                 side_effect=Exception("boom"),
             ),
         ):
             with pytest.raises(InternalServerError):
-                method(installed_workflow_app)
+                method(api, MagicMock(), user, installed_workflow_app)
 
 
 class TestInstalledAppWorkflowTaskStopApi:

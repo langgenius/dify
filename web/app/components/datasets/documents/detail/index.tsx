@@ -11,6 +11,7 @@ import Divider from '@/app/components/base/divider'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import Metadata from '@/app/components/datasets/metadata/metadata-document'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { ChunkingMode, DisplayStatusList } from '@/models/datasets'
@@ -19,6 +20,7 @@ import { useDocumentDetail, useDocumentMetadata, useInvalidDocumentList } from '
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { segmentImportStatus } from '@/types/dataset'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
@@ -47,7 +49,18 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const isMobile = media === MediaType.mobile
 
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const embeddingAvailable = !!dataset?.embedding_available
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(dataset?.permission_keys, {
+      currentUserId,
+      resourceMaintainer: dataset?.maintainer,
+      workspacePermissionKeys,
+    }),
+    [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
+  const canEditDocument = datasetACLCapabilities.canEdit
   const [showMetadata, setShowMetadata] = useState(!isMobile)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
@@ -191,11 +204,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             aria-label={backButtonLabel}
             title={backButtonLabel}
             onClick={backToPrev}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 hover:bg-components-button-tertiary-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-none bg-transparent p-0 hover:bg-components-button-tertiary-bg focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           >
             <span
               aria-hidden="true"
-              className="i-ri-arrow-left-line h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary"
+              className="i-ri-arrow-left-line size-4 text-components-button-ghost-text hover:text-text-tertiary"
             />
           </button>
           <DocumentTitle
@@ -205,7 +218,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             parentMode={parentMode}
           />
           <div className="flex flex-wrap items-center">
-            {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
+            {embeddingAvailable && canEditDocument && documentDetail && !documentDetail.archived && !isFullDocMode && (
               <>
                 <SegmentAdd
                   importStatus={importStatus}
@@ -226,6 +239,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                 detail={statusDetail}
                 datasetId={datasetId}
                 onUpdate={handleOperate}
+                canEdit={canEditDocument}
               />
             )}
             <Operations
@@ -235,6 +249,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               datasetId={datasetId}
               onUpdate={handleOperate}
               className="w-[200px]!"
+              canEdit={canEditDocument}
+              canDownload={datasetACLCapabilities.canDocumentDownload}
+              canDelete={datasetACLCapabilities.canDeleteFile}
+              canViewSettings={canEditDocument}
             />
             <button
               type="button"
@@ -247,8 +265,8 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             >
               {
                 showMetadata
-                  ? <span aria-hidden="true" className="i-ri-layout-left-2-line h-4 w-4 text-components-button-secondary-text" />
-                  : <span aria-hidden="true" className="i-ri-layout-right-2-line h-4 w-4 text-components-button-secondary-text" />
+                  ? <span aria-hidden="true" className="i-ri-layout-left-2-line size-4 text-components-button-secondary-text" />
+                  : <span aria-hidden="true" className="i-ri-layout-right-2-line size-4 text-components-button-secondary-text" />
               }
             </button>
           </div>
@@ -257,7 +275,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type="app" />
             : (
-                <div className={cn('flex h-full min-w-0 grow flex-col', !embedding && isFullDocMode && 'relative pt-4 pr-11 pl-11', !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5')}>
+                <div className={cn('flex h-full min-w-0 grow flex-col', !embedding && isFullDocMode && 'relative px-11 pt-4', !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5')}>
                   {embedding
                     ? (
                         <Embedding
@@ -283,6 +301,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               datasetId={datasetId}
               documentId={documentId}
               docDetail={docDetail}
+              canEdit={canEditDocument}
             />
           </FloatRightContainer>
         </div>

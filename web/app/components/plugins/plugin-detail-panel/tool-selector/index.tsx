@@ -24,7 +24,7 @@ import {
 } from './components'
 import { useToolSelectorState } from './hooks/use-tool-selector-state'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   placement?: Placement
   offset?: OffsetOptions
@@ -45,7 +45,7 @@ type Props = {
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId?: string
-}
+}>
 
 const ToolSelector: FC<Props> = ({
   value,

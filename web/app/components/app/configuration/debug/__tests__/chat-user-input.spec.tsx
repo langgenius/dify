@@ -84,25 +84,6 @@ vi.mock('@langgenius/dify-ui/select', async () => {
   }
 })
 
-vi.mock('@/app/components/base/textarea', () => ({
-  default: ({ value, onChange, placeholder, readOnly, className }: {
-    value: string
-    onChange: (e: { target: { value: string } }) => void
-    placeholder?: string
-    readOnly?: boolean
-    className?: string
-  }) => (
-    <textarea
-      data-testid={`textarea-${placeholder}`}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      readOnly={readOnly}
-      className={className}
-    />
-  ),
-}))
-
 vi.mock('@/app/components/workflow/nodes/_base/components/before-run-form/bool-input', () => ({
   default: ({ name, value, required, onChange, readonly }: {
     name: string
@@ -157,10 +138,12 @@ const createContextValue = (overrides: Partial<{
   modelConfig: ModelConfig
   setInputs: (inputs: Inputs) => void
   readonly: boolean
+  canTestAndRun: boolean
 }> = {}) => ({
   modelConfig: createModelConfig(),
   setInputs: mockSetInputs,
   readonly: false,
+  canTestAndRun: true,
   ...overrides,
 })
 
@@ -223,7 +206,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('textarea-Description')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
     })
 
     it('should render select input type', () => {
@@ -275,7 +258,7 @@ describe('ChatUserInput', () => {
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByTestId('input-Name')).toBeInTheDocument()
-      expect(screen.getByTestId('textarea-Description')).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: 'Description' })).toBeInTheDocument()
       expect(screen.getByTestId('select-input')).toBeInTheDocument()
     })
 
@@ -334,7 +317,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{ desc: 'Long text here' }} />)
-      expect(screen.getByTestId('textarea-Description')).toHaveValue('Long text here')
+      expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Long text here')
     })
 
     it('should display existing input values for number type', () => {
@@ -418,7 +401,7 @@ describe('ChatUserInput', () => {
       }))
 
       render(<ChatUserInput inputs={{}} />)
-      fireEvent.change(screen.getByTestId('textarea-Description'), { target: { value: 'New Description' } })
+      fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: 'New Description' } })
 
       expect(mockSetInputs).toHaveBeenCalledWith({ desc: 'New Description' })
     })
@@ -504,49 +487,79 @@ describe('ChatUserInput', () => {
     })
   })
 
-  describe('Readonly Mode', () => {
-    it('should set string input as readonly when readonly is true', () => {
+  describe('Debug Permission', () => {
+    it('should keep string input editable when configuration is readonly but test/run is allowed', () => {
       mockUseContext.mockReturnValue(createContextValue({
         modelConfig: createModelConfig([
           createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
         ]),
         readonly: true,
+        canTestAndRun: true,
+      }))
+
+      render(<ChatUserInput inputs={{}} />)
+      expect(screen.getByTestId('input-Name')).not.toHaveAttribute('readonly')
+    })
+
+    it('should set string input as readonly when test/run is denied even if configuration is editable', () => {
+      mockUseContext.mockReturnValue(createContextValue({
+        modelConfig: createModelConfig([
+          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+        ]),
+        readonly: false,
+        canTestAndRun: false,
       }))
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByTestId('input-Name')).toHaveAttribute('readonly')
     })
 
-    it('should set paragraph input as readonly when readonly is true', () => {
+    it('should set string input as readonly when configuration is readonly and test/run is denied', () => {
+      mockUseContext.mockReturnValue(createContextValue({
+        modelConfig: createModelConfig([
+          createPromptVariable({ key: 'name', name: 'Name', type: 'string' }),
+        ]),
+        readonly: true,
+        canTestAndRun: false,
+      }))
+
+      render(<ChatUserInput inputs={{}} />)
+      expect(screen.getByTestId('input-Name')).toHaveAttribute('readonly')
+    })
+
+    it('should set paragraph input as readonly when configuration is readonly and test/run is denied', () => {
       mockUseContext.mockReturnValue(createContextValue({
         modelConfig: createModelConfig([
           createPromptVariable({ key: 'desc', name: 'Description', type: 'paragraph' }),
         ]),
         readonly: true,
+        canTestAndRun: false,
       }))
 
       render(<ChatUserInput inputs={{}} />)
-      expect(screen.getByTestId('textarea-Description')).toHaveAttribute('readonly')
+      expect(screen.getByRole('textbox', { name: 'Description' })).toHaveAttribute('readonly')
     })
 
-    it('should disable select when readonly is true', () => {
+    it('should disable select when configuration is readonly and test/run is denied', () => {
       mockUseContext.mockReturnValue(createContextValue({
         modelConfig: createModelConfig([
           createPromptVariable({ key: 'choice', name: 'Choice', type: 'select', options: ['A', 'B'] }),
         ]),
         readonly: true,
+        canTestAndRun: false,
       }))
 
       render(<ChatUserInput inputs={{}} />)
       expect(screen.getByTestId('select-input')).toBeDisabled()
     })
 
-    it('should disable checkbox when readonly is true', () => {
+    it('should disable checkbox when configuration is readonly and test/run is denied', () => {
       mockUseContext.mockReturnValue(createContextValue({
         modelConfig: createModelConfig([
           createPromptVariable({ key: 'enabled', name: 'Enabled', type: 'checkbox' }),
         ]),
         readonly: true,
+        canTestAndRun: false,
       }))
 
       render(<ChatUserInput inputs={{}} />)

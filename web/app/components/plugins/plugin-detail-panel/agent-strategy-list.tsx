@@ -7,9 +7,9 @@ import {
   useStrategyProviderDetail,
 } from '@/service/use-strategy'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
-}
+}>
 
 const AgentStrategyList = ({
   detail,

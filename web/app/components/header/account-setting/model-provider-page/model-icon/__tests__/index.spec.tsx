@@ -81,6 +81,30 @@ describe('ModelIcon', () => {
     expect(screen.getByRole('img', { name: /model-icon/i })).toHaveAttribute('src', 'dark.png')
   })
 
+  it('should fall back to the light icon when dark icon is empty', () => {
+    mockTheme = Theme.dark
+    const provider = createModel({
+      icon_small: createI18nText('light.png'),
+      icon_small_dark: createI18nText(''),
+    })
+
+    render(<ModelIcon provider={provider} />)
+
+    expect(screen.getByRole('img', { name: /model-icon/i })).toHaveAttribute('src', 'light.png')
+  })
+
+  it('should render fallback when icon urls are empty', () => {
+    const provider = createModel({
+      icon_small: createI18nText(''),
+      icon_small_dark: createI18nText(''),
+    })
+
+    const { container } = render(<ModelIcon provider={provider} />)
+
+    expect(screen.queryByRole('img', { name: /model-icon/i })).not.toBeInTheDocument()
+    expect(container.querySelector('.i-custom-vender-other-group')).toBeInTheDocument()
+  })
+
   // Provider override
   it('should ignore icon_small for OpenAI models starting with "o"', () => {
     const provider = createModel({

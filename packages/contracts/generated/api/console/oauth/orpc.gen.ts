@@ -4,9 +4,6 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
 import {
-  zGetOauthAuthorizeByProviderPath,
-  zGetOauthAuthorizeByProviderQuery,
-  zGetOauthAuthorizeByProviderResponse,
   zGetOauthDataSourceBindingByProviderPath,
   zGetOauthDataSourceBindingByProviderQuery,
   zGetOauthDataSourceBindingByProviderResponse,
@@ -14,66 +11,25 @@ import {
   zGetOauthDataSourceByProviderByBindingIdSyncResponse,
   zGetOauthDataSourceByProviderPath,
   zGetOauthDataSourceByProviderResponse,
-  zGetOauthDataSourceCallbackByProviderPath,
-  zGetOauthDataSourceCallbackByProviderQuery,
-  zGetOauthDataSourceCallbackByProviderResponse,
-  zGetOauthLoginByProviderPath,
-  zGetOauthLoginByProviderQuery,
-  zGetOauthLoginByProviderResponse,
-  zGetOauthPluginByProviderIdDatasourceCallbackPath,
-  zGetOauthPluginByProviderIdDatasourceCallbackResponse,
   zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlPath,
+  zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery,
   zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse,
   zGetOauthPluginByProviderToolAuthorizationUrlPath,
   zGetOauthPluginByProviderToolAuthorizationUrlResponse,
-  zGetOauthPluginByProviderToolCallbackPath,
-  zGetOauthPluginByProviderToolCallbackResponse,
-  zGetOauthPluginByProviderTriggerCallbackPath,
-  zGetOauthPluginByProviderTriggerCallbackResponse,
+  zPostOauthProviderAccountBody,
   zPostOauthProviderAccountResponse,
+  zPostOauthProviderAuthorizeBody,
   zPostOauthProviderAuthorizeResponse,
+  zPostOauthProviderBody,
   zPostOauthProviderResponse,
+  zPostOauthProviderTokenBody,
   zPostOauthProviderTokenResponse,
 } from './zod.gen'
 
 /**
- * Handle OAuth callback and complete login process
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get = oc
-  .route({
-    deprecated: true,
-    description:
-      'Handle OAuth callback and complete login process\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getOauthAuthorizeByProvider',
-    path: '/oauth/authorize/{provider}',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      params: zGetOauthAuthorizeByProviderPath,
-      query: zGetOauthAuthorizeByProviderQuery.optional(),
-    }),
-  )
-  .output(zGetOauthAuthorizeByProviderResponse)
-
-export const byProvider = {
-  get,
-}
-
-export const authorize = {
-  byProvider,
-}
-
-/**
  * Bind OAuth data source with authorization code
  */
-export const get2 = oc
+export const get = oc
   .route({
     description: 'Bind OAuth data source with authorization code',
     inputStructure: 'detailed',
@@ -85,57 +41,23 @@ export const get2 = oc
   .input(
     z.object({
       params: zGetOauthDataSourceBindingByProviderPath,
-      query: zGetOauthDataSourceBindingByProviderQuery.optional(),
+      query: zGetOauthDataSourceBindingByProviderQuery,
     }),
   )
   .output(zGetOauthDataSourceBindingByProviderResponse)
 
-export const byProvider2 = {
-  get: get2,
+export const byProvider = {
+  get,
 }
 
 export const binding = {
-  byProvider: byProvider2,
-}
-
-/**
- * Handle OAuth callback from data source provider
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get3 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Handle OAuth callback from data source provider\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getOauthDataSourceCallbackByProvider',
-    path: '/oauth/data-source/callback/{provider}',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      params: zGetOauthDataSourceCallbackByProviderPath,
-      query: zGetOauthDataSourceCallbackByProviderQuery.optional(),
-    }),
-  )
-  .output(zGetOauthDataSourceCallbackByProviderResponse)
-
-export const byProvider3 = {
-  get: get3,
-}
-
-export const callback = {
-  byProvider: byProvider3,
+  byProvider,
 }
 
 /**
  * Sync data from OAuth data source
  */
-export const get4 = oc
+export const get2 = oc
   .route({
     description: 'Sync data from OAuth data source',
     inputStructure: 'detailed',
@@ -148,7 +70,7 @@ export const get4 = oc
   .output(zGetOauthDataSourceByProviderByBindingIdSyncResponse)
 
 export const sync = {
-  get: get4,
+  get: get2,
 }
 
 export const byBindingId = {
@@ -158,7 +80,7 @@ export const byBindingId = {
 /**
  * Get OAuth authorization URL for data source provider
  */
-export const get5 = oc
+export const get3 = oc
   .route({
     description: 'Get OAuth authorization URL for data source provider',
     inputStructure: 'detailed',
@@ -170,99 +92,37 @@ export const get5 = oc
   .input(z.object({ params: zGetOauthDataSourceByProviderPath }))
   .output(zGetOauthDataSourceByProviderResponse)
 
-export const byProvider4 = {
-  get: get5,
+export const byProvider2 = {
+  get: get3,
   byBindingId,
 }
 
 export const dataSource = {
   binding,
-  callback,
-  byProvider: byProvider4,
+  byProvider: byProvider2,
 }
 
-/**
- * Initiate OAuth login process
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get6 = oc
+export const get4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Initiate OAuth login process\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getOauthLoginByProvider',
-    path: '/oauth/login/{provider}',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      params: zGetOauthLoginByProviderPath,
-      query: zGetOauthLoginByProviderQuery.optional(),
-    }),
-  )
-  .output(zGetOauthLoginByProviderResponse)
-
-export const byProvider5 = {
-  get: get6,
-}
-
-export const login = {
-  byProvider: byProvider5,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get7 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getOauthPluginByProviderIdDatasourceCallback',
-    path: '/oauth/plugin/{provider_id}/datasource/callback',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetOauthPluginByProviderIdDatasourceCallbackPath }))
-  .output(zGetOauthPluginByProviderIdDatasourceCallbackResponse)
-
-export const callback2 = {
-  get: get7,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get8 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getOauthPluginByProviderIdDatasourceGetAuthorizationUrl',
     path: '/oauth/plugin/{provider_id}/datasource/get-authorization-url',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlPath }))
+  .input(
+    z.object({
+      params: zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlPath,
+      query: zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery.optional(),
+    }),
+  )
   .output(zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse)
 
 export const getAuthorizationUrl = {
-  get: get8,
+  get: get4,
 }
 
 export const datasource = {
-  callback: callback2,
   getAuthorizationUrl,
 }
 
@@ -270,16 +130,8 @@ export const byProviderId = {
   datasource,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get9 = oc
+export const get5 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getOauthPluginByProviderToolAuthorizationUrl',
@@ -290,172 +142,87 @@ export const get9 = oc
   .output(zGetOauthPluginByProviderToolAuthorizationUrlResponse)
 
 export const authorizationUrl = {
-  get: get9,
-}
-
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get10 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getOauthPluginByProviderToolCallback',
-    path: '/oauth/plugin/{provider}/tool/callback',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetOauthPluginByProviderToolCallbackPath }))
-  .output(zGetOauthPluginByProviderToolCallbackResponse)
-
-export const callback3 = {
-  get: get10,
+  get: get5,
 }
 
 export const tool = {
   authorizationUrl,
-  callback: callback3,
 }
 
-/**
- * Handle OAuth callback for trigger provider
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
-export const get11 = oc
-  .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getOauthPluginByProviderTriggerCallback',
-    path: '/oauth/plugin/{provider}/trigger/callback',
-    summary: 'Handle OAuth callback for trigger provider',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetOauthPluginByProviderTriggerCallbackPath }))
-  .output(zGetOauthPluginByProviderTriggerCallbackResponse)
-
-export const callback4 = {
-  get: get11,
-}
-
-export const trigger = {
-  callback: callback4,
-}
-
-export const byProvider6 = {
+export const byProvider3 = {
   tool,
-  trigger,
 }
 
 export const plugin = {
   byProviderId,
-  byProvider: byProvider6,
+  byProvider: byProvider3,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postOauthProviderAccount',
     path: '/oauth/provider/account',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostOauthProviderAccountBody }))
   .output(zPostOauthProviderAccountResponse)
 
 export const account = {
   post,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post2 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postOauthProviderAuthorize',
     path: '/oauth/provider/authorize',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostOauthProviderAuthorizeBody }))
   .output(zPostOauthProviderAuthorizeResponse)
 
-export const authorize2 = {
+export const authorize = {
   post: post2,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post3 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postOauthProviderToken',
     path: '/oauth/provider/token',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostOauthProviderTokenBody }))
   .output(zPostOauthProviderTokenResponse)
 
 export const token = {
   post: post3,
 }
 
-/**
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
- */
 export const post4 = oc
   .route({
-    deprecated: true,
-    description:
-      'Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postOauthProvider',
     path: '/oauth/provider',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostOauthProviderBody }))
   .output(zPostOauthProviderResponse)
 
 export const provider = {
   post: post4,
   account,
-  authorize: authorize2,
+  authorize,
   token,
 }
 
 export const oauth = {
-  authorize,
   dataSource,
-  login,
   plugin,
   provider,
 }

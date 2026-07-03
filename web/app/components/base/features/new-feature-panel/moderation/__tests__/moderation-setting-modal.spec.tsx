@@ -53,7 +53,7 @@ vi.mock('@/app/components/header/account-setting/constants', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
-  default: ({ onChange }: { value: string, onChange: (v: string) => void }) => (
+  ApiBasedExtensionSelector: ({ onChange }: { value: string, onChange: (v: string) => void }) => (
     <div data-testid="api-selector">
       <button data-testid="select-api" onClick={() => onChange('api-ext-1')}>Select API</button>
     </div>
@@ -298,6 +298,37 @@ describe('ModerationSettingModal', () => {
       config: expect.objectContaining({
         keywords: 'bad\nword',
         inputs_config: expect.objectContaining({ enabled: true }),
+      }),
+    }))
+  })
+
+  it('should save the latest preset response when content textarea changes', async () => {
+    const data: ModerationConfig = {
+      ...defaultData,
+      config: {
+        keywords: 'bad',
+        inputs_config: { enabled: true, preset_response: 'blocked' },
+        outputs_config: { enabled: false, preset_response: '' },
+      },
+    }
+    await renderModal(
+      <ModerationSettingModal
+        data={data}
+        onCancel={vi.fn()}
+        onSave={onSave}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: /feature\.moderation\.modal\.content\.preset/ }), {
+      target: { value: 'updated blocked response' },
+    })
+    fireEvent.click(screen.getByText(/operation\.save/))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      config: expect.objectContaining({
+        inputs_config: expect.objectContaining({
+          preset_response: 'updated blocked response',
+        }),
       }),
     }))
   })
@@ -702,9 +733,10 @@ describe('ModerationSettingModal', () => {
 
     expect(mockSetShowAccountSettingModal).toHaveBeenCalled()
 
-    const modalCall = mockSetShowAccountSettingModal.mock.calls[0]![0]
-    modalCall.onCancelCallback()
-    expect(mockModelProvidersData.refetch).toHaveBeenCalled()
+    expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
+      payload: 'provider',
+      onCancelCallback: expect.any(Function),
+    })
   })
 
   it('should not save when OpenAI type is selected but not configured', async () => {

@@ -30,7 +30,7 @@ def vdb_migrate(scope: str):
 
 def migrate_annotation_vector_database():
     """
-    Migrate annotation datas to target vector database .
+    Migrate annotation data to target vector database.
     """
     click.echo(click.style("Starting annotation data migration.", fg="green"))
     create_count = 0
@@ -140,7 +140,7 @@ def migrate_annotation_vector_database():
 
 def migrate_knowledge_vector_database():
     """
-    Migrate vector database datas to target vector database .
+    Migrate vector database data to target vector database.
     """
     click.echo(click.style("Starting vector database migration.", fg="green"))
     create_count = 0
