@@ -129,8 +129,8 @@ When('I generate an Agent v2 Build draft from the fixed instruction', async func
   expect((await checkoutResponsePromise).ok()).toBe(true)
   expect((await chatResponsePromise).ok()).toBe(true)
   await expect(page.getByText('Build draft')).toBeVisible({ timeout: 120_000 })
-  await expect(page.getByRole('button', { name: 'Apply' })).toBeEnabled({ timeout: 120_000 })
-  await expect(page.getByRole('button', { name: 'Discard' })).toBeEnabled()
+  await expect(page.getByRole('button', { exact: true, name: 'Apply' })).toBeEnabled({ timeout: 120_000 })
+  await expect(page.getByRole('button', { exact: true, name: 'Discard' })).toBeEnabled()
 })
 
 const expectPageResponseOK = async (response: Response, action: string) => {
@@ -150,13 +150,13 @@ const expectPageResponseOK = async (response: Response, action: string) => {
 }
 
 When('I discard the Agent v2 Build draft', async function (this: DifyWorld) {
-  await this.getPage().getByRole('button', { name: 'Discard' }).click()
+  await this.getPage().getByRole('button', { exact: true, name: 'Discard' }).click()
 })
 
 When('I apply the Agent v2 Build draft', async function (this: DifyWorld) {
   const page = this.getPage()
   const agentId = getCurrentAgentId(this)
-  const applyButton = page.getByRole('button', { name: 'Apply' })
+  const applyButton = page.getByRole('button', { exact: true, name: 'Apply' })
 
   await expect(applyButton).toBeEnabled({ timeout: 30_000 })
   const finalizeResponsePromise = page.waitForResponse(response => (
@@ -216,8 +216,8 @@ Then('I should see the Agent v2 Build draft pending changes', async function (th
   const page = this.getPage()
 
   await expect(page.getByText('Build draft')).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByRole('button', { name: 'Apply' })).toBeEnabled()
-  await expect(page.getByRole('button', { name: 'Discard' })).toBeEnabled()
+  await expect(page.getByRole('button', { exact: true, name: 'Apply' })).toBeEnabled()
+  await expect(page.getByRole('button', { exact: true, name: 'Discard' })).toBeEnabled()
 })
 
 Then('I should see the Agent v2 Build mode confirmation state', async function (this: DifyWorld) {
