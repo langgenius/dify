@@ -118,12 +118,6 @@ const createMockFile = (name: string, type = 'application/octet-stream'): File =
   return new File(['test'], name, { type })
 }
 
-const integrationsSkeletonBackground = [
-  'radial-gradient(ellipse at 50% 48%,',
-  'var(--color-background-section-burn) 0%,',
-  'var(--color-components-panel-bg) 58%)',
-].join(' ')
-
 // Helper to wait for useEffect to complete (single tick)
 const flushEffects = async () => {
   await act(async () => {})
@@ -150,9 +144,9 @@ describe('Empty Component', () => {
       expect(fileInput.style.display).toBe('none')
       expect(fileInput.accept).toBe('.difypkg,.difybndl')
 
-      // Assert - skeleton cards (20 in the grid + 1 icon container)
-      const skeletonCards = container.querySelectorAll('.rounded-xl.bg-components-card-bg')
-      expect(skeletonCards.length).toBeGreaterThanOrEqual(20)
+      // Assert - placeholder cards (20 in the grid + 1 icon container)
+      const placeholderCards = container.querySelectorAll('.rounded-xl.bg-components-card-bg')
+      expect(placeholderCards.length).toBeGreaterThanOrEqual(20)
 
       // Assert - group icon container
       const iconContainer = document.querySelector('.size-14')
@@ -176,11 +170,13 @@ describe('Empty Component', () => {
       expect(container.querySelector('.i-custom-vender-integrations-trigger-active')).toBeInTheDocument()
       expect(container.querySelector('.i-custom-vender-integrations-trigger')).not.toBeInTheDocument()
 
-      const skeletonGrid = container.querySelector('.grid')
-      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
+      const placeholderGrid = container.querySelector('.grid')
+      expect(placeholderGrid).toHaveClass('pointer-events-none', 'max-w-[1600px]', 'px-6', 'gap-2')
+      expect(placeholderGrid).toHaveAttribute('aria-hidden', 'true')
+      expect(placeholderGrid).not.toHaveAttribute('style')
 
-      const skeletonCards = container.querySelectorAll('.h-\\[72px\\].rounded-lg')
-      expect(skeletonCards).toHaveLength(22)
+      const placeholderCards = container.querySelectorAll('.h-24.rounded-lg.bg-background-section-burn')
+      expect(placeholderCards).toHaveLength(14)
 
       const buttons = screen.getAllByRole('button')
       buttons.forEach(button => expect(button).toHaveClass('h-8', 'w-full', 'justify-start'))
@@ -197,8 +193,8 @@ describe('Empty Component', () => {
       expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
       expect(container.firstElementChild).toHaveClass('bg-components-panel-bg')
 
-      const skeletonGrid = container.querySelector('.grid')
-      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
+      const placeholderGrid = container.querySelector('.grid')
+      expect(placeholderGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-2')
       expect(container.querySelector('.items-center')).toBeInTheDocument()
       expect(container.querySelector('.-translate-y-7')).not.toBeInTheDocument()
       expect(container.querySelector('.i-custom-vender-integrations-agent-strategy-active')).toHaveClass('size-6', 'shrink-0')
@@ -214,10 +210,11 @@ describe('Empty Component', () => {
       expect(screen.getByText('plugin.installModal.dropIntegrationToInstall')).toBeInTheDocument()
       expect(container.querySelector('.i-ri-drag-drop-line')).toBeInTheDocument()
 
-      const skeletonGrid = container.querySelector('.grid')
-      expect(skeletonGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-x-[7px]', 'gap-y-[15px]', 'pt-2')
-      expect(skeletonGrid).toHaveAttribute('style', `background: ${integrationsSkeletonBackground};`)
-      expect(container.querySelector('.h-\\[72px\\].rounded-lg')).toHaveClass('bg-background-section/50')
+      const placeholderGrid = container.querySelector('.grid')
+      expect(placeholderGrid).toHaveClass('max-w-[1600px]', 'px-6', 'gap-2')
+      expect(placeholderGrid).not.toHaveAttribute('style')
+      expect(container.querySelector('.h-24.rounded-lg')).toHaveClass('bg-background-section-burn')
+      expect(container.querySelector('.bg-linear-to-b')).toHaveClass('pointer-events-none', 'from-components-panel-bg-transparent', 'to-components-panel-bg')
       expect(container.querySelector('.i-custom-vender-integrations-extension-active')).toHaveClass('size-6', 'shrink-0')
     })
   })
