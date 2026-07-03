@@ -12,49 +12,72 @@ from graphon.graph_engine.entities.commands import AbortCommand
 @pytest.fixture(autouse=True)
 def reset_warm_shutdown_state() -> None:
     reset_active_workflow_tasks()
-    workflow_warm_shutdown.reset_celery_warm_shutdown_state()
+    workflow_warm_shutdown._celery_warm_shutdown_started.clear()
     yield
     reset_active_workflow_tasks()
-    workflow_warm_shutdown.reset_celery_warm_shutdown_state()
+    workflow_warm_shutdown._celery_warm_shutdown_started.clear()
+
+
+def _create_warm_shutdown_command_channel() -> CelerySignalCommandChannel:
+    return CelerySignalCommandChannel(
+        shutdown_state_getter=workflow_warm_shutdown.celery_warm_shutdown_started,
+        abort_reason=workflow_warm_shutdown.WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
+    )
 
 
 def test_worker_shutting_down_skips_non_warm_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
-    set_abort = MagicMock()
-    monkeypatch.setattr(workflow_warm_shutdown, "set_celery_warm_shutdown_abort_command", set_abort)
+    mark_shutdown = MagicMock()
+    monkeypatch.setattr(workflow_warm_shutdown, "mark_celery_warm_shutdown_started", mark_shutdown)
 
     workflow_warm_shutdown._on_worker_shutting_down(how="cold")
 
-    set_abort.assert_not_called()
+    mark_shutdown.assert_not_called()
 
 
-def test_worker_shutting_down_sets_abort_command_for_warm_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
-    set_abort = MagicMock()
-    monkeypatch.setattr(workflow_warm_shutdown, "set_celery_warm_shutdown_abort_command", set_abort)
+def test_worker_shutting_down_marks_warm_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
+    mark_shutdown = MagicMock()
+    monkeypatch.setattr(workflow_warm_shutdown, "mark_celery_warm_shutdown_started", mark_shutdown)
     monkeypatch.setattr(workflow_warm_shutdown, "get_active_workflow_task_count", lambda: 2)
 
     workflow_warm_shutdown._on_worker_shutting_down(how="warm")
 
-    set_abort.assert_called_once_with()
+    mark_shutdown.assert_called_once_with()
 
 
-def test_warm_shutdown_sets_abort_command() -> None:
-    workflow_warm_shutdown.set_celery_warm_shutdown_abort_command()
-    commands = CelerySignalCommandChannel().fetch_commands()
+def test_warm_shutdown_state_tracks_started_flag() -> None:
+    assert workflow_warm_shutdown.celery_warm_shutdown_started() is False
+
+    workflow_warm_shutdown.mark_celery_warm_shutdown_started()
+
+    assert workflow_warm_shutdown.celery_warm_shutdown_started() is True
+
+
+def test_setup_configures_warm_shutdown_command_channel(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(workflow_warm_shutdown.worker_shutting_down, "connect", MagicMock())
+    monkeypatch.setattr(workflow_warm_shutdown.worker_shutdown, "connect", MagicMock())
+
+    workflow_warm_shutdown.setup_workflow_warm_shutdown_handler()
+    workflow_warm_shutdown.mark_celery_warm_shutdown_started()
+
+    commands = _create_warm_shutdown_command_channel().fetch_commands()
 
     assert len(commands) == 1
     assert isinstance(commands[0], AbortCommand)
     assert commands[0].reason == workflow_warm_shutdown.WORKFLOW_WARM_SHUTDOWN_ABORT_REASON
-    assert CelerySignalCommandChannel().fetch_commands() == commands
 
 
-def test_warm_shutdown_abort_command_stays_available_for_late_channels() -> None:
-    workflow_warm_shutdown.set_celery_warm_shutdown_abort_command(reason="worker shutdown")
+def test_warm_shutdown_command_stays_available_for_late_channels(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(workflow_warm_shutdown.worker_shutting_down, "connect", MagicMock())
+    monkeypatch.setattr(workflow_warm_shutdown.worker_shutdown, "connect", MagicMock())
 
-    commands = CelerySignalCommandChannel().fetch_commands()
+    workflow_warm_shutdown.setup_workflow_warm_shutdown_handler()
+    workflow_warm_shutdown.mark_celery_warm_shutdown_started()
 
-    assert len(commands) == 1
-    assert isinstance(commands[0], AbortCommand)
-    assert commands[0].reason == "worker shutdown"
+    first_channel = _create_warm_shutdown_command_channel()
+    late_channel = _create_warm_shutdown_command_channel()
+
+    assert len(first_channel.fetch_commands()) == 1
+    assert len(late_channel.fetch_commands()) == 1
 
 
 def test_worker_shutdown_logs_when_all_workflow_runs_ended(
@@ -93,11 +116,14 @@ def test_setup_connects_shutdown_handlers(monkeypatch: pytest.MonkeyPatch) -> No
     connect_shutdown.assert_called_once()
 
 
-def test_setup_resets_stale_abort_command(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_setup_preserves_warm_shutdown_state(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_warm_shutdown.worker_shutting_down, "connect", MagicMock())
     monkeypatch.setattr(workflow_warm_shutdown.worker_shutdown, "connect", MagicMock())
 
-    workflow_warm_shutdown.set_celery_warm_shutdown_abort_command(reason="stale")
+    workflow_warm_shutdown.mark_celery_warm_shutdown_started()
     workflow_warm_shutdown.setup_workflow_warm_shutdown_handler()
 
-    assert CelerySignalCommandChannel().fetch_commands() == []
+    commands = _create_warm_shutdown_command_channel().fetch_commands()
+
+    assert workflow_warm_shutdown.celery_warm_shutdown_started() is True
+    assert len(commands) == 1

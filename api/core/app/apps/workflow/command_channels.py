@@ -1,14 +1,14 @@
 """Command channels used by Dify workflow runners."""
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import final, override
 
 from graphon.graph_engine.command_channels import CommandChannel
 from graphon.graph_engine.entities.commands import AbortCommand, GraphEngineCommand
 
 logger = logging.getLogger(__name__)
-_abort_command: AbortCommand | None = None
+ShutdownStateGetter = Callable[[], bool]
 
 
 @final
@@ -38,26 +38,30 @@ class CombinedCommandChannel:
 
 @final
 class CelerySignalCommandChannel(CommandChannel):
-    """Expose process-local commands set by Celery signal handlers to one GraphEngine instance."""
+    """Translate process-local Celery shutdown state into one GraphEngine abort command."""
+
+    _shutdown_state_getter: ShutdownStateGetter
+    _abort_reason: str
+    _abort_emitted: bool
+
+    def __init__(
+        self,
+        *,
+        shutdown_state_getter: ShutdownStateGetter,
+        abort_reason: str,
+    ) -> None:
+        self._shutdown_state_getter = shutdown_state_getter
+        self._abort_reason = abort_reason
+        self._abort_emitted = False
 
     @override
     def fetch_commands(self) -> list[GraphEngineCommand]:
-        if _abort_command is None:
+        if self._abort_emitted or not self._shutdown_state_getter():
             return []
-        return [_abort_command]
+
+        self._abort_emitted = True
+        return [AbortCommand(reason=self._abort_reason)]
 
     @override
     def send_command(self, command: GraphEngineCommand) -> None:
         _ = command
-
-
-def set_abort_command(command: AbortCommand) -> None:
-    """Set the process-local abort command used by Celery signal command channels."""
-    global _abort_command
-    _abort_command = command
-
-
-def reset_abort_command() -> None:
-    """Reset the process-local abort command used by Celery signal command channels."""
-    global _abort_command
-    _abort_command = None

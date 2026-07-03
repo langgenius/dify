@@ -42,6 +42,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
 from graphon.enums import WorkflowType
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.graph_engine.layers import GraphEngineLayer
@@ -216,7 +217,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
         channel_key = f"workflow:{task_id}:commands"
-        celery_signal_channel = CelerySignalCommandChannel()
+        celery_signal_channel = CelerySignalCommandChannel(
+            shutdown_state_getter=celery_warm_shutdown_started,
+            abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
+        )
         command_channel = CombinedCommandChannel(
             (
                 RedisChannel(redis_client, channel_key),
