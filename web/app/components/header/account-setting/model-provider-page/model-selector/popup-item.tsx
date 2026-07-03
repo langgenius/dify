@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import type { DefaultModel, Model, ModelItem } from '../declarations'
+import type { ModelSelectorModelPredicate } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ComboboxGroup, ComboboxItem, ComboboxItemIndicator } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -29,6 +30,7 @@ type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['
 type PopupItemProps = {
   defaultModel?: DefaultModel
   model: Model
+  modelPredicate?: ModelSelectorModelPredicate
   previewCardHandle: PreviewCardHandle
   onPreviewCardClose: () => void
   onHide: () => void
@@ -36,6 +38,7 @@ type PopupItemProps = {
 function PopupItem({
   defaultModel,
   model,
+  modelPredicate,
   previewCardHandle,
   onPreviewCardClose,
   onHide,
@@ -156,6 +159,7 @@ function PopupItem({
         </Popover>
       </div>
       {!collapsed && model.models.map((modelItem) => {
+        const isModelCompatible = modelPredicate?.(model, modelItem) ?? true
         const rowClassName = cn(
           'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-left',
           modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt',
@@ -169,7 +173,11 @@ function PopupItem({
                 modelName={modelItem.model}
               />
               <ModelName
-                className={cn('system-sm-medium text-text-secondary', modelItem.status !== ModelStatusEnum.active && 'opacity-60')}
+                className={cn(
+                  'system-sm-medium text-text-secondary',
+                  !isModelCompatible && 'text-text-quaternary',
+                  modelItem.status !== ModelStatusEnum.active && 'opacity-60',
+                )}
                 modelItem={modelItem}
                 nameClassName={modelItem.deprecated ? 'line-through' : undefined}
               />

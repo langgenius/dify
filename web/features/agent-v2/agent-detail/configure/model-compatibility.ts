@@ -29,6 +29,7 @@ const agentIncompatibleModelPatterns: RegExp[] = [
   // qwen
   /^qwen2/i,
   /^qwen-flash/i,
+  /^qwen-long/i,
 
   // zhipuai
   /^chatglm-(?:2|3)/i,

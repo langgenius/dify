@@ -36,7 +36,15 @@ vi.mock('../../model-icon', () => ({
 }))
 
 vi.mock('../../model-name', () => ({
-  default: ({ modelItem, nameClassName }: { modelItem: ModelItem, nameClassName?: string }) => <span className={nameClassName}>{modelItem.label.en_US}</span>,
+  default: ({
+    modelItem,
+    className,
+    nameClassName,
+  }: {
+    modelItem: ModelItem
+    className?: string
+    nameClassName?: string
+  }) => <span className={[className, nameClassName].filter(Boolean).join(' ')}>{modelItem.label.en_US}</span>,
 }))
 
 vi.mock('../feature-icon', () => ({
@@ -225,6 +233,26 @@ describe('PopupItem', () => {
     )
 
     expect(screen.getByText('GPT-4')).toHaveClass('line-through')
+  })
+
+  it('should render incompatible model names with tertiary text color', () => {
+    renderWithCombobox(
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel({
+          models: [
+            makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+            makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+          ],
+        })}
+        modelPredicate={(_provider, modelItem) => modelItem.model !== 'gpt-4'}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('GPT-4o')).toHaveClass('text-text-secondary')
+    expect(screen.getByText('GPT-4o')).not.toHaveClass('text-text-quaternary')
+    expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
   })
 
   it('should open model modal when clicking add on unconfigured model', () => {

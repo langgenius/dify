@@ -212,6 +212,7 @@ function Popup({
                   key={model.provider}
                   defaultModel={defaultModel}
                   model={model}
+                  modelPredicate={modelPredicate}
                   previewCardHandle={previewCardHandle}
                   onPreviewCardClose={handleClosePreviewCard}
                   onHide={onHide}

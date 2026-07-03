@@ -550,7 +550,7 @@ export const formStateToAgentSoulConfig = ({
     env: toEnvConfig(formState.envVariables),
     config_skills: toConfigSkillConfigs(formState.skills, baseConfig),
     config_files: toConfigFileConfigs(formState.files, baseConfig),
-    config_note: baseConfig?.config_note ?? '',
+    config_note: formState.configNote,
   }
 }
 
@@ -562,6 +562,7 @@ export const agentSoulConfigToFormState = (
 
   return {
     ...baseDraft,
+    configNote: config?.config_note ?? '',
     prompt: config?.prompt?.system_prompt ?? '',
     model: toDraftModel(config),
     appFeatures: config?.app_features,

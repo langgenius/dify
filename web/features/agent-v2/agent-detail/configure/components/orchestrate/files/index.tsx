@@ -21,7 +21,7 @@ import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { useDocLink } from '@/context/i18n'
-import { agentComposerOriginalConfigAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
@@ -185,7 +185,7 @@ function AgentFileItem({
               data-selected={selected || undefined}
               aria-current={selected ? 'true' : undefined}
               className={cn(
-                'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
+                'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none group-hover/file-row:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
                 'pr-7',
               )}
             />
@@ -220,8 +220,12 @@ function AgentFileItem({
           }}
         />
       </Dialog>
-      {isBuildNoteFile && <AgentBuildNoteInfotip />}
-      {!readOnly && !file.virtualContent && (
+      {isBuildNoteFile && (
+        <AgentBuildNoteInfotip
+          className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
+        />
+      )}
+      {!readOnly && (!file.virtualContent || isBuildNoteFile) && (
         <button
           type="button"
           data-agent-file-remove-button
@@ -253,14 +257,18 @@ function AgentBuildNoteFileRow() {
   )
 }
 
-function AgentBuildNoteInfotip() {
+function AgentBuildNoteInfotip({
+  className,
+}: {
+  className?: string
+}) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
 
   return (
     <Infotip
       aria-label={t('agentDetail.configure.files.buildNote.tooltip')}
-      className="absolute top-1/2 right-1 z-10 size-5 -translate-y-1/2"
+      className={cn('absolute top-1/2 right-1 z-10 size-5 -translate-y-1/2', className)}
       iconClassName="size-4"
       popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
     >
@@ -284,14 +292,23 @@ export function AgentFiles() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
-  const originalConfig = useAtomValue(agentComposerOriginalConfigAtom)
+  const draft = useAtomValue(agentComposerDraftAtom)
+  const setDraft = useSetAtom(agentComposerDraftAtom)
   const files = useAtomValue(agentComposerFilesAtom)
   const setFiles = useSetAtom(agentComposerFilesAtom)
-  const buildNoteFile = getBuildNoteFile(originalConfig?.config_note)
+  const buildNoteFile = getBuildNoteFile(draft.configNote)
   const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
   const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions())
   const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions())
   const removeFile = useCallback((fileId: string) => {
+    if (fileId === BUILD_NOTE_FILE_ID) {
+      setDraft(draft => ({
+        ...draft,
+        configNote: '',
+      }))
+      return
+    }
+
     const file = findAgentFileNode(files, fileId)
     const configName = file?.configName ?? file?.name
 
@@ -326,7 +343,7 @@ export function AgentFiles() {
         version_id: apiContext.versionId,
       },
     }, { onSuccess })
-  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setFiles])
+  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setDraft, setFiles])
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)

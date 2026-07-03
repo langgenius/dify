@@ -125,8 +125,8 @@ function ConfigSnapshotProbe() {
   )
 }
 
-function renderAgentFiles({
-  initialDraft = {
+function createInitialDraft(overrides: Partial<AgentSoulConfigFormState> = {}): AgentSoulConfigFormState {
+  return {
     ...defaultAgentSoulConfigFormState,
     files: [
       {
@@ -144,7 +144,12 @@ function renderAgentFiles({
         configName: 'brief.md',
       },
     ],
-  } satisfies AgentSoulConfigFormState,
+    ...overrides,
+  }
+}
+
+function renderAgentFiles({
+  initialDraft = createInitialDraft(),
   initialOriginalConfig,
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
@@ -366,9 +371,7 @@ describe('AgentFiles', () => {
   it('should show config note as a virtual build note file and preview its content locally', async () => {
     const user = userEvent.setup()
     renderAgentFiles({
-      initialOriginalConfig: {
-        config_note: 'Build context from the latest build chat.',
-      },
+      initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
     })
 
     expect(screen.getByText('build_note.md')).toBeInTheDocument()
@@ -399,9 +402,7 @@ describe('AgentFiles', () => {
   it('should show generated build note metadata with an explanatory infotip', async () => {
     const user = userEvent.setup()
     renderAgentFiles({
-      initialOriginalConfig: {
-        config_note: 'Build context from the latest build chat.',
-      },
+      initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
     })
 
     expect(screen.getByText('agentV2.agentDetail.configure.files.buildNote.generated')).toBeInTheDocument()
@@ -409,6 +410,23 @@ describe('AgentFiles', () => {
     await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.buildNote.tooltip' }))
 
     expect(await screen.findByText('agentDetail.configure.files.buildNote.richTooltip')).toBeInTheDocument()
+  })
+
+  it('should clear config note when deleting the virtual build note file', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles({
+      initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
+    })
+
+    await user.click(screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.files\.remove.*build_note\.md/,
+    }))
+
+    expect(screen.queryByText('build_note.md')).not.toBeInTheDocument()
+    expect(mocks.deleteFileMutationFn).not.toHaveBeenCalled()
+
+    const snapshot = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
+    expect(snapshot.config_note).toBe('')
   })
 
   it('should keep flat config files visible without drive-prefix filtering and disable add in read-only mode', () => {
