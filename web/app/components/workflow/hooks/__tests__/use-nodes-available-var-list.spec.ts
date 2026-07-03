@@ -1,6 +1,6 @@
 import type { Node, NodeOutPutVar, Var } from '../../types'
 import { renderHook } from '@testing-library/react'
-import { useSnippetDetailStore } from '@/app/components/snippets/store'
+import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { FlowType } from '@/types/common'
 import { BlockEnum, VarType } from '../../types'
@@ -83,7 +83,7 @@ describe('useNodesAvailableVarList', () => {
     vi.clearAllMocks()
     mockFlowType.value = undefined
     globalThis.history.pushState({}, '', '/')
-    useSnippetDetailStore.getState().reset()
+    useSnippetDraftStore.getState().reset()
     mockGetBeforeNodesInSameBranchIncludeParent.mockImplementation((nodeId: string) => [createNode({ id: `before-${nodeId}` })])
     mockGetTreeLeafNodes.mockImplementation((nodeId: string) => [createNode({ id: `leaf-${nodeId}` })])
     mockGetNodeAvailableVars.mockReturnValue(outputVars)
@@ -130,7 +130,7 @@ describe('useNodesAvailableVarList', () => {
 
   it('adds snippet input fields as virtual start variables on snippet canvases', () => {
     globalThis.history.pushState({}, '', '/snippets/snippet-1/orchestrate')
-    useSnippetDetailStore.getState().setFields([{
+    useSnippetDraftStore.getState().setInputFields([{
       type: PipelineInputVarType.textInput,
       label: 'Topic',
       variable: 'topic',

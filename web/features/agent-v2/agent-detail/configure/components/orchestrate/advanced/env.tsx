@@ -13,8 +13,9 @@ import { useTranslation } from 'react-i18next'
 import { agentComposerEnvVariablesAtom } from '@/features/agent-v2/agent-composer/store-modules/env'
 import { checkKeys } from '@/utils/var'
 import { ConfigureSection } from '../common/section'
+import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
-import { getEnvImportPlatform, parseEnvVariables } from './env-utils'
+import { getEnvImportPlatform, parseEnvImport } from './env-utils'
 
 const scopeLabelKeys: Record<EnvScope, I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>> = {
   plain: 'agentDetail.configure.advancedSettings.envEditor.scopePlain',
@@ -454,7 +455,17 @@ export function AgentEnvEditor() {
     setFocusedVariable({ id: variable.id, field: focusField })
   }
   const importEnvVariables = async (file: File) => {
-    const importedVariables = parseEnvVariables(await file.text()).map(createEnvVariableFromEntry)
+    const {
+      invalidLineCount,
+      variables,
+    } = parseEnvImport(await file.text())
+    const importedVariables = variables.map(createEnvVariableFromEntry)
+
+    if (invalidLineCount > 0) {
+      toast.error(t('agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines', {
+        count: invalidLineCount,
+      }))
+    }
 
     if (importedVariables.length === 0)
       return
@@ -480,7 +491,7 @@ export function AgentEnvEditor() {
       labelId="agent-configure-env-editor-label"
       headingLevel="h4"
       panelId={envEditorTableId}
-      tip={envEditorTip}
+      tip={<AgentConfigureTipContent type="env" />}
       tipAriaLabel={envEditorTip}
       rootClassName="gap-1 pt-3"
       headerClassName="mb-0 gap-1 px-3"

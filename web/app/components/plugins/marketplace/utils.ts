@@ -1,9 +1,10 @@
-import type { ActivePluginType } from './constants'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
+  MarketplacePlugin,
   PluginsSearchParams,
-} from '@/app/components/plugins/marketplace/types'
+} from '@dify/contracts/marketplace'
+import type { ActivePluginType } from './constants'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
@@ -26,29 +27,32 @@ export function buildCarouselPages<T>(items: T[], itemsPerPage: number): T[][] {
   return pages
 }
 
-export const getPluginIconInMarketplace = (plugin: Plugin) => {
+type MarketplacePluginPayload = MarketplacePlugin | (Plugin & { labels?: Plugin['label'] })
+
+export const getPluginIconInMarketplace = (plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>) => {
   if (plugin.type === 'bundle')
     return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`
   return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
 }
 
-export const getFormattedPlugin = (bundle: Plugin): Plugin => {
-  if (bundle.type === 'bundle') {
+export const getFormattedPlugin = (payload: MarketplacePluginPayload): Plugin => {
+  const plugin = payload as unknown as Plugin
+
+  if (payload.type === 'bundle') {
     return {
-      ...bundle,
-      icon: getPluginIconInMarketplace(bundle),
-      brief: bundle.description,
-      // @ts-expect-error I do not have enough information
-      label: bundle.labels,
+      ...plugin,
+      icon: getPluginIconInMarketplace(payload),
+      brief: payload.description as Plugin['brief'],
+      label: (payload.labels ?? payload.label) as Plugin['label'],
     }
   }
   return {
-    ...bundle,
-    icon: getPluginIconInMarketplace(bundle),
+    ...plugin,
+    icon: getPluginIconInMarketplace(payload),
   }
 }
 
-export const getPluginLinkInMarketplace = (plugin: Plugin, params?: Record<string, string | undefined>) => {
+export const getPluginLinkInMarketplace = (plugin: Pick<MarketplacePluginPayload, 'name' | 'org' | 'type'>, params?: Record<string, string | undefined>) => {
   if (plugin.type === 'bundle')
     return getMarketplaceUrl(`/bundles/${plugin.org}/${plugin.name}`, params)
   return getMarketplaceUrl(`/plugins/${plugin.org}/${plugin.name}`, params)
@@ -57,13 +61,6 @@ export const getPluginLinkInMarketplace = (plugin: Plugin, params?: Record<strin
 export const getMarketplaceCategoryUrl = (category?: string, params?: Record<string, string | undefined>) => {
   return getMarketplaceUrl(category ? `/plugins/${category}` : '/plugins', params)
 }
-
-export const getPluginDetailLinkInMarketplace = (plugin: Plugin) => {
-  if (plugin.type === 'bundle')
-    return `/bundles/${plugin.org}/${plugin.name}`
-  return `/plugins/${plugin.org}/${plugin.name}`
-}
-
 export const getMarketplacePluginsByCollectionId = async (
   collectionId: string,
   query?: CollectionsAndPluginsSearchParams,

@@ -16,13 +16,15 @@ from core.app.entities.queue_entities import (
     QueueNodeFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeSucceededEvent,
+    QueueReasoningChunkEvent,
     QueueTextChunkEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
 from graphon.graph_events import (
     GraphRunPausedEvent,
@@ -34,6 +36,7 @@ from graphon.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunIterationSucceededEvent,
     NodeRunLoopFailedEvent,
+    NodeRunReasoningChunkEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
@@ -342,10 +345,20 @@ class TestWorkflowBasedAppRunner:
             "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
             _Dispatch(),
         )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
+            lambda **_: [
+                HumanInputRequired(
+                    form_id="form",
+                    form_content="content",
+                    node_id="node-1",
+                    node_title="Node",
+                )
+            ],
+        )
 
-        reason = HumanInputRequired(
-            form_id="form",
-            form_content="content",
+        reason = HitlRequired(
+            session_id="form",
             node_id="node-1",
             node_title="Node",
         )
@@ -397,6 +410,17 @@ class TestWorkflowBasedAppRunner:
         )
         runner._handle_event(
             workflow_entry,
+            NodeRunReasoningChunkEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.LLM,
+                selector=["node", "reasoning_content"],
+                chunk="thinking",
+                is_final=False,
+            ),
+        )
+        runner._handle_event(
+            workflow_entry,
             NodeRunAgentLogEvent(
                 id="exec",
                 node_id="node",
@@ -442,6 +466,7 @@ class TestWorkflowBasedAppRunner:
         )
 
         assert any(isinstance(event, QueueTextChunkEvent) for event in published)
+        assert any(isinstance(event, QueueReasoningChunkEvent) for event in published)
         assert any(isinstance(event, QueueAgentLogEvent) for event in published)
         assert any(isinstance(event, QueueIterationCompletedEvent) for event in published)
         assert any(isinstance(event, QueueLoopCompletedEvent) for event in published)

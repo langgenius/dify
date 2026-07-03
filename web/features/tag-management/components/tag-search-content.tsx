@@ -1,5 +1,5 @@
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from './tag-combobox-item'
-import type { TagType } from '@/contract/console/tags'
 import { ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,7 @@ type TagSearchContentProps = {
   onInputValueChange: (value: string) => void
   onOpenTagManagement?: () => void
   onClose?: () => void
+  canBindOrUnbindTags?: boolean
 }
 
 export const TagSearchContent = ({
@@ -22,6 +23,7 @@ export const TagSearchContent = ({
   onInputValueChange,
   onOpenTagManagement,
   onClose,
+  canBindOrUnbindTags = false,
 }: TagSearchContentProps) => {
   const { t } = useTranslation()
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
@@ -45,7 +47,7 @@ export const TagSearchContent = ({
             <button
               type="button"
               aria-label={t('operation.clear', { ns: 'common' })}
-              className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset"
+              className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active"
               onClick={() => onInputValueChange('')}
               onPointerDown={event => event.preventDefault()}
             >
@@ -56,7 +58,7 @@ export const TagSearchContent = ({
       </div>
       <ComboboxList className="max-h-58">
         {(tag: TagComboboxItem) => {
-          if (isCreateTagOption(tag)) {
+          if (isCreateTagOption(tag) && canManageTags) {
             return (
               <Fragment key={tag.id}>
                 <ComboboxItem
@@ -76,7 +78,11 @@ export const TagSearchContent = ({
           }
 
           return (
-            <ComboboxItem key={tag.id} value={tag}>
+            <ComboboxItem
+              key={tag.id}
+              value={tag}
+              disabled={!canBindOrUnbindTags && !canManageTags}
+            >
               <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
               <ComboboxItemIndicator />
             </ComboboxItem>

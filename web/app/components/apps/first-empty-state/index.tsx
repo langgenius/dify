@@ -19,12 +19,14 @@ type Props = {
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
+  showLearnDify: boolean
 }
 
 function FirstEmptyState({
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
+  showLearnDify,
 }: Props) {
   const { t } = useTranslation()
 
@@ -55,7 +57,7 @@ function FirstEmptyState({
   return (
     <div className="flex grow flex-col overflow-hidden">
       <div className="relative min-h-[430px] flex-1 overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
           {EMPTY_PLACEHOLDER_CARD_IDS.map(id => (
             <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
           ))}
@@ -102,13 +104,15 @@ function FirstEmptyState({
           </div>
         </section>
       </div>
-      <LearnDify
-        className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
-        dismissible={false}
-        itemLimit={4}
-        showDescription
-        title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
-      />
+      {showLearnDify && (
+        <LearnDify
+          className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
+          dismissible={false}
+          itemLimit={4}
+          showDescription
+          title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
+        />
+      )}
     </div>
   )
 }

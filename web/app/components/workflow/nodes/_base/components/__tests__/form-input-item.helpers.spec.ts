@@ -13,7 +13,6 @@ import {
   getSelectedLabels,
   getTargetVarType,
   getVarKindType,
-  hasOptionIcon,
   mapSelectItems,
   normalizeVariableSelectorValue,
 } from '../form-input-item.helpers'
@@ -124,7 +123,6 @@ describe('form-input-item helpers', () => {
       { name: 'always', value: 'always' },
       { name: 'premium', value: 'premium' },
     ])
-    expect(hasOptionIcon(visibleOptions)).toBe(false)
   })
 
   it('should compute selected labels and checkbox state from visible options', () => {

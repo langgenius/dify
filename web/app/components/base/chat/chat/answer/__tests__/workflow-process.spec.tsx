@@ -24,11 +24,41 @@ describe('WorkflowProcessItem', () => {
     expect(screen.queryByTestId('tracing-panel')).not.toBeInTheDocument()
   })
 
+  it('should render workflow error message as collapsed title when failed without tracing', () => {
+    render(
+      <WorkflowProcessItem
+        data={{
+          status: WorkflowRunningStatus.Failed,
+          tracing: [],
+          error: 'Invalid upload file',
+        } as WorkflowProcess}
+        expand={false}
+      />,
+    )
+
+    expect(screen.getByTestId('workflow-process-title')).toHaveTextContent('Invalid upload file')
+  })
+
   it('should render "Workflow Process" title and TracingPanel when expanded', () => {
     // We expect t('common.workflowProcess', { ns: 'workflow' }) to be called
     render(<WorkflowProcessItem data={mockData as WorkflowProcess} expand={true} />)
     expect(screen.getByText(/workflowProcess/i)).toBeInTheDocument()
     expect(screen.getByTestId('tracing-panel')).toBeInTheDocument()
+  })
+
+  it('should render workflow error message when failed without node tracing details', () => {
+    render(
+      <WorkflowProcessItem
+        data={{
+          status: WorkflowRunningStatus.Failed,
+          tracing: [],
+          error: 'Invalid upload file',
+        } as WorkflowProcess}
+        expand={true}
+      />,
+    )
+
+    expect(screen.getByText('Invalid upload file')).toBeInTheDocument()
   })
 
   it('should toggle collapse state on header click', async () => {
@@ -89,7 +119,7 @@ describe('WorkflowProcessItem', () => {
       expect(screen.getByTestId('workflow-process-item')).toHaveClass('bg-workflow-process-paused-bg')
 
       rerender(<WorkflowProcessItem data={{ ...mockData, status: WorkflowRunningStatus.Failed } as WorkflowProcess} />)
-      expect(screen.getByTestId('workflow-process-item')).toHaveClass('bg-workflow-process-failed-bg')
+      expect(screen.getByTestId('workflow-process-item')).toHaveClass('bg-[var(--color-workflow-process-failed-bg)]')
     })
 
     it('should apply correct background when expanded for different statuses', () => {

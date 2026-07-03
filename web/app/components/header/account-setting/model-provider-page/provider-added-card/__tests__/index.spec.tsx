@@ -8,7 +8,7 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
-let mockWorkspacePermissionKeys: string[] = ['plugin.manage', 'credential.use', 'credential.create', 'credential.manage']
+let mockWorkspacePermissionKeys: string[] = ['plugin.model_config', 'credential.use', 'credential.create', 'credential.manage']
 const mockFetchModelProviderModels = vi.fn()
 const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { provider: string } }, enabled?: boolean }) => ({
   queryKey: ['console', 'modelProviders', 'models', input.params.provider],
@@ -18,9 +18,17 @@ const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { prov
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    modelProviders: {
-      models: {
-        queryOptions: (options: { input: { params: { provider: string } }, enabled?: boolean }) => mockQueryOptions(options),
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              get: {
+                queryOptions: (options: { input: { params: { provider: string } }, enabled?: boolean }) => mockQueryOptions(options),
+              },
+            },
+          },
+        },
       },
     },
   },
@@ -94,6 +102,25 @@ const ExternalExpandControls = () => {
   )
 }
 
+const modelProviderModelsResponse = {
+  data: [{
+    model: 'gpt-4',
+    label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
+    model_type: 'llm',
+    features: [],
+    fetch_from: 'predefined-model',
+    status: 'active',
+    model_properties: {},
+    load_balancing_enabled: false,
+    provider: {
+      provider: 'langgenius/openai/openai',
+      label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+      supported_model_types: ['llm'],
+      tenant_id: 'tenant-id',
+    },
+  }],
+}
+
 describe('ProviderAddedCard', () => {
   const mockProvider = {
     provider: 'langgenius/openai/openai',
@@ -105,7 +132,7 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
-    mockWorkspacePermissionKeys = ['plugin.manage', 'credential.use', 'credential.create', 'credential.manage']
+    mockWorkspacePermissionKeys = ['plugin.model_config', 'credential.use', 'credential.create', 'credential.manage']
   })
 
   it('should render provider added card component', () => {
@@ -115,7 +142,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should open, refresh and collapse model list', async () => {
-    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
     const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
@@ -172,7 +199,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should only react to external expansion for the matching provider', async () => {
-    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(
       <>
         <ProviderAddedCard provider={mockProvider} />
@@ -201,7 +228,7 @@ describe('ProviderAddedCard', () => {
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
-  it('should render custom model actions when user can manage plugins', () => {
+  it('should render custom model actions when user can configure models', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
@@ -218,12 +245,12 @@ describe('ProviderAddedCard', () => {
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
   })
 
-  it('should render custom model actions when user can manage plugins without credential permissions', () => {
+  it('should render custom model actions when user can configure models without credential permissions', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
-    mockWorkspacePermissionKeys = ['plugin.manage']
+    mockWorkspacePermissionKeys = ['plugin.model_config']
 
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 

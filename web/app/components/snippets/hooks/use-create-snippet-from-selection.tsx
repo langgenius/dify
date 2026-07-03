@@ -3,11 +3,11 @@ import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
 import { useCallback, useState } from 'react'
 import { getNodesBounds } from 'reactflow'
 import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
-import { SNIPPET_INPUT_FIELD_NODE_ID } from '@/app/components/workflow/nodes/_base/hooks/snippet-input-field-vars'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useCreateSnippet } from './use-create-snippet'
 
 const DEFAULT_SNIPPET_VIEWPORT = { x: 0, y: 0, zoom: 1 }
+const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
 const SNIPPET_VIEWPORT_WIDTH = 1200
 const SNIPPET_VIEWPORT_HEIGHT = 800
 const SNIPPET_VIEWPORT_PADDING = 160

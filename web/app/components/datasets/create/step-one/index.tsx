@@ -218,7 +218,11 @@ const StepOne = ({
               {/* Notion Data Source */}
               {dataSourceType === DataSourceType.NOTION && (
                 <>
-                  {!isNotionAuthed && <NotionConnector onSetting={onSetting} />}
+                  {!isNotionAuthed && (
+                    <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
+                      <NotionConnector onSetting={onSetting} />
+                    </div>
+                  )}
                   {isNotionAuthed && (
                     <>
                       <div className="mb-8 w-[640px]">

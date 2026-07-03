@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -172,4 +172,4 @@ class TestOAuthServerServiceTokenOperations:
             result = OAuthServerService.validate_oauth_access_token("client-1", "access-token")
 
         assert result is expected_user
-        mock_load.assert_called_once_with("user-88")
+        mock_load.assert_called_once_with("user-88", ANY)

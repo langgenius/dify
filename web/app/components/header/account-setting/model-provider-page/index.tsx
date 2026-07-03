@@ -3,7 +3,7 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import { useMemo } from 'react'
@@ -14,7 +14,7 @@ import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/us
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { useCheckInstalled } from '@/service/use-plugins'
 import UpdateSettingDialog from '../update-setting-dialog'
 import {
   CustomConfigurationStatusEnum,
@@ -31,6 +31,7 @@ type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-co
 
 type Props = Readonly<{
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  onOpenMarketplace?: () => void
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
@@ -41,6 +42,7 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 
 const ModelProviderPage = ({
   layout,
+  onOpenMarketplace,
   onSearchTextChange,
   searchText,
   stickyToolbar,
@@ -50,7 +52,6 @@ const ModelProviderPage = ({
   const { t } = useTranslation()
   const {
     canSetPluginPreferences,
-    canViewInstalledPlugins,
   } = usePluginSettingsAccess()
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -63,11 +64,10 @@ const ModelProviderPage = ({
   const allPluginIds = useMemo(() => {
     return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
   }, [providers])
-  const { data: installedPlugins } = useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
-    input: { body: { plugin_ids: allPluginIds } },
-    enabled: canViewInstalledPlugins && allPluginIds.length > 0,
-    staleTime: 0,
-  }))
+  const { data: installedPlugins } = useCheckInstalled({
+    pluginIds: allPluginIds,
+    enabled: allPluginIds.length > 0,
+  })
   const enrichedPlugins = usePluginsWithLatestVersion(installedPlugins?.plugins)
   const pluginDetailMap = useMemo(() => {
     const map = new Map<string, PluginDetail>()
@@ -140,6 +140,7 @@ const ModelProviderPage = ({
       ttsDefaultModel={ttsDefaultModel}
       isLoading={isDefaultModelLoading}
       hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+      onOpenMarketplace={onOpenMarketplace}
     />
   )
 
@@ -211,6 +212,7 @@ const ModelProviderPage = ({
       enableMarketplace={enableMarketplace}
       searchText={searchText}
       pluginDetailMap={pluginDetailMap}
+      onOpenMarketplace={onOpenMarketplace}
     />
   )
 

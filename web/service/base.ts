@@ -21,6 +21,7 @@ import type {
   NodeStartedResponse,
   ParallelBranchFinishedResponse,
   ParallelBranchStartedResponse,
+  ReasoningChunkResponse,
   TextChunkResponse,
   TextReplaceResponse,
   WorkflowFinishedResponse,
@@ -66,6 +67,7 @@ type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => voi
 type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
 type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
 type IOnTextChunk = (textChunk: TextChunkResponse) => void
+type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
 type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
 type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 type IOnTextReplace = (textReplace: TextReplaceResponse) => void
@@ -95,6 +97,7 @@ export type IOtherOptions = {
   request?: Request
 
   onData?: IOnData // for stream
+  onReasoning?: IOnReasoning
   onThought?: IOnThought
   onFile?: IOnFile
   onMessageEnd?: IOnMessageEnd
@@ -223,6 +226,7 @@ export const handleStream = (
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
   onDataSourceNodeError?: IOnDataSourceNodeError,
+  onReasoning?: IOnReasoning,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -232,6 +236,16 @@ export const handleStream = (
   let buffer = ''
   let bufferObj: Record<string, any>
   let isFirstMessage = true
+  const completeWithError = (errorMessage: string, errorCode?: string) => {
+    onData('', false, {
+      conversationId: bufferObj?.conversation_id,
+      messageId: bufferObj?.message_id ?? '',
+      errorMessage,
+      errorCode,
+    })
+    onCompleted?.(true, errorMessage)
+  }
+
   function read() {
     let hasError = false
     reader?.read().then((result: ReadableStreamReadResult<Uint8Array>) => {
@@ -340,6 +354,9 @@ export const handleStream = (
             else if (bufferObj.event === 'text_chunk') {
               onTextChunk?.(bufferObj as TextChunkResponse)
             }
+            else if (bufferObj.event === 'reasoning_chunk') {
+              onReasoning?.(bufferObj as ReasoningChunkResponse)
+            }
             else if (bufferObj.event === 'text_replace') {
               onTextReplace?.(bufferObj as TextReplaceResponse)
             }
@@ -392,6 +409,8 @@ export const handleStream = (
       }
       if (!hasError)
         read()
+    }, (e: unknown) => {
+      completeWithError(String(e), 'stream_read_error')
     })
   }
   read()
@@ -461,6 +480,7 @@ export const ssePost = async (
   const {
     isPublicAPI = false,
     onData,
+    onReasoning,
     onCompleted,
     onThought,
     onFile,
@@ -545,7 +565,9 @@ export const ssePost = async (
             refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
               ssePost(url, fetchOptions, otherOptions)
             }).catch((err) => {
+              const errorMessage = String(err)
               console.error(err)
+              onError?.(errorMessage)
             })
           }
         }
@@ -599,12 +621,14 @@ export const ssePost = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onReasoning,
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
-        toast.error(String(e))
-      onError?.(e)
+      const errorMessage = String(e)
+      if (errorMessage !== 'AbortError: The user aborted a request.' && !errorMessage.includes('TypeError: Cannot assign to read only property'))
+        toast.error(errorMessage)
+      onError?.(errorMessage)
     })
 }
 
@@ -616,6 +640,7 @@ export const sseGet = async (
   const {
     isPublicAPI = false,
     onData,
+    onReasoning,
     onCompleted,
     onThought,
     onFile,
@@ -693,7 +718,9 @@ export const sseGet = async (
             refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
               sseGet(url, fetchOptions, otherOptions)
             }).catch((err) => {
+              const errorMessage = String(err)
               console.error(err)
+              onError?.(errorMessage)
             })
           }
         }
@@ -747,13 +774,112 @@ export const sseGet = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onReasoning,
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
-        toast.error(String(e))
-      onError?.(e)
+      const errorMessage = String(e)
+      if (errorMessage !== 'AbortError: The user aborted a request.' && !errorMessage.includes('TypeError: Cannot assign to read only property'))
+        toast.error(errorMessage)
+      onError?.(errorMessage)
     })
+}
+
+export type GeneratorStreamCallbacks = {
+  /** Fired once when the planner stage finishes — carries the high-level plan. */
+  onPlan?: (data: Record<string, unknown>) => void
+  /** Fired once when the builder + validation finish — carries the final graph envelope. */
+  onResult?: (data: Record<string, unknown>) => void
+  onError?: (message: string) => void
+  onCompleted?: () => void
+  getAbortController?: (abortController: AbortController) => void
+}
+
+/**
+ * Dedicated SSE consumer for the workflow generator's plan-first stream
+ * (`/workflow-generate/stream`). Kept separate from ``ssePost`` /
+ * ``handleStream`` on purpose: those are wired to the chat / workflow-run event
+ * vocabulary (``message``, ``node_finished``, …) and threading two more
+ * positional callbacks through that shared, high-blast-radius path isn't worth
+ * it. This helper reuses the same cookie-auth + CSRF + abort setup but
+ * only understands the generator's two events: ``plan`` then ``result``.
+ */
+export const sseGeneratorPost = (
+  url: string,
+  body: unknown,
+  { onPlan, onResult, onError, onCompleted, getAbortController }: GeneratorStreamCallbacks,
+) => {
+  const abortController = new AbortController()
+  const baseOptions = getBaseOptions()
+  const options = Object.assign({}, baseOptions, {
+    method: 'POST',
+    signal: abortController.signal,
+    headers: new Headers({
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
+      'Content-Type': ContentType.json,
+    }),
+    body: JSON.stringify(body),
+  } as RequestInit)
+
+  getAbortController?.(abortController)
+
+  const urlWithPrefix = formatURL(url, false)
+
+  const fail = (e: unknown) => {
+    // Aborts are intentional (modal close / regenerate) — never surface them.
+    if (e instanceof Error && e.name === 'AbortError')
+      return
+    onError?.(`${e}`)
+  }
+
+  globalThis.fetch(urlWithPrefix, options as RequestInit)
+    .then((res) => {
+      if (!/^[23]\d{2}$/.test(String(res.status))) {
+        if (res.status === 401) {
+          refreshAccessTokenOrReLogin(TIME_OUT)
+            .then(() => sseGeneratorPost(url, body, { onPlan, onResult, onError, onCompleted, getAbortController }))
+            .catch(() => onError?.('Unauthorized'))
+          return
+        }
+        res.json().then((data: { message?: string }) => onError?.(data?.message || 'Server Error')).catch(() => onError?.('Server Error'))
+        return
+      }
+
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let buffer = ''
+      const read = () => {
+        reader?.read().then(({ done, value }) => {
+          if (done) {
+            onCompleted?.()
+            return
+          }
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          // Process every complete line; keep the trailing partial in the buffer.
+          lines.slice(0, -1).forEach((message) => {
+            if (!message.startsWith('data: '))
+              return
+            let obj: Record<string, unknown>
+            try {
+              obj = JSON.parse(message.slice(6))
+            }
+            catch {
+              // A chunk boundary split the JSON — it'll re-arrive intact next read.
+              return
+            }
+            if (obj.event === 'plan')
+              onPlan?.(obj)
+            else if (obj.event === 'result')
+              onResult?.(obj)
+          })
+          buffer = lines[lines.length - 1] || ''
+          read()
+        }).catch(fail)
+      }
+      read()
+    })
+    .catch(fail)
 }
 
 // base request

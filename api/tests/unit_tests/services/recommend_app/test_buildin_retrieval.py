@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+import yaml
 
 from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
 from services.recommend_app.recommend_app_type import RecommendAppType
@@ -41,6 +42,16 @@ class TestBuildInRecommendAppRetrieval:
             result = retrieval.get_recommended_apps_and_categories("en-US")
             mock_fetch.assert_called_once_with("en-US")
             assert result == {"apps": []}
+
+    @patch("services.recommend_app.buildin.buildin_retrieval.DatabaseRecommendAppRetrieval")
+    def test_get_learn_dify_apps_delegates_to_database(self, mock_database_retrieval):
+        expected = {"recommended_apps": [{"id": "learn-dify-app"}]}
+        mock_database_retrieval.fetch_learn_dify_apps_from_db.return_value = expected
+
+        result = BuildInRecommendAppRetrieval().get_learn_dify_apps("en-US")
+
+        assert result == expected
+        mock_database_retrieval.fetch_learn_dify_apps_from_db.assert_called_once_with("en-US")
 
     def test_get_recommend_app_detail_delegates(self):
         with patch.object(
@@ -90,3 +101,29 @@ class TestBuildInRecommendAppRetrieval:
         BuildInRecommendAppRetrieval.builtin_data = SAMPLE_BUILTIN_DATA
         result = BuildInRecommendAppRetrieval.fetch_recommended_app_detail_from_builtin("nonexistent")
         assert result is None
+
+
+def test_builtin_workflow_templates_have_unique_end_output_variables():
+    """Workflow publish validation rejects duplicate End output variable names, so the bundled
+    templates must not ship with duplicates or users cannot publish them (see issue #38278)."""
+    data_path = Path(__file__).resolve().parents[4] / "constants" / "recommended_apps.json"
+    data = json.loads(data_path.read_text(encoding="utf-8"))
+
+    offenders: dict[str, list[str]] = {}
+    for app_id, detail in data.get("app_details", {}).items():
+        export_data = detail.get("export_data")
+        if not export_data:
+            continue
+        dsl = yaml.safe_load(export_data)
+        nodes = (dsl or {}).get("workflow", {}).get("graph", {}).get("nodes", [])
+        output_names = [
+            output.get("variable")
+            for node in nodes
+            if node.get("data", {}).get("type") == "end"
+            for output in (node.get("data", {}).get("outputs") or [])
+        ]
+        duplicates = sorted({name for name in output_names if output_names.count(name) > 1})
+        if duplicates:
+            offenders[detail.get("name", app_id).strip()] = duplicates
+
+    assert offenders == {}, f"templates with duplicate End output variable names: {offenders}"

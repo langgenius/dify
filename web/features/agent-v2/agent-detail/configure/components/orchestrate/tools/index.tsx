@@ -7,11 +7,12 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentCliTool, AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useGetLanguage } from '@/context/i18n'
 import { useSetProviderToolCredential } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -22,6 +23,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { CliToolDialog } from './cli-tool/dialog'
 import { AgentCliToolItem } from './cli-tool/item'
@@ -300,13 +302,15 @@ function AddToolMenu({
                   description={t('agentDetail.configure.tools.addMenu.tool.description')}
                   onClick={openToolPicker}
                 />
-                <AddToolMenuItem
-                  iconClassName="i-ri-terminal-box-line"
-                  label={t('agentDetail.configure.tools.addMenu.cliTool.label')}
-                  badge={t('agentDetail.configure.tools.addMenu.cliTool.badge')}
-                  description={t('agentDetail.configure.tools.addMenu.cliTool.description')}
-                  onClick={openCliToolDialog}
-                />
+                {ENABLE_AGENT_CLI_TOOLS && (
+                  <AddToolMenuItem
+                    iconClassName="i-ri-terminal-box-line"
+                    label={t('agentDetail.configure.tools.addMenu.cliTool.label')}
+                    badge={t('agentDetail.configure.tools.addMenu.cliTool.badge')}
+                    description={t('agentDetail.configure.tools.addMenu.cliTool.description')}
+                    onClick={openCliToolDialog}
+                  />
+                )}
               </>
             )
           : (
@@ -336,7 +340,6 @@ export function AgentTools() {
     settingTarget,
     isCliToolDialogOpen,
     editingCliTool,
-    setTools,
     setToolOpen,
     setSettingTarget,
     addTools,
@@ -349,40 +352,57 @@ export function AgentTools() {
     handleCliDialogOpenChange,
     closeProviderSettingsDialog,
   } = useAgentToolsOperations()
-  const displayTools = useDisplayTools(tools, providerById)
-  useEffect(() => {
-    if (readOnly)
-      return
-
-    let shouldSyncCredentials = false
-    const nextTools = tools.map((tool, index) => {
-      const displayTool = displayTools[index]
-
-      if (tool.kind !== 'provider' || displayTool?.kind !== 'provider')
-        return tool
-
-      if (
-        tool.allowDelete === displayTool.allowDelete
-        && tool.credentialKey === displayTool.credentialKey
-        && tool.credentialType === displayTool.credentialType
-        && tool.credentialVariant === displayTool.credentialVariant
-      ) {
-        return tool
-      }
-
-      shouldSyncCredentials = true
-      return {
-        ...tool,
-        allowDelete: displayTool.allowDelete,
-        credentialKey: displayTool.credentialKey,
-        credentialType: displayTool.credentialType,
-        credentialVariant: displayTool.credentialVariant,
-      }
-    })
-
-    if (shouldSyncCredentials)
-      setTools(nextTools)
-  }, [displayTools, readOnly, setTools, tools])
+  const visibleTools = useMemo(
+    () => ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter(tool => tool.kind !== 'cli'),
+    [tools],
+  )
+  const displayTools = useDisplayTools(visibleTools, providerById)
+  /*
+   * knip-ignore-start
+   * Keep this disabled sync logic while backend credential snapshots are being investigated.
+   * Re-enabling it writes catalog-derived credential metadata into the composer draft on page entry.
+   * That can mark a published agent as locally dirty before the user changes anything.
+   *
+   * const displayToolById = useMemo(
+   *   () => new Map(displayTools.map(tool => [tool.id, tool])),
+   *   [displayTools],
+   * )
+   *
+   * useEffect(() => {
+   *   if (readOnly)
+   *     return
+   *
+   *   let shouldSyncCredentials = false
+   *   const nextTools = tools.map((tool) => {
+   *     const displayTool = displayToolById.get(tool.id)
+   *
+   *     if (tool.kind !== 'provider' || displayTool?.kind !== 'provider')
+   *       return tool
+   *
+   *     if (
+   *       tool.allowDelete === displayTool.allowDelete
+   *       && tool.credentialKey === displayTool.credentialKey
+   *       && tool.credentialType === displayTool.credentialType
+   *       && tool.credentialVariant === displayTool.credentialVariant
+   *     ) {
+   *       return tool
+   *     }
+   *
+   *     shouldSyncCredentials = true
+   *     return {
+   *       ...tool,
+   *       allowDelete: displayTool.allowDelete,
+   *       credentialKey: displayTool.credentialKey,
+   *       credentialType: displayTool.credentialType,
+   *       credentialVariant: displayTool.credentialVariant,
+   *     }
+   *   })
+   *
+   *   if (shouldSyncCredentials)
+   *     setTools(nextTools)
+   * }, [displayToolById, readOnly, setTools, tools])
+   * knip-ignore-end
+   */
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const openCliToolDialogFromPrompt = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
@@ -400,7 +420,10 @@ export function AgentTools() {
       promptAddCallbackRef.current = undefined
     handleCliDialogOpenChange(open)
   }, [handleCliDialogOpenChange])
-  useRegisterAgentOrchestrateAddAction('cli', openCliToolDialogFromPrompt)
+  useRegisterAgentOrchestrateAddAction(
+    'cli',
+    ENABLE_AGENT_CLI_TOOLS ? openCliToolDialogFromPrompt : () => { },
+  )
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
   const settingTargetCollection = settingTarget
@@ -414,7 +437,7 @@ export function AgentTools() {
         label={t('agentDetail.configure.tools.label')}
         labelId="agent-configure-tools-label"
         panelId={toolsListId}
-        tip={toolsTip}
+        tip={<AgentConfigureTipContent type="tools" />}
         tipAriaLabel={toolsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
@@ -455,15 +478,17 @@ export function AgentTools() {
         collection={settingTargetCollection}
         onClose={closeProviderSettingsDialog}
       />
-      <CliToolDialog
-        key={`${editingCliTool?.id ?? 'add'}:${isCliToolDialogOpen ? 'open' : 'closed'}`}
-        mode={editingCliTool ? 'edit' : 'add'}
-        tool={editingCliTool}
-        onDeleteCliTool={deleteCliTool}
-        onSaveCliTool={handleCliDialogSaveWithPromptInsert}
-        open={isCliToolDialogOpen}
-        onOpenChange={handleCliDialogOpenChangeWithPromptInsert}
-      />
+      {ENABLE_AGENT_CLI_TOOLS && (
+        <CliToolDialog
+          key={`${editingCliTool?.id ?? 'add'}:${isCliToolDialogOpen ? 'open' : 'closed'}`}
+          mode={editingCliTool ? 'edit' : 'add'}
+          tool={editingCliTool}
+          onDeleteCliTool={deleteCliTool}
+          onSaveCliTool={handleCliDialogSaveWithPromptInsert}
+          open={isCliToolDialogOpen}
+          onOpenChange={handleCliDialogOpenChangeWithPromptInsert}
+        />
+      )}
     </>
   )
 }

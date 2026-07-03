@@ -77,7 +77,7 @@ vi.mock('@/service/client', () => ({
       },
     },
     apps: {
-      list: {
+      get: {
         queryOptions: (options: {
           input?: { query?: { limit?: number } }
           select?: (response: {
@@ -91,7 +91,7 @@ vi.mock('@/service/client', () => ({
           const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
           if (mockWorkspaceAppsLoading) {
             return {
-              queryKey: ['console', 'apps', 'list', options],
+              queryKey: ['console', 'apps', 'get', options],
               queryFn: () => new Promise(() => {}),
               select: options.select,
             }
@@ -104,7 +104,7 @@ vi.mock('@/service/client', () => ({
             total: mockWorkspaceApps.length,
           }
           return {
-            queryKey: ['console', 'apps', 'list', options],
+            queryKey: ['console', 'apps', 'get', options],
             queryFn: () => Promise.resolve(response),
             initialData: response,
             select: options.select,
@@ -114,10 +114,14 @@ vi.mock('@/service/client', () => ({
     },
     explore: {
       apps: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', 'get', input],
+        },
       },
       banners: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', 'get', input],
+        },
       },
     },
   },
@@ -286,12 +290,13 @@ const mockAppCreatePermission = (hasEditPermission: boolean) => {
 
 type RenderOptions = {
   enableExploreBanner?: boolean
+  enableLearnApp?: boolean
   isCloudEdition?: boolean
 }
 
 const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
-const exploreBannersQueryKey = ['console', 'explore', 'banners', localeInput, 'en']
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
+const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput, 'en']
 
 const renderAppList = (
   hasEditPermission = false,
@@ -302,7 +307,10 @@ const renderAppList = (
   mockConfig.isCloudEdition = options.isCloudEdition ?? false
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
-    systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
+    systemFeatures: {
+      enable_explore_banner: options.enableExploreBanner ?? false,
+      enable_learn_app: options.enableLearnApp ?? true,
+    },
   })
   if (!mockIsLoading && !mockIsError && mockExploreData)
     queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
@@ -542,6 +550,18 @@ describe('AppList', () => {
       expect(screen.queryByText('3 min')).not.toBeInTheDocument()
     })
 
+    it('should hide learn dify templates when learn app is disabled', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, undefined, { enableLearnApp: false })
+
+      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Learn Workflow Basics')).not.toBeInTheDocument()
+    })
+
     it('should collapse learn dify and persist hidden state when hide is clicked', async () => {
       mockExploreData = {
         categories: ['Writing'],
@@ -576,6 +596,18 @@ describe('AppList', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    })
+
+    it('should hide categories without apps even when the API returns them', () => {
+      mockExploreData = {
+        categories: ['Writing', 'c'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, { category: 'c' })
+
+      expect(screen.queryByRole('radio', { name: 'c' })).not.toBeInTheDocument()
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
     })
 
     it('should keep selected category when clearing search text', async () => {

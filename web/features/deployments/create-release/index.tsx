@@ -59,7 +59,7 @@ function CreateReleaseScopedControl({
       >
         {label ?? t('versions.createRelease')}
       </DialogTrigger>
-      {open && <CreateReleaseDialogContent />}
+      <CreateReleaseDialogContent />
     </Dialog>
   )
 }

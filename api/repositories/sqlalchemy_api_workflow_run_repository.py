@@ -33,10 +33,24 @@ from sqlalchemy import and_, delete, func, null, or_, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.pause_reason import (
+    HumanInputRequired,
+)
+from core.workflow.nodes.human_input.pause_reason import (
+    PauseReason as DifyPauseReason,
+)
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from extensions.ext_storage import storage
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import (
+    HitlRequired,
+    PauseReasonType,
+    SchedulingPause,
+)
+from graphon.entities.pause_reason import (
+    PauseReason as GraphonPauseReason,
+)
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from graphon.nodes.human_input.entities import FormDefinition
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -56,12 +70,48 @@ from repositories.types import (
     DailyTerminalsStats,
     DailyTokenCostStats,
 )
+from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 
 logger = logging.getLogger(__name__)
+_HITL_REASON_TYPES = frozenset({PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED, PauseReasonType.HITL_REQUIRED})
 
 
 class _WorkflowRunError(Exception):
     pass
+
+
+_HEX_SHARD_VALUES = {
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6,
+    "7": 7,
+    "8": 8,
+    "9": 9,
+    "a": 10,
+    "b": 11,
+    "c": 12,
+    "d": 13,
+    "e": 14,
+    "f": 15,
+}
+
+
+def _tenant_prefix_condition(prefixes: Sequence[str]) -> sa.ColumnElement[bool]:
+    conditions = [tenant_prefix_condition(WorkflowRun.tenant_id, prefix) for prefix in prefixes]
+    return sa.or_(*conditions)
+
+
+def _workflow_run_id_shard_expr() -> sa.ColumnElement[int]:
+    normalized_id = func.lower(func.replace(sa.cast(WorkflowRun.id, sa.String()), "-", ""))
+    last_hex = func.substr(normalized_id, func.length(normalized_id), 1)
+    return sa.case(
+        *[(last_hex == hex_digit, shard_value) for hex_digit, shard_value in _HEX_SHARD_VALUES.items()],
+        else_=0,
+    )
 
 
 def _build_human_input_required_reason(
@@ -88,7 +138,7 @@ def _build_human_input_required_reason(
             definition = None
 
         if definition is not None:
-            form_content = definition.form_content
+            form_content = form_model.rendered_content or definition.rendered_content or definition.form_content
             inputs = list(definition.inputs)
             actions = list(definition.user_actions)
             resolved_default_values = dict(definition.default_values)
@@ -104,6 +154,13 @@ def _build_human_input_required_reason(
         resolved_default_values=resolved_default_values,
     )
     return reason
+
+
+def _to_dify_pause_reason(reason_model: WorkflowPauseReason) -> DifyPauseReason:
+    """Map persisted pause reasons onto the Dify-facing repository contract."""
+    if reason_model.type_ in _HITL_REASON_TYPES:
+        return _build_human_input_required_reason(reason_model, None)
+    return cast("DifyPauseReason", reason_model.to_entity())
 
 
 class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
@@ -378,7 +435,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         batch_size: int,
         run_types: Sequence[WorkflowType] | None = None,
         tenant_ids: Sequence[str] | None = None,
+        tenant_prefixes: Sequence[str] | None = None,
         workflow_ids: Sequence[str] | None = None,
+        run_shard_index: int | None = None,
+        run_shard_total: int | None = None,
     ) -> Sequence[WorkflowRun]:
         """
         Fetch ended workflow runs in a time window for archival and clean batching.
@@ -387,7 +447,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         - created_at in [start_from, end_before)
         - type in run_types (when provided)
         - status is an ended state
-        - optional tenant_id, workflow_id filters and cursor (last_seen) for pagination
+        - optional tenant_id, tenant_prefix, workflow_id filters and cursor (last_seen) for pagination
+        - optional deterministic shard by the last hexadecimal digit of workflow_run_id
         """
         with self._session_maker() as session:
             stmt = (
@@ -410,8 +471,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if tenant_ids:
                 stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
 
+            if tenant_prefixes:
+                stmt = stmt.where(_tenant_prefix_condition(tenant_prefixes))
+
             if workflow_ids:
                 stmt = stmt.where(WorkflowRun.workflow_id.in_(workflow_ids))
+
+            if run_shard_index is not None and run_shard_total is not None:
+                stmt = stmt.where((_workflow_run_id_shard_expr() % run_shard_total) == run_shard_index)
 
             if last_seen:
                 stmt = stmt.where(
@@ -902,7 +969,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
-        pause_reasons: Sequence[PauseReason],
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
     ) -> WorkflowPauseEntity:
         """
         Create a new workflow pause state.
@@ -958,12 +1025,21 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_reason_models = []
             for reason in pause_reasons:
                 match reason:
-                    case HumanInputRequired():
-                        # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
+                    case HitlRequired():
                         pause_reason_model = WorkflowPauseReason(
                             pause_id=pause_model.id,
-                            type_=reason.TYPE,
+                            type_=PauseReasonType.HITL_REQUIRED,
+                            form_id=default_session_binding.resolve_form_id_from_session_id(
+                                session_id=reason.session_id
+                            ),
+                            node_id=reason.node_id,
+                        )
+                    case HumanInputRequired():
+                        pause_reason_model = WorkflowPauseReason(
+                            pause_id=pause_model.id,
+                            type_=PauseReasonType.HITL_REQUIRED,
                             form_id=reason.form_id,
+                            node_id=reason.node_id,
                         )
                     case SchedulingPause():
                         pause_reason_model = WorkflowPauseReason(
@@ -986,10 +1062,15 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
+            # NOTE(QuantumGhost): repository callers on the Dify side should only
+            # observe enriched Dify pause reasons. The Graphon-native reason is an
+            # input-only boundary concern while persisting the pause.
+            hydrated_pause_reasons = self._hydrate_pause_reasons(session, pause_reason_models)
+
             return _PrivateWorkflowPauseEntity(
                 pause_model=pause_model,
                 reason_models=pause_reason_models,
-                pause_reasons=pause_reasons,
+                pause_reasons=hydrated_pause_reasons,
             )
 
     def _get_reasons_by_pause_id(self, session: Session, pause_id: str):
@@ -1001,11 +1082,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         session: Session,
         pause_reason_models: Sequence[WorkflowPauseReason],
-    ) -> list[PauseReason]:
+    ) -> list[DifyPauseReason]:
         form_ids = [
-            reason.form_id
-            for reason in pause_reason_models
-            if reason.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED and reason.form_id
+            reason.form_id for reason in pause_reason_models if reason.type_ in _HITL_REASON_TYPES and reason.form_id
         ]
         form_models: dict[str, HumanInputForm] = {}
         if form_ids:
@@ -1018,9 +1097,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             for recipient in session.scalars(recipient_stmt).all():
                 recipients_by_form_id.setdefault(recipient.form_id, []).append(recipient)
 
-        pause_reasons: list[PauseReason] = []
+        pause_reasons: list[DifyPauseReason] = []
         for reason in pause_reason_models:
-            if reason.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+            if reason.type_ in _HITL_REASON_TYPES:
                 form_model = form_models.get(reason.form_id)
                 pause_reasons.append(
                     _build_human_input_required_reason(
@@ -1030,7 +1109,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     )
                 )
             else:
-                pause_reasons.append(reason.to_entity())
+                pause_reasons.append(_to_dify_pause_reason(reason))
         return pause_reasons
 
     @override
@@ -1496,7 +1575,7 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         *,
         pause_model: WorkflowPause,
         reason_models: Sequence[WorkflowPauseReason],
-        pause_reasons: Sequence[PauseReason] | None = None,
+        pause_reasons: Sequence[DifyPauseReason] | None = None,
         human_input_form: Sequence = (),
     ) -> None:
         self._pause_model = pause_model
@@ -1542,10 +1621,10 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         return self._pause_model.resumed_at
 
     @override
-    def get_pause_reasons(self) -> Sequence[PauseReason]:
+    def get_pause_reasons(self) -> Sequence[DifyPauseReason]:
         if self._pause_reasons is not None:
-            return list(self._pause_reasons)  # type: ignore
-        return [reason.to_entity() for reason in self._reason_models]  # type: ignore
+            return list(self._pause_reasons)
+        return [_to_dify_pause_reason(reason) for reason in self._reason_models]
 
     @property
     @override

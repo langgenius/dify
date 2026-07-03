@@ -3,10 +3,17 @@ import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-compose
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import {
+  agentComposerDraftAtom,
+  agentComposerOriginalDraftAtom,
+  agentComposerPublishedDraftAtom,
+  isAgentComposerDirtyAtom,
+} from '@/features/agent-v2/agent-composer/store'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentTools } from '../index'
 
@@ -233,6 +240,33 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
   )
 }
 
+function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+  const store = createStore()
+  store.set(agentComposerDraftAtom, initialDraft)
+  store.set(agentComposerOriginalDraftAtom, initialDraft)
+  store.set(agentComposerPublishedDraftAtom, initialDraft)
+
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <JotaiProvider store={store}>
+        <AgentTools />
+      </JotaiProvider>
+    </QueryClientProvider>,
+  )
+
+  return {
+    ...view,
+    store,
+  }
+}
+
 function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -291,7 +325,7 @@ describe('AgentTools', () => {
 
       expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument()
       expect(screen.queryByText('DuckDuckGo Search')).not.toBeInTheDocument()
-      expect(screen.getByText('Lark CLI')).toBeInTheDocument()
+      expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
     })
 
     it('should keep the add trigger mounted while the tool picker is open', async () => {
@@ -301,6 +335,9 @@ describe('AgentTools', () => {
       await user.click(screen.getByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.add',
       }))
+      expect(screen.queryByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.cliTool\.label/,
+      })).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.tool\.label/,
       }))
@@ -339,6 +376,18 @@ describe('AgentTools', () => {
         name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
       })).not.toBeInTheDocument()
     })
+
+    it('should hide CLI tool rows while CLI tools are disabled', () => {
+      renderAgentTools()
+
+      expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
+      })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
+      })).not.toBeInTheDocument()
+    })
   })
 
   describe('Display Metadata', () => {
@@ -367,6 +416,21 @@ describe('AgentTools', () => {
         name: 'DuckDuckGo',
       })).toBeInTheDocument()
       expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
+    })
+
+    it('should keep provider credential metadata display-only without dirtying the composer draft', () => {
+      toolProviderState.builtInTools = [duckDuckGoProvider]
+      const { store } = renderAgentToolsWithStore(reflectedUnauthorizedNoCredentialDraft)
+
+      expect(screen.getByRole('button', {
+        name: 'DuckDuckGo',
+      })).toBeInTheDocument()
+      expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
+      expect(store.get(agentComposerDraftAtom).tools[0]).toMatchObject({
+        credentialType: 'unauthorized',
+        credentialVariant: 'unauthorized',
+      })
+      expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
     })
 
     it('should open provider tool settings with catalog icon and parameters', async () => {

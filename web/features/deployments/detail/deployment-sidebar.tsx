@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import ToggleButton from '@/app/components/app-sidebar/toggle-button'
@@ -17,14 +17,16 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
-import { consoleQuery } from '@/service/client'
-import { DeploymentActionsMenu } from '../components/deployment-actions'
-import { TitleTooltip } from '../components/title-tooltip'
+import { DeploymentActionsMenu } from '../deployment-actions'
+import { deploymentRouteAppInstanceIdAtom } from '../route-state'
+import { TitleTooltip } from '../shared/components/title-tooltip'
+import { deploymentDetailAppInstanceQueryAtom } from './state'
 
 type TabDef = {
   key: InstanceDetailTabKey
   icon: NavIcon
   selectedIcon: NavIcon
+  hidden?: boolean
 }
 
 type TailwindNavIconProps = PropsWithoutRef<ComponentProps<'svg'>> & {
@@ -67,16 +69,11 @@ const DEPLOYMENT_TABS: TabDef[] = [
   { key: 'overview', icon: OverviewIcon, selectedIcon: OverviewSelectedIcon },
   { key: 'instances', icon: DeployIcon, selectedIcon: DeploySelectedIcon },
   { key: 'releases', icon: VersionsIcon, selectedIcon: VersionsSelectedIcon },
-  { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon },
+  { key: 'access', icon: AccessIcon, selectedIcon: AccessSelectedIcon, hidden: true },
   { key: 'api-tokens', icon: ApiIcon, selectedIcon: ApiSelectedIcon },
 ]
 
 const SEARCH_SHORTCUT = ['Mod', 'K']
-
-const getDeploymentIdFromPathname = (pathname: string) => {
-  const [section, appInstanceId] = pathname.split('/').filter(Boolean)
-  return section === 'deployments' ? appInstanceId : undefined
-}
 
 function DeploymentIcon({ expand }: {
   expand: boolean
@@ -98,11 +95,7 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
   expand: boolean
 }) {
   const { t } = useTranslation('deployments')
-  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
+  const overviewQuery = useAtomValue(deploymentDetailAppInstanceQueryAtom)
   const app = overviewQuery.data?.appInstance
   const isLoading = !app && overviewQuery.isLoading
   const isUnavailable = !app || overviewQuery.isError
@@ -172,8 +165,7 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
                       )}
                     </div>
                     <DeploymentActionsMenu
-                      appInstanceId={appInstanceId}
-                      appName={instanceName}
+                      appInstance={app}
                       placement="bottom-end"
                       sideOffset={4}
                       className="shrink-0"
@@ -284,7 +276,7 @@ export function DeploymentDetailSection({
 }) {
   const { t } = useTranslation('deployments')
   const pathname = usePathname()
-  const appInstanceId = getDeploymentIdFromPathname(pathname)
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
 
   if (!appInstanceId)
     return null
@@ -305,7 +297,7 @@ export function DeploymentDetailSection({
       </div>
 
       <nav className={cn('flex flex-col gap-y-0.5 py-1', expand ? 'px-1' : 'px-3')}>
-        {DEPLOYMENT_TABS.map(tab => (
+        {DEPLOYMENT_TABS.filter(tab => !tab.hidden).map(tab => (
           <NavLink
             key={tab.key}
             mode={expand ? 'expand' : 'collapse'}

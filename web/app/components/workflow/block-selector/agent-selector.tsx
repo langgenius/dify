@@ -5,7 +5,6 @@ import type { AgentRosterNodeData } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
-  ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
@@ -31,6 +30,14 @@ import { consoleQuery } from '@/service/client'
 import BlockIcon from '../block-icon'
 
 const AGENT_SELECTOR_PAGE_SIZE = 8
+
+type AgentSelectorOption
+  = | AgentInviteOptionResponse
+    | AgentSelectorActionOption
+
+type AgentSelectorActionOption
+  = | 'start-from-scratch'
+    | 'manage-in-agent-console'
 
 export function AgentSelectorContent({
   open,
@@ -60,20 +67,41 @@ export function AgentSelectorContent({
     }),
   })
   const agents = agentsQuery.data?.data ?? []
+  const actionOptions: AgentSelectorActionOption[] = onStartFromScratch
+    ? ['start-from-scratch', 'manage-in-agent-console']
+    : ['manage-in-agent-console']
+  const options: AgentSelectorOption[] = [...agents, ...actionOptions]
+  const getOptionLabel = (option: AgentSelectorOption) => {
+    if (isAgentSelectorActionOption(option)) {
+      if (option === 'start-from-scratch')
+        return t('roster.nodeSelector.startFromScratch', { ns: 'agentV2' })
+
+      return t('roster.nodeSelector.manageInAgentConsole', { ns: 'agentV2' })
+    }
+
+    return option.name
+  }
   const handleInputValueChange = (nextSearchText: string, details: ComboboxRootChangeEventDetails) => {
     if (details.reason !== 'item-press')
       setSearchText(nextSearchText)
   }
-  const handleValueChange = (agent: AgentInviteOptionResponse | null) => {
-    if (!agent)
+  const handleValueChange = (option: AgentSelectorOption | null) => {
+    if (!option)
       return
 
-    if (!agent.active_config_snapshot_id) {
+    if (isAgentSelectorActionOption(option)) {
+      if (option === 'start-from-scratch')
+        onStartFromScratch?.()
+
+      return
+    }
+
+    if (!option.active_config_snapshot_id) {
       toast.error(t('nodes.agent.modelNotSelected', { ns: 'workflow' }))
       return
     }
 
-    onSelect(toAgentRosterNodeData(agent))
+    onSelect(toAgentRosterNodeData(option))
   }
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen)
@@ -83,12 +111,12 @@ export function AgentSelectorContent({
 
   return (
     <div className="w-60 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
-      <Combobox<AgentInviteOptionResponse>
+      <Combobox<AgentSelectorOption>
         filter={null}
         inputValue={searchText}
-        items={agents}
-        itemToStringLabel={getAgentLabel}
-        itemToStringValue={getAgentValue}
+        items={options}
+        itemToStringLabel={getOptionLabel}
+        itemToStringValue={getAgentSelectorOptionValue}
         open={open}
         value={null}
         onInputValueChange={handleInputValueChange}
@@ -105,54 +133,38 @@ export function AgentSelectorContent({
             />
           </ComboboxInputGroup>
         </div>
-        <div className="max-h-54 overflow-y-auto p-1">
-          {isLoading && (
-            <AgentSelectorLoadingSkeleton label={t('loading', { ns: 'common' })} />
-          )}
-          {!isLoading && agentsQuery.isError && (
-            <ComboboxStatus className="px-3 py-2 system-xs-regular">
-              {t('roster.loadingError', { ns: 'agentV2' })}
-            </ComboboxStatus>
-          )}
-          {!isLoading && !agentsQuery.isError && (
-            <>
-              <ComboboxList className="max-h-none overflow-visible p-0">
-                {(agent: AgentInviteOptionResponse) => (
-                  <AgentSelectorItem key={agent.id} agent={agent} />
+        <ComboboxList className="max-h-none overflow-visible p-0">
+          <div role="presentation" className="max-h-54 overflow-y-auto p-1">
+            {isLoading && (
+              <AgentSelectorLoadingSkeleton label={t('loading', { ns: 'common' })} />
+            )}
+            {!isLoading && agentsQuery.isError && (
+              <ComboboxStatus className="px-3 py-2 system-xs-regular">
+                {t('roster.loadingError', { ns: 'agentV2' })}
+              </ComboboxStatus>
+            )}
+            {!isLoading && !agentsQuery.isError && (
+              <>
+                {agents.length === 0 && (
+                  <ComboboxStatus className="px-3 py-2 system-xs-regular">
+                    {debouncedSearchText
+                      ? t('roster.emptySearch', { ns: 'agentV2' })
+                      : t('roster.empty', { ns: 'agentV2' })}
+                  </ComboboxStatus>
                 )}
-              </ComboboxList>
-              <ComboboxEmpty className="px-3 py-2 system-xs-regular">
-                {debouncedSearchText
-                  ? t('roster.emptySearch', { ns: 'agentV2' })
-                  : t('roster.empty', { ns: 'agentV2' })}
-              </ComboboxEmpty>
-            </>
-          )}
-        </div>
+                {agents.map(agent => (
+                  <AgentSelectorItem key={agent.id} agent={agent} />
+                ))}
+              </>
+            )}
+          </div>
+          <div role="presentation" className="border-t border-divider-subtle p-1">
+            {actionOptions.map(option => (
+              <AgentSelectorActionItem key={option} option={option} />
+            ))}
+          </div>
+        </ComboboxList>
       </Combobox>
-      <div className="border-t border-divider-subtle p-1">
-        {onStartFromScratch && (
-          <button
-            type="button"
-            className="flex min-h-7 w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            onClick={onStartFromScratch}
-          >
-            <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-tertiary" />
-            <span className="min-w-0 flex-1 truncate">
-              {t('roster.nodeSelector.startFromScratch', { ns: 'agentV2' })}
-            </span>
-          </button>
-        )}
-        <Link
-          href="/roster"
-          className="flex min-h-7 w-full items-center gap-2 rounded-md px-2 py-1.5 system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0 text-text-tertiary" />
-          <span className="min-w-0 flex-1 truncate">
-            {t('roster.nodeSelector.manageInAgentConsole', { ns: 'agentV2' })}
-          </span>
-        </Link>
-      </div>
     </div>
   )
 }
@@ -189,12 +201,15 @@ function AgentSelectorLoadingSkeleton({
   )
 }
 
-function getAgentLabel(agent: AgentInviteOptionResponse) {
-  return agent.name
+function getAgentSelectorOptionValue(option: AgentSelectorOption) {
+  if (isAgentSelectorActionOption(option))
+    return option
+
+  return option.id
 }
 
-function getAgentValue(agent: AgentInviteOptionResponse) {
-  return agent.id
+function isAgentSelectorActionOption(option: AgentSelectorOption): option is AgentSelectorActionOption {
+  return typeof option === 'string'
 }
 
 function toAgentRosterNodeData(agent: AgentInviteOptionResponse): AgentRosterNodeData {
@@ -246,6 +261,38 @@ function AgentSelectorItem({
           <span className="truncate system-xs-regular text-text-tertiary">
             {agent.role || agent.description}
           </span>
+        </span>
+      </ComboboxItemText>
+    </ComboboxItem>
+  )
+}
+
+function AgentSelectorActionItem({
+  option,
+}: {
+  option: AgentSelectorActionOption
+}) {
+  const { t } = useTranslation('agentV2')
+  const isStartFromScratch = option === 'start-from-scratch'
+
+  return (
+    <ComboboxItem
+      value={option}
+      render={isStartFromScratch ? undefined : <Link href="/roster" target="_blank" rel="noopener noreferrer" />}
+      className="flex min-h-7 w-full grid-cols-none items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
+    >
+      <ComboboxItemText className="flex items-center gap-2 px-0 system-sm-regular text-text-secondary">
+        <span
+          aria-hidden
+          className={cn(
+            'size-4 shrink-0 text-text-tertiary',
+            isStartFromScratch ? 'i-ri-add-line' : 'i-ri-arrow-right-up-line',
+          )}
+        />
+        <span className="min-w-0 flex-1 truncate">
+          {isStartFromScratch
+            ? t('roster.nodeSelector.startFromScratch')
+            : t('roster.nodeSelector.manageInAgentConsole')}
         </span>
       </ComboboxItemText>
     </ComboboxItem>

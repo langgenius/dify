@@ -29,7 +29,7 @@ import {
   // useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { hasValidRosterAgentBinding, isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
+import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import {
   useStore,
   useWorkflowStore,
@@ -42,6 +42,7 @@ import {
 } from '@/app/components/workflow/types'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
+import { fetchAppDetail } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
@@ -54,6 +55,7 @@ const FeaturesTrigger = () => {
   const workflowStore = useWorkflowStore()
   const queryClient = useQueryClient()
   const appDetail = useAppStore(s => s.appDetail)
+  const setAppDetail = useAppStore(s => s.setAppDetail)
   const appID = appDetail?.id
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const canReleaseAndVersion = useHooksStore(s => s.accessControl.canReleaseAndVersion)
@@ -64,6 +66,20 @@ const FeaturesTrigger = () => {
   const lastPublishedHasUserInput = useStore(s => s.lastPublishedHasUserInput)
 
   const nodes = useNodes()
+  const rosterAgentIds = useMemo(() => {
+    return Array.from(new Set(nodes.flatMap((node) => {
+      const binding = isAgentV2NodeData(node.data) ? node.data.agent_binding : undefined
+      if (
+        binding?.binding_type !== 'roster_agent'
+        || typeof binding.agent_id !== 'string'
+        || binding.agent_id.length === 0
+      ) {
+        return []
+      }
+
+      return [binding.agent_id]
+    })))
+  }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const endNode = nodes.find(node => node.data.type === BlockEnum.End)
@@ -134,12 +150,17 @@ const FeaturesTrigger = () => {
 
   const updateAppDetail = useCallback(async () => {
     try {
-      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appID!] })
+      if (!appID)
+        return
+
+      const res = await fetchAppDetail({ url: '/apps', id: appID })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appID], res)
+      setAppDetail({ ...res })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appID, queryClient])
+  }, [appID, queryClient, setAppDetail])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -169,10 +190,19 @@ const FeaturesTrigger = () => {
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
-        if (nodes.some(node => isAgentV2NodeData(node.data) && hasValidRosterAgentBinding(node.data))) {
+        if (rosterAgentIds.length > 0) {
           void queryClient.invalidateQueries({
             queryKey: consoleQuery.agent.get.key(),
           })
+          void Promise.all(rosterAgentIds.map(agentId => queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+              input: {
+                params: {
+                  agent_id: agentId,
+                },
+              },
+            }).queryKey,
+          })))
         }
         workflowStore.getState().setPublishedAt(res.created_at)
         workflowStore.getState().setLastPublishedHasUserInput(hasUserInputNode)
@@ -182,7 +212,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, invalidateAppTriggers, nodes, queryClient, workflowStore, hasUserInputNode, resetWorkflowVersionHistory])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, invalidateAppTriggers, rosterAgentIds, queryClient, workflowStore, hasUserInputNode, resetWorkflowVersionHistory])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)

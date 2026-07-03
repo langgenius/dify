@@ -14,8 +14,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -24,7 +23,8 @@ from graphon.nodes.human_input.entities import (
     StringListSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType
@@ -673,7 +673,7 @@ def test_enqueue_resume_workflow_not_found(mocker: MockerFixture, mock_session_f
     assert "WorkflowRun not found" in str(excinfo.value)
 
 
-def test_enqueue_resume_app_not_found(mocker, mock_session_factory, caplog):
+def test_enqueue_resume_app_not_found(mocker, mock_session_factory, caplog: pytest.LogCaptureFixture):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
 

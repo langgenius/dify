@@ -192,6 +192,7 @@ class RetrievalService:
     @classmethod
     def external_retrieve(
         cls,
+        session: Session,
         dataset_id: str,
         query: str,
         external_retrieval_model: dict[str, Any] | None = None,
@@ -207,6 +208,7 @@ class RetrievalService:
             else None
         )
         all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+            session,
             dataset.tenant_id,
             dataset_id,
             query,

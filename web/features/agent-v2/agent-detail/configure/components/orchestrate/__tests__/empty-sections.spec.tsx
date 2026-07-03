@@ -8,6 +8,12 @@ import { AgentKnowledgeRetrieval } from '../knowledge'
 import { AgentSkills } from '../skills'
 import { AgentTools } from '../tools'
 
+vi.mock('../config-context', () => ({
+  useAgentConfigApiContext: () => ({ agentId: 'agent-1', draftType: 'draft' }),
+  useAgentConfigFiles: () => ({ files: [] }),
+  useAgentConfigSkills: () => ({ skills: [] }),
+}))
+
 function renderEmptySections() {
   const queryClient = new QueryClient()
 
@@ -16,14 +22,12 @@ function renderEmptySections() {
       <AgentComposerProvider
         initialDraft={{
           ...defaultAgentSoulConfigFormState,
-          files: [],
           knowledgeRetrievals: [],
-          skills: [],
           tools: [],
         }}
       >
-        <AgentSkills agentId="agent-1" />
-        <AgentFiles agentId="agent-1" />
+        <AgentSkills />
+        <AgentFiles />
         <AgentTools />
         <AgentKnowledgeRetrieval />
       </AgentComposerProvider>

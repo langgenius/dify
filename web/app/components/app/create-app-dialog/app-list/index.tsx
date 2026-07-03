@@ -77,14 +77,30 @@ const Apps = ({
     isLoading,
   } = useExploreAppList()
 
+  const visibleCategories = useMemo(() => {
+    if (!data)
+      return []
+
+    const categoriesWithApps = new Set<string>()
+    data.allList.forEach((app) => {
+      app.categories.forEach(category => categoriesWithApps.add(category))
+    })
+
+    return data.categories.filter(category => categoriesWithApps.has(category))
+  }, [data])
+
+  const activeCategory = visibleCategories.includes(currCategory)
+    ? currCategory
+    : allCategoriesEn
+
   const filteredList = useMemo(() => {
     if (!data)
       return []
     const { allList } = data
     const filteredByCategory = allList.filter((item) => {
-      if (currCategory === allCategoriesEn)
+      if (activeCategory === allCategoriesEn)
         return true
-      return item.categories?.includes(currCategory) ?? false
+      return item.categories?.includes(activeCategory) ?? false
     })
     if (currentType.length === 0)
       return filteredByCategory
@@ -101,7 +117,7 @@ const Apps = ({
         return true
       return false
     })
-  }, [currentType, currCategory, allCategoriesEn, data])
+  }, [currentType, activeCategory, allCategoriesEn, data])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -189,7 +205,7 @@ const Apps = ({
       <div className="relative flex flex-1 overflow-y-auto">
         {!searchKeywords && (
           <div className="h-full w-[200px] p-4">
-            <Sidebar current={currCategory as AppCategories} categories={data?.categories || []} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+            <Sidebar current={activeCategory as AppCategories} categories={visibleCategories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
           </div>
         )}
         <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
@@ -200,13 +216,13 @@ const Apps = ({
                   ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t('newApp.foundResults', { ns: 'app', count: searchFilteredList.length }) : t('newApp.foundResult', { ns: 'app', count: searchFilteredList.length })}</p>
                   : (
                       <div className="flex h-[22px] items-center">
-                        <AppCategoryLabel category={currCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
+                        <AppCategoryLabel category={activeCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
                       </div>
                     )}
               </div>
               <div
                 className={cn(
-                  'grid shrink-0 grid-cols-1 content-start gap-3 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
+                  'grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3',
                 )}
               >
                 {searchFilteredList.map(app => (

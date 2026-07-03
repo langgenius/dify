@@ -22,7 +22,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
 from fields.base import ResponseModel
@@ -42,6 +42,10 @@ _NODE_EXECUTION_ID_DESCRIPTION = (
 class AgentSandboxListQuery(BaseModel):
     conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
+
+
+class AgentSandboxInfoQuery(BaseModel):
+    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
 
 
 class AgentSandboxFileQuery(BaseModel):
@@ -91,6 +95,11 @@ class SandboxListResponse(ResponseModel):
     truncated: bool = False
 
 
+class SandboxInfoResponse(ResponseModel):
+    session_id: str
+    workspace_cwd: str
+
+
 class SandboxReadResponse(ResponseModel):
     path: str
     size: int | None = None
@@ -114,7 +123,13 @@ register_schema_models(
     AgentSandboxUploadPayload,
     WorkflowAgentSandboxUploadPayload,
 )
-register_response_schema_models(console_ns, SandboxListResponse, SandboxReadResponse, SandboxUploadResponse)
+register_response_schema_models(
+    console_ns,
+    SandboxInfoResponse,
+    SandboxListResponse,
+    SandboxReadResponse,
+    SandboxUploadResponse,
+)
 
 
 def _handle(exc: Exception) -> tuple[dict[str, object], int]:
@@ -133,6 +148,30 @@ def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     raise exc
 
 
+@console_ns.route("/agent/<uuid:agent_id>/sandbox")
+class AgentAppSandboxInfoResource(Resource):
+    @console_ns.doc("get_agent_app_sandbox_info")
+    @console_ns.doc(description="Get basic information for an Agent App conversation sandbox")
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxInfoQuery)})
+    @console_ns.response(200, "Sandbox information returned", console_ns.models[SandboxInfoResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        query = query_params_from_request(AgentSandboxInfoQuery)
+        try:
+            result = AgentAppSandboxService().get_info(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                conversation_id=query.conversation_id,
+            )
+        except Exception as exc:
+            return _handle(exc)
+        return result.model_dump()
+
+
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files")
 class AgentAppSandboxListResource(Resource):
     @console_ns.doc("list_agent_app_sandbox_files")
@@ -144,7 +183,7 @@ class AgentAppSandboxListResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
         try:
             result = AgentAppSandboxService().list_files(
@@ -169,7 +208,7 @@ class AgentAppSandboxReadResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
             result = AgentAppSandboxService().read_file(
@@ -194,7 +233,7 @@ class AgentAppSandboxUploadResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:
             result = AgentAppSandboxService().upload_file(

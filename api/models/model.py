@@ -487,9 +487,15 @@ class App(Base):
 
         agent = db.session.scalar(
             select(Agent).where(
-                Agent.app_id == self.id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.tenant_id == self.tenant_id,
+                sa.or_(
+                    sa.and_(
+                        Agent.app_id == self.id,
+                        Agent.scope == AgentScope.ROSTER,
+                        Agent.source == AgentSource.AGENT_APP,
+                    ),
+                    Agent.backing_app_id == self.id,
+                ),
                 Agent.status == AgentStatus.ACTIVE,
             )
         )
@@ -923,6 +929,9 @@ class RecommendedApp(TypeBase):
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     is_learn_dify: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    is_cloud_only: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
     )
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
@@ -2180,6 +2189,7 @@ class Site(Base):
     chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     copyright = mapped_column(String(255))
     privacy_policy = mapped_column(String(255))
+    input_placeholder = mapped_column(String(255))
     show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")

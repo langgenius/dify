@@ -155,12 +155,13 @@ describe('SnippetPage', () => {
     })
   })
 
-  it('should render the orchestrate route shell with independent main content', () => {
+  it('should render the orchestrate route shell without owning the main landmark', () => {
     render(<SnippetPage snippetId="snippet-1" />)
 
     expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
     expect(screen.getByTestId('workflow-default-context')).toBeInTheDocument()
     expect(screen.getByTestId('snippet-main')).toHaveTextContent('snippet-1')
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 
   it('should initialize workflow context with published graph data when the published workflow exists', () => {
@@ -202,5 +203,17 @@ describe('SnippetPage', () => {
     render(<SnippetPage snippetId="missing-snippet" />)
 
     expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('should keep the detail route shell while orchestrate data is loading', () => {
+    mockUseSnippetInit.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    })
+
+    render(<SnippetPage snippetId="snippet-1" />)
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByRole('main')).not.toBeInTheDocument()
   })
 })

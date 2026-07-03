@@ -81,8 +81,9 @@ def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, A
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session)
         tenant = account.current_tenant
         assert tenant is not None
         app_args = CreateAppParams(

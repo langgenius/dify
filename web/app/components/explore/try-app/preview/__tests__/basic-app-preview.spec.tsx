@@ -29,9 +29,20 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/app/components/app/configuration/config', () => ({
-  default: () => <div data-testid="config-component">Config</div>,
-}))
+vi.mock('@/app/components/app/configuration/config', async () => {
+  const { useDebugConfigurationContext } = await import('@/context/debug-configuration')
+
+  function MockConfig() {
+    const { modelConfig } = useDebugConfigurationContext()
+    const hasDeletedTool = modelConfig.agentConfig.tools.some(tool => 'tool_name' in tool && tool.isDeleted === true)
+
+    return <div data-testid="config-component" data-has-deleted-tool={String(hasDeletedTool)}>Config</div>
+  }
+
+  return {
+    default: MockConfig,
+  }
+})
 
 vi.mock('@/app/components/app/configuration/debug', () => ({
   default: () => <div data-testid="debug-component">Debug</div>,
@@ -471,7 +482,8 @@ describe('BasicAppPreview', () => {
       }
       agentAppDetail.deleted_tools = [
         {
-          id: 'tool-1',
+          type: 'builtin',
+          provider_id: 'test-provider',
           tool_name: 'test-tool',
         },
       ]
@@ -495,7 +507,7 @@ describe('BasicAppPreview', () => {
       render(<BasicAppPreview appId="test-app-id" />)
 
       await waitFor(() => {
-        expect(screen.getByTestId('config-component')).toBeInTheDocument()
+        expect(screen.getByTestId('config-component')).toHaveAttribute('data-has-deleted-tool', 'true')
       })
     })
   })

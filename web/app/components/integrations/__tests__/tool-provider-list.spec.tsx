@@ -142,9 +142,8 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     canSetPermissions: mockCanSetPermissions(),
     canSetPluginPreferences: mockCanSetPermissions(),
-    canManagePlugin: true,
+    canDeletePlugin: true,
     canUpdatePlugin: true,
-    canViewInstalledPlugins: true,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
@@ -365,18 +364,18 @@ describe('ProviderList', () => {
       expect(screen.getByText('MCP')).toBeInTheDocument()
     })
 
-    it('hides custom and workflow tabs without tool.manage while keeping MCP with mcp.manage', () => {
+    it('keeps custom and workflow tabs visible without tool.manage', () => {
       mockAppContextState.workspacePermissionKeys = ['mcp.manage']
 
       renderProviderList()
 
       expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
-      expect(screen.queryByText('tools.type.custom')).not.toBeInTheDocument()
-      expect(screen.queryByText('tools.type.workflow')).not.toBeInTheDocument()
+      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
       expect(screen.getByText('MCP')).toBeInTheDocument()
     })
 
-    it('hides MCP tab without mcp.manage', () => {
+    it('keeps MCP tab visible without mcp.manage', () => {
       mockAppContextState.workspacePermissionKeys = ['tool.manage']
 
       renderProviderList()
@@ -384,20 +383,19 @@ describe('ProviderList', () => {
       expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
       expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
       expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
-      expect(screen.queryByText('MCP')).not.toBeInTheDocument()
+      expect(screen.getByText('MCP')).toBeInTheDocument()
     })
 
     it.each([
-      ['api'],
-      ['workflow'],
-    ] as const)('does not query providers for %s category without tool.manage', (category) => {
+      ['api', 'card-my-api'],
+      ['workflow', 'card-wf-tool'],
+    ] as const)('renders %s category read-only without tool.manage', (category, cardTestId) => {
       mockAppContextState.workspacePermissionKeys = []
 
       renderProviderList({ category })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
-      expect(screen.queryByTestId('card-my-api')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('card-wf-tool')).not.toBeInTheDocument()
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(screen.getByTestId(cardTestId)).toBeInTheDocument()
       expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
     })
@@ -468,18 +466,6 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('tool-provider-grid')).not.toHaveClass('flex', 'flex-wrap', 'md:grid-cols-3')
       expect(screen.getByTestId('card-google-search').parentElement).toHaveClass('min-w-0')
       expect(screen.getByTestId('card-google-search').parentElement).not.toHaveClass('flex-1')
-    })
-
-    it('keeps the default plugin card border visible until a card is selected', () => {
-      renderProviderList(undefined, 'builtin', 'compact')
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('cursor-pointer')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-transparent')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-[1.5px]')
-
-      fireEvent.click(screen.getByTestId('card-google-search'))
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('outline-[1.5px]', 'outline-components-option-card-option-selected-border')
     })
   })
 
@@ -800,13 +786,14 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
     })
 
-    it('does not render or query MCP management list without mcp.manage', () => {
+    it('renders MCP list read-only without mcp.manage', () => {
       mockAppContextState.workspacePermissionKeys = ['tool.manage']
 
       renderProviderList({ category: 'mcp' })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
-      expect(screen.queryByTestId('mcp-list')).not.toBeInTheDocument()
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
+      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
       expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()
     })
 

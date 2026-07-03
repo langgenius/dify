@@ -192,7 +192,7 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.getByText('snippet.menu.editInfo')).toBeInTheDocument()
-      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
+      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
       expect(screen.queryByText('snippet.menu.deleteSnippet')).not.toBeInTheDocument()
 
       unmount()
@@ -201,7 +201,7 @@ describe('SnippetInfoDropdown', () => {
       await user.click(screen.getByRole('button'))
 
       expect(screen.queryByText('snippet.menu.editInfo')).not.toBeInTheDocument()
-      expect(screen.getByText('snippet.menu.exportSnippet')).toBeInTheDocument()
+      expect(screen.queryByText('snippet.menu.exportSnippet')).not.toBeInTheDocument()
       expect(screen.getByText('snippet.menu.deleteSnippet')).toBeInTheDocument()
     })
   })
@@ -222,6 +222,8 @@ describe('SnippetInfoDropdown', () => {
       expect(screen.getByText('snippet.editDialogTitle')).toBeInTheDocument()
       expect(screen.getByText('common.operation.save')).toBeInTheDocument()
       expect(screen.getByText(mockSnippet.name)).toBeInTheDocument()
+      if (!mockSnippet.description)
+        throw new Error('mockSnippet.description is required for this test')
       expect(screen.getByText(mockSnippet.description)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'submit-edit' }))
@@ -244,7 +246,7 @@ describe('SnippetInfoDropdown', () => {
   describe('Export Snippet', () => {
     it('should export and download the snippet yaml', async () => {
       const user = userEvent.setup()
-      mockWorkspacePermissionKeys = ['snippets.management']
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockResolvedValue('yaml: content')
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)
@@ -264,7 +266,7 @@ describe('SnippetInfoDropdown', () => {
 
     it('should show an error toast when export fails', async () => {
       const user = userEvent.setup()
-      mockWorkspacePermissionKeys = ['snippets.management']
+      mockWorkspacePermissionKeys = ['snippets.create_and_modify']
       mockExportMutateAsync.mockRejectedValue(new Error('export failed'))
 
       render(<SnippetInfoDropdown snippet={mockSnippet} />)

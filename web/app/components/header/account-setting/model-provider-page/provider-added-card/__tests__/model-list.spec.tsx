@@ -4,7 +4,7 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ModelList from '../model-list'
 
 const mockSetShowModelLoadBalancingModal = vi.fn()
-let mockWorkspacePermissionKeys: string[] = ['plugin.manage', 'credential.manage', 'credential.use']
+let mockWorkspacePermissionKeys: string[] = ['plugin.model_config', 'credential.manage', 'credential.use']
 
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
@@ -45,7 +45,7 @@ describe('ModelList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['plugin.manage', 'credential.manage', 'credential.use']
+    mockWorkspacePermissionKeys = ['plugin.model_config', 'credential.manage', 'credential.use']
   })
 
   it('should render model count and model items', () => {
@@ -91,7 +91,7 @@ describe('ModelList', () => {
     expect(mockSetShowModelLoadBalancingModal).toHaveBeenCalled()
   })
 
-  it('should hide custom model actions without plugin.manage', () => {
+  it('should hide custom model actions without plugin.model_config', () => {
     mockWorkspacePermissionKeys = []
     render(
       <ModelList
@@ -230,13 +230,13 @@ describe('ModelList', () => {
     expect(screen.queryByTestId('add-custom-model')).not.toBeInTheDocument()
   })
 
-  it('should show custom model actions when provider is configurable and user can manage plugins', () => {
+  it('should show custom model actions when provider is configurable and user can configure models', () => {
     const configurableProvider = {
       provider: 'test-provider',
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
 
-    mockWorkspacePermissionKeys = ['plugin.manage']
+    mockWorkspacePermissionKeys = ['plugin.model_config']
 
     render(
       <ModelList
@@ -251,7 +251,7 @@ describe('ModelList', () => {
     expect(screen.getByTestId('add-custom-model'))!.toBeInTheDocument()
   })
 
-  it('should hide custom model actions when provider is configurable but user cannot manage plugins', () => {
+  it('should hide custom model actions when provider is configurable but user cannot configure models', () => {
     const configurableProvider = {
       provider: 'test-provider',
       configurate_methods: [ConfigurationMethodEnum.customizableModel],

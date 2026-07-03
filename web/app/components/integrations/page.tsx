@@ -13,7 +13,6 @@ import {
   buildMarketplaceUrlPathByIntegrationSection,
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
-import { useCanManageMCP, useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -44,9 +43,9 @@ const headerDescriptionDocPaths: Partial<Record<IntegrationSection, string>> = {
   'custom-tool': '/use-dify/workspace/tools#custom-tool',
   'workflow-tool': '/use-dify/workspace/tools#workflow-tool',
   'mcp': '/use-dify/build/mcp',
-  'custom-endpoint': '/use-dify/workspace/api-extension/api-extension',
+  'custom-endpoint': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
   'trigger': '/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin',
-  'extension': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
+  'extension': '/use-dify/workspace/api-extension/api-extension',
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
 }
 
@@ -105,16 +104,14 @@ export default function IntegrationsPage({
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
-  const canManageMCP = useCanManageMCP()
-  const canManageTools = useCanManageTools()
   const {
     canDebugger,
     canInstallPlugin,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
     handlePermissionChange,
     isPluginCategory,
+    isReferenceSettingLoading,
     permission,
     showPermissionQuickPanel,
     showPluginCategorySetting,
@@ -130,7 +127,7 @@ export default function IntegrationsPage({
     providerItem,
     secondaryItems,
     toolItems,
-  } = useIntegrationNav(section, { canManageMCP, canManageTools })
+  } = useIntegrationNav(section)
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
   const useFillLayout = section === 'provider' || section === 'data-source' || section === 'custom-endpoint' || isToolSection || isPluginCategory
@@ -166,7 +163,7 @@ export default function IntegrationsPage({
       return
     }
 
-    window.open(getMarketplaceUrl(marketplaceUrlPath), '_blank', 'noopener,noreferrer')
+    window.open(getMarketplaceUrl(marketplaceUrlPath, undefined, { source: window.location.origin }), '_blank', 'noopener,noreferrer')
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
@@ -198,11 +195,6 @@ export default function IntegrationsPage({
       <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
     </>
   )
-
-  if (section === 'mcp' && !canManageMCP)
-    return null
-  if ((section === 'custom-tool' || section === 'workflow-tool') && !canManageTools)
-    return null
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 bg-components-panel-bg" style={sidebarWidthStyle}>
@@ -293,9 +285,9 @@ export default function IntegrationsPage({
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
                   canUpdatePlugin={canUpdatePlugin}
-                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </div>
@@ -307,7 +299,6 @@ export default function IntegrationsPage({
                 slotClassNames={{
                   viewport: 'overscroll-contain',
                   content: 'min-h-full',
-                  scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
                 }}
               >
                 <IntegrationSectionRenderer
@@ -319,9 +310,9 @@ export default function IntegrationsPage({
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
                   canUpdatePlugin={canUpdatePlugin}
-                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </ScrollArea>

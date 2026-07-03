@@ -16,11 +16,16 @@ type SnippetPageProps = {
   snippetId: string
 }
 
-const SnippetPageLoading = () => {
+const SnippetPageLoading = ({ snippetId }: SnippetPageProps) => {
   return (
-    <div className="flex h-full items-center justify-center bg-background-body">
-      <Loading />
-    </div>
+    <SnippetLayout
+      snippetId={snippetId}
+      section="orchestrate"
+    >
+      <div className="flex h-full items-center justify-center bg-background-body">
+        <Loading />
+      </div>
+    </SnippetLayout>
   )
 }
 
@@ -52,7 +57,7 @@ const SnippetPage = ({ snippetId }: SnippetPageProps) => {
   }, [data])
 
   if (!data || isLoading) {
-    return <SnippetPageLoading />
+    return <SnippetPageLoading snippetId={snippetId} />
   }
 
   const hasPublishedWorkflow = !!data.publishedWorkflow
