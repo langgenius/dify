@@ -5,6 +5,7 @@ import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
 import Recorder from 'js-audio-recorder'
@@ -47,6 +48,7 @@ type ChatInputAreaProps = {
   sendButtonLabel?: string
   sendButtonLoading?: boolean
   footerNotice?: ReactNode
+  footerNoticeTooltip?: ReactNode
   /**
    * Controls whether pressing Enter sends the message.
    * - true (default): Enter sends, Shift+Enter inserts newline
@@ -55,7 +57,7 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendButtonLoading, footerNotice, sendOnEnter = true }: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendButtonLoading, footerNotice, footerNoticeTooltip, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
@@ -165,6 +167,8 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
     })
   }, [t])
   const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} sendButtonLabel={sendButtonLabel} sendButtonLoading={sendButtonLoading} disabled={!canSend} theme={theme} />)
+  const shouldShowFooterNotice = footerNotice !== undefined && footerNotice !== null
+  const shouldShowFooterNoticeTooltip = footerNoticeTooltip !== undefined && footerNoticeTooltip !== null
   return (
     <>
       <div className={cn('pointer-events-auto relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md', isDragActive && 'border border-dashed border-components-option-card-option-selected-border', disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none')}>
@@ -204,10 +208,27 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
         </div>
         {isMultipleLine && (<div className="px-[9px]">{operation}</div>)}
       </div>
-      {footerNotice !== undefined && footerNotice !== null && (
+      {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
           <div className="flex items-center gap-1">
-            <div className="i-ri-information-line size-3.5 shrink-0 text-text-accent" />
+            {shouldShowFooterNoticeTooltip && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <button
+                      type="button"
+                      className="flex size-5 items-center justify-center rounded-md text-text-accent hover:bg-state-base-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg"
+                      aria-label={typeof footerNoticeTooltip === 'string' ? footerNoticeTooltip : undefined}
+                    >
+                      <span aria-hidden className="i-ri-information-line size-3.5 shrink-0" />
+                    </button>
+                  )}
+                />
+                <TooltipContent className="max-w-80">
+                  {footerNoticeTooltip}
+                </TooltipContent>
+              </Tooltip>
+            )}
             <div className="body-xs-medium text-text-accent">{footerNotice}</div>
           </div>
         </div>

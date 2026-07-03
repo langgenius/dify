@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "Pošlji sporočilo za {{name}}",
   "agentDetail.configure.preview.restart": "Znova zaženi predogled",
   "agentDetail.configure.preview.sandboxNotice": "Agent se izvaja v peskovniku Linux.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "V Dify Community Edition vsak vaš Agent teče v peskovniškem okolju Linux 7.0.0-10060-aws znotraj vašega Dockerja. Spremembe okolja prek Build Chats so trajne.",
   "agentDetail.configure.preview.title": "Predogled",
   "agentDetail.configure.prompt.copied": "Poziv kopiran",
   "agentDetail.configure.prompt.copy": "Kopiraj poziv",

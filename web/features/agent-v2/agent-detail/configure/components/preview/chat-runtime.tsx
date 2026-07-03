@@ -746,6 +746,7 @@ function AgentPreviewChatSession({
   const hasInstructions = !!config.pre_prompt.trim()
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
   const sandboxNotice = t('agentDetail.configure.preview.sandboxNotice')
+  const sandboxNoticeTooltip = t('agentDetail.configure.preview.sandboxNoticeTooltip')
   const showSandboxNotice = isEmptyChat && !isSendPending && !isResponding
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">
@@ -762,6 +763,7 @@ function AgentPreviewChatSession({
         inputsForm={inputsForm}
         sendButtonLabel={sendButtonLabel}
         footerNotice={showSandboxNotice ? sandboxNotice : undefined}
+        footerNoticeTooltip={showSandboxNotice ? sandboxNoticeTooltip : undefined}
       />
     </div>
   )

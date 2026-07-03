@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "إرسال رسالة إلى {{name}}",
   "agentDetail.configure.preview.restart": "إعادة تشغيل المعاينة",
   "agentDetail.configure.preview.sandboxNotice": "يعمل Agent داخل صندوق رمل Linux.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "بالنسبة إلى إصدار Dify Community Edition، يعمل كل Agent من Agents الخاصة بك في بيئة صندوق رمل Linux 7.0.0-10060-aws داخل Docker لديك. تعديلاتك على البيئة عبر Build Chats مستمرة.",
   "agentDetail.configure.preview.title": "معاينة",
   "agentDetail.configure.prompt.copied": "تم نسخ المطالبة",
   "agentDetail.configure.prompt.copy": "نسخ المطالبة",

@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "Nhắn cho {{name}}",
   "agentDetail.configure.preview.restart": "Khởi động lại bản xem trước",
   "agentDetail.configure.preview.sandboxNotice": "Agent chạy trong sandbox Linux.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "Trong Dify Community Edition, mỗi Agent của bạn chạy trong môi trường sandbox Linux 7.0.0-10060-aws bên trong Docker của bạn. Các chỉnh sửa môi trường qua Build Chats sẽ được lưu giữ.",
   "agentDetail.configure.preview.title": "Xem trước",
   "agentDetail.configure.prompt.copied": "Đã sao chép lời nhắc",
   "agentDetail.configure.prompt.copy": "Sao chép lời nhắc",

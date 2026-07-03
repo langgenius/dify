@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "{{name}} ile mesajlaş",
   "agentDetail.configure.preview.restart": "Önizlemeyi yeniden başlat",
   "agentDetail.configure.preview.sandboxNotice": "Agent bir Linux korumalı alanında çalışır.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "Dify Community Edition’da, agent’larınızın her biri Docker’ınız içinde Linux 7.0.0-10060-aws korumalı alan ortamında çalışır. Build Chats üzerinden ortamda yaptığınız düzenlemeler kalıcıdır.",
   "agentDetail.configure.preview.title": "Önizleme",
   "agentDetail.configure.prompt.copied": "İstem kopyalandı",
   "agentDetail.configure.prompt.copy": "İstemi kopyala",

@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "Trimite mesaj către {{name}}",
   "agentDetail.configure.preview.restart": "Reporniți previzualizarea",
   "agentDetail.configure.preview.sandboxNotice": "Agentul rulează într-un sandbox Linux.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "În Dify Community Edition, fiecare dintre agenții tăi rulează într-un mediu sandbox Linux 7.0.0-10060-aws în Dockerul tău. Modificările aduse mediului prin Build Chats sunt persistente.",
   "agentDetail.configure.preview.title": "Previzualizare",
   "agentDetail.configure.prompt.copied": "Prompt copiat",
   "agentDetail.configure.prompt.copy": "Copiază prompt-ul",

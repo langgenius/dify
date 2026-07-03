@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "{{name}}에게 메시지 보내기",
   "agentDetail.configure.preview.restart": "미리보기 다시 시작",
   "agentDetail.configure.preview.sandboxNotice": "Agent는 Linux 샌드박스에서 실행됩니다.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "Dify Community Edition에서는 각 Agent가 Docker 내부의 Linux 7.0.0-10060-aws 샌드박스 환경에서 실행됩니다. Build Chats를 통해 환경에 적용한 변경 사항은 유지됩니다.",
   "agentDetail.configure.preview.title": "미리보기",
   "agentDetail.configure.prompt.copied": "프롬프트를 복사했습니다",
   "agentDetail.configure.prompt.copy": "프롬프트 복사",

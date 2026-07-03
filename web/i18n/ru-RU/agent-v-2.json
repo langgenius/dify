@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "Написать {{name}}",
   "agentDetail.configure.preview.restart": "Перезапустить предпросмотр",
   "agentDetail.configure.preview.sandboxNotice": "Agent работает в песочнице Linux.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "В Dify Community Edition каждый ваш Agent работает в среде песочницы Linux 7.0.0-10060-aws внутри вашего Docker. Изменения среды через Build Chats сохраняются.",
   "agentDetail.configure.preview.title": "Предпросмотр",
   "agentDetail.configure.prompt.copied": "Промпт скопирован",
   "agentDetail.configure.prompt.copy": "Копировать промпт",

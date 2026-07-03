@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "{{name}} को संदेश भेजें",
   "agentDetail.configure.preview.restart": "पूर्वावलोकन पुनः आरंभ करें",
   "agentDetail.configure.preview.sandboxNotice": "Agent Linux सैंडबॉक्स में चलता है.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "Dify Community Edition में, आपके हर Agent आपके Docker के अंदर Linux 7.0.0-10060-aws सैंडबॉक्स वातावरण में चलता है. Build Chats के ज़रिए वातावरण में किए गए आपके बदलाव स्थायी रहते हैं.",
   "agentDetail.configure.preview.title": "पूर्वावलोकन",
   "agentDetail.configure.prompt.copied": "प्रॉम्प्ट कॉपी हो गया",
   "agentDetail.configure.prompt.copy": "प्रॉम्प्ट कॉपी करें",

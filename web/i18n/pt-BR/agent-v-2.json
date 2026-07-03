@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "Enviar mensagem para {{name}}",
   "agentDetail.configure.preview.restart": "Reiniciar pré-visualização",
   "agentDetail.configure.preview.sandboxNotice": "O agente é executado em uma sandbox Linux.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "No Dify Community Edition, cada um dos seus agents é executado em um ambiente sandbox Linux 7.0.0-10060-aws dentro do seu Docker. Suas edições no ambiente via Build Chats são persistentes.",
   "agentDetail.configure.preview.title": "Pré-visualização",
   "agentDetail.configure.prompt.copied": "Prompt copiado",
   "agentDetail.configure.prompt.copy": "Copiar prompt",

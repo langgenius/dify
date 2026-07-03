@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "向 {{name}} 发送消息",
   "agentDetail.configure.preview.restart": "重新开始预览",
   "agentDetail.configure.preview.sandboxNotice": "Agent 运行在 Linux 沙盒中。",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "在 Dify Community Edition 中，每个 Agent 都运行在你 Docker 内的 Linux 7.0.0-10060-aws 沙盒环境中。你通过 Build Chats 对环境所做的编辑会持久保留。",
   "agentDetail.configure.preview.title": "预览",
   "agentDetail.configure.prompt.copied": "提示词已复制",
   "agentDetail.configure.prompt.copy": "复制提示词",

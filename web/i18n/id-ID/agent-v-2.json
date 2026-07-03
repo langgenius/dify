@@ -144,6 +144,7 @@
   "agentDetail.configure.preview.inputPlaceholder": "Kirim pesan ke {{name}}",
   "agentDetail.configure.preview.restart": "Mulai ulang pratinjau",
   "agentDetail.configure.preview.sandboxNotice": "Agent berjalan di sandbox Linux.",
+  "agentDetail.configure.preview.sandboxNoticeTooltip": "Di Dify Community Edition, setiap Agent Anda berjalan di lingkungan sandbox Linux 7.0.0-10060-aws di dalam Docker Anda. Perubahan yang Anda buat pada lingkungan melalui Build Chats bersifat persisten.",
   "agentDetail.configure.preview.title": "Pratinjau",
   "agentDetail.configure.prompt.copied": "Prompt disalin",
   "agentDetail.configure.prompt.copy": "Salin prompt",
