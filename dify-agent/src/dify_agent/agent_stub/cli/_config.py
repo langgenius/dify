@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
 import os
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -36,7 +34,6 @@ from dify_agent.agent_stub.protocol.agent_stub import (
 
 _DEFAULT_CONFIG_BASE = Path("./.dify_conf")
 _SKILL_MD_FILENAME = "SKILL.md"
-_SAFE_ENV_VALUE = re.compile(r"^[A-Za-z0-9_./:@+-]+$")
 
 
 class ConfigSkillPullResult(BaseModel):
@@ -141,19 +138,6 @@ def pull_config_files_from_environment(
     return ConfigFilePullResult(items=items)
 
 
-def pull_config_env_from_environment(local_path: str | None = None) -> Path:
-    manifest = manifest_from_environment()
-    target_path = Path(local_path or (_DEFAULT_CONFIG_BASE / ".env")).expanduser().resolve()
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    lines: list[str] = []
-    for key in manifest.env_keys:
-        if key not in os.environ:
-            raise AgentStubValidationError(f"config env key is not present in the current environment: {key}")
-        lines.append(f"{key}={_format_env_value(os.environ[key])}")
-    target_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-    return target_path
-
-
 def pull_config_note_from_environment(local_path: str | None = None) -> Path:
     manifest = manifest_from_environment()
     target_path = Path(local_path or (_DEFAULT_CONFIG_BASE / "note.md")).expanduser().resolve()
@@ -167,22 +151,19 @@ def push_config_note_from_environment(local_path: str | None) -> AgentStubConfig
     return _push_config_from_environment(note=note)
 
 
-def push_config_env_from_environment(local_path: str | None) -> AgentStubConfigManifestResponse:
-    env_text = _read_text_input(local_path, _DEFAULT_CONFIG_BASE / ".env")
+def push_config_env_from_environment(local_path: str) -> AgentStubConfigManifestResponse:
+    env_text = _read_text_input(local_path, default_path=None)
     return _push_config_from_environment(env_text=env_text)
 
 
-def push_config_files_from_environment(paths: list[str], name: str | None) -> AgentStubConfigManifestResponse:
+def push_config_files_from_environment(paths: list[str]) -> AgentStubConfigManifestResponse:
     _require_non_empty_inputs(paths, kind="file path")
-    override_name = None if name is None else _require_config_entry_name(name, kind="file")
-    if override_name is not None and len(paths) != 1:
-        raise AgentStubValidationError("--name requires exactly one PATH")
     items = [
         _PreparedPushItem(
-            name=override_name if index == 0 and override_name is not None else _infer_name_from_path(source_path),
+            name=_infer_name_from_path(source_path),
             path=source_path,
         )
-        for index, source_path in enumerate(_resolve_input_paths(paths))
+        for source_path in _resolve_input_paths(paths)
     ]
     return _push_config_from_environment(files=[_build_file_push_item(item=item) for item in items])
 
@@ -236,10 +217,15 @@ def _push_config_from_environment(
     )
 
 
-def _read_text_input(path_value: str | None, default_path: Path) -> str:
+def _read_text_input(path_value: str | None, default_path: Path | None) -> str:
     if path_value == "-":
         return os.fdopen(os.dup(0), encoding="utf-8").read()
-    source_path = Path(path_value or default_path).expanduser().resolve()
+    if path_value is None:
+        if default_path is None:
+            raise AgentStubValidationError("local file path or '-' is required")
+        source_path = default_path.expanduser().resolve()
+    else:
+        source_path = Path(path_value).expanduser().resolve()
     if not source_path.is_file():
         raise AgentStubValidationError(f"local file not found: {source_path}")
     return source_path.read_text(encoding="utf-8")
@@ -297,17 +283,10 @@ def _require_non_empty_inputs(values: list[str], *, kind: str) -> None:
         raise AgentStubValidationError(f"at least one {kind} is required")
 
 
-def _format_env_value(value: str) -> str:
-    if _SAFE_ENV_VALUE.fullmatch(value):
-        return value
-    return json.dumps(value)
-
-
 __all__ = [
     "ConfigFilePullResult",
     "ConfigSkillPullResult",
     "manifest_from_environment",
-    "pull_config_env_from_environment",
     "pull_config_files_from_environment",
     "pull_config_note_from_environment",
     "pull_config_skills_from_environment",

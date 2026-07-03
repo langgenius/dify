@@ -22,7 +22,6 @@ from dify_agent.agent_stub.cli._config import (
     delete_config_files_from_environment,
     delete_config_skills_from_environment,
     manifest_from_environment,
-    pull_config_env_from_environment,
     pull_config_files_from_environment,
     pull_config_note_from_environment,
     pull_config_skills_from_environment,
@@ -68,9 +67,7 @@ config_skills_app = typer.Typer(help="Pull or update config skills through the A
 config_files_app = typer.Typer(help="Pull or update config files through the Agent Stub.", rich_markup_mode=None)
 config_skill_pull_alias_app = typer.Typer(help="Pull config skills through the Agent Stub.", rich_markup_mode=None)
 config_file_pull_alias_app = typer.Typer(help="Pull config files through the Agent Stub.", rich_markup_mode=None)
-config_env_app = typer.Typer(
-    help="Pull or update config env variables visible to the current run.", rich_markup_mode=None
-)
+config_env_app = typer.Typer(help="Update config env variables visible to the current run.", rich_markup_mode=None)
 config_note_app = typer.Typer(help="Pull or update the current config note.", rich_markup_mode=None)
 drive_app = typer.Typer(help="List, pull, or push agent drive files through the Agent Stub.", rich_markup_mode=None)
 app.add_typer(file_app, name="file")
@@ -147,9 +144,13 @@ def config_skill_pull_alias(
 
 @config_skills_app.command("push")
 def config_skills_push(
-    paths: list[str] = typer.Argument(..., metavar="PATH"),
+    paths: list[str] = typer.Argument(..., metavar="PATH..."),
 ) -> None:
-    """Upload one or more local skill directories into the current config manifest."""
+    """Upload one or more local skill directories into the current config manifest.
+
+    Pass a directory such as ./skills/researcher that contains SKILL.md. Other files in that directory are
+    archived with the skill. Pushing a skill with an existing name replaces that config skill.
+    """
     _run_config_skills_push(paths=paths)
 
 
@@ -183,15 +184,15 @@ def config_file_pull_alias(
 
 @config_files_app.command("push")
 def config_files_push(
-    paths: list[str] = typer.Argument(..., metavar="PATH"),
-    name: str | None = typer.Option(
-        None,
-        "--name",
-        help="Override the target config file name when uploading exactly one local file.",
-    ),
+    paths: list[str] = typer.Argument(..., metavar="PATH..."),
 ) -> None:
-    """Upload one or more local files into the current config manifest."""
-    _run_config_files_push(paths=paths, name=name)
+    """Upload one or more local files into the current config manifest.
+
+    Pass one or more regular local files such as ./guide.md and ./policy.txt. To upload a folder, compress it
+    first and pass the archive file. The config file name is the local basename. Pushing a file with an existing config
+    name replaces that config file.
+    """
+    _run_config_files_push(paths=paths)
 
 
 @config_files_app.command("delete")
@@ -202,19 +203,15 @@ def config_files_delete(
     _run_config_files_delete(names=names)
 
 
-@config_env_app.command("pull")
-def config_env_pull(
-    local_path: str | None = typer.Option(None, "--to", help="Local dotenv file path."),
-) -> None:
-    """Export visible config env values into ./.dify_conf/.env by default."""
-    _run_config_env_pull(local_path=local_path)
-
-
 @config_env_app.command("push")
 def config_env_push(
-    local_path: str | None = typer.Argument(None, metavar="PATH|-"),
+    local_path: str = typer.Argument(..., metavar="PATH|-"),
 ) -> None:
-    """Replace visible config env values from one local dotenv file or stdin."""
+    """Set or delete config env entries from one local dotenv file or stdin.
+
+    Pass dotenv text with lines like API_KEY=value and OLD_KEY=. KEY=value sets or updates an entry, KEY= deletes
+    it, and omitted keys are unchanged.
+    """
     _run_config_env_push(local_path=local_path)
 
 
@@ -228,9 +225,13 @@ def config_note_pull(
 
 @config_note_app.command("push")
 def config_note_push(
-    local_path: str | None = typer.Argument(None, metavar="PATH|-"),
+    local_path: str | None = typer.Argument(None, metavar="[PATH|-]"),
 ) -> None:
-    """Replace the current config note from one local text file or stdin."""
+    """Replace the current config note from one local text file or stdin.
+
+    Pass a plain text or Markdown note file, or use - to read the note from stdin. When PATH is omitted, the
+    command reads ./.dify_conf/note.md.
+    """
     _run_config_note_push(local_path=local_path)
 
 
@@ -448,18 +449,6 @@ def _run_config_file_pull(*, names: list[str] | None, local_dir: str | None, jso
         typer.echo(item.path)
 
 
-def _run_config_env_pull(*, local_path: str | None) -> None:
-    try:
-        path = pull_config_env_from_environment(local_path=local_path)
-    except MissingAgentStubEnvironmentError as exc:
-        typer.echo(str(exc), err=True)
-        raise SystemExit(2) from exc
-    except AgentStubClientError as exc:
-        typer.echo(str(exc), err=True)
-        raise SystemExit(1) from exc
-    typer.echo(str(path))
-
-
 def _run_config_note_pull(*, local_path: str | None) -> None:
     try:
         path = pull_config_note_from_environment(local_path=local_path)
@@ -484,7 +473,7 @@ def _run_config_note_push(*, local_path: str | None) -> None:
     typer.echo(response.model_dump_json())
 
 
-def _run_config_env_push(*, local_path: str | None) -> None:
+def _run_config_env_push(*, local_path: str) -> None:
     try:
         response = push_config_env_from_environment(local_path=local_path)
     except MissingAgentStubEnvironmentError as exc:
@@ -496,9 +485,9 @@ def _run_config_env_push(*, local_path: str | None) -> None:
     typer.echo(response.model_dump_json())
 
 
-def _run_config_files_push(*, paths: list[str], name: str | None) -> None:
+def _run_config_files_push(*, paths: list[str]) -> None:
     try:
-        response = push_config_files_from_environment(paths=paths, name=name)
+        response = push_config_files_from_environment(paths=paths)
     except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
