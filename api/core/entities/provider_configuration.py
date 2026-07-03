@@ -858,9 +858,7 @@ class ProviderConfiguration(BaseModel):
             return None
 
         return next(
-            (
-                record for record in provider_model_records if record.provider_name == self.provider.provider
-            ),
+            (record for record in provider_model_records if record.provider_name == self.provider.provider),
             provider_model_records[0],
         )
 
@@ -1235,9 +1233,7 @@ class ProviderConfiguration(BaseModel):
                 # Check if this is the currently active credential
                 provider_model_records = self._get_custom_model_records(model_type, model, session=session)
                 provider_model_record = next(
-                    (
-                        record for record in provider_model_records if record.provider_name == self.provider.provider
-                    ),
+                    (record for record in provider_model_records if record.provider_name == self.provider.provider),
                     provider_model_records[0] if provider_model_records else None,
                 )
 
