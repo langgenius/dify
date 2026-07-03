@@ -1337,6 +1337,29 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
     assert provider_model_record.credential_id is None
     assert mock_cache.return_value.delete.call_count == 2
 
+    session = Mock()
+    mismatched_credential_record = SimpleNamespace(
+        id="cred-2",
+        model_name="stored-model",
+        model_type=ModelType.TEXT_EMBEDDING,
+    )
+    provider_model_record = SimpleNamespace(id="model-2", credential_id="cred-2", updated_at=None)
+    session.execute.side_effect = [
+        _exec_result(scalar_one_or_none=None),
+        _exec_result(scalar_one_or_none=mismatched_credential_record),
+        _exec_result(scalars_all=[]),
+        _exec_result(scalar=1),
+    ]
+    with _patched_session(session):
+        with patch.object(
+            ProviderConfiguration,
+            "_get_custom_model_record",
+            return_value=provider_model_record,
+        ) as mock_get_model:
+            configuration.delete_custom_model_credential(ModelType.LLM, "request-model", "cred-2")
+    mock_get_model.assert_called_once_with(ModelType.TEXT_EMBEDDING, "stored-model", session=session)
+    session.delete.assert_any_call(mismatched_credential_record)
+
 
 def test_add_model_credential_to_model_and_switch_custom_model_credential() -> None:
     configuration = _build_provider_configuration()
