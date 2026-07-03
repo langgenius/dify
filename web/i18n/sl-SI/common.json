@@ -408,6 +408,7 @@
   "modelProvider.selector.onlyCompatibleModelsShown": "Prikazani so samo združljivi modeli",
   "modelProvider.selector.showIncompatibleModels": "Prikaži nezdružljive modele",
   "modelProvider.selector.suggestion": "Predlog",
+  "modelProvider.selector.suggestionTip": "Priporočeno za opravila agenta",
   "modelProvider.showModels": "Prikaži modele",
   "modelProvider.speechToTextModel.key": "Model za pretvorbo govora v besedilo",
   "modelProvider.speechToTextModel.tip": "Nastavite privzeti model za vnos govora v besedilo v pogovoru.",

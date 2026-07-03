@@ -408,6 +408,7 @@
   "modelProvider.selector.onlyCompatibleModelsShown": "호환되는 모델만 표시됩니다",
   "modelProvider.selector.showIncompatibleModels": "호환되지 않는 모델 표시",
   "modelProvider.selector.suggestion": "추천",
+  "modelProvider.selector.suggestionTip": "에이전트 작업에 권장",
   "modelProvider.showModels": "모델 표시",
   "modelProvider.speechToTextModel.key": "음성-to-텍스트 모델",
   "modelProvider.speechToTextModel.tip": "대화에서의 음성-to-텍스트 입력에 사용되는 기본 모델을 설정합니다.",

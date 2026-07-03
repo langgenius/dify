@@ -3,6 +3,7 @@ import type { DefaultModel, Model, ModelItem } from '../../declarations'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle } from '@langgenius/dify-ui/preview-card'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -26,10 +27,6 @@ vi.mock('../../hooks', async () => {
     useUpdateModelProviders: () => mockUpdateModelProviders,
   }
 })
-
-vi.mock('../../model-badge', () => ({
-  default: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}))
 
 vi.mock('../../model-icon', () => ({
   default: ({ modelName }: { modelName: string }) => <span>{modelName}</span>,
@@ -262,7 +259,7 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
   })
 
-  it('should render suggestion badge for suggested models', () => {
+  it('should render suggestion icon with tooltip for suggested models', async () => {
     renderWithCombobox(
       <PopupItem
         {...previewCardProps()}
@@ -279,7 +276,13 @@ describe('PopupItem', () => {
 
     expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
     expect(screen.getByText('GPT-5')).toBeInTheDocument()
-    expect(screen.getByText('common.modelProvider.selector.suggestion')).toBeInTheDocument()
+    const suggestionIcon = screen.getByLabelText('common.modelProvider.selector.suggestionTip')
+
+    expect(suggestionIcon).toHaveClass('i-ri-shield-star-line')
+
+    await userEvent.hover(suggestionIcon)
+
+    expect(await screen.findByText('common.modelProvider.selector.suggestionTip')).toBeInTheDocument()
   })
 
   it('should open model modal when clicking add on unconfigured model', () => {

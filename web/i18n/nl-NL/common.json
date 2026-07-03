@@ -408,6 +408,7 @@
   "modelProvider.selector.onlyCompatibleModelsShown": "Alleen compatibele modellen worden weergegeven",
   "modelProvider.selector.showIncompatibleModels": "Incompatibele modellen weergeven",
   "modelProvider.selector.suggestion": "Suggestie",
+  "modelProvider.selector.suggestionTip": "Aanbevolen voor agenttaken",
   "modelProvider.showModels": "Show Models",
   "modelProvider.speechToTextModel.key": "Speech-to-Text Model",
   "modelProvider.speechToTextModel.tip": "Set the default model for speech-to-text input in conversation.",

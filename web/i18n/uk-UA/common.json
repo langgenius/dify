@@ -408,6 +408,7 @@
   "modelProvider.selector.onlyCompatibleModelsShown": "Показано лише сумісні моделі",
   "modelProvider.selector.showIncompatibleModels": "Показати несумісні моделі",
   "modelProvider.selector.suggestion": "Рекомендація",
+  "modelProvider.selector.suggestionTip": "Рекомендовано для завдань агента",
   "modelProvider.showModels": "Показати моделі",
   "modelProvider.speechToTextModel.key": "Модель перетворення мовлення в текст",
   "modelProvider.speechToTextModel.tip": "Встановіть модель за замовчуванням для введення мовлення в текст під час розмови.",

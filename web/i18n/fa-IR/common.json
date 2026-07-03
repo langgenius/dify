@@ -408,6 +408,7 @@
   "modelProvider.selector.onlyCompatibleModelsShown": "فقط مدل‌های سازگار نمایش داده می‌شوند",
   "modelProvider.selector.showIncompatibleModels": "نمایش مدل‌های ناسازگار",
   "modelProvider.selector.suggestion": "پیشنهاد",
+  "modelProvider.selector.suggestionTip": "پیشنهادی برای وظایف عامل",
   "modelProvider.showModels": "نمایش مدل‌ها",
   "modelProvider.speechToTextModel.key": "مدل تبدیل گفتار به متن",
   "modelProvider.speechToTextModel.tip": "مدل پیش‌فرض را برای ورودی گفتار به متن در مکالمه تنظیم کنید.",

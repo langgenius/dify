@@ -408,6 +408,7 @@
   "modelProvider.selector.onlyCompatibleModelsShown": "แสดงเฉพาะโมเดลที่รองรับเท่านั้น",
   "modelProvider.selector.showIncompatibleModels": "แสดงโมเดลที่ไม่รองรับ",
   "modelProvider.selector.suggestion": "คำแนะนำ",
+  "modelProvider.selector.suggestionTip": "แนะนำสำหรับงานของเอเจนต์",
   "modelProvider.showModels": "แสดงโมเดล",
   "modelProvider.speechToTextModel.key": "โมเดลคําพูดเป็นข้อความ",
   "modelProvider.speechToTextModel.tip": "ตั้งค่าโมเดลเริ่มต้นสําหรับการป้อนข้อมูลคําพูดเป็นข้อความในการสนทนา",

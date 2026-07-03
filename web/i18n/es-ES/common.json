@@ -408,6 +408,7 @@
   "modelProvider.selector.onlyCompatibleModelsShown": "Solo se muestran los modelos compatibles",
   "modelProvider.selector.showIncompatibleModels": "Mostrar modelos incompatibles",
   "modelProvider.selector.suggestion": "Sugerencia",
+  "modelProvider.selector.suggestionTip": "Recomendado para tareas de agente",
   "modelProvider.showModels": "Mostrar Modelos",
   "modelProvider.speechToTextModel.key": "Modelo de Voz a Texto",
   "modelProvider.speechToTextModel.tip": "Establece el modelo predeterminado para la entrada de voz a texto en la conversación.",

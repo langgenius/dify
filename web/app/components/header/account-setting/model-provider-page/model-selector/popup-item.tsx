@@ -6,6 +6,7 @@ import { ComboboxGroup, ComboboxItem, ComboboxItemIndicator } from '@langgenius/
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
@@ -14,7 +15,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import { useLanguage, useUpdateModelList, useUpdateModelProviders } from '../hooks'
-import ModelBadge from '../model-badge'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import DropdownContent from '../provider-added-card/model-auth-dropdown/dropdown-content'
@@ -50,6 +50,7 @@ function PopupItem({
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const { t } = useTranslation()
   const language = useLanguage()
+  const suggestionTip = t('modelProvider.selector.suggestionTip', { ns: 'common' })
   const { setShowModelModal } = useModalContext()
   const { modelProviders } = useProviderContext()
   const updateModelList = useUpdateModelList()
@@ -186,9 +187,19 @@ function PopupItem({
                 nameClassName={modelItem.deprecated ? 'line-through' : undefined}
               >
                 {isModelSuggested && (
-                  <ModelBadge className="border-text-accent-secondary text-text-accent-secondary">
-                    {t('modelProvider.selector.suggestion', { ns: 'common' })}
-                  </ModelBadge>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={(
+                        <span
+                          aria-label={suggestionTip}
+                          className="i-ri-shield-star-line size-3.5 shrink-0 text-text-accent-secondary"
+                        />
+                      )}
+                    />
+                    <TooltipContent placement="top">
+                      {suggestionTip}
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </ModelName>
             </div>
