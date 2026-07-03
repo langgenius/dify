@@ -202,6 +202,7 @@
   "mainNav.integrations": "集成",
   "mainNav.marketplace": "Marketplace",
   "mainNav.webApps.noResults": "未找到 Web 應用",
+  "mainNav.webApps.openApp": "開啟 {{name}} Web 應用",
   "mainNav.webApps.searchPlaceholder": "搜尋 Web 應用",
   "mainNav.workspace.credits": "{{count}} 點額度",
   "mainNav.workspace.creditsUnit": "點額度",

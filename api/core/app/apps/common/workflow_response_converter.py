@@ -60,11 +60,11 @@ from core.workflow.human_input_policy import (
     enrich_human_input_pause_reasons,
     resolve_human_input_pause_reason_inputs,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,

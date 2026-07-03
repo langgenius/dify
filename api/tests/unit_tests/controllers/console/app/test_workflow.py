@@ -610,7 +610,7 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
         json={"inputs": {}},
     ):
         with pytest.raises(NotFound):
-            handler(api, "t1", app_model=SimpleNamespace(id="app"))
+            handler(api, Mock(), "t1", app_model=SimpleNamespace(id="app"))
 
 
 def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
