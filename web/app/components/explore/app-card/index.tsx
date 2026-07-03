@@ -61,7 +61,7 @@ const AppCard = ({
       {isClickable && (
         <button
           type="button"
-          className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           aria-labelledby={nameId}
           aria-describedby={app.description ? descriptionId : undefined}
           onClick={handleCardClick}

@@ -2,6 +2,7 @@ import logging
 from typing import cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
@@ -31,6 +32,7 @@ class ChatAppRunner(AppRunner):
 
     def run(
         self,
+        session: Session,
         application_generate_entity: ChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation: Conversation,
@@ -163,6 +165,7 @@ class ChatAppRunner(AppRunner):
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context, retrieved_files = dataset_retrieval.retrieve(
+                session=session,
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,

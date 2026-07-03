@@ -2,6 +2,7 @@ from typing import Any, cast, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
@@ -57,7 +58,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         )
 
     @override
-    def _run(self, query: str) -> str:
+    def _run(self, session: Session, query: str) -> str:
         dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
         dataset = db.session.scalar(dataset_stmt)
 
@@ -67,6 +68,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             hit_callback.on_query(query, dataset.id, db.session)
         dataset_retrieval = DatasetRetrieval()
         metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
+            session,
             [dataset.id],
             query,
             self.tenant_id,
@@ -83,6 +85,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
         if dataset.provider == "external":
             results: list[RetrievalDocument] = []
             external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+                session=session,
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 query=query,

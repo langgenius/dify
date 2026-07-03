@@ -45,6 +45,8 @@
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.mac": "Aby pokazać ukryte pliki .env, w oknie wyboru pliku naciśnij Command + Shift + .",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.other": "Jeśli plik .env jest ukryty, włącz wyświetlanie ukrytych plików w systemowym oknie wyboru plików.",
   "agentDetail.configure.advancedSettings.envEditor.importEnvTip.windows": "Aby pokazać ukryte pliki .env, włącz opcję „Ukryte elementy” w Eksploratorze plików.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines": "Pominięto {{count}} nieprawidłowy wiersz .env.",
+  "agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines_other": "Pominięto {{count}} nieprawidłowych wierszy .env.",
   "agentDetail.configure.advancedSettings.envEditor.keyColumn": "Key",
   "agentDetail.configure.advancedSettings.envEditor.keyPlaceholder": "Key",
   "agentDetail.configure.advancedSettings.envEditor.label": "Env Editor",

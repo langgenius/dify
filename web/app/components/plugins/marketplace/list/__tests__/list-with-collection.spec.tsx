@@ -1,4 +1,4 @@
-import type { MarketplaceCollection } from '../../types'
+import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'

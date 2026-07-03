@@ -423,6 +423,7 @@ export function AgentPromptEditor() {
           <div ref={editorRef} className="min-h-[104px] overflow-y-auto px-3 pt-0.5">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
+              aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
               className="min-h-[104px] text-text-primary"

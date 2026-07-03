@@ -21,13 +21,10 @@ const workspaceSwitchActionIconClassName = 'size-3.5 shrink-0'
 const workspaceSwitchListClassName = 'max-h-[240px] overflow-y-auto overscroll-contain scroll-py-1'
 const workspaceSwitchI18nKey = (key: string) => key as 'mainNav.workspace.settings'
 type WorkspaceSort = 'lastOpened' | 'createdAt'
-type WorkspaceListItem = TenantListItemResponse & {
-  last_opened_at?: number | null
-}
 
-const getWorkspaceName = (workspace: WorkspaceListItem) => workspace.name || workspace.id
-const getWorkspaceCreatedAt = (workspace: WorkspaceListItem) => workspace.created_at ?? 0
-const getWorkspaceLastOpenedAt = (workspace: WorkspaceListItem) => workspace.last_opened_at ?? 0
+const getWorkspaceName = (workspace: TenantListItemResponse) => workspace.name || workspace.id
+const getWorkspaceCreatedAt = (workspace: TenantListItemResponse) => workspace.created_at ?? 0
+const getWorkspaceLastOpenedAt = (workspace: TenantListItemResponse) => workspace.last_opened_at ?? 0
 
 function WorkspaceSwitchControls({
   searchText,
@@ -123,7 +120,7 @@ function WorkspaceSwitchControls({
 }
 
 type WorkspaceSwitcherProps = {
-  workspaces: WorkspaceListItem[]
+  workspaces: TenantListItemResponse[]
   onSwitchWorkspace: (workspaceId: string) => void
 }
 
@@ -167,7 +164,7 @@ export function WorkspaceSwitcher({
               aria-current={workspace.current ? 'true' : undefined}
               title={workspaceName}
               className={cn(
-                'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+                'flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
                 workspace.current && 'bg-state-base-hover',
               )}
               onClick={() => {

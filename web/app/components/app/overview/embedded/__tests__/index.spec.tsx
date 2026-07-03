@@ -142,6 +142,20 @@ describe('Embedded', () => {
     )
   })
 
+  it('calls onClose when the close button is clicked', async () => {
+    const onClose = vi.fn()
+
+    await act(async () => {
+      render(<Embedded {...baseProps} onClose={onClose} />)
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    })
+
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps hidden inputs collapsed by default and updates iframe and script content when values change', async () => {
     render(
       <Embedded
