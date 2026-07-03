@@ -418,6 +418,57 @@ describe('AgentPreviewChat', () => {
     await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
   })
 
+  it('should not show the send button loading state while preparing a later build message', async () => {
+    const saveDraftBeforeRun = vi.fn(() => new Promise<void>(() => {}))
+    renderPreviewChat({
+      conversationId: 'conversation-1',
+      sendButtonLabel: 'Start build',
+      onSaveDraftBeforeRun: saveDraftBeforeRun,
+    })
+
+    await waitFor(() => expect(screen.getByTestId('mock-chat')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-send-button-loading', 'false')
+    })
+    expect(handleSendMock).not.toHaveBeenCalled()
+  })
+
+  it('should not show the send button loading state while a later build message is responding', async () => {
+    useChatMock.mockImplementationOnce((
+      _config: unknown,
+      _formSettings: unknown,
+      chatList: unknown[],
+      stopCallback: (taskId: string) => void,
+    ) => {
+      stopCallbackRef.current = stopCallback
+
+      return {
+        chatList,
+        setTargetMessageId: vi.fn(),
+        isResponding: true,
+        handleSend: handleSendMock,
+        suggestedQuestions: [],
+        handleStop: () => stopCallback('task-1'),
+        handleAnnotationAdded: vi.fn(),
+        handleAnnotationEdited: vi.fn(),
+        handleAnnotationRemoved: vi.fn(),
+      }
+    })
+
+    renderPreviewChat({
+      conversationId: 'conversation-1',
+      sendButtonLabel: 'Start build',
+    })
+
+    await waitFor(() => expect(screen.getByTestId('mock-chat')).toBeInTheDocument())
+
+    expect(screen.getByTestId('mock-chat')).toHaveAttribute('data-send-button-loading', 'false')
+  })
+
   it('should use the default send button after the first build message', async () => {
     useChatMock.mockImplementationOnce((
       _config: unknown,

@@ -731,13 +731,14 @@ function AgentPreviewChatSession({
   }, [chatList, doSend])
   const isEmptyChat = chatList.length === 0
   const hasInstructions = !!config.pre_prompt.trim()
+  const sendButtonLoading = !conversationId && (isSendPending || isResponding)
   const emptyChatInputNode = (
     <div className="pointer-events-auto mt-5 w-full">
       <ChatInputArea
         botName={agentName || 'Agent'}
         customPlaceholder={inputPlaceholder}
         disabled={isResponding}
-        sendButtonLoading={isSendPending || isResponding}
+        sendButtonLoading={sendButtonLoading}
         showFileUpload={false}
         visionConfig={config.file_upload}
         speechToTextConfig={config.speech_to_text}
@@ -754,7 +755,7 @@ function AgentPreviewChatSession({
       config={config}
       chatList={chatList}
       isResponding={isResponding}
-      sendButtonLoading={isSendPending || isResponding}
+      sendButtonLoading={sendButtonLoading}
       chatNode={isEmptyChat
         ? renderEmptyState({
             agentIcon,
