@@ -1752,7 +1752,7 @@ export const zAgentSecretRefConfig = z.object({
   provider_credential_id: z.string().max(255).nullish(),
   ref: z.string().max(255).nullish(),
   type: z.string().max(64).nullish(),
-  value: z.string().max(255).nullish(),
+  value: z.string().nullish(),
   variable: z.string().max(255).nullish(),
 })
 
