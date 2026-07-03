@@ -74,7 +74,7 @@ describe('classifyResponse — canonical ErrorBody', () => {
 
 describe('classifyResponse 403', () => {
   it('maps 403 to AccessDenied (exit 4 bucket)', async () => {
-    const req403 = new Request('https://x/openapi/v1/apps/abc/export')
+    const req403 = new Request('https://x/openapi/v1/apps/abc/dsl')
     const res403 = new Response(
       JSON.stringify({ code: 'unsupported_token_type', message: 'unsupported_token_type', status: 403 }),
       { status: 403, headers: { 'content-type': 'application/json' } },

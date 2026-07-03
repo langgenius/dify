@@ -82,12 +82,12 @@ describe('AppsClient.describe', () => {
     await stub?.stop()
   })
 
-  it('hits /apps/<id>/describe, omits workspace_id and fields when not given', async () => {
+  it('hits /apps/<id>, omits workspace_id and fields when not given', async () => {
     stub = await startStubServer(cap => jsonResponder(200, DESCRIBE_BODY, cap))
 
     const res = await makeClient(stub.url).describe('app-1')
 
-    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1/describe')
+    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app-1')
     const q = queryOf(stub.captured.url)
     expect(q.has('workspace_id')).toBe(false)
     expect(q.has('fields')).toBe(false)
@@ -107,6 +107,6 @@ describe('AppsClient.describe', () => {
 
     await makeClient(stub.url).describe('app/with space')
 
-    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app%2Fwith%20space/describe')
+    expect(stub.captured.url?.split('?')[0]).toBe('/openapi/v1/apps/app%2Fwith%20space')
   })
 })

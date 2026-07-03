@@ -15,9 +15,9 @@ export type DifyMock = {
   scenario: Scenario
   setScenario: (s: Scenario) => void
   stop: () => Promise<void>
-  /** Body of the most recent POST to /apps/:id/run */
+  /** Body of the most recent POST to /apps/:id:run */
   lastRunBody: Record<string, unknown> | null
-  /** Number of times POST /apps/:id/files/upload was called */
+  /** Number of times POST /apps/:id/files was called */
   uploadCallCount: number
   /** Body of the most recent POST to /workspaces/:id/apps/imports */
   lastImportBody: Record<string, unknown> | null
@@ -251,7 +251,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     })
   })
 
-  app.get('/openapi/v1/apps/:id/describe', (c) => {
+  app.get('/openapi/v1/apps/:id', (c) => {
     const id = c.req.param('id')
     const wsId = c.req.query('workspace_id')
     const fieldsRaw = c.req.query('fields') ?? ''
@@ -279,7 +279,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     })
   })
 
-  app.get('/openapi/v1/permitted-external-apps/:id/describe', (c) => {
+  app.get('/openapi/v1/permitted-external-apps/:id', (c) => {
     const id = c.req.param('id')
     const fieldsRaw = c.req.query('fields') ?? ''
     const fields = fieldsRaw === '' ? [] : fieldsRaw.split(',').map(s => s.trim()).filter(s => s !== '')
@@ -307,7 +307,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     })
   })
 
-  app.get('/openapi/v1/apps/:id/export', (c) => {
+  app.get('/openapi/v1/apps/:id/dsl', (c) => {
     const id = c.req.param('id')
     const found = APPS.find(a => a.id === id)
     if (found === undefined)
@@ -315,7 +315,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     return c.json({ data: DSL_YAML })
   })
 
-  app.get('/openapi/v1/apps/:id/check-dependencies', (c) => {
+  app.get('/openapi/v1/apps/:id/dependencies', (c) => {
     const id = c.req.param('id')
     const found = APPS.find(a => a.id === id)
     if (found === undefined)
@@ -335,12 +335,13 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     return c.json({ id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' }, { status: 200 })
   })
 
-  app.post('/openapi/v1/workspaces/:wsId/apps/imports/:importId/confirm', (c) => {
+  app.post('/openapi/v1/workspaces/:wsId/apps/imports/:importId:confirm', (c) => {
     return c.json({ id: 'imp-1', status: 'completed', app_id: 'app-1', app_mode: 'chat' }, { status: 200 })
   })
 
-  app.post('/openapi/v1/apps/:id/run', async (c) => {
-    const id = c.req.param('id')
+  app.post('/openapi/v1/apps/:id:run', async (c) => {
+    // Hono drops the param adjacent to the `:run` literal; recover the app id from the path.
+    const id = c.req.path.replace(/^.*\/apps\//, '').replace(/:run$/, '')
     const body = await c.req.json() as { query?: string, inputs?: unknown }
     if (state !== undefined)
       state.lastRunBody = body as Record<string, unknown>
@@ -400,7 +401,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     return new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
   })
 
-  app.post('/openapi/v1/apps/:id/files/upload', async (c) => {
+  app.post('/openapi/v1/apps/:id/files', async (c) => {
     if (state !== undefined)
       state.uploadCallCount++
     const form = await c.req.formData()
@@ -421,11 +422,11 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     )
   })
 
-  app.post('/openapi/v1/apps/:id/tasks/:taskId/stop', (c) => {
+  app.post('/openapi/v1/apps/:id/tasks/:taskId:stop', (c) => {
     return c.json({ result: 'success' })
   })
 
-  app.post('/openapi/v1/apps/:id/form/human_input/:formToken', (c) => {
+  app.post('/openapi/v1/apps/:id/human-input-forms/:formToken:submit', (c) => {
     return c.json({})
   })
 
