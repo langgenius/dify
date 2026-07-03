@@ -327,18 +327,26 @@ def test_console_text_api_accepts_message_id_without_text(app: Flask, monkeypatc
 
     api = ChatMessageTextApi()
     handler = unwrap(api.post)
-    app_model = SimpleNamespace(id="a1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
-    with app.test_request_context(
-        "/console/api/apps/app/text-to-audio",
-        method="POST",
-        json={"message_id": "0f67f8c5-8f7c-4ebd-b549-7ac8e972d37e", "streaming": True},
+    with (
+        app.test_request_context(
+            "/console/api/apps/app/text-to-audio",
+            method="POST",
+            json={"message_id": "0f67f8c5-8f7c-4ebd-b549-7ac8e972d37e", "streaming": True},
+        ),
+        patch("controllers.console.app.audio.current_user", SimpleNamespace(id="account-1")),
     ):
         response = handler(api, app_model=app_model)
 
     assert response == {"audio": "ok"}
     assert calls["text"] == ""
-    assert calls["message_id"] == "0f67f8c5-8f7c-4ebd-b549-7ac8e972d37e"
+    assert calls["message_ref"] == MessageRef(
+        "tenant-1",
+        "app-1",
+        "0f67f8c5-8f7c-4ebd-b549-7ac8e972d37e",
+        account_id="account-1",
+    )
 
 
 def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
