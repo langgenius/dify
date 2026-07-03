@@ -102,7 +102,7 @@ const matchesProviderLabel = (provider: { label?: { en_US?: string | null, zh_Ha
   || provider.label?.zh_Hans === expected
 
 const stableModelConfig = (): StableModel => ({
-  name: process.env.E2E_STABLE_MODEL_NAME?.trim() || 'gpt-5.4-mini',
+  name: process.env.E2E_STABLE_MODEL_NAME?.trim() || 'gpt-5-nano',
   provider: process.env.E2E_STABLE_MODEL_PROVIDER?.trim() || 'openai',
   type: process.env.E2E_STABLE_MODEL_TYPE?.trim() || 'llm',
 })

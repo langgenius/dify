@@ -156,7 +156,7 @@ Agent Builder preflight is read-only. It checks long-lived seed resources and re
 
 Treat preseeded Agent Builder resources as environment contracts. Preflight can report that a stable model, dataset, Skill, Tool credential, fixed Agent, published Web app, or workflow reference is missing, inactive, not indexed, or drifted, but it must not repair that drift during a scenario. Seed scripts, CI bootstrap, or the documented environment maintenance flow own creating and keeping those resources valid.
 
-Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios, model-backed build-mode assertions, and Workflow Agent v2 node setup because the backend rejects Agent nodes without model config. Do not add the model preflight to pure navigation or identity checks unless the setup API itself requires model config. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5.4-mini` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
+Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios, model-backed build-mode assertions, and Workflow Agent v2 node setup because the backend rejects Agent nodes without model config. Do not add the model preflight to pure navigation or identity checks unless the setup API itself requires model config. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5-nano` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
 
 Keep `@stable-model` on Build draft apply scenarios that click `Apply`. The current product path calls `/build-chat/finalize` before applying the draft, and the backend returns `model is required` when the Agent Soul has no model config. Discard-only and pending-draft isolation scenarios can stay model-free when they do not finalize the Build draft.
 
@@ -166,7 +166,7 @@ Override the default selector only when a scenario or environment explicitly nee
 
 ```bash
 E2E_STABLE_MODEL_PROVIDER=openai
-E2E_STABLE_MODEL_NAME=gpt-5.4-mini
+E2E_STABLE_MODEL_NAME=gpt-5-nano
 E2E_STABLE_MODEL_TYPE=llm
 ```
 
