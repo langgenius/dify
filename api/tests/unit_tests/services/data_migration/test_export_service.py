@@ -126,6 +126,7 @@ def test_secret_free_mcp_dependencies_are_dependency_only():
     report_items = []
 
     service._export_mcp_tools(
+        object(),
         tenant_id="tenant-1",
         provider_ids=["mcp-1"],
         include_secrets=False,
@@ -147,16 +148,15 @@ def test_secret_free_mcp_dependencies_are_dependency_only():
     assert report_items[0].name == "mcp_tool mcp-1"
 
 
-def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id(monkeypatch):
+def test_get_mcp_provider_does_not_compare_non_uuid_identifier_to_uuid_id():
     statements = []
 
-    def capture_scalar(statement):
-        statements.append(str(statement))
-
-    monkeypatch.setattr("services.data_migration.export_service.db.session.scalar", capture_scalar)
+    class StubSession:
+        def scalar(self, statement):
+            statements.append(str(statement))
 
     with pytest.raises(MigrationDataError, match="MCP provider not found"):
-        MigrationExportService()._get_mcp_provider("tenant-1", "my-test-mcp")
+        MigrationExportService()._get_mcp_provider(StubSession(), "tenant-1", "my-test-mcp")
 
     assert len(statements) == 1
     assert "tool_mcp_providers.id =" not in statements[0]
