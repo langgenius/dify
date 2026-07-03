@@ -95,6 +95,47 @@ const jsonReplaceToolConfig = (world: DifyWorld): AgentSoulDifyToolConfig => {
   }
 }
 
+const getServiceApiSseEvents = (body: unknown) =>
+  asArray(asRecord(body).events).map(asRecord)
+
+const getServiceApiEventData = (event: Record<string, unknown>) => asRecord(event.data)
+
+const getServiceApiEventName = (event: Record<string, unknown>) => {
+  const data = getServiceApiEventData(event)
+
+  return asString(data.event) || asString(event.event)
+}
+
+const summarizeServiceApiRuntimeEvents = (body: unknown) =>
+  getServiceApiSseEvents(body).map((event, index) => {
+    const data = getServiceApiEventData(event)
+    const observation = asString(data.observation)
+    const answer = asString(data.answer)
+
+    return {
+      index,
+      event: getServiceApiEventName(event),
+      tool: asString(data.tool),
+      hasToolInput: Boolean(asString(data.tool_input)),
+      hasObservation: Boolean(observation),
+      observation: observation.slice(0, 180),
+      answer: answer.slice(0, 180),
+    }
+  })
+
+const findJsonReplaceRuntimeThought = (body: unknown) =>
+  getServiceApiSseEvents(body).find((event) => {
+    const data = getServiceApiEventData(event)
+    const toolInput = asString(data.tool_input)
+    const observation = asString(data.observation)
+
+    return getServiceApiEventName(event) === 'agent_thought'
+      && asString(data.tool) === 'json_replace'
+      && toolInput.includes(agentBuilderExpectedTokens.jsonToolBefore)
+      && toolInput.includes('$.marker')
+      && observation.includes(agentBuilderExpectedTokens.jsonToolAfter)
+  })
+
 const expectOAuth2CredentialPreserved = async (world: DifyWorld) => {
   const preseededAgent = getPreseededOAuthToolAgent(world)
   const expectedTool = await getPreseededOAuthToolConfig(preseededAgent.id)
@@ -259,9 +300,21 @@ Then(
     if (!response.ok)
       throw new Error(`Agent v2 Backend service API JSON Replace request failed with ${response.status}: ${JSON.stringify(response.body)}`)
 
-    const body = JSON.stringify(response.body)
-    expect(body).toContain(agentBuilderExpectedTokens.jsonToolAfter)
-    expect(body).toContain('json_replace')
+    const jsonReplaceThought = findJsonReplaceRuntimeThought(response.body)
+    if (!jsonReplaceThought) {
+      throw new Error(
+        [
+          'Agent v2 Backend service API did not emit a JSON Replace agent_thought with matching tool input and observation.',
+          `Received events: ${JSON.stringify(summarizeServiceApiRuntimeEvents(response.body))}`,
+        ].join('\n'),
+      )
+    }
+
+    const thought = getServiceApiEventData(jsonReplaceThought)
+    expect(asString(thought.tool_input)).toContain(agentBuilderExpectedTokens.jsonToolBefore)
+    expect(asString(thought.tool_input)).toContain('$.marker')
+    expect(asString(thought.observation)).toContain(agentBuilderExpectedTokens.jsonToolAfter)
+    expect(asString(asRecord(response.body).answer)).toContain(agentBuilderExpectedTokens.jsonToolAfter)
   },
 )
 
