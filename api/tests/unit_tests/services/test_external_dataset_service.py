@@ -142,11 +142,9 @@ def factory():
 
 class TestExternalDatasetServiceGetAPIs:
     """Test get_external_knowledge_apis operations - comprehensive coverage."""
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_success_basic(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test successful retrieval of external knowledge APIs with pagination."""
         # Arrange
@@ -172,11 +170,9 @@ class TestExternalDatasetServiceGetAPIs:
         assert result_items[0].id == "api-0"
         assert result_items[4].id == "api-4"
         mock_paginate.assert_called_once()
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_with_search_filter(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test retrieval with search filter."""
         # Arrange
@@ -199,11 +195,9 @@ class TestExternalDatasetServiceGetAPIs:
         assert len(result_items) == 1
         assert result_total == 1
         assert result_items[0].name == "Production API"
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_empty_results(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test retrieval with no results."""
         # Arrange
@@ -220,11 +214,9 @@ class TestExternalDatasetServiceGetAPIs:
         # Assert
         assert len(result_items) == 0
         assert result_total == 0
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_large_result_set(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test retrieval with large result set."""
         # Arrange
@@ -243,11 +235,9 @@ class TestExternalDatasetServiceGetAPIs:
         # Assert
         assert len(result_items) == 10
         assert result_total == 100
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_pagination_last_page(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test last page pagination with partial results."""
         # Arrange
@@ -266,11 +256,9 @@ class TestExternalDatasetServiceGetAPIs:
         # Assert
         assert len(result_items) == 5
         assert result_total == 100
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_case_insensitive_search(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test case-insensitive search functionality."""
         # Arrange
@@ -292,11 +280,9 @@ class TestExternalDatasetServiceGetAPIs:
         # Assert
         assert len(result_items) == 2
         assert result_total == 2
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_special_characters_search(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test search with special characters."""
         # Arrange
@@ -314,11 +300,9 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Assert
         assert len(result_items) == 1
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_max_per_page_limit(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test that max_per_page limit is enforced."""
         # Arrange
@@ -337,11 +321,9 @@ class TestExternalDatasetServiceGetAPIs:
         # Assert
         call_args = mock_paginate.call_args
         assert call_args.kwargs["max_per_page"] == 100
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.paginate_query")
     def test_get_external_knowledge_apis_ordered_by_created_at_desc(
-        self, mock_paginate, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_paginate, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test that results are ordered by created_at descending."""
         # Arrange
@@ -445,14 +427,13 @@ class TestExternalDatasetServiceValidateAPIList:
 
 class TestExternalDatasetServiceCreateAPI:
     """Test create_external_knowledge_api operations."""
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_success_full(
-        self, mock_check, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_check, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test successful creation with all fields."""
         # Arrange
+        mock_session = MagicMock()
         tenant_id = "tenant-123"
         user_id = "user-123"
         args = {
@@ -462,7 +443,7 @@ class TestExternalDatasetServiceCreateAPI:
         }
 
         # Act
-        result = ExternalDatasetService.create_external_knowledge_api(tenant_id, user_id, args, mock_db.session)
+        result = ExternalDatasetService.create_external_knowledge_api(tenant_id, user_id, args, mock_session)
 
         # Assert
         assert result.name == "Test API"
@@ -471,57 +452,53 @@ class TestExternalDatasetServiceCreateAPI:
         assert result.created_by == user_id
         assert result.updated_by == user_id
         mock_check.assert_called_once_with(args["settings"])
-        mock_db.session.add.assert_called_once()
-        mock_db.session.commit.assert_called_once()
-
-    @patch("services.external_knowledge_service.db")
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
     @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_minimal_fields(
-        self, mock_check, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_check, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test creation with minimal required fields."""
         # Arrange
+        mock_session = MagicMock()
         args = {
             "name": "Minimal API",
             "settings": {"endpoint": "https://api.example.com", "api_key": "key"},
         }
 
         # Act
-        result = ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_db.session)
+        result = ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_session)
 
         # Assert
         assert result.name == "Minimal API"
         assert result.description == ""
-
-    @patch("services.external_knowledge_service.db")
     def test_create_external_knowledge_api_missing_settings(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test creation fails when settings are missing."""
         # Arrange
+        mock_session = MagicMock()
         args = {"name": "Test API", "description": "Test"}
 
         # Act & Assert
         with pytest.raises(ValueError, match="settings is required"):
-            ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_db.session)
-
-    @patch("services.external_knowledge_service.db")
-    def test_create_external_knowledge_api_none_settings(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+            ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_session)
+    def test_create_external_knowledge_api_none_settings(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test creation fails when settings are explicitly None."""
         # Arrange
+        mock_session = MagicMock()
         args = {"name": "Test API", "settings": None}
 
         # Act & Assert
         with pytest.raises(ValueError, match="settings is required"):
-            ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_db.session)
-
-    @patch("services.external_knowledge_service.db")
+            ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_session)
     @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_settings_json_serialization(
-        self, mock_check, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_check, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test that settings are properly JSON serialized."""
         # Arrange
+        mock_session = MagicMock()
         settings = {
             "endpoint": "https://api.example.com",
             "api_key": "test-key",
@@ -530,20 +507,19 @@ class TestExternalDatasetServiceCreateAPI:
         args = {"name": "Test API", "settings": settings}
 
         # Act
-        result = ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_db.session)
+        result = ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_session)
 
         # Assert
         assert isinstance(result.settings, str)
         parsed_settings = json.loads(result.settings)
         assert parsed_settings == settings
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_unicode_handling(
-        self, mock_check, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_check, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test proper handling of Unicode characters in name and description."""
         # Arrange
+        mock_session = MagicMock()
         args = {
             "name": "测试API",
             "description": "テストの説明",
@@ -551,19 +527,18 @@ class TestExternalDatasetServiceCreateAPI:
         }
 
         # Act
-        result = ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_db.session)
+        result = ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_session)
 
         # Assert
         assert result.name == "测试API"
         assert result.description == "テストの説明"
-
-    @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
     def test_create_external_knowledge_api_long_description(
-        self, mock_check, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_check, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test creation with very long description."""
         # Arrange
+        mock_session = MagicMock()
         long_description = "A" * 1000
         args = {
             "name": "Test API",
@@ -572,7 +547,7 @@ class TestExternalDatasetServiceCreateAPI:
         }
 
         # Act
-        result = ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_db.session)
+        result = ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, mock_session)
 
         # Assert
         assert result.description == long_description
@@ -834,44 +809,42 @@ class TestExternalDatasetServiceCheckEndpoint:
 
 class TestExternalDatasetServiceGetAPI:
     """Test get_external_knowledge_api operations."""
-
-    @patch("services.external_knowledge_service.db")
-    def test_get_external_knowledge_api_success(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_get_external_knowledge_api_success(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test successful retrieval of external knowledge API."""
         # Arrange
+        mock_session = MagicMock()
         api_id = "api-123"
         expected_api = factory.create_external_knowledge_api_mock(api_id=api_id)
 
-        mock_db.session.scalar.return_value = expected_api
+        mock_session.scalar.return_value = expected_api
 
         # Act
         tenant_id = "tenant-123"
-        result = ExternalDatasetService.get_external_knowledge_api(mock_db.session, api_id, tenant_id)
+        result = ExternalDatasetService.get_external_knowledge_api(mock_session, api_id, tenant_id)
 
         # Assert
         assert result.id == api_id
-
-    @patch("services.external_knowledge_service.db")
-    def test_get_external_knowledge_api_not_found(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_get_external_knowledge_api_not_found(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test error when API is not found."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.get_external_knowledge_api(mock_db.session, "nonexistent-id", "tenant-123")
+            ExternalDatasetService.get_external_knowledge_api(mock_session, "nonexistent-id", "tenant-123")
 
 
 class TestExternalDatasetServiceUpdateAPI:
     """Test update_external_knowledge_api operations."""
 
     @patch("services.external_knowledge_service.naive_utc_now")
-    @patch("services.external_knowledge_service.db")
     def test_update_external_knowledge_api_success_all_fields(
-        self, mock_db, mock_now, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_now, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test successful update with all fields."""
         # Arrange
+        mock_session = MagicMock()
         api_id = "api-123"
         tenant_id = "tenant-123"
         user_id = "user-456"
@@ -886,24 +859,23 @@ class TestExternalDatasetServiceUpdateAPI:
             "settings": {"endpoint": "https://new.example.com", "api_key": "new-key"},
         }
 
-        mock_db.session.scalar.return_value = existing_api
+        mock_session.scalar.return_value = existing_api
 
         # Act
-        result = ExternalDatasetService.update_external_knowledge_api(mock_db.session, tenant_id, user_id, api_id, args)
+        result = ExternalDatasetService.update_external_knowledge_api(mock_session, tenant_id, user_id, api_id, args)
 
         # Assert
         assert result.name == "Updated API"
         assert result.description == "Updated description"
         assert result.updated_by == user_id
         assert result.updated_at == current_time
-        mock_db.session.commit.assert_called_once()
-
-    @patch("services.external_knowledge_service.db")
+        mock_session.commit.assert_called_once()
     def test_update_external_knowledge_api_preserve_hidden_api_key(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test that hidden API key is preserved from existing settings."""
         # Arrange
+        mock_session = MagicMock()
         api_id = "api-123"
         tenant_id = "tenant-123"
 
@@ -918,51 +890,48 @@ class TestExternalDatasetServiceUpdateAPI:
             "settings": {"endpoint": "https://api.example.com", "api_key": HIDDEN_VALUE},
         }
 
-        mock_db.session.scalar.return_value = existing_api
+        mock_session.scalar.return_value = existing_api
 
         # Act
         result = ExternalDatasetService.update_external_knowledge_api(
-            mock_db.session, tenant_id, "user-123", api_id, args
+            mock_session, tenant_id, "user-123", api_id, args
         )
 
         # Assert
         settings = json.loads(result.settings)
         assert settings["api_key"] == "original-secret-key"
-
-    @patch("services.external_knowledge_service.db")
-    def test_update_external_knowledge_api_not_found(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_update_external_knowledge_api_not_found(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test error when API is not found."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         args = {"name": "Updated API"}
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
             ExternalDatasetService.update_external_knowledge_api(
-                mock_db.session, "tenant-123", "user-123", "api-123", args
+                mock_session, "tenant-123", "user-123", "api-123", args
             )
-
-    @patch("services.external_knowledge_service.db")
     def test_update_external_knowledge_api_tenant_mismatch(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test error when tenant ID doesn't match."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         args = {"name": "Updated API"}
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
             ExternalDatasetService.update_external_knowledge_api(
-                mock_db.session, "wrong-tenant", "user-123", "api-123", args
+                mock_session, "wrong-tenant", "user-123", "api-123", args
             )
-
-    @patch("services.external_knowledge_service.db")
-    def test_update_external_knowledge_api_name_only(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_update_external_knowledge_api_name_only(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test updating only the name field."""
         # Arrange
+        mock_session = MagicMock()
         existing_api = factory.create_external_knowledge_api_mock(
             description="Original description",
             settings={"endpoint": "https://api.example.com", "api_key": "key"},
@@ -970,11 +939,11 @@ class TestExternalDatasetServiceUpdateAPI:
 
         args = {"name": "New Name Only"}
 
-        mock_db.session.scalar.return_value = existing_api
+        mock_session.scalar.return_value = existing_api
 
         # Act
         result = ExternalDatasetService.update_external_knowledge_api(
-            mock_db.session, "tenant-123", "user-123", "api-123", args
+            mock_session, "tenant-123", "user-123", "api-123", args
         )
 
         # Assert
@@ -983,99 +952,93 @@ class TestExternalDatasetServiceUpdateAPI:
 
 class TestExternalDatasetServiceDeleteAPI:
     """Test delete_external_knowledge_api operations."""
-
-    @patch("services.external_knowledge_service.db")
-    def test_delete_external_knowledge_api_success(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_delete_external_knowledge_api_success(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test successful deletion of external knowledge API."""
         # Arrange
+        mock_session = MagicMock()
         api_id = "api-123"
         tenant_id = "tenant-123"
 
         existing_api = factory.create_external_knowledge_api_mock(api_id=api_id, tenant_id=tenant_id)
 
-        mock_db.session.scalar.return_value = existing_api
+        mock_session.scalar.return_value = existing_api
 
         # Act
-        ExternalDatasetService.delete_external_knowledge_api(mock_db.session, tenant_id, api_id)
+        ExternalDatasetService.delete_external_knowledge_api(mock_session, tenant_id, api_id)
 
         # Assert
-        mock_db.session.delete.assert_called_once_with(existing_api)
-        mock_db.session.commit.assert_called_once()
-
-    @patch("services.external_knowledge_service.db")
-    def test_delete_external_knowledge_api_not_found(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+        mock_session.delete.assert_called_once_with(existing_api)
+        mock_session.commit.assert_called_once()
+    def test_delete_external_knowledge_api_not_found(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test error when API is not found."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.delete_external_knowledge_api(mock_db.session, "tenant-123", "api-123")
-
-    @patch("services.external_knowledge_service.db")
+            ExternalDatasetService.delete_external_knowledge_api(mock_session, "tenant-123", "api-123")
     def test_delete_external_knowledge_api_tenant_mismatch(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test error when tenant ID doesn't match."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.delete_external_knowledge_api(mock_db.session, "wrong-tenant", "api-123")
+            ExternalDatasetService.delete_external_knowledge_api(mock_session, "wrong-tenant", "api-123")
 
 
 class TestExternalDatasetServiceAPIUseCheck:
     """Test external_knowledge_api_use_check operations."""
-
-    @patch("services.external_knowledge_service.db")
     def test_external_knowledge_api_use_check_in_use_single(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test API use check when API has one binding."""
         # Arrange
+        mock_session = MagicMock()
         api_id = "api-123"
         tenant_id = "tenant-123"
 
-        mock_db.session.scalar.return_value = 1
+        mock_session.scalar.return_value = 1
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(mock_db.session, api_id, tenant_id)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(mock_session, api_id, tenant_id)
 
         # Assert
         assert in_use is True
         assert count == 1
-        assert "tenant_id" in str(mock_db.session.scalar.call_args.args[0])
-
-    @patch("services.external_knowledge_service.db")
+        assert "tenant_id" in str(mock_session.scalar.call_args.args[0])
     def test_external_knowledge_api_use_check_in_use_multiple(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test API use check with multiple bindings."""
         # Arrange
+        mock_session = MagicMock()
         api_id = "api-123"
         tenant_id = "tenant-123"
 
-        mock_db.session.scalar.return_value = 10
+        mock_session.scalar.return_value = 10
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(mock_db.session, api_id, tenant_id)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(mock_session, api_id, tenant_id)
 
         # Assert
         assert in_use is True
         assert count == 10
-
-    @patch("services.external_knowledge_service.db")
-    def test_external_knowledge_api_use_check_not_in_use(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_external_knowledge_api_use_check_not_in_use(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test API use check when API is not in use."""
         # Arrange
+        mock_session = MagicMock()
         api_id = "api-123"
         tenant_id = "tenant-123"
 
-        mock_db.session.scalar.return_value = 0
+        mock_session.scalar.return_value = 0
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(mock_db.session, api_id, tenant_id)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(mock_session, api_id, tenant_id)
 
         # Assert
         assert in_use is False
@@ -1084,49 +1047,46 @@ class TestExternalDatasetServiceAPIUseCheck:
 
 class TestExternalDatasetServiceGetBinding:
     """Test get_external_knowledge_binding_with_dataset_id operations."""
-
-    @patch("services.external_knowledge_service.db")
-    def test_get_external_knowledge_binding_success(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_get_external_knowledge_binding_success(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test successful retrieval of external knowledge binding."""
         # Arrange
+        mock_session = MagicMock()
         tenant_id = "tenant-123"
         dataset_id = "dataset-123"
 
         expected_binding = factory.create_external_knowledge_binding_mock(tenant_id=tenant_id, dataset_id=dataset_id)
 
-        mock_db.session.scalar.return_value = expected_binding
+        mock_session.scalar.return_value = expected_binding
 
         # Act
         result = ExternalDatasetService.get_external_knowledge_binding_with_dataset_id(
-            mock_db.session, tenant_id, dataset_id
+            mock_session, tenant_id, dataset_id
         )
 
         # Assert
         assert result.dataset_id == dataset_id
         assert result.tenant_id == tenant_id
-
-    @patch("services.external_knowledge_service.db")
-    def test_get_external_knowledge_binding_not_found(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_get_external_knowledge_binding_not_found(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test error when binding is not found."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ValueError, match="external knowledge binding not found"):
             ExternalDatasetService.get_external_knowledge_binding_with_dataset_id(
-                mock_db.session, "tenant-123", "dataset-123"
+                mock_session, "tenant-123", "dataset-123"
             )
 
 
 class TestExternalDatasetServiceDocumentValidate:
     """Test document_create_args_validate operations."""
-
-    @patch("services.external_knowledge_service.db")
     def test_document_create_args_validate_success_all_params(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test successful validation with all required parameters."""
         # Arrange
+        mock_session = MagicMock()
         tenant_id = "tenant-123"
         api_id = "api-123"
 
@@ -1140,19 +1100,18 @@ class TestExternalDatasetServiceDocumentValidate:
 
         api = factory.create_external_knowledge_api_mock(api_id=api_id, settings=[settings])
 
-        mock_db.session.scalar.return_value = api
+        mock_session.scalar.return_value = api
 
         process_parameter = {"param1": "value1", "param2": "value2"}
 
         # Act & Assert - should not raise
-        ExternalDatasetService.document_create_args_validate(mock_db.session, tenant_id, api_id, process_parameter)
-
-    @patch("services.external_knowledge_service.db")
+        ExternalDatasetService.document_create_args_validate(mock_session, tenant_id, api_id, process_parameter)
     def test_document_create_args_validate_missing_required_param(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test validation fails when required parameter is missing."""
         # Arrange
+        mock_session = MagicMock()
         tenant_id = "tenant-123"
         api_id = "api-123"
 
@@ -1160,44 +1119,41 @@ class TestExternalDatasetServiceDocumentValidate:
 
         api = factory.create_external_knowledge_api_mock(api_id=api_id, settings=[settings])
 
-        mock_db.session.scalar.return_value = api
+        mock_session.scalar.return_value = api
 
         process_parameter = {}
 
         # Act & Assert
         with pytest.raises(ValueError, match="required_param is required"):
-            ExternalDatasetService.document_create_args_validate(mock_db.session, tenant_id, api_id, process_parameter)
-
-    @patch("services.external_knowledge_service.db")
-    def test_document_create_args_validate_api_not_found(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+            ExternalDatasetService.document_create_args_validate(mock_session, tenant_id, api_id, process_parameter)
+    def test_document_create_args_validate_api_not_found(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test validation fails when API is not found."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.document_create_args_validate(mock_db.session, "tenant-123", "api-123", {})
-
-    @patch("services.external_knowledge_service.db")
+            ExternalDatasetService.document_create_args_validate(mock_session, "tenant-123", "api-123", {})
     def test_document_create_args_validate_no_custom_parameters(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test validation succeeds when no custom parameters defined."""
         # Arrange
+        mock_session = MagicMock()
         settings = {}
         api = factory.create_external_knowledge_api_mock(settings=[settings])
 
-        mock_db.session.scalar.return_value = api
+        mock_session.scalar.return_value = api
 
         # Act & Assert - should not raise
-        ExternalDatasetService.document_create_args_validate(mock_db.session, "tenant-123", "api-123", {})
-
-    @patch("services.external_knowledge_service.db")
+        ExternalDatasetService.document_create_args_validate(mock_session, "tenant-123", "api-123", {})
     def test_document_create_args_validate_optional_params_not_required(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test that optional parameters don't cause validation failure."""
         # Arrange
+        mock_session = MagicMock()
         settings = {
             "document_process_setting": [
                 {"name": "required_param", "required": True},
@@ -1207,13 +1163,13 @@ class TestExternalDatasetServiceDocumentValidate:
 
         api = factory.create_external_knowledge_api_mock(settings=[settings])
 
-        mock_db.session.scalar.return_value = api
+        mock_session.scalar.return_value = api
 
         process_parameter = {"required_param": "value"}
 
         # Act & Assert - should not raise
         ExternalDatasetService.document_create_args_validate(
-            mock_db.session, "tenant-123", "api-123", process_parameter
+            mock_session, "tenant-123", "api-123", process_parameter
         )
 
 
@@ -1503,11 +1459,10 @@ class TestExternalDatasetServiceGetSettings:
 
 class TestExternalDatasetServiceCreateDataset:
     """Test create_external_dataset operations."""
-
-    @patch("services.external_knowledge_service.db")
-    def test_create_external_dataset_success_full(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+    def test_create_external_dataset_success_full(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test successful creation of external dataset with all fields."""
         # Arrange
+        mock_session = MagicMock()
         tenant_id = "tenant-123"
         user_id = "user-123"
         args = {
@@ -1520,90 +1475,86 @@ class TestExternalDatasetServiceCreateDataset:
 
         api = factory.create_external_knowledge_api_mock(api_id="api-123")
 
-        mock_db.session.scalar.side_effect = [None, api]
+        mock_session.scalar.side_effect = [None, api]
 
         # Act
-        result = ExternalDatasetService.create_external_dataset(tenant_id, user_id, args, mock_db.session)
+        result = ExternalDatasetService.create_external_dataset(tenant_id, user_id, args, mock_session)
 
         # Assert
         assert result.name == "Test External Dataset"
         assert result.description == "Comprehensive test description"
         assert result.provider == "external"
         assert result.created_by == user_id
-        mock_db.session.add.assert_called()
-        mock_db.session.commit.assert_called_once()
-
-    @patch("services.external_knowledge_service.db")
+        mock_session.add.assert_called()
+        mock_session.commit.assert_called_once()
     def test_create_external_dataset_duplicate_name_error(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test error when dataset name already exists."""
         # Arrange
+        mock_session = MagicMock()
         existing_dataset = factory.create_dataset_mock(name="Duplicate Dataset")
 
-        mock_db.session.scalar.return_value = existing_dataset
+        mock_session.scalar.return_value = existing_dataset
 
         args = {"name": "Duplicate Dataset"}
 
         # Act & Assert
         with pytest.raises(DatasetNameDuplicateError):
-            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, mock_db.session)
-
-    @patch("services.external_knowledge_service.db")
-    def test_create_external_dataset_api_not_found_error(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
+            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, mock_session)
+    def test_create_external_dataset_api_not_found_error(self, factory: ExternalDatasetServiceTestDataFactory):
         """Test error when external knowledge API is not found."""
         # Arrange
-        mock_db.session.scalar.side_effect = [None, None]
+        mock_session = MagicMock()
+        mock_session.scalar.side_effect = [None, None]
 
         args = {"name": "Test Dataset", "external_knowledge_api_id": "nonexistent-api"}
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, mock_db.session)
-
-    @patch("services.external_knowledge_service.db")
+            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, mock_session)
     def test_create_external_dataset_missing_knowledge_id_error(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test error when external_knowledge_id is missing."""
         # Arrange
+        mock_session = MagicMock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [None, api]
+        mock_session.scalar.side_effect = [None, api]
 
         args = {"name": "Test Dataset", "external_knowledge_api_id": "api-123"}
 
         # Act & Assert
         with pytest.raises(ValueError, match="external_knowledge_id is required"):
-            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, mock_db.session)
-
-    @patch("services.external_knowledge_service.db")
+            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, mock_session)
     def test_create_external_dataset_missing_api_id_error(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test error when external_knowledge_api_id is missing."""
         # Arrange
+        mock_session = MagicMock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [None, api]
+        mock_session.scalar.side_effect = [None, api]
 
         args = {"name": "Test Dataset", "external_knowledge_id": "knowledge-123"}
 
         # Act & Assert
         with pytest.raises(ValueError, match="external_knowledge_api_id is required"):
-            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, mock_db.session)
+            ExternalDatasetService.create_external_dataset("tenant-123", "user-123", args, mock_session)
 
 
 class TestExternalDatasetServiceFetchRetrieval:
     """Test fetch_external_knowledge_retrieval operations."""
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_success_with_results(
-        self, mock_db, mock_process, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_process, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test successful external knowledge retrieval with results."""
         # Arrange
+        mock_session = MagicMock()
         tenant_id = "tenant-123"
         dataset_id = "dataset-123"
         query = "test query for retrieval"
@@ -1613,7 +1564,7 @@ class TestExternalDatasetServiceFetchRetrieval:
         )
         api = factory.create_external_knowledge_api_mock(api_id="api-123")
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1629,54 +1580,52 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act
         result = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            mock_db.session, tenant_id, dataset_id, query, external_retrieval_parameters
+            mock_session, tenant_id, dataset_id, query, external_retrieval_parameters
         )
 
         # Assert
         assert len(result) == 2
         assert result[0]["content"] == "result 1"
         assert result[1]["score"] == 0.8
-
-    @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_binding_not_found_error(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test error when external knowledge binding is not found."""
         # Arrange
-        mock_db.session.scalar.return_value = None
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match="external knowledge binding not found"):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, "tenant-123", "dataset-123", "query", {}
+                mock_session, "tenant-123", "dataset-123", "query", {}
             )
-
-    @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_cross_tenant_api_template_error(
-        self, mock_db, factory: ExternalDatasetServiceTestDataFactory
+        self, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test error when a binding points to an API template outside the dataset tenant."""
         # Arrange
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
-        mock_db.session.scalar.side_effect = [binding, None]
+        mock_session.scalar.side_effect = [binding, None]
 
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match="external api template not found"):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, "tenant-123", "dataset-123", "query", {}
+                mock_session, "tenant-123", "dataset-123", "query", {}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_empty_results(
-        self, mock_db, mock_process, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_process, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test retrieval with empty results."""
         # Arrange
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1685,23 +1634,23 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act
         result = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
+            mock_session, "tenant-123", "dataset-123", "query", {"top_k": 5}
         )
 
         # Assert
         assert len(result) == 0
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_with_score_threshold(
-        self, mock_db, mock_process, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_process, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test retrieval with score threshold enabled."""
         # Arrange
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1716,7 +1665,7 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         # Act
         result = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            mock_db.session, "tenant-123", "dataset-123", "query", external_retrieval_parameters
+            mock_session, "tenant-123", "dataset-123", "query", external_retrieval_parameters
         )
 
         # Assert
@@ -1726,16 +1675,16 @@ class TestExternalDatasetServiceFetchRetrieval:
         assert call_args.params["retrieval_setting"]["score_threshold"] == 0.75
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_non_200_status_raises_exception(
-        self, mock_db, mock_process, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_process, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test that non-200 status code raises Exception with response text."""
         # Arrange
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = 500
@@ -1745,7 +1694,7 @@ class TestExternalDatasetServiceFetchRetrieval:
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match="Internal Server Error: Database connection failed"):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
+                mock_session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @pytest.mark.parametrize(
@@ -1762,12 +1711,12 @@ class TestExternalDatasetServiceFetchRetrieval:
         ],
     )
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_various_error_status_codes(
-        self, mock_db, mock_process, factory: ExternalDatasetServiceTestDataFactory, status_code, error_message
+        self, mock_process, factory: ExternalDatasetServiceTestDataFactory, status_code, error_message
     ):
         """Test that various error status codes raise exceptions with response text."""
         # Arrange
+        mock_session = MagicMock()
         tenant_id = "tenant-123"
         dataset_id = "dataset-123"
 
@@ -1776,7 +1725,7 @@ class TestExternalDatasetServiceFetchRetrieval:
         )
         api = factory.create_external_knowledge_api_mock(api_id="api-123")
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = status_code
@@ -1786,20 +1735,20 @@ class TestExternalDatasetServiceFetchRetrieval:
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError, match=re.escape(error_message)):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, tenant_id, dataset_id, "query", {"top_k": 5}
+                mock_session, tenant_id, dataset_id, "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
     def test_fetch_external_knowledge_retrieval_empty_response_text(
-        self, mock_db, mock_process, factory: ExternalDatasetServiceTestDataFactory
+        self, mock_process, factory: ExternalDatasetServiceTestDataFactory
     ):
         """Test exception with empty response text."""
         # Arrange
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = 503
@@ -1809,17 +1758,17 @@ class TestExternalDatasetServiceFetchRetrieval:
         # Act & Assert
         with pytest.raises(ExternalKnowledgeRetrievalError):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
+                mock_session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
-    def test_fetch_external_knowledge_retrieval_invalid_json_response(self, mock_db, mock_process, factory):
+    def test_fetch_external_knowledge_retrieval_invalid_json_response(self, mock_process, factory):
         """Test malformed JSON success responses are normalized to external retrieval errors."""
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1828,17 +1777,17 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
+                mock_session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
-    def test_fetch_external_knowledge_retrieval_invalid_success_payload_shape(self, mock_db, mock_process, factory):
+    def test_fetch_external_knowledge_retrieval_invalid_success_payload_shape(self, mock_process, factory):
         """Test malformed success payload shapes are normalized to external retrieval errors."""
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1847,17 +1796,17 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
+                mock_session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
-    def test_fetch_external_knowledge_retrieval_invalid_records_shape(self, mock_db, mock_process, factory):
+    def test_fetch_external_knowledge_retrieval_invalid_records_shape(self, mock_process, factory):
         """Test non-list records payloads are normalized to external retrieval errors."""
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -1866,20 +1815,20 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="invalid external knowledge response"):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
+                mock_session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
-    @patch("services.external_knowledge_service.db")
-    def test_fetch_external_knowledge_retrieval_wraps_transport_errors(self, mock_db, mock_process, factory):
+    def test_fetch_external_knowledge_retrieval_wraps_transport_errors(self, mock_process, factory):
         """Test transport/runtime failures are normalized to external retrieval errors."""
+        mock_session = MagicMock()
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
 
-        mock_db.session.scalar.side_effect = [binding, api]
+        mock_session.scalar.side_effect = [binding, api]
         mock_process.side_effect = RuntimeError("connection reset by peer")
 
         with pytest.raises(ExternalKnowledgeRetrievalError, match="connection reset by peer"):
             ExternalDatasetService.fetch_external_knowledge_retrieval(
-                mock_db.session, "tenant-123", "dataset-123", "query", {"top_k": 5}
+                mock_session, "tenant-123", "dataset-123", "query", {"top_k": 5}
             )
