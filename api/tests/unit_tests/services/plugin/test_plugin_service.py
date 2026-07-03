@@ -7,6 +7,7 @@ import pytest
 from pydantic import TypeAdapter
 from redis import RedisError
 
+from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStatus, PluginModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
@@ -832,9 +833,27 @@ class TestPluginModelProviderCacheInvalidation:
 
             from core.plugin.plugin_service import PluginService
 
-            result = PluginService.install_from_local_pkg("tenant-1", ["langgenius/openai:1.0.0"])
+            result = PluginService.install_from_local_pkg(
+                "tenant-1",
+                [
+                    "langgenius/openai:1.0.0",
+                    "langgenius/tavily:1.0.0",
+                ],
+            )
 
         assert result == "task-id"
+        installer.install_from_identifiers.assert_called_once_with(
+            "tenant-1",
+            [
+                "langgenius/openai:1.0.0",
+                "langgenius/tavily:1.0.0",
+            ],
+            PluginInstallationSource.Package,
+            [
+                {"plugin_unique_identifier": "langgenius/openai:1.0.0"},
+                {"plugin_unique_identifier": "langgenius/tavily:1.0.0"},
+            ],
+        )
         invalidate_cache.assert_called_once_with("tenant-1")
 
     def test_upgrade_plugin_with_github_invalidates_model_provider_cache_for_tenant(self) -> None:

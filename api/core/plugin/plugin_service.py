@@ -873,7 +873,10 @@ class PluginService:
             tenant_id,
             plugin_unique_identifiers,
             PluginInstallationSource.Package,
-            [{}],
+            [
+                {"plugin_unique_identifier": plugin_unique_identifier}
+                for plugin_unique_identifier in plugin_unique_identifiers
+            ],
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result

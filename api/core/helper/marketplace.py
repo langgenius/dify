@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Sequence
+from urllib.parse import urlencode
 
 import httpx
 from yarl import URL
@@ -16,7 +17,8 @@ MARKETPLACE_TIMEOUT = 30
 
 
 def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
-    return str((marketplace_api_url / "api/v1/plugins/download").with_query(unique_identifier=plugin_unique_identifier))
+    query = urlencode({"unique_identifier": plugin_unique_identifier})
+    return f"{marketplace_api_url / 'api/v1/plugins/download'}?{query}"
 
 
 def download_plugin_pkg(plugin_unique_identifier: str):
