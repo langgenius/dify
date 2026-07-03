@@ -204,7 +204,7 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
         </div>
         {isMultipleLine && (<div className="px-[9px]">{operation}</div>)}
       </div>
-      {footerNotice && (
+      {footerNotice !== undefined && footerNotice !== null && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
           <div className="flex items-center gap-1">
             <div className="i-ri-information-line size-3.5 shrink-0 text-text-accent" />
