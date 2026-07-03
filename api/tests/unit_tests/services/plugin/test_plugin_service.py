@@ -1,10 +1,10 @@
 import datetime
 import uuid
-import zlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
+import zstandard
 from pydantic import TypeAdapter
 from redis import RedisError
 
@@ -154,7 +154,7 @@ class TestPluginModelProviderCache:
         prefix = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX
         assert stored_payload.startswith(prefix)
         assert len(stored_payload) < len(raw_payload)
-        assert zlib.decompress(stored_payload[len(prefix) :]) == raw_payload
+        assert zstandard.decompress(stored_payload[len(prefix) :]) == raw_payload
 
     def test_fetch_plugin_model_providers_reads_compressed_cached_provider_without_calling_daemon(self) -> None:
         """Compressed tenant cache entries are decoded before provider schema validation."""
@@ -166,7 +166,7 @@ class TestPluginModelProviderCache:
 
         from core.plugin.plugin_service import PluginService
 
-        compressed_payload = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zlib.compress(
+        compressed_payload = PluginService.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zstandard.compress(
             cached_payload, level=1
         )
 
