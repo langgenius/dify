@@ -119,11 +119,13 @@ def test_create_collection_skips_when_cache_hit(tidb_module, monkeypatch: pytest
     vector = tidb_module.TiDBVector.__new__(tidb_module.TiDBVector)
     vector._collection_name = "collection_1"
     vector._engine = MagicMock()
+    vector._client_config = _config(tidb_module)
 
     tidb_module.Session = MagicMock()
 
     vector._create_collection(3)
 
+    tidb_module.redis_client.get.assert_called_once_with("vector_indexing_collection_1_semantic")
     tidb_module.Session.assert_not_called()
     tidb_module.redis_client.set.assert_not_called()
 
@@ -191,8 +193,49 @@ def test_create_collection_adds_fulltext_index_when_enabled(tidb_module, monkeyp
 
     vector._create_collection(3)
 
-    sql = str(session.execute.call_args.args[0])
+    sql = str(session.execute.call_args_list[0].args[0])
     assert "FULLTEXT INDEX idx_text (text) WITH PARSER MULTILINGUAL" in sql
+
+
+def test_create_collection_ensures_fulltext_index_when_enabled(tidb_module, monkeypatch: pytest.MonkeyPatch):
+    lock = MagicMock()
+    lock.__enter__.return_value = None
+    lock.__exit__.return_value = None
+    monkeypatch.setattr(tidb_module.redis_client, "lock", MagicMock(return_value=lock))
+    monkeypatch.setattr(tidb_module.redis_client, "get", MagicMock(return_value=None))
+    monkeypatch.setattr(tidb_module.redis_client, "set", MagicMock())
+
+    session = MagicMock()
+    index_check_result = MagicMock()
+    index_check_result.scalar.return_value = 0
+    session.execute.side_effect = [None, index_check_result, None]
+
+    class _BeginCtx:
+        def __enter__(self):
+            return session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    mock_sm = MagicMock(begin=MagicMock(return_value=_BeginCtx()))
+    monkeypatch.setattr(tidb_module, "sessionmaker", lambda **kwargs: mock_sm)
+
+    vector = tidb_module.TiDBVector.__new__(tidb_module.TiDBVector)
+    vector._collection_name = "collection_1"
+    vector._engine = MagicMock()
+    vector._distance_func = "cosine"
+    vector._client_config = _config(tidb_module).model_copy(update={"enable_fulltext_search": True})
+
+    vector._create_collection(3)
+
+    executed_sql = [str(call.args[0]) for call in session.execute.call_args_list]
+    assert "INFORMATION_SCHEMA.STATISTICS" in executed_sql[1]
+    assert "ALTER TABLE collection_1 ADD FULLTEXT INDEX idx_text (text) WITH PARSER MULTILINGUAL" in executed_sql[2]
+    assert session.execute.call_args_list[1].kwargs["params"] == {
+        "index_name": "idx_text",
+        "table_name": "collection_1",
+    }
+    tidb_module.redis_client.get.assert_called_once_with("vector_indexing_collection_1_fulltext")
 
 
 def test_add_texts_batches_inserts_and_returns_ids(tidb_module, monkeypatch: pytest.MonkeyPatch):
@@ -270,7 +313,7 @@ def test_search_by_full_text_queries_tidb_fts_and_scores(tidb_vector_with_sessio
         "search query",
         top_k=2,
         score_threshold=0.5,
-        document_ids_filter=["d-1", "d-2"],
+        document_ids_filter=["d-1", "d'2"],
     )
 
     assert len(docs) == 2
@@ -280,8 +323,15 @@ def test_search_by_full_text_queries_tidb_fts_and_scores(tidb_vector_with_sessio
     sql = str(session.execute.call_args.args[0])
     params = session.execute.call_args.kwargs["params"]
     assert "FTS_MATCH_WORD(text, :query)" in sql
-    assert "meta->>'$.document_id' in ('d-1', 'd-2')" in sql
-    assert params == {"query": "search query", "score_threshold": 0.5, "top_k": 2}
+    assert "document_id IN (:document_id_0, :document_id_1)" in sql
+    assert "d'2" not in sql
+    assert params == {
+        "document_id_0": "d-1",
+        "document_id_1": "d'2",
+        "query": "search query",
+        "score_threshold": 0.5,
+        "top_k": 2,
+    }
 
 
 # 2. text_exists returns True when ids found
@@ -441,15 +491,18 @@ def test_search_by_vector_filters_and_scores(tidb_module, monkeypatch: pytest.Mo
         [0.1, 0.2],
         top_k=2,
         score_threshold=0.5,
-        document_ids_filter=["d-1", "d-2"],
+        document_ids_filter=["d-1", "d'2"],
     )
     assert len(docs) == 2
     assert docs[0].metadata["score"] == pytest.approx(0.8)
     assert docs[1].metadata["score"] == pytest.approx(0.6)
     sql = str(session.execute.call_args.args[0])
     params = session.execute.call_args.kwargs["params"]
-    assert "meta->>'$.document_id' in ('d-1', 'd-2')" in sql
+    assert "document_id IN (:document_id_0, :document_id_1)" in sql
+    assert "d'2" not in sql
     assert params["distance"] == pytest.approx(0.5)
+    assert params["document_id_0"] == "d-1"
+    assert params["document_id_1"] == "d'2"
     assert params["top_k"] == 2
     session.commit.assert_not_called()
 
