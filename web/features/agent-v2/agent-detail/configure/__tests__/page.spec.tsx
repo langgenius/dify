@@ -325,6 +325,7 @@ vi.mock('../components/preview/header', () => ({
     onOpenWorkingDirectory: () => void
     onRefresh: () => void
     refreshDisabled?: boolean
+    showWorkingDirectoryAction?: boolean
   }) => (
     <div>
       <div>{props.mode}</div>
@@ -337,9 +338,11 @@ vi.mock('../components/preview/header', () => ({
       <button type="button" onClick={props.onToggleChatFeatures}>
         chat features
       </button>
-      <button type="button" onClick={props.onOpenWorkingDirectory}>
-        open working directory
-      </button>
+      {props.showWorkingDirectoryAction && (
+        <button type="button" onClick={props.onOpenWorkingDirectory}>
+          open working directory
+        </button>
+      )}
       <button type="button" disabled={props.refreshDisabled} onClick={props.onRefresh}>
         restart preview
       </button>
@@ -804,6 +807,59 @@ describe('AgentConfigurePage', () => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       })
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+    })
+
+    it('should show the working directory action only when build draft can be applied', async () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'open working directory' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      })
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'open working directory' })).not.toBeInTheDocument()
     })
 
     it('should show chat features from the active build draft source as read-only', async () => {

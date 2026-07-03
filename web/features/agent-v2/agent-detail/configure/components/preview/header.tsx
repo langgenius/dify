@@ -113,6 +113,7 @@ export function AgentPreviewHeader({
   onOpenWorkingDirectory,
   onRefresh,
   refreshDisabled,
+  showWorkingDirectoryAction = false,
   showChatFeaturesAction = true,
   trailingAction,
 }: {
@@ -124,6 +125,7 @@ export function AgentPreviewHeader({
   onOpenWorkingDirectory: () => void
   onRefresh: () => void
   refreshDisabled?: boolean
+  showWorkingDirectoryAction?: boolean
   showChatFeaturesAction?: boolean
   trailingAction?: ReactNode
 }) {
@@ -190,7 +192,7 @@ export function AgentPreviewHeader({
           >
             <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
           </button>
-          {mode === 'build' && (
+          {mode === 'build' && showWorkingDirectoryAction && (
             <button
               type="button"
               onClick={onOpenWorkingDirectory}

@@ -288,6 +288,10 @@ function AgentConfigurePageComposerContent({
     || buildDraftActions.isApplyingBuildDraft
     || buildDraftActions.isDiscardingBuildDraft
   const isChatFeaturesReadOnly = (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
+  const showWorkingDirectoryAction = buildDraft.isActive
+    && !buildDraftActionsDisabled
+    && !buildDraftActions.isApplyingBuildDraft
+    && !buildDraftActions.isDiscardingBuildDraft
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return
@@ -365,6 +369,7 @@ function AgentConfigurePageComposerContent({
               }}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRestartCurrentChatDisabled}
+              showWorkingDirectoryAction={showWorkingDirectoryAction}
             />
           )}
           chat={(
