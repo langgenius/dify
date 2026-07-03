@@ -91,6 +91,31 @@ describe('classifyResponse 403', () => {
   })
 })
 
+describe('classifyResponse 426', () => {
+  it('maps 426 to VersionSkew (exit 6) and surfaces the server upgrade message', async () => {
+    const body = {
+      code: 'upgrade_required',
+      message: 'difyctl 0.1.0 is no longer supported; upgrade to >= 0.2.0.',
+      status: 426,
+      hint: 'Upgrade difyctl: https://docs.dify.ai/en/cli/install',
+    }
+
+    const err = await classified(426, body)
+
+    expect(err.code).toBe(ErrorCode.VersionSkew)
+    expect(err.exit()).toBe(6)
+    expect(err.message).toBe('difyctl 0.1.0 is no longer supported; upgrade to >= 0.2.0.')
+    expect(err.serverError?.code).toBe('upgrade_required')
+  })
+
+  it('426 with no parseable ErrorBody falls back to a version message', async () => {
+    const err = await classified(426, 'not json')
+
+    expect(err.code).toBe(ErrorCode.VersionSkew)
+    expect(err.message).toBe('client version no longer supported by the server')
+  })
+})
+
 describe('classifyResponse — non-conforming bodies (no fallback by design)', () => {
   it('non-JSON body yields no serverError, classification by status', async () => {
     const err = await classified(502, '<html>bad gateway</html>')

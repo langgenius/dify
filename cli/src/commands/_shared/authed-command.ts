@@ -14,6 +14,7 @@ import { createHttpClient } from '@/http/client'
 import { getTokenStore } from '@/store/manager'
 import { realStreams } from '@/sys/io/streams'
 import { hostWithScheme, openAPIBase } from '@/util/host'
+import { enforceDifyVersion } from '@/version/enforce'
 import { versionInfo } from '@/version/info'
 import { maybeNudgeCompat } from '@/version/nudge'
 import { resolveRetryAttempts } from './global-flags.js'
@@ -55,6 +56,10 @@ export async function buildAuthedContext(
 
   const cache = opts.withCache === true ? await loadAppInfoCache() : undefined
 
+  // Hard gate: refuse a server too old for this difyctl (throws → exit 6).
+  // Cached per host (1h) so most commands don't re-probe. Then the soft nudge
+  // handles the "server too new" direction.
+  await enforceDifyVersion(host)
   await runCompatNudge({ host, io })
 
   return { reg, active, store, http, host, io, cache }

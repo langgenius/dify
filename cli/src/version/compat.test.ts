@@ -32,14 +32,14 @@ describe('evaluateCompat', () => {
     expect(evaluateCompat('1.7.0', range).status).toBe('compatible')
   })
 
-  it('returns unsupported when server is below minimum', () => {
+  it('returns too_old when server is below minimum', () => {
     const v = evaluateCompat('1.5.9', range)
-    expect(v.status).toBe('unsupported')
+    expect(v.status).toBe('too_old')
     expect(v.detail).toContain('1.5.9')
   })
 
-  it('returns unsupported when server is above maximum', () => {
-    expect(evaluateCompat('2.0.0', range).status).toBe('unsupported')
+  it('returns too_new when server is above maximum', () => {
+    expect(evaluateCompat('2.0.0', range).status).toBe('too_new')
   })
 
   it('returns unknown when server version is empty', () => {

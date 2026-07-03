@@ -14,7 +14,7 @@ export function compatString(): string {
   return `dify >=${difyCompat.minDify}, <=${difyCompat.maxDify}`
 }
 
-export type CompatStatus = 'compatible' | 'unsupported' | 'unknown'
+export type CompatStatus = 'compatible' | 'too_old' | 'too_new' | 'unknown'
 
 export type CompatVerdict = {
   readonly status: CompatStatus
@@ -54,5 +54,19 @@ export function evaluateCompat(
   if (satisfies(parsedServer, parsedRange))
     return { status: 'compatible', detail: `server ${serverVersion} in [${range.minDify}, ${range.maxDify}]` }
 
-  return { status: 'unsupported', detail: `server ${serverVersion} outside [${range.minDify}, ${range.maxDify}]` }
+  // Outside the window. Distinguish too-old (below min → the caller hard-blocks)
+  // from too-new (above max → soft nudge) by testing the lower bound alone; this
+  // reuses `satisfies` so we need no separate version-compare import.
+  const minOnly = (() => {
+    try {
+      return parseRange(`>=${range.minDify}`)
+    }
+    catch {
+      return undefined
+    }
+  })()
+  if (minOnly !== undefined && !satisfies(parsedServer, minOnly))
+    return { status: 'too_old', detail: `server ${serverVersion} is older than the minimum ${range.minDify}` }
+
+  return { status: 'too_new', detail: `server ${serverVersion} is newer than the tested maximum ${range.maxDify}` }
 }
