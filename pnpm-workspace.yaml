@@ -69,7 +69,7 @@ catalog:
   '@floating-ui/react': 0.27.19
   '@formatjs/intl-localematcher': 0.8.10
   '@heroicons/react': 2.2.0
-  '@hey-api/openapi-ts': https://pkg.pr.new/@hey-api/openapi-ts@4195
+  '@hey-api/openapi-ts': https://pkg.pr.new/hyoban/openapi-ts/@hey-api/openapi-ts@b686baf
   '@hono/node-server': 2.0.6
   '@iconify-json/heroicons': 1.2.3
   '@iconify-json/ri': 1.2.10
