@@ -1,27 +1,62 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
+import { useTranslation } from 'react-i18next'
+import NavLink from '@/app/components/app-sidebar/nav-link'
 import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
+
+const NodeTreeIcon = ({ className }: { className?: string }) => (
+  <span className={cn('i-ri-node-tree', className)} />
+)
 
 export function SnippetCollapsedPreview({
   inputFieldCount,
+  snippetId,
 }: {
   inputFieldCount: number
+  snippetId?: string
 }) {
+  const { t } = useTranslation()
+  const sectionLabel = t('sectionOrchestrate', { ns: 'snippet' })
+
   return (
     <div
-      className="flex min-h-0 grow flex-col items-center px-2 pt-4"
+      className="flex min-h-0 grow flex-col items-center px-2"
       aria-label="Snippet collapsed preview"
     >
-      <SnippetPlaceholderIcon />
+      <div className="mb-3.5 flex w-full shrink-0 justify-center px-3.5 pt-0.5 pb-0.75">
+        <div className="my-0 h-px w-6.75 shrink-0 bg-divider-subtle" data-testid="divider"></div>
+      </div>
+      <SnippetPlaceholderIcon className="size-9" />
       <div className="my-4 h-px w-8 rounded-full bg-divider-subtle" aria-hidden="true" />
+      {snippetId
+        ? (
+            <NavLink
+              mode="collapse"
+              name={sectionLabel}
+              href={`/snippets/${snippetId}/orchestrate`}
+              active
+              iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+            />
+          )
+        : (
+            <div
+              aria-label={sectionLabel}
+              className="flex size-8 items-center justify-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active p-1.5 text-text-accent-light-mode-only"
+            >
+              <div className="flex size-5 items-center justify-center">
+                <NodeTreeIcon className="size-4.5 shrink-0" />
+              </div>
+            </div>
+          )}
       <div
-        className="relative flex size-8 items-center justify-center rounded-lg border border-divider-subtle bg-background-default-subtle text-text-accent shadow-xs"
-        aria-label={`${inputFieldCount} input fields`}
+        className={cn(
+          'mt-4 flex min-w-6 items-center justify-center rounded-full bg-background-default-subtle px-2 text-2xs leading-4 font-normal text-text-tertiary',
+          inputFieldCount > 99 ? 'h-5' : 'size-5',
+        )}
+        aria-label={`${inputFieldCount} ${t('inputVariables', { ns: 'snippet' })}`}
       >
-        <span aria-hidden="true" className="i-custom-vender-solid-development-variable-02 size-5" />
-        <span className="absolute -right-1.5 -bottom-1.5 flex size-4 items-center justify-center rounded-full border-2 border-components-panel-bg bg-state-accent-solid text-2xs leading-none text-text-primary-on-surface shadow-xs">
-          {inputFieldCount}
-        </span>
+        {inputFieldCount}
       </div>
     </div>
   )
