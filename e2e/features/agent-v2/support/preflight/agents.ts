@@ -2,6 +2,7 @@ import type {
   AgentAppComposerResponse,
   AgentDriveListResponse,
   AgentDriveSkillListResponse,
+  AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import type { PreseededResource } from './common'
@@ -34,6 +35,8 @@ import {
   skipMissingPreseededTool,
   splitToolDisplayName,
 } from './tools'
+
+type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
 
 const hasKnowledgeDataset = (
   soul: Record<string, unknown>,
@@ -83,6 +86,14 @@ const hasKnowledgeSet = (
     return asString(query.value).trim() === queryValue
   })
 }
+
+const getOAuth2ToolCredentialFixture = (toolItems: unknown[]) =>
+  toolItems.find((item) => {
+    const record = asRecord(item)
+
+    return record.credential_type === 'oauth2'
+      && Boolean(asString(asRecord(record.credential_ref).id))
+  }) as AgentSoulDifyToolConfig | undefined
 
 export async function skipMissingPreseededAgent(
   world: DifyWorld,
@@ -337,6 +348,59 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     }
 
     return agent
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function skipMissingPreseededOAuthToolAgentConfiguration(
+  world: DifyWorld,
+  agentName: string,
+): Promise<'skipped' | PreseededResource> {
+  const agent = await skipMissingPreseededAgent(world, agentName)
+  if (agent === 'skipped')
+    return agent
+
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
+    await expectApiResponseOK(response, `Check preseeded Agent OAuth2 tool configuration ${agentName}`)
+    const body = (await response.json()) as AgentAppComposerResponse
+    const toolItems = asArray(asRecord(body.agent_soul?.tools).dify_tools)
+    const oauthTool = getOAuth2ToolCredentialFixture(toolItems)
+
+    if (!oauthTool) {
+      return skipBlockedPrecondition(
+        world,
+        `Preseeded Agent "${agentName}" is missing an OAuth2 tool with a credential reference.`,
+        {
+          owner: 'seed',
+          remediation: 'Seed an Agent v2 fixture that includes a built-in OAuth2 tool with credential_type oauth2 and credential_ref.id.',
+        },
+      )
+    }
+
+    return agent
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function getPreseededOAuthToolConfig(agentId: string): Promise<AgentSoulDifyToolConfig> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/agent/${agentId}/composer`)
+    await expectApiResponseOK(response, `Get preseeded Agent OAuth2 tool config ${agentId}`)
+    const body = (await response.json()) as AgentAppComposerResponse
+    const toolItems = asArray(asRecord(body.agent_soul?.tools).dify_tools)
+    const oauthTool = getOAuth2ToolCredentialFixture(toolItems)
+
+    if (!oauthTool)
+      throw new Error(`Preseeded Agent ${agentId} does not include an OAuth2 tool credential fixture.`)
+
+    return oauthTool
   }
   finally {
     await ctx.dispose()

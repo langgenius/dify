@@ -12,6 +12,7 @@ import {
   skipMissingPreseededAgentFlatFileFixtureConfiguration,
   skipMissingPreseededDualRetrievalAgentConfiguration,
   skipMissingPreseededFullConfigAgentCoreConfiguration,
+  skipMissingPreseededOAuthToolAgentConfiguration,
   skipMissingPreseededToolStatesAgentConfiguration,
   skipMissingPreseededWorkflow,
 } from '../../agent-v2/support/preflight/agents'
@@ -138,6 +139,18 @@ Given(
       return resource
 
     this.agentBuilder.preflight.preseededResources[`${agentName} / tool state fixture configuration`]
+      = resource
+  },
+)
+
+Given(
+  'the Agent Builder preseeded Agent {string} includes an OAuth2 tool credential',
+  async function (this: DifyWorld, agentName: string) {
+    const resource = await skipMissingPreseededOAuthToolAgentConfiguration(this, agentName)
+    if (resource === 'skipped')
+      return resource
+
+    this.agentBuilder.preflight.preseededResources[`${agentName} / OAuth2 tool credential`]
       = resource
   },
 )

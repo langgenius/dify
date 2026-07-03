@@ -103,3 +103,19 @@ export function createAgentSoulConfigWithKnowledgeDataset(
     },
   }
 }
+
+export function createAgentSoulConfigWithDifyTool(
+  agentSoul: AgentSoulConfig,
+  tool: NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number],
+): AgentSoulConfig {
+  return {
+    ...agentSoul,
+    tools: {
+      ...agentSoul.tools,
+      dify_tools: [
+        ...(agentSoul.tools?.dify_tools ?? []),
+        tool,
+      ],
+    },
+  }
+}

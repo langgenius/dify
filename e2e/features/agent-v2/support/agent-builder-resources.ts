@@ -9,6 +9,7 @@ export const agentBuilderPreseededResources = {
   brokenModel: 'e2e-broken-model',
   fullConfigAgent: 'E2E New Agent Builder Full Config',
   toolStatesAgent: 'E2E New Agent Builder Tool States',
+  oauthToolAgent: 'E2E Agent With OAuth Tool',
   fileTreeAgent: 'E2E Agent With File Tree',
   dualRetrievalAgent: 'E2E Agent With Dual Retrieval',
   publishedWebAppAgent: 'E2E Agent Published Web App',

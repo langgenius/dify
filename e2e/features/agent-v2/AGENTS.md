@@ -41,6 +41,7 @@ Use tags in three layers:
 - `@knowledge-fixture` — preseeded dataset dependency such as `E2E Agent Knowledge Base`.
 - `@full-config-agent` — fixed `E2E New Agent Builder Full Config` Agent dependency.
 - `@tool-states-agent` — fixed `E2E New Agent Builder Tool States` Agent dependency.
+- `@oauth-tool-agent` — fixed `E2E Agent With OAuth Tool` Agent dependency for OAuth2 tool credential preservation.
 - `@file-tree-fixture` — fixed file-tree Agent drive/config-files dependency.
 - `@dual-retrieval-fixture` — fixed dual Knowledge Retrieval Agent dependency.
 - `@backend-api-access` — fixed or scenario-owned Backend service API access dependency.
@@ -186,6 +187,8 @@ Use `the Agent Builder preseeded Agent "{agent}" has Backend service API access 
 Use `the Agent Builder preseeded Agent "{agent}" includes the core fixture configuration` for the fixed Full Config Agent prerequisite. It composes the stable model, Summary Skill, JSON Replace tool, and indexed knowledge-base preflights, then reads `/console/api/agent/{agent_id}/composer` to verify the Agent Soul contains the selected model, prompt success token, required file fixtures, JSON Replace tool entry, and knowledge dataset reference. Do not use this step for Agent node output variables; those live in workflow node-job `declared_outputs`, not the roster Agent App composer response.
 
 Use `the Agent Builder preseeded Agent "{agent}" includes the tool state fixture configuration` for the fixed Tool States Agent prerequisite. It composes the Summary Skill, JSON Replace tool, and Tavily Search tool preflights, then reads `/console/api/agent/{agent_id}/composer` to verify the Agent Soul includes JSON Replace, Tavily Search, and a Tavily credential reference. This proves the seed is configured to exercise tool status UI; keep actual invalid-credential errors in dependent user-visible configuration or runtime scenarios.
+
+Use `the Agent Builder preseeded Agent "{agent}" includes an OAuth2 tool credential` for the fixed OAuth Tool Agent prerequisite. It reads the Agent composer and verifies at least one Dify tool has `credential_type: oauth2` with a `credential_ref.id`. Scenarios that need to save or mutate this configuration should copy that tool config into a scenario-owned Agent instead of mutating the fixed preseeded Agent.
 
 Use `the Agent Builder preseeded Agent "{agent}" includes the dual retrieval fixture configuration` for the fixed Dual Retrieval Agent prerequisite. It composes the indexed knowledge-base preflight, then reads `/console/api/agent/{agent_id}/composer` to verify `agent_soul.knowledge.sets` includes both an Agent-decide generated query set and a custom user-query set using the fixed custom query.
 
