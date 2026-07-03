@@ -407,6 +407,7 @@
   "modelProvider.selector.noProviderConfiguredDesc": "Navegue pelo Marketplace para instalar um, ou configure provedores nas configurações.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Apenas modelos compatíveis são exibidos",
   "modelProvider.selector.showIncompatibleModels": "Mostrar modelos incompatíveis",
+  "modelProvider.selector.suggestion": "Sugestão",
   "modelProvider.showModels": "Mostrar Modelos",
   "modelProvider.speechToTextModel.key": "Modelo de Fala para Texto",
   "modelProvider.speechToTextModel.tip": "Defina o modelo padrão para entrada de fala para texto na conversa.",

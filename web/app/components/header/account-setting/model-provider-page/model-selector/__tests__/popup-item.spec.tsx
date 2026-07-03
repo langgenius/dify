@@ -40,11 +40,18 @@ vi.mock('../../model-name', () => ({
     modelItem,
     className,
     nameClassName,
+    children,
   }: {
     modelItem: ModelItem
     className?: string
     nameClassName?: string
-  }) => <span className={[className, nameClassName].filter(Boolean).join(' ')}>{modelItem.label.en_US}</span>,
+    children?: ReactNode
+  }) => (
+    <span className={[className, nameClassName].filter(Boolean).join(' ')}>
+      {modelItem.label.en_US}
+      {children}
+    </span>
+  ),
 }))
 
 vi.mock('../feature-icon', () => ({
@@ -253,6 +260,26 @@ describe('PopupItem', () => {
     expect(screen.getByText('GPT-4o')).toHaveClass('text-text-secondary')
     expect(screen.getByText('GPT-4o')).not.toHaveClass('text-text-quaternary')
     expect(screen.getByText('GPT-4')).toHaveClass('text-text-quaternary')
+  })
+
+  it('should render suggestion badge for suggested models', () => {
+    renderWithCombobox(
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel({
+          models: [
+            makeModelItem({ model: 'gpt-5.5', label: { en_US: 'GPT-5.5', zh_Hans: 'GPT-5.5' } }),
+            makeModelItem({ model: 'gpt-5', label: { en_US: 'GPT-5', zh_Hans: 'GPT-5' } }),
+          ],
+        })}
+        modelSuggestionPredicate={(_provider, modelItem) => modelItem.model === 'gpt-5.5'}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('GPT-5.5')).toBeInTheDocument()
+    expect(screen.getByText('GPT-5')).toBeInTheDocument()
+    expect(screen.getByText('common.modelProvider.selector.suggestion')).toBeInTheDocument()
   })
 
   it('should open model modal when clicking add on unconfigured model', () => {

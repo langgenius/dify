@@ -288,10 +288,7 @@ function AgentConfigurePageComposerContent({
     || buildDraftActions.isApplyingBuildDraft
     || buildDraftActions.isDiscardingBuildDraft
   const isChatFeaturesReadOnly = (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
-  const showWorkingDirectoryAction = buildDraft.isActive
-    && !buildDraftActionsDisabled
-    && !buildDraftActions.isApplyingBuildDraft
-    && !buildDraftActions.isDiscardingBuildDraft
+  const showWorkingDirectoryAction = !!conversationIds[rightPanelChatMode]
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return

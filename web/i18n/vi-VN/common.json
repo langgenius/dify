@@ -407,6 +407,7 @@
   "modelProvider.selector.noProviderConfiguredDesc": "Duyệt Marketplace để cài đặt hoặc cấu hình nhà cung cấp trong phần cài đặt.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Chỉ hiển thị các mô hình tương thích",
   "modelProvider.selector.showIncompatibleModels": "Hiển thị mô hình không tương thích",
+  "modelProvider.selector.suggestion": "Gợi ý",
   "modelProvider.showModels": "Hiện Mô hình",
   "modelProvider.speechToTextModel.key": "Mô hình Chuyển đổi Văn bản thành Tiếng nói",
   "modelProvider.speechToTextModel.tip": "Thiết lập mô hình mặc định cho đầu vào chuyển đổi tiếng nói thành văn bản trong cuộc trò chuyện.",

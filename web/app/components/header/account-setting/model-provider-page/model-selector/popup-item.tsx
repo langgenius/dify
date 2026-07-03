@@ -14,6 +14,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
 import { useLanguage, useUpdateModelList, useUpdateModelProviders } from '../hooks'
+import ModelBadge from '../model-badge'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import DropdownContent from '../provider-added-card/model-auth-dropdown/dropdown-content'
@@ -31,6 +32,7 @@ type PopupItemProps = {
   defaultModel?: DefaultModel
   model: Model
   modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
   previewCardHandle: PreviewCardHandle
   onPreviewCardClose: () => void
   onHide: () => void
@@ -39,6 +41,7 @@ function PopupItem({
   defaultModel,
   model,
   modelPredicate,
+  modelSuggestionPredicate,
   previewCardHandle,
   onPreviewCardClose,
   onHide,
@@ -160,6 +163,7 @@ function PopupItem({
       </div>
       {!collapsed && model.models.map((modelItem) => {
         const isModelCompatible = modelPredicate?.(model, modelItem) ?? true
+        const isModelSuggested = modelSuggestionPredicate?.(model, modelItem) ?? false
         const rowClassName = cn(
           'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-left',
           modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed hover:bg-state-base-hover-alt',
@@ -180,7 +184,13 @@ function PopupItem({
                 )}
                 modelItem={modelItem}
                 nameClassName={modelItem.deprecated ? 'line-through' : undefined}
-              />
+              >
+                {isModelSuggested && (
+                  <ModelBadge className="border-text-accent-secondary text-text-accent-secondary">
+                    {t('modelProvider.selector.suggestion', { ns: 'common' })}
+                  </ModelBadge>
+                )}
+              </ModelName>
             </div>
             {
               defaultModel?.model === modelItem.model && defaultModel.provider === currentProvider.provider && (

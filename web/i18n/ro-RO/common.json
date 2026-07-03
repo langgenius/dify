@@ -407,6 +407,7 @@
   "modelProvider.selector.noProviderConfiguredDesc": "Răsfoiți Marketplace pentru a instala unul sau configurați furnizorii în setări.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Sunt afișate doar modelele compatibile",
   "modelProvider.selector.showIncompatibleModels": "Afișează modelele incompatibile",
+  "modelProvider.selector.suggestion": "Sugestie",
   "modelProvider.showModels": "Arată modele",
   "modelProvider.speechToTextModel.key": "Model de conversie text-la-vorbire",
   "modelProvider.speechToTextModel.tip": "Setați modelul implicit pentru intrarea de conversie text-la-vorbire în conversație.",

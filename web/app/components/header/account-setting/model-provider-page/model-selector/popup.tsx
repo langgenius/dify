@@ -42,6 +42,7 @@ export type PopupProps = {
   hideProviderSettingsFooter?: boolean
   providerSettingsSource?: 'agent'
   modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
   onOpenMarketplace?: () => void
@@ -55,6 +56,7 @@ function Popup({
   hideProviderSettingsFooter,
   providerSettingsSource,
   modelPredicate,
+  modelSuggestionPredicate,
   onConfigureEmptyState,
   onInputValueChange,
   onOpenMarketplace,
@@ -213,6 +215,7 @@ function Popup({
                   defaultModel={defaultModel}
                   model={model}
                   modelPredicate={modelPredicate}
+                  modelSuggestionPredicate={modelSuggestionPredicate}
                   previewCardHandle={previewCardHandle}
                   onPreviewCardClose={handleClosePreviewCard}
                   onHide={onHide}

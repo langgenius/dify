@@ -407,6 +407,7 @@
   "modelProvider.selector.noProviderConfiguredDesc": "前往 Marketplace 安裝，或在設定中配置供應商。",
   "modelProvider.selector.onlyCompatibleModelsShown": "僅顯示相容的模型",
   "modelProvider.selector.showIncompatibleModels": "顯示不相容模型",
+  "modelProvider.selector.suggestion": "推薦",
   "modelProvider.showModels": "顯示模型",
   "modelProvider.speechToTextModel.key": "語音轉文字模型",
   "modelProvider.speechToTextModel.tip": "設定對話中語音轉文字輸入的預設使用模型。",

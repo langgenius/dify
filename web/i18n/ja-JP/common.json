@@ -407,6 +407,7 @@
   "modelProvider.selector.noProviderConfiguredDesc": "マーケットプレイスでインストールするか、設定でプロバイダーを設定してください。",
   "modelProvider.selector.onlyCompatibleModelsShown": "互換性のあるモデルのみが表示されます",
   "modelProvider.selector.showIncompatibleModels": "互換性のないモデルを表示",
+  "modelProvider.selector.suggestion": "提案",
   "modelProvider.showModels": "モデルの表示",
   "modelProvider.speechToTextModel.key": "音声-to-テキストモデル",
   "modelProvider.speechToTextModel.tip": "会話での音声-to-テキスト入力に使用するデフォルトモデルを設定します。",

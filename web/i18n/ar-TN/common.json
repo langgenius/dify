@@ -407,6 +407,7 @@
   "modelProvider.selector.noProviderConfiguredDesc": "تصفح السوق لتثبيت مزود، أو قم بتكوين المزودين في الإعدادات.",
   "modelProvider.selector.onlyCompatibleModelsShown": "يتم عرض النماذج المتوافقة فقط",
   "modelProvider.selector.showIncompatibleModels": "عرض النماذج غير المتوافقة",
+  "modelProvider.selector.suggestion": "اقتراح",
   "modelProvider.showModels": "عرض النماذج",
   "modelProvider.speechToTextModel.key": "نموذج تحويل الكلام إلى نص",
   "modelProvider.speechToTextModel.tip": "تعيين النموذج الافتراضي لإدخال تحويل الكلام إلى نص في المحادثة.",

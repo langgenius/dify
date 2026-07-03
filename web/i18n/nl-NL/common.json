@@ -407,6 +407,7 @@
   "modelProvider.selector.noProviderConfiguredDesc": "Blader in de Marketplace om er een te installeren, of configureer providers in de instellingen.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Alleen compatibele modellen worden weergegeven",
   "modelProvider.selector.showIncompatibleModels": "Incompatibele modellen weergeven",
+  "modelProvider.selector.suggestion": "Suggestie",
   "modelProvider.showModels": "Show Models",
   "modelProvider.speechToTextModel.key": "Speech-to-Text Model",
   "modelProvider.speechToTextModel.tip": "Set the default model for speech-to-text input in conversation.",

@@ -4,7 +4,7 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { isAgentCompatibleModel } from '../model-compatibility'
+import { isAgentCompatibleModel, isAgentSuggestedModel } from '../model-compatibility'
 
 const createModel = (provider: string): Model => ({
   provider,
@@ -104,5 +104,31 @@ describe('isAgentCompatibleModel', () => {
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-r1-distill-qwen-32b'))).toBe(true)
     expect(isAgentCompatibleModel(provider, createModelItem('qwen3-coder-plus'))).toBe(true)
     expect(isAgentCompatibleModel(provider, createModelItem('glm-4.7'))).toBe(true)
+  })
+})
+
+describe('isAgentSuggestedModel', () => {
+  it('should suggest configured Agent baseline models by English label', () => {
+    const provider = createModel('any-provider')
+
+    expect(isAgentSuggestedModel(provider, createModelItem('gpt-5.5'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('gpt-5.5-pro'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('Claude Opus 4.8'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('opus-4.7'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('Claude Sonnet 4.6'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('Gemini 3.1 Pro Preview'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('Gemini 3.1 Pro Preview 001'))).toBe(false)
+    expect(isAgentSuggestedModel(provider, createModelItem('grok-4.3'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('deepseek-v4-pro'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('qwen3.7-max'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('qwen3-coder-plus'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItem('other-model'))).toBe(false)
+  })
+
+  it('should evaluate suggestions against the English model label', () => {
+    const provider = createModel('any-provider')
+
+    expect(isAgentSuggestedModel(provider, createModelItemWithLabel('model-id', 'GPT 5.5 Pro'))).toBe(true)
+    expect(isAgentSuggestedModel(provider, createModelItemWithLabel('gpt-5.5', 'safe-model-label'))).toBe(false)
   })
 })

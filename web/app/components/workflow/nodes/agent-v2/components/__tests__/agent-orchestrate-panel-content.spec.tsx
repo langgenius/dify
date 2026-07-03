@@ -407,8 +407,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
 
       fireEvent.click(await screen.findByRole('button', {
-        name: 'complete build conversation',
+        name: 'send build message',
       }))
+      await waitFor(() => expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new'))
       fireEvent.click(await screen.findByRole('button', {
         name: 'agentV2.agentDetail.configure.workingDirectory.open',
       }))

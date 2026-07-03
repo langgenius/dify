@@ -809,7 +809,7 @@ describe('AgentConfigurePage', () => {
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
     })
 
-    it('should show the working directory action only when build draft can be applied', async () => {
+    it('should keep the working directory action visible when the build chat has a conversation', async () => {
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
         data: {
@@ -859,6 +859,59 @@ describe('AgentConfigurePage', () => {
         expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       })
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'open working directory' })).toBeInTheDocument()
+    })
+
+    it('should hide the working directory action when the build chat has no conversation', () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.agent = {
+        ...mocks.queryState.agent,
+        data: {
+          ...mocks.queryState.agent.data,
+          debug_conversation_has_messages: false,
+          debug_conversation_id: '',
+          debug_conversation_message_count: 0,
+        },
+      }
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
       expect(screen.queryByRole('button', { name: 'open working directory' })).not.toBeInTheDocument()
     })
 

@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { isAgentCompatibleModel } from '../../../model-compatibility'
+import { isAgentCompatibleModel, isAgentSuggestedModel } from '../../../model-compatibility'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
 type AgentModelFieldProps = {
@@ -48,6 +48,7 @@ export function AgentModelField({
                   providerSettingsSource="agent"
                   showModelMeta={false}
                   modelPredicate={isAgentCompatibleModel}
+                  modelSuggestionPredicate={isAgentSuggestedModel}
                   onSelect={onSelect}
                 />
                 <div className="w-8 shrink-0">
