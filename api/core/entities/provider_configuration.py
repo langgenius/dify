@@ -1318,7 +1318,12 @@ class ProviderConfiguration(BaseModel):
 
     def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
-        switch the custom model credential.
+        Switch the active custom model credential.
+
+        If the active ProviderModel row was removed while model-scoped
+        credentials still exist, selecting one of those credentials should
+        restore the active model instead of leaving the UI stuck in an
+        authorization-removed state.
 
         :param model_type: model type
         :param model: model name
@@ -1339,10 +1344,18 @@ class ProviderConfiguration(BaseModel):
 
             provider_model_record = self._get_custom_model_record(model_type=model_type, model=model, session=session)
             if not provider_model_record:
-                raise ValueError("The custom model record not found.")
+                provider_model_record = ProviderModel(
+                    tenant_id=self.tenant_id,
+                    provider_name=self.provider.provider,
+                    model_name=model,
+                    model_type=model_type,
+                    is_valid=True,
+                    credential_id=credential_record.id,
+                )
+            else:
+                provider_model_record.credential_id = credential_record.id
+                provider_model_record.updated_at = naive_utc_now()
 
-            provider_model_record.credential_id = credential_record.id
-            provider_model_record.updated_at = naive_utc_now()
             session.add(provider_model_record)
             session.commit()
 

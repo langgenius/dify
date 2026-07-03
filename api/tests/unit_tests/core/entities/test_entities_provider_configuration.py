@@ -1411,8 +1411,11 @@ def test_add_model_credential_to_model_and_switch_custom_model_credential() -> N
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-            with pytest.raises(ValueError, match="custom model record not found"):
+            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
                 configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    session.add.assert_called_once()
+    session.commit.assert_called_once()
+    mock_cache.return_value.delete.assert_called_once()
 
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
