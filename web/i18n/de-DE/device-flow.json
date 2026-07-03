@@ -36,6 +36,8 @@
   "errorLookupFailed.title": "Code konnte nicht überprüft werden",
   "errorRateLimited.body": "Warten Sie einen Moment und versuchen Sie es erneut.",
   "errorRateLimited.title": "Zu viele Versuche",
+  "errorSso.backToLoginOptions": "← Zurück zu den Anmeldeoptionen",
+  "errorSso.title": "Anmeldung konnte nicht abgeschlossen werden",
   "ssoError.default": "Single Sign-on konnte nicht abgeschlossen werden. Versuchen Sie es erneut.",
   "ssoError.emailBelongsToDifyAccount": "Diese Identität ist mit einem Dify-Konto verknüpft. Verwenden Sie stattdessen „Mit Dify-Konto anmelden“.",
   "success.goToConsole": "Zur Dify-Konsole →",

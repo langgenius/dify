@@ -6,6 +6,8 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_app.app_generator import AgentAppGenerator
@@ -118,6 +120,7 @@ class AppGenerateService:
     @trace_span(AppGenerateHandler)
     def generate(
         cls,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -138,6 +141,7 @@ class AppGenerateService:
             app_model=app_model,
             streaming=streaming,
             action=lambda rate_limit, request_id: cls._dispatch_generate(
+                session=session,
                 app_model=app_model,
                 user=user,
                 args=args,
@@ -185,6 +189,7 @@ class AppGenerateService:
     def _dispatch_generate(
         cls,
         *,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         args: Mapping[str, Any],
@@ -202,7 +207,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     CompletionAppGenerator.convert_to_event_stream(
                         CompletionAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            session=session,
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id=request_id,
@@ -229,7 +239,12 @@ class AppGenerateService:
                 return rate_limit.generate(
                     ChatAppGenerator.convert_to_event_stream(
                         ChatAppGenerator().generate(
-                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
+                            session=session,
+                            app_model=app_model,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=streaming,
                         ),
                     ),
                     request_id=request_id,
@@ -441,6 +456,7 @@ class AppGenerateService:
     @classmethod
     def generate_more_like_this(
         cls,
+        session: Session,
         app_model: App,
         user: Account | EndUser,
         message_id: str,
@@ -457,7 +473,12 @@ class AppGenerateService:
         :return:
         """
         return CompletionAppGenerator().generate_more_like_this(
-            app_model=app_model, message_id=message_id, user=user, invoke_from=invoke_from, stream=streaming
+            session=session,
+            app_model=app_model,
+            message_id=message_id,
+            user=user,
+            invoke_from=invoke_from,
+            stream=streaming,
         )
 
     @classmethod

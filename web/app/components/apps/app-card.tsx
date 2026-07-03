@@ -1076,7 +1076,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
       <div className="flex h-[26px] shrink-0 items-start px-3" />
       <div
         className={cn(
-          'flex min-w-0 shrink-0 items-center pt-2 pb-3 pl-4 system-xs-regular text-text-tertiary',
+          'flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pb-3 pl-4 system-xs-regular text-text-tertiary',
           app.access_mode ? 'pr-9' : 'pr-4',
         )}
       >
@@ -1087,7 +1087,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
               <div className="shrink-0">·</div>
             </>
           )}
-          <div className="shrink-0">{editTimeText}</div>
+          <div className="min-w-0 truncate">{editTimeText}</div>
         </div>
       </div>
     </>

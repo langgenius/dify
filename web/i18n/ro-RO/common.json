@@ -202,6 +202,7 @@
   "mainNav.integrations": "Integrări",
   "mainNav.marketplace": "Marketplace",
   "mainNav.webApps.noResults": "Nu s-au găsit aplicații web",
+  "mainNav.webApps.openApp": "Deschide aplicația web {{name}}",
   "mainNav.webApps.searchPlaceholder": "Caută aplicații web",
   "mainNav.workspace.credits": "{{count}} credite",
   "mainNav.workspace.creditsUnit": "credite",

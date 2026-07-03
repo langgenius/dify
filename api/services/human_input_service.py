@@ -15,9 +15,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
 )
 from core.workflow.human_input_policy import resolve_variable_select_input_options
-from factories.file_factory import build_from_mapping, build_from_mappings
-from graphon.file import FileUploadConfig
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -26,10 +24,12 @@ from graphon.nodes.human_input.entities import (
     SelectInputConfig,
     UserActionConfig,
 )
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     validate_human_input_submission as graphon_validate_human_input_submission,
 )
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.file import FileUploadConfig
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
