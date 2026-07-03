@@ -58,28 +58,12 @@ class AgentAppSandboxService:
         self._client_factory = client_factory or _default_client_factory
 
     def get_info(self, *, tenant_id: str, app_id: str, conversation_id: str) -> AgentSandboxInfo:
-        stored = self._session_store.load_active_session_for_conversation(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            conversation_id=conversation_id,
-        )
-        if stored is None:
-            raise AgentSandboxInspectorError(
-                "no_active_session",
-                "this conversation has no active sandbox session yet",
-                status_code=404,
-            )
-        locator = _build_locator_or_raise(
-            snapshot=stored.session_snapshot,
-            runtime_layer_specs=stored.runtime_layer_specs,
-            not_found_message="this conversation's agent has no sandbox workspace",
-        )
+        locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
         session_id, workspace_cwd = _extract_shell_workspace_or_raise(
             snapshot=locator.session_snapshot,
             not_found_message="this conversation's agent has no sandbox workspace",
         )
 
-        self._client_factory().list_sandbox_files_sync(locator, ".")
         return AgentSandboxInfo(
             session_id=session_id,
             workspace_cwd=workspace_cwd,
