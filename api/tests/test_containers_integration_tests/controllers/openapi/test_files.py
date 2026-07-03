@@ -43,7 +43,7 @@ class TestAppFileUpload:
         api = AppFileUploadApi()
         data = {"file": (BytesIO(content), "note.txt", "text/plain")}
         with app.test_request_context(
-            f"/openapi/v1/apps/{app_model.id}/files/upload",
+            f"/openapi/v1/apps/{app_model.id}/files",
             method="POST",
             data=data,
             content_type="multipart/form-data",
