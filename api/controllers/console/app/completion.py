@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Iterator, Mapping
 from typing import Any, Literal
 from uuid import UUID
 
@@ -528,6 +528,8 @@ def _generate_chat_message_response(
         args=args,
         streaming=streaming,
     )
+    if AppMode.value_of(app_model.mode) == AppMode.AGENT and streaming:
+        response = _raise_agent_stream_error_before_response(response)
     return helper.compact_generate_response(response)
 
 
@@ -540,3 +542,68 @@ def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
     )
 
     return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+
+
+def _raise_agent_stream_error_before_response(response):
+    """Surface immediate Agent App stream errors as HTTP errors before SSE starts.
+
+    The shared streaming helper always returns HTTP 200 once the SSE response is
+    created. Agent v2 configuration errors, such as an invalid model API key,
+    can be the first real stream event after the initial ping; pre-reading that
+    first non-ping event lets the console API return the existing 400 error
+    contract instead of a successful HTTP response carrying only an SSE error.
+    """
+    if isinstance(response, Mapping):
+        return response
+
+    buffered: list[str] = []
+    iterator = iter(response)
+    while True:
+        try:
+            chunk = next(iterator)
+        except StopIteration:
+            return iter(buffered)
+
+        if not isinstance(chunk, str):
+            return _prepend_stream_chunks(buffered, chunk, iterator)
+
+        if _is_sse_ping(chunk):
+            buffered.append(chunk)
+            continue
+
+        error_payload = _extract_sse_error_payload(chunk)
+        if error_payload is not None:
+            close = getattr(response, "close", None)
+            if callable(close):
+                close()
+            message = error_payload.get("message")
+            raise CompletionRequestError(str(message or "Agent App chat failed."))
+
+        return _prepend_stream_chunks(buffered, chunk, iterator)
+
+
+def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any, None, None]:
+    yield from buffered
+    yield first
+    yield from iterator
+
+
+def _is_sse_ping(chunk: str) -> bool:
+    return chunk.strip() == "event: ping"
+
+
+def _extract_sse_error_payload(chunk: str) -> dict[str, Any] | None:
+    for raw_event in chunk.split("\n\n"):
+        data_lines: list[str] = []
+        for line in raw_event.splitlines():
+            if line.startswith("data: "):
+                data_lines.append(line.removeprefix("data: "))
+        if not data_lines:
+            continue
+        try:
+            payload = json.loads("\n".join(data_lines))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("event") == "error":
+            return payload
+    return None
