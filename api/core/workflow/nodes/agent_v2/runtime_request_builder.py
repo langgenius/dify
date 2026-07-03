@@ -714,7 +714,7 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
             for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools if _cli_tool_enabled(item))
             if tool is not None
         ],
-        env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
+        env=_shell_env_vars(agent_soul.env.variables, agent_soul.env.secret_refs),
         secret_refs=[
             secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
         ],
@@ -962,11 +962,7 @@ def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
     if not commands and not isinstance(name, str):
         return None
     tool_env = data.get("env") if isinstance(data.get("env"), Mapping) else {}
-    env = [
-        env_var
-        for env_var in (_shell_env_var(item) for item in _env_entries(tool_env, "variables"))
-        if env_var is not None
-    ]
+    env = _shell_env_vars(_env_entries(tool_env, "variables"), _env_entries(tool_env, "secret_refs"))
     secret_refs = [
         secret_ref
         for secret_ref in (_shell_secret_ref(item) for item in _env_entries(tool_env, "secret_refs"))
@@ -989,6 +985,12 @@ def _env_entries(env: object, key: str) -> list[object]:
     return entries
 
 
+def _shell_env_vars(variables: Sequence[object], secret_refs: Sequence[object]) -> list[DifyShellEnvVarConfig]:
+    env_vars = [_shell_env_var(item) for item in variables]
+    secret_env_vars = [_shell_env_var(item) for item in secret_refs if _has_secret_value(item)]
+    return [env for env in [*env_vars, *secret_env_vars] if env is not None]
+
+
 def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
     data = _plain_mapping(item)
     name = _name_from_mapping(data)
@@ -1005,13 +1007,15 @@ def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
     name = _name_from_mapping(data)
     if name is None:
         return None
-    ref = (
-        data.get("ref")
-        or data.get("value")
-        or data.get("id")
-        or data.get("credential_id")
-        or data.get("provider_credential_id")
-    )
+    # Inline Composer values are passed as env vars because the agent-backend
+    # secret ref schema only accepts short backend-managed reference IDs.
+    if _has_secret_value(item):
+        return None
+    ref = data.get("ref") or data.get("credential_id") or data.get("provider_credential_id")
+    if ref is None:
+        ref = data.get("id")
+    if ref is None:
+        return None
     return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
 
 
@@ -1021,6 +1025,12 @@ def _plain_mapping(item: object) -> dict[str, Any]:
     if isinstance(item, Mapping):
         return dict(item)
     return {}
+
+
+def _has_secret_value(item: object) -> bool:
+    data = _plain_mapping(item)
+    value = data.get("value")
+    return isinstance(value, str) and bool(value)
 
 
 def _name_from_mapping(item: Mapping[str, Any]) -> str | None:
