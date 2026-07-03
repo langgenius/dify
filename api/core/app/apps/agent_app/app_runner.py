@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
@@ -155,6 +156,39 @@ def publish_message_end(
         ),
         PublishFrom.APPLICATION_MANAGER,
     )
+
+
+class _TextDeltaDebouncer:
+    """Batch assistant text deltas on stream-event boundaries for final SSE output."""
+
+    def __init__(self, *, debounce_seconds: float) -> None:
+        self._debounce_seconds = debounce_seconds
+        self._parts: list[str] = []
+        self._first_pending_at: float | None = None
+
+    def push(self, delta: str) -> str | None:
+        if not delta:
+            return None
+        if self._debounce_seconds <= 0:
+            return delta
+
+        now = time.monotonic()
+        if not self._parts:
+            self._first_pending_at = now
+        self._parts.append(delta)
+
+        if self._first_pending_at is not None and now - self._first_pending_at >= self._debounce_seconds:
+            return self.flush()
+        return None
+
+    def flush(self) -> str | None:
+        if not self._parts:
+            return None
+
+        text = "".join(self._parts)
+        self._parts = []
+        self._first_pending_at = None
+        return text
 
 
 class _AgentProcessRecorder:
@@ -444,11 +478,13 @@ class AgentAppRunner:
         agent_backend_client: AgentBackendRunClient,
         event_adapter: AgentBackendRunEventAdapter,
         session_store: AgentAppRuntimeSessionStore,
+        text_delta_debounce_seconds: float,
     ) -> None:
         self._request_builder = request_builder
         self._agent_backend_client = agent_backend_client
         self._event_adapter = event_adapter
         self._session_store = session_store
+        self._text_delta_debounce_seconds = text_delta_debounce_seconds
 
     def run(
         self,
@@ -739,19 +775,39 @@ class AgentAppRunner:
         model_name: str,
         query: str | None,
     ):
+        """Consume backend events while preserving raw recorder granularity.
+
+        Process events are recorded immediately for observability. Only the
+        final assistant text deltas sent through the EasyUI queue are debounced,
+        with flushes happening on later stream events or terminal boundaries.
+        """
         terminal = None
         streamed_answer_parts: list[str] = []
+        text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
         process_recorder = _AgentProcessRecorder(
             dify_context=dify_context,
             message_id=message_id,
             queue_manager=queue_manager,
         )
+
+        def flush_pending_text() -> None:
+            pending_text = text_delta_debouncer.flush()
+            if pending_text:
+                publish_text_delta(
+                    queue_manager=queue_manager,
+                    model_name=model_name,
+                    delta=pending_text,
+                    user_query=query,
+                )
+
         for public_event in self._agent_backend_client.stream_events(run_id):
             if queue_manager.is_stopped():
+                flush_pending_text()
                 self._cancel_run(run_id)
                 raise GenerateTaskStoppedError()
             for internal_event in self._event_adapter.adapt(public_event):
                 if queue_manager.is_stopped():
+                    flush_pending_text()
                     self._cancel_run(run_id)
                     raise GenerateTaskStoppedError()
                 if internal_event.type in (
@@ -773,18 +829,22 @@ class AgentAppRunner:
                         text_delta = self._extract_stream_text_delta(internal_event)
                         if text_delta:
                             streamed_answer_parts.append(text_delta)
-                            publish_text_delta(
-                                queue_manager=queue_manager,
-                                model_name=model_name,
-                                delta=text_delta,
-                                user_query=query,
-                            )
+                            debounced_delta = text_delta_debouncer.push(text_delta)
+                            if debounced_delta:
+                                publish_text_delta(
+                                    queue_manager=queue_manager,
+                                    model_name=model_name,
+                                    delta=debounced_delta,
+                                    user_query=query,
+                                )
                         continue
                     continue
+                flush_pending_text()
                 terminal = internal_event
                 break
             if terminal is not None:
                 break
+        flush_pending_text()
         return terminal, "".join(streamed_answer_parts)
 
     def _cancel_run(self, run_id: str) -> None:

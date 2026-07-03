@@ -507,6 +507,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             ),
             event_adapter=AgentBackendRunEventAdapter(),
             session_store=AgentAppRuntimeSessionStore(),
+            text_delta_debounce_seconds=dify_config.AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS,
         )
 
     def _run_input_guards(
