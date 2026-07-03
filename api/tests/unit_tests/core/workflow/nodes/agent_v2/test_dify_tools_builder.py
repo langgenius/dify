@@ -148,6 +148,31 @@ def _file_tool() -> FakeTool:
     return FakeTool(entity=entity, runtime=runtime)
 
 
+def _files_tool() -> FakeTool:
+    parameters = [
+        ToolParameter(
+            name="documents",
+            label=I18nObject(en_US="Documents"),
+            type=ToolParameter.ToolParameterType.FILES,
+            form=ToolParameter.ToolParameterForm.LLM,
+            required=True,
+            llm_description="The documents to inspect.",
+        )
+    ]
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="langgenius",
+            name="inspect",
+            label=I18nObject(en_US="Inspect"),
+            provider="documents",
+        ),
+        description=ToolDescription(human=I18nObject(en_US="Inspect"), llm="Inspect documents."),
+        parameters=parameters,
+    )
+    runtime = ToolRuntime(tenant_id="tenant-1", user_id="user-1", credentials={}, runtime_parameters={})
+    return FakeTool(entity=entity, runtime=runtime)
+
+
 def _tts_tool() -> FakeTool:
     parameters = [
         ToolParameter(
@@ -272,6 +297,63 @@ def test_builds_core_tool_with_file_llm_parameter():
     assert prepared.parameters_json_schema == {"type": "object", "properties": {}, "required": []}
     assert runtime_provider.last_allow_file_parameters is True
     assert runtime_provider.last_use_default_for_missing_form_parameters is True
+
+
+def test_builds_plugin_tool_with_file_llm_parameter_schema():
+    runtime_provider = FakeRuntimeProvider(_file_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "langgenius/audio/audio",
+                    "provider_type": "plugin",
+                    "tool_name": "asr",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    schema = result.tools[0].parameters_json_schema
+    file_schema = schema["properties"]["audio_file"]
+    assert file_schema["anyOf"][0]["type"] == "string"
+    assert file_schema["anyOf"][1]["properties"]["transfer_method"]["enum"] == ["remote_url"]
+    assert file_schema["anyOf"][2]["properties"]["transfer_method"]["enum"] == [
+        "local_file",
+        "tool_file",
+        "datasource_file",
+    ]
+    assert schema["required"] == ["audio_file"]
+
+
+def test_builds_plugin_tool_with_files_llm_parameter_schema():
+    runtime_provider = FakeRuntimeProvider(_files_tool())
+    builder = WorkflowAgentDifyToolsBuilder(tool_runtime_provider=runtime_provider)
+    tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_id": "langgenius/documents/documents",
+                    "provider_type": "plugin",
+                    "tool_name": "inspect",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = _build(builder, tools)
+
+    assert result is not None
+    schema = result.tools[0].parameters_json_schema
+    files_schema = schema["properties"]["documents"]
+    assert files_schema["type"] == "array"
+    assert files_schema["items"]["anyOf"][0]["description"] == "HTTP(S) URL or sandbox-local file path."
+    assert schema["required"] == ["documents"]
 
 
 def test_build_layers_routes_plugin_direct_and_builtin_via_core() -> None:

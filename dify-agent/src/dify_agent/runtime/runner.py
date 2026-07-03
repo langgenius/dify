@@ -339,7 +339,12 @@ async def _resolve_run_tools(
     for slot in run.slots.values():
         layer = slot.layer
         if isinstance(layer, DifyPluginToolsLayer):
-            resolved_tools.extend(await layer.get_tools(http_client=plugin_daemon_http_client))
+            resolved_tools.extend(
+                await layer.get_tools(
+                    http_client=plugin_daemon_http_client,
+                    dify_api_http_client=dify_api_http_client,
+                )
+            )
         if isinstance(layer, DifyCoreToolsLayer):
             resolved_tools.extend(await layer.get_tools(http_client=dify_api_http_client))
         if isinstance(layer, DifyKnowledgeBaseLayer):
