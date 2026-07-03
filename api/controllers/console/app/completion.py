@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator, Iterator, Mapping
-from typing import Any, Literal
+from typing import Any, Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 from flask import request
@@ -58,6 +58,11 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class _ClosableStream(Protocol):
+    def close(self) -> None: ...
 
 
 def _resolve_debugger_chat_streaming(
@@ -434,7 +439,6 @@ def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[
     changes the HTTP boundary: it drains the SSE stream server-side and returns
     success after the generated build-chat message reaches ``message_end``.
     """
-    close = getattr(response, "close", None)
     try:
         for chunk in response:
             for raw_event in chunk.split("\n\n"):
@@ -464,8 +468,8 @@ def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[
                 if payload_event == "error":
                     raise CompletionRequestError(str(payload.get("message") or "Build chat finalization failed."))
     finally:
-        if callable(close):
-            close()
+        if isinstance(response, _ClosableStream):
+            response.close()
 
     raise CompletionRequestError("Build chat finalization did not complete.")
 
@@ -573,9 +577,8 @@ def _raise_agent_stream_error_before_response(response):
 
         error_payload = _extract_sse_error_payload(chunk)
         if error_payload is not None:
-            close = getattr(response, "close", None)
-            if callable(close):
-                close()
+            if isinstance(response, _ClosableStream):
+                response.close()
             message = error_payload.get("message")
             raise CompletionRequestError(str(message or "Agent App chat failed."))
 
