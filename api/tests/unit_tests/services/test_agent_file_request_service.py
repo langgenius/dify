@@ -2,22 +2,27 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from graphon.file import File
+from graphon.file import File, FileTransferMethod, FileType
 from services.agent_file_request_service import AgentFileDownloadRequestService, FileDownloadRequestError
 
 _MOD = "services.agent_file_request_service"
 
 
-def _fake_file() -> MagicMock:
-    file = MagicMock(spec=File)
-    file.filename = "report.pdf"
-    file.mime_type = "application/pdf"
-    file.size = 12
-    return file
+def _fake_file() -> File:
+    return File(
+        file_id="file-1",
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="upload-1",
+        filename="report.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=12,
+    )
 
 
 def test_resolve_returns_metadata_and_internal_url():
