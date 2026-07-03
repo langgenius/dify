@@ -13,7 +13,12 @@ from services.app_service import AppService
 
 
 class ExploreAppMetaResponse(BaseModel):
-    tool_icons: dict[str, Any] = Field(default_factory=dict)
+    """Metadata consumed by the installed-app chat UI.
+
+    Built-in tool icons are URL strings; API-based tool icons are provider-defined payload objects.
+    """
+
+    tool_icons: dict[str, str | dict[str, Any]] = Field(default_factory=dict)
 
 
 register_response_schema_models(console_ns, fields.Parameters, ExploreAppMetaResponse)

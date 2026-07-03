@@ -2,6 +2,7 @@ import logging
 from typing import cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
@@ -28,7 +29,11 @@ class CompletionAppRunner(AppRunner):
     """
 
     def run(
-        self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
+        self,
+        session: Session,
+        application_generate_entity: CompletionAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        message: Message,
     ):
         """
         Run application
@@ -123,6 +128,7 @@ class CompletionAppRunner(AppRunner):
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context, retrieved_files = dataset_retrieval.retrieve(
+                session=session,
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,

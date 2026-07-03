@@ -38,6 +38,7 @@ from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 from agenton.compositor import CompositorSessionSnapshot, LayerProviderInput
 from agenton.layers.types import PydanticAITool
 from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_human_layer_composition
+from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
@@ -285,6 +286,8 @@ async def _resolve_run_tools(
         layer = slot.layer
         if isinstance(layer, DifyPluginToolsLayer):
             resolved_tools.extend(await layer.get_tools(http_client=plugin_daemon_http_client))
+        if isinstance(layer, DifyCoreToolsLayer):
+            resolved_tools.extend(await layer.get_tools(http_client=dify_api_http_client))
         if isinstance(layer, DifyKnowledgeBaseLayer):
             resolved_tools.extend(await layer.get_tools(http_client=dify_api_http_client))
     _validate_unique_tool_names(resolved_tools)

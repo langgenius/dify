@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast, overload, override
 
 from pydantic import JsonValue
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.file_access import (
@@ -15,6 +15,7 @@ from core.app.file_access import (
     is_retriever_segment_access_granted,
 )
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -456,9 +457,14 @@ class _WorkflowToolRuntimeBinding:
 
 
 class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
-    def __init__(self, run_context: Mapping[str, Any] | DifyRunContext) -> None:
+    def __init__(
+        self,
+        run_context: Mapping[str, Any] | DifyRunContext,
+        session_maker: sessionmaker[Session] | None = None,
+    ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
+        self._session_maker = session_maker
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -556,26 +562,27 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             tool.clear_trace_session_id()
 
         try:
-            messages = ToolEngine.generic_invoke(
-                tool=tool,
-                tool_parameters=dict(tool_parameters),
-                user_id=self._run_context.user_id,
-                workflow_tool_callback=callback,
-                workflow_call_depth=workflow_call_depth,
-                app_id=self._run_context.app_id,
-                conversation_id=runtime_binding.conversation_id,
-            )
+            session_maker = self._session_maker or session_factory.get_session_maker()
+            with session_maker.begin() as session:
+                messages = ToolEngine.generic_invoke(
+                    session=session,
+                    tool=tool,
+                    tool_parameters=dict(tool_parameters),
+                    user_id=self._run_context.user_id,
+                    workflow_tool_callback=callback,
+                    workflow_call_depth=workflow_call_depth,
+                    app_id=self._run_context.app_id,
+                    conversation_id=runtime_binding.conversation_id,
+                )
+                transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                    messages=messages,
+                    user_id=self._run_context.user_id,
+                    tenant_id=self._run_context.tenant_id,
+                    conversation_id=runtime_binding.conversation_id,
+                )
+                yield from self._adapt_messages(transformed_messages, provider_name=provider_name)
         except Exception as exc:
             raise self._map_invocation_exception(exc, provider_name=provider_name) from exc
-
-        transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
-            messages=messages,
-            user_id=self._run_context.user_id,
-            tenant_id=self._run_context.tenant_id,
-            conversation_id=runtime_binding.conversation_id,
-        )
-
-        return self._adapt_messages(transformed_messages, provider_name=provider_name)
 
     @override
     def get_usage(

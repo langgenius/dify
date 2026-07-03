@@ -4,11 +4,13 @@ from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, Field, TypeAdapter
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
 from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
@@ -162,7 +164,8 @@ class MessageMoreLikeThisApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    def get(self, app_model: App, end_user: EndUser, message_id: UUID):
+    @with_session
+    def get(self, session: Session, app_model: App, end_user: EndUser, message_id: UUID):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
@@ -175,6 +178,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate_more_like_this(
+                session=session,
                 app_model=app_model,
                 user=end_user,
                 message_id=message_id_str,

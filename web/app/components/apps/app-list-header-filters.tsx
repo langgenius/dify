@@ -66,6 +66,7 @@ export function AppListHeaderFilters({
           triggerClassName="min-w-0"
         />
         <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
+        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <SearchInput
           className="w-50 max-w-full"
           value={keywords}
@@ -74,7 +75,6 @@ export function AppListHeaderFilters({
         />
       </div>
       <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
-        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <Link
           href="/snippets"
           className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold whitespace-nowrap text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
