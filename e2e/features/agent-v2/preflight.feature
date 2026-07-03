@@ -14,6 +14,11 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
 
+  @agent-decision-model
+  Scenario: Agent-decision chat model is available
+    Given I am signed in as the default E2E admin
+    And the Agent Builder agent-decision chat model is available
+
   @broken-model
   Scenario: Broken chat model is available for recovery scenarios
     Given I am signed in as the default E2E admin

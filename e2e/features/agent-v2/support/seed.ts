@@ -103,9 +103,15 @@ const matchesProviderLabel = (provider: { label?: { en_US?: string | null, zh_Ha
   || provider.label?.zh_Hans === expected
 
 const stableModelConfig = (): StableModel => ({
-  name: process.env.E2E_STABLE_MODEL_NAME?.trim() || 'gpt-5.5',
+  name: process.env.E2E_STABLE_MODEL_NAME?.trim() || 'gpt-5-nano',
   provider: process.env.E2E_STABLE_MODEL_PROVIDER?.trim() || 'openai',
   type: process.env.E2E_STABLE_MODEL_TYPE?.trim() || 'llm',
+})
+
+const agentDecisionModelConfig = (): StableModel => ({
+  name: process.env.E2E_AGENT_DECISION_MODEL_NAME?.trim() || 'gpt-5.5',
+  provider: process.env.E2E_AGENT_DECISION_MODEL_PROVIDER?.trim() || 'openai',
+  type: process.env.E2E_AGENT_DECISION_MODEL_TYPE?.trim() || 'llm',
 })
 
 const parseJsonEnv = (envName: string) => {
@@ -128,11 +134,11 @@ const parseJsonEnv = (envName: string) => {
   }
 }
 
-const findStableModel = async (config: StableModel) => {
+const findChatModel = async (config: StableModel, title: string) => {
   const ctx = await createApiContext()
   try {
     const response = await ctx.get(`/console/api/workspaces/current/models/model-types/${config.type}`)
-    await expectApiResponseOK(response, `Check ${agentBuilderPreseededResources.stableChatModel}`)
+    await expectApiResponseOK(response, `Check ${title}`)
     const body = (await response.json()) as ProviderWithModelsDataResponse
     const provider = body.data.find(item => matchesProvider(item.provider, config.provider))
     const model = provider?.models.find(
@@ -242,10 +248,14 @@ const upsertStableProviderCredential = async (
   }
 }
 
-const seedStableModel = async (context: SeedContext) => {
-  const title = agentBuilderPreseededResources.stableChatModel
-  const config = stableModelConfig()
-  const existing = await findStableModel(config)
+const seedChatModel = async (context: SeedContext, {
+  config,
+  title,
+}: {
+  config: StableModel
+  title: string
+}) => {
+  const existing = await findChatModel(config, title)
   const resource = {
     id: `${existing?.provider ?? config.provider}/${existing?.name ?? config.name}`,
     kind: 'model',
@@ -303,7 +313,7 @@ const seedStableModel = async (context: SeedContext) => {
     }
   }
 
-  const seeded = await findStableModel(config)
+  const seeded = await findChatModel(config, title)
   if (seeded?.status !== activeModelStatus) {
     return blocked(
       title,
@@ -317,6 +327,16 @@ const seedStableModel = async (context: SeedContext) => {
     name: title,
   })
 }
+
+const seedStableModel = async (context: SeedContext) => seedChatModel(context, {
+  config: stableModelConfig(),
+  title: agentBuilderPreseededResources.stableChatModel,
+})
+
+const seedAgentDecisionModel = async (context: SeedContext) => seedChatModel(context, {
+  config: agentDecisionModelConfig(),
+  title: agentBuilderPreseededResources.agentDecisionChatModel,
+})
 
 type BuiltinToolProvider = {
   label?: { en_US?: string, zh_Hans?: string }
@@ -921,6 +941,11 @@ const agentV2BaseSeedTasks = (): SeedTask[] => [
     id: 'stable-model',
     title: agentBuilderPreseededResources.stableChatModel,
     run: seedStableModel,
+  },
+  {
+    id: 'agent-decision-model',
+    title: agentBuilderPreseededResources.agentDecisionChatModel,
+    run: seedAgentDecisionModel,
   },
   seedTool(agentBuilderPreseededResources.jsonReplaceTool),
   seedTool(agentBuilderPreseededResources.tavilySearchTool),

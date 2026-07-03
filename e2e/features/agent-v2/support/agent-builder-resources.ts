@@ -5,6 +5,7 @@ export const agentBuilderPreseededResources = {
   tavilySearchTool: 'Tavily / Tavily Search',
   agentKnowledgeBase: 'E2E Agent Knowledge Base',
   indexingKnowledgeBase: 'E2E Agent Knowledge Base Indexing',
+  agentDecisionChatModel: 'E2E Agent Decision Chat Model',
   brokenModelProvider: 'E2E Broken Model Provider',
   brokenModel: 'e2e-broken-model',
   fullConfigAgent: 'E2E New Agent Builder Full Config',

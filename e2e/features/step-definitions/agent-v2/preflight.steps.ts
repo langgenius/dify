@@ -23,6 +23,7 @@ import {
   skipMissingReadyPreseededDataset,
 } from '../../agent-v2/support/preflight/datasets'
 import {
+  skipMissingAgentBuilderAgentDecisionChatModel,
   skipMissingAgentBuilderBrokenChatModel,
   skipMissingAgentBuilderStableChatModel,
 } from '../../agent-v2/support/preflight/models'
@@ -34,6 +35,14 @@ Given('the Agent Builder stable chat model is available', async function (this: 
     return stableModel
 
   this.agentBuilder.preflight.stableModel = stableModel
+})
+
+Given('the Agent Builder agent-decision chat model is available', async function (this: DifyWorld) {
+  const agentDecisionModel = await skipMissingAgentBuilderAgentDecisionChatModel(this)
+  if (agentDecisionModel === 'skipped')
+    return agentDecisionModel
+
+  this.agentBuilder.preflight.agentDecisionModel = agentDecisionModel
 })
 
 Given('the Agent Builder broken chat model is available', async function (this: DifyWorld) {

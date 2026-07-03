@@ -24,13 +24,13 @@ Feature: Agent v2 Knowledge Retrieval
     When I refresh the current page
     Then I should see the Agent v2 Custom query Knowledge Retrieval settings
 
-  @service-api-runtime @external-model @agent-backend-runtime @stable-model @backend-api-access
+  @service-api-runtime @external-model @agent-backend-runtime @agent-decision-model @backend-api-access
   Scenario: Agent decide Knowledge Retrieval answers through Backend service API
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
+    And the Agent Builder agent-decision chat model is available
     And the Agent v2 runtime backend is available
     And the Agent Builder preseeded dataset "E2E Agent Knowledge Base" is indexed and ready
-    And a runnable Agent v2 test agent has been created via API
+    And a runnable Agent v2 test agent using the agent-decision model has been created via API
     And Agent v2 Backend service API access has been enabled with a key via API
     When I open the Agent v2 configure page
     And I add the Agent Builder knowledge base as an Agent decide Knowledge Retrieval
