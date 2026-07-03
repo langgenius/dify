@@ -34,6 +34,7 @@ import {
   hasUnauthorizedToolCredentialState,
   skipMissingPreseededTool,
   splitToolDisplayName,
+  splitToolResourceId,
 } from './tools'
 
 type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
@@ -234,7 +235,7 @@ export async function skipMissingPreseededFullConfigAgentCoreConfiguration(
     if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
       missing.push(agentBuilderPreseededResources.summarySkill)
 
-    const [providerName = '', toolName = ''] = jsonTool.id.split('/')
+    const { providerName, toolName } = splitToolResourceId(jsonTool.id)
     const parsedTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
     if (
       parsedTool.ok
@@ -308,7 +309,7 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
       missing.push(agentBuilderPreseededResources.summarySkill)
 
-    const [jsonProviderName = '', jsonToolName = ''] = jsonTool.id.split('/')
+    const { providerName: jsonProviderName, toolName: jsonToolName } = splitToolResourceId(jsonTool.id)
     const parsedJsonTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
     if (
       parsedJsonTool.ok
@@ -322,7 +323,7 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
       missing.push(agentBuilderPreseededResources.jsonReplaceTool)
     }
 
-    const [tavilyProviderName = '', tavilyToolName = ''] = tavilyTool.id.split('/')
+    const { providerName: tavilyProviderName, toolName: tavilyToolName } = splitToolResourceId(tavilyTool.id)
     const parsedTavilyTool = splitToolDisplayName(agentBuilderPreseededResources.tavilySearchTool)
     const tavilyEntry = parsedTavilyTool.ok
       ? findToolEntry(toolItems, {

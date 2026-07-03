@@ -20,6 +20,7 @@ import {
   publishWorkflowApp,
   syncAgentV2WorkflowDraft,
 } from '../../../support/api'
+import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
 import { sleep } from '../../../support/process'
 import {
   blocked,
@@ -78,10 +79,17 @@ type ToolResource = SeedResource & {
 }
 
 const modelCredentialEnv = 'E2E_MODEL_PROVIDER_CREDENTIALS_JSON'
+const marketplacePluginIdsEnv = 'E2E_MARKETPLACE_PLUGIN_IDS'
+const marketplacePluginUniqueIdentifiersEnv = 'E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS'
 const oauthToolCredentialIdEnv = 'E2E_OAUTH_TOOL_CREDENTIAL_ID'
 const oauthToolProviderEnv = 'E2E_OAUTH_TOOL_PROVIDER'
 const oauthToolNameEnv = 'E2E_OAUTH_TOOL_NAME'
 const activeModelStatus = 'active'
+const agentV2MarketplacePluginIds = [
+  'langgenius/openai',
+  'langgenius/json_process',
+  'langgenius/tavily',
+]
 
 const getProviderAlias = (provider: string) => provider.split('/').filter(Boolean).at(-1) ?? provider
 
@@ -197,24 +205,29 @@ const seedStableModel = async (context: SeedContext) => {
 
   const ctx = await createApiContext()
   try {
-    const createResponse = await ctx.post(
-      `/console/api/workspaces/current/model-providers/${provider}/credentials`,
-      {
-        data: {
-          credentials: credentials.value,
-          name: 'E2E Stable Model',
+    try {
+      const createResponse = await ctx.post(
+        `/console/api/workspaces/current/model-providers/${provider}/credentials`,
+        {
+          data: {
+            credentials: credentials.value,
+            name: 'E2E Stable Model',
+          },
         },
-      },
-    )
-    await expectApiResponseOK(createResponse, `Create model provider credential for ${provider}`)
+      )
+      await expectApiResponseOK(createResponse, `Create model provider credential for ${provider}`)
 
-    const preferredResponse = await ctx.post(
-      `/console/api/workspaces/current/model-providers/${provider}/preferred-provider-type`,
-      {
-        data: { preferred_provider_type: 'custom' },
-      },
-    )
-    await expectApiResponseOK(preferredResponse, `Select custom provider credential for ${provider}`)
+      const preferredResponse = await ctx.post(
+        `/console/api/workspaces/current/model-providers/${provider}/preferred-provider-type`,
+        {
+          data: { preferred_provider_type: 'custom' },
+        },
+      )
+      await expectApiResponseOK(preferredResponse, `Select custom provider credential for ${provider}`)
+    }
+    catch (error) {
+      return blocked(title, error instanceof Error ? error.message : String(error))
+    }
   }
   finally {
     await ctx.dispose()
@@ -625,11 +638,17 @@ const seedToolStatesAgent = async (context: SeedContext) => {
     return skipped(title, `Would create or update Agent "${title}".`)
 
   const { agent, created: wasCreated } = await ensureAgent(title)
+  const summarySkill = await uploadAgentConfigSkillToDraft({
+    agentId: agent.id,
+    fileName: agentBuilderTestMaterials.summarySkill,
+    filePath: getAgentBuilderTestMaterialPath('summarySkill'),
+  })
   await ensureDriveSkill(agent.id)
   await saveSeededAgentComposer({
     agentId: agent.id,
     config: {
       ...normalAgentSoulConfig,
+      config_skills: [summarySkill],
       tools: {
         dify_tools: [toolConfig(jsonTool), toolConfig(tavilyTool)],
       },
@@ -808,6 +827,16 @@ const seedOAuthToolAgent = async (context: SeedContext) => {
 }
 
 export const createAgentV2SeedTasks = (): SeedTask[] => [
+  {
+    id: 'marketplace-plugins',
+    title: 'Agent V2 marketplace plugins',
+    run: context => bootstrapMarketplacePlugins(context, {
+      defaultPluginIds: agentV2MarketplacePluginIds,
+      pluginIdsEnv: marketplacePluginIdsEnv,
+      pluginUniqueIdentifiersEnv: marketplacePluginUniqueIdentifiersEnv,
+      title: 'Agent V2 marketplace plugins',
+    }),
+  },
   {
     id: 'stable-model',
     title: agentBuilderPreseededResources.stableChatModel,
