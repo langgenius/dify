@@ -167,7 +167,6 @@ export function GuideCard({ children, actions, contentScrollable = true }: {
               slotClassNames={{
                 viewport: 'overscroll-contain',
                 content: 'min-h-full pt-0.5 pb-6',
-                scrollbar: 'data-[orientation=vertical]:-me-5 data-[orientation=vertical]:my-1',
               }}
             >
               {children}

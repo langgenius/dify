@@ -1,5 +1,5 @@
+import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from '../components/tag-combobox-item'
-import type { Tag, TagType } from '@/contract/console/tags'
 import { Combobox } from '@langgenius/dify-ui/combobox'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -30,12 +30,12 @@ const i18n = {
 }
 
 const appTags: Tag[] = [
-  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: 3 },
-  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: 5 },
-  { id: 'tag-3', name: 'API', type: 'app', binding_count: 1 },
+  { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
+  { id: 'tag-2', name: 'Backend', type: 'app', binding_count: '' },
+  { id: 'tag-3', name: 'API', type: 'app', binding_count: '' },
 ]
 
-const knowledgeTag: Tag = { id: 'tag-k1', name: 'KnowledgeDB', type: 'knowledge', binding_count: 2 }
+const knowledgeTag: Tag = { id: 'tag-k1', name: 'KnowledgeDB', type: 'knowledge', binding_count: '' }
 
 type PanelHarnessProps = {
   type?: TagType
@@ -68,7 +68,7 @@ const PanelHarness = ({
       id: `__create_tag__:${inputValue}`,
       name: inputValue,
       type,
-      binding_count: 0,
+      binding_count: '',
       isCreateOption: true,
     }, ...tags]
   }, [inputValue, tagList, type])
@@ -244,14 +244,14 @@ describe('TagSearchContent', () => {
     expect(screen.getByRole('option', { name: /KnowledgeDB/i })).toBeInTheDocument()
   })
 
-  it('renders snippet management action with snippets management permission', () => {
-    mockWorkspacePermissionKeys.value = ['snippets.management']
+  it('renders snippet management action with snippets create-and-modify permission', () => {
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
 
     render(
       <PanelHarness
         type="snippet"
         value={[]}
-        tagList={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]}
+        tagList={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: '' }]}
       />,
     )
 

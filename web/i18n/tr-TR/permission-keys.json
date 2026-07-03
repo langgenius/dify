@@ -50,5 +50,5 @@
   "snippets.management": "Snippet'leri yönet",
   "tool.manage": "Araçları yönet",
   "workspace.member.manage": "Üyeleri yönet",
-  "workspace.role.manage": "Rol izinlerini ve kaynak erişim kurallarını yönet"
+  "workspace.role.manage": "Rolleri ve izin setlerini yönet"
 }

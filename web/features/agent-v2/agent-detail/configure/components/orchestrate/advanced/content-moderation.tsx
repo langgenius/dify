@@ -129,7 +129,12 @@ function AgentContentModerationSettingsContent() {
                 </Button>
               )}
               <div className="h-3 w-px bg-divider-regular" />
-              <Switch checked={!!moderation?.enabled} onCheckedChange={handleEnabledChange} size="sm" />
+              <Switch
+                checked={!!moderation?.enabled}
+                onCheckedChange={handleEnabledChange}
+                size="sm"
+                aria-label={t('feature.moderation.title', { ns: 'appDebug' }) as string}
+              />
             </div>
           )
         : undefined}

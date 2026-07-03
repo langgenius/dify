@@ -14,6 +14,9 @@ from models.enums import TagType
 from models.model import App, Tag, TagBinding
 from models.snippet import CustomizedSnippet
 
+type _SessionLike = Session | scoped_session
+type _TagTypeLike = TagType | str
+
 
 class SaveTagPayload(BaseModel):
     name: str = Field(min_length=1, max_length=50)
@@ -38,7 +41,7 @@ class TagBindingDeletePayload(BaseModel):
 
 class TagService:
     @staticmethod
-    def get_tags(session: Session, tag_type: str, current_tenant_id: str, keyword: str | None = None):
+    def get_tags(session: Session, tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None):
         stmt = (
             select(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)
@@ -55,10 +58,10 @@ class TagService:
 
     @staticmethod
     def get_target_ids_by_tag_ids(
-        tag_type: str,
+        tag_type: _TagTypeLike,
         current_tenant_id: str,
         tag_ids: list[str],
-        session: scoped_session | Session,
+        session: _SessionLike,
         *,
         match_all: bool = False,
     ):
@@ -104,7 +107,7 @@ class TagService:
         return tag_bindings
 
     @staticmethod
-    def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: str, session: scoped_session):
+    def get_tag_by_tag_name(tag_type: _TagTypeLike, current_tenant_id: str, tag_name: str, session: _SessionLike):
         if not tag_type or not tag_name:
             return []
         tags = list(
@@ -117,7 +120,7 @@ class TagService:
         return tags
 
     @staticmethod
-    def get_tags_by_target_id(tag_type: str, current_tenant_id: str, target_id: str, session: scoped_session):
+    def get_tags_by_target_id(tag_type: _TagTypeLike, current_tenant_id: str, target_id: str, session: _SessionLike):
         tags = session.scalars(
             select(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -132,7 +135,7 @@ class TagService:
         return tags or []
 
     @staticmethod
-    def save_tags(payload: SaveTagPayload, session: scoped_session) -> Tag:
+    def save_tags(payload: SaveTagPayload, session: _SessionLike) -> Tag:
         if TagService.get_tag_by_tag_name(payload.type, current_user.current_tenant_id, payload.name, session):
             raise ValueError("Tag name already exists")
         tag = Tag(
@@ -147,8 +150,14 @@ class TagService:
         return tag
 
     @staticmethod
-    def update_tags(payload: UpdateTagPayload, tag_id: str, session: scoped_session) -> Tag:
-        tag = session.scalar(select(Tag).where(Tag.id == tag_id).limit(1))
+    def update_tags(
+        payload: UpdateTagPayload, tag_id: str, session: _SessionLike, *, tag_type: TagType | None = None
+    ) -> Tag:
+        current_tenant_id = current_user.current_tenant_id
+        stmt = select(Tag).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id)
+        if tag_type is not None:
+            stmt = stmt.where(Tag.type == tag_type)
+        tag = session.scalar(stmt.limit(1))
         if not tag:
             raise NotFound("Tag not found")
         if payload.name != tag.name:
@@ -169,25 +178,39 @@ class TagService:
         return tag
 
     @staticmethod
-    def get_tag_binding_count(tag_id: str, session: scoped_session) -> int:
-        count = session.scalar(select(func.count(TagBinding.id)).where(TagBinding.tag_id == tag_id)) or 0
+    def get_tag_binding_count(tag_id: str, session: _SessionLike, *, tag_type: TagType | None = None) -> int:
+        current_tenant_id = current_user.current_tenant_id
+        stmt = (
+            select(func.count(TagBinding.id))
+            .join(Tag, Tag.id == TagBinding.tag_id)
+            .where(TagBinding.tag_id == tag_id, Tag.tenant_id == current_tenant_id)
+        )
+        if tag_type is not None:
+            stmt = stmt.where(Tag.type == tag_type)
+        count = session.scalar(stmt) or 0
         return count
 
     @staticmethod
-    def delete_tag(tag_id: str, session: scoped_session):
-        tag = session.scalar(select(Tag).where(Tag.id == tag_id).limit(1))
+    def delete_tag(tag_id: str, session: _SessionLike, *, tag_type: TagType | None = None):
+        current_tenant_id = current_user.current_tenant_id
+        stmt = select(Tag).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id)
+        if tag_type is not None:
+            stmt = stmt.where(Tag.type == tag_type)
+        tag = session.scalar(stmt.limit(1))
         if not tag:
             raise NotFound("Tag not found")
         session.delete(tag)
         # delete tag binding
-        tag_bindings = session.scalars(select(TagBinding).where(TagBinding.tag_id == tag_id)).all()
+        tag_bindings = session.scalars(
+            select(TagBinding).where(TagBinding.tag_id == tag_id, TagBinding.tenant_id == current_tenant_id)
+        ).all()
         if tag_bindings:
             for tag_binding in tag_bindings:
                 session.delete(tag_binding)
         session.commit()
 
     @staticmethod
-    def save_tag_binding(payload: TagBindingCreatePayload, session: scoped_session):
+    def save_tag_binding(payload: TagBindingCreatePayload, session: _SessionLike):
         TagService.check_target_exists(payload.type, payload.target_id, session)
         valid_tag_ids = session.scalars(
             select(Tag.id).where(
@@ -214,7 +237,7 @@ class TagService:
         session.commit()
 
     @staticmethod
-    def delete_tag_binding(payload: TagBindingDeletePayload, session: scoped_session):
+    def delete_tag_binding(payload: TagBindingDeletePayload, session: _SessionLike):
         TagService.check_target_exists(payload.type, payload.target_id, session)
         result = cast(
             CursorResult,
@@ -237,7 +260,7 @@ class TagService:
             session.commit()
 
     @staticmethod
-    def check_target_exists(type: str, target_id: str, session: scoped_session):
+    def check_target_exists(type: _TagTypeLike, target_id: str, session: _SessionLike):
         if type == "knowledge":
             dataset = session.scalar(
                 select(Dataset)

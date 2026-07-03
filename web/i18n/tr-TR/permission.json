@@ -28,6 +28,8 @@
   "accessRule.noDescription": "Açıklama yok",
   "accessRule.noRules": "Erişim kuralı yok",
   "accessRule.noUserAccessSettings": "Bireysel izin ayarı yok",
+  "accessRule.onlyMe": "Yalnızca ben",
+  "accessRule.onlyMeDescription": "Bu kaynağa yalnızca siz erişebilirsiniz.",
   "accessRule.permission": "İzin",
   "accessRule.resourceOpenScope": "Kaynak açık kapsamı",
   "accessRule.resourceOpenScopeDescription": "Bu kaynağın kime açık olduğunu seçin. Her üyenin ne yapabileceğine yine de rol izinleri karar verir.",

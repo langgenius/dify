@@ -18,6 +18,7 @@ from pydantic import AnyHttpUrl, Field, TypeAdapter, field_validator, model_vali
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url, parse_agent_stub_endpoint
+from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
 from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.grpc_bind import normalize_agent_stub_grpc_bind_address
@@ -143,6 +144,16 @@ class ServerSettings(BaseSettings):
         return DifyApiAgentStubFileRequestHandler(
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
+        )
+
+    def create_agent_stub_config_request_handler(self) -> DifyApiAgentStubConfigRequestHandler | None:
+        """Return the Dify API config bridge when both Dify API settings are configured."""
+        if self.inner_api_key is None:
+            return None
+        return DifyApiAgentStubConfigRequestHandler(
+            inner_api_url=self.inner_api_url,
+            inner_api_key=self.inner_api_key,
+            timeout=self.create_outbound_http_timeout(),
         )
 
     def create_agent_stub_drive_request_handler(self) -> DifyApiAgentStubDriveRequestHandler | None:

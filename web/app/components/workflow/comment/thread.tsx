@@ -1,7 +1,7 @@
 'use client'
 
 import type { FC, ReactNode } from 'react'
-import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentDetail, WorkflowCommentDetailReply } from '@/app/components/workflow/comment/types'
 import { Avatar, AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -594,7 +594,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                     authorId={comment.created_by_account?.id || ''}
                     authorName={comment.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
                     avatarUrl={comment.created_by_account?.avatar_url || null}
-                    createdAt={comment.created_at}
+                    createdAt={comment.created_at ?? comment.updated_at ?? 0}
                     content={comment.content}
                     mentionableNames={mentionableNames}
                   />
@@ -718,7 +718,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
                             authorId={reply.created_by_account?.id || ''}
                             authorName={reply.created_by_account?.name || t('comments.fallback.user', { ns: 'workflow' })}
                             avatarUrl={reply.created_by_account?.avatar_url || null}
-                            createdAt={reply.created_at}
+                            createdAt={reply.created_at ?? 0}
                             content={reply.content}
                             mentionableNames={mentionableNames}
                           />

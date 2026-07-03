@@ -215,7 +215,7 @@ describe('App Publisher Flow', () => {
     fireEvent.click(screen.getByText('common.openInExplore'))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('No app found in Explore')
+      expect(mockToastError).toHaveBeenCalledWith('notPublishedYet')
     })
   })
 })

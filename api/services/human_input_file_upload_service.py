@@ -8,7 +8,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from configs import dify_config
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.account import Account, Tenant
 from models.enums import CreatorUserRole

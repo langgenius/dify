@@ -28,6 +28,7 @@ import ProviderIcon from '../provider-icon'
 import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
   modelTypeFormat,
+  normalizeModelProviderModelsResponse,
 } from '../utils'
 import CredentialPanel from './credential-panel'
 import ModelList from './model-list'
@@ -59,11 +60,11 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     isFetching: loading,
     isSuccess: hasFetchedModelList,
     refetch: refetchModelList,
-  } = useQuery(consoleQuery.modelProviders.models.queryOptions({
+  } = useQuery(consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
     input: { params: { provider: currentProviderName } },
     enabled: expanded,
     refetchOnWindowFocus: false,
-    select: response => response.data,
+    select: normalizeModelProviderModelsResponse,
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
   const showCollapsedSection = !expanded || !hasFetchedModelList

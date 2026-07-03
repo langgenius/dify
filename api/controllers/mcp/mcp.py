@@ -236,7 +236,6 @@ class MCPAppApi(Resource):
         if not end_user and isinstance(mcp_request.root, mcp_types.InitializeRequest):
             client_info = mcp_request.root.params.clientInfo
             client_name = f"{client_info.name}@{client_info.version}"
-            with sessionmaker(db.engine, expire_on_commit=False).begin() as create_session:
-                end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, create_session)
+            end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, session)
 
-        return handle_mcp_request(app, mcp_request, user_input_form, mcp_server, end_user, request_id)
+        return handle_mcp_request(session, app, mcp_request, user_input_form, mcp_server, end_user, request_id)

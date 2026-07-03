@@ -3,8 +3,10 @@ from __future__ import annotations
 from uuid import UUID
 
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from fields.hit_testing_fields import HitTestingResponse
 from libs.helper import dump_response
@@ -45,7 +47,10 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @with_current_tenant_id
     @with_current_user
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
-    def post(self, current_user: Account, current_tenant_id: str, dataset_id: UUID) -> dict[str, object]:
+    @with_session
+    def post(
+        self, session: Session, current_user: Account, current_tenant_id: str, dataset_id: UUID
+    ) -> dict[str, object]:
         dataset_id_str = str(dataset_id)
 
         dataset = self.get_and_validate_dataset(dataset_id_str, current_user, current_tenant_id)
@@ -54,5 +59,5 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
 
         return dump_response(
             HitTestingResponse,
-            self.perform_hit_testing(dataset, args, current_user, current_tenant_id),
+            self.perform_hit_testing(session, dataset, args, current_user, current_tenant_id),
         )
