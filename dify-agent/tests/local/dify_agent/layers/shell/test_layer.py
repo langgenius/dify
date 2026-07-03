@@ -9,7 +9,7 @@ from typing import cast
 import pytest
 
 import dify_agent.layers.shell.layer as shell_layer_module
-from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellEnvVarConfig, DifyShellLayerConfig
 from dify_agent.layers.shell.layer import (
     CompleteRemoteCommandResult,
     DEFAULT_TERMINATE_GRACE_SECONDS,
@@ -965,6 +965,41 @@ def test_run_remote_script_complete_uses_agent_specific_home_and_workspace_cwd()
             result = await layer.run_remote_script_complete("pwd")
             assert isinstance(result, CompleteRemoteCommandResult)
             assert result.output == expected_home
+
+    asyncio.run(scenario())
+    assert [call.job_id for call in commands.delete_calls] == ["remote-job"]
+
+
+def test_run_remote_script_complete_passes_config_env_values_to_shellctl_env() -> None:
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        del timeout
+        assert script == "printenv API_TOKEN"
+        assert cwd == "/home/agent-1/workspace/abc12ff"
+        assert env == {"HOME": "/home/agent-1", "API_TOKEN": "inline-secret-value"}
+        return _command_result(
+            "remote-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output="inline-secret-value\n",
+            offset=len("inline-secret-value\n"),
+        )
+
+    commands = FakeCommands(run_handler=run_handler)
+    layer, _provider = _layer(
+        commands=commands,
+        config=DifyShellLayerConfig(
+            env=[DifyShellEnvVarConfig(name="API_TOKEN", value="inline-secret-value")]
+        ),
+    )
+    _bind_execution_context(layer)
+    layer.runtime_state = _runtime_state()
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await layer.run_remote_script_complete("printenv API_TOKEN")
+            assert isinstance(result, CompleteRemoteCommandResult)
+            assert result.output == "inline-secret-value\n"
 
     asyncio.run(scenario())
     assert [call.job_id for call in commands.delete_calls] == ["remote-job"]

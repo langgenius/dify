@@ -627,7 +627,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         include_agent_stub_env: bool,
         require_agent_stub_env: bool = False,
     ) -> dict[str, str]:
-        env = {"HOME": self._shell_home_dir()}
+        env = _shell_config_env(self.config)
+        env["HOME"] = self._shell_home_dir()
         if not include_agent_stub_env:
             return env
         execution_context_layer = self.deps.execution_context
@@ -846,13 +847,11 @@ def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
 
 def _shell_config_export_lines(config: DifyShellLayerConfig) -> list[str]:
     lines: list[str] = []
-    for env_var in config.env:
-        lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
+    # Plain env values travel through ShellCommandProtocol.run(env=...) so inline
+    # secrets are not rendered into generated shell scripts.
     for secret_ref in config.secret_refs:
         lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
     for tool in config.cli_tools:
-        for env_var in tool.env:
-            lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
         for secret_ref in tool.secret_refs:
             lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
     if config.sandbox is not None:
@@ -862,6 +861,16 @@ def _shell_config_export_lines(config: DifyShellLayerConfig) -> list[str]:
             sandbox_config = json.dumps(config.sandbox.config, ensure_ascii=True, sort_keys=True)
             lines.append(f"export DIFY_SANDBOX_CONFIG_JSON={_shquote(sandbox_config)}")
     return lines
+
+
+def _shell_config_env(config: DifyShellLayerConfig) -> dict[str, str]:
+    env: dict[str, str] = {}
+    for env_var in config.env:
+        env[env_var.name] = env_var.value
+    for tool in config.cli_tools:
+        for env_var in tool.env:
+            env[env_var.name] = env_var.value
+    return env
 
 
 def _wrap_user_script(script: str, config: DifyShellLayerConfig) -> str:
