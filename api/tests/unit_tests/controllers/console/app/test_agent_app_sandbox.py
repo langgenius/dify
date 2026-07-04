@@ -9,12 +9,16 @@ from dify_agent.protocol import SandboxListResponse, SandboxReadResponse, Sandbo
 
 from controllers.console import agent_app_sandbox as module
 from models.model import App, AppMode, IconType
-from services.agent_app_sandbox_service import AgentSandboxInspectorError
+from services.agent_app_sandbox_service import AgentSandboxInfo, AgentSandboxInspectorError
 
 
 class _AgentAppService:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str, str, str, str]] = []
+
+    def get_info(self, *, tenant_id: str, app_id: str, conversation_id: str) -> AgentSandboxInfo:
+        self.calls.append(("info", tenant_id, app_id, conversation_id, ""))
+        return AgentSandboxInfo(session_id="abc1234", workspace_cwd="~/workspace/abc1234")
 
     def list_files(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str) -> SandboxListResponse:
         self.calls.append(("list", tenant_id, app_id, conversation_id, path))
@@ -131,14 +135,17 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
         SimpleNamespace(get_json=lambda silent=True: {"conversation_id": "conv-1", "path": "report.txt"}),
     )
 
+    info = unwrap(module.AgentAppSandboxInfoResource.get)(object(), "tenant-1", "agent-1")
     listing = unwrap(module.AgentAppSandboxListResource.get)(object(), "tenant-1", "agent-1")
     preview = unwrap(module.AgentAppSandboxReadResource.get)(object(), "tenant-1", "agent-1")
     upload = unwrap(module.AgentAppSandboxUploadResource.post)(object(), "tenant-1", "agent-1")
 
+    assert info == {"session_id": "abc1234", "workspace_cwd": "~/workspace/abc1234"}
     assert listing["path"] == "sub/report.txt"
     assert preview["text"] == "hello"
     assert upload["file"]["reference"] == "dify-file-ref:file-1"
     assert service.calls == [
+        ("info", "tenant-1", "app-1", "conv-1", ""),
         ("list", "tenant-1", "app-1", "conv-1", "sub/report.txt"),
         ("read", "tenant-1", "app-1", "conv-1", "sub/report.txt"),
         ("upload", "tenant-1", "app-1", "conv-1", "report.txt"),
@@ -147,6 +154,9 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
 
 def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     class FailingService:
+        def get_info(self, **kwargs):
+            raise AgentSandboxInspectorError("no_active_session", "no active session", status_code=404)
+
         def list_files(self, **kwargs):
             raise AgentSandboxInspectorError("no_active_session", "no active session", status_code=404)
 
@@ -156,6 +166,10 @@ def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytes
         module, "query_params_from_request", lambda model: SimpleNamespace(conversation_id="conv-1", path=".")
     )
 
+    assert unwrap(module.AgentAppSandboxInfoResource.get)(object(), "tenant-1", "agent-1") == (
+        {"code": "no_active_session", "message": "no active session"},
+        404,
+    )
     assert unwrap(module.AgentAppSandboxListResource.get)(object(), "tenant-1", "agent-1") == (
         {"code": "no_active_session", "message": "no active session"},
         404,

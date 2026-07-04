@@ -98,6 +98,9 @@ import {
   zGetAgentByAgentIdSandboxFilesReadQuery,
   zGetAgentByAgentIdSandboxFilesReadResponse,
   zGetAgentByAgentIdSandboxFilesResponse,
+  zGetAgentByAgentIdSandboxPath,
+  zGetAgentByAgentIdSandboxQuery,
+  zGetAgentByAgentIdSandboxResponse,
   zGetAgentByAgentIdStatisticsSummaryPath,
   zGetAgentByAgentIdStatisticsSummaryQuery,
   zGetAgentByAgentIdStatisticsSummaryResponse,
@@ -1224,7 +1227,23 @@ export const files5 = {
   upload: upload2,
 }
 
+/**
+ * Get basic information for an Agent App conversation sandbox
+ */
+export const get31 = oc
+  .route({
+    description: 'Get basic information for an Agent App conversation sandbox',
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getAgentByAgentIdSandbox',
+    path: '/agent/{agent_id}/sandbox',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAgentByAgentIdSandboxPath, query: zGetAgentByAgentIdSandboxQuery }))
+  .output(zGetAgentByAgentIdSandboxResponse)
+
 export const sandbox = {
+  get: get31,
   files: files5,
 }
 
@@ -1297,7 +1316,7 @@ export const skills3 = {
   bySlug,
 }
 
-export const get31 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1314,7 +1333,7 @@ export const get31 = oc
   .output(zGetAgentByAgentIdStatisticsSummaryResponse)
 
 export const summary = {
-  get: get31,
+  get: get32,
 }
 
 export const statistics = {
@@ -1336,7 +1355,7 @@ export const restore = {
   post: post19,
 }
 
-export const get32 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1348,11 +1367,11 @@ export const get32 = oc
   .output(zGetAgentByAgentIdVersionsByVersionIdResponse)
 
 export const byVersionId = {
-  get: get32,
+  get: get33,
   restore,
 }
 
-export const get33 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1364,7 +1383,7 @@ export const get33 = oc
   .output(zGetAgentByAgentIdVersionsResponse)
 
 export const versions = {
-  get: get33,
+  get: get34,
   byVersionId,
 }
 
@@ -1380,7 +1399,7 @@ export const delete7 = oc
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
   .output(zDeleteAgentByAgentIdResponse)
 
-export const get34 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1404,7 +1423,7 @@ export const put3 = oc
 
 export const byAgentId = {
   delete: delete7,
-  get: get34,
+  get: get35,
   put: put3,
   apiAccess,
   apiEnable,
@@ -1431,7 +1450,7 @@ export const byAgentId = {
   versions,
 }
 
-export const get35 = oc
+export const get36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1455,7 +1474,7 @@ export const post20 = oc
   .output(zPostAgentResponse)
 
 export const agent = {
-  get: get35,
+  get: get36,
   post: post20,
   inviteOptions,
   byAgentId,

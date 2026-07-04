@@ -6,7 +6,7 @@ from uuid import UUID
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, ValidationError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
@@ -26,6 +26,7 @@ from controllers.console.app.workflow import (
     WorkflowPaginationResponse,
     WorkflowResponse,
 )
+from controllers.console.app.wraps import with_session
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     RBACPermission,
@@ -343,7 +344,8 @@ class DraftRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
-    def post(self, current_user: Account, pipeline: Pipeline):
+    @with_session
+    def post(self, session: Session, current_user: Account, pipeline: Pipeline):
         """
         Run draft workflow
         """
@@ -352,6 +354,7 @@ class DraftRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                session=session,
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
@@ -375,7 +378,8 @@ class PublishedRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
-    def post(self, current_user: Account, pipeline: Pipeline):
+    @with_session
+    def post(self, session: Session, current_user: Account, pipeline: Pipeline):
         """
         Run published workflow
         """
@@ -385,6 +389,7 @@ class PublishedRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                session=session,
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
@@ -1014,13 +1019,14 @@ class RagPipelineTransformApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def post(self, current_user: Account, dataset_id: UUID):
+    @with_session
+    def post(self, session: Session, current_user: Account, dataset_id: UUID):
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
         dataset_id_str = str(dataset_id)
         rag_pipeline_transform_service = RagPipelineTransformService()
-        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str, db.session)
+        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str, session)
         return result
 
 
