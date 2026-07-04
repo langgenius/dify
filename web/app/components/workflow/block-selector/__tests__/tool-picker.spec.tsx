@@ -199,7 +199,7 @@ vi.mock('@/utils/var', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/utils/var')>()
   return {
     ...actual,
-    getMarketplaceUrl: () => 'https://marketplace.test/tools',
+    getMarketplaceUrl: (path = '') => `https://marketplace.test${path}`,
   }
 })
 

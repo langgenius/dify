@@ -19,8 +19,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
@@ -34,7 +34,6 @@ import { ToolTypeEnum } from './types'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 
 const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
-const getToolMarketplaceUrl = () => `${MARKETPLACE_URL_PREFIX.replace(/\/$/u, '')}/plugins/tool`
 
 type AllToolsProps = {
   className?: string
@@ -329,7 +328,7 @@ const AllTools = ({
         {shouldShowMarketplaceFooter && (
           <Link
             className={marketplaceFooterClassName}
-            href={getToolMarketplaceUrl()}
+            href={getMarketplaceCategoryUrl(PluginCategoryEnum.tool)}
             target="_blank"
           >
             <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
