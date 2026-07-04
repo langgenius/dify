@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
-import { AGENT_WORKING_DIRECTORY_ROOT_PATH, AgentWorkingDirectoryBreadcrumb } from './working-directory-breadcrumb'
+import { AgentWorkingDirectoryBreadcrumb } from './working-directory-breadcrumb'
 
 type AgentWorkingDirectoryPanelProps = {
   source: AgentWorkingDirectorySource
@@ -214,7 +214,7 @@ export function AgentWorkingDirectoryPanel({
 }: AgentWorkingDirectoryPanelProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [directoryPath, setDirectoryPath] = useState<AgentWorkingDirectoryPath>(AGENT_WORKING_DIRECTORY_ROOT_PATH)
+  const [selectedDirectoryPath, setSelectedDirectoryPath] = useState<AgentWorkingDirectoryPath>()
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const [loadedFolderPaths, setLoadedFolderPaths] = useState<string[]>([])
   const [openFolderPaths, setOpenFolderPaths] = useState<string[]>([])
@@ -225,9 +225,31 @@ export function AgentWorkingDirectoryPanel({
   const hasWorkingDirectorySource = source.type === 'agent'
     ? !!source.conversationId
     : !!source.appId && !!workflowNodeRunId
+  const sandboxInfoQueryOptions = consoleQuery.agent.byAgentId.sandbox.get.queryOptions({
+    input: source.type === 'agent' && source.conversationId
+      ? {
+          params: {
+            agent_id: source.agentId,
+          },
+          query: {
+            conversation_id: source.conversationId,
+          },
+        }
+      : skipToken,
+    context: {
+      silent: true,
+    },
+  })
+  const sandboxInfoQuery = useQuery({
+    ...sandboxInfoQueryOptions,
+    enabled: open && source.type === 'agent' && !!source.conversationId,
+    retry: false,
+  })
+  const isSandboxInfoLoading = source.type === 'agent' && !!source.conversationId && sandboxInfoQuery.isPending
+  const directoryPath = selectedDirectoryPath ?? sandboxInfoQuery.data?.workspace_cwd ?? '.'
   const getFileListQueryOptions = (path: string) => source.type === 'agent'
     ? consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
-        input: source.conversationId
+        input: source.conversationId && !isSandboxInfoLoading
           ? {
               params: {
                 agent_id: source.agentId,
@@ -260,7 +282,7 @@ export function AgentWorkingDirectoryPanel({
         },
       })
   const handleDirectoryPathChange = (path: AgentWorkingDirectoryPath) => {
-    setDirectoryPath(path)
+    setSelectedDirectoryPath(path)
     setSelectedFileId(undefined)
     setLoadedFolderPaths([])
     setOpenFolderPaths([])
@@ -322,7 +344,7 @@ export function AgentWorkingDirectoryPanel({
   }, buildSandboxFileTree(fileListQuery.data?.entries, fileListQuery.data?.path))
   const selectedWorkingDirectoryFile = findReadableFile(workingDirectoryFiles, selectedFileId)
     ?? findFirstReadableFile(workingDirectoryFiles)
-  const isFileListLoading = hasWorkingDirectorySource && fileListQuery.isPending
+  const isFileListLoading = hasWorkingDirectorySource && (isSandboxInfoLoading || fileListQuery.isPending)
   const loadingFolderPaths = new Set(loadedFolderPaths.filter((path, index) => expandedFolderQueries[index]?.isPending))
   const loadedFolderPathIndexes = new Map(loadedFolderPaths.map((path, index) => [path, index]))
   const fileReadQueryOptions = source.type === 'agent'
@@ -390,19 +412,26 @@ export function AgentWorkingDirectoryPanel({
         detail={{
           description: t('agentDetail.configure.workingDirectory.description'),
           fileCount: countReadableFiles(workingDirectoryFiles),
-          fileListHeader: (
-            <div className="flex shrink-0 flex-col">
-              <div className="flex items-center gap-1 px-4 pt-3.5 pb-3">
-                <h3 id="agent-skill-detail-files-heading" className="system-xl-semibold text-text-primary">
+          fileListHeader: isSandboxInfoLoading
+            ? (
+                <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
                   {t('agentDetail.configure.workingDirectory.fileSystem')}
                 </h3>
-              </div>
-              <AgentWorkingDirectoryBreadcrumb
-                path={directoryPath}
-                onPathChange={handleDirectoryPathChange}
-              />
-            </div>
-          ),
+              )
+            : (
+                <div className="flex shrink-0 flex-col">
+                  <div className="flex items-center gap-1 px-4 pt-3.5 pb-3">
+                    <h3 id="agent-skill-detail-files-heading" className="system-xl-semibold text-text-primary">
+                      {t('agentDetail.configure.workingDirectory.fileSystem')}
+                    </h3>
+                  </div>
+                  <AgentWorkingDirectoryBreadcrumb
+                    path={directoryPath}
+                    onPathChange={handleDirectoryPathChange}
+                  />
+                </div>
+              ),
+          fileListLoading: isSandboxInfoLoading,
           fileListPanelClassName: 'w-[360px]',
           fileListTreeClassName: 'px-0',
           fileListTreeListClassName: 'px-1',

@@ -28,6 +28,7 @@ export type AgentSkillDetail = {
   description: string
   fileCount?: number
   fileListHeader?: ReactNode
+  fileListLoading?: boolean
   fileListPanelClassName?: string
   fileListTreeClassName?: string
   fileListTreeListClassName?: string
@@ -57,6 +58,7 @@ const keepSkillFoldersClosed = () => false
 
 function AgentSkillFileList({
   fileListHeader,
+  fileListLoading,
   fileListTreeClassName,
   fileListTreeListClassName,
   fileListTitle,
@@ -69,6 +71,7 @@ function AgentSkillFileList({
   selectedFileId,
 }: {
   fileListHeader?: ReactNode
+  fileListLoading?: boolean
   fileListTreeClassName?: string
   fileListTreeListClassName?: string
   fileListTitle?: string
@@ -81,6 +84,21 @@ function AgentSkillFileList({
   selectedFileId?: string
 }) {
   const { t } = useTranslation('agentV2')
+
+  if (fileListLoading) {
+    return (
+      <div className={cn('flex h-full flex-col bg-background-section', fileListTreeClassName)}>
+        {fileListHeader ?? (
+          <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
+            {fileListTitle ?? t('agentDetail.configure.skills.detail.files')}
+          </h3>
+        )}
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <Loading type="area" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AgentFileTree
@@ -265,6 +283,7 @@ export function AgentSkillDetailDialog({
         <div className="min-h-0 w-full">
           <AgentSkillFileList
             fileListHeader={detail.fileListHeader}
+            fileListLoading={detail.fileListLoading}
             fileListTreeClassName={detail.fileListTreeClassName}
             fileListTreeListClassName={detail.fileListTreeListClassName}
             fileListTitle={detail.fileListTitle}

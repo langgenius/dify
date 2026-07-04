@@ -27,48 +27,69 @@ const normalizeWorkingDirectoryPath = (path: AgentWorkingDirectoryPath) => {
   if (path === AGENT_WORKING_DIRECTORY_ROOT_PATH || path === AGENT_WORKING_DIRECTORY_HOME_PATH)
     return path
 
+  if (path.startsWith('~/'))
+    return `${AGENT_WORKING_DIRECTORY_HOME_PATH}/${path.slice(2).replace(/^\/+|\/+$/g, '')}`
+
   return path.replace(/^\.\/+/, '').replace(/^\/+|\/+$/g, '')
 }
 
-function buildPathFromSegments(segments: string[]) {
+function buildPathFromSegments(segments: string[], options: { startsFromHome: boolean }) {
+  if (options.startsFromHome)
+    return segments.length ? `${AGENT_WORKING_DIRECTORY_HOME_PATH}/${segments.join('/')}` : AGENT_WORKING_DIRECTORY_HOME_PATH
+
   return segments.length ? segments.join('/') : AGENT_WORKING_DIRECTORY_ROOT_PATH
 }
 
 function getBreadcrumbItems({
   homeLabel,
   path,
-  workingDirectoryLabel,
 }: {
   homeLabel: string
   path: AgentWorkingDirectoryPath
-  workingDirectoryLabel: string
 }): AgentWorkingDirectoryBreadcrumbItemData[] {
   const normalizedPath = normalizeWorkingDirectoryPath(path)
-  const homeItem: AgentWorkingDirectoryBreadcrumbItemData = {
-    iconClassName: 'i-ri-folder-3-line',
-    label: homeLabel,
-    path: AGENT_WORKING_DIRECTORY_HOME_PATH,
+  const normalizedHomeLabel = homeLabel === 'home' ? 'Home' : homeLabel
+
+  if (normalizedPath === AGENT_WORKING_DIRECTORY_HOME_PATH) {
+    return [{
+      iconClassName: 'i-ri-folder-3-line',
+      label: normalizedHomeLabel,
+      path: AGENT_WORKING_DIRECTORY_HOME_PATH,
+    }]
   }
 
-  if (normalizedPath === AGENT_WORKING_DIRECTORY_HOME_PATH)
-    return [homeItem]
+  if (normalizedPath === AGENT_WORKING_DIRECTORY_ROOT_PATH) {
+    return [{
+      iconClassName: 'i-ri-folder-3-line',
+      label: AGENT_WORKING_DIRECTORY_ROOT_PATH,
+      path: AGENT_WORKING_DIRECTORY_ROOT_PATH,
+    }]
+  }
 
-  const segments = normalizedPath === AGENT_WORKING_DIRECTORY_ROOT_PATH
-    ? []
+  const startsFromHome = normalizedPath.startsWith(`${AGENT_WORKING_DIRECTORY_HOME_PATH}/`)
+  const segments = startsFromHome
+    ? normalizedPath.slice(2).split('/').filter(Boolean)
     : normalizedPath.split('/').filter(Boolean)
 
+  const rootItem: AgentWorkingDirectoryBreadcrumbItemData = {
+    iconClassName: 'i-ri-folder-3-line',
+    label: startsFromHome ? normalizedHomeLabel : segments[0]!,
+    path: buildPathFromSegments(startsFromHome ? [] : segments.slice(0, 1), { startsFromHome }),
+  }
+
   return [
-    homeItem,
-    {
-      iconClassName: 'i-ri-folder-3-line',
-      label: workingDirectoryLabel,
-      path: AGENT_WORKING_DIRECTORY_ROOT_PATH,
-    },
-    ...segments.map((segment, index) => ({
-      iconClassName: 'i-ri-folder-3-line',
-      label: segment,
-      path: buildPathFromSegments(segments.slice(0, index + 1)),
-    })),
+    rootItem,
+    ...segments.slice(startsFromHome ? 0 : 1).map((segment, index) => {
+      const pathSegments = startsFromHome
+        ? segments.slice(0, index + 1)
+        : segments.slice(0, index + 2)
+
+      return {
+        iconClassName: 'i-ri-folder-3-line',
+        label: segment,
+        path: buildPathFromSegments(pathSegments, { startsFromHome }),
+      }
+    }),
   ]
 }
 
@@ -124,7 +145,6 @@ export function AgentWorkingDirectoryBreadcrumb({
   const items = getBreadcrumbItems({
     homeLabel: t('agentDetail.configure.workingDirectory.home'),
     path,
-    workingDirectoryLabel: t('agentDetail.configure.workingDirectory.workingDirectory'),
   })
   const { hiddenItems, visibleItems } = getVisibleBreadcrumbItems(items)
 
