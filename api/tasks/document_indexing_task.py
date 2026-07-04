@@ -146,9 +146,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     )
                     found_ids = {document.id for document in documents}
                     for missing_id in set(document_ids) - found_ids:
-                        logger.warning(
-                            "Document %s not found after indexing in dataset %s", missing_id, dataset_id
-                        )
+                        logger.warning("Document %s not found after indexing in dataset %s", missing_id, dataset_id)
 
                     for document in documents:
                         logger.info(
@@ -179,8 +177,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                                 # Don't fail the entire indexing process if summary task queuing fails
                         else:
                             logger.info(
-                                "Skipping summary generation for document %s: "
-                                "status=%s, doc_form=%s, need_summary=%s",
+                                "Skipping summary generation for document %s: status=%s, doc_form=%s, need_summary=%s",
                                 document.id,
                                 document.indexing_status,
                                 document.doc_form,
