@@ -392,7 +392,7 @@ class TestWeaviateVector(unittest.TestCase):
         with caplog.at_level(logging.WARNING):
             wv._ensure_properties()
 
-        assert len([r for r in caplog.records if r.levelname == 'WARNING']) == 6
+        assert len([r for r in caplog.records if r.levelname == "WARNING"]) == 6
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_vector_returns_doc_type_in_metadata(self, mock_weaviate_module):
