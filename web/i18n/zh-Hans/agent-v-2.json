@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "文件系统",
   "agentDetail.configure.workingDirectory.home": "home",
   "agentDetail.configure.workingDirectory.open": "打开工作目录",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "返回工作目录",
   "agentDetail.configure.workingDirectory.title": "工作目录",
   "agentDetail.configure.workingDirectory.treeLabel": "工作目录文件",
   "agentDetail.configure.workingDirectory.workingDirectory": "工作目录",

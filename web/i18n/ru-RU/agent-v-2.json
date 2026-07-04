@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "Файловая система",
   "agentDetail.configure.workingDirectory.home": "главная",
   "agentDetail.configure.workingDirectory.open": "Открыть рабочий каталог",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "Вернуться в рабочий каталог",
   "agentDetail.configure.workingDirectory.title": "Рабочий каталог",
   "agentDetail.configure.workingDirectory.treeLabel": "Файлы рабочего каталога",
   "agentDetail.configure.workingDirectory.workingDirectory": "рабочий каталог",

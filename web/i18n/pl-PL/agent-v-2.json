@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "System plików",
   "agentDetail.configure.workingDirectory.home": "home",
   "agentDetail.configure.workingDirectory.open": "Otwórz katalog roboczy",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "Wróć do katalogu roboczego",
   "agentDetail.configure.workingDirectory.title": "Katalog roboczy",
   "agentDetail.configure.workingDirectory.treeLabel": "Pliki katalogu roboczego",
   "agentDetail.configure.workingDirectory.workingDirectory": "katalog roboczy",

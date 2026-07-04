@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "نظام الملفات",
   "agentDetail.configure.workingDirectory.home": "الرئيسية",
   "agentDetail.configure.workingDirectory.open": "فتح دليل العمل",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "العودة إلى دليل العمل",
   "agentDetail.configure.workingDirectory.title": "دليل العمل",
   "agentDetail.configure.workingDirectory.treeLabel": "ملفات دليل العمل",
   "agentDetail.configure.workingDirectory.workingDirectory": "دليل العمل",

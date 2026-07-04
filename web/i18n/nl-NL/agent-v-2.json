@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "Bestandssysteem",
   "agentDetail.configure.workingDirectory.home": "home",
   "agentDetail.configure.workingDirectory.open": "Werkmap openen",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "Terug naar werkmap",
   "agentDetail.configure.workingDirectory.title": "Werkmap",
   "agentDetail.configure.workingDirectory.treeLabel": "Bestanden in de werkmap",
   "agentDetail.configure.workingDirectory.workingDirectory": "werkmap",

@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "Dosya sistemi",
   "agentDetail.configure.workingDirectory.home": "ana sayfa",
   "agentDetail.configure.workingDirectory.open": "Çalışma dizinini aç",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "Çalışma dizinine dön",
   "agentDetail.configure.workingDirectory.title": "Çalışma dizini",
   "agentDetail.configure.workingDirectory.treeLabel": "Çalışma dizini dosyaları",
   "agentDetail.configure.workingDirectory.workingDirectory": "çalışma dizini",

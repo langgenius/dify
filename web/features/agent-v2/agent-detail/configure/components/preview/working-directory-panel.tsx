@@ -4,6 +4,7 @@ import type { SandboxFileEntryResponse, SandboxListResponse, SandboxReadResponse
 import type { AgentWorkingDirectoryPath } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useQueries, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -207,6 +208,16 @@ async function isNoActiveSessionError(error: unknown) {
 
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 
+function isSandboxPathWithinDirectory(path: string, directory: string) {
+  const normalizedPath = normalizeSandboxPath(path)
+  const normalizedDirectory = normalizeSandboxPath(directory)
+
+  if (!normalizedDirectory)
+    return true
+
+  return normalizedPath === normalizedDirectory || normalizedPath.startsWith(`${normalizedDirectory}/`)
+}
+
 export function AgentWorkingDirectoryPanel({
   source,
   onOpenChange,
@@ -246,7 +257,9 @@ export function AgentWorkingDirectoryPanel({
     retry: false,
   })
   const isSandboxInfoLoading = source.type === 'agent' && !!source.conversationId && sandboxInfoQuery.isPending
-  const directoryPath = selectedDirectoryPath ?? sandboxInfoQuery.data?.workspace_cwd ?? '.'
+  const workspaceDirectoryPath = sandboxInfoQuery.data?.workspace_cwd
+  const directoryPath = selectedDirectoryPath ?? workspaceDirectoryPath ?? '.'
+  const showReturnToWorkspaceButton = !!workspaceDirectoryPath && !isSandboxPathWithinDirectory(directoryPath, workspaceDirectoryPath)
   const getFileListQueryOptions = (path: string) => source.type === 'agent'
     ? consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
         input: source.conversationId && !isSandboxInfoLoading
@@ -421,9 +434,23 @@ export function AgentWorkingDirectoryPanel({
             : (
                 <div className="flex shrink-0 flex-col">
                   <div className="flex items-center gap-1 px-4 pt-3.5 pb-3">
-                    <h3 id="agent-skill-detail-files-heading" className="system-xl-semibold text-text-primary">
+                    <h3 id="agent-skill-detail-files-heading" className="min-w-0 flex-1 system-xl-semibold text-text-primary">
                       {t('agentDetail.configure.workingDirectory.fileSystem')}
                     </h3>
+                    {showReturnToWorkspaceButton && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          aria-label={t('agentDetail.configure.workingDirectory.returnToWorkspace')}
+                          className="flex size-6 shrink-0 items-center justify-center rounded-md p-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                          onClick={() => handleDirectoryPathChange(workspaceDirectoryPath)}
+                        >
+                          <span aria-hidden className="i-ri-arrow-go-back-line size-3.5" />
+                        </TooltipTrigger>
+                        <TooltipContent placement="top">
+                          {t('agentDetail.configure.workingDirectory.returnToWorkspace')}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
                   <AgentWorkingDirectoryBreadcrumb
                     path={directoryPath}

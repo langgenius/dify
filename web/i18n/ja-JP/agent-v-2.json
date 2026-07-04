@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "ファイルシステム",
   "agentDetail.configure.workingDirectory.home": "ホーム",
   "agentDetail.configure.workingDirectory.open": "作業ディレクトリを開く",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "作業ディレクトリに戻る",
   "agentDetail.configure.workingDirectory.title": "作業ディレクトリ",
   "agentDetail.configure.workingDirectory.treeLabel": "作業ディレクトリのファイル",
   "agentDetail.configure.workingDirectory.workingDirectory": "作業ディレクトリ",

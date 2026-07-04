@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "Hệ thống tệp",
   "agentDetail.configure.workingDirectory.home": "trang chủ",
   "agentDetail.configure.workingDirectory.open": "Mở thư mục làm việc",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "Quay lại thư mục làm việc",
   "agentDetail.configure.workingDirectory.title": "Thư mục làm việc",
   "agentDetail.configure.workingDirectory.treeLabel": "Tệp trong thư mục làm việc",
   "agentDetail.configure.workingDirectory.workingDirectory": "thư mục làm việc",

@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "फ़ाइल सिस्टम",
   "agentDetail.configure.workingDirectory.home": "होम",
   "agentDetail.configure.workingDirectory.open": "वर्किंग डायरेक्टरी खोलें",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "वर्किंग डायरेक्टरी पर वापस जाएँ",
   "agentDetail.configure.workingDirectory.title": "वर्किंग डायरेक्टरी",
   "agentDetail.configure.workingDirectory.treeLabel": "वर्किंग डायरेक्टरी फाइलें",
   "agentDetail.configure.workingDirectory.workingDirectory": "वर्किंग डायरेक्टरी",

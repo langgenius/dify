@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "سیستم فایل",
   "agentDetail.configure.workingDirectory.home": "خانه",
   "agentDetail.configure.workingDirectory.open": "باز کردن پوشه کاری",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "بازگشت به پوشه کاری",
   "agentDetail.configure.workingDirectory.title": "پوشه کاری",
   "agentDetail.configure.workingDirectory.treeLabel": "فایل‌های پوشه کاری",
   "agentDetail.configure.workingDirectory.workingDirectory": "پوشه کاری",

@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "Sistem de fișiere",
   "agentDetail.configure.workingDirectory.home": "acasă",
   "agentDetail.configure.workingDirectory.open": "Deschide directorul de lucru",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "Înapoi la directorul de lucru",
   "agentDetail.configure.workingDirectory.title": "Director de lucru",
   "agentDetail.configure.workingDirectory.treeLabel": "Fișiere din directorul de lucru",
   "agentDetail.configure.workingDirectory.workingDirectory": "director de lucru",

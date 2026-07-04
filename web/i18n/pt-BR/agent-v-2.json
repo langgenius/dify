@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "Sistema de arquivos",
   "agentDetail.configure.workingDirectory.home": "início",
   "agentDetail.configure.workingDirectory.open": "Abrir diretório de trabalho",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "Voltar ao diretório de trabalho",
   "agentDetail.configure.workingDirectory.title": "Diretório de trabalho",
   "agentDetail.configure.workingDirectory.treeLabel": "Arquivos do diretório de trabalho",
   "agentDetail.configure.workingDirectory.workingDirectory": "diretório de trabalho",

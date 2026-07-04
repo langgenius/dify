@@ -252,6 +252,7 @@
   "agentDetail.configure.workingDirectory.fileSystem": "ระบบไฟล์",
   "agentDetail.configure.workingDirectory.home": "หน้าแรก",
   "agentDetail.configure.workingDirectory.open": "เปิดไดเรกทอรีทำงาน",
+  "agentDetail.configure.workingDirectory.returnToWorkspace": "กลับไปยังไดเรกทอรีทำงาน",
   "agentDetail.configure.workingDirectory.title": "ไดเรกทอรีทำงาน",
   "agentDetail.configure.workingDirectory.treeLabel": "ไฟล์ในไดเรกทอรีทำงาน",
   "agentDetail.configure.workingDirectory.workingDirectory": "ไดเรกทอรีทำงาน",
