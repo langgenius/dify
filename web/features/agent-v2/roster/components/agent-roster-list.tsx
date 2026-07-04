@@ -21,7 +21,7 @@ import { DuplicateAgentDialog } from './duplicate-agent-dialog'
 import { EditAgentDialog } from './edit-agent-dialog'
 
 type AgentRosterListProps = {
-  agents: AgentRosterListItem[]
+  agents: AgentAppPartial[]
   hasMore: boolean
   isEmptySearch: boolean
   isError: boolean
@@ -31,8 +31,6 @@ type AgentRosterListProps = {
   label: string
   onLoadMore: () => void
 }
-
-export type AgentRosterListItem = AgentAppPartial
 
 const skeletonRows = ['primary', 'secondary', 'tertiary'] as const
 const emptyPlaceholderCardIds = Array.from({ length: 16 }, (_, index) => `agent-roster-placeholder-card-${index}`)
@@ -96,7 +94,7 @@ function AgentRosterPlaceholderState({ title }: { title: string }) {
 function AgentRosterItem({
   agent,
 }: {
-  agent: AgentRosterListItem
+  agent: AgentAppPartial
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')

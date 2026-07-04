@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentRosterListItem } from './components/agent-roster-list'
+import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { RosterFilterValue } from './components/roster-filter'
 import {
   ScrollAreaContent,
@@ -27,11 +27,11 @@ import {
 } from './query-params'
 
 const ROSTER_PAGE_SIZE = 30
-const isAgentPublished = (agent: AgentRosterListItem) => agent.active_config_is_published === true
+const isAgentPublished = (agent: AgentAppPartial) => agent.active_config_is_published === true
 const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-transparent data-disabled:opacity-100'
 
 const getFilteredRosterItems = (
-  agents: AgentRosterListItem[],
+  agents: AgentAppPartial[],
   filter: RosterFilterValue,
 ) => {
   if (filter === 'published')
@@ -81,7 +81,7 @@ export default function RosterPage() {
     }),
   })
 
-  const rosterItems: AgentRosterListItem[] = rosterPages?.pages.flatMap(page => page.data) ?? []
+  const rosterItems: AgentAppPartial[] = rosterPages?.pages.flatMap(page => page.data) ?? []
   const publishedAgents = rosterItems.filter(isAgentPublished).length
   const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
