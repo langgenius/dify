@@ -10,6 +10,7 @@ import click
 import sqlalchemy as sa
 import yaml
 
+from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from models import Tenant
 from models.model import App
@@ -106,7 +107,8 @@ def export_migration_data(input_file: str | None, output_file: str | None, overw
         assert output_file is not None
         raw_config = _load_json_object(input_file, "Export config")
         selection = ExportConfigParser().parse(raw_config)
-        result = MigrationExportService().export(selection)
+        with session_factory.create_session() as session:
+            result = MigrationExportService().export(session, selection)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _render_report(result.report_items, context=_with_output_path(result.report_context, output_file))
@@ -153,19 +155,21 @@ def import_migration_data(
         _require_options(("--input", input_file))
         assert input_file is not None
         package = MigrationPackageService().load_package(input_file)
-        result = MigrationImportService().import_package(
-            ImportRequest(
-                package=package,
-                cli_target_tenant=target_tenant,
-                operator_email=operator_email,
-                options_override=_build_options_override(
-                    package.metadata.import_options,
-                    id_strategy=id_strategy,
-                    conflict_strategy=conflict_strategy,
-                    create_app_api_token_on_import=create_app_api_token_on_import,
+        with session_factory.create_session() as session:
+            result = MigrationImportService().import_package(
+                session,
+                ImportRequest(
+                    package=package,
+                    cli_target_tenant=target_tenant,
+                    operator_email=operator_email,
+                    options_override=_build_options_override(
+                        package.metadata.import_options,
+                        id_strategy=id_strategy,
+                        conflict_strategy=conflict_strategy,
+                        create_app_api_token_on_import=create_app_api_token_on_import,
+                    ),
                 ),
             )
-        )
         _render_report(result.report_items, context=result.report_context)
     except MigrationDataError as exc:
         raise click.ClickException(str(exc)) from exc
@@ -248,7 +252,8 @@ def migration_data_wizard() -> None:
             conflict_strategy=conflict_strategy,
             output_file=output_file,
         )
-        result = MigrationExportService().export(selection)
+        with session_factory.create_session() as session:
+            result = MigrationExportService().export(session, selection)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _print_wizard_step("Report")

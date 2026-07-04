@@ -6,9 +6,9 @@ from uuid import UUID
 
 import sqlalchemy as sa
 import yaml
+from sqlalchemy.orm import Session
 
 from core.tools.tool_manager import ToolManager
-from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account, Tenant
 from models.account import TenantAccountJoin
@@ -120,8 +120,8 @@ class MigrationExportService:
         self.package_service = package_service or MigrationPackageService()
         self.dependency_discovery_service = dependency_discovery_service or DependencyDiscoveryService()
 
-    def export(self, selection: ExportSelection) -> ExportResult:
-        tenant = self._get_tenant(selection)
+    def export(self, session: Session, selection: ExportSelection) -> ExportResult:
+        tenant = self._get_tenant(session, selection)
         package = self.package_service.build_empty_package(
             source_tenant_id=tenant.id,
             source_tenant_name=tenant.name,
@@ -131,7 +131,7 @@ class MigrationExportService:
         report_items: list[ResourceReportItem] = []
         discovered_dependencies: list[DiscoveredDependency] = []
 
-        apps = self._selected_apps(tenant.id, selection)
+        apps = self._selected_apps(session, tenant.id, selection)
         exported_app_ids = {app.id for app in apps}
         for app in apps:
             dsl_content = AppDslService.export_dsl(app_model=app, include_secret=selection.include_secrets)
@@ -157,6 +157,7 @@ class MigrationExportService:
             report_items=report_items,
         )
         self._export_workflow_tools(
+            session,
             tenant,
             self._provider_ids(
                 selection.additional_workflow_tools, discovered_dependencies, DependencyKind.WORKFLOW_TOOL
@@ -167,6 +168,7 @@ class MigrationExportService:
             report_items=report_items,
         )
         self._export_mcp_tools(
+            session,
             tenant_id=tenant.id,
             provider_ids=self._provider_ids(
                 selection.additional_mcp_tools,
@@ -193,9 +195,9 @@ class MigrationExportService:
             ),
         )
 
-    def _get_tenant(self, selection: ExportSelection) -> Tenant:
+    def _get_tenant(self, session: Session, selection: ExportSelection) -> Tenant:
         if selection.source_tenant_id:
-            tenant = db.session.get(Tenant, selection.source_tenant_id)
+            tenant = session.get(Tenant, selection.source_tenant_id)
             if tenant is None:
                 raise MigrationDataError(f"Source tenant not found: {selection.source_tenant_id}")
             if tenant.name != selection.source_tenant_name:
@@ -203,7 +205,7 @@ class MigrationExportService:
                     f"Source tenant id/name mismatch: {selection.source_tenant_id} / {selection.source_tenant_name}"
                 )
             return tenant
-        tenants = list(db.session.scalars(sa.select(Tenant).where(Tenant.name == selection.source_tenant_name)).all())
+        tenants = list(session.scalars(sa.select(Tenant).where(Tenant.name == selection.source_tenant_name)).all())
         if not tenants:
             raise MigrationDataError(f"Source tenant not found: {selection.source_tenant_name}")
         if len(tenants) > 1:
@@ -212,13 +214,13 @@ class MigrationExportService:
             )
         return tenants[0]
 
-    def _selected_apps(self, tenant_id: str, selection: ExportSelection) -> list[App]:
+    def _selected_apps(self, session: Session, tenant_id: str, selection: ExportSelection) -> list[App]:
         query = sa.select(App).where(App.tenant_id == tenant_id, App.mode.in_(SUPPORTED_APP_MODES))
         if not selection.export_all_apps:
             if not selection.app_ids:
                 return []
             query = query.where(App.id.in_(selection.app_ids))
-        apps = list(db.session.scalars(query).all())
+        apps = list(session.scalars(query).all())
         if not selection.export_all_apps and len(apps) != len(set(selection.app_ids)):
             found_ids = {app.id for app in apps}
             missing_ids = [app_id for app_id in selection.app_ids if app_id not in found_ids]
@@ -265,6 +267,7 @@ class MigrationExportService:
 
     def _export_workflow_tools(
         self,
+        session: Session,
         tenant: Tenant,
         provider_ids: Iterable[str],
         *,
@@ -276,7 +279,7 @@ class MigrationExportService:
         provider_ids = self._dedupe(provider_ids)
         if not provider_ids:
             return
-        owner = self._get_tenant_owner(tenant.id)
+        owner = self._get_tenant_owner(session, tenant.id)
         if owner is None:
             for provider_id in provider_ids:
                 report_items.append(
@@ -306,7 +309,7 @@ class MigrationExportService:
                 exported_workflow_tools.append(tool_info)
                 if tool_info.get("app_id") not in exported_app_ids:
                     workflow_app_id = str(tool_info.get("app_id") or "")
-                    workflow_app = db.session.get(App, workflow_app_id) if workflow_app_id else None
+                    workflow_app = session.get(App, workflow_app_id) if workflow_app_id else None
                     self._record_dependency_metadata(
                         [
                             DiscoveredDependency(
@@ -327,8 +330,8 @@ class MigrationExportService:
                     ResourceReportItem(ResourceType.WORKFLOW_TOOL, provider_id, provider_id, "unresolved", str(exc))
                 )
 
-    def _get_tenant_owner(self, tenant_id: str) -> Account | None:
-        return db.session.scalar(
+    def _get_tenant_owner(self, session: Session, tenant_id: str) -> Account | None:
+        return session.scalar(
             sa.select(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.role == "owner")
@@ -338,6 +341,7 @@ class MigrationExportService:
 
     def _export_mcp_tools(
         self,
+        session: Session,
         *,
         tenant_id: str,
         provider_ids: Iterable[str],
@@ -355,7 +359,7 @@ class MigrationExportService:
                 )
                 continue
             try:
-                provider = self._get_mcp_provider(tenant_id, provider_id)
+                provider = self._get_mcp_provider(session, tenant_id, provider_id)
                 exported_mcp_tools.append(self._serialize_mcp_provider(provider))
                 report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, provider_id, provider.name, "exported"))
             except Exception as exc:
@@ -363,11 +367,11 @@ class MigrationExportService:
                     ResourceReportItem(ResourceType.MCP_TOOL, provider_id, provider_id, "unresolved", str(exc))
                 )
 
-    def _get_mcp_provider(self, tenant_id: str, provider_id: str) -> MCPToolProvider:
+    def _get_mcp_provider(self, session: Session, tenant_id: str, provider_id: str) -> MCPToolProvider:
         predicates = [MCPToolProvider.server_identifier == provider_id]
         if self._is_uuid_string(provider_id):
             predicates.append(MCPToolProvider.id == provider_id)
-        provider = db.session.scalar(
+        provider = session.scalar(
             sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, sa.or_(*predicates))
         )
         if provider is None:
