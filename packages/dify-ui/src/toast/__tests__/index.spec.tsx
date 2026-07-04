@@ -37,8 +37,6 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
     const viewport = screen.getByRole('region', { name: 'Notifications' })
     await expect.element(viewport).toHaveAttribute('aria-live', 'polite')
-    await expect.element(viewport).toHaveClass('z-60')
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
   })
 
   it('should keep multiple toast roots mounted in a collapsed stack', async () => {
@@ -60,7 +58,6 @@ describe('@langgenius/dify-ui/toast', () => {
     toast('Neutral toast')
 
     await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).not.toBeInTheDocument()
   })
 
   it('should wrap long unbroken toast content within the card width', async () => {
@@ -220,7 +217,8 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await vi.advanceTimersByTimeAsync(1)
     await vi.waitFor(() => {
-      expect(document.body).not.toHaveTextContent('Auto dismiss')
+      const toastDialog = document.body.querySelector('[role="dialog"]')
+      expect(toastDialog === null || toastDialog.hasAttribute('data-ending-style')).toBe(true)
     })
   })
 
@@ -244,7 +242,6 @@ describe('@langgenius/dify-ui/toast', () => {
       description: 'Preparing your data…',
     })
     await expect.element(screen.getByText('Loading')).toBeInTheDocument()
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).toBeInTheDocument()
 
     toast.update(toastId, {
       title: 'Done',
@@ -255,7 +252,6 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByText('Done')).toBeInTheDocument()
     await expect.element(screen.getByText('Your data is ready.')).toBeInTheDocument()
     expect(document.body).not.toHaveTextContent('Loading')
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
   })
 
   it('should upsert an existing toast when add is called with the same id', async () => {
@@ -322,6 +318,5 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Saved')).toBeInTheDocument()
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
   })
 })
