@@ -83,6 +83,7 @@ describe('isAgentCompatibleModel', () => {
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-coder'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-reasoner'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-chat-v3'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('deepseek-R1'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('DeepSeek-R1-Distill-Qwen-32B'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-v3.1'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('minimax-text-01'))).toBe(false)
@@ -98,9 +99,11 @@ describe('isAgentCompatibleModel', () => {
     expect(isAgentCompatibleModel(provider, createModelItem('qwen-flash'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('farui-plus'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('chatglm-3-turbo'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('glm-3-turbo'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('glm-4-airx'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('glm-4.7'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('glm-z1-flash'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('glm-z2-plus'))).toBe(false)
   })
 
   it('should ignore provider when evaluating blacklist patterns', () => {

@@ -25,6 +25,7 @@ const agentIncompatibleModelPatterns: RegExp[] = [
 
   // deepseek
   /^deepseek-(?:chat|coder|reasoner)(?:-|$)/i,
+  /^deepseek-r1$/i,
   /^deepseek-r1-distill-/i,
   /^deepseek-v3/i,
 
@@ -45,9 +46,9 @@ const agentIncompatibleModelPatterns: RegExp[] = [
 
   // zhipuai
   /^chatglm-(?:2|3)/i,
+  /^glm-3/i,
   /^glm-4/i,
-  /^glm-4-(?:air|airx|flash)$/i,
-  /^glm-z1-(?:air|flash)$/i,
+  /^glm-z/i,
 ]
 
 const agentSuggestedModelPatterns: RegExp[] = [
