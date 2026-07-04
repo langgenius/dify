@@ -35,6 +35,12 @@ import { PickerBlockMenuOption } from './menu'
 import { PromptMenuItem } from './prompt-option'
 import { VariableMenuItem } from './variable-option'
 
+// The typeahead query string comes from arbitrary prompt text after a `{` trigger
+// (e.g. `source_url})` from a markdown link), so it must be escaped before being
+// used to build a RegExp. An unescaped value can be invalid regex syntax and throw
+// during render, crashing the editor. See issue #38384.
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 export const usePromptOptions = (
   contextBlock?: ContextBlockType,
   queryBlock?: QueryBlockType,
@@ -182,7 +188,7 @@ export const useVariableOptions = (
     if (!queryString)
       return baseOptions
 
-    const regex = new RegExp(queryString, 'i')
+    const regex = new RegExp(escapeRegExp(queryString), 'i')
 
     return baseOptions.filter(option => regex.test(option.key))
   }, [editor, queryString, variableBlock])
@@ -260,7 +266,7 @@ export const useExternalToolOptions = (
     if (!queryString)
       return baseToolOptions
 
-    const regex = new RegExp(queryString, 'i')
+    const regex = new RegExp(escapeRegExp(queryString), 'i')
 
     return baseToolOptions.filter(option => regex.test(option.key))
   }, [editor, queryString, externalToolBlockType])

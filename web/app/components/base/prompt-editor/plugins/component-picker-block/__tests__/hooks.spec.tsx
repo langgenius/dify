@@ -542,6 +542,39 @@ describe('useVariableOptions', () => {
   })
 
   /**
+   * Regression: text typed after a `{` trigger (e.g. `source_url})` from a markdown
+   * link) becomes the queryString and was passed unescaped to `new RegExp`, throwing a
+   * SyntaxError during render and crashing the prompt editor. See issue #38384.
+   */
+  describe('when queryString contains regex special characters', () => {
+    const vars: Option[] = [{ value: 'source_url', name: 'source_url' }]
+
+    it.each([
+      'source_url})',
+      'a[b',
+      'trailing\\',
+    ])('should not throw when queryString is %j', (queryString) => {
+      expect(() =>
+        renderHook(() => useVariableOptions(makeVariableBlock(vars), queryString), { wrapper }),
+      ).not.toThrow()
+    })
+
+    it('should match the queryString literally instead of as a regex pattern', () => {
+      const dottedVars: Option[] = [
+        { value: 'a.b', name: 'a.b' },
+        { value: 'axb', name: 'axb' },
+      ]
+      const { result } = renderHook(
+        () => useVariableOptions(makeVariableBlock(dottedVars), 'a.b'),
+        { wrapper },
+      )
+      // Escaped `a\.b` matches only the literal 'a.b', not 'axb'; addOption is always appended.
+      expect(result.current).toHaveLength(2)
+      expect(result.current[0]!.key).toBe('a.b')
+    })
+  })
+
+  /**
    * addOption – calling onSelectMenuOption triggers editor.update() which
    * in turn calls $insertNodes with {{ and }} custom text nodes.
    * We only verify update() was invoked since the full DOM mutation requires
@@ -704,6 +737,20 @@ describe('useExternalToolOptions', () => {
         { wrapper },
       )
       expect(result.current).toHaveLength(1)
+    })
+
+    /**
+     * Regression: the queryString is passed straight to `new RegExp`, so regex special
+     * characters from arbitrary prompt text must not throw during render. See issue #38384.
+     */
+    it.each([
+      'weather})',
+      'a[b',
+      'trailing\\',
+    ])('should not throw when queryString is %j', (queryString) => {
+      expect(() =>
+        renderHook(() => useExternalToolOptions(makeExternalToolBlock({}, [sampleTool]), queryString), { wrapper }),
+      ).not.toThrow()
     })
   })
 
