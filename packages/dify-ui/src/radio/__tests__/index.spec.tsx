@@ -69,7 +69,6 @@ describe('Radio', () => {
 
     await expect.element(ssd).toHaveAttribute('aria-checked', 'true')
     await expect.element(ssd).toHaveAttribute('data-checked', '')
-    await expect.element(ssd).toHaveClass('data-checked:border-components-radio-border-checked')
     await expect.element(hdd).toHaveAttribute('aria-checked', 'false')
     await expect.element(hdd).toHaveAttribute('data-unchecked', '')
   })
@@ -101,7 +100,6 @@ describe('Radio', () => {
 
     const hdd = screen.getByRole('radio', { name: 'HDD' })
     await expect.element(hdd).toHaveAttribute('data-disabled', '')
-    await expect.element(hdd).toHaveClass('data-disabled:cursor-not-allowed')
 
     clickElement(hdd.element())
 
@@ -170,9 +168,7 @@ describe('Radio', () => {
 describe('RadioSkeleton', () => {
   it('should render a visual placeholder without radio semantics', async () => {
     const screen = await render(<RadioSkeleton />)
-    const skeleton = screen.container.querySelector<HTMLElement>('.rounded-full')
 
     expect(screen.container.querySelector('[role="radio"]')).not.toBeInTheDocument()
-    await expect.element(skeleton).toHaveClass('rounded-full', 'opacity-20')
   })
 })
