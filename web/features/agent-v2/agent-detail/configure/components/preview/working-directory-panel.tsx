@@ -75,17 +75,26 @@ function getSandboxEntryRelativePathSegments(entryName: string, basePath: string
 function buildSandboxFileTree(
   entries: SandboxFileEntryResponse[] = [],
   basePath = '.',
-  options: { nestUnderBasePath?: boolean } = {},
+  options: { nestRootPath?: string, nestUnderBasePath?: boolean } = {},
 ): AgentFileNode[] {
   const normalizedBasePath = normalizeSandboxPath(basePath)
+  const normalizedNestRootPath = normalizeSandboxPath(options.nestRootPath ?? '.')
   const rootFiles: AgentFileNode[] = []
   let baseFolder: AgentFileNode | undefined
 
   if (options.nestUnderBasePath && normalizedBasePath) {
     let currentFiles = rootFiles
-    let currentPath = ''
+    let currentPath = normalizedNestRootPath
+    const basePathSegments = normalizedBasePath.split('/').filter(Boolean)
+    const nestRootPathSegments = normalizedNestRootPath.split('/').filter(Boolean)
+    const nestedBasePathSegments = normalizedNestRootPath && (
+      normalizedBasePath === normalizedNestRootPath
+      || normalizedBasePath.startsWith(`${normalizedNestRootPath}/`)
+    )
+      ? basePathSegments.slice(nestRootPathSegments.length)
+      : basePathSegments
 
-    normalizedBasePath.split('/').filter(Boolean).forEach((segment) => {
+    nestedBasePathSegments.forEach((segment) => {
       currentPath = joinSandboxPath(currentPath, segment)
       const folder: AgentFileNode = {
         id: currentPath,
@@ -352,7 +361,10 @@ export function AgentWorkingDirectoryPanel({
     return mergeSandboxFileTree(files, buildSandboxFileTree(
       query.data?.entries,
       loadedFolderPaths[index] ?? query.data?.path,
-      { nestUnderBasePath: true },
+      {
+        nestRootPath: directoryPath,
+        nestUnderBasePath: true,
+      },
     ))
   }, buildSandboxFileTree(fileListQuery.data?.entries, fileListQuery.data?.path))
   const selectedWorkingDirectoryFile = findReadableFile(workingDirectoryFiles, selectedFileId)
