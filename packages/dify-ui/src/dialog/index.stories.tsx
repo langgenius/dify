@@ -1,14 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
   Dialog,
+  DialogBackdrop,
+  DialogClose,
   DialogCloseButton,
   DialogContent,
   DialogDescription,
+  DialogPopup,
+  DialogPortal,
   DialogTitle,
   DialogTrigger,
+  DialogViewport,
 } from '.'
 import { Button } from '../button'
 import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '../field'
@@ -82,9 +86,9 @@ function ReleaseNoteSections() {
 function ReleaseNoteFooter() {
   return (
     <div className="flex shrink-0 justify-end border-t border-divider-subtle p-4">
-      <BaseDialog.Close render={<Button />}>
+      <DialogClose render={<Button />}>
         Close
-      </BaseDialog.Close>
+      </DialogClose>
     </div>
   )
 }
@@ -307,18 +311,16 @@ const OutsideScrollingContentDemo = () => {
       >
         Review long release notes
       </DialogTrigger>
-      <BaseDialog.Portal>
-        <BaseDialog.Backdrop
-          className="absolute inset-0 z-50 bg-background-overlay transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none"
-        />
-        <BaseDialog.Viewport className="fixed inset-0 z-50">
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogViewport>
           <ScrollAreaRoot className="h-full overscroll-contain">
             <ScrollAreaViewport aria-label="Scrollable dialog viewport" role="region" className="h-full max-h-full max-w-full overscroll-contain">
               <ScrollAreaContent className="flex min-h-full items-center justify-center px-4 py-16">
-                <BaseDialog.Popup
+                <DialogPopup
                   ref={popupRef}
                   initialFocus={popupRef}
-                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl outline-hidden transition-[transform,scale,opacity] duration-150 data-ending-style:translate-y-4 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:translate-y-4 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
+                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden data-ending-style:translate-y-4 data-starting-style:translate-y-4"
                 >
                   <DialogCloseButton />
                   <ReleaseNoteHeader
@@ -327,15 +329,15 @@ const OutsideScrollingContentDemo = () => {
                   />
                   <ReleaseNoteSections />
                   <ReleaseNoteFooter />
-                </BaseDialog.Popup>
+                </DialogPopup>
               </ScrollAreaContent>
             </ScrollAreaViewport>
             <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
           </ScrollAreaRoot>
-        </BaseDialog.Viewport>
-      </BaseDialog.Portal>
+        </DialogViewport>
+      </DialogPortal>
     </Dialog>
   )
 }
@@ -352,13 +354,11 @@ export const ScrollingContent: Story = {
       >
         Review release notes
       </DialogTrigger>
-      <BaseDialog.Portal>
-        <BaseDialog.Backdrop
-          className="absolute inset-0 z-50 bg-background-overlay transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none"
-        />
-        <BaseDialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden p-4">
-          <BaseDialog.Popup
-            className="relative flex h-[min(44rem,calc(100dvh-2rem))] w-120 max-w-[calc(100vw-2rem)] min-h-0 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogViewport className="flex items-center justify-center overflow-hidden p-4">
+          <DialogPopup
+            className="relative flex h-[min(44rem,calc(100dvh-2rem))] w-120 max-w-[calc(100vw-2rem)] min-h-0 flex-col overflow-hidden"
           >
             <DialogCloseButton />
             <ReleaseNoteHeader
@@ -376,9 +376,9 @@ export const ScrollingContent: Story = {
               </ScrollAreaScrollbar>
             </ScrollAreaRoot>
             <ReleaseNoteFooter />
-          </BaseDialog.Popup>
-        </BaseDialog.Viewport>
-      </BaseDialog.Portal>
+          </DialogPopup>
+        </DialogViewport>
+      </DialogPortal>
     </Dialog>
   ),
 }
