@@ -9,8 +9,6 @@ export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
 export const DialogPortal = BaseDialog.Portal
-// Prefer DialogCloseButton unless a custom close control is necessary.
-export const DialogClose = BaseDialog.Close
 
 type DialogBackdropProps = Omit<BaseDialog.Backdrop.Props, 'className'> & {
   className?: string
