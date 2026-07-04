@@ -39,6 +39,56 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+const releaseNoteItems = Array.from({ length: 24 }, (_, index) => ({
+  id: `improvement-${index + 1}`,
+  title: `Improvement #${index + 1}`,
+  body: 'Refined a workflow behavior so long content naturally overflows and scrolls inside the dialog.',
+}))
+
+function ReleaseNoteHeader({
+  title,
+  description,
+}: {
+  title: string
+  description: string
+}) {
+  return (
+    <div className="flex shrink-0 flex-col gap-2 p-6 pr-12 pb-4">
+      <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+        {title}
+      </DialogTitle>
+      <DialogDescription className="text-sm leading-5 text-text-secondary">
+        {description}
+      </DialogDescription>
+    </div>
+  )
+}
+
+function ReleaseNoteSections() {
+  return (
+    <div className="flex flex-col gap-3 px-6 py-2 text-sm leading-5 text-text-secondary">
+      {releaseNoteItems.map(item => (
+        <section key={item.id} className="rounded-lg bg-background-default-subtle px-3 py-2">
+          <h3 className="font-medium text-text-primary">
+            {item.title}
+          </h3>
+          <p>{item.body}</p>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function ReleaseNoteFooter() {
+  return (
+    <div className="flex shrink-0 justify-end border-t border-divider-subtle p-4">
+      <BaseDialog.Close render={<Button />}>
+        Close
+      </BaseDialog.Close>
+    </div>
+  )
+}
+
 export const Default: Story = {
   render: () => (
     <Dialog>
@@ -247,6 +297,53 @@ export const FormDialog: Story = {
   render: () => <FormDialogDemo />,
 }
 
+const OutsideScrollingContentDemo = () => {
+  const popupRef = React.useRef<HTMLDivElement>(null)
+
+  return (
+    <Dialog>
+      <DialogTrigger
+        render={<Button />}
+      >
+        Review long release notes
+      </DialogTrigger>
+      <BaseDialog.Portal>
+        <BaseDialog.Backdrop
+          className="absolute inset-0 z-50 bg-background-overlay transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none"
+        />
+        <BaseDialog.Viewport className="fixed inset-0 z-50">
+          <ScrollAreaRoot className="h-full overscroll-contain">
+            <ScrollAreaViewport aria-label="Scrollable dialog viewport" role="region" className="h-full max-h-full max-w-full overscroll-contain">
+              <ScrollAreaContent className="flex min-h-full items-center justify-center px-4 py-16">
+                <BaseDialog.Popup
+                  ref={popupRef}
+                  initialFocus={popupRef}
+                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl outline-hidden transition-[transform,scale,opacity] duration-150 data-ending-style:translate-y-4 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:translate-y-4 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
+                >
+                  <DialogCloseButton />
+                  <ReleaseNoteHeader
+                    title="Long release notes"
+                    description="This layout lets the outer dialog viewport scroll while the popup keeps its natural height."
+                  />
+                  <ReleaseNoteSections />
+                  <ReleaseNoteFooter />
+                </BaseDialog.Popup>
+              </ScrollAreaContent>
+            </ScrollAreaViewport>
+            <ScrollAreaScrollbar>
+              <ScrollAreaThumb />
+            </ScrollAreaScrollbar>
+          </ScrollAreaRoot>
+        </BaseDialog.Viewport>
+      </BaseDialog.Portal>
+    </Dialog>
+  )
+}
+
+export const OutsideScrollingContent: Story = {
+  render: () => <OutsideScrollingContentDemo />,
+}
+
 export const ScrollingContent: Story = {
   render: () => (
     <Dialog>
@@ -261,42 +358,24 @@ export const ScrollingContent: Story = {
         />
         <BaseDialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden p-4">
           <BaseDialog.Popup
-            className="flex max-h-[min(44rem,calc(100dvh-2rem))] w-120 max-w-[calc(100vw-2rem)] min-h-0 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
+            className="relative flex h-[min(44rem,calc(100dvh-2rem))] w-120 max-w-[calc(100vw-2rem)] min-h-0 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
           >
             <DialogCloseButton />
-            <div className="flex shrink-0 flex-col gap-2 p-6 pr-12 pb-4">
-              <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-                Release notes
-              </DialogTitle>
-              <DialogDescription className="text-sm leading-5 text-text-secondary">
-                Highlights from the latest workspace update.
-              </DialogDescription>
-            </div>
-            <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden">
-              <ScrollAreaViewport aria-label="Release note improvements" role="region" className="h-full max-h-full max-w-full">
-                <ScrollAreaContent className="flex flex-col gap-3 px-6 py-2 text-sm leading-5 text-text-secondary">
-                  {Array.from({ length: 24 }, (_, index) => `improvement-${index + 1}`).map((id, index) => (
-                    <section key={id} className="rounded-lg bg-background-default-subtle px-3 py-2">
-                      <h3 className="font-medium text-text-primary">
-                        Improvement #
-                        {index + 1}
-                      </h3>
-                      <p>
-                        Refined a workflow behavior so long content naturally overflows and scrolls inside the dialog.
-                      </p>
-                    </section>
-                  ))}
+            <ReleaseNoteHeader
+              title="Release notes"
+              description="Highlights from the latest workspace update."
+            />
+            <ScrollAreaRoot className="relative flex min-h-0 flex-auto overflow-hidden">
+              <ScrollAreaViewport aria-label="Release note improvements" role="region" className="h-full max-h-full max-w-full overflow-y-auto overscroll-contain">
+                <ScrollAreaContent>
+                  <ReleaseNoteSections />
                 </ScrollAreaContent>
               </ScrollAreaViewport>
               <ScrollAreaScrollbar>
                 <ScrollAreaThumb />
               </ScrollAreaScrollbar>
             </ScrollAreaRoot>
-            <div className="flex shrink-0 justify-end border-t border-divider-subtle p-4">
-              <BaseDialog.Close render={<Button />}>
-                Close
-              </BaseDialog.Close>
-            </div>
+            <ReleaseNoteFooter />
           </BaseDialog.Popup>
         </BaseDialog.Viewport>
       </BaseDialog.Portal>
