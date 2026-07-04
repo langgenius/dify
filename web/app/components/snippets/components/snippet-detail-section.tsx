@@ -19,7 +19,7 @@ export function SnippetDetailSection({ expand }: SnippetDetailSectionProps) {
   const snippetInputFields = useSnippetDraftStore(state => state.inputFields)
 
   if (!expand)
-    return <SnippetCollapsedPreview inputFieldCount={snippetInputFields.length} />
+    return <SnippetCollapsedPreview inputFieldCount={snippetInputFields.length} snippetId={snippetNavigation.snippet?.id} />
 
   if (!snippetNavigation.snippet || !snippetNavigation.onFieldsChange)
     return null

@@ -34,6 +34,7 @@ from graphon.model_runtime.model_providers.base.text_embedding_model import Text
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
+from libs.pagination import paginate_query
 from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -355,7 +356,7 @@ class DatasetService:
             else:
                 return [], 0
 
-        datasets = db.paginate(select=query, page=page, per_page=per_page, max_per_page=100, error_out=False)
+        datasets = paginate_query(query, page=page, per_page=per_page, max_per_page=100)
 
         return datasets.items, datasets.total
 
@@ -399,12 +400,13 @@ class DatasetService:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             stmt = stmt.where(accessible_filter)
 
-        datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
+        datasets = paginate_query(stmt, page=1, per_page=len(ids), max_per_page=len(ids))
 
         return datasets.items, datasets.total
 
     @staticmethod
     def create_empty_dataset(
+        session: Session,
         tenant_id: str,
         name: str,
         description: str | None,
@@ -418,8 +420,6 @@ class DatasetService:
         embedding_model_name: str | None = None,
         retrieval_model: RetrievalModel | None = None,
         summary_index_setting: dict[str, Any] | None = None,
-        *,
-        session: scoped_session | Session,
     ):
         # check if dataset name already exists
         if session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
@@ -473,7 +473,7 @@ class DatasetService:
 
         if provider == "external" and external_knowledge_api_id:
             external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-                external_knowledge_api_id, tenant_id
+                session, external_knowledge_api_id, tenant_id
             )
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
@@ -632,7 +632,7 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
-    def update_dataset(dataset_id, data, user, session: scoped_session | Session):
+    def update_dataset(session: Session, dataset_id, data, user):
         """
         Update dataset configuration and settings.
 
@@ -685,7 +685,7 @@ class DatasetService:
         return dataset is not None
 
     @staticmethod
-    def _update_external_dataset(dataset, data, user, session: scoped_session | Session):
+    def _update_external_dataset(dataset, data, user, session: Session):
         """
         Update external dataset configuration.
 
@@ -725,7 +725,7 @@ class DatasetService:
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
         # Ensure the referenced external API template exists and belongs to the dataset tenant.
-        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id)
+        ExternalDatasetService.get_external_knowledge_api(session, external_knowledge_api_id, dataset.tenant_id)
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()
@@ -1404,7 +1404,7 @@ class DatasetService:
     def get_dataset_queries(dataset_id: str, page: int, per_page: int):
         stmt = select(DatasetQuery).filter_by(dataset_id=dataset_id).order_by(db.desc(DatasetQuery.created_at))
 
-        dataset_queries = db.paginate(select=stmt, page=page, per_page=per_page, max_per_page=100, error_out=False)
+        dataset_queries = paginate_query(stmt, page=page, per_page=per_page, max_per_page=100)
 
         return dataset_queries.items, dataset_queries.total
 
@@ -4121,7 +4121,7 @@ class SegmentService:
         if keyword:
             escaped_keyword = helper.escape_like_pattern(keyword)
             query = query.where(ChildChunk.content.ilike(f"%{escaped_keyword}%", escape="\\"))
-        return db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        return paginate_query(query, page=page, per_page=limit, max_per_page=100)
 
     @classmethod
     def get_child_chunk_by_id(
@@ -4173,7 +4173,7 @@ class SegmentService:
             query = query.where(DocumentSegment.content.ilike(f"%{escaped_keyword}%", escape="\\"))
 
         query = query.order_by(DocumentSegment.position.asc(), DocumentSegment.id.asc())
-        paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_segments = paginate_query(query, page=page, per_page=limit, max_per_page=100)
 
         return paginated_segments.items, paginated_segments.total
 
@@ -4315,9 +4315,7 @@ class DatasetPermissionService:
             raise e
 
     @classmethod
-    def check_permission(
-        cls, user, dataset, requested_permission, requested_partial_member_list, session: scoped_session | Session
-    ):
+    def check_permission(cls, session: Session, user, dataset, requested_permission, requested_partial_member_list):
         if not user.is_dataset_editor:
             raise NoPermissionError("User does not have permission to edit this dataset.")
 

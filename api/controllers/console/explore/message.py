@@ -4,6 +4,7 @@ from uuid import UUID
 
 from flask import request
 from pydantic import BaseModel, TypeAdapter
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.controller_schemas import MessageFeedbackPayload, MessageListQuery
@@ -17,6 +18,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.console.app.wraps import with_session
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -88,8 +90,8 @@ class MessageListApi(InstalledAppResource):
             pagination = MessageService.pagination_by_first_id(
                 app_model,
                 current_user,
-                str(args.conversation_id),
-                str(args.first_id) if args.first_id else None,
+                args.conversation_id,
+                args.first_id or None,
                 args.limit,
             )
             adapter = TypeAdapter(ExploreMessageListItem)
@@ -144,7 +146,8 @@ class MessageMoreLikeThisApi(InstalledAppResource):
     @console_ns.doc(params=query_params_from_model(MoreLikeThisQuery))
     @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
-    def get(self, current_user: Account, installed_app: InstalledApp, message_id: UUID):
+    @with_session
+    def get(self, session: Session, current_user: Account, installed_app: InstalledApp, message_id: UUID):
         app_model = installed_app.app
         if app_model is None:
             raise AppUnavailableError()
@@ -159,6 +162,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate_more_like_this(
+                session=session,
                 app_model=app_model,
                 user=current_user,
                 message_id=message_id_str,

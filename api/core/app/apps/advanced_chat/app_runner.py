@@ -8,6 +8,10 @@ from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.workflow.command_channels import (
+    CelerySignalCommandChannel,
+    CombinedCommandChannel,
+)
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -38,6 +42,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
+from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
 from graphon.enums import WorkflowType
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.graph_engine.layers import GraphEngineLayer
@@ -212,7 +217,16 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
         channel_key = f"workflow:{task_id}:commands"
-        command_channel = RedisChannel(redis_client, channel_key)
+        celery_signal_channel = CelerySignalCommandChannel(
+            shutdown_state_getter=celery_warm_shutdown_started,
+            abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
+        )
+        command_channel = CombinedCommandChannel(
+            (
+                RedisChannel(redis_client, channel_key),
+                celery_signal_channel,
+            )
+        )
 
         workflow_entry = WorkflowEntry(
             tenant_id=self._workflow.tenant_id,
@@ -254,7 +268,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             workflow_entry.graph_engine.layer(layer)
 
         generator = workflow_entry.run()
-
         for event in generator:
             self._handle_event(workflow_entry, event)
 

@@ -174,18 +174,18 @@ class TestDatasetServiceRetrievalPermissions:
         mock_db = MagicMock()
         explicit_session = MagicMock()
         explicit_session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
             ),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
@@ -198,7 +198,7 @@ class TestDatasetServiceRetrievalPermissions:
 
         explicit_session.scalars.assert_called_once()
         mock_db.session.scalars.assert_not_called()
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        select_stmt = mock_paginate.call_args.args[0]
         visibility_clause = str(select_stmt._where_criteria[1])
         assert "maintainer" in visibility_clause
         assert "IN" in visibility_clause
@@ -206,18 +206,18 @@ class TestDatasetServiceRetrievalPermissions:
     def test_get_datasets_filters_only_by_rbac_overrides_without_manage_own_permission(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
             ),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
@@ -227,21 +227,21 @@ class TestDatasetServiceRetrievalPermissions:
                 accessible_dataset_ids=["dataset-shared"],
             )
 
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        select_stmt = mock_paginate.call_args.args[0]
         visibility_clause = str(select_stmt._where_criteria[1])
         assert "maintainer" not in visibility_clause
         assert "IN" in visibility_clause
 
     def test_get_datasets_by_ids_applies_rbac_visibility(self):
         mock_db = MagicMock()
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets_by_ids(
                 ["dataset-requested", "dataset-shared"],
                 "tenant-1",
@@ -250,7 +250,7 @@ class TestDatasetServiceRetrievalPermissions:
                 include_own_datasets=True,
             )
 
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        select_stmt = mock_paginate.call_args.args[0]
         visibility_clause = str(select_stmt._where_criteria[-1])
         assert "maintainer" in visibility_clause
         assert "IN" in visibility_clause
@@ -262,20 +262,20 @@ class TestDatasetServiceRetrievalPermissions:
     def test_get_datasets_rbac_include_all_uses_workspace_permission(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
 
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
         mock_permissions = SimpleNamespace(workspace=SimpleNamespace(permission_keys=["dataset.create_and_management"]))
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=mock_permissions,
             ),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
@@ -286,39 +286,39 @@ class TestDatasetServiceRetrievalPermissions:
             )
 
         mock_db.session.scalars.assert_called_once()
-        mock_db.paginate.assert_called_once()
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        mock_paginate.assert_called_once()
+        select_stmt = mock_paginate.call_args.args[0]
         assert len(select_stmt._where_criteria) == 1
 
     def test_get_datasets_rbac_without_user_returns_empty_result(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(page=1, per_page=20, session=mock_db.session, tenant_id="tenant-1", user=None)
 
         mock_db.session.scalars.assert_not_called()
-        mock_db.paginate.assert_called_once()
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        mock_paginate.assert_called_once()
+        select_stmt = mock_paginate.call_args.args[0]
         assert len(select_stmt._where_criteria) == 2
 
     def test_get_datasets_legacy_owner_include_all_keeps_full_access(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
 
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.OWNER)
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", False),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
@@ -329,8 +329,8 @@ class TestDatasetServiceRetrievalPermissions:
             )
 
         mock_db.session.scalars.assert_called_once()
-        mock_db.paginate.assert_called_once()
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        mock_paginate.assert_called_once()
+        select_stmt = mock_paginate.call_args.args[0]
         assert len(select_stmt._where_criteria) == 1
 
 
@@ -344,9 +344,7 @@ class TestDatasetServiceCreationAndUpdate:
             mock_db.session.scalar.return_value = object()
 
             with pytest.raises(DatasetNameDuplicateError, match="Dataset with name Dataset already exists"):
-                DatasetService.create_empty_dataset(
-                    "tenant-1", "Dataset", None, "economy", account, session=mock_db.session
-                )
+                DatasetService.create_empty_dataset(mock_db.session, "tenant-1", "Dataset", None, "economy", account)
 
     def test_create_empty_dataset_uses_default_embedding_model_for_high_quality_dataset(self):
         account = SimpleNamespace(id="user-1")
@@ -514,7 +512,7 @@ class TestDatasetServiceCreationAndUpdate:
         session = MagicMock()
         with patch.object(DatasetService, "get_dataset", return_value=None):
             with pytest.raises(ValueError, match="Dataset not found"):
-                DatasetService.update_dataset("dataset-1", {}, SimpleNamespace(id="user-1"), session)
+                DatasetService.update_dataset(session, "dataset-1", {}, SimpleNamespace(id="user-1"))
 
     def test_update_dataset_raises_when_new_name_conflicts(self):
         dataset = DatasetServiceUnitDataFactory.create_dataset_mock(dataset_id="dataset-1", tenant_id="tenant-1")
@@ -526,10 +524,10 @@ class TestDatasetServiceCreationAndUpdate:
         ):
             with pytest.raises(ValueError, match="Dataset name already exists"):
                 DatasetService.update_dataset(
+                    MagicMock(),
                     "dataset-1",
                     {"name": "New Dataset"},
                     SimpleNamespace(id="user-1"),
-                    MagicMock(),
                 )
 
     def test_update_dataset_routes_external_datasets_to_external_helper(self):
@@ -543,7 +541,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch.object(DatasetService, "_update_external_dataset", return_value="updated") as update_external,
         ):
             session = MagicMock()
-            result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user, session)
+            result = DatasetService.update_dataset(session, "dataset-1", {"name": dataset.name}, user)
 
         assert result == "updated"
         check_permission.assert_called_once()
@@ -562,7 +560,7 @@ class TestDatasetServiceCreationAndUpdate:
             patch.object(DatasetService, "_update_internal_dataset", return_value="updated") as update_internal,
         ):
             session = MagicMock()
-            result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user, session)
+            result = DatasetService.update_dataset(session, "dataset-1", {"name": dataset.name}, user)
 
         assert result == "updated"
         check_permission.assert_called_once()
@@ -614,7 +612,7 @@ class TestDatasetServiceCreationAndUpdate:
         assert dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM
         assert dataset.updated_by == "user-1"
         assert dataset.updated_at is now
-        get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id)
+        get_external_knowledge_api.assert_called_once_with(mock_db.session, "api-1", dataset.tenant_id)
         update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1", mock_db.session)
         mock_db.session.add.assert_called_once_with(dataset)
         mock_db.session.commit.assert_called_once()
@@ -654,7 +652,7 @@ class TestDatasetServiceCreationAndUpdate:
                     mock_db.session,
                 )
 
-        get_external_knowledge_api.assert_called_once_with("foreign-api", dataset.tenant_id)
+        get_external_knowledge_api.assert_called_once_with(mock_db.session, "foreign-api", dataset.tenant_id)
         update_binding.assert_not_called()
         mock_db.session.commit.assert_not_called()
 
@@ -1459,7 +1457,7 @@ class TestDatasetPermissionService:
         session = MagicMock()
 
         with pytest.raises(NoPermissionError, match="does not have permission"):
-            DatasetPermissionService.check_permission(user, dataset, "all_team", [], session)
+            DatasetPermissionService.check_permission(session, user, dataset, "all_team", [])
 
     def test_check_permission_prevents_dataset_operator_from_changing_permission_mode(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
@@ -1467,7 +1465,7 @@ class TestDatasetPermissionService:
         session = MagicMock()
 
         with pytest.raises(NoPermissionError, match="cannot change the dataset permissions"):
-            DatasetPermissionService.check_permission(user, dataset, "only_me", [], session)
+            DatasetPermissionService.check_permission(session, user, dataset, "only_me", [])
 
     def test_check_permission_requires_partial_member_list_for_partial_members_mode(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
@@ -1475,7 +1473,7 @@ class TestDatasetPermissionService:
         session = MagicMock()
 
         with pytest.raises(ValueError, match="Partial member list is required"):
-            DatasetPermissionService.check_permission(user, dataset, "partial_members", [], session)
+            DatasetPermissionService.check_permission(session, user, dataset, "partial_members", [])
 
     def test_check_permission_rejects_dataset_operator_member_list_changes(self):
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
@@ -1487,11 +1485,11 @@ class TestDatasetPermissionService:
         with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
             with pytest.raises(ValueError, match="cannot change the dataset permissions"):
                 DatasetPermissionService.check_permission(
+                    session,
                     user,
                     dataset,
                     "partial_members",
                     [{"user_id": "user-2"}],
-                    session,
                 )
 
     def test_check_permission_allows_dataset_operator_when_member_list_is_unchanged(self):
@@ -1503,11 +1501,11 @@ class TestDatasetPermissionService:
 
         with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
             DatasetPermissionService.check_permission(
+                session,
                 user,
                 dataset,
                 "partial_members",
                 [{"user_id": "user-1"}],
-                session,
             )
 
     def test_clear_partial_member_list_rolls_back_on_exception(self):

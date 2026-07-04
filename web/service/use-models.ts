@@ -1,5 +1,6 @@
 import type {
   ModelCredential,
+  ModelCredentialPayload,
   ModelItem,
   ModelLoadBalancingConfig,
   ModelTypeEnum,
@@ -91,7 +92,7 @@ export const useGetModelCredential = (
 
 export const useAddModelCredential = (provider: string) => {
   return useMutation({
-    mutationFn: (data: ModelCredential) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
+    mutationFn: (data: ModelCredentialPayload) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
       body: data,
     }),
   })
@@ -99,7 +100,7 @@ export const useAddModelCredential = (provider: string) => {
 
 export const useEditModelCredential = (provider: string) => {
   return useMutation({
-    mutationFn: (data: ModelCredential) => put<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
+    mutationFn: (data: ModelCredentialPayload) => put<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
       body: data,
     }),
   })
@@ -109,8 +110,8 @@ export const useDeleteModelCredential = (provider: string) => {
   return useMutation({
     mutationFn: (data: {
       credential_id: string
-      model?: string
-      model_type?: ModelTypeEnum
+      model: string
+      model_type: ModelTypeEnum
     }) => del<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials`, {
       body: data,
     }),
@@ -132,8 +133,8 @@ export const useActiveModelCredential = (provider: string) => {
   return useMutation({
     mutationFn: (data: {
       credential_id: string
-      model?: string
-      model_type?: ModelTypeEnum
+      model: string
+      model_type: ModelTypeEnum
     }) => post<{ result: string }>(`/workspaces/current/model-providers/${provider}/models/credentials/switch`, {
       body: data,
     }),

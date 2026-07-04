@@ -7,6 +7,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import NavLink from '@/app/components/app-sidebar/nav-link'
 import SnippetInfoDropdown from '@/app/components/app-sidebar/snippet-info/dropdown'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -35,6 +36,10 @@ const toSnippetInputField = (field: InputVar): SnippetInputField => ({
   label: typeof field.label === 'string' ? field.label : field.label.variable,
   type: field.type as unknown as SnippetInputField['type'],
 })
+
+const NodeTreeIcon = ({ className }: { className?: string }) => (
+  <span className={cn('i-ri-node-tree', className)} />
+)
 
 export const SnippetSidebarContent = ({
   snippet,
@@ -108,6 +113,16 @@ export const SnippetSidebarContent = ({
           </div>
         )}
       </div>
+
+      <nav className="shrink-0 px-3 pt-4">
+        <NavLink
+          mode="expand"
+          name={t('sectionOrchestrate', { ns: 'snippet' })}
+          href={`/snippets/${snippet.id}/orchestrate`}
+          active
+          iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+        />
+      </nav>
 
       <div className="flex min-h-0 grow flex-col px-3 pt-6">
         <Field
