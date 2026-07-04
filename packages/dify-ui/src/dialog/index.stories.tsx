@@ -4,6 +4,7 @@ import { expect, waitFor, within } from 'storybook/test'
 import {
   Dialog,
   DialogBackdrop,
+  DialogClose,
   DialogCloseButton,
   DialogContent,
   DialogDescription,
@@ -85,9 +86,9 @@ function ReleaseNoteSections() {
 function ReleaseNoteFooter() {
   return (
     <div className="flex shrink-0 justify-end border-t border-divider-subtle p-4">
-      <DialogCloseButton render={<Button />}>
+      <DialogClose render={<Button />}>
         Close
-      </DialogCloseButton>
+      </DialogClose>
     </div>
   )
 }
@@ -357,12 +358,12 @@ export const OutsidePopupElements: Story = {
         <DialogBackdrop className="min-h-dvh" />
         <DialogViewport className="grid place-items-center px-4 py-12 xl:py-6">
           <DialogPopup className="group/popup relative flex h-full w-full max-w-[70rem] justify-center border-0 bg-transparent shadow-none pointer-events-none transition-opacity data-starting-style:scale-100 data-starting-style:opacity-0 data-ending-style:scale-100 data-ending-style:opacity-0">
-            <DialogCloseButton
+            <DialogClose
               aria-label="Close"
               className="pointer-events-auto absolute right-0 -top-10 z-10 flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
             >
               <span aria-hidden="true" className="i-ri-close-line size-4" />
-            </DialogCloseButton>
+            </DialogClose>
             <div className="pointer-events-auto flex h-full w-full max-w-[70rem] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
               <div className="grid gap-2">
                 <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">

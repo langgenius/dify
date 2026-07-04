@@ -9,6 +9,8 @@ export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
 export const DialogPortal = BaseDialog.Portal
+// Prefer DialogCloseButton unless a custom close control is necessary.
+export const DialogClose = BaseDialog.Close
 
 type DialogBackdropProps = Omit<BaseDialog.Backdrop.Props, 'className'> & {
   className?: string
@@ -66,30 +68,23 @@ export function DialogPopup({
   )
 }
 
-type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children'> & {
-  children?: React.ReactNode
-}
+type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children'>
 
 export function DialogCloseButton({
-  children,
   className,
-  render,
-  'aria-label': ariaLabel,
+  'aria-label': ariaLabel = 'Close',
   ...props
 }: DialogCloseButtonProps) {
-  const isIconOnly = children === undefined
-
   return (
     <BaseDialog.Close
-      aria-label={ariaLabel ?? (isIconOnly ? 'Close' : undefined)}
-      render={render}
+      aria-label={ariaLabel}
       {...props}
       className={cn(
-        render === undefined && 'absolute top-6 end-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+        'absolute top-6 end-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
     >
-      {children ?? <span aria-hidden="true" className="i-ri-close-line h-4 w-4 text-text-tertiary" />}
+      <span aria-hidden="true" className="i-ri-close-line h-4 w-4 text-text-tertiary" />
     </BaseDialog.Close>
   )
 }
