@@ -187,7 +187,7 @@ When(
 async function skipBuildDraftToolWriteback(world: DifyWorld) {
   return skipBlockedPrecondition(
     world,
-    'Build draft Dify Tool writeback is not available: Build draft currently supports files, skills, and env only.',
+    'Build chat Dify Tool writeback is not available: finalize/config mutation paths do not support tools; current passing coverage only verifies API-seeded Build draft apply for files, skills, and env.',
     {
       owner: 'product',
       remediation: 'Define and implement Build draft Tool writeback before enabling this scenario.',
