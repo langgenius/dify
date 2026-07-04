@@ -12,8 +12,7 @@ import {
 import { Button } from '../button'
 import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '../field'
 import { Form } from '../form'
-
-const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+import { Input } from '../input'
 
 const meta = {
   title: 'Base/UI/Dialog',
@@ -36,7 +35,7 @@ export const Default: Story = {
   render: () => (
     <Dialog>
       <DialogTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
+        render={<Button />}
       >
         Open dialog
       </DialogTrigger>
@@ -54,11 +53,10 @@ export const Default: Story = {
           <label className="text-xs font-medium text-text-tertiary" htmlFor="invite-email">
             Email address
           </label>
-          <input
+          <Input
             id="invite-email"
             type="email"
             placeholder="teammate@example.com"
-            className="h-9 w-full rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           />
         </div>
         <div className="mt-6 flex items-center justify-end">
@@ -89,7 +87,7 @@ export const WithoutCloseButton: Story = {
   render: () => (
     <Dialog>
       <DialogTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
+        render={<Button />}
       >
         Start onboarding
       </DialogTrigger>
@@ -135,10 +133,10 @@ const ControlledDemo = () => {
               The workspace URL will stay the same, but the display name updates everywhere.
             </DialogDescription>
           </div>
-          <input
+          <Input
             type="text"
             defaultValue="Acme Workspace"
-            className="mt-4 h-9 w-full rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
+            className="mt-4"
           />
           <div className="mt-6 flex items-center justify-end gap-2">
             <Button variant="secondary" onClick={() => setOpen(false)}>
@@ -170,7 +168,7 @@ const FormDialogDemo = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen} disablePointerDismissal>
       <DialogTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
+        render={<Button />}
       >
         Configure API extension
       </DialogTrigger>
@@ -245,7 +243,7 @@ export const ScrollingContent: Story = {
   render: () => (
     <Dialog>
       <DialogTrigger
-        render={<button type="button" className={triggerButtonClassName} />}
+        render={<Button />}
       >
         Review release notes
       </DialogTrigger>
