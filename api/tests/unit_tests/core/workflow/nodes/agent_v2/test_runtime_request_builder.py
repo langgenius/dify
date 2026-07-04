@@ -637,7 +637,8 @@ def test_build_shell_layer_config_maps_cli_tool_inline_secret_value_to_env():
     ]
 
 
-def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
+def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
     context = _context()
     snapshot = AgentConfigSnapshot(
         id="snapshot-1",
@@ -673,7 +674,10 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
     assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["type"] == "dify.plugin.tools"
-    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["deps"] == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "shell": DIFY_SHELL_LAYER_ID,
+    }
     assert layers[DIFY_PLUGIN_TOOLS_LAYER_ID]["config"]["tools"][0]["tool_name"] == "current_time"
     assert result.metadata["agent_tools"] == {
         "dify_tool_count": 1,
