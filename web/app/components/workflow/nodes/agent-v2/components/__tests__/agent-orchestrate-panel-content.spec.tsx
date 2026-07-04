@@ -194,6 +194,14 @@ vi.mock('@/service/client', () => ({
           },
         },
         sandbox: {
+          get: {
+            queryOptions: () => ({
+              queryKey: ['sandbox-info'],
+              queryFn: () => Promise.resolve({
+                workspace_cwd: '.',
+              }),
+            }),
+          },
           files: {
             get: {
               queryOptions: () => ({
