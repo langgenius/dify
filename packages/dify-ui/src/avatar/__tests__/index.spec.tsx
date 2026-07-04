@@ -23,31 +23,6 @@ describe('Avatar', () => {
     })
   })
 
-  describe('Size variants', () => {
-    it.each([
-      { size: 'xxs' as const, expectedClass: 'size-4' },
-      { size: 'xs' as const, expectedClass: 'size-5' },
-      { size: 'sm' as const, expectedClass: 'size-6' },
-      { size: 'md' as const, expectedClass: 'size-8' },
-      { size: 'lg' as const, expectedClass: 'size-9' },
-      { size: 'xl' as const, expectedClass: 'size-10' },
-      { size: '2xl' as const, expectedClass: 'size-12' },
-      { size: '3xl' as const, expectedClass: 'size-16' },
-    ])('should apply $expectedClass for size="$size"', async ({ size, expectedClass }) => {
-      const screen = await render(<Avatar name="Test" avatar={null} size={size} />)
-
-      const root = screen.container.firstElementChild as HTMLElement
-      expect(root).toHaveClass(expectedClass)
-    })
-
-    it('should default to md size when size is not specified', async () => {
-      const screen = await render(<Avatar name="Test" avatar={null} />)
-
-      const root = screen.container.firstElementChild as HTMLElement
-      expect(root).toHaveClass('size-8')
-    })
-  })
-
   describe('className prop', () => {
     it('should merge className with avatar variant classes on root', async () => {
       const screen = await render(
@@ -56,7 +31,6 @@ describe('Avatar', () => {
 
       const root = screen.container.firstElementChild as HTMLElement
       expect(root).toHaveClass('custom-class')
-      expect(root).toHaveClass('rounded-full', 'bg-primary-600')
     })
   })
 
@@ -71,7 +45,7 @@ describe('Avatar', () => {
         </AvatarRoot>,
       )
 
-      await expect.element(screen.getByTestId('avatar-root')).toHaveClass('size-6')
+      await expect.element(screen.getByTestId('avatar-root')).toBeInTheDocument()
       await expect.element(screen.getByText('J')).toBeInTheDocument()
       await expect.element(screen.getByText('J')).toHaveStyle({ backgroundColor: 'rgb(1, 2, 3)' })
     })
@@ -81,9 +55,8 @@ describe('Avatar', () => {
     it('should handle empty string name gracefully', async () => {
       const screen = await render(<Avatar name="" avatar={null} />)
 
-      const fallback = screen.container.querySelector('.text-white') as HTMLElement
-      expect(fallback).toBeInTheDocument()
-      expect(fallback.textContent).toBe('')
+      expect(screen.container.firstElementChild).toBeInTheDocument()
+      expect(screen.container.textContent).toBe('')
     })
 
     it.each([

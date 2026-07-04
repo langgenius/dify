@@ -291,7 +291,7 @@ class TestWorkspaceListApi:
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 20}),
-            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
+            patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
             result, status = method(api)
 
@@ -308,7 +308,7 @@ class TestWorkspaceListApi:
 
         with (
             app.test_request_context("/all-workspaces", query_string={"page": 1, "limit": 1}),
-            patch("controllers.console.workspace.workspace.db.paginate", return_value=paginate_result),
+            patch("controllers.console.workspace.workspace.paginate_query", return_value=paginate_result),
         ):
             result, status = method(api)
 

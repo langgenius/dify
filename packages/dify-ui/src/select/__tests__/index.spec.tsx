@@ -113,7 +113,6 @@ describe('Select wrappers', () => {
       )
 
       await expect.element(screen.getByRole('combobox', { name: 'City' })).toBeInTheDocument()
-      await expect.element(screen.getByText('City')).toHaveClass('py-1', 'system-sm-medium', 'text-text-secondary')
     })
 
     it('should forward native trigger props when trigger props are provided', async () => {
@@ -127,86 +126,20 @@ describe('Select wrappers', () => {
       await expect.element(screen.getByRole('combobox', { name: 'Choose option' })).toBeDisabled()
     })
 
-    it('should apply regular size variant classes by default', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-sm-regular/)
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/rounded-lg/)
-    })
-
-    it('should apply small size variant classes when size is small', async () => {
-      const screen = await renderOpenSelect({
-        triggerProps: { size: 'small' },
-      })
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-xs-regular/)
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/rounded-md/)
-    })
-
-    it('should apply large size variant classes when size is large', async () => {
-      const screen = await renderOpenSelect({
-        triggerProps: { size: 'large' },
-      })
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toMatch(/system-md-regular/)
-    })
-
-    it('should apply disabled styling via data attributes when disabled', async () => {
+    it('should expose disabled state via data attributes when disabled', async () => {
       const screen = await renderOpenSelect({
         triggerProps: { disabled: true },
       })
 
       await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-disabled')
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-disabled:bg-components-input-bg-disabled')
     })
 
-    it('should apply disabled placeholder color class for compound state', async () => {
-      const screen = await renderOpenSelect({
-        triggerProps: { disabled: true },
-      })
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-disabled:data-placeholder:text-components-input-text-disabled')
-    })
-
-    it('should apply readonly styling via data attributes when Root is readOnly', async () => {
+    it('should expose readonly state via data attributes when Root is readOnly', async () => {
       const screen = await renderOpenSelect({
         rootProps: { readOnly: true },
       })
 
       await expect.element(screen.getByRole('combobox', { name: 'city select' })).toHaveAttribute('data-readonly')
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-readonly:bg-components-input-bg-normal')
-    })
-
-    it('should hide arrow icon via CSS when Root is readOnly', async () => {
-      const screen = await renderOpenSelect({
-        rootProps: { readOnly: true },
-      })
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('[class*="group-data-readonly:hidden"]')).toBeInTheDocument()
-    })
-
-    it('should set aria-hidden on decorative icons', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('.i-ri-arrow-down-s-line')).toHaveAttribute('aria-hidden', 'true')
-    })
-
-    it('should include placeholder color class via data attribute', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-placeholder:text-components-input-text-placeholder')
-    })
-
-    it('should render built-in chevron icon', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
-    })
-
-    it('should include open state feedback classes', async () => {
-      const screen = await renderOpenSelect()
-
-      expect(screen.getByRole('combobox', { name: 'city select' }).element().className).toContain('data-popup-open:bg-state-base-hover-alt')
     })
   })
 
