@@ -219,17 +219,20 @@ const Chat: FC<ChatProps> = ({
         </div>
         <div
           data-testid="chat-footer"
-          className={`absolute bottom-0 z-10 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={cn(
+            'pointer-events-none absolute bottom-0 z-10 flex justify-center bg-chat-input-mask',
+            (hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName,
+          )}
           ref={chatFooterRef}
         >
           <div
             ref={chatFooterInnerRef}
-            className={cn('relative', chatFooterInnerClassName, isTryApp && 'px-0')}
+            className={cn('pointer-events-none relative', chatFooterInnerClassName, isTryApp && 'px-0')}
           >
             {
               !noStopResponding && isResponding && (
                 <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
-                  <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
+                  <Button className="pointer-events-auto border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
                     <div className="mr-[5px] i-custom-vender-solid-mediaAndDevices-stop-circle h-3.5 w-3.5" />
                     <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
                   </Button>

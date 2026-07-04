@@ -1375,6 +1375,7 @@ dependencies = [
     { name = "resend" },
     { name = "sendgrid" },
     { name = "sseclient-py" },
+    { name = "zstandard" },
 ]
 
 [package.dev-dependencies]
@@ -1658,6 +1659,7 @@ requires-dist = [
     { name = "resend", specifier = ">=2.27.0,<3.0.0" },
     { name = "sendgrid", specifier = ">=6.12.5,<7.0.0" },
     { name = "sseclient-py", specifier = ">=1.8.0,<2.0.0" },
+    { name = "zstandard", specifier = "==0.25.0" },
 ]
 
 [package.metadata.requires-dev]

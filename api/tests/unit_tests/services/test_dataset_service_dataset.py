@@ -174,18 +174,18 @@ class TestDatasetServiceRetrievalPermissions:
         mock_db = MagicMock()
         explicit_session = MagicMock()
         explicit_session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
             ),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
@@ -198,7 +198,7 @@ class TestDatasetServiceRetrievalPermissions:
 
         explicit_session.scalars.assert_called_once()
         mock_db.session.scalars.assert_not_called()
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        select_stmt = mock_paginate.call_args.args[0]
         visibility_clause = str(select_stmt._where_criteria[1])
         assert "maintainer" in visibility_clause
         assert "IN" in visibility_clause
@@ -206,18 +206,18 @@ class TestDatasetServiceRetrievalPermissions:
     def test_get_datasets_filters_only_by_rbac_overrides_without_manage_own_permission(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
             ),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
@@ -227,21 +227,21 @@ class TestDatasetServiceRetrievalPermissions:
                 accessible_dataset_ids=["dataset-shared"],
             )
 
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        select_stmt = mock_paginate.call_args.args[0]
         visibility_clause = str(select_stmt._where_criteria[1])
         assert "maintainer" not in visibility_clause
         assert "IN" in visibility_clause
 
     def test_get_datasets_by_ids_applies_rbac_visibility(self):
         mock_db = MagicMock()
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets_by_ids(
                 ["dataset-requested", "dataset-shared"],
                 "tenant-1",
@@ -250,7 +250,7 @@ class TestDatasetServiceRetrievalPermissions:
                 include_own_datasets=True,
             )
 
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        select_stmt = mock_paginate.call_args.args[0]
         visibility_clause = str(select_stmt._where_criteria[-1])
         assert "maintainer" in visibility_clause
         assert "IN" in visibility_clause
@@ -262,20 +262,20 @@ class TestDatasetServiceRetrievalPermissions:
     def test_get_datasets_rbac_include_all_uses_workspace_permission(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
 
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
         mock_permissions = SimpleNamespace(workspace=SimpleNamespace(permission_keys=["dataset.create_and_management"]))
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
             patch(
                 "services.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
                 return_value=mock_permissions,
             ),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
@@ -286,39 +286,39 @@ class TestDatasetServiceRetrievalPermissions:
             )
 
         mock_db.session.scalars.assert_called_once()
-        mock_db.paginate.assert_called_once()
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        mock_paginate.assert_called_once()
+        select_stmt = mock_paginate.call_args.args[0]
         assert len(select_stmt._where_criteria) == 1
 
     def test_get_datasets_rbac_without_user_returns_empty_result(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(page=1, per_page=20, session=mock_db.session, tenant_id="tenant-1", user=None)
 
         mock_db.session.scalars.assert_not_called()
-        mock_db.paginate.assert_called_once()
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        mock_paginate.assert_called_once()
+        select_stmt = mock_paginate.call_args.args[0]
         assert len(select_stmt._where_criteria) == 2
 
     def test_get_datasets_legacy_owner_include_all_keeps_full_access(self):
         mock_db = MagicMock()
         mock_db.session.scalars.return_value.all.return_value = []
-        mock_db.paginate.return_value.items = []
-        mock_db.paginate.return_value.total = 0
 
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.OWNER)
 
         with (
             patch("services.dataset_service.db", mock_db),
+            patch("services.dataset_service.paginate_query") as mock_paginate,
             patch("services.dataset_service.dify_config.RBAC_ENABLED", False),
         ):
+            mock_paginate.return_value = SimpleNamespace(items=[], total=0)
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
@@ -329,8 +329,8 @@ class TestDatasetServiceRetrievalPermissions:
             )
 
         mock_db.session.scalars.assert_called_once()
-        mock_db.paginate.assert_called_once()
-        select_stmt = mock_db.paginate.call_args.kwargs["select"]
+        mock_paginate.assert_called_once()
+        select_stmt = mock_paginate.call_args.args[0]
         assert len(select_stmt._where_criteria) == 1
 
 
