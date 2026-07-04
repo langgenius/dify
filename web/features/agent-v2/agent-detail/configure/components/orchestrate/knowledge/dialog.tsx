@@ -22,6 +22,8 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IndexingType } from '@/app/components/datasets/create/step-two/hooks/use-indexing-config'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import AddKnowledge from '@/app/components/workflow/nodes/knowledge-retrieval/components/add-dataset'
 import DatasetList from '@/app/components/workflow/nodes/knowledge-retrieval/components/dataset-list'
@@ -33,6 +35,7 @@ import {
   MetadataFilteringVariableType,
   MetadataFilteringModeEnum as WorkflowMetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DATASET_DEFAULT } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
@@ -254,6 +257,36 @@ export function AgentKnowledgeRetrievalDialog({
     selectedDatasets,
     singleRetrievalConfig,
   } = dialogState
+  const {
+    modelList: rerankModelList,
+    defaultModel: rerankDefaultModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const {
+    currentModel: currentRerankModel,
+    currentProvider: currentRerankProvider,
+  } = useCurrentProviderAndModel(
+    rerankModelList,
+    rerankDefaultModel
+      ? {
+          ...rerankDefaultModel,
+          provider: rerankDefaultModel.provider.provider,
+        }
+      : undefined,
+  )
+  const fallbackRerankModel = useMemo(() => ({
+    provider: currentRerankProvider?.provider,
+    model: currentRerankModel?.model,
+  }), [currentRerankModel?.model, currentRerankProvider?.provider])
+  const resolveMultipleRetrievalConfig = (
+    config: MultipleRetrievalConfig,
+    nextSelectedDatasets = selectedDatasets,
+    originalDatasets = selectedDatasets,
+  ) => getMultipleRetrievalConfig(
+    config,
+    nextSelectedDatasets,
+    originalDatasets,
+    fallbackRerankModel,
+  )
   const patchDialogState = (patch: Partial<KnowledgeRetrievalDialogState>) => {
     setDialogState(current => ({
       ...current,
@@ -330,15 +363,29 @@ export function AgentKnowledgeRetrievalDialog({
     })
   }
   const handleSelectedDatasetsChange = (nextDatasets: DataSet[]) => {
-    patchDialogState({ selectedDatasets: nextDatasets })
+    const nextMultipleRetrievalConfig = retrievalMode === RETRIEVE_TYPE.multiWay && nextDatasets.length > 0
+      ? resolveMultipleRetrievalConfig(multipleRetrievalConfig, nextDatasets)
+      : multipleRetrievalConfig
+
+    patchDialogState({
+      multipleRetrievalConfig: nextMultipleRetrievalConfig,
+      selectedDatasets: nextDatasets,
+    })
 
     if (item) {
-      updateItem({ selectedDatasets: nextDatasets })
+      updateItem({
+        multipleRetrievalConfig: nextMultipleRetrievalConfig,
+        selectedDatasets: nextDatasets,
+      })
       return
     }
 
-    if (nextDatasets.length > 0)
-      onItemCreate?.(createItemFromDialogState({ selectedDatasets: nextDatasets }))
+    if (nextDatasets.length > 0) {
+      onItemCreate?.(createItemFromDialogState({
+        multipleRetrievalConfig: nextMultipleRetrievalConfig,
+        selectedDatasets: nextDatasets,
+      }))
+    }
   }
   const metadataList = useMemo(() => {
     const datasetsWithMetadata = selectedDatasets.filter(dataset => !!dataset.doc_metadata)
@@ -504,12 +551,24 @@ export function AgentKnowledgeRetrievalDialog({
                       single_retrieval_config: singleRetrievalConfig,
                     }}
                     onRetrievalModeChange={(nextRetrievalMode) => {
-                      patchDialogState({ retrievalMode: nextRetrievalMode })
-                      updateItem({ retrievalMode: nextRetrievalMode })
+                      const nextMultipleRetrievalConfig = nextRetrievalMode === RETRIEVE_TYPE.multiWay
+                        ? resolveMultipleRetrievalConfig(multipleRetrievalConfig)
+                        : multipleRetrievalConfig
+
+                      patchDialogState({
+                        multipleRetrievalConfig: nextMultipleRetrievalConfig,
+                        retrievalMode: nextRetrievalMode,
+                      })
+                      updateItem({
+                        multipleRetrievalConfig: nextMultipleRetrievalConfig,
+                        retrievalMode: nextRetrievalMode,
+                      })
                     }}
                     onMultipleRetrievalConfigChange={(nextMultipleRetrievalConfig) => {
-                      patchDialogState({ multipleRetrievalConfig: nextMultipleRetrievalConfig })
-                      updateItem({ multipleRetrievalConfig: nextMultipleRetrievalConfig })
+                      const normalizedMultipleRetrievalConfig = resolveMultipleRetrievalConfig(nextMultipleRetrievalConfig)
+
+                      patchDialogState({ multipleRetrievalConfig: normalizedMultipleRetrievalConfig })
+                      updateItem({ multipleRetrievalConfig: normalizedMultipleRetrievalConfig })
                     }}
                     singleRetrievalModelConfig={singleRetrievalConfig?.model}
                     onSingleRetrievalModelChange={(model) => {

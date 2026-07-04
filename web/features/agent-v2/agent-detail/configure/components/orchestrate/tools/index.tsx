@@ -352,7 +352,7 @@ function AddToolMenu({
           : (
               <ToolPickerContent
                 focusSearchOnMount
-                panelClassName="w-full"
+                panelClassName="w-full overflow-hidden"
                 supportAddCustomTool
                 selectedTools={selectedTools}
                 onSelect={handleSelectTool}
