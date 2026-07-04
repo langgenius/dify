@@ -226,7 +226,7 @@ export const TagSelector = ({
         disabled={!canManageTags && !canBindOrUnbindTags}
         aria-label={triggerLabel}
         className={cn(
-          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
         )}
         icon={false}
       >
