@@ -113,12 +113,12 @@ def _enforce_snippet_tag_rbac_if_needed(tag_type: TagType | str | None) -> None:
     )
 
 
-def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str) -> None:
+def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str, *, session) -> None:
     if not dify_config.RBAC_ENABLED:
         return
 
     _, current_tenant_id = current_account_with_tenant()
-    tag_type = db.session.scalar(select(Tag.type).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id).limit(1))
+    tag_type = session.scalar(select(Tag.type).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id).limit(1))
     _enforce_snippet_tag_rbac_if_needed(tag_type)
 
 
@@ -178,7 +178,7 @@ class TagUpdateDeleteApi(Resource):
             raise Forbidden()
 
         payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
-        _enforce_snippet_tag_rbac_by_tag_id(tag_id_str)
+        _enforce_snippet_tag_rbac_by_tag_id(tag_id_str, session=db.session)
         tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str, db.session)
 
         binding_count = TagService.get_tag_binding_count(tag_id_str, db.session)
@@ -197,7 +197,7 @@ class TagUpdateDeleteApi(Resource):
     def delete(self, tag_id: UUID):
         tag_id_str = str(tag_id)
 
-        _enforce_snippet_tag_rbac_by_tag_id(tag_id_str)
+        _enforce_snippet_tag_rbac_by_tag_id(tag_id_str, session=db.session)
         TagService.delete_tag(tag_id_str, db.session)
 
         return "", 204
