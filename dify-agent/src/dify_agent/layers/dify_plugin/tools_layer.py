@@ -41,6 +41,7 @@ from dify_agent.layers.dify_plugin.tool_client import (
     DifyPluginToolClientError,
     DifyPluginToolInvokeMessage,
 )
+from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.layer import DifyShellLayer
 
@@ -98,14 +99,14 @@ class _DifyPluginToolFileClient:
     async def request_download(
         self,
         *,
-        execution_context: object,
+        execution_context: DifyExecutionContextLayerConfig,
         file_mapping: Mapping[str, object],
     ) -> _DownloadFileResponse:
-        missing_fields = [
-            field_name
-            for field_name in ("user_id", "user_from")
-            if getattr(execution_context, field_name, None) is None
-        ]
+        missing_fields = []
+        if execution_context.user_id is None:
+            missing_fields.append("user_id")
+        if execution_context.user_from is None:
+            missing_fields.append("user_from")
         if missing_fields:
             missing = ", ".join(missing_fields)
             raise DifyPluginToolsClientConfigurationError(
@@ -113,10 +114,10 @@ class _DifyPluginToolFileClient:
             )
 
         payload = {
-            "tenant_id": getattr(execution_context, "tenant_id"),
-            "user_id": getattr(execution_context, "user_id"),
-            "user_from": getattr(execution_context, "user_from"),
-            "invoke_from": getattr(execution_context, "invoke_from"),
+            "tenant_id": execution_context.tenant_id,
+            "user_id": execution_context.user_id,
+            "user_from": execution_context.user_from,
+            "invoke_from": execution_context.invoke_from,
             "file": dict(file_mapping),
         }
         try:
@@ -350,7 +351,7 @@ async def _prepare_tool_arguments(
 @dataclass(slots=True)
 class _PluginToolFileContext:
     file_client: _DifyPluginToolFileClient
-    execution_context: object
+    execution_context: DifyExecutionContextLayerConfig
     shell: DifyShellLayer | None
 
     async def to_plugin_file_parameter(self, value: object) -> dict[str, object]:
