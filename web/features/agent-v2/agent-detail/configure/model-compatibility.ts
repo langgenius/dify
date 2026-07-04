@@ -21,6 +21,7 @@ const agentIncompatibleModelPatterns: RegExp[] = [
 
   // x
   /^grok-code-/i,
+  /^grok.*beta/i,
   /^grok-(?:2|3)/i,
 
   // deepseek

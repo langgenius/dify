@@ -77,6 +77,8 @@ describe('isAgentCompatibleModel', () => {
     expect(isAgentCompatibleModel(provider, createModelItem('gemini-1.5-flash-8b'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('Nano Banana Pro'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('grok-code-fast'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('grok-code-fast-1'))).toBe(false)
+    expect(isAgentCompatibleModel(provider, createModelItem('grok-4-beta'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('grok-2'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('grok-3-mini'))).toBe(false)
     expect(isAgentCompatibleModel(provider, createModelItem('deepseek-chat'))).toBe(false)
