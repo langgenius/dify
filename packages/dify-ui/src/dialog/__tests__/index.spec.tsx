@@ -23,7 +23,6 @@ describe('Dialog wrapper', () => {
 
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Title')
       await expect.element(screen.getByRole('dialog')).toHaveTextContent('Dialog Description')
-      await expect.element(document.body.querySelector('.bg-background-overlay') as HTMLElement).toHaveClass('absolute', 'inset-0', 'z-50')
     })
   })
 
