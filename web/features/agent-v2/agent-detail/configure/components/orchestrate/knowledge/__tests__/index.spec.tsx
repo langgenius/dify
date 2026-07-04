@@ -1,6 +1,6 @@
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,6 +8,7 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { RerankingModeEnum } from '@/models/datasets'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
 
@@ -15,18 +16,59 @@ vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/add-data
   default: function MockAddKnowledge({
     onChange,
   }: {
-    onChange: (datasets: Array<{ id: string, name: string }>) => void
+    onChange: (datasets: Array<{
+      id: string
+      name: string
+      indexing_technique: string
+      provider: string
+      embedding_model_provider: string
+      embedding_model: string
+      retrieval_model_dict: {
+        search_method: string
+      }
+      is_multimodal: boolean
+    }>) => void
   }) {
     return (
       <button
         type="button"
         aria-label="common.operation.add workflow.nodes.knowledgeRetrieval.knowledge"
-        onClick={() => onChange([{ id: 'dataset-2', name: 'Release Docs' }])}
+        onClick={() => onChange([{
+          id: 'dataset-2',
+          name: 'Release Docs',
+          indexing_technique: 'high_quality',
+          provider: 'internal',
+          embedding_model_provider: 'openai',
+          embedding_model: 'text-embedding-3',
+          retrieval_model_dict: {
+            search_method: 'semantic',
+          },
+          is_multimodal: false,
+        }])}
       >
         Add mock knowledge
       </button>
     )
   },
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(() => ({
+    modelList: [{
+      provider: 'rerank-provider',
+      models: [{ model: 'rerank-model' }],
+    }],
+    defaultModel: {
+      provider: {
+        provider: 'rerank-provider',
+      },
+      model: 'rerank-model',
+    },
+  })),
+  useCurrentProviderAndModel: vi.fn(() => ({
+    currentProvider: { provider: 'rerank-provider' },
+    currentModel: { model: 'rerank-model' },
+  })),
 }))
 
 const agentKnowledgeDraft = {
@@ -308,6 +350,12 @@ describe('AgentKnowledgeRetrieval', () => {
           },
           retrieval: expect.objectContaining({
             mode: 'multiple',
+            reranking_enable: true,
+            reranking_mode: RerankingModeEnum.RerankingModel,
+            reranking_model: {
+              provider: 'rerank-provider',
+              model: 'rerank-model',
+            },
             top_k: 4,
           }),
         }),
@@ -365,6 +413,63 @@ describe('AgentKnowledgeRetrieval', () => {
 
       expect(within(dialog).getByText('Product Docs')).toBeInTheDocument()
       expect(within(dialog).queryByText('appDebug.datasetConfig.knowledgeTip')).not.toBeInTheDocument()
+    })
+
+    it('should save the default rerank model when editing retrieval with existing knowledge', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval({
+        showConfigSnapshot: true,
+        initialDraft: {
+          ...defaultAgentSoulConfigFormState,
+          knowledgeRetrievals: [
+            {
+              id: 'retrieval-1',
+              name: 'Search Docs',
+              datasetRefs: [
+                {
+                  id: 'dataset-1',
+                  name: 'Product Docs',
+                  description: 'Docs corpus',
+                },
+              ],
+              multipleRetrievalConfig: {
+                top_k: 4,
+                score_threshold: null,
+                reranking_enable: false,
+              },
+            },
+          ],
+        },
+      })
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"Search Docs"}',
+      }))
+
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+      await user.click(within(dialog).getByRole('button', {
+        name: 'Search Docs',
+      }))
+      const nameInput = within(dialog).getByRole('textbox', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
+      })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Default Rerank Docs')
+
+      await waitFor(() => {
+        const knowledgeConfig = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
+        expect(knowledgeConfig.sets[0].retrieval).toEqual(expect.objectContaining({
+          mode: 'multiple',
+          reranking_enable: true,
+          reranking_mode: RerankingModeEnum.RerankingModel,
+          reranking_model: {
+            provider: 'rerank-provider',
+            model: 'rerank-model',
+          },
+        }))
+      })
     })
 
     it('should save edited retrieval data into the config snapshot', async () => {

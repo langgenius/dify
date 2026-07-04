@@ -319,7 +319,7 @@ export function FileTreeLabel({
   const defaultProps = {
     'data-label': labelText,
     'className': cn(
-      'min-w-0 truncate rounded-[5px] px-1 py-0.5',
+      'w-0 min-w-0 flex-1 truncate rounded-[5px] px-1 py-0.5',
       labelText && 'after:invisible after:block after:h-0 after:overflow-hidden after:system-sm-medium after:content-[attr(data-label)]',
       'system-sm-regular text-text-secondary group-data-[selected]/file-tree-row:system-sm-medium group-data-[selected]/file-tree-row:text-text-primary',
       className,

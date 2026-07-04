@@ -19,7 +19,7 @@ import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { intersectionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IndexingType } from '@/app/components/datasets/create/step-two/hooks/use-indexing-config'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -277,7 +277,7 @@ export function AgentKnowledgeRetrievalDialog({
     provider: currentRerankProvider?.provider,
     model: currentRerankModel?.model,
   }), [currentRerankModel?.model, currentRerankProvider?.provider])
-  const resolveMultipleRetrievalConfig = (
+  const resolveMultipleRetrievalConfig = useCallback((
     config: MultipleRetrievalConfig,
     nextSelectedDatasets = selectedDatasets,
     originalDatasets = selectedDatasets,
@@ -286,7 +286,13 @@ export function AgentKnowledgeRetrievalDialog({
     nextSelectedDatasets,
     originalDatasets,
     fallbackRerankModel,
-  )
+  ), [fallbackRerankModel, selectedDatasets])
+  const effectiveMultipleRetrievalConfig = useMemo(() => {
+    if (retrievalMode !== RETRIEVE_TYPE.multiWay || selectedDatasets.length === 0)
+      return multipleRetrievalConfig
+
+    return resolveMultipleRetrievalConfig(multipleRetrievalConfig)
+  }, [multipleRetrievalConfig, resolveMultipleRetrievalConfig, retrievalMode, selectedDatasets.length])
   const patchDialogState = (patch: Partial<KnowledgeRetrievalDialogState>) => {
     setDialogState(current => ({
       ...current,
@@ -336,7 +342,7 @@ export function AgentKnowledgeRetrievalDialog({
     customQuery,
     selectedDatasets,
     retrievalMode,
-    multipleRetrievalConfig,
+    multipleRetrievalConfig: effectiveMultipleRetrievalConfig,
     singleRetrievalConfig,
     metadataFilterMode,
     metadataFilteringConditions,
@@ -354,7 +360,7 @@ export function AgentKnowledgeRetrievalDialog({
       customQuery,
       selectedDatasets,
       retrievalMode,
-      multipleRetrievalConfig,
+      multipleRetrievalConfig: effectiveMultipleRetrievalConfig,
       singleRetrievalConfig,
       metadataFilterMode,
       metadataFilteringConditions,
@@ -547,7 +553,7 @@ export function AgentKnowledgeRetrievalDialog({
                   <RetrievalConfig
                     payload={{
                       retrieval_mode: retrievalMode,
-                      multiple_retrieval_config: multipleRetrievalConfig,
+                      multiple_retrieval_config: effectiveMultipleRetrievalConfig,
                       single_retrieval_config: singleRetrievalConfig,
                     }}
                     onRetrievalModeChange={(nextRetrievalMode) => {

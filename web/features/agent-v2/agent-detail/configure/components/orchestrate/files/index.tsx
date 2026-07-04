@@ -194,7 +194,7 @@ function AgentFileItem({
           {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
             <FileTreeGuide key={index} />
           ))}
-          <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-0.5">
             {children}
           </div>
         </DialogTrigger>
@@ -246,7 +246,7 @@ function AgentBuildNoteFileRow() {
   return (
     <>
       <FileTreeIcon type="markdown" />
-      <FileTreeLabel className="shrink-0" title={BUILD_NOTE_FILE_NAME}>
+      <FileTreeLabel title={BUILD_NOTE_FILE_NAME}>
         {BUILD_NOTE_FILE_NAME}
       </FileTreeLabel>
       <FileTreeBadge className="ml-0.5 gap-0.5 px-1 py-0.5">
