@@ -57,7 +57,7 @@ export function DialogPopup({
   return (
     <BaseDialog.Popup
       className={cn(
-        'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl',
+        'z-50 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl',
         'transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
         className,
       )}
