@@ -4,6 +4,8 @@ This module owns plugin daemon management calls that are shared by API services
 and core runtimes. Plugin model provider discovery is cached here, alongside
 plugin install, uninstall, and upgrade invalidation, so all cache mutations for
 plugin-owned provider metadata stay tenant-scoped and in one place.
+Provider cache payloads may be stored as prefixed zstd bytes; readers also
+accept legacy plain JSON payloads for rolling upgrades and existing Redis keys.
 
 The console plugin list also normalizes endpoint setup counters against live
 endpoint records. Some plugin daemon builds return stale ``endpoints_*``
@@ -19,6 +21,7 @@ from contextlib import contextmanager
 from mimetypes import guess_type
 from typing import Literal, Protocol
 
+import zstandard
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from redis import RedisError
 from redis.exceptions import LockError
@@ -92,6 +95,8 @@ class PluginService:
     PLUGIN_MODEL_PROVIDERS_LOCK_TTL = 30
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT = 2.0
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL = 0.05
+    PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX = b"\x00dify-plugin-model-providers-zstd-v1:"
+    PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES = 64 * 1024
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
     # Mirror the detail-panel endpoint query size so list reconciliation and
     # the visible endpoint drawer exercise the same daemon pagination path.
@@ -141,6 +146,27 @@ class PluginService:
         declaration.provider = f"{provider.plugin_id}/{provider.provider}"
         declaration.provider_name = cls._get_provider_short_name_alias(provider)
         return declaration
+
+    @classmethod
+    def _encode_plugin_model_providers_cache_payload(cls, payload: bytes) -> bytes:
+        if len(payload) < cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_MIN_BYTES:
+            return payload
+
+        return cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX + zstandard.compress(payload, level=1)
+
+    @classmethod
+    def _decode_plugin_model_providers_cache_payload(cls, payload: bytes | bytearray | str) -> bytes | bytearray | str:
+        if isinstance(payload, str):
+            return payload
+
+        prefix = cls.PLUGIN_MODEL_PROVIDERS_CACHE_COMPRESSION_PREFIX
+        if not payload.startswith(prefix):
+            return payload
+
+        try:
+            return zstandard.decompress(payload[len(prefix) :])
+        except zstandard.ZstdError as exc:
+            raise ValueError("Invalid compressed plugin model providers cache payload.") from exc
 
     @classmethod
     def _load_plugin_model_providers_generation(cls, tenant_id: str) -> int | None:
@@ -199,7 +225,8 @@ class PluginService:
                 continue
 
             try:
-                providers = tuple(_provider_entities_adapter.validate_json(cached_providers))
+                payload = cls._decode_plugin_model_providers_cache_payload(cached_providers)
+                providers = tuple(_provider_entities_adapter.validate_json(payload))
                 return providers, True
             except (TypeError, ValueError, ValidationError):
                 logger.warning(
@@ -225,7 +252,9 @@ class PluginService:
     ) -> None:
         cache_key = cls._get_plugin_model_providers_cache_key(tenant_id, generation)
         try:
-            payload = _provider_entities_adapter.dump_json(list(providers))
+            payload = cls._encode_plugin_model_providers_cache_payload(
+                _provider_entities_adapter.dump_json(list(providers))
+            )
             redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL, payload)
         except (RedisError, RuntimeError):
             logger.warning("Failed to cache plugin model providers for tenant %s.", tenant_id, exc_info=True)

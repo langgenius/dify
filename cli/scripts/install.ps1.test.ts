@@ -180,3 +180,79 @@ describe.skipIf(!PWSH)('install.ps1 Find-ReleaseForDifyctl', () => {
     expect(r.stdout).toBe('NULL')
   })
 })
+
+// Build a fake ErrorRecord whose Exception.Response is a real HttpResponseMessage
+// carrying the given status + headers, matching what Get-RateLimitInfo inspects.
+function fakeErr(status: number, headers: Record<string, string>): string {
+  const adds = Object.entries(headers)
+    .map(([k, v]) => `$resp.Headers.TryAddWithoutValidation('${k}','${v}') | Out-Null`)
+    .join('\n')
+  return [
+    `$resp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]${status})`,
+    adds,
+    '$err = [pscustomobject]@{ Exception = [pscustomobject]@{ Response = $resp } }',
+  ].join('\n')
+}
+
+const futureReset = String(Math.floor(Date.now() / 1000) + 1800)
+
+describe.skipIf(!PWSH)('install.ps1 rate limit', () => {
+  it('classifies a 403 with x-ratelimit-remaining:0 as rate-limited, returning the reset', () => {
+    const r = runPwsh(`${fakeErr(403, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': futureReset })}
+      $i = Get-RateLimitInfo $err; if ($null -eq $i) { 'NULL' } else { $i.Reset }`)
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe(futureReset)
+  })
+
+  it('does not classify a 403 with remaining tokens as rate-limited', () => {
+    const r = runPwsh(`${fakeErr(403, { 'x-ratelimit-remaining': '59' })}
+      $i = Get-RateLimitInfo $err; if ($null -eq $i) { 'NULL' } else { 'LIMITED' }`)
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('NULL')
+  })
+
+  it('always treats a 429 as rate-limited', () => {
+    const r = runPwsh(`${fakeErr(429, {})}
+      $i = Get-RateLimitInfo $err; if ($null -eq $i) { 'NULL' } else { 'LIMITED' }`)
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('LIMITED')
+  })
+
+  it('returns null for an error without a response (e.g. a plain string throw)', () => {
+    const r = runPwsh('$err = [pscustomobject]@{ Exception = [pscustomobject]@{} }; if ($null -eq (Get-RateLimitInfo $err)) { \'NULL\' } else { \'OBJ\' }')
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('NULL')
+  })
+
+  it('Write-RateLimitHint prints cause, ETA, and remediation to stderr', () => {
+    const r = runPwsh(`Write-RateLimitHint '${futureReset}'`)
+    expect(r.code).toBe(0)
+    expect(r.stderr).toContain('rate limit exceeded')
+    expect(r.stderr).toContain('resets in ~')
+    expect(r.stderr).toContain('GITHUB_TOKEN')
+  })
+
+  it('Write-RateLimitHint omits the ETA line when the reset epoch is missing', () => {
+    const r = runPwsh('Write-RateLimitHint \'\'')
+    expect(r.code).toBe(0)
+    expect(r.stderr).toContain('rate limit exceeded')
+    expect(r.stderr).not.toContain('resets in ~')
+  })
+
+  it('sends an Authorization header when GITHUB_TOKEN is set', () => {
+    const r = runPwsh('$headers.Authorization', { GITHUB_TOKEN: 'ghp_secret123' })
+    expect(r.code).toBe(0)
+    expect(r.stdout).toBe('Bearer ghp_secret123')
+  })
+
+  it('Resolve-Release surfaces the rate-limit hint and exits, not "not found"', () => {
+    const stub = `function Invoke-RestMethod { throw [Microsoft.PowerShell.Commands.HttpResponseException]::new('rate limited', $script:rlResp) }`
+    const setup = `$script:rlResp = [System.Net.Http.HttpResponseMessage]::new([System.Net.HttpStatusCode]403)
+      $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-remaining','0') | Out-Null
+      $script:rlResp.Headers.TryAddWithoutValidation('x-ratelimit-reset','${futureReset}') | Out-Null`
+    const r = runPwsh(`${setup}\n${stub}\nResolve-Release`, { DIFY_VERSION: '1.15.0' })
+    expect(r.code).not.toBe(0)
+    expect(r.stderr).toContain('rate limit exceeded')
+    expect(r.stderr).not.toContain('not found')
+  })
+})
