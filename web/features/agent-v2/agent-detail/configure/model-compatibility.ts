@@ -50,8 +50,10 @@ const agentIncompatibleModelPatterns: RegExp[] = [
   /^moonshot-v1/i,
 
   // minimax
+  /^abab/i,
   /^minimax-text-01$/i,
   /^minimax-m1$/i,
+  /^minimax-m2(?:-|$)/i,
 ]
 
 const agentSuggestedModelPatterns: RegExp[] = [
@@ -79,6 +81,9 @@ const agentSuggestedModelPatterns: RegExp[] = [
 
   // moonshot
   /^kimi[ .-]k2\.6$/i,
+
+  // minimax
+  /^minimax[ .-]m3$/i,
 
   // zhipuai
   /^glm[ .-]5\.1$/i,
