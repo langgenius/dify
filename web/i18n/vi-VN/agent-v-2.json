@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Kết nối các kho kiến thức mà tác nhân tìm kiếm khi làm việc, để câu trả lời dựa trên nội dung của bạn. <docLink>Tìm hiểu thêm</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Kết nối các kho kiến thức mà tác nhân tìm kiếm khi làm việc, để câu trả lời dựa trên nội dung của bạn. Tìm hiểu thêm",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Bật/tắt truy xuất kiến thức",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Vui lòng cấu hình một mô hình trong bộ lọc siêu dữ liệu",
   "agentDetail.configure.model.label": "Mô hình",
   "agentDetail.configure.orchestrate": "Điều phối",
   "agentDetail.configure.preview.chatFeatures": "Tính năng trò chuyện",

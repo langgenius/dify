@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Conecta bases de conocimiento que el agente consulta mientras trabaja, para que sus respuestas se basen en tu contenido. <docLink>Más información</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Conecta bases de conocimiento que el agente consulta mientras trabaja, para que sus respuestas se basen en tu contenido. Más información",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Alternar recuperación de conocimiento",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Configura un modelo en el filtrado de metadatos",
   "agentDetail.configure.model.label": "Modelo",
   "agentDetail.configure.orchestrate": "Orquestar",
   "agentDetail.configure.preview.chatFeatures": "Funciones de chat",

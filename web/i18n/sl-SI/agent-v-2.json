@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Povežite baze znanja, po katerih agent išče med delom, da njegovi odgovori temeljijo na vaši vsebini. <docLink>Več informacij</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Povežite baze znanja, po katerih agent išče med delom, da njegovi odgovori temeljijo na vaši vsebini. Več informacij",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Preklopi iskanje znanja",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Konfigurirajte model pri filtriranju metapodatkov",
   "agentDetail.configure.model.label": "Model",
   "agentDetail.configure.orchestrate": "Orkestracija",
   "agentDetail.configure.preview.chatFeatures": "Funkcije klepeta",

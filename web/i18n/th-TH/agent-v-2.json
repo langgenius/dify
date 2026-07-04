@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "เชื่อมต่อฐานความรู้ที่ agent ค้นหาระหว่างทำงาน เพื่อให้คำตอบอ้างอิงจากเนื้อหาของคุณ <docLink>เรียนรู้เพิ่มเติม</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "เชื่อมต่อฐานความรู้ที่ agent ค้นหาระหว่างทำงาน เพื่อให้คำตอบอ้างอิงจากเนื้อหาของคุณ เรียนรู้เพิ่มเติม",
   "agentDetail.configure.knowledgeRetrieval.toggle": "สลับการดึงความรู้",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "โปรดกำหนดค่าโมเดลในการกรองเมตาดาต้า",
   "agentDetail.configure.model.label": "โมเดล",
   "agentDetail.configure.orchestrate": "การจัดการ",
   "agentDetail.configure.preview.chatFeatures": "ฟีเจอร์แชท",

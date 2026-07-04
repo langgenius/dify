@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "پایگاه‌های دانشی را وصل کنید که عامل هنگام کار جستجو می‌کند تا پاسخ‌هایش بر محتوای شما تکیه کند. <docLink>بیشتر بدانید</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "پایگاه‌های دانشی را وصل کنید که عامل هنگام کار جستجو می‌کند تا پاسخ‌هایش بر محتوای شما تکیه کند. بیشتر بدانید",
   "agentDetail.configure.knowledgeRetrieval.toggle": "تغییر بازیابی دانش",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "لطفاً یک مدل در فیلتر کردن فراداده پیکربندی کنید",
   "agentDetail.configure.model.label": "مدل",
   "agentDetail.configure.orchestrate": "هماهنگ‌سازی",
   "agentDetail.configure.preview.chatFeatures": "ویژگی‌های چت",

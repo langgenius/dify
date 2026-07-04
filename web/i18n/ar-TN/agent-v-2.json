@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "اربط قواعد المعرفة التي يبحث فيها الوكيل أثناء عمله، لتستند إجاباته إلى محتواك. <docLink>معرفة المزيد</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "اربط قواعد المعرفة التي يبحث فيها الوكيل أثناء عمله، لتستند إجاباته إلى محتواك. معرفة المزيد",
   "agentDetail.configure.knowledgeRetrieval.toggle": "تبديل استرجاع المعرفة",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "يرجى تكوين نموذج في تصفية البيانات الوصفية",
   "agentDetail.configure.model.label": "النموذج",
   "agentDetail.configure.orchestrate": "تنسيق",
   "agentDetail.configure.preview.chatFeatures": "ميزات الدردشة",

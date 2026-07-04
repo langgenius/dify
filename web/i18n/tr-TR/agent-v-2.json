@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Agent çalışırken arayacağı bilgi tabanlarını bağlayın, böylece yanıtları içeriğinize dayanır. <docLink>Daha fazla bilgi</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Agent çalışırken arayacağı bilgi tabanlarını bağlayın, böylece yanıtları içeriğinize dayanır. Daha fazla bilgi",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Bilgi geri alımını değiştir",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Meta veri filtrelemede bir model yapılandırın",
   "agentDetail.configure.model.label": "Model",
   "agentDetail.configure.orchestrate": "Koordine Et",
   "agentDetail.configure.preview.chatFeatures": "Sohbet Özellikleri",

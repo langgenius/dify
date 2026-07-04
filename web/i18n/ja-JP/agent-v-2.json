@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "エージェントが作業中に検索するナレッジベースを接続し、回答があなたのコンテンツに基づくようにします。<docLink>詳しく見る</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "エージェントが作業中に検索するナレッジベースを接続し、回答があなたのコンテンツに基づくようにします。詳しく見る",
   "agentDetail.configure.knowledgeRetrieval.toggle": "ナレッジ検索の表示を切り替え",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "メタデータフィルタリングでモデルを設定してください",
   "agentDetail.configure.model.label": "モデル",
   "agentDetail.configure.orchestrate": "オーケストレーション",
   "agentDetail.configure.preview.chatFeatures": "チャット機能",

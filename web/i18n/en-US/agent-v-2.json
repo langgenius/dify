@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Connect knowledge bases the agent searches while it works, so its answers draw on your content. <docLink>Learn more</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Connect knowledge bases the agent searches while it works, so its answers draw on your content. Learn more",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Toggle knowledge retrieval",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Please config a model in metadata filtering",
   "agentDetail.configure.model.label": "Model",
   "agentDetail.configure.orchestrate": "Orchestrate",
   "agentDetail.configure.preview.chatFeatures": "Chat Features",

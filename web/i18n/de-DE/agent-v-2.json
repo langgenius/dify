@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Verbinden Sie Wissensdatenbanken, die der Agent während der Arbeit durchsucht, damit seine Antworten auf Ihren Inhalten basieren. <docLink>Mehr erfahren</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Verbinden Sie Wissensdatenbanken, die der Agent während der Arbeit durchsucht, damit seine Antworten auf Ihren Inhalten basieren. Mehr erfahren",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Wissensabfrage umschalten",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Bitte konfigurieren Sie ein Modell in der Metadatenfilterung",
   "agentDetail.configure.model.label": "Modell",
   "agentDetail.configure.orchestrate": "Orchestrieren",
   "agentDetail.configure.preview.chatFeatures": "Chat-Funktionen",

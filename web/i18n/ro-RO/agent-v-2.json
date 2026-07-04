@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Conectați baze de cunoștințe pe care agentul le caută în timp ce lucrează, astfel încât răspunsurile sale să se bazeze pe conținutul dvs. <docLink>Aflați mai multe</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Conectați baze de cunoștințe pe care agentul le caută în timp ce lucrează, astfel încât răspunsurile sale să se bazeze pe conținutul dvs. Aflați mai multe",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Comută recuperarea de cunoștințe",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Configurați un model în filtrarea metadatelor",
   "agentDetail.configure.model.label": "Model",
   "agentDetail.configure.orchestrate": "Orchestrare",
   "agentDetail.configure.preview.chatFeatures": "Funcții de chat",

@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Koppel kennisbanken die de agent tijdens het werken doorzoekt, zodat zijn antwoorden op uw content zijn gebaseerd. <docLink>Meer informatie</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Koppel kennisbanken die de agent tijdens het werken doorzoekt, zodat zijn antwoorden op uw content zijn gebaseerd. Meer informatie",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Kennisophaling in/uit",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Configureer een model in metadatafiltering",
   "agentDetail.configure.model.label": "Model",
   "agentDetail.configure.orchestrate": "Orkestreren",
   "agentDetail.configure.preview.chatFeatures": "Chatfuncties",

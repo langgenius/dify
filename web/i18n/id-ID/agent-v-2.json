@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Hubungkan knowledge base yang dicari agen saat bekerja, sehingga jawabannya mengambil dari konten Anda. <docLink>Pelajari selengkapnya</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Hubungkan knowledge base yang dicari agen saat bekerja, sehingga jawabannya mengambil dari konten Anda. Pelajari selengkapnya",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Alihkan pengambilan pengetahuan",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Konfigurasikan model dalam pemfilteran metadata",
   "agentDetail.configure.model.label": "Model",
   "agentDetail.configure.orchestrate": "Orkestrasi",
   "agentDetail.configure.preview.chatFeatures": "Fitur Chat",

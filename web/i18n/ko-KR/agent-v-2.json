@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "에이전트가 작업 중 검색할 지식 베이스를 연결하여 답변이 내 콘텐츠를 기반으로 하도록 합니다. <docLink>자세히 알아보기</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "에이전트가 작업 중 검색할 지식 베이스를 연결하여 답변이 내 콘텐츠를 기반으로 하도록 합니다. 자세히 알아보기",
   "agentDetail.configure.knowledgeRetrieval.toggle": "지식 검색 전환",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "메타데이터 필터링에서 모델을 구성하세요",
   "agentDetail.configure.model.label": "모델",
   "agentDetail.configure.orchestrate": "오케스트레이션",
   "agentDetail.configure.preview.chatFeatures": "채팅 기능",

@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "連接 Agent 工作時可檢索的知識庫，以基於其內容生成回覆。<docLink>了解更多</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "連接 Agent 工作時可檢索的知識庫，以基於其內容生成回覆。了解更多",
   "agentDetail.configure.knowledgeRetrieval.toggle": "展開或收合知識檢索",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "請在中繼資料篩選中設定模型",
   "agentDetail.configure.model.label": "模型",
   "agentDetail.configure.orchestrate": "編排",
   "agentDetail.configure.preview.chatFeatures": "Chat 功能",

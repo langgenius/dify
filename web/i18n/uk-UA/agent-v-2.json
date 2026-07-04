@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "Підключіть бази знань, які агент шукає під час роботи, щоб його відповіді спиралися на ваш контент. <docLink>Докладніше</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "Підключіть бази знань, які агент шукає під час роботи, щоб його відповіді спиралися на ваш контент. Докладніше",
   "agentDetail.configure.knowledgeRetrieval.toggle": "Перемкнути пошук по знаннях",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "Налаштуйте модель у фільтрації метаданих",
   "agentDetail.configure.model.label": "Модель",
   "agentDetail.configure.orchestrate": "Оркестрація",
   "agentDetail.configure.preview.chatFeatures": "Функції чату",

@@ -56,10 +56,11 @@ export const useKnowledgeValidationMessage = () => {
           field: t('agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'),
         })
       case 'single_model_required':
-      case 'metadata_model_required':
         return tCommon('errorMsg.fieldRequired', {
           field: tCommon('modelProvider.systemReasoningModel.key'),
         })
+      case 'metadata_model_required':
+        return t('agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired')
       case 'metadata_conditions_required':
         return tCommon('errorMsg.fieldRequired', {
           field: tWorkflow('nodes.knowledgeRetrieval.metadata.panel.conditions'),

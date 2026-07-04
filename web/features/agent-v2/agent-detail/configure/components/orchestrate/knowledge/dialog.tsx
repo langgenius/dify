@@ -407,7 +407,9 @@ export function AgentKnowledgeRetrievalDialog({
   const datasetsError = getValidationMessage(itemValidation?.datasets)
   const queryError = getValidationMessage(itemValidation?.query)
   const retrievalError = getValidationMessage(itemValidation?.retrieval)
-  const metadataError = getValidationMessage(itemValidation?.metadata)
+  const metadataError = itemValidation?.metadata === 'metadata_model_required'
+    ? undefined
+    : getValidationMessage(itemValidation?.metadata)
 
   useEffect(() => {
     if (hydratedKey !== hydrationKey) {
@@ -621,14 +623,16 @@ export function AgentKnowledgeRetrievalDialog({
               )}
             >
               <>
-                <DatasetList
-                  list={selectedDatasets}
-                  onChange={handleSelectedDatasetsChange}
-                  settingsDrawerBackdropClassName="bg-background-overlay"
-                  settingsDrawerBackdropForceRender
-                  settingsDrawerPopupClassName="data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:bottom-6"
-                  settingsModalHeight="100%"
-                />
+                {selectedDatasets.length > 0 && (
+                  <DatasetList
+                    list={selectedDatasets}
+                    onChange={handleSelectedDatasetsChange}
+                    settingsDrawerBackdropClassName="bg-background-overlay"
+                    settingsDrawerBackdropForceRender
+                    settingsDrawerPopupClassName="data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:bottom-6"
+                    settingsModalHeight="100%"
+                  />
+                )}
                 {(datasetsError || retrievalError) && (
                   <div role="alert" className="pt-2 system-xs-regular text-text-destructive">
                     {datasetsError ?? retrievalError}

@@ -133,6 +133,7 @@
   "agentDetail.configure.knowledgeRetrieval.richTip": "ऐसे knowledge bases कनेक्ट करें जिन्हें एजेंट काम करते समय खोजता है, ताकि उसके उत्तर आपके content पर आधारित हों। <docLink>और जानें</docLink>",
   "agentDetail.configure.knowledgeRetrieval.tip": "ऐसे knowledge bases कनेक्ट करें जिन्हें एजेंट काम करते समय खोजता है, ताकि उसके उत्तर आपके content पर आधारित हों। और जानें",
   "agentDetail.configure.knowledgeRetrieval.toggle": "ज्ञान पुनर्प्राप्ति टॉगल करें",
+  "agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired": "मेटाडेटा फ़िल्टरिंग में एक मॉडल कॉन्फ़िगर करें",
   "agentDetail.configure.model.label": "मॉडल",
   "agentDetail.configure.orchestrate": "व्यवस्थित करें",
   "agentDetail.configure.preview.chatFeatures": "चैट सुविधाएँ",

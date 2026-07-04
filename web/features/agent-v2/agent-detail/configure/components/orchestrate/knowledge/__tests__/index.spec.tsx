@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -189,7 +190,7 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).getByRole('textbox', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
       })).toHaveValue('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo')
-      expect(within(dialog).getByText('appDebug.datasetConfig.knowledgeTip')).toBeInTheDocument()
+      expect(within(dialog).queryByText('appDebug.datasetConfig.knowledgeTip')).not.toBeInTheDocument()
       expect(within(dialog).getByRole('button', {
         name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge',
       })).toBeInTheDocument()
@@ -260,6 +261,33 @@ describe('AgentKnowledgeRetrieval', () => {
       }))
 
       expect(within(dialog).getByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel"}')).toBeInTheDocument()
+    })
+
+    it('should not show inline validation for automatic metadata filtering without a model', async () => {
+      const user = userEvent.setup()
+      renderKnowledgeRetrieval({
+        initialDraft: {
+          ...defaultAgentSoulConfigFormState,
+          knowledgeRetrievals: [
+            {
+              id: 'retrieval-1',
+              name: 'Docs Search',
+              datasetRefs: [{ id: 'dataset-1', name: 'Docs' }],
+              metadataFilterMode: MetadataFilteringModeEnum.automatic,
+            },
+          ],
+        },
+      })
+
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"Docs Search"}',
+      }))
+
+      const dialog = screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
+      })
+
+      expect(within(dialog).queryByText('agentV2.agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired')).not.toBeInTheDocument()
     })
 
     it('should show duplicate-name validation in the dialog', async () => {
