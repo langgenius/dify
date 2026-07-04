@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 
 const AGENT_WORKING_DIRECTORY_HOME_PATH = '~'
-export const AGENT_WORKING_DIRECTORY_ROOT_PATH = '.'
+const AGENT_WORKING_DIRECTORY_ROOT_PATH = '.'
 
 export type AgentWorkingDirectoryPath
   = | typeof AGENT_WORKING_DIRECTORY_HOME_PATH
