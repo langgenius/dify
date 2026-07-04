@@ -3,14 +3,18 @@ import type { Model, ModelItem } from '@/app/components/header/account-setting/m
 const agentIncompatibleModelPatterns: RegExp[] = [
   // openai
   /^chatgpt-/i,
+  /^gpt-5(?:$|-|\.1$|\.2$)/i,
+  /^gpt.*(?:min|chat)/i,
+  /^gpt.*nano/i,
   /^gpt-4/i,
   /^gpt-3/i,
-  /^o[34]-mini(?:-|$)/i,
+  /^o[134](?:-|$)/i,
 
   // anthropic
   /^claude-3/i,
 
   // gemini
+  /^gemini.*flash[ .-]lite/i,
   /^gemini[ .-]2(?![ .-]5[ .-]pro$)/i,
   /^gemini[ .-]1[ .-]5[ .-]flash(?:[ .-]8b)?(?:[ .-]|$)/i,
   /^Nano/i,
@@ -21,18 +25,27 @@ const agentIncompatibleModelPatterns: RegExp[] = [
 
   // deepseek
   /^deepseek-(?:chat|coder|reasoner)(?:-|$)/i,
+  /^deepseek-r1-distill-/i,
+  /^deepseek-v3/i,
 
   // minimax
   /^minimax-text-01$/i,
   /^minimax-m1$/i,
 
   // qwen
+  /^qvq-/i,
+  /^qwq-/i,
+  /^qwen-/i,
   /^qwen2/i,
-  /^qwen-flash/i,
-  /^qwen-long/i,
+  /^qwen3-/i,
+  /^qwen3\.5/i,
+  /^qwen.*flash/i,
+
+  /^farui-plus$/i,
 
   // zhipuai
   /^chatglm-(?:2|3)/i,
+  /^glm-4/i,
   /^glm-4-(?:air|airx|flash)$/i,
   /^glm-z1-(?:air|flash)$/i,
 ]
@@ -59,6 +72,9 @@ const agentSuggestedModelPatterns: RegExp[] = [
   // qwen
   /^qwen[ .-]?3\.7[ .-]max$/i,
   /^qwen[ .-]?3[ .-]coder[ .-]plus$/i,
+
+  // zhipuai
+  /^glm[ .-]5\.1$/i,
 ]
 
 export function isAgentCompatibleModel(_provider: Model, modelItem: ModelItem) {
