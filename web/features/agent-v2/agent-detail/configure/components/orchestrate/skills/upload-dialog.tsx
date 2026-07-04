@@ -162,8 +162,8 @@ function AgentSkillPackageUploader({
           <div className="flex items-center justify-center p-3">
             <span aria-hidden className="i-custom-public-files-yaml size-6 shrink-0" />
           </div>
-          <div className="flex grow flex-col items-start gap-0.5 py-1 pr-2">
-            <span className="max-w-[calc(100%-30px)] overflow-hidden text-[12px] leading-4 font-medium text-ellipsis whitespace-nowrap text-text-secondary">{file.name}</span>
+          <div className="flex min-w-0 grow flex-col items-start gap-0.5 py-1 pr-2">
+            <span className="max-w-full min-w-0 truncate text-[12px] leading-4 font-medium text-text-secondary">{file.name}</span>
             <div className="flex h-3 items-center gap-1 self-stretch text-[10px] leading-3 font-medium text-text-tertiary uppercase">
               <span>{t('agentDetail.configure.skills.upload.fileType')}</span>
               <span className="text-text-quaternary">·</span>
