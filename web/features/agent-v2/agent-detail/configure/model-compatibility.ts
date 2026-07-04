@@ -29,10 +29,6 @@ const agentIncompatibleModelPatterns: RegExp[] = [
   /^deepseek-r1-distill-/i,
   /^deepseek-v3/i,
 
-  // minimax
-  /^minimax-text-01$/i,
-  /^minimax-m1$/i,
-
   // qwen
   /^qvq-/i,
   /^qwq-/i,
@@ -41,14 +37,21 @@ const agentIncompatibleModelPatterns: RegExp[] = [
   /^qwen3-/i,
   /^qwen3\.5/i,
   /^qwen.*flash/i,
-
   /^farui-plus$/i,
 
-  // zhipuai
+  // zhipu ai
   /^chatglm-(?:2|3)/i,
   /^glm-3/i,
   /^glm-4/i,
   /^glm-z/i,
+
+  // moonshot
+  /^kimi-k2-/i,
+  /^moonshot-v1/i,
+
+  // minimax
+  /^minimax-text-01$/i,
+  /^minimax-m1$/i,
 ]
 
 const agentSuggestedModelPatterns: RegExp[] = [
@@ -73,6 +76,9 @@ const agentSuggestedModelPatterns: RegExp[] = [
   // qwen
   /^qwen[ .-]?3\.7[ .-]max$/i,
   /^qwen[ .-]?3[ .-]coder[ .-]plus$/i,
+
+  // moonshot
+  /^kimi[ .-]k2\.6$/i,
 
   // zhipuai
   /^glm[ .-]5\.1$/i,
