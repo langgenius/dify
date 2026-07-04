@@ -312,15 +312,15 @@ const OutsideScrollingContentDemo = () => {
         Review long release notes
       </DialogTrigger>
       <DialogPortal>
-        <DialogBackdrop />
-        <DialogViewport>
-          <ScrollAreaRoot className="h-full overscroll-contain">
-            <ScrollAreaViewport aria-label="Scrollable dialog viewport" role="region" className="h-full max-h-full max-w-full overscroll-contain">
+        <DialogBackdrop className="duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]" />
+        <DialogViewport className="group/dialog">
+          <ScrollAreaRoot className="h-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
+            <ScrollAreaViewport aria-label="Scrollable dialog viewport" role="region" className="h-full max-h-full max-w-full overscroll-contain group-data-ending-style/dialog:pointer-events-none">
               <ScrollAreaContent className="flex min-h-full items-center justify-center px-4 py-16">
                 <DialogPopup
                   ref={popupRef}
                   initialFocus={popupRef}
-                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden data-ending-style:translate-y-4 data-starting-style:translate-y-4"
+                  className="relative mx-auto flex w-120 max-w-[calc(100vw-2rem)] flex-col overflow-hidden outline-hidden transition-[translate] duration-[700ms] ease-[cubic-bezier(0.45,1.005,0,1.005)] data-starting-style:translate-y-[100dvh] data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:translate-y-[max(100dvh,100%)] data-ending-style:scale-100 data-ending-style:opacity-100 data-ending-style:duration-[350ms] data-ending-style:ease-[cubic-bezier(0.375,0.015,0.545,0.455)]"
                 >
                   <DialogCloseButton />
                   <ReleaseNoteHeader
