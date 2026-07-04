@@ -4,7 +4,6 @@ import { expect, waitFor, within } from 'storybook/test'
 import {
   Dialog,
   DialogBackdrop,
-  DialogClose,
   DialogCloseButton,
   DialogContent,
   DialogDescription,
@@ -86,9 +85,9 @@ function ReleaseNoteSections() {
 function ReleaseNoteFooter() {
   return (
     <div className="flex shrink-0 justify-end border-t border-divider-subtle p-4">
-      <DialogClose render={<Button />}>
+      <DialogCloseButton render={<Button />}>
         Close
-      </DialogClose>
+      </DialogCloseButton>
     </div>
   )
 }
@@ -346,7 +345,45 @@ export const OutsideScrollingContent: Story = {
   render: () => <OutsideScrollingContentDemo />,
 }
 
-export const ScrollingContent: Story = {
+export const OutsidePopupElements: Story = {
+  render: () => (
+    <Dialog>
+      <DialogTrigger
+        render={<Button />}
+      >
+        Open uncontained dialog
+      </DialogTrigger>
+      <DialogPortal>
+        <DialogBackdrop className="min-h-dvh" />
+        <DialogViewport className="grid place-items-center px-4 py-12 xl:py-6">
+          <DialogPopup className="group/popup relative flex h-full w-full max-w-[70rem] justify-center border-0 bg-transparent shadow-none pointer-events-none transition-opacity data-starting-style:scale-100 data-starting-style:opacity-0 data-ending-style:scale-100 data-ending-style:opacity-0">
+            <DialogCloseButton
+              aria-label="Close"
+              className="pointer-events-auto absolute right-0 -top-10 z-10 flex size-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
+            >
+              <span aria-hidden="true" className="i-ri-close-line size-4" />
+            </DialogCloseButton>
+            <div className="pointer-events-auto flex h-full w-full max-w-[70rem] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-[scale] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-data-starting-style/popup:scale-105">
+              <div className="grid gap-2">
+                <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+                  Knowledge review
+                </DialogTitle>
+                <DialogDescription className="text-sm leading-5 text-text-secondary">
+                  The close button is visually outside this panel but remains inside the popup for focus order and screen reader context.
+                </DialogDescription>
+              </div>
+              <div className="mt-6 grid flex-1 place-items-center rounded-xl bg-background-default-subtle text-sm text-text-tertiary">
+                Panel content
+              </div>
+            </div>
+          </DialogPopup>
+        </DialogViewport>
+      </DialogPortal>
+    </Dialog>
+  ),
+}
+
+export const InsideScrollingContent: Story = {
   render: () => (
     <Dialog>
       <DialogTrigger
