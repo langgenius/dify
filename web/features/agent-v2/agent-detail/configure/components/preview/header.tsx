@@ -14,7 +14,7 @@ function AgentModeTipSection({
 }: {
   iconClassName: string
   title: string
-  children: string
+  children: ReactNode
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -137,7 +137,7 @@ export function AgentPreviewHeader({
   const previewTipBody = t('agentDetail.configure.rightPanel.previewTipBody')
   const previewDisabledTip = t('agentDetail.configure.rightPanel.previewDisabledTip')
   const learnMoreLabel = t('agentDetail.configure.rightPanel.learnMore')
-  const modeTip = `${buildLabel}. ${buildTipBody} ${previewLabel}. ${previewTipBody} ${learnMoreLabel}`
+  const modeTip = `${buildLabel}. ${buildTipBody} ${learnMoreLabel} ${previewLabel}. ${previewTipBody}`
 
   return (
     <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
@@ -164,20 +164,23 @@ export function AgentPreviewHeader({
           <div className="flex flex-col gap-2">
             <div className="flex flex-col gap-3">
               <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-build" title={buildLabel}>
-                {buildTipBody}
+                <>
+                  {buildTipBody}
+                  {' '}
+                  <a
+                    href={docLink('/use-dify/build/new-agent/build#build-by-chatting')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="body-xs-regular text-text-accent hover:underline"
+                  >
+                    {learnMoreLabel}
+                  </a>
+                </>
               </AgentModeTipSection>
               <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-preview" title={previewLabel}>
                 {previewTipBody}
               </AgentModeTipSection>
             </div>
-            <a
-              href={docLink('/use-dify/build/agent')}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="body-xs-regular text-text-accent hover:underline"
-            >
-              {learnMoreLabel}
-            </a>
           </div>
         </ModeInfoTip>
       </div>
