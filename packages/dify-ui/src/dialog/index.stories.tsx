@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import * as React from 'react'
 import { expect, waitFor, within } from 'storybook/test'
 import {
@@ -13,6 +14,13 @@ import { Button } from '../button'
 import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '../field'
 import { Form } from '../form'
 import { Input } from '../input'
+import {
+  ScrollAreaContent,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '../scroll-area'
 
 const meta = {
   title: 'Base/UI/Dialog',
@@ -247,30 +255,51 @@ export const ScrollingContent: Story = {
       >
         Review release notes
       </DialogTrigger>
-      <DialogContent>
-        <DialogCloseButton />
-        <div className="flex flex-col gap-2 pr-8">
-          <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
-            Release notes
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-5 text-text-secondary">
-            Highlights from the latest workspace update.
-          </DialogDescription>
-        </div>
-        <ul className="mt-4 flex flex-col gap-3 text-sm leading-5 text-text-secondary">
-          {Array.from({ length: 24 }, (_, index) => `improvement-${index + 1}`).map((id, index) => (
-            <li key={id} className="rounded-lg bg-background-default-subtle px-3 py-2">
-              <span className="font-medium text-text-primary">
-                Improvement #
-                {index + 1}
-                :
-              </span>
-              {' '}
-              Refined a workflow behavior so long content naturally overflows and scrolls inside the dialog.
-            </li>
-          ))}
-        </ul>
-      </DialogContent>
+      <BaseDialog.Portal>
+        <BaseDialog.Backdrop
+          className="absolute inset-0 z-50 bg-background-overlay transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 motion-reduce:transition-none"
+        />
+        <BaseDialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden p-4">
+          <BaseDialog.Popup
+            className="flex max-h-[min(44rem,calc(100dvh-2rem))] w-120 max-w-[calc(100vw-2rem)] min-h-0 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl transition-[transform,scale,opacity] duration-150 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none"
+          >
+            <DialogCloseButton />
+            <div className="flex shrink-0 flex-col gap-2 p-6 pr-12 pb-4">
+              <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
+                Release notes
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-5 text-text-secondary">
+                Highlights from the latest workspace update.
+              </DialogDescription>
+            </div>
+            <ScrollAreaRoot className="relative min-h-0 flex-1 overflow-hidden">
+              <ScrollAreaViewport aria-label="Release note improvements" role="region" className="h-full max-h-full max-w-full">
+                <ScrollAreaContent className="flex flex-col gap-3 px-6 py-2 text-sm leading-5 text-text-secondary">
+                  {Array.from({ length: 24 }, (_, index) => `improvement-${index + 1}`).map((id, index) => (
+                    <section key={id} className="rounded-lg bg-background-default-subtle px-3 py-2">
+                      <h3 className="font-medium text-text-primary">
+                        Improvement #
+                        {index + 1}
+                      </h3>
+                      <p>
+                        Refined a workflow behavior so long content naturally overflows and scrolls inside the dialog.
+                      </p>
+                    </section>
+                  ))}
+                </ScrollAreaContent>
+              </ScrollAreaViewport>
+              <ScrollAreaScrollbar>
+                <ScrollAreaThumb />
+              </ScrollAreaScrollbar>
+            </ScrollAreaRoot>
+            <div className="flex shrink-0 justify-end border-t border-divider-subtle p-4">
+              <BaseDialog.Close render={<Button />}>
+                Close
+              </BaseDialog.Close>
+            </div>
+          </BaseDialog.Popup>
+        </BaseDialog.Viewport>
+      </BaseDialog.Portal>
     </Dialog>
   ),
 }
