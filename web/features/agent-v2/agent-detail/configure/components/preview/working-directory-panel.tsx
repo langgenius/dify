@@ -40,13 +40,15 @@ const normalizeSandboxPath = (path: string) => {
   return normalizedPath === '.' ? '' : normalizedPath
 }
 
-const toSandboxApiPath = (path: string) => {
+const toSandboxHomePath = (path: string) => {
   if (path === '.')
     return '.'
 
   const normalizedPath = normalizeSandboxPath(path)
   return normalizedPath ? `~/${normalizedPath}` : '~'
 }
+
+const toSandboxApiPath = toSandboxHomePath
 
 const joinSandboxPath = (basePath: string, name: string) => {
   const normalizedBasePath = normalizeSandboxPath(basePath)
@@ -505,7 +507,7 @@ export function AgentWorkingDirectoryPanel({
               ? (paths.includes(file.id) ? paths : [...paths, file.id])
               : paths.filter(path => path !== file.id))
           },
-          onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(file.id),
+          onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(toSandboxHomePath(file.id)),
           onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) => loadingFolderPaths.has(file.id)
             ? (
