@@ -13,7 +13,7 @@ import { Button } from '../button'
 import { FieldControl, FieldDescription, FieldError, FieldLabel, FieldRoot } from '../field'
 import { Form } from '../form'
 
-const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
+const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const meta = {
   title: 'Base/UI/Dialog',
@@ -58,7 +58,7 @@ export const Default: Story = {
             id="invite-email"
             type="email"
             placeholder="teammate@example.com"
-            className="h-9 w-full rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder focus:border-components-input-border-hover"
+            className="h-9 w-full rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           />
         </div>
         <div className="mt-6 flex items-center justify-end">
@@ -138,7 +138,7 @@ const ControlledDemo = () => {
           <input
             type="text"
             defaultValue="Acme Workspace"
-            className="mt-4 h-9 w-full rounded-lg border-[0.5px] border-components-input-border-active bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden focus:border-components-input-border-hover"
+            className="mt-4 h-9 w-full rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-hidden hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           />
           <div className="mt-6 flex items-center justify-end gap-2">
             <Button variant="secondary" onClick={() => setOpen(false)}>
@@ -201,7 +201,7 @@ const FormDialogDemo = () => {
                 href="https://docs.dify.ai/use-dify/workspace/api-extension/api-extension"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-fit items-center text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                className="inline-flex w-fit items-center text-text-accent outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-active"
               >
                 View API extension docs
               </a>
