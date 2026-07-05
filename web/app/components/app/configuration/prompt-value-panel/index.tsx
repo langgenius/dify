@@ -165,17 +165,17 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       />
                     )}
                     {type === 'select' && (
-                      <Select
-                        value={inputs[key] ? String(inputs[key]) : null}
+                      <Select<string>
+                        value={typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : null}
                         disabled={debugInputReadonly}
                         onValueChange={(nextValue) => {
-                          if (!nextValue)
+                          if (nextValue == null || nextValue === '')
                             return
                           handleInputValueChange(key, nextValue)
                         }}
                       >
                         <SelectTrigger className="w-full bg-gray-50">
-                          {String(inputs[key] || t('placeholder.select', { ns: 'common' }))}
+                          {typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : t('placeholder.select', { ns: 'common' })}
                         </SelectTrigger>
                         <SelectContent>
                           {(options || []).map(option => (
