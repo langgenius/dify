@@ -55,6 +55,21 @@ function TestRadioOption({
   )
 }
 
+function RadioTypeExamples() {
+  return (
+    <RadioGroup<boolean> value={true} onValueChange={() => {}}>
+      <Radio<boolean> value={true} />
+      <RadioRoot<boolean> value={false} />
+      {/* @ts-expect-error boolean radio items should not accept string values */}
+      <Radio<boolean> value="true" />
+      {/* @ts-expect-error boolean radio roots should not accept string values */}
+      <RadioRoot<boolean> value="false" />
+    </RadioGroup>
+  )
+}
+
+void RadioTypeExamples
+
 describe('Radio', () => {
   it('should render unchecked and checked radios with Base UI semantics', async () => {
     const screen = await render(

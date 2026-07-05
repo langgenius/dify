@@ -234,7 +234,7 @@ const RetrievalParamConfig: FC<Props> = ({
             >
               {
                 rerankingModeOptions.map(option => (
-                  <RadioCard
+                  <RadioCard<RerankingModeEnum>
                     key={option.value}
                     value={option.value}
                     icon={(

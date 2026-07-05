@@ -71,7 +71,7 @@ export function PermissionQuickPanel({
                 const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
 
                 return (
-                  <RadioRoot
+                  <RadioRoot<PermissionType>
                     key={option}
                     value={option}
                     variant="unstyled"

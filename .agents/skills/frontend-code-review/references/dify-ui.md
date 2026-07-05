@@ -40,8 +40,12 @@ Flag:
 - JavaScript conditional class logic for visual states that the Dify UI/Base UI primitive already exposes through `data-*` attributes or CSS variables.
 - Controlled props added when uncontrolled DOM state or CSS variables would be enough.
 - Thin wrappers that rename Base UI parts without adding semantics.
+- Generic Base UI selection primitives wrapped without preserving their value generics, such as `Select.Root<Value, Multiple>`, `RadioGroup<Value>`, or `Radio.Root<Value>`.
+- Shared select/radio option components that type selected values as `string` while callers pass enums, unions, booleans, numbers, objects, or nullable placeholder values.
 
 Prefer Base UI/Dify UI data attributes and CSS variables for visual state: `data-open`, `data-checked`, `data-disabled`, `data-highlighted`, `data-popup-open`, `group-data-*`, `peer-data-*`, `has-[:focus-visible]`, and primitive CSS variables such as anchor width or transform origin. Use JS conditional classes for product/business state that the primitive does not expose.
+
+For non-string `Select` and `RadioGroup` values, prefer explicit domain generics at the root and at child value carriers. JSX children do not inherit the parent generic, so `RadioGroup<PromptMode>` should compose with `Radio<PromptMode>`, `RadioRoot<PromptMode>`, or option values from a typed collection. For `Select`, prefer the Base UI `items` collection pattern for typed value-to-label rendering, and flag string coercion helpers used only to recover display labels.
 
 ## Forms
 

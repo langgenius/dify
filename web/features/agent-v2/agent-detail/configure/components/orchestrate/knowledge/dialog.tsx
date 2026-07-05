@@ -500,7 +500,7 @@ export function AgentKnowledgeRetrievalDialog({
               }}
             >
               {queryModeOptions.map(mode => (
-                <RadioRoot
+                <RadioRoot<KnowledgeRetrievalQueryMode>
                   key={mode}
                   value={mode}
                   variant="unstyled"
