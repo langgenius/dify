@@ -32,7 +32,7 @@ const WorkflowProcessItem = ({
   const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
   const fallbackTitle = t('common.workflowProcess', { ns: 'workflow' })
-  const hasTracing = data.tracing.length > 0
+const hasTracing = data.tracing.length > 0
   const collapsedTitle = failed
     ? (hasTracing
         ? (latestNode?.error || latestNode?.title || fallbackTitle)
@@ -62,40 +62,45 @@ const WorkflowProcessItem = ({
       )}
       data-testid="workflow-process-item"
     >
-      <div
-        className={cn('flex cursor-pointer items-center', !collapse && 'px-1.5')}
+      <button
+        type="button"
+        className={cn('flex w-full cursor-pointer items-center border-0 bg-transparent p-0 text-left', !collapse && 'px-1.5')}
+        aria-expanded={!collapse}
         onClick={() => setCollapse(!collapse)}
-        data-testid="workflow-process-header"
       >
         {
           running && (
-            <div
+            <span
+              role="img"
+              aria-label={statusLabel}
               className="mr-1 i-ri-loader-2-line size-3.5 shrink-0 animate-spin text-text-tertiary"
-              data-testid="status-icon-running"
             />
           )
         }
         {
           succeeded && (
-            <div
+            <span
+              role="img"
+              aria-label={statusLabel}
               className="mr-1 i-custom-vender-solid-general-check-circle size-3.5 shrink-0 text-text-success"
-              data-testid="status-icon-success"
             />
           )
         }
         {
           failed && (
-            <div
+            <span
+              role="img"
+              aria-label={statusLabel}
               className="mr-1 i-ri-error-warning-fill size-3.5 shrink-0 text-text-destructive"
-              data-testid="status-icon-failed"
             />
           )
         }
         {
           paused && (
-            <div
+            <span
+              role="img"
+              aria-label={statusLabel}
               className="mr-1 i-ri-pause-circle-fill size-3.5 shrink-0 text-text-warning-secondary"
-              data-testid="status-icon-paused"
             />
           )
         }
@@ -104,18 +109,18 @@ const WorkflowProcessItem = ({
             'min-w-0 grow truncate system-xs-medium',
             showCollapsedWorkflowError ? 'text-text-destructive' : 'text-text-secondary',
           )}
-          data-testid="workflow-process-title"
         >
           {!collapse ? fallbackTitle : collapsedTitle}
         </div>
-        <div className={cn('ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary', !collapse && 'rotate-90')} />
-      </div>
+        <span aria-hidden className={cn('ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary', !collapse && 'rotate-90')} />
+      </button>
       {
         !collapse && (
           <div className="mt-1.5">
             {
               failed && data.error && (
                 <div
+<<<<<<< HEAD
                   className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular break-words whitespace-pre-wrap text-text-destructive"
                   data-testid="workflow-process-error"
                 >

@@ -9,6 +9,7 @@ import type { PreseededResource } from './common'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import {
   agentBuilderExpectedTokens,
+  agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../agent-builder-resources'
 import {
@@ -84,10 +85,10 @@ const getDatasetDocuments = async (datasetId: string, resourceName: string) => {
   }
 }
 
-const datasetHasEnabledSegmentContainingToken = async (
+const datasetHasEnabledSegmentContainingTokens = async (
   datasetId: string,
   resourceName: string,
-  expectedToken: string,
+  expectedTokens: string[],
 ) => {
   const documents = await getDatasetDocuments(datasetId, resourceName)
   const ctx = await createApiContext()
@@ -95,7 +96,7 @@ const datasetHasEnabledSegmentContainingToken = async (
     for (const document of documents) {
       const query = buildQuery({
         enabled: 'true',
-        keyword: expectedToken,
+        keyword: agentBuilderExpectedTokens.knowledgeReply,
         limit: '20',
         page: '1',
       })
@@ -110,9 +111,9 @@ const datasetHasEnabledSegmentContainingToken = async (
       const matchingSegment = body.data.find(
         segment =>
           segment.enabled
-          && (
+          && expectedTokens.every(expectedToken =>
             segment.content.includes(expectedToken)
-            || segment.keywords?.some(keyword => keyword.includes(expectedToken))
+            || segment.keywords?.some(keyword => keyword.includes(expectedToken)),
           ),
       )
 
@@ -184,18 +185,23 @@ export async function skipMissingReadyPreseededDataset(
   }
 
   if (resourceName === agentBuilderPreseededResources.agentKnowledgeBase) {
-    const hasExpectedToken = await datasetHasEnabledSegmentContainingToken(
+    const requiredTokens = [
+      agentBuilderFixedInputs.customKnowledgeQuery,
+      agentBuilderFixedInputs.knowledgeRuntimeQuery,
+      agentBuilderExpectedTokens.knowledgeReply,
+    ]
+    const hasExpectedToken = await datasetHasEnabledSegmentContainingTokens(
       resource.id,
       resourceName,
-      agentBuilderExpectedTokens.knowledgeReply,
+      requiredTokens,
     )
 
     if (!hasExpectedToken) {
       return skipBlockedPrecondition(
         world,
-        `Preseeded dataset "${resourceName}" has no enabled segment containing "${agentBuilderExpectedTokens.knowledgeReply}".`,
+        `Preseeded dataset "${resourceName}" has no enabled segment containing "${requiredTokens.join('" and "')}".`,
         {
-          remediation: `Seed the dataset from the Agent Builder knowledge fixture and wait until an enabled segment contains "${agentBuilderExpectedTokens.knowledgeReply}".`,
+          remediation: `Seed the dataset from the Agent Builder knowledge fixture and wait until an enabled segment contains "${requiredTokens.join('" and "')}".`,
         },
       )
     }

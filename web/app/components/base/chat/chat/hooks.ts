@@ -52,6 +52,7 @@ type SendCallback = {
   onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
+  onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
   isPublicAPI?: boolean
 }
@@ -684,6 +685,7 @@ export const useChat = (
       onGetConversationMessages,
       onGetSuggestedQuestions,
       onConversationComplete,
+      onUnhandledEvent,
       onSendSettled,
       isPublicAPI,
     }: SendCallback,
@@ -774,6 +776,7 @@ export const useChat = (
 
     const otherOptions: IOtherOptions = {
       isPublicAPI,
+      onUnhandledEvent,
       getAbortController: (abortController) => {
         workflowEventsAbortControllerRef.current = abortController
       },

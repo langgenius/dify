@@ -67,6 +67,7 @@ class AgentBackendRunSucceededInternalEvent(AgentBackendInternalEventBase):
     type: Literal[AgentBackendInternalEventType.RUN_SUCCEEDED] = AgentBackendInternalEventType.RUN_SUCCEEDED
     output: JsonValue
     session_snapshot: CompositorSessionSnapshot
+    usage: dict[str, JsonValue] | None = None
 
 
 class AgentBackendDeferredToolCallInternalEvent(AgentBackendInternalEventBase):
@@ -76,6 +77,7 @@ class AgentBackendDeferredToolCallInternalEvent(AgentBackendInternalEventBase):
     deferred_tool_call: DeferredToolCallPayload
     message: str | None = None
     session_snapshot: CompositorSessionSnapshot
+    usage: dict[str, JsonValue] | None = None
 
 
 class AgentBackendRunFailedInternalEvent(AgentBackendInternalEventBase):
@@ -140,6 +142,7 @@ class AgentBackendRunEventAdapter:
                             deferred_tool_call=event.data.deferred_tool_call,
                             message=_deferred_tool_call_message(event.data.deferred_tool_call),
                             session_snapshot=event.data.session_snapshot,
+                            usage=_agent_run_usage(event.data.usage),
                         )
                     ]
                 return [
@@ -148,6 +151,7 @@ class AgentBackendRunEventAdapter:
                         source_event_id=event.id,
                         output=event.data.output,
                         session_snapshot=event.data.session_snapshot,
+                        usage=_agent_run_usage(event.data.usage),
                     )
                 ]
             case RunFailedEvent():
@@ -184,3 +188,13 @@ def _deferred_tool_call_message(payload: DeferredToolCallPayload) -> str:
             return title
 
     return f"Agent backend requested external input via deferred tool '{payload.tool_name}'."
+
+
+def _agent_run_usage(usage: object | None) -> dict[str, JsonValue] | None:
+    """Return JSON-safe usage metadata from optional Agent backend usage."""
+    if usage is None:
+        return None
+    dumped = _EVENT_DATA_ADAPTER.dump_python(usage, mode="json")
+    if not isinstance(dumped, dict):
+        return None
+    return cast(dict[str, JsonValue], dumped)

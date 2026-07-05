@@ -19,6 +19,7 @@ from dify_agent.layers.config.configs import (
 from dify_agent.layers.shell.layer import DifyShellLayer
 
 _CONFIG_CONTEXT_HEADING = "Agent config context from the current Agent Soul:"
+_CONFIG_CONTEXT_COMMAND = "$ dify-agent config manifest"
 _CONFIG_CLI_USAGE_PROMPT = """Agent config CLI usage is available inside shell jobs. The command help below is generated
 from the same `dify-agent` CLI definitions available in shell jobs.
 
@@ -30,7 +31,6 @@ _CONFIG_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config manifest --help": ("config", "manifest"),
     "dify-agent config skills pull --help": ("config", "skills", "pull"),
     "dify-agent config files pull --help": ("config", "files", "pull"),
-    "dify-agent config env pull --help": ("config", "env", "pull"),
     "dify-agent config note pull --help": ("config", "note", "pull"),
 }
 _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
@@ -124,7 +124,9 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
     def build_suffix_prompt(self) -> str:
         sections: list[str] = []
         if self.runtime_state.config_context_json:
-            sections.append(f"{_CONFIG_CONTEXT_HEADING}\n{self.runtime_state.config_context_json}")
+            sections.append(
+                f"{_CONFIG_CONTEXT_COMMAND}\n{_CONFIG_CONTEXT_HEADING}\n{self.runtime_state.config_context_json}"
+            )
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
         if cli_help := self._format_config_cli_help():
             usage_lines.append(cli_help)

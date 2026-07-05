@@ -6,6 +6,7 @@ import type {
 
 export type AgentProviderToolDefaultValue = ToolDefaultValue & {
   allowDelete?: boolean
+  credentialType?: AgentProviderTool['credentialType']
   credentialRequired?: boolean
 }
 

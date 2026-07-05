@@ -619,9 +619,7 @@ WHERE
     @staticmethod
     def _statistics_message_scope_sql(source_filter: AgentSourceFilter) -> str:
         app_scope = "m.app_id = :app_id"
-        if source_filter.invoke_from is None:
-            app_scope += " AND m.invoke_from != :debugger"
-        else:
+        if source_filter.invoke_from is not None:
             app_scope += " AND m.invoke_from = :source"
         workflow_binding_filters = []
         if source_filter.app_id:

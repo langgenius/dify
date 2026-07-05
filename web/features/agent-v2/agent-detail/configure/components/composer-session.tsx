@@ -216,6 +216,7 @@ function AgentConfigurePageComposerContent({
   } = configureData
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(null)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
@@ -237,6 +238,7 @@ function AgentConfigurePageComposerContent({
       await onRefreshDebugConversationAsync()
     }
     finally {
+      setCompletedBuildConversationId(null)
       setConversationId({ mode: 'build', conversationId: null })
       setClearPreviewChat(true)
     }
@@ -288,6 +290,14 @@ function AgentConfigurePageComposerContent({
     || buildDraftActions.isApplyingBuildDraft
     || buildDraftActions.isDiscardingBuildDraft
   const isChatFeaturesReadOnly = (isViewingVersion && versionQuery.isPending) || buildDraft.isActive
+  const buildConversationHasAgentResponse = !!conversationIds.build && (
+    conversationIds.build === completedBuildConversationId
+    || (
+      conversationIds.build === agentQuery.data?.debug_conversation_id
+      && (agentQuery.data?.debug_conversation_has_messages ?? false)
+    )
+  )
+  const showWorkingDirectoryAction = rightPanelChatMode === 'build' && buildConversationHasAgentResponse
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return
@@ -326,6 +336,7 @@ function AgentConfigurePageComposerContent({
           bottomAction={showBuildDraftBar
             ? (
                 <AgentBuildDraftBar
+                  changeSummary={buildDraft.changeSummary}
                   changesCount={buildDraft.changesCount}
                   disabled={buildDraftActionsDisabled}
                   isApplying={buildDraftActions.isApplyingBuildDraft}
@@ -364,6 +375,7 @@ function AgentConfigurePageComposerContent({
               }}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRestartCurrentChatDisabled}
+              showWorkingDirectoryAction={showWorkingDirectoryAction}
             />
           )}
           chat={(
@@ -381,6 +393,7 @@ function AgentConfigurePageComposerContent({
               onClearChatListChange={setClearPreviewChat}
               onConversationComplete={(mode, completedConversationId) => {
                 if (mode === 'build') {
+                  setCompletedBuildConversationId(completedConversationId)
                   invalidateAgentWorkingDirectoryFiles({
                     agentId,
                     conversationId: completedConversationId,

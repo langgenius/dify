@@ -124,6 +124,38 @@ def test_agent_app_soul_allows_app_features_and_variables():
     assert payload.agent_soul.app_variables[0].name == "company_name"
 
 
+def test_agent_app_soul_accepts_legacy_follow_up_model_config():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+            "agent_soul": {
+                "app_features": {
+                    "suggested_questions_after_answer": {
+                        "enabled": True,
+                        "prompt": "Suggest useful follow-up questions.",
+                        "model": {
+                            "provider": "openai",
+                            "name": "gpt-4o-mini",
+                            "mode": "chat",
+                            "completion_params": {"temperature": 0.7, "max_tokens": 128},
+                        },
+                    },
+                },
+            },
+        }
+    )
+
+    assert payload.agent_soul is not None
+    follow_up = payload.agent_soul.app_features.suggested_questions_after_answer
+    assert follow_up is not None
+    assert follow_up.enabled is True
+    assert follow_up.model is not None
+    assert follow_up.model.provider == "openai"
+    assert follow_up.model.name == "gpt-4o-mini"
+    assert follow_up.model.completion_params == {"temperature": 0.7, "max_tokens": 128}
+
+
 def test_composer_save_payload_accepts_new_roster_metadata():
     payload = ComposerSavePayload.model_validate(
         {

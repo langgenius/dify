@@ -22,7 +22,7 @@ export type CreatedBuiltinToolCredential = {
   credentialId: string
   provider: string
 }
-export type AgentBuilderStableChatModel = {
+export type AgentBuilderChatModel = {
   name: string
   provider: string
   type: string
@@ -39,9 +39,10 @@ export type AgentV2WorkflowOutputVariable = {
 
 export const createAgentBuilderWorldState = () => ({
   preflight: {
-    brokenModel: undefined as AgentBuilderStableChatModel | undefined,
+    agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
+    brokenModel: undefined as AgentBuilderChatModel | undefined,
     preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
-    stableModel: undefined as AgentBuilderStableChatModel | undefined,
+    stableModel: undefined as AgentBuilderChatModel | undefined,
   },
   accessPoint: {
     apiReferencePage: undefined as Page | undefined,

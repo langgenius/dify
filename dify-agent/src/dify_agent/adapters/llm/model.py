@@ -565,13 +565,7 @@ def _chunk_to_stream_events(
     elif isinstance(message.content, list):
         for part in _map_assistant_content_to_response_parts(message.content):
             if isinstance(part, TextPart):
-                events.extend(
-                    parts_manager.handle_text_delta(
-                        vendor_part_id=None,
-                        content=part.content,
-                        provider_name=provider_name,
-                    )
-                )
+                events.extend(embedded_thinking_parser.parse(parts_manager, part.content, provider_name))
             else:
                 events.append(parts_manager.handle_part(vendor_part_id=None, part=part))
 

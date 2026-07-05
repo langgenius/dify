@@ -19,15 +19,6 @@ async function enableAgentApiAccessWithKey(world: DifyWorld) {
 }
 
 Given(
-  'Agent v2 Backend service API access has been enabled via API',
-  async function (this: DifyWorld) {
-    const apiAccess = await setAgentApiAccess(getCurrentAgentId(this), true)
-
-    this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
-  },
-)
-
-Given(
   'Agent v2 Backend service API access has been enabled with a key via API',
   async function (this: DifyWorld) {
     await enableAgentApiAccessWithKey(this)
@@ -181,26 +172,6 @@ Then('the Agent v2 API Reference should open in a new tab', async function (this
   this.agentBuilder.accessPoint.apiReferencePage = undefined
 })
 
-When('I disable Agent v2 Backend service API access', async function (this: DifyWorld) {
-  await getServiceApiCard(this).getByLabel('Toggle Backend service API access').click()
-})
-
-Then('Agent v2 Backend service API access should be out of service', async function (this: DifyWorld) {
-  const serviceApiCard = getServiceApiCard(this)
-
-  await expect(serviceApiCard.getByText('Out of service')).toBeVisible({ timeout: 30_000 })
-})
-
-When('I enable Agent v2 Backend service API access', async function (this: DifyWorld) {
-  await getServiceApiCard(this).getByLabel('Toggle Backend service API access').click()
-})
-
-Then('Agent v2 Backend service API access should be in service', async function (this: DifyWorld) {
-  const serviceApiCard = getServiceApiCard(this)
-
-  await expect(serviceApiCard.getByText('In service')).toBeVisible({ timeout: 30_000 })
-})
-
 When('I send the Agent v2 Backend service API minimal request', async function (this: DifyWorld) {
   const serviceApiBaseURL = this.agentBuilder.accessPoint.serviceApiBaseURL
   const apiKey = this.agentBuilder.accessPoint.generatedApiKey
@@ -225,10 +196,41 @@ When('I send the Agent v2 Backend service API knowledge request', async function
 
   this.agentBuilder.accessPoint.serviceApiResponse = await sendAgentServiceApiChatMessage({
     apiKey,
-    query: agentBuilderFixedInputs.customKnowledgeQuery,
+    query: agentBuilderFixedInputs.knowledgeRuntimeQuery,
     serviceApiBaseURL,
   })
 })
+
+const stringifyServiceApiBody = (body: unknown) => {
+  try {
+    return JSON.stringify(body)
+  }
+  catch {
+    return String(body)
+  }
+}
+
+const expectServiceApiResponseOK = (
+  response: NonNullable<DifyWorld['agentBuilder']['accessPoint']['serviceApiResponse']>,
+  action: string,
+) => {
+  if (response.ok)
+    return
+
+  throw new Error(`${action} failed with ${response.status}: ${stringifyServiceApiBody(response.body)}`)
+}
+
+const expectServiceApiResponseIncludes = (
+  response: NonNullable<DifyWorld['agentBuilder']['accessPoint']['serviceApiResponse']>,
+  expectedToken: string,
+  action: string,
+) => {
+  expectServiceApiResponseOK(response, action)
+
+  const body = stringifyServiceApiBody(response.body)
+  if (!body.includes(expectedToken))
+    throw new Error(`${action} response did not include ${expectedToken}: ${body}`)
+}
 
 Then(
   'the Agent v2 Backend service API request should be rejected while disabled',
@@ -250,8 +252,11 @@ Then(
     if (!response)
       throw new Error('No Agent v2 Backend service API response was recorded.')
 
-    expect(response.ok).toBe(true)
-    expect(JSON.stringify(response.body)).toContain(agentBuilderExpectedTokens.knowledgeReply)
+    expectServiceApiResponseIncludes(
+      response,
+      agentBuilderExpectedTokens.knowledgeReply,
+      'Agent v2 Backend service API knowledge request',
+    )
   },
 )
 
@@ -262,7 +267,10 @@ Then(
     if (!response)
       throw new Error('No Agent v2 Backend service API response was recorded.')
 
-    expect(response.ok).toBe(true)
-    expect(JSON.stringify(response.body)).toContain(agentBuilderExpectedTokens.agentReply)
+    expectServiceApiResponseIncludes(
+      response,
+      agentBuilderExpectedTokens.agentReply,
+      'Agent v2 Backend service API request',
+    )
   },
 )

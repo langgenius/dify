@@ -111,6 +111,7 @@ type UseDifyPath =
   | '/use-dify/build/agent'
   | '/use-dify/build/chatbot'
   | '/use-dify/build/mcp'
+  | '/use-dify/build/new-agent/build'
   | '/use-dify/build/orchestrate-node'
   | '/use-dify/build/predefined-error-handling-logic'
   | '/use-dify/build/shortcut-key'
@@ -299,6 +300,7 @@ type SelfHostPath =
   | '/self-host/use-dify/build/agent'
   | '/self-host/use-dify/build/chatbot'
   | '/self-host/use-dify/build/mcp'
+  | '/self-host/use-dify/build/new-agent/build'
   | '/self-host/use-dify/build/orchestrate-node'
   | '/self-host/use-dify/build/predefined-error-handling-logic'
   | '/self-host/use-dify/build/shortcut-key'
@@ -531,6 +533,7 @@ export const docPathProductAvailability: Record<string, readonly DocsProduct[]> 
   '/use-dify/build/agent': ['cloud', 'self-host'],
   '/use-dify/build/chatbot': ['cloud', 'self-host'],
   '/use-dify/build/mcp': ['cloud', 'self-host'],
+  '/use-dify/build/new-agent/build': ['self-host'],
   '/use-dify/build/orchestrate-node': ['cloud', 'self-host'],
   '/use-dify/build/predefined-error-handling-logic': ['cloud', 'self-host'],
   '/use-dify/build/shortcut-key': ['cloud', 'self-host'],

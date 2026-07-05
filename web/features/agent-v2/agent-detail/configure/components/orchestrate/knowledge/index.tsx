@@ -11,6 +11,7 @@ import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionConfigurableItem } from '../common/configurable-item'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { AgentConfigureTipContent } from '../common/tip-content'
 import { AgentKnowledgeRetrievalDialog } from './dialog'
 
 function KnowledgeRetrievalIcon() {
@@ -87,7 +88,7 @@ export function AgentKnowledgeRetrieval() {
         label={t('agentDetail.configure.knowledgeRetrieval.label')}
         labelId="agent-configure-knowledge-retrieval-label"
         panelId={retrievalListId}
-        tip={knowledgeRetrievalTip}
+        tip={<AgentConfigureTipContent type="knowledge" />}
         tipAriaLabel={knowledgeRetrievalTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
