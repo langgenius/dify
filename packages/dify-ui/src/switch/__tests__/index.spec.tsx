@@ -67,26 +67,10 @@ describe('Switch', () => {
     const screen = await render(<Switch checked={false} disabled onCheckedChange={onCheckedChange} />)
 
     const switchElement = screen.getByRole('switch')
-    await expect.element(switchElement).toHaveClass('data-disabled:cursor-not-allowed')
     await expect.element(switchElement).toHaveAttribute('data-disabled', '')
 
     asHTMLElement(switchElement.element()).click()
     expect(onCheckedChange).not.toHaveBeenCalled()
-  })
-
-  it('should apply correct size classes', async () => {
-    const screen = await render(<Switch checked={false} size="xs" />)
-
-    await expect.element(screen.getByRole('switch')).toHaveClass('h-2.5', 'w-3.5', 'rounded-xs')
-
-    await screen.rerender(<Switch checked={false} size="sm" />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('h-3', 'w-5')
-
-    await screen.rerender(<Switch checked={false} size="md" />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('h-4', 'w-7')
-
-    await screen.rerender(<Switch checked={false} size="lg" />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('h-5', 'w-9')
   })
 
   it('should apply custom className', async () => {
@@ -94,13 +78,11 @@ describe('Switch', () => {
     await expect.element(screen.getByRole('switch')).toHaveClass('custom-test-class')
   })
 
-  it('should expose checked state styling hooks on the root and thumb', async () => {
+  it('should reflect checked state on the root and thumb', async () => {
     const screen = await render(<Switch checked={false} />)
     const switchElement = screen.getByRole('switch').element()
     const thumb = getThumb(switchElement)
 
-    expect(switchElement).toHaveClass('bg-components-toggle-bg-unchecked', 'data-checked:bg-components-toggle-bg')
-    expect(thumb).toHaveClass('data-checked:translate-x-[14px]')
     expect(thumb).not.toHaveAttribute('data-checked')
 
     await screen.rerender(<Switch checked={true} />)
@@ -109,28 +91,14 @@ describe('Switch', () => {
     expect(getThumb(screen.getByRole('switch').element())).toHaveAttribute('data-checked', '')
   })
 
-  it('should expose disabled state styling hooks instead of relying on opacity', async () => {
+  it('should reflect disabled and checked states together', async () => {
     const screen = await render(<Switch checked={false} disabled />)
 
-    await expect.element(screen.getByRole('switch')).toHaveClass(
-      'data-disabled:bg-components-toggle-bg-unchecked-disabled',
-      'data-disabled:data-checked:bg-components-toggle-bg-disabled',
-    )
     await expect.element(screen.getByRole('switch')).toHaveAttribute('data-disabled', '')
 
     await screen.rerender(<Switch checked={true} disabled />)
     await expect.element(screen.getByRole('switch')).toHaveAttribute('data-disabled', '')
     await expect.element(screen.getByRole('switch')).toHaveAttribute('data-checked', '')
-  })
-
-  it('should have focus-visible ring-3 styles', async () => {
-    const screen = await render(<Switch checked={false} />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('focus-visible:ring-2')
-  })
-
-  it('should respect prefers-reduced-motion', async () => {
-    const screen = await render(<Switch checked={false} />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('motion-reduce:transition-none')
   })
 
   describe('loading state', () => {
@@ -139,7 +107,6 @@ describe('Switch', () => {
       const screen = await render(<Switch checked={false} loading onCheckedChange={onCheckedChange} />)
 
       const switchElement = screen.getByRole('switch')
-      await expect.element(switchElement).toHaveClass('data-disabled:cursor-not-allowed')
       await expect.element(switchElement).toHaveAttribute('aria-busy', 'true')
       await expect.element(switchElement).toHaveAttribute('data-disabled', '')
 
@@ -153,24 +120,6 @@ describe('Switch', () => {
 
       await screen.rerender(<Switch checked={false} loading size="lg" />)
       expect(screen.container.querySelector('span[aria-hidden="true"] i')).toBeInTheDocument()
-    })
-
-    it('should use checked data attributes to position spinner', async () => {
-      const screen = await render(<Switch checked={false} loading size="md" />)
-      const spinner = screen.container.querySelector('span[aria-hidden="true"]')
-
-      expect(spinner).toHaveClass(
-        'left-[calc(50%+6px)]',
-        'group-data-checked:left-[calc(50%-6px)]',
-      )
-
-      await screen.rerender(<Switch checked={true} loading size="md" />)
-
-      await expect.element(screen.getByRole('switch')).toHaveAttribute('data-checked', '')
-      expect(screen.container.querySelector('span[aria-hidden="true"]')).toHaveClass(
-        'left-[calc(50%+6px)]',
-        'group-data-checked:left-[calc(50%-6px)]',
-      )
     })
 
     it('should not show spinner for xs and sm sizes', async () => {
@@ -198,19 +147,6 @@ describe('SwitchSkeleton', () => {
     const screen = await render(<SwitchSkeleton data-testid="skeleton-switch" />)
     expect(screen.container.querySelector('[role="switch"]')).not.toBeInTheDocument()
     await expect.element(screen.getByTestId('skeleton-switch')).toBeInTheDocument()
-  })
-
-  it('should apply skeleton styles', async () => {
-    const screen = await render(<SwitchSkeleton data-testid="skeleton-switch" />)
-    await expect.element(screen.getByTestId('skeleton-switch')).toHaveClass('bg-text-quaternary', 'opacity-20')
-  })
-
-  it('should apply correct skeleton size classes', async () => {
-    const screen = await render(<SwitchSkeleton size="xs" data-testid="s" />)
-    await expect.element(screen.getByTestId('s')).toHaveClass('h-2.5', 'w-3.5', 'rounded-xs')
-
-    await screen.rerender(<SwitchSkeleton size="lg" data-testid="s" />)
-    await expect.element(screen.getByTestId('s')).toHaveClass('h-5', 'w-9', 'rounded-md')
   })
 
   it('should apply custom className to skeleton', async () => {

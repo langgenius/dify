@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import override
 
-from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -43,13 +42,14 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
 }
 
 
-class WorkflowToolProviderController(ToolProviderController):
+class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, WorkflowTool | None]):
     provider_id: str
-    tools: list[WorkflowTool] = Field(default_factory=list)
+    tools: list[WorkflowTool] | None
 
     def __init__(self, entity: ToolProviderEntity, provider_id: str):
         super().__init__(entity=entity)
         self.provider_id = provider_id
+        self.tools = None
 
     @classmethod
     def from_db(cls, db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
@@ -241,7 +241,8 @@ class WorkflowToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tool(self, tool_name: str) -> WorkflowTool | None:  # type: ignore
+    @override
+    def get_tool(self, tool_name: str) -> WorkflowTool | None:
         """
         get tool by name
 

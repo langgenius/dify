@@ -299,9 +299,29 @@ describe('ChatInputArea', () => {
       expect(getTextarea()!).toHaveAttribute('placeholder', expect.stringContaining('botName'))
     })
 
+    it('should render the custom placeholder when provided', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" />)
+      expect(screen.getByPlaceholderText('Ask the assistant')).toBeInTheDocument()
+    })
+
+    it('should fall back to the readonly placeholder when readonly has a custom placeholder', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" readonly />)
+      expect(screen.getByPlaceholderText(/inputDisabledPlaceholder/i)).toBeInTheDocument()
+    })
+
+    it('should fall back to the default placeholder when custom placeholder is blank', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="   " />)
+      expect(getTextarea()!).toBeInTheDocument()
+    })
+
     it('should apply disabled styles when the disabled prop is true', () => {
       const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} disabled />)
-      expect(container.firstChild).toHaveClass('opacity-50')
+      expect(container.firstChild).toHaveClass('pointer-events-none', 'opacity-50')
+    })
+
+    it('should restore pointer events on the input surface', () => {
+      const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} />)
+      expect(container.firstChild).toHaveClass('pointer-events-auto')
     })
 
     it('should apply drag-active styles when a file is being dragged over', () => {
@@ -313,6 +333,33 @@ describe('ChatInputArea', () => {
     it('should render the send button', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} />)
       expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
+    })
+
+    it('should render a custom send button label when provided', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} sendButtonLabel="Start build" />)
+      expect(screen.getByRole('button', { name: 'Start build' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.send' })).not.toBeInTheDocument()
+    })
+
+    it('should render the send button loading state when provided', async () => {
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn()
+      render(
+        <ChatInputArea
+          visionConfig={mockVisionConfig}
+          onSend={onSend}
+          sendButtonLabel="Start build"
+          sendButtonLoading
+        />,
+      )
+
+      await user.type(getTextarea()!, 'Build an agent')
+      const startBuildButton = screen.getByRole('button', { name: 'Start build' })
+
+      expect(startBuildButton).toHaveAttribute('aria-disabled', 'true')
+      expect(startBuildButton.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+      await user.click(startBuildButton)
+      expect(onSend).not.toHaveBeenCalled()
     })
   })
 
@@ -338,6 +385,32 @@ describe('ChatInputArea', () => {
 
       expect(onSend).toHaveBeenCalled()
       expect(textarea).toHaveValue('')
+    })
+
+    it('should keep the textarea when async send is rejected by the owner', async () => {
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn().mockResolvedValue(false)
+      render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
+      const textarea = getTextarea()!
+
+      await user.type(textarea, 'Keep this message')
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+
+      await waitFor(() => expect(onSend).toHaveBeenCalled())
+      expect(textarea).toHaveValue('Keep this message')
+    })
+
+    it('should keep the textarea when async send fails', async () => {
+      const user = userEvent.setup({ delay: null })
+      const onSend = vi.fn().mockRejectedValue(new Error('send failed'))
+      render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
+      const textarea = getTextarea()!
+
+      await user.type(textarea, 'Retry this message')
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+
+      await waitFor(() => expect(onSend).toHaveBeenCalled())
+      expect(textarea).toHaveValue('Retry this message')
     })
 
     it('should call onSend and reset the input when pressing Enter', async () => {
@@ -527,14 +600,20 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Validation & Constraints', () => {
-    it('should notify and NOT send when query is blank', async () => {
+    it('should disable send when query is blank', async () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+      const sendButton = screen.getByRole('button', { name: 'common.operation.send' })
+      expect(sendButton).toBeDisabled()
+
+      await user.click(sendButton)
       expect(onSend).not.toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }))
+      expect(mockNotify).not.toHaveBeenCalled()
+
+      await user.type(getTextarea()!, '   ')
+      expect(sendButton).toBeDisabled()
     })
 
     it('should notify and NOT send while bot is responding', async () => {
@@ -677,6 +756,20 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Feature Bar', () => {
+    it('should render footer notice with tooltip when provided', async () => {
+      const user = userEvent.setup({ delay: null })
+      const footerNotice = 'Agent runs in a Linux sandbox.'
+      const footerNoticeTooltip = 'For Dify Community Edition, each of your agents runs in a Linux 7.0.0-10060-aws sandbox environment within your docker. Your edits to the environment via Build Chats are persistent.'
+      render(<ChatInputArea visionConfig={mockVisionConfig} footerNotice={footerNotice} footerNoticeTooltip={footerNoticeTooltip} />)
+
+      expect(screen.getByText(footerNotice)).toBeInTheDocument()
+      expect(screen.queryByText(footerNoticeTooltip)).not.toBeInTheDocument()
+
+      await user.hover(screen.getByRole('button', { name: footerNoticeTooltip }))
+
+      expect(await screen.findByText(footerNoticeTooltip)).toBeInTheDocument()
+    })
+
     it('should render feature bar when showFeatureBar is true', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} showFeatureBar />)
       expect(screen.getByText(/feature.bar.empty/i)).toBeTruthy()

@@ -1,22 +1,18 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
-import {
-  createContext,
-  useContext,
-} from 'react'
+import * as React from 'react'
 import { cn } from '../cn'
 
-const FileTreeLevelContext = createContext(1)
+const FileTreeLevelContext = React.createContext(1)
 
 function useFileTreeLevel() {
-  return useContext(FileTreeLevelContext)
+  return React.useContext(FileTreeLevelContext)
 }
 
-function getLabelText(children: ReactNode) {
+function getLabelText(children: React.ReactNode) {
   return typeof children === 'string' || typeof children === 'number'
     ? String(children)
     : undefined
@@ -40,8 +36,8 @@ function fileTreeRowClassName({
   className?: string
 }) {
   return cn(
-    'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 pr-1.5 text-left outline-hidden select-none',
-    'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-state-accent-solid',
+    'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-start outline-hidden select-none',
+    'hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'data-[selected]:bg-state-base-active',
     'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
     'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
@@ -201,12 +197,12 @@ export function FileTreeFile({
     'aria-current': selected ? 'true' : undefined,
     'className': fileTreeRowClassName({ className }),
     'children': (
-      <>
+      <React.Fragment>
         {renderGuides(level)}
         <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
           {children}
         </div>
-      </>
+      </React.Fragment>
     ),
   } as useRender.ElementProps<'button'>
 
@@ -272,7 +268,7 @@ export type FileTreeIconProps
   = Omit<useRender.ComponentProps<'span'>, 'children'>
     & {
       type?: FileTreeIconType
-      children?: ReactNode
+      children?: React.ReactNode
     }
 
 export function FileTreeIcon({
@@ -286,18 +282,18 @@ export function FileTreeIcon({
     'aria-hidden': true,
     'className': cn('relative flex size-5 shrink-0 items-center justify-center text-text-secondary', className),
     'children': (
-      <>
+      <React.Fragment>
         {children ?? (
           type === 'folder'
             ? (
-                <>
+                <React.Fragment>
                   <span className="size-4 i-ri-folder-line group-data-panel-open/file-tree-row:hidden" />
-                  <span className="hidden size-4 text-text-accent i-ri-folder-open-line group-data-panel-open/file-tree-row:block" />
-                </>
+                  <span className="hidden size-4 text-text-secondary i-ri-folder-open-line group-data-panel-open/file-tree-row:block" />
+                </React.Fragment>
               )
             : <span className={cn('size-4', fileTreeIconClassNames[type])} />
         )}
-      </>
+      </React.Fragment>
     ),
   }
 
@@ -323,7 +319,7 @@ export function FileTreeLabel({
   const defaultProps = {
     'data-label': labelText,
     'className': cn(
-      'min-w-0 truncate rounded-[5px] px-1 py-0.5',
+      'w-0 min-w-0 flex-1 truncate rounded-[5px] px-1 py-0.5',
       labelText && 'after:invisible after:block after:h-0 after:overflow-hidden after:system-sm-medium after:content-[attr(data-label)]',
       'system-sm-regular text-text-secondary group-data-[selected]/file-tree-row:system-sm-medium group-data-[selected]/file-tree-row:text-text-primary',
       className,
@@ -365,7 +361,7 @@ export function FileTreeBadge({
 }: FileTreeBadgeProps) {
   const defaultProps: useRender.ElementProps<'span'> = {
     className: cn(
-      'ml-1 inline-flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary',
+      'ms-1 inline-flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary',
       className,
     ),
   }

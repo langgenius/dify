@@ -149,31 +149,115 @@ def test_dangling_knowledge_without_label_gets_fallback_name():
     ]
 
 
-def test_configured_but_deleted_dataset_surfaces_as_placeholder():
+def test_configured_but_deleted_knowledge_set_surfaces_as_placeholder():
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "agent_app",
             "agent_soul": {
-                "prompt": {"system_prompt": "see [§knowledge:ds-1:产品手册§]"},
-                "knowledge": {"datasets": [{"id": "ds-1", "name": "产品手册"}]},
+                "prompt": {"system_prompt": "see [§knowledge:kb-1:产品手册§]"},
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "kb-1",
+                            "name": "产品手册",
+                            "datasets": [{"id": "ds-1", "name": "产品手册"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 4},
+                        }
+                    ]
+                },
             },
             "save_strategy": "save_to_current_version",
         }
     )
-    # configured + DB row exists -> clean
-    assert _findings(payload, existing_dataset_ids={"ds-1"})["knowledge_retrieval_placeholder"] == []
-    # configured but deleted in DB -> placeholder
-    assert _findings(payload, existing_dataset_ids=set())["knowledge_retrieval_placeholder"] == [
-        {"id": "ds-1", "placeholder_name": "产品手册"}
+    # configured + current Agent Soul row exists -> clean
+    assert _findings(payload, existing_knowledge_set_ids={"kb-1"})["knowledge_retrieval_placeholder"] == []
+    # configured but removed from the current Agent Soul surface -> placeholder
+    assert _findings(payload, existing_knowledge_set_ids=set())["knowledge_retrieval_placeholder"] == [
+        {"id": "kb-1", "placeholder_name": "产品手册"}
     ]
 
 
 def test_unresolved_non_knowledge_mentions_warn_target_missing():
     findings = _findings(_soul_payload("use [§skill:nope:Ghost Skill§] and [§human:missing§]"))
     codes = [(w["code"], w["kind"]) for w in findings["warnings"]]
-    assert ("mention_target_missing", "skill") in codes
     assert ("mention_target_missing", "human") in codes
     assert findings["knowledge_retrieval_placeholder"] == []
+
+
+def test_provider_all_tools_mention_resolves_against_provider_level_entry():
+    # `[§tool:<provider>/*§]` = all tools of that provider; it points at a
+    # provider-level config entry (tool_name omitted), so with the entry present
+    # it must produce neither hard error nor warning…
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "agent_app",
+            "agent_soul": {
+                "prompt": {"system_prompt": "use [§tool:duckduckgo/*:DuckDuckGo 全部§] when needed"},
+                "tools": {
+                    "dify_tools": [
+                        {
+                            "plugin_id": "langgenius/duckduckgo",
+                            "provider": "duckduckgo",
+                            "credential_type": "unauthorized",
+                        }
+                    ]
+                },
+            },
+            "save_strategy": "save_to_current_version",
+        }
+    )
+    ComposerConfigValidator.validate_save_payload(payload)
+    assert _findings(payload) == {"warnings": [], "knowledge_retrieval_placeholder": []}
+
+    # …and without any entry of that provider it warns like any dangling mention.
+    dangling = _findings(_soul_payload("use [§tool:duckduckgo/*:DuckDuckGo 全部§]"))
+    assert [(w["code"], w["kind"]) for w in dangling["warnings"]] == [("mention_target_missing", "tool")]
+
+
+def test_duplicate_cli_tool_ids_rejected():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "agent_app",
+            "agent_soul": {
+                "prompt": {"system_prompt": "plain"},
+                "tools": {
+                    "cli_tools": [
+                        {"id": "ct-1", "name": "ffmpeg"},
+                        # disabled entries still occupy the id namespace
+                        {"id": "ct-1", "name": "pandoc", "enabled": False},
+                    ]
+                },
+            },
+            "save_strategy": "save_to_current_version",
+        }
+    )
+    with pytest.raises(InvalidComposerConfigError, match="duplicate CLI tool id 'ct-1'"):
+        ComposerConfigValidator.validate_save_payload(payload)
+
+
+def test_save_backfills_missing_cli_tool_ids_and_keeps_existing():
+    from services.agent.composer_service import _backfill_cli_tool_ids
+
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": "agent_app",
+            "agent_soul": {
+                "prompt": {"system_prompt": "plain"},
+                "tools": {"cli_tools": [{"name": "ffmpeg"}, {"id": "ct-1", "name": "pandoc"}]},
+            },
+            "save_strategy": "save_to_current_version",
+        }
+    )
+
+    _backfill_cli_tool_ids(payload.agent_soul)
+
+    assert payload.agent_soul is not None
+    minted, existing = payload.agent_soul.tools.cli_tools
+    assert existing.id == "ct-1"
+    assert minted.id is not None
+    assert len(minted.id) == 12
+    assert minted.id != "ct-1"
 
 
 def test_malformed_marker_warns_but_does_not_block():

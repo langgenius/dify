@@ -38,6 +38,7 @@ type IRunOnceProps = {
     isStopping: boolean
   } | null
 }
+
 const RunOnce: FC<IRunOnceProps> = ({
   promptConfig,
   inputs,
@@ -117,109 +118,115 @@ const RunOnce: FC<IRunOnceProps> = ({
         <form onSubmit={onSubmit}>
           {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) || !isInitialized
             ? null
-            : promptConfig.prompt_variables.filter(item => item.hide !== true).map(item => (
-                <div className="mt-4 w-full" key={item.key}>
-                  {item.type !== 'checkbox' && (
-                    <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
-                      <div className="truncate">{item.name}</div>
-                      {!item.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+            : promptConfig.prompt_variables.filter(item => item.hide !== true).map((item) => {
+                const inputValue = inputs[item.key]
+                const selectValue = typeof inputValue === 'string' && inputValue !== '' ? inputValue : null
+                const defaultSelectValue = typeof item.default === 'string' && item.default !== '' ? item.default : null
+
+                return (
+                  <div className="mt-4 w-full" key={item.key}>
+                    {item.type !== 'checkbox' && (
+                      <div className="flex h-6 items-center gap-1 system-md-semibold text-text-secondary">
+                        <div className="truncate">{item.name}</div>
+                        {!item.required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
+                      </div>
+                    )}
+                    <div className="mt-1">
+                      {item.type === 'select' && (
+                        <Select<string>
+                          value={selectValue}
+                          onValueChange={(nextValue) => {
+                            if (nextValue == null || nextValue === '')
+                              return
+                            handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            {selectValue ?? defaultSelectValue ?? t('placeholder.select', { ns: 'common' })}
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(item.options || []).map(option => (
+                              <SelectItem key={option} value={option}>
+                                <SelectItemText>{option}</SelectItemText>
+                                <SelectItemIndicator />
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {item.type === 'string' && (
+                        <Input
+                          type="text"
+                          placeholder={item.name}
+                          value={inputs[item.key] as string}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                          maxLength={item.max_length}
+                        />
+                      )}
+                      {item.type === 'paragraph' && (
+                        <Textarea
+                          aria-label={item.name}
+                          className="h-[104px] sm:text-xs"
+                          placeholder={item.name}
+                          value={inputs[item.key] as string}
+                          onValueChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
+                        />
+                      )}
+                      {item.type === 'number' && (
+                        <Input
+                          type="number"
+                          placeholder={item.name}
+                          value={inputs[item.key] as number}
+                          onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
+                        />
+                      )}
+                      {item.type === 'checkbox' && (
+                        <BoolInput
+                          name={item.name || item.key}
+                          value={!!inputs[item.key] as boolean}
+                          required={item.required}
+                          onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
+                        />
+                      )}
+                      {item.type === 'file' && (
+                        <FileUploaderInAttachmentWrapper
+                          value={inputs[item.key] && typeof inputs[item.key] === 'object' && !Array.isArray(inputs[item.key])
+                            ? [inputs[item.key] as FileEntity]
+                            : []}
+                          onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
+                          fileConfig={{
+                            ...item.config,
+                            fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                          }}
+                        />
+                      )}
+                      {item.type === 'file-list' && (
+                        <FileUploaderInAttachmentWrapper
+                          value={Array.isArray(inputs[item.key]) ? inputs[item.key] as FileEntity[] : []}
+                          onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
+                          fileConfig={{
+                            ...item.config,
+                            // eslint-disable-next-line ts/no-explicit-any
+                            fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                          }}
+                        />
+                      )}
+                      {item.type === 'json_object' && (
+                        <CodeEditor
+                          language={CodeLanguage.json}
+                          value={inputs[item.key] as string}
+                          onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
+                          noWrapper
+                          className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
+                          placeholder={
+                            <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
+                          }
+                        />
+                      )}
                     </div>
-                  )}
-                  <div className="mt-1">
-                    {item.type === 'select' && (
-                      <Select
-                        value={inputs[item.key] ? String(inputs[item.key]) : null}
-                        onValueChange={(nextValue) => {
-                          if (!nextValue)
-                            return
-                          handleInputsChange({ ...inputsRef.current, [item.key]: nextValue })
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          {String(inputs[item.key] || item.default || t('placeholder.select', { ns: 'common' }))}
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(item.options || []).map(option => (
-                            <SelectItem key={option} value={option}>
-                              <SelectItemText>{option}</SelectItemText>
-                              <SelectItemIndicator />
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {item.type === 'string' && (
-                      <Input
-                        type="text"
-                        placeholder={item.name}
-                        value={inputs[item.key] as string}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                        maxLength={item.max_length}
-                      />
-                    )}
-                    {item.type === 'paragraph' && (
-                      <Textarea
-                        aria-label={item.name}
-                        className="h-[104px] sm:text-xs"
-                        placeholder={item.name}
-                        value={inputs[item.key] as string}
-                        onValueChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
-                      />
-                    )}
-                    {item.type === 'number' && (
-                      <Input
-                        type="number"
-                        placeholder={item.name}
-                        value={inputs[item.key] as number}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
-                      />
-                    )}
-                    {item.type === 'checkbox' && (
-                      <BoolInput
-                        name={item.name || item.key}
-                        value={!!inputs[item.key] as boolean}
-                        required={item.required}
-                        onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
-                      />
-                    )}
-                    {item.type === 'file' && (
-                      <FileUploaderInAttachmentWrapper
-                        value={inputs[item.key] && typeof inputs[item.key] === 'object' && !Array.isArray(inputs[item.key])
-                          ? [inputs[item.key] as FileEntity]
-                          : []}
-                        onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files[0] }) }}
-                        fileConfig={{
-                          ...item.config,
-                          fileUploadConfig: (visionConfig as any).fileUploadConfig,
-                        }}
-                      />
-                    )}
-                    {item.type === 'file-list' && (
-                      <FileUploaderInAttachmentWrapper
-                        value={Array.isArray(inputs[item.key]) ? inputs[item.key] as FileEntity[] : []}
-                        onChange={(files) => { handleInputsChange({ ...inputsRef.current, [item.key]: files }) }}
-                        fileConfig={{
-                          ...item.config,
-                          // eslint-disable-next-line ts/no-explicit-any
-                          fileUploadConfig: (visionConfig as any).fileUploadConfig,
-                        }}
-                      />
-                    )}
-                    {item.type === 'json_object' && (
-                      <CodeEditor
-                        language={CodeLanguage.json}
-                        value={inputs[item.key] as string}
-                        onChange={(value) => { handleInputsChange({ ...inputsRef.current, [item.key]: value }) }}
-                        noWrapper
-                        className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
-                        placeholder={
-                          <div className="whitespace-pre">{typeof item.json_schema === 'string' ? item.json_schema : JSON.stringify(item.json_schema || '', null, 2)}</div>
-                        }
-                      />
-                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
           {
             visionConfig?.enabled && (
               <div className="mt-4 w-full">

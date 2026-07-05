@@ -79,10 +79,13 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         blocked_imports=[
             "anthropic",
             "dify_agent.adapters.llm",
+            "dify_agent.layers.drive.layer",
             "dify_agent.layers.execution_context.layer",
             "dify_agent.layers.ask_human.layer",
             "dify_agent.layers.dify_plugin.llm_layer",
             "dify_agent.layers.dify_plugin.tools_layer",
+            "dify_agent.layers.knowledge.client",
+            "dify_agent.layers.knowledge.layer",
             "dify_agent.layers.output.output_layer",
             "dify_agent.layers.shell.layer",
             "dify_agent.runtime",
@@ -98,17 +101,21 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         ],
         imports=[
             "dify_agent.protocol",
+            "dify_agent.layers.drive",
             "dify_agent.layers.execution_context",
             "dify_agent.layers.ask_human",
             "dify_agent.layers.dify_plugin",
+            "dify_agent.layers.knowledge",
             "dify_agent.layers.output",
             "dify_agent.layers.shell",
         ],
         assertions=[
             "assert hasattr(dify_agent_protocol, 'PydanticAIStreamRunEvent')",
-            "assert dify_agent_layers_execution_context.__all__ == ['DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID', 'DifyExecutionContextAgentMode', 'DifyExecutionContextInvokeFrom', 'DifyExecutionContextLayerConfig', 'DifyExecutionContextUserFrom']",
+            "assert dify_agent_layers_drive.__all__ == ['DIFY_DRIVE_LAYER_TYPE_ID', 'DifyDriveLayerConfig', 'DifyDriveSkillConfig']",
+            "assert dify_agent_layers_execution_context.__all__ == ['DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID', 'DifyExecutionContextAgentConfigVersionKind', 'DifyExecutionContextAgentMode', 'DifyExecutionContextInvokeFrom', 'DifyExecutionContextLayerConfig', 'DifyExecutionContextUserFrom']",
             "assert dify_agent_layers_ask_human.__all__ == ['AskHumanAction', 'AskHumanActionStyle', 'AskHumanField', 'AskHumanFieldType', 'AskHumanFileField', 'AskHumanFileListField', 'AskHumanParagraphField', 'AskHumanResultStatus', 'AskHumanSelectField', 'AskHumanSelectOption', 'AskHumanSelectedAction', 'AskHumanToolArgs', 'AskHumanToolResult', 'AskHumanUrgency', 'DEFAULT_ASK_HUMAN_TOOL_DESCRIPTION', 'DIFY_ASK_HUMAN_LAYER_TYPE_ID', 'DifyAskHumanLayerConfig']",
             "assert dify_agent_layers_dify_plugin.__all__ == ['DIFY_PLUGIN_LLM_LAYER_TYPE_ID', 'DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID', 'DifyPluginCredentialValue', 'DifyPluginLLMLayerConfig', 'DifyPluginToolCredentialType', 'DifyPluginToolConfig', 'DifyPluginToolOption', 'DifyPluginToolParameter', 'DifyPluginToolParameterForm', 'DifyPluginToolParameterType', 'DifyPluginToolsLayerConfig', 'DifyPluginToolValue']",
+            "assert dify_agent_layers_knowledge.__all__ == ['DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID', 'DifyKnowledgeBaseLayerConfig', 'DifyKnowledgeDatasetConfig', 'DifyKnowledgeEagerResult', 'DifyKnowledgeMetadataCondition', 'DifyKnowledgeMetadataConditions', 'DifyKnowledgeMetadataFilteringConfig', 'DifyKnowledgeModelConfig', 'DifyKnowledgeQueryConfig', 'DifyKnowledgeRerankingModelConfig', 'DifyKnowledgeRetrievalConfig', 'DifyKnowledgeRuntimeState', 'DifyKnowledgeSetConfig']",
             "assert dify_agent_layers_output.__all__ == ['DIFY_OUTPUT_LAYER_TYPE_ID', 'DifyOutputLayerConfig']",
             "assert dify_agent_layers_shell.__all__ == ['DIFY_SHELL_LAYER_TYPE_ID', 'DifyShellCliToolConfig', 'DifyShellEnvVarConfig', 'DifyShellLayerConfig', 'DifyShellSandboxConfig', 'DifyShellSecretRefConfig']",
         ],
@@ -149,6 +156,14 @@ def test_agent_stub_client_and_protocol_imports_are_client_safe() -> None:
             "assert hasattr(dify_agent_agent_stub_client, 'connect_agent_stub_sync')",
             "assert hasattr(dify_agent_agent_stub_protocol, 'AgentStubConnectRequest')",
         ],
+    )
+
+
+def test_server_settings_import_does_not_import_agent_stub_app() -> None:
+    _run_import_check(
+        blocked_imports=["dify_agent.agent_stub.server.app"],
+        imports=["dify_agent.server.settings"],
+        assertions=["assert hasattr(dify_agent_server_settings, 'ServerSettings')"],
     )
 
 

@@ -171,7 +171,7 @@ describe('Filter', () => {
 
       const statusTrigger = screen.getByRole('combobox', { name: 'Success' })
       const statusChip = statusTrigger.parentElement!
-      const clearButton = within(statusChip).getByRole('button', { name: 'common.operation.clear' })
+      const clearButton = within(statusChip).getByRole('button', { name: /common\.operation\.clear Success/ })
 
       await user.click(clearButton)
 
@@ -286,7 +286,7 @@ describe('Filter', () => {
 
       const periodTrigger = screen.getByRole('combobox', { name: 'appLog.filter.period.last7days' })
       const periodChip = periodTrigger.parentElement!
-      const clearButton = within(periodChip).getByRole('button', { name: 'common.operation.clear' })
+      const clearButton = within(periodChip).getByRole('button', { name: /common\.operation\.clear appLog\.filter\.period\.last7days/ })
 
       await user.click(clearButton)
       expect(setQueryParams).toHaveBeenCalledWith({

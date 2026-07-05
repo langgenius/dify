@@ -3,6 +3,7 @@ import {
   RiGraduationCapFill,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { SparklesSoft } from '../../base/icons/src/public/common'
 import PremiumBadge, { PremiumBadgeButton } from '../../base/premium-badge'
@@ -47,7 +48,7 @@ export function PlanBadge({ plan, allowHover, sandboxAsUpgrade = false, onClick 
 
   if (!isFetchedPlan)
     return null
-  if (plan === Plan.sandbox && sandboxAsUpgrade) {
+  if (plan === Plan.sandbox && sandboxAsUpgrade && IS_CLOUD_EDITION) {
     return (
       <PlanBadgeShell color="blue" allowHover={allowHover} onClick={onClick}>
         <SparklesSoft aria-hidden="true" className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />

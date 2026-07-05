@@ -12,6 +12,19 @@ export const zAccountPayload = z.object({
 })
 
 /**
+ * AppDescribeInfo
+ */
+export const zAppDescribeInfo = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  is_agent: z.boolean().optional().default(false),
+  mode: z.string(),
+  name: z.string(),
+  service_api_enabled: z.boolean(),
+  updated_at: z.string().nullish(),
+})
+
+/**
  * AppDescribeQuery
  *
  * `?fields=` allow-list for GET /apps/<id>/describe.
@@ -20,6 +33,15 @@ export const zAccountPayload = z.object({
  */
 export const zAppDescribeQuery = z.object({
   fields: z.string().optional(),
+})
+
+/**
+ * AppDescribeResponse
+ */
+export const zAppDescribeResponse = z.object({
+  info: zAppDescribeInfo.nullish(),
+  input_schema: z.record(z.string(), z.unknown()).nullish(),
+  parameters: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -59,6 +81,16 @@ export const zAppDslImportPayload = z.object({
 })
 
 /**
+ * AppInfo
+ */
+export const zAppInfo = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  mode: z.string(),
+  name: z.string(),
+})
+
+/**
  * AppMode
  */
 export const zAppMode = z.enum([
@@ -73,17 +105,27 @@ export const zAppMode = z.enum([
 ])
 
 /**
- * AppListQuery
- *
- * mode is a closed enum.
+ * AppListRow
  */
-export const zAppListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: zAppMode.optional(),
-  name: z.string().max(200).nullish(),
-  page: z.int().gte(1).optional().default(1),
-  tag: z.string().max(100).nullish(),
-  workspace_id: z.string(),
+export const zAppListRow = z.object({
+  description: z.string().nullish(),
+  id: z.string(),
+  mode: zAppMode,
+  name: z.string(),
+  updated_at: z.string().nullish(),
+  workspace_id: z.string().nullish(),
+  workspace_name: z.string().nullish(),
+})
+
+/**
+ * AppListResponse
+ */
+export const zAppListResponse = z.object({
+  data: z.array(zAppListRow),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -160,7 +202,10 @@ export const zDevicePollRequest = z.object({
  * ErrorDetail
  */
 export const zErrorDetail = z.object({
-  loc: z.array(z.unknown()).optional().default([]),
+  loc: z
+    .array(z.union([z.string(), z.int()]))
+    .optional()
+    .default([]),
   msg: z.string(),
   type: z.string(),
 })
@@ -179,6 +224,11 @@ export const zErrorBody = z.object({
   message: z.string(),
   status: z.int(),
 })
+
+/**
+ * EventStreamResponse
+ */
+export const zEventStreamResponse = z.string()
 
 /**
  * FileResponse
@@ -230,6 +280,17 @@ export const zHealthResponse = z.object({
 })
 
 /**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  inputs: z.array(z.record(z.string(), z.unknown())).optional(),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
  * ImportStatus
  */
 export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
@@ -244,6 +305,7 @@ export const zImport = z.object({
   error: z.string().optional().default(''),
   id: z.string(),
   imported_dsl_version: z.string().optional().default(''),
+  permission_keys: z.array(z.string()).optional(),
   status: zImportStatus,
 })
 
@@ -269,7 +331,7 @@ export const zMarketplace = z.object({
  * MemberActionResponse
  */
 export const zMemberActionResponse = z.object({
-  result: z.string().optional().default('success'),
+  result: z.literal('success').optional().default('success'),
 })
 
 /**
@@ -287,7 +349,7 @@ export const zMemberInviteResponse = z.object({
   email: z.string(),
   invite_url: z.string(),
   member_id: z.string(),
-  result: z.string().optional().default('success'),
+  result: z.literal('success').optional().default('success'),
   role: z.string(),
   tenant_id: z.string(),
 })
@@ -346,6 +408,7 @@ export const zOpenApiErrorCode = z.enum([
   'file_too_large',
   'filename_not_exists',
   'forbidden',
+  'form_not_found',
   'internal_server_error',
   'invalid_param',
   'member_license_exceeded',
@@ -358,6 +421,7 @@ export const zOpenApiErrorCode = z.enum([
   'provider_not_initialize',
   'provider_quota_exceeded',
   'rate_limit_error',
+  'recipient_surface_mismatch',
   'request_entity_too_large',
   'too_many_files',
   'too_many_requests',
@@ -376,15 +440,14 @@ export const zPackage = z.object({
 })
 
 /**
- * PermittedExternalAppsListQuery
- *
- * Strict (extra='forbid').
+ * PermittedExternalAppsListResponse
  */
-export const zPermittedExternalAppsListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: zAppMode.optional(),
-  name: z.string().max(200).nullish(),
-  page: z.int().gte(1).optional().default(1),
+export const zPermittedExternalAppsListResponse = z.object({
+  data: z.array(zAppListRow),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
 })
 
 /**
@@ -439,83 +502,58 @@ export const zSessionListResponse = z.object({
 })
 
 /**
- * TagItem
+ * SimpleResultResponse
  */
-export const zTagItem = z.object({
-  name: z.string(),
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
 })
 
 /**
- * AppDescribeInfo
+ * SupportedAppType
+ *
+ * App types the ``app`` usage face (``get app``) lists and filters.
+ *
+ * A curated subset of :class:`AppMode`: the real, user-facing app categories.
+ * Excludes runtime-only mode tags that are not standalone apps
+ * (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+ * roster-owned ``agent`` type (surfaced through the roster, not this list).
+ *
+ * Members reference ``AppMode.*.value`` so the subset relationship is
+ * type-checked: dropping a member from ``AppMode`` breaks this at import.
+ * This is the single source for the listable set — params, filters, and the
+ * generated CLI whitelist all derive from it.
  */
-export const zAppDescribeInfo = z.object({
-  author: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  is_agent: z.boolean().optional().default(false),
-  mode: z.string(),
-  name: z.string(),
-  service_api_enabled: z.boolean(),
-  tags: z.array(zTagItem).optional().default([]),
-  updated_at: z.string().nullish(),
+export const zSupportedAppType = z.enum([
+  'advanced-chat',
+  'agent-chat',
+  'chat',
+  'completion',
+  'workflow',
+])
+
+/**
+ * AppListQuery
+ *
+ * mode is a closed enum of listable app types.
+ */
+export const zAppListQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  mode: zSupportedAppType.nullish(),
+  name: z.string().max(200).nullish(),
+  page: z.int().gte(1).optional().default(1),
+  workspace_id: z.string(),
 })
 
 /**
- * AppDescribeResponse
+ * PermittedExternalAppsListQuery
+ *
+ * Strict (extra='forbid').
  */
-export const zAppDescribeResponse = z.object({
-  info: zAppDescribeInfo.optional(),
-  input_schema: z.record(z.string(), z.unknown()).nullish(),
-  parameters: z.record(z.string(), z.unknown()).nullish(),
-})
-
-/**
- * AppInfoResponse
- */
-export const zAppInfoResponse = z.object({
-  author: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  mode: z.string(),
-  name: z.string(),
-  tags: z.array(zTagItem).optional().default([]),
-})
-
-/**
- * AppListRow
- */
-export const zAppListRow = z.object({
-  created_by_name: z.string().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
-  mode: zAppMode,
-  name: z.string(),
-  tags: z.array(zTagItem).optional().default([]),
-  updated_at: z.string().nullish(),
-  workspace_id: z.string().nullish(),
-  workspace_name: z.string().nullish(),
-})
-
-/**
- * AppListResponse
- */
-export const zAppListResponse = z.object({
-  data: z.array(zAppListRow),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
- * PermittedExternalAppsListResponse
- */
-export const zPermittedExternalAppsListResponse = z.object({
-  data: z.array(zAppListRow),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
+export const zPermittedExternalAppsListQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  mode: zSupportedAppType.nullish(),
+  name: z.string().max(200).nullish(),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**
@@ -526,7 +564,7 @@ export const zPermittedExternalAppsListResponse = z.object({
  * types it as a required `'success'` rather than an optional field.
  */
 export const zTaskStopResponse = z.object({
-  result: z.string(),
+  result: z.literal('success'),
 })
 
 /**
@@ -540,7 +578,7 @@ export const zType = z.enum(['github', 'marketplace', 'package'])
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
   type: zType,
-  value: z.unknown(),
+  value: z.union([zGithub, zMarketplace, zPackage]),
 })
 
 /**
@@ -564,7 +602,7 @@ export const zUsageInfo = z.object({
  */
 export const zMessageMetadata = z.object({
   retriever_resources: z.array(z.record(z.string(), z.unknown())).optional().default([]),
-  usage: zUsageInfo.optional(),
+  usage: zUsageInfo.nullish(),
 })
 
 /**
@@ -608,11 +646,26 @@ export const zWorkspacePayload = z.object({
  * AccountResponse
  */
 export const zAccountResponse = z.object({
-  account: zAccountPayload.optional(),
+  account: zAccountPayload.nullish(),
   default_workspace_id: z.string().nullish(),
   subject_email: z.string().nullish(),
   subject_issuer: z.string().nullish(),
   subject_type: z.string(),
+  workspaces: z.array(zWorkspacePayload).optional().default([]),
+})
+
+/**
+ * DeviceTokenResponse
+ */
+export const zDeviceTokenResponse = z.object({
+  account: zAccountPayload.nullish(),
+  default_workspace_id: z.string().nullish(),
+  expires_at: z.string(),
+  subject_email: z.string().nullish(),
+  subject_issuer: z.string().nullish(),
+  subject_type: z.enum(['account', 'external_sso']),
+  token: z.string(),
+  token_id: z.string(),
   workspaces: z.array(zWorkspacePayload).optional().default([]),
 })
 
@@ -675,10 +728,9 @@ export const zDeleteAccountSessionsBySessionIdResponse = zRevokeResponse
 
 export const zGetAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: z.string().optional(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
-  tag: z.string().max(100).optional(),
   workspace_id: z.string(),
 })
 
@@ -740,7 +792,7 @@ export const zGetAppsByAppIdFormHumanInputByFormTokenPath = z.object({
 /**
  * Form definition
  */
-export const zGetAppsByAppIdFormHumanInputByFormTokenResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdFormHumanInputByFormTokenResponse = zHumanInputFormDefinitionResponse
 
 export const zPostAppsByAppIdFormHumanInputByFormTokenBody = zHumanInputFormSubmitPayload
 
@@ -763,17 +815,22 @@ export const zPostAppsByAppIdRunPath = z.object({
 /**
  * Run result (SSE stream)
  */
-export const zPostAppsByAppIdRunResponse = z.record(z.string(), z.unknown())
+export const zPostAppsByAppIdRunResponse = zEventStreamResponse
 
 export const zGetAppsByAppIdTasksByTaskIdEventsPath = z.object({
   app_id: z.string(),
   task_id: z.string(),
 })
 
+export const zGetAppsByAppIdTasksByTaskIdEventsQuery = z.object({
+  continue_on_pause: z.boolean().optional().default(false),
+  include_state_snapshot: z.boolean().optional().default(false),
+})
+
 /**
  * SSE event stream
  */
-export const zGetAppsByAppIdTasksByTaskIdEventsResponse = z.record(z.string(), z.unknown())
+export const zGetAppsByAppIdTasksByTaskIdEventsResponse = zEventStreamResponse
 
 export const zPostAppsByAppIdTasksByTaskIdStopPath = z.object({
   app_id: z.string(),
@@ -818,13 +875,13 @@ export const zGetOauthDeviceLookupResponse = zDeviceLookupResponse
 export const zPostOauthDeviceTokenBody = zDevicePollRequest
 
 /**
- * Success
+ * Device token
  */
-export const zPostOauthDeviceTokenResponse = z.record(z.string(), z.unknown())
+export const zPostOauthDeviceTokenResponse = zDeviceTokenResponse
 
 export const zGetPermittedExternalAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: z.string().optional(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
 })
@@ -833,6 +890,19 @@ export const zGetPermittedExternalAppsQuery = z.object({
  * Permitted external apps list
  */
 export const zGetPermittedExternalAppsResponse = zPermittedExternalAppsListResponse
+
+export const zGetPermittedExternalAppsByAppIdDescribePath = z.object({
+  app_id: z.string(),
+})
+
+export const zGetPermittedExternalAppsByAppIdDescribeQuery = z.object({
+  fields: z.string().optional(),
+})
+
+/**
+ * Permitted external app description
+ */
+export const zGetPermittedExternalAppsByAppIdDescribeResponse = zAppDescribeResponse
 
 /**
  * Workspace list

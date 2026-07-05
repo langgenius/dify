@@ -6,11 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -27,6 +27,9 @@ class TaskStateMetadata(BaseModel):
     annotation_reply: AnnotationReply | None = None
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
     usage: LLMUsage | None = None
+    reasoning: dict[str, str] = Field(default_factory=dict)
+    """reasoning_content per LLM node id (separated mode), accumulated across iteration/loop
+    passes for that node; persisted to message_metadata"""
 
 
 class TaskState(BaseModel):
@@ -85,6 +88,7 @@ class StreamEvent(StrEnum):
     LOOP_COMPLETED = "loop_completed"
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
+    REASONING_CHUNK = "reasoning_chunk"
     AGENT_LOG = "agent_log"
     HUMAN_INPUT_REQUIRED = "human_input_required"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
@@ -241,7 +245,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Mapping[str, object] = Field(default_factory=dict)
         created_at: int
         finished_at: int | None
-        exceptions_count: int | None = 0
+        exceptions_count: int = 0
         files: Sequence[Mapping[str, Any]] | None = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
@@ -288,6 +292,7 @@ class HumanInputRequiredResponse(StreamResponse):
         actions: Sequence[UserActionConfig] = Field(default_factory=list)
         display_in_ui: bool = False
         form_token: str | None = None
+        approval_channels: list[str] = Field(default_factory=list)
         resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
         expiration_time: int = Field(..., description="Unix timestamp in seconds")
 
@@ -302,7 +307,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     ``human_input_required`` events are available.
     """
 
-    TYPE: Literal[PauseReasonType.HUMAN_INPUT_REQUIRED] = PauseReasonType.HUMAN_INPUT_REQUIRED
+    TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
     form_id: str
     node_id: str
     node_title: str
@@ -311,6 +316,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     actions: Sequence[UserActionConfig] = Field(default_factory=list)
     display_in_ui: bool = False
     form_token: str | None = None
+    approval_channels: list[str] = Field(default_factory=list)
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
     expiration_time: int
 
@@ -325,6 +331,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
             actions=data.actions,
             display_in_ui=data.display_in_ui,
             form_token=data.form_token,
+            approval_channels=data.approval_channels,
             resolved_default_values=data.resolved_default_values,
             expiration_time=data.expiration_time,
         )
@@ -720,6 +727,29 @@ class TextChunkStreamResponse(StreamResponse):
         from_variable_selector: list[str] | None = None
 
     event: StreamEvent = StreamEvent.TEXT_CHUNK
+    data: Data
+
+
+class ReasoningChunkStreamResponse(StreamResponse):
+    """
+    ReasoningChunkStreamResponse entity
+
+    Out-of-band reasoning (chain-of-thought) delta, parallel to text_chunk. Only
+    emitted in "separated" mode; the answer/message stream stays free of <think>.
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        # chat apps set this; workflow runs have no message
+        message_id: str | None = None
+        reasoning: str
+        node_id: str | None = None
+        is_final: bool = False
+
+    event: StreamEvent = StreamEvent.REASONING_CHUNK
     data: Data
 
 

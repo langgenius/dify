@@ -9,7 +9,7 @@ from sqlalchemy import and_, exists, or_, select
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.fields import SimpleMessageResponse, SimpleResultMessageResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import (
@@ -73,15 +73,19 @@ def _published_app_filter():
     has_published_workflow = exists(select(Workflow.id).where(Workflow.id == App.workflow_id))
     has_published_model_config = exists(select(AppModelConfig.id).where(AppModelConfig.id == App.app_model_config_id))
 
-    return or_(
-        and_(App.mode.in_(workflow_app_modes), App.workflow_id.isnot(None), has_published_workflow),
-        and_(~App.mode.in_(workflow_app_modes), App.app_model_config_id.isnot(None), has_published_model_config),
+    return and_(
+        App.mode != AppMode.AGENT,
+        or_(
+            and_(App.mode.in_(workflow_app_modes), App.workflow_id.isnot(None), has_published_workflow),
+            and_(~App.mode.in_(workflow_app_modes), App.app_model_config_id.isnot(None), has_published_model_config),
+        ),
     )
 
 
 class InstalledAppInfoResponse(ResponseModel):
     id: str
     name: str | None = None
+    description: str | None = None
     mode: str | None = None
     icon_type: str | None = None
     icon: str | None = None
@@ -120,6 +124,7 @@ class InstalledAppResponse(ResponseModel):
         return {
             "id": _safe_primitive(getattr(value, "id", "")) or "",
             "name": _safe_primitive(getattr(value, "name", None)),
+            "description": _safe_primitive(getattr(value, "description", None)),
             "mode": _safe_primitive(getattr(value, "mode", None)),
             "icon_type": _safe_primitive(getattr(value, "icon_type", None)),
             "icon": _safe_primitive(getattr(value, "icon", None)),
@@ -142,17 +147,22 @@ register_schema_models(
     InstalledAppCreatePayload,
     InstalledAppUpdatePayload,
     InstalledAppsListQuery,
+)
+register_response_schema_models(
+    console_ns,
     InstalledAppInfoResponse,
     InstalledAppResponse,
     InstalledAppListResponse,
+    SimpleMessageResponse,
+    SimpleResultMessageResponse,
 )
-register_response_schema_models(console_ns, SimpleMessageResponse, SimpleResultMessageResponse)
 
 
 @console_ns.route("/installed-apps")
 class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
+    @console_ns.doc(params=query_params_from_model(InstalledAppsListQuery))
     @console_ns.response(200, "Success", console_ns.models[InstalledAppListResponse.__name__])
     @with_current_user
     @with_current_tenant_id
@@ -171,7 +181,7 @@ class InstalledAppsListApi(Resource):
 
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
-        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
+        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant, session=db.session)
         installed_app_list: list[dict[str, Any]] = []
         for installed_app, app_model in installed_apps:
             installed_app_list.append(
@@ -234,6 +244,7 @@ class InstalledAppsListApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("apps")
+    @console_ns.expect(console_ns.models[InstalledAppCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleMessageResponse.__name__])
     @with_current_tenant_id
     def post(self, current_tenant_id: str):
@@ -295,6 +306,7 @@ class InstalledAppApi(InstalledAppResource):
         return "", 204
 
     @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
+    @console_ns.expect(console_ns.models[InstalledAppUpdatePayload.__name__])
     def patch(self, installed_app: InstalledApp):
         payload = InstalledAppUpdatePayload.model_validate(console_ns.payload or {})
 

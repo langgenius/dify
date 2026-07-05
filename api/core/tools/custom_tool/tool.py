@@ -6,6 +6,7 @@ from typing import Any, Union, override
 from urllib.parse import urlencode
 
 import httpx
+from sqlalchemy.orm import Session
 
 from core.helper import ssrf_proxy
 from core.tools.__base.tool import Tool
@@ -359,15 +360,16 @@ class ApiTool(Tool):
                     if value is None:
                         return None
                 elif property["type"] == "object" or property["type"] == "array":
-                    if isinstance(value, str):
-                        try:
-                            return json.loads(value)
-                        except ValueError:
+                    match value:
+                        case str():
+                            try:
+                                return json.loads(value)
+                            except ValueError:
+                                return value
+                        case dict():
                             return value
-                    elif isinstance(value, dict):
-                        return value
-                    else:
-                        return value
+                        case _:
+                            return value
                 else:
                     raise ValueError(f"Invalid type {property['type']} for property {property}")
             elif "anyOf" in property and isinstance(property["anyOf"], list):
@@ -378,6 +380,7 @@ class ApiTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

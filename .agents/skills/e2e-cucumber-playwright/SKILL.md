@@ -5,7 +5,7 @@ description: Write, update, or review Dify end-to-end tests under `e2e/` that us
 
 # Dify E2E Cucumber + Playwright
 
-Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS.md`](../../../e2e/AGENTS.md) as the canonical guide for local architecture and conventions, then apply Playwright/Cucumber best practices only where they fit the current suite.
+Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS.md`](../../../e2e/AGENTS.md) as the canonical package guide for local architecture and conventions, then read any feature-scoped `AGENTS.md` that owns the target area. Apply Playwright/Cucumber best practices only where they fit the current suite.
 
 ## Scope
 
@@ -25,6 +25,8 @@ Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS
 4. Read [`references/cucumber-best-practices.md`](references/cucumber-best-practices.md) only when scenario wording, step granularity, tags, or expression design are involved.
 5. Re-check official Playwright or Cucumber docs with the available documentation tools before introducing a new framework pattern.
 
+Keep this skill focused on Cucumber, Playwright, and package-level E2E guidance. Put feature-specific conventions in the owning feature's `AGENTS.md` instead of adding them here.
+
 ## Local Rules
 
 - `e2e/` uses Cucumber for scenarios and Playwright as the browser layer.
@@ -43,6 +45,7 @@ Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS
    - Inspect the target feature area.
    - Reuse an existing step when wording and behavior already match.
    - Add a new step only for a genuinely new user action or assertion.
+   - Before adding several similar steps, scan the target capability for an existing domain noun that can be parameterized without hiding behavior.
    - Keep edits close to the current capability folder unless the step is broadly reusable.
 2. Write behavior-first scenarios.
    - Describe user-observable behavior, not DOM mechanics.
@@ -51,15 +54,19 @@ Use this skill for Dify's repository-level E2E suite in `e2e/`. Use [`e2e/AGENTS
 3. Write step definitions in the local style.
    - Keep one step to one user-visible action or one assertion.
    - Prefer Cucumber Expressions such as `{string}` and `{int}`.
+   - Use a bounded regex only when the accepted values are a small explicit domain set and Cucumber Expressions would make the Gherkin less natural.
+   - Do not create one-off steps for each case variant when the same domain action or outcome applies to named surfaces, modes, or resources.
    - Scope locators to stable containers when the page has repeated elements.
    - Avoid page-object layers or extra helper abstractions unless repeated complexity clearly justifies them.
 4. Use Playwright in the local style.
    - Prefer user-facing locators: `getByRole`, `getByLabel`, `getByPlaceholder`, `getByText`, then `getByTestId` for explicit contracts.
    - Use web-first `expect(...)` assertions.
    - Do not use `waitForTimeout`, manual polling, or raw visibility checks when a locator action or retrying assertion already expresses the behavior.
+   - Use `expect.poll` for API persistence, backend eventual consistency, captured browser events, or other non-DOM state; prefer locator assertions for DOM readiness and visible UI state.
+   - If a product element has real user-facing semantics but no accessible name, prefer fixing that accessible contract over adding a test id.
 5. Validate narrowly.
    - Run the narrowest tagged scenario or flow that exercises the change.
-   - Run `pnpm -C e2e check`.
+   - Run `vpr lint --fix --quiet` from the repository root and `pnpm -C e2e type-check`.
    - Broaden verification only when the change affects hooks, tags, setup, or shared step semantics.
 
 ## Review Checklist

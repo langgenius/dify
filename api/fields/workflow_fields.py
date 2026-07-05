@@ -12,7 +12,33 @@ from ._value_type_serializer import serialize_value_type
 ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
 
 
+class OpaqueRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "object"}
+
+
+class JsonValueRawField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {
+            "anyOf": [
+                {"type": "string"},
+                {"type": "integer"},
+                {"type": "number"},
+                {"type": "boolean"},
+                {"type": "object", "additionalProperties": True},
+                {"type": "array", "items": {}},
+                {"type": "null"},
+            ]
+        }
+
+
 class EnvironmentVariableField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "object"}
+
     @override
     def format(self, value):
         # Mask secret variables values in environment_variables
@@ -48,7 +74,7 @@ conversation_variable_fields = {
     "id": fields.String,
     "name": fields.String,
     "value_type": fields.String(attribute=serialize_value_type),
-    "value": fields.Raw,
+    "value": JsonValueRawField,
     "description": fields.String,
 }
 
@@ -60,7 +86,7 @@ pipeline_variable_fields = {
     "max_length": fields.Integer,
     "required": fields.Boolean,
     "unit": fields.String,
-    "default_value": fields.Raw,
+    "default_value": JsonValueRawField,
     "options": fields.List(fields.String),
     "placeholder": fields.String,
     "tooltips": fields.String,
@@ -71,8 +97,8 @@ pipeline_variable_fields = {
 
 workflow_fields = {
     "id": fields.String,
-    "graph": fields.Raw(attribute="graph_dict"),
-    "features": fields.Raw(attribute="features_dict"),
+    "graph": OpaqueRawField(attribute="graph_dict"),
+    "features": OpaqueRawField(attribute="features_dict"),
     "hash": fields.String(attribute="unique_hash"),
     "version": fields.String,
     "marked_name": fields.String,

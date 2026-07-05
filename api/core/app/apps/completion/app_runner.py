@@ -2,6 +2,7 @@ import logging
 from typing import cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
@@ -10,6 +11,7 @@ from core.app.entities.app_invoke_entities import (
     CompletionAppGenerateEntity,
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.db.session_factory import create_session
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -27,7 +29,11 @@ class CompletionAppRunner(AppRunner):
     """
 
     def run(
-        self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
+        self,
+        session: Session,
+        application_generate_entity: CompletionAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        message: Message,
     ):
         """
         Run application
@@ -39,7 +45,10 @@ class CompletionAppRunner(AppRunner):
         app_config = application_generate_entity.app_config
         app_config = cast(CompletionAppConfig, app_config)
         stmt = select(App).where(App.id == app_config.app_id)
-        app_record = db.session.scalar(stmt)
+        with create_session() as session:
+            app_record = session.scalar(stmt)
+            if app_record:
+                session.expunge(app_record)
         if not app_record:
             raise ValueError("App not found")
 
@@ -119,6 +128,7 @@ class CompletionAppRunner(AppRunner):
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context, retrieved_files = dataset_retrieval.retrieve(
+                session=session,
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -174,6 +184,8 @@ class CompletionAppRunner(AppRunner):
             model=application_generate_entity.model_conf.model,
         )
 
+        # Release the Flask scoped session before LLM streaming so a checked-out DB connection
+        # is not held for the lifetime of the provider response.
         db.session.close()
 
         invoke_result = model_instance.invoke_llm(

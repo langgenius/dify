@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
+import { expect, waitFor, within } from 'storybook/test'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -12,7 +13,7 @@ import {
 } from '.'
 import { Button } from '../button'
 
-const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
+const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const meta = {
   title: 'Base/UI/AlertDialog',
@@ -55,6 +56,21 @@ export const Default: Story = {
       </AlertDialogContent>
     </AlertDialog>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete project' }))
+
+    const dialog = body.getByRole('alertdialog', { name: 'Delete project?' })
+    await waitFor(async () => {
+      await expect(dialog).toBeVisible()
+    })
+
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }))
+    await waitFor(async () => {
+      await expect(body.queryByRole('alertdialog', { name: 'Delete project?' })).not.toBeInTheDocument()
+    })
+  },
 }
 
 export const NonDestructive: Story = {
@@ -84,8 +100,8 @@ export const NonDestructive: Story = {
 }
 
 const ControlledDemo = () => {
-  const [open, setOpen] = useState(false)
-  const [count, setCount] = useState(0)
+  const [open, setOpen] = React.useState(false)
+  const [count, setCount] = React.useState(0)
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -130,8 +146,8 @@ export const Controlled: Story = {
 }
 
 const LoadingConfirmDemo = () => {
-  const [pending, setPending] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [pending, setPending] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
 
   const handleConfirm = () => {
     setPending(true)

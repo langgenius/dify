@@ -15,8 +15,6 @@ from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict
-from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.entities import Rule
@@ -25,7 +23,6 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, QAStructureChunk
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.account import Account
@@ -186,35 +183,6 @@ class QAIndexProcessor(BaseIndexProcessor):
             vector.delete_by_ids(node_ids)
         else:
             vector.delete()
-
-    @override
-    def retrieve(
-        self,
-        retrieval_method: RetrievalMethod,
-        query: str,
-        dataset: Dataset,
-        top_k: int,
-        score_threshold: float,
-        reranking_model: RerankingModelDict,
-    ):
-        # Set search parameters.
-        results = RetrievalService.retrieve(
-            retrieval_method=retrieval_method,
-            dataset_id=dataset.id,
-            query=query,
-            top_k=top_k,
-            score_threshold=score_threshold,
-            reranking_model=reranking_model,
-        )
-        # Organize results.
-        docs = []
-        for result in results:
-            metadata = result.metadata
-            metadata["score"] = result.score
-            if result.score >= score_threshold:
-                doc = Document(page_content=result.page_content, metadata=metadata)
-                docs.append(doc)
-        return docs
 
     @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:

@@ -36,9 +36,27 @@ const SERVER_4XX_CLASS: StatusClass = {
   includeRaw: true,
 }
 
+// 429 gets a dedicated CLI code (its own exit code) so wrappers can tell a rate limit from a hard
+// failure. The serverError.code ("too_many_requests" / "rate_limit_error") still rides along.
+const RATE_LIMITED_CLASS: StatusClass = {
+  code: ErrorCode.RateLimited,
+  fallbackMessage: () => 'too many requests',
+  includeRaw: false,
+}
+
+const ACCESS_DENIED_CLASS: StatusClass = {
+  code: ErrorCode.AccessDenied,
+  fallbackMessage: () => 'not permitted',
+  includeRaw: false,
+}
+
 function statusClass(status: number): StatusClass {
   if (status === 401)
     return AUTH_EXPIRED_CLASS
+  if (status === 403)
+    return ACCESS_DENIED_CLASS
+  if (status === 429)
+    return RATE_LIMITED_CLASS
   if (status >= 500)
     return SERVER_5XX_CLASS
   return SERVER_4XX_CLASS

@@ -15,10 +15,15 @@ describe('Empty', () => {
       expect(screen.getByText(defaultMessage)).toBeInTheDocument()
     })
 
-    it('should render 36 placeholder cards', () => {
+    it('should render 16 placeholder cards', () => {
       const { container } = render(<Empty message={defaultMessage} />)
       const placeholderCards = container.querySelectorAll('.bg-background-default-lighter')
-      expect(placeholderCards).toHaveLength(36)
+      expect(placeholderCards).toHaveLength(16)
+    })
+
+    it('should display the no apps found message', () => {
+      render(<Empty />)
+      expect(screen.getByText('app.filterEmpty.noApps')).toBeInTheDocument()
     })
 
     it('should display the provided message', () => {
@@ -32,13 +37,13 @@ describe('Empty', () => {
       const { container } = render(<Empty message={defaultMessage} />)
       const overlay = container.querySelector('.pointer-events-none')
       expect(overlay).toBeInTheDocument()
-      expect(overlay).toHaveClass('absolute', 'inset-0', 'z-20')
+      expect(overlay).toHaveClass('absolute', 'inset-0', 'z-20', 'grid', 'grid-cols-4')
     })
 
     it('should have correct styling for placeholder cards', () => {
       const { container } = render(<Empty message={defaultMessage} />)
       const card = container.querySelector('.bg-background-default-lighter')
-      expect(card).toHaveClass('inline-flex', 'h-[160px]', 'rounded-xl')
+      expect(card).toHaveClass('rounded-xl', 'opacity-75')
     })
   })
 

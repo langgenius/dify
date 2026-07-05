@@ -13,8 +13,11 @@ from controllers.common.schema import (
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -78,6 +81,9 @@ class RagPipelineImportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+    )
     @with_current_user
     def post(self, current_user: Account) -> JsonResponseWithStatus:
         # Check user role first
@@ -122,6 +128,9 @@ class RagPipelineImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+    )
     @with_current_user
     def post(self, current_user: Account, import_id: str) -> JsonResponseWithStatus:
         with Session(db.engine, expire_on_commit=False) as session:
@@ -151,6 +160,7 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @get_rag_pipeline
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     def get(self, pipeline: Pipeline) -> JsonResponseWithStatus:
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = RagPipelineDslService(session)
@@ -168,6 +178,7 @@ class RagPipelineExportApi(Resource):
     @get_rag_pipeline
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_IMPORT_EXPORT_DSL)
     def get(self, pipeline: Pipeline) -> JsonResponseWithStatus:
         # Add include_secret params
         query = IncludeSecretQuery.model_validate(request.args.to_dict())

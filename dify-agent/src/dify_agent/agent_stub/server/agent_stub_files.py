@@ -84,8 +84,8 @@ class DifyApiAgentStubFileRequestHandler:
     """Call Dify API inner file request endpoints on behalf of the sandbox.
 
     The upload path calls ``/inner/api/upload/file/request`` and injects the
-    authenticated execution context's ``tenant_id`` and ``user_id`` along with
-    the requested filename and mimetype. The download path calls
+    authenticated execution context's ``tenant_id``, ``user_id``, and optional
+    ``conversation_id`` along with the requested filename and mimetype. The download path calls
     ``/inner/api/download/file/request`` and injects ``tenant_id``,
     ``user_id``, ``user_from``, and ``invoke_from`` plus the validated public
     file mapping.
@@ -98,8 +98,8 @@ class DifyApiAgentStubFileRequestHandler:
     contract without exposing raw ``httpx`` or Pydantic exceptions.
     """
 
-    dify_api_base_url: str
-    dify_api_inner_api_key: str
+    inner_api_url: str
+    inner_api_key: str
     timeout: httpx.Timeout | float = 30.0
 
     async def create_upload_request(
@@ -126,6 +126,7 @@ class DifyApiAgentStubFileRequestHandler:
             "user_id": execution_context.user_id,
             "filename": request.filename,
             "mimetype": request.mimetype,
+            "conversation_id": execution_context.conversation_id,
         }
         data = await self._post_inner_api("/inner/api/upload/file/request", payload)
         upload_url = data.get("url")
@@ -174,13 +175,13 @@ class DifyApiAgentStubFileRequestHandler:
         return execution_context
 
     async def _post_inner_api(self, path: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-        url = f"{self.dify_api_base_url.rstrip('/')}{path}"
+        url = f"{self.inner_api_url.rstrip('/')}{path}"
         async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, trust_env=False) as client:
             try:
                 response = await client.post(
                     url,
                     json=dict(payload),
-                    headers={"X-Inner-Api-Key": self.dify_api_inner_api_key},
+                    headers={"X-Inner-Api-Key": self.inner_api_key},
                 )
             except httpx.TimeoutException as exc:
                 raise AgentStubFileRequestError(504, "Dify API file request timed out") from exc

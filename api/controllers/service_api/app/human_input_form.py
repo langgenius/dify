@@ -8,18 +8,22 @@ paused human input forms in workflow/chatflow runs.
 import json
 import logging
 from collections.abc import Sequence
+from typing import Any
 
 from flask import Response
 from flask_restx import Resource
+from pydantic import ConfigDict, Field
 from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.service_api import service_api_ns
+from controllers.service_api.schema import expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
+from core.workflow.nodes.human_input.entities import FormInputConfig
 from extensions.ext_database import db
-from graphon.nodes.human_input.entities import FormInputConfig
+from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from models.model import App, EndUser
 from services.human_input_service import Form, FormNotFoundError, HumanInputService
@@ -27,7 +31,20 @@ from services.human_input_service import Form, FormNotFoundError, HumanInputServ
 logger = logging.getLogger(__name__)
 
 
+class HumanInputFormDefinitionResponse(ResponseModel):
+    form_content: str
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    resolved_default_values: dict[str, str]
+    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    expiration_time: int | None = None
+
+
+class HumanInputFormSubmitResponse(ResponseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
 register_schema_models(service_api_ns, HumanInputFormSubmitPayload)
+register_response_schema_models(service_api_ns, HumanInputFormDefinitionResponse, HumanInputFormSubmitResponse)
 
 
 def _jsonify_form_definition(form: Form, *, inputs: Sequence[FormInputConfig] = ()) -> Response:
@@ -56,6 +73,23 @@ def _ensure_form_is_allowed_for_service_api(form: Form) -> None:
 
 @service_api_ns.route("/form/human_input/<string:form_token>")
 class WorkflowHumanInputFormApi(Resource):
+    @service_api_ns.doc(
+        summary="Get Human Input Form",
+        description=(
+            "Retrieve a paused Human Input form's contents using the `form_token` from a "
+            "`human_input_required` event. Requires **WebApp** delivery."
+        ),
+        tags=["Human Input"],
+        responses={
+            200: "Form contents retrieved successfully.",
+            404: "`not_found` : Form not found.",
+            412: (
+                "- `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first "
+                "response wins regardless of which user submits it.\n"
+                "- `human_input_form_expired` : The form's expiration time passed before submission arrived."
+            ),
+        },
+    )
     @service_api_ns.doc("get_human_input_form")
     @service_api_ns.doc(description="Get a paused human input form by token")
     @service_api_ns.doc(params={"form_token": "Human input form token"})
@@ -66,6 +100,11 @@ class WorkflowHumanInputFormApi(Resource):
             404: "Form not found",
             412: "Form already submitted or expired",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Form retrieved successfully",
+        service_api_ns.models[HumanInputFormDefinitionResponse.__name__],
     )
     @validate_app_token
     def get(self, app_model: App, form_token: str):
@@ -80,7 +119,29 @@ class WorkflowHumanInputFormApi(Resource):
         inputs = service.resolve_form_inputs(form)
         return _jsonify_form_definition(form, inputs=inputs)
 
-    @service_api_ns.expect(service_api_ns.models[HumanInputFormSubmitPayload.__name__])
+    @service_api_ns.doc(
+        summary="Submit Human Input Form",
+        description=(
+            "Submit the recipient's response to a paused Human Input form. The workflow resumes on "
+            "acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) "
+            "to follow subsequent events. Requires **WebApp** delivery."
+        ),
+        tags=["Human Input"],
+        responses={
+            200: "Form submitted successfully. The response body is an empty object.",
+            400: (
+                "- `bad_request` : Form recipient type is invalid.\n"
+                "- `invalid_form_data` : Submission failed validation against the form definition."
+            ),
+            404: "`not_found` : Form not found.",
+            412: (
+                "- `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first "
+                "response wins regardless of which user submits it.\n"
+                "- `human_input_form_expired` : The form's expiration time passed before submission arrived."
+            ),
+        },
+    )
+    @expect_with_user(service_api_ns, HumanInputFormSubmitPayload)
     @service_api_ns.doc("submit_human_input_form")
     @service_api_ns.doc(description="Submit a paused human input form by token")
     @service_api_ns.doc(params={"form_token": "Human input form token"})
@@ -92,6 +153,11 @@ class WorkflowHumanInputFormApi(Resource):
             404: "Form not found",
             412: "Form already submitted or expired",
         }
+    )
+    @service_api_ns.response(
+        200,
+        "Form submitted successfully",
+        service_api_ns.models[HumanInputFormSubmitResponse.__name__],
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, form_token: str):

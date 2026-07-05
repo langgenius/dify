@@ -1,12 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-control-shared'
+import { formLabelClassName, textControlCompoundFocusClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
@@ -17,7 +17,15 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export const Combobox = BaseCombobox.Root
+export type ComboboxRootProps<Value, Multiple extends boolean | undefined = false>
+  = BaseCombobox.Root.Props<Value, Multiple>
+
+export function Combobox<Value, Multiple extends boolean | undefined = false>(
+  props: ComboboxRootProps<Value, Multiple>,
+): React.JSX.Element {
+  return <BaseCombobox.Root {...props} />
+}
+
 export const ComboboxValue = BaseCombobox.Value
 export const ComboboxGroup = BaseCombobox.Group
 export const ComboboxCollection = BaseCombobox.Collection
@@ -25,8 +33,6 @@ export const ComboboxRow = BaseCombobox.Row
 export const useComboboxFilter = BaseCombobox.useFilter
 export const useComboboxFilteredItems = BaseCombobox.useFilteredItems
 
-export type ComboboxRootProps<Value, Multiple extends boolean | undefined = false>
-  = BaseCombobox.Root.Props<Value, Multiple>
 export type ComboboxRootChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
 export type ComboboxRootHighlightEventDetails = BaseCombobox.Root.HighlightEventDetails
 
@@ -50,9 +56,9 @@ const comboboxItemClassName = [
 
 const comboboxTriggerVariants = cva(
   [
-    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden transition-colors',
+    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden transition-colors',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-    'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
+    'focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active',
     'data-placeholder:text-components-input-text-placeholder',
     'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
@@ -80,7 +86,7 @@ type ComboboxTriggerProps
     & VariantProps<typeof comboboxTriggerVariants>
     & {
       className?: string
-      icon?: ReactNode | false
+      icon?: React.ReactNode | false
     }
 
 export function ComboboxTrigger({
@@ -113,7 +119,7 @@ const comboboxInputGroupVariants = cva(
   [
     'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
+    textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
@@ -198,7 +204,7 @@ const comboboxControlVariants = cva(
   [
     'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent group-data-disabled/combobox:focus-visible:ring-0',
     'group-data-readonly/combobox:hidden',
@@ -207,9 +213,9 @@ const comboboxControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'mr-1 size-4',
-        medium: 'mr-1.5 size-5',
-        large: 'mr-2 size-5',
+        small: 'me-1 size-4',
+        medium: 'me-1.5 size-5',
+        large: 'me-2 size-5',
       },
     },
     defaultVariants: {
@@ -286,7 +292,7 @@ export function ComboboxIcon({
 }
 
 type ComboboxContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -365,7 +371,7 @@ export function ComboboxItem({
   )
 }
 
-export type ComboboxItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type ComboboxItemTextProps = React.ComponentProps<'span'>
 
 export function ComboboxItemText({
   className,
@@ -383,7 +389,7 @@ export function ComboboxItemIndicator({
   className,
   children,
   ...props
-}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: ReactNode }) {
+}: Omit<BaseCombobox.ItemIndicator.Props, 'children'> & { children?: React.ReactNode }) {
   return (
     <BaseCombobox.ItemIndicator
       className={cn(overlayIndicatorClassName, className)}

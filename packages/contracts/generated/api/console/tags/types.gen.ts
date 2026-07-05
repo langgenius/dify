@@ -27,7 +27,7 @@ export type GetTagsData = {
   path?: never
   query?: {
     keyword?: string
-    type?: string
+    type?: '' | 'app' | 'knowledge' | 'snippet'
   }
   url: '/tags'
 }
@@ -61,9 +61,7 @@ export type DeleteTagsByTagIdData = {
 }
 
 export type DeleteTagsByTagIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteTagsByTagIdResponse = DeleteTagsByTagIdResponses[keyof DeleteTagsByTagIdResponses]

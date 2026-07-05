@@ -29,6 +29,7 @@ from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
 from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
@@ -41,6 +42,14 @@ from dify_agent.layers.dify_plugin.configs import (
 )
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.dify_core_tools.configs import (
+    DIFY_CORE_TOOLS_LAYER_TYPE_ID,
+    DifyCoreToolConfig,
+    DifyCoreToolsLayerConfig,
+)
+from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
+from dify_agent.layers.knowledge.configs import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
+from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
@@ -63,10 +72,12 @@ class StaticToolsTestLayer(ToolsLayer):
 
 class FakeRunnerShellctlClient:
     run_calls: list[tuple[str, str | None, Mapping[str, str] | None, float]]
+    delete_calls: list[tuple[str, bool, float | None]]
     closed: bool
 
     def __init__(self) -> None:
         self.run_calls = []
+        self.delete_calls = []
         self.closed = False
 
     async def run(
@@ -111,8 +122,8 @@ class FakeRunnerShellctlClient:
         force: bool = False,
         grace_seconds: float | None = None,
     ) -> DeleteJobResponse:
-        del job_id, force, grace_seconds
-        raise AssertionError("delete() should not be called in this test")
+        self.delete_calls.append((job_id, force, grace_seconds))
+        return DeleteJobResponse(job_id=job_id)
 
 
 def _request(
@@ -357,6 +368,7 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
                 request=request,
                 run_id="run-1",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
             assert seen_clients == [client]
             assert client.is_closed is False
@@ -372,6 +384,8 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
     terminal = sink.events["run-1"][-1]
     assert isinstance(terminal, RunSucceededEvent)
     assert terminal.data.output == "done"
+    assert terminal.data.usage is not None
+    assert terminal.data.usage.total_tokens > 0
     assert [layer.name for layer in terminal.data.session_snapshot.layers] == [
         "prompt",
         "renamed-execution-context",
@@ -406,6 +420,7 @@ def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPa
                 request=request,
                 run_id="run-null-output",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -462,6 +477,7 @@ def test_runner_emits_deferred_tool_call_and_persists_pending_history(monkeypatc
                 request=request,
                 run_id="run-ask-human",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -558,6 +574,7 @@ def test_runner_resumes_with_deferred_tool_results_and_no_user_prompt(monkeypatc
                 request=request,
                 run_id="run-ask-human-initial",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
             initial_terminal = sink.events["run-ask-human-initial"][-1]
@@ -582,6 +599,7 @@ def test_runner_resumes_with_deferred_tool_results_and_no_user_prompt(monkeypatc
                 request=resumed_request,
                 run_id="run-ask-human-resume",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -657,6 +675,7 @@ def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pyt
                 request=request,
                 run_id="run-ask-human-turn-1",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
             first_terminal = sink.events["run-ask-human-turn-1"][-1]
@@ -681,6 +700,7 @@ def test_runner_can_emit_second_deferred_tool_call_after_resume(monkeypatch: pyt
                 request=resumed_request,
                 run_id="run-ask-human-turn-2",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -736,6 +756,7 @@ def test_runner_rejects_deferred_tool_call_without_history_layer(monkeypatch: py
                     request=request,
                     run_id="run-ask-human-no-history",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -785,6 +806,7 @@ def test_runner_rejects_resume_with_deferred_tool_results_without_history_layer(
                     request=request,
                     run_id="run-ask-human-resume-no-history",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -823,6 +845,7 @@ def test_runner_rejects_multiple_deferred_tool_calls(monkeypatch: pytest.MonkeyP
                     request=request,
                     run_id="run-ask-human-multi",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -861,6 +884,7 @@ def test_runner_rejects_deferred_approval_requests(monkeypatch: pytest.MonkeyPat
                     request=request,
                     run_id="run-ask-human-approval",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -960,6 +984,7 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
                 request=request,
                 run_id="run-tools",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -968,6 +993,217 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
     terminal = sink.events["run-tools"][-1]
     assert isinstance(terminal, RunSucceededEvent)
     assert terminal.data.output == "done"
+
+
+def test_runner_passes_dynamic_dify_knowledge_tools_to_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_tools: list[Tool[object]] = []
+
+    async def knowledge_tool() -> str:
+        return "knowledge"
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    async def fake_get_tools(self: DifyKnowledgeBaseLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+        assert self.config.sets[0].dataset_ids == ["dataset-1"]
+        assert http_client.headers.get("X-Test-Client") == "dify-api"
+        return [Tool(knowledge_tool, name="knowledge_base_search")]
+
+    class FakeResult:
+        output: str = "done"
+
+        def new_messages(self) -> list[ModelMessage]:
+            return []
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeResult:
+            return FakeResult()
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
+        del model, output_type
+        seen_tools.extend(tools)
+        return FakeAgent()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr(DifyKnowledgeBaseLayer, "get_tools", fake_get_tools)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_id="user-1",
+                        user_from="account",
+                        app_id="app-1",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"execution_context": "execution_context"},
+                    config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="openai",
+                        model="demo-model",
+                        credentials={"api_key": "secret"},
+                    ),
+                ),
+                RunLayerSpec(
+                    name="knowledge",
+                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyKnowledgeBaseLayerConfig.model_validate(
+                        {
+                            "sets": [
+                                {
+                                    "id": "support",
+                                    "name": "Support KB",
+                                    "datasets": [{"id": "dataset-1"}],
+                                    "query": {"mode": "generated_query"},
+                                    "retrieval": {"mode": "multiple", "top_k": 4},
+                                }
+                            ],
+                        }
+                    ),
+                ),
+            ]
+        )
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with (
+            httpx.AsyncClient() as plugin_client,
+            httpx.AsyncClient(headers={"X-Test-Client": "dify-api"}) as dify_api_client,
+        ):
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-knowledge-tools",
+                plugin_daemon_http_client=plugin_client,
+                dify_api_http_client=dify_api_client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert [tool.name for tool in seen_tools] == ["knowledge_base_search"]
+
+
+def test_runner_passes_dynamic_dify_core_tools_to_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen_tools: list[Tool[object]] = []
+
+    async def core_tool() -> str:
+        return "core"
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    async def fake_get_tools(self: DifyCoreToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+        assert self.config.tools[0].provider_type == "builtin"
+        assert self.config.tools[0].tool_name == "draft_message"
+        assert http_client.headers.get("X-Test-Client") == "dify-api"
+        return [Tool(core_tool, name="draft_message")]
+
+    class FakeResult:
+        output: str = "done"
+
+        def new_messages(self) -> list[ModelMessage]:
+            return []
+
+    class FakeAgent:
+        async def run(self, *_args: object, **_kwargs: object) -> FakeResult:
+            return FakeResult()
+
+    def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> FakeAgent:
+        del model, output_type
+        seen_tools.extend(tools)
+        return FakeAgent()
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    monkeypatch.setattr(DifyCoreToolsLayer, "get_tools", fake_get_tools)
+    monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
+
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_id="user-1",
+                        user_from="account",
+                        app_id="app-1",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="dify.plugin.llm",
+                    deps={"execution_context": "execution_context"},
+                    config=DifyPluginLLMLayerConfig(
+                        plugin_id="langgenius/openai",
+                        model_provider="openai",
+                        model="demo-model",
+                        credentials={"api_key": "secret"},
+                    ),
+                ),
+                RunLayerSpec(
+                    name="core-tools",
+                    type=DIFY_CORE_TOOLS_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyCoreToolsLayerConfig(
+                        tools=[
+                            DifyCoreToolConfig(
+                                provider_type="builtin",
+                                provider_id="langgenius/dify-gmail/dify-gmail",
+                                tool_name="draft_message",
+                                credential_id="credential-1",
+                                parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                            )
+                        ]
+                    ),
+                ),
+            ]
+        )
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with (
+            httpx.AsyncClient() as plugin_client,
+            httpx.AsyncClient(headers={"X-Test-Client": "dify-api"}) as dify_api_client,
+        ):
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-core-tools",
+                plugin_daemon_http_client=plugin_client,
+                dify_api_http_client=dify_api_client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert [tool.name for tool in seen_tools] == ["draft_message"]
 
 
 def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
@@ -1075,6 +1311,7 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
                     request=request,
                     run_id="run-duplicate-tools",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -1182,6 +1419,7 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
                     request=request,
                     run_id="run-static-dynamic-duplicate-tools",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                     layer_providers=layer_providers,
                 ).run()
 
@@ -1224,8 +1462,11 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
         layer_type=DifyShellLayer,
         create=lambda config: DifyShellLayer.from_config_with_settings(
             DifyShellLayerConfig.model_validate(config),
-            shellctl_entrypoint="http://shellctl",
-            shellctl_client_factory=lambda _entrypoint: shell_client,
+            shell_provider=ShellctlProvider(
+                entrypoint="http://shellctl",
+                token="",
+                client_factory=lambda: shell_client,
+            ),
         ),
     )
     layer_providers = tuple(
@@ -1297,12 +1538,14 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                     request=request,
                     run_id="run-shell-duplicate-tools",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                     layer_providers=layer_providers,
                 ).run()
 
     asyncio.run(scenario())
 
     assert create_agent_called is False
+    assert shell_client.delete_calls == [("mkdir-job", True, None)]
     assert shell_client.closed is True
     assert [event.type for event in sink.events["run-shell-duplicate-tools"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-shell-duplicate-tools"] == "failed"
@@ -1325,6 +1568,7 @@ def test_runner_passes_temporary_system_prompt_prefix_without_history_layer(monk
                 request=_request("current user"),
                 run_id="run-no-history",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -1368,6 +1612,7 @@ def test_runner_prepends_current_system_prompt_to_stored_history_and_appends_onl
                 request=request,
                 run_id="run-history",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -1418,6 +1663,7 @@ def test_runner_with_empty_history_layer_still_sends_system_prompt_and_saves_onl
                 request=request,
                 run_id="run-empty-history",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -1468,6 +1714,7 @@ def test_runner_failure_with_history_layer_emits_failed_terminal_event_without_s
                     request=request,
                     run_id="run-history-failure",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -1499,6 +1746,7 @@ def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytes
                 request=request,
                 run_id="run-exit",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -1559,6 +1807,7 @@ def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_resu
                 request=request,
                 run_id="run-structured-output",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
             first_terminal = sink.events["run-structured-output"][-1]
@@ -1572,6 +1821,7 @@ def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_resu
                 request=resumed_request,
                 run_id="run-structured-output-resume",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -1645,6 +1895,7 @@ def test_runner_retries_invalid_structured_output_and_eventually_succeeds(monkey
                 request=request,
                 run_id="run-output-retry-success",
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
             ).run()
 
     asyncio.run(scenario())
@@ -1698,6 +1949,7 @@ def test_runner_fails_when_invalid_structured_output_exhausts_retries(monkeypatc
                     request=request,
                     run_id="run-output-retry-failed",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -1734,6 +1986,7 @@ def test_runner_rejects_invalid_output_layer_before_model_resolution(monkeypatch
                     request=request,
                     run_id="run-invalid-output",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -1808,6 +2061,7 @@ def test_runner_rejects_misnamed_output_layer_before_model_resolution(monkeypatc
                     request=request,
                     run_id="run-misnamed-output",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -1894,6 +2148,7 @@ def test_runner_rejects_multiple_output_layers_before_model_resolution(monkeypat
                     request=request,
                     run_id="run-duplicate-output",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -1965,6 +2220,7 @@ def test_runner_rejects_reserved_output_name_with_wrong_layer_type_before_model_
                     request=request,
                     run_id="run-wrong-output-type",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -2009,6 +2265,7 @@ def test_runner_rejects_misnamed_output_layer_before_provider_checks() -> None:
                     request=request,
                     run_id="run-misnamed-output-before-providers",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                     layer_providers=(),
                 ).run()
 
@@ -2033,6 +2290,7 @@ def test_runner_rejects_unknown_on_exit_layer_id() -> None:
                     request=request,
                     run_id="run-unknown-signal",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -2053,6 +2311,7 @@ def test_runner_honors_explicit_empty_layer_providers() -> None:
                     request=request,
                     run_id="run-empty-providers",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                     layer_providers=(),
                 ).run()
 
@@ -2074,6 +2333,7 @@ def test_runner_fails_empty_user_prompts() -> None:
                     request=request,
                     run_id="run-2",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -2094,6 +2354,7 @@ def test_runner_fails_blank_string_user_prompt_list() -> None:
                     request=request,
                     run_id="run-3",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -2114,6 +2375,7 @@ def test_runner_requires_llm_layer_id() -> None:
                     request=request,
                     run_id="run-4",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -2153,6 +2415,7 @@ def test_runner_rejects_closed_session_snapshot_as_validation_error() -> None:
                     request=request,
                     run_id="run-closed-snapshot",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -2199,12 +2462,13 @@ def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="DIFY_AGENT_SHELLCTL_ENTRYPOINT"):
+            with pytest.raises(AgentRunValidationError, match="non-null shell provider"):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,
                     run_id="run-missing-shell-entrypoint",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                 ).run()
 
     asyncio.run(scenario())
@@ -2282,6 +2546,7 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                     request=request,
                     run_id="run-invalid-shell-offset",
                     plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
                     layer_providers=create_default_layer_providers(shellctl_entrypoint="http://shellctl"),
                 ).run()
 

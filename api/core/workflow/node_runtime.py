@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, cast, overload, override
 
+from pydantic import JsonValue
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.file_access import (
@@ -14,6 +16,7 @@ from core.app.file_access import (
     is_retriever_segment_access_granted,
 )
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import ParentTraceContext
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -23,6 +26,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.repositories.human_input_repository import (
     FormCreateParams,
+    HumanInputFormEntity,
     HumanInputFormRepository,
     HumanInputFormRepositoryImpl,
 )
@@ -33,11 +37,18 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormInputConfig,
+    HumanInputNodeData,
+)
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import LLMMode
 from graphon.model_runtime.entities.llm_entities import (
+    LLMPollingResult,
     LLMResult,
     LLMResultChunk,
     LLMResultChunkWithStructuredOutput,
@@ -47,23 +58,14 @@ from graphon.model_runtime.entities.llm_entities import (
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from graphon.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormInputConfig,
-    HumanInputNodeData,
-)
 from graphon.nodes.llm.runtime_protocols import (
+    LLMPollingCapableProtocol,
     LLMProtocol,
     PromptMessageSerializerProtocol,
     RetrieverAttachmentLoaderProtocol,
 )
 from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
-from graphon.nodes.runtime import (
-    HumanInputFormStateProtocol,
-    HumanInputNodeRuntimeProtocol,
-    ToolNodeRuntimeProtocol,
-)
+from graphon.nodes.runtime import ToolNodeRuntimeProtocol
 from graphon.nodes.tool.exc import ToolNodeError, ToolRuntimeInvocationError, ToolRuntimeResolutionError
 from graphon.nodes.tool_runtime_entities import (
     ToolRuntimeHandle,
@@ -278,6 +280,58 @@ class DifyPreparedLLM(LLMProtocol):
         return isinstance(error, OutputParserError)
 
 
+class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
+    """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
+
+    def __init__(self, model_instance: ModelInstance) -> None:
+        from core.plugin.impl.model_runtime import PluginModelRuntime
+
+        super().__init__(model_instance)
+        model_type_instance = model_instance.model_type_instance
+        if not isinstance(model_type_instance, LargeLanguageModel):
+            raise TypeError("Polling wrapper requires a large-language-model instance.")
+
+        plugin_model_runtime = model_type_instance.model_runtime
+        if not isinstance(plugin_model_runtime, PluginModelRuntime):
+            raise TypeError("Polling wrapper requires a plugin-backed model runtime.")
+
+        self._plugin_model_runtime = plugin_model_runtime
+
+    @override
+    def start_llm_polling(
+        self,
+        *,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: Mapping[str, Any],
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        json_schema: Mapping[str, Any] | None,
+    ) -> LLMPollingResult:
+        return self._plugin_model_runtime.start_llm_polling(
+            provider=self.provider,
+            model=self.model_name,
+            credentials=self._model_instance.credentials,
+            prompt_messages=prompt_messages,
+            model_parameters=dict(model_parameters),
+            tools=tools,
+            stop=stop,
+            json_schema=dict(json_schema) if json_schema is not None else None,
+        )
+
+    @override
+    def check_llm_polling(
+        self,
+        *,
+        plugin_state: Mapping[str, JsonValue],
+    ) -> LLMPollingResult:
+        return self._plugin_model_runtime.check_llm_polling(
+            provider=self.provider,
+            model=self.model_name,
+            credentials=self._model_instance.credentials,
+            plugin_state=dict(plugin_state),
+        )
+
+
 class DifyPromptMessageSerializer(PromptMessageSerializerProtocol):
     @override
     def serialize(
@@ -401,9 +455,14 @@ class _WorkflowToolRuntimeBinding:
 
 
 class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
-    def __init__(self, run_context: Mapping[str, Any] | DifyRunContext) -> None:
+    def __init__(
+        self,
+        run_context: Mapping[str, Any] | DifyRunContext,
+        session_maker: sessionmaker[Session] | None = None,
+    ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
+        self._session_maker = session_maker
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -501,26 +560,27 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             tool.clear_trace_session_id()
 
         try:
-            messages = ToolEngine.generic_invoke(
-                tool=tool,
-                tool_parameters=dict(tool_parameters),
-                user_id=self._run_context.user_id,
-                workflow_tool_callback=callback,
-                workflow_call_depth=workflow_call_depth,
-                app_id=self._run_context.app_id,
-                conversation_id=runtime_binding.conversation_id,
-            )
+            session_maker = self._session_maker or session_factory.get_session_maker()
+            with session_maker.begin() as session:
+                messages = ToolEngine.generic_invoke(
+                    session=session,
+                    tool=tool,
+                    tool_parameters=dict(tool_parameters),
+                    user_id=self._run_context.user_id,
+                    workflow_tool_callback=callback,
+                    workflow_call_depth=workflow_call_depth,
+                    app_id=self._run_context.app_id,
+                    conversation_id=runtime_binding.conversation_id,
+                )
+                transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                    messages=messages,
+                    user_id=self._run_context.user_id,
+                    tenant_id=self._run_context.tenant_id,
+                    conversation_id=runtime_binding.conversation_id,
+                )
+                yield from self._adapt_messages(transformed_messages, provider_name=provider_name)
         except Exception as exc:
             raise self._map_invocation_exception(exc, provider_name=provider_name) from exc
-
-        transformed_messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
-            messages=messages,
-            user_id=self._run_context.user_id,
-            tenant_id=self._run_context.tenant_id,
-            conversation_id=runtime_binding.conversation_id,
-        )
-
-        return self._adapt_messages(transformed_messages, provider_name=provider_name)
 
     @override
     def get_usage(
@@ -704,16 +764,18 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 return ToolRuntimeInvocationError(str(exc))
 
 
-class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
+class DifyHumanInputNodeRuntime:
     def __init__(
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
         *,
         workflow_execution_id_getter: Callable[[], str | None] | None = None,
+        conversation_id_getter: Callable[[], str | None] | None = None,
         form_repository: HumanInputFormRepository | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
         self._workflow_execution_id_getter = workflow_execution_id_getter
+        self._conversation_id_getter = conversation_id_getter
         self._form_repository = form_repository
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
 
@@ -721,7 +783,9 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         invoke_from = self._run_context.invoke_from
         if isinstance(invoke_from, str):
             return invoke_from
-        return str(getattr(invoke_from, "value", invoke_from))
+        if isinstance(invoke_from, Enum):
+            return str(invoke_from.value)
+        return str(invoke_from)
 
     def _resolve_delivery_methods(self, *, node_data: HumanInputNodeData) -> Sequence[DeliveryChannelConfig]:
         invoke_source = self._invoke_source()
@@ -762,11 +826,11 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         return DifyHumanInputNodeRuntime(
             self._run_context,
             workflow_execution_id_getter=self._workflow_execution_id_getter,
+            conversation_id_getter=self._conversation_id_getter,
             form_repository=form_repository,
         )
 
-    @override
-    def get_form(self, *, node_id: str) -> HumanInputFormStateProtocol | None:
+    def get_form(self, *, node_id: str) -> HumanInputFormEntity | None:
         repo = self.build_form_repository()
         return repo.get_form(node_id)
 
@@ -787,7 +851,6 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             )
         return restored_data
 
-    @override
     def create_form(
         self,
         *,
@@ -795,10 +858,13 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         node_data: HumanInputNodeData,
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
-    ) -> HumanInputFormStateProtocol:
+    ) -> HumanInputFormEntity:
         repo = self.build_form_repository()
         params = FormCreateParams(
             workflow_execution_id=self._workflow_execution_id_getter() if self._workflow_execution_id_getter else None,
+            # A chatflow (advanced-chat) run carries a conversation; tag the form with
+            # it too so it is queryable per conversation. None for a pure workflow run.
+            conversation_id=self._conversation_id_getter() if self._conversation_id_getter else None,
             node_id=node_id,
             form_config=node_data,
             rendered_content=rendered_content,

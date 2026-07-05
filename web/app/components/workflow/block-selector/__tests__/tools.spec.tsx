@@ -9,6 +9,7 @@ import { createToolProvider } from './factories'
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: vi.fn(),
+  useDocLink: () => (path?: string) => `https://docs.example.com${path || ''}`,
 }))
 
 vi.mock('@/hooks/use-theme', () => ({

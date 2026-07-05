@@ -20,6 +20,7 @@ openapi_ns = Namespace("openapi", description="User-scoped operations", path="/"
 
 # Register response/query models BEFORE importing controller modules so that
 # @openapi_ns.response / @openapi_ns.expect decorators can resolve model names.
+from controllers.common.fields import EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.openapi._models import (
     AccountPayload,
@@ -30,7 +31,7 @@ from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
     AppDslImportPayload,
-    AppInfoResponse,
+    AppInfo,
     AppListQuery,
     AppListResponse,
     AppListRow,
@@ -42,8 +43,10 @@ from controllers.openapi._models import (
     DeviceMutateRequest,
     DeviceMutateResponse,
     DevicePollRequest,
+    DeviceTokenResponse,
     FormSubmitResponse,
     HealthResponse,
+    HumanInputFormDefinitionResponse,
     MemberActionResponse,
     MemberInvitePayload,
     MemberInviteResponse,
@@ -59,7 +62,6 @@ from controllers.openapi._models import (
     SessionListQuery,
     SessionListResponse,
     SessionRow,
-    TagItem,
     TaskStopResponse,
     UsageInfo,
     WorkflowRunData,
@@ -92,12 +94,13 @@ register_schema_models(
 register_response_schema_models(
     openapi_ns,
     ErrorBody,
-    TagItem,
+    EventStreamResponse,
+    SimpleResultResponse,
     UsageInfo,
     MessageMetadata,
     AppListRow,
     AppListResponse,
-    AppInfoResponse,
+    AppInfo,
     AppDescribeInfo,
     AppDescribeResponse,
     AppDslExportResponse,
@@ -120,7 +123,9 @@ register_response_schema_models(
     MemberActionResponse,
     TaskStopResponse,
     FormSubmitResponse,
+    HumanInputFormDefinitionResponse,
     DeviceCodeResponse,
+    DeviceTokenResponse,
     DeviceLookupResponse,
     DeviceMutateResponse,
     FileResponse,

@@ -1,44 +1,38 @@
 'use client'
 
+import type { ReactNode } from 'react'
+import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'
 import DatasetCardSkeleton from './dataset-card-skeleton'
-import NewDatasetCard from './new-dataset-card'
 
 type Props = Readonly<{
-  tags: string[]
-  keywords: string
-  includeAll: boolean
+  datasetList: ReturnType<typeof useDatasetList>['data'] | null
+  fetchNextPage: ReturnType<typeof useDatasetList>['fetchNextPage']
+  hasNextPage: ReturnType<typeof useDatasetList>['hasNextPage']
+  isFetching: ReturnType<typeof useDatasetList>['isFetching']
+  isFetchingNextPage: ReturnType<typeof useDatasetList>['isFetchingNextPage']
+  isLoading: ReturnType<typeof useDatasetList>['isLoading']
+  isPlaceholderData: ReturnType<typeof useDatasetList>['isPlaceholderData']
+  emptyElement?: ReactNode
   onOpenTagManagement?: () => void
 }>
 
 const Datasets = ({
-  tags,
-  keywords,
-  includeAll,
-  onOpenTagManagement = () => {},
+  datasetList,
+  fetchNextPage,
+  hasNextPage,
+  isFetching,
+  isFetchingNextPage,
+  isLoading,
+  isPlaceholderData,
+  emptyElement,
+  onOpenTagManagement = () => { },
 }: Props) => {
   const { t } = useTranslation()
-  const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
-  const {
-    data: datasetList,
-    fetchNextPage,
-    hasNextPage,
-    isFetching,
-    isFetchingNextPage,
-    isLoading,
-    isPlaceholderData,
-  } = useDatasetList({
-    initialPage: 1,
-    tag_ids: tags,
-    limit: 30,
-    include_all: includeAll,
-    keyword: keywords,
-  })
   const invalidDatasetList = useInvalidDatasetList()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
@@ -63,15 +57,17 @@ const Datasets = ({
     return () => observerRef.current?.disconnect()
   }, [anchorRef, hasNextPage, isFetching, isPlaceholderData, fetchNextPage])
 
+  const hasAnyDataset = (datasetList?.pages[0]?.total ?? 0) > 0 || !!datasetList?.pages.some(({ data }) => data.length > 0)
+
   return (
     <>
-      <nav className="grid grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {isCurrentWorkspaceEditor && <NewDatasetCard />}
+      <nav className="relative grid grow grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-8 pt-2">
         {showDatasetSkeleton
           ? <DatasetCardSkeleton label={t('loading', { ns: 'common' })} />
           : datasets.map(dataset => (
               <DatasetCard key={dataset.id} dataset={dataset} onSuccess={invalidDatasetList} onOpenTagManagement={onOpenTagManagement} />),
             )}
+        {!showDatasetSkeleton && !hasAnyDataset && emptyElement}
         {isFetchingNextPage && <Loading />}
         <div ref={anchorRef} className="h-0" />
       </nav>

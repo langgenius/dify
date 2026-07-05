@@ -1,12 +1,12 @@
 {
   "name": "@langgenius/difyctl",
   "type": "module",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-alpha",
   "description": "Dify command-line interface",
   "difyctl": {
-    "channel": "rc",
+    "channel": "alpha",
     "compat": {
-      "minDify": "1.14.0",
+      "minDify": "1.15.0",
       "maxDify": "1.15.0"
     },
     "release": {
@@ -14,11 +14,31 @@
       "binName": "difyctl",
       "checksumsSuffix": "-checksums.txt",
       "targets": [
-        { "id": "linux-x64", "bunTarget": "bun-linux-x64", "exe": false },
-        { "id": "linux-arm64", "bunTarget": "bun-linux-arm64", "exe": false },
-        { "id": "darwin-x64", "bunTarget": "bun-darwin-x64", "exe": false },
-        { "id": "darwin-arm64", "bunTarget": "bun-darwin-arm64", "exe": false },
-        { "id": "windows-x64", "bunTarget": "bun-windows-x64", "exe": true }
+        {
+          "id": "linux-x64",
+          "bunTarget": "bun-linux-x64",
+          "exe": false
+        },
+        {
+          "id": "linux-arm64",
+          "bunTarget": "bun-linux-arm64",
+          "exe": false
+        },
+        {
+          "id": "darwin-x64",
+          "bunTarget": "bun-darwin-x64",
+          "exe": false
+        },
+        {
+          "id": "darwin-arm64",
+          "bunTarget": "bun-darwin-arm64",
+          "exe": false
+        },
+        {
+          "id": "windows-x64",
+          "bunTarget": "bun-windows-x64",
+          "exe": true
+        }
       ]
     }
   },

@@ -22,11 +22,21 @@ import { NAME_FIELD } from './utils'
 type Props = Readonly<{
   detail: PluginDetail
 }>
-const EndpointList = ({ detail }: Props) => {
+
+type EndpointDeclaration = NonNullable<PluginDetail['declaration']['endpoint']>
+
+type EndpointListContentProps = Readonly<{
+  declaration: EndpointDeclaration
+  detail: PluginDetail
+}>
+
+const EndpointListContent = ({
+  declaration,
+  detail,
+}: EndpointListContentProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const pluginUniqueID = detail.plugin_unique_identifier
-  const declaration = detail.declaration.endpoint
   const showTopBorder = detail.declaration.tool
   const { data } = useEndpointList(detail.plugin_id)
   const invalidateEndpointList = useInvalidateEndpointList()
@@ -132,6 +142,19 @@ const EndpointList = ({ detail }: Props) => {
         />
       )}
     </div>
+  )
+}
+
+const EndpointList = ({ detail }: Props) => {
+  const declaration = detail.declaration.endpoint
+  if (!declaration)
+    return null
+
+  return (
+    <EndpointListContent
+      declaration={declaration}
+      detail={detail}
+    />
   )
 }
 

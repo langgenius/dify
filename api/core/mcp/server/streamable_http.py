@@ -3,6 +3,8 @@ import logging
 from collections.abc import Mapping
 from typing import Any, NotRequired, TypedDict, cast
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -26,6 +28,7 @@ class ToolArgumentsDict(TypedDict):
 
 
 def handle_mcp_request(
+    session: Session,
     app: App,
     request: mcp_types.ClientRequest,
     user_input_form: list[VariableEntity],
@@ -82,7 +85,7 @@ def handle_mcp_request(
                     )
                 )
             case mcp_types.CallToolRequest():
-                return create_success_response(handle_call_tool(app, request, user_input_form, end_user))
+                return create_success_response(handle_call_tool(session, app, request, user_input_form, end_user))
             case mcp_types.PingRequest():
                 return create_success_response(handle_ping())
             case _:
@@ -137,6 +140,7 @@ def handle_list_tools(
 
 
 def handle_call_tool(
+    session: Session,
     app: App,
     request: mcp_types.ClientRequest,
     user_input_form: list[VariableEntity],
@@ -150,6 +154,7 @@ def handle_call_tool(
         raise ValueError("End user not found")
 
     response = AppGenerateService.generate(
+        session,
         app,
         end_user,
         args,

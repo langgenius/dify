@@ -9,6 +9,13 @@ import {
   UPDATE_HISTORY_EVENT_EMITTER,
 } from '../constants'
 import PromptEditor from '../index'
+import { CustomTextNode } from '../plugins/custom-text/node'
+
+type MockNodeReplacementConfig = {
+  replace?: unknown
+  with?: (arg: { __text: string }) => void
+  withKlass?: unknown
+}
 
 const mocks = vi.hoisted(() => {
   const commandHandlers = new Map<unknown, (payload: unknown) => boolean>()
@@ -18,6 +25,7 @@ const mocks = vi.hoisted(() => {
   return {
     emit: vi.fn(),
     rootLines: ['first line', 'second line'],
+    nodeReplacementConfig: undefined as MockNodeReplacementConfig | undefined,
     commandHandlers,
     subscriptions,
     rootElement,
@@ -86,7 +94,7 @@ vi.mock('@lexical/react/LexicalComposer', () => ({
   LexicalComposer: ({ initialConfig, children }: {
     initialConfig: {
       onError?: (error: Error) => void
-      nodes?: Array<{ replace?: unknown, with: (arg: { __text: string }) => void }>
+      nodes?: unknown[]
     }
     children: ReactNode
   }) => {
@@ -99,9 +107,11 @@ vi.mock('@lexical/react/LexicalComposer', () => ({
       }
     }
     if (initialConfig?.nodes) {
-      const textNodeConf = initialConfig.nodes.find((n: { replace?: unknown, with: (arg: { __text: string }) => void }) => n?.replace)
-      if (textNodeConf)
-        textNodeConf.with({ __text: 'test' })
+      const textNodeConf = initialConfig.nodes.find((node): node is MockNodeReplacementConfig => {
+        return typeof node === 'object' && node !== null && 'replace' in node
+      })
+      mocks.nodeReplacementConfig = textNodeConf
+      textNodeConf?.with?.({ __text: 'test' })
     }
     return <div data-testid="lexical-composer">{children}</div>
   },
@@ -173,15 +183,23 @@ describe('PromptEditor', () => {
     mocks.commandHandlers.clear()
     mocks.subscriptions.length = 0
     mocks.rootLines = ['first line', 'second line']
+    mocks.nodeReplacementConfig = undefined
   })
 
   // Rendering shell and text output from lexical state.
   describe('Rendering', () => {
+    it('should register CustomTextNode as the TextNode replacement class', () => {
+      render(<PromptEditor />)
+
+      expect(mocks.nodeReplacementConfig?.withKlass).toBe(CustomTextNode)
+    })
+
     it('should render placeholder and call onChange with joined lexical text', async () => {
       const onChange = vi.fn()
 
       render(
         <PromptEditor
+          aria-labelledby="prompt-label"
           compact={true}
           className="editor-class"
           placeholder="Type prompt"
@@ -193,6 +211,7 @@ describe('PromptEditor', () => {
       expect(screen.getByText('Type prompt')).toBeInTheDocument()
       expect(screen.getByTestId('content-editable')).toHaveClass('editor-class')
       expect(screen.getByTestId('content-editable')).toHaveClass('text-[13px]')
+      expect(screen.getByTestId('content-editable')).toHaveAttribute('aria-labelledby', 'prompt-label')
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith('first line\nsecond line')

@@ -9,7 +9,7 @@ from typing import Any, NotRequired, TypedDict
 
 from flask import Response, request
 from flask_restx import Resource
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
@@ -17,12 +17,12 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.common.errors import NotFoundError
 from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import serialize_app_site_payload
+from core.workflow.nodes.human_input.entities import FormInputConfig
 from extensions.ext_database import db
-from graphon.nodes.human_input.entities import FormInputConfig
 from libs.helper import RateLimiter, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
 from models.model import App, Site
@@ -38,7 +38,26 @@ class HumanInputUploadTokenResponse(BaseModel):
     expires_at: int
 
 
-register_schema_models(web_ns, HumanInputUploadTokenResponse)
+class HumanInputFormDefinitionResponse(BaseModel):
+    form_content: Any
+    inputs: Any
+    resolved_default_values: dict[str, str]
+    user_actions: Any
+    expiration_time: int
+    site: dict[str, Any] | None = Field(default=None)
+
+
+class HumanInputFormSubmitResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+register_schema_models(web_ns, HumanInputFormSubmitPayload)
+register_response_schema_models(
+    web_ns,
+    HumanInputUploadTokenResponse,
+    HumanInputFormDefinitionResponse,
+    HumanInputFormSubmitResponse,
+)
 
 
 _FORM_SUBMIT_RATE_LIMITER = RateLimiter(
@@ -100,6 +119,7 @@ def _jsonify_form_definition(
 class HumanInputFormUploadTokenApi(Resource):
     """API for issuing HITL upload tokens for active human input forms."""
 
+    @web_ns.response(200, "Success", web_ns.models[HumanInputUploadTokenResponse.__name__])
     def post(self, form_token: str):
         """
         Issue an upload token for a human input form.
@@ -130,6 +150,7 @@ class HumanInputFormApi(Resource):
     # NOTE(QuantumGhost): this endpoint is unauthenticated on purpose for now.
 
     # def get(self, _app_model: App, _end_user: EndUser, form_token: str):
+    @web_ns.response(200, "Success", web_ns.models[HumanInputFormDefinitionResponse.__name__])
     def get(self, form_token: str):
         """
         Get human input form definition by token.
@@ -160,6 +181,8 @@ class HumanInputFormApi(Resource):
         )
 
     # def post(self, _app_model: App, _end_user: EndUser, form_token: str):
+    @web_ns.response(200, "Success", web_ns.models[HumanInputFormSubmitResponse.__name__])
+    @web_ns.expect(web_ns.models[HumanInputFormSubmitPayload.__name__])
     def post(self, form_token: str):
         """
         Submit human input form by token.

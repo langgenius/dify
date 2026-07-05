@@ -19,6 +19,9 @@ vi.mock('@/config', async (importOriginal) => {
 })
 
 vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
@@ -27,24 +30,17 @@ vi.mock('@/app/components/billing/pricing', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting', () => ({
-  default: ({ onCancelAction }: { onCancelAction: () => void }) => (
-    <button type="button" onClick={onCancelAction}>cancel account setting</button>
+  default: ({ activeTab, onCancelAction }: { activeTab: string, onCancelAction: () => void }) => (
+    <>
+      <div data-testid="account-setting-active-tab">{activeTab}</div>
+      <button type="button" onClick={onCancelAction}>cancel account setting</button>
+    </>
   ),
 }))
 
-vi.mock('foxact/use-local-storage', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('foxact/use-local-storage')>()
-
-  return {
-    ...actual,
-    useSetLocalStorage: (key: string, options?: Parameters<typeof actual.useSetLocalStorage>[1]) => {
-      if (key === 'educationVerifying')
-        return mockSetEducationVerifying
-
-      return actual.useSetLocalStorage(key, options)
-    },
-  }
-})
+vi.mock('@/app/education-apply/storage', () => ({
+  useSetEducationVerifying: () => mockSetEducationVerifying,
+}))
 
 const mockUseProviderContext = vi.fn()
 vi.mock('@/context/provider-context', () => ({
@@ -100,6 +96,19 @@ const AccountSettingOpener = () => {
       onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })}
     >
       open account setting
+    </button>
+  )
+}
+
+const PreferencesOpener = () => {
+  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
+
+  return (
+    <button
+      type="button"
+      onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
+    >
+      open preferences
     </button>
   )
 }
@@ -171,7 +180,21 @@ describe('ModalContextProvider trigger events limit modal', () => {
     expect(updater('no')).toBe('no')
   })
 
-  it('dismisses the trigger events limit modal when localStorage reads throw', async () => {
+  it('opens preferences in the account settings shell', async () => {
+    mockUseProviderContext.mockReturnValue({
+      plan: createPlan(),
+      isFetchedPlan: true,
+    })
+    const user = userEvent.setup()
+
+    renderProvider(<PreferencesOpener />)
+
+    await user.click(screen.getByRole('button', { name: 'open preferences' }))
+
+    expect(await screen.findByTestId('account-setting-active-tab')).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
+  })
+
+  it('relies on the in-memory guard when localStorage reads throw', async () => {
     const plan = createPlan({
       type: Plan.professional,
       usage: { triggerEvents: 200 },

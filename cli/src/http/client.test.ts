@@ -192,7 +192,7 @@ describe('http client', () => {
       expect(caught.code).toBe(ErrorCode.Server4xxOther)
   })
 
-  it('handles 429 via retry status code list', async () => {
+  it('surfaces a 429 as a rate-limit error (dedicated exit code), no retry when budget is 0', async () => {
     mock.setScenario('rate-limited')
     const client = createHttpClient({
       baseURL: base(mock.url),
@@ -206,8 +206,246 @@ describe('http client', () => {
     }
     catch (err) { caught = err }
     expect(isHttpClientError(caught)).toBe(true)
-    if (isHttpClientError(caught))
+    if (isHttpClientError(caught)) {
       expect(caught.httpStatus).toBe(429)
+      expect(caught.code).toBe(ErrorCode.RateLimited)
+      expect(caught.exit()).toBe(7)
+      expect(caught.serverError?.code).toBe('too_many_requests')
+    }
+  })
+
+  it('retries an idempotent GET on a throttle 429, then succeeds', async () => {
+    let calls = 0
+    const stub = await startStub((_req, res) => {
+      calls++
+      if (calls === 1) {
+        res.writeHead(429, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
+        return
+      }
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ workspaces: [] }))
+    })
+    const events: { phase: string, status?: number, delayMs?: number }[] = []
+    try {
+      const client = createHttpClient({
+        baseURL: base(stub.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 5_000,
+        logger: e => events.push({ phase: e.phase, status: e.status, delayMs: e.delayMs }),
+      })
+      const body = await client.get<{ workspaces: unknown[] }>('workspaces')
+      expect(body.workspaces).toEqual([])
+    }
+    finally {
+      await stub.stop()
+    }
+    expect(calls).toBe(2)
+    const retry = events.find(e => e.phase === 'retry')
+    expect(retry?.status).toBe(429)
+    expect(retry?.delayMs).toBeGreaterThan(0)
+  })
+
+  it('does not retry a quota 429 (rate_limit_error) — surfaces immediately', async () => {
+    let requests = 0
+    const stub = await startStub((_req, res) => {
+      res.writeHead(429, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ code: 'rate_limit_error', message: 'quota exhausted', status: 429 }))
+    })
+    let caught: unknown
+    try {
+      const client = createHttpClient({
+        baseURL: base(stub.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 5_000,
+        logger: (e) => {
+          if (e.phase === 'request')
+            requests++
+        },
+      })
+      try {
+        await client.get('workspaces')
+      }
+      catch (err) { caught = err }
+    }
+    finally {
+      await stub.stop()
+    }
+    expect(requests).toBe(1)
+    expect(isHttpClientError(caught)).toBe(true)
+    if (isHttpClientError(caught)) {
+      expect(caught.code).toBe(ErrorCode.RateLimited)
+      expect(caught.serverError?.code).toBe('rate_limit_error')
+    }
+  })
+
+  it('does not retry a POST 429 by default; retries with retry-on-limit', async () => {
+    let postDefault = 0
+    const stubDefault = await startStub((_req, res) => {
+      postDefault++
+      res.writeHead(429, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
+    })
+    try {
+      const client = createHttpClient({ baseURL: base(stubDefault.url), bearer: 'dfoa_test', retryAttempts: 3, timeoutMs: 5_000 })
+      await expect(client.post('apps/app-1/run', { json: { inputs: {} } })).rejects.toBeDefined()
+    }
+    finally {
+      await stubDefault.stop()
+    }
+    expect(postDefault).toBe(1)
+
+    let calls = 0
+    const stubOptIn = await startStub((_req, res) => {
+      calls++
+      if (calls === 1) {
+        res.writeHead(429, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
+        return
+      }
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ ok: true }))
+    })
+    try {
+      const client = createHttpClient({ baseURL: base(stubOptIn.url), bearer: 'dfoa_test', retryAttempts: 3, timeoutMs: 5_000 })
+      const body = await client.post<{ ok: boolean }>('apps/app-1/run', { json: { inputs: {} }, retryOnRateLimit: true })
+      expect(body.ok).toBe(true)
+    }
+    finally {
+      await stubOptIn.stop()
+    }
+    expect(calls).toBe(2)
+  })
+
+  it('still never retries a POST 5xx even with retry-on-limit (idempotency guard)', async () => {
+    let requests = 0
+    const stub = await startStub((_req, res) => {
+      requests++
+      res.writeHead(503, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ code: 'internal_server_error', message: 'boom', status: 503 }))
+    })
+    try {
+      const client = createHttpClient({ baseURL: base(stub.url), bearer: 'dfoa_test', retryAttempts: 3, timeoutMs: 5_000 })
+      await expect(client.post('apps/app-1/run', { json: { inputs: {} }, retryOnRateLimit: true })).rejects.toBeDefined()
+    }
+    finally {
+      await stub.stop()
+    }
+    expect(requests).toBe(1)
+  })
+
+  it('surfaces a RateLimited error after exhausting 429 retries on GET', async () => {
+    let requests = 0
+    let retries = 0
+    const stub = await startStub((_req, res) => {
+      res.writeHead(429, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
+    })
+    let caught: unknown
+    try {
+      const client = createHttpClient({
+        baseURL: base(stub.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 2,
+        timeoutMs: 5_000,
+        logger: (e) => {
+          if (e.phase === 'request')
+            requests++
+          else if (e.phase === 'retry')
+            retries++
+        },
+      })
+      try {
+        await client.get('workspaces')
+      }
+      catch (err) { caught = err }
+    }
+    finally {
+      await stub.stop()
+    }
+    expect(requests).toBe(3)
+    expect(retries).toBe(2)
+    expect(isHttpClientError(caught)).toBe(true)
+    if (isHttpClientError(caught))
+      expect(caught.code).toBe(ErrorCode.RateLimited)
+  })
+
+  it('surfaces a throttle 429 whose Retry-After exceeds the honored cap (no retry)', async () => {
+    let requests = 0
+    const stub = await startStub((_req, res) => {
+      // 120s advised wait > MAX_HONORED_WAIT_MS (60s) — surface rather than park for minutes.
+      res.writeHead(429, { 'content-type': 'application/json', 'retry-after': '120' })
+      res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
+    })
+    let caught: unknown
+    try {
+      const client = createHttpClient({
+        baseURL: base(stub.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 5_000,
+        logger: (e) => {
+          if (e.phase === 'request')
+            requests++
+        },
+      })
+      try {
+        await client.get('workspaces')
+      }
+      catch (err) { caught = err }
+    }
+    finally {
+      await stub.stop()
+    }
+    expect(requests).toBe(1)
+    expect(isHttpClientError(caught)).toBe(true)
+    if (isHttpClientError(caught))
+      expect(caught.code).toBe(ErrorCode.RateLimited)
+  })
+
+  it('stream GET surfaces a 429 (returns the Response, no throw, no retry)', async () => {
+    let calls = 0
+    const stub = await startStub((_req, res) => {
+      calls++
+      res.writeHead(429, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
+    })
+    try {
+      const client = createHttpClient({ baseURL: base(stub.url), bearer: 'dfoa_test', timeoutMs: 5_000 })
+      const res = await client.stream('workspaces')
+      expect(res.status).toBe(429)
+      await res.body?.cancel()
+    }
+    finally {
+      await stub.stop()
+    }
+    expect(calls).toBe(1)
+  })
+
+  it('stream POST retries a throttle 429 when retry-on-limit is set', async () => {
+    let calls = 0
+    const stub = await startStub((_req, res) => {
+      calls++
+      if (calls === 1) {
+        res.writeHead(429, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
+        return
+      }
+      res.writeHead(200, { 'content-type': 'text/event-stream' })
+      res.end('data: {}\n\n')
+    })
+    try {
+      const client = createHttpClient({ baseURL: base(stub.url), bearer: 'dfoa_test', timeoutMs: 5_000 })
+      const res = await client.stream('apps/app-1/run', { method: 'POST', json: {}, retryOnRateLimit: true })
+      expect(res.status).toBe(200)
+      await res.body?.cancel()
+    }
+    finally {
+      await stub.stop()
+    }
+    expect(calls).toBe(2)
   })
 
   it('does not retry POST on 503', async () => {

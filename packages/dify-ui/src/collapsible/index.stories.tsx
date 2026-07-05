@@ -46,7 +46,7 @@ function RecoveryKeys({
   panelProps?: React.ComponentProps<typeof CollapsiblePanel>
 }) {
   return (
-    <>
+    <React.Fragment>
       <CollapsibleTrigger className={triggerClassName}>
         Recovery keys
         <TriggerIcon />
@@ -58,7 +58,7 @@ function RecoveryKeys({
           <div>horse-battery-staple</div>
         </div>
       </CollapsiblePanel>
-    </>
+    </React.Fragment>
   )
 }
 
@@ -97,7 +97,7 @@ export const Controlled: Story = {
       <div className="flex flex-col items-start gap-3">
         <button
           type="button"
-          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 hover:bg-state-base-hover focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          className="rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 system-sm-medium text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           onClick={() => setOpen(value => !value)}
         >
           {open ? 'Close panel' : 'Open panel'}

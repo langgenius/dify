@@ -4,7 +4,6 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
 import { useInvalidateAllWorkflowTools, useInvalidateWorkflowToolDetailByAppID, useWorkflowToolDetailByAppID } from '@/service/use-tools'
 
@@ -119,7 +118,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
   } = options
 
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
 
   // Data fetching via React Query
   const { data: detail, isLoading } = useWorkflowToolDetailByAppID(workflowAppId, enabled && published)
@@ -209,7 +207,6 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     isLoading,
     outdated,
     payload,
-    isCurrentWorkspaceManager,
     handleCreate,
     handleUpdate,
   }

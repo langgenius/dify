@@ -17,10 +17,12 @@ export function MenuItemContent({
   label,
   trailing,
 }: MenuItemContentProps) {
+  const labelTitle = typeof label === 'string' ? label : undefined
+
   return (
     <>
       <span aria-hidden className={cn(menuLeadingIconClassName, iconClassName)} />
-      <div className={menuLabelClassName}>{label}</div>
+      <div className={menuLabelClassName} title={labelTitle}>{label}</div>
       {trailing}
     </>
   )

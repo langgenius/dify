@@ -5,7 +5,7 @@ import { PluginCategoryEnum } from '../../../../types'
 import SelectPackage from '../selectPackage'
 
 type SelectOption = {
-  value: string | number
+  value: string
   name: string
 }
 

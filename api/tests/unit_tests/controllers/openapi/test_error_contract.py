@@ -10,6 +10,7 @@ from werkzeug.exceptions import (
     Forbidden,
     InternalServerError,
     NotFound,
+    TooManyRequests,
     Unauthorized,
     UnprocessableEntity,
 )
@@ -25,11 +26,13 @@ from controllers.openapi._errors import (
     ErrorBody,
     ErrorDetail,
     FilenameNotExists,
+    HumanInputFormNotFound,
     MemberLicenseExceeded,
     MemberLimitExceeded,
     OpenApiError,
     OpenApiErrorCode,
     OpenApiErrorFormatter,
+    RecipientSurfaceMismatch,
 )
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -309,6 +312,7 @@ ERROR_MATRIX = [
     (ProviderModelCurrentlyNotSupportError(), 400, "model_currently_not_support"),
     (CompletionRequestError(), 400, "completion_request_error"),
     (InvokeRateLimitHttpError(), 429, "rate_limit_error"),
+    (TooManyRequests("x"), 429, "too_many_requests"),  # difyctl's classifyRateLimit keys retryability on this code
     (FileTooLargeError(), 413, "file_too_large"),
     (UnsupportedFileTypeError(), 415, "unsupported_file_type"),
     (NoFileUploadedError(), 400, "no_file_uploaded"),
@@ -317,6 +321,8 @@ ERROR_MATRIX = [
     (BlockedFileExtensionError(), 400, "file_extension_blocked"),
     (MemberLimitExceeded(), 403, "member_limit_exceeded"),
     (MemberLicenseExceeded(), 403, "member_license_exceeded"),
+    (HumanInputFormNotFound(), 404, "form_not_found"),
+    (RecipientSurfaceMismatch(), 403, "recipient_surface_mismatch"),
 ]
 
 

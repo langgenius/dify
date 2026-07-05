@@ -13,7 +13,7 @@ from core.mcp.server.streamable_http import handle_mcp_request
 from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
-from models.enums import AppMCPServerStatus
+from models.enums import AppMCPServerStatus, EndUserType
 from models.model import App, AppMCPServer, AppMode, EndUser
 
 
@@ -201,7 +201,7 @@ class MCPAppApi(Resource):
                 select(EndUser)
                 .where(EndUser.tenant_id == tenant_id)
                 .where(EndUser.session_id == mcp_server_id)
-                .where(EndUser.type == "mcp")
+                .where(EndUser.type == EndUserType.MCP)
                 .limit(1)
             )
 
@@ -212,7 +212,7 @@ class MCPAppApi(Resource):
         end_user = EndUser(
             tenant_id=tenant_id,
             app_id=app_id,
-            type="mcp",
+            type=EndUserType.MCP,
             name=client_name,
             session_id=mcp_server_id,
         )
@@ -236,7 +236,6 @@ class MCPAppApi(Resource):
         if not end_user and isinstance(mcp_request.root, mcp_types.InitializeRequest):
             client_info = mcp_request.root.params.clientInfo
             client_name = f"{client_info.name}@{client_info.version}"
-            with sessionmaker(db.engine, expire_on_commit=False).begin() as create_session:
-                end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, create_session)
+            end_user = self._create_end_user(client_name, app.tenant_id, app.id, mcp_server.id, session)
 
-        return handle_mcp_request(app, mcp_request, user_input_form, mcp_server, end_user, request_id)
+        return handle_mcp_request(session, app, mcp_request, user_input_form, mcp_server, end_user, request_id)

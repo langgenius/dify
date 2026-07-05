@@ -12,11 +12,14 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user_id,
@@ -61,11 +64,15 @@ class EndpointCreateResponse(BaseModel):
 
 
 class EndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+    endpoints: list[dict[str, Any]] = Field(
+        description="Endpoint information",
+    )
 
 
 class PluginEndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(description="Endpoint information")
+    endpoints: list[dict[str, Any]] = Field(
+        description="Endpoint information",
+    )
 
 
 class EndpointDeleteResponse(BaseModel):
@@ -162,6 +169,7 @@ class EndpointCollectionApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -190,6 +198,7 @@ class DeprecatedEndpointCreateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -201,7 +210,7 @@ class DeprecatedEndpointCreateApi(Resource):
 class EndpointListApi(Resource):
     @console_ns.doc("list_endpoints")
     @console_ns.doc(description="List plugin endpoints with pagination")
-    @console_ns.expect(console_ns.models[EndpointListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(EndpointListQuery))
     @console_ns.response(
         200,
         "Success",
@@ -234,7 +243,7 @@ class EndpointListApi(Resource):
 class EndpointListForSinglePluginApi(Resource):
     @console_ns.doc("list_plugin_endpoints")
     @console_ns.doc(description="List endpoints for a specific plugin")
-    @console_ns.expect(console_ns.models[EndpointListForPluginQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(EndpointListForPluginQuery))
     @console_ns.response(
         200,
         "Success",
@@ -281,6 +290,7 @@ class EndpointItemApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -300,6 +310,7 @@ class EndpointItemApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -329,6 +340,7 @@ class DeprecatedEndpointDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -359,6 +371,7 @@ class DeprecatedEndpointUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -381,6 +394,7 @@ class EndpointEnableApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
@@ -408,6 +422,7 @@ class EndpointDisableApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id

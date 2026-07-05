@@ -1,10 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { ProviderContextState } from './provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
@@ -24,6 +24,7 @@ import {
 } from '@/service/use-common'
 import { useEducationStatus } from '@/service/use-education'
 import { ProviderContext } from './provider-context'
+import { useAnthropicQuotaNotice } from './provider-storage'
 
 type ProviderContextProviderProps = {
   children: ReactNode
@@ -38,8 +39,6 @@ const unlimitedMemberInviteLimit: MemberInviteLimit = {
   size: 0,
   limit: 0,
 }
-
-const ANTHROPIC_QUOTA_NOTICE_STORAGE_KEY = 'anthropic_quota_notice'
 
 const resolveMemberInviteLimit = (data: Awaited<ReturnType<typeof fetchCurrentPlanInfo>>): MemberInviteLimit => {
   if (!data)
@@ -66,11 +65,11 @@ export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
   const queryClient = useQueryClient()
-  const { data: providersData } = useModelProviders()
+  const { data: providersData, isLoading: isLoadingModelProviders } = useModelProviders()
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
   const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
-  const [plan, setPlan] = useState(defaultPlan)
+  const [plan, setPlan] = useState<ProviderContextState['plan']>(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   const [isFetchedPlanInfo, setIsFetchedPlanInfo] = useState(false)
   const [enableBilling, setEnableBilling] = useState(true)
@@ -111,7 +110,7 @@ export const ProviderContextProvider = ({
       setEnableReplaceWebAppLogo(data.can_replace_logo ?? false)
 
       if (data.billing?.enabled) {
-        setPlan(parseCurrentPlan(data) as any)
+        setPlan(parseCurrentPlan(data))
         setIsFetchedPlan(true)
       }
 
@@ -157,11 +156,7 @@ export const ProviderContextProvider = ({
   // #endregion Zendesk conversation fields
 
   const { t } = useTranslation()
-  const [anthropicQuotaNotice, setAnthropicQuotaNotice] = useLocalStorage<string>(
-    ANTHROPIC_QUOTA_NOTICE_STORAGE_KEY,
-    'false',
-    { raw: true },
-  )
+  const [anthropicQuotaNotice, setAnthropicQuotaNotice] = useAnthropicQuotaNotice()
 
   useEffect(() => {
     if (anthropicQuotaNotice === 'true')
@@ -187,6 +182,7 @@ export const ProviderContextProvider = ({
   return (
     <ProviderContext.Provider value={{
       modelProviders: providersData?.data || [],
+      isLoadingModelProviders,
       refreshModelProviders,
       textGenerationModelList: textGenerationModelList?.data || [],
       isAPIKeySet: !!textGenerationModelList?.data?.some(model => model.status === ModelStatusEnum.active),

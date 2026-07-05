@@ -17,6 +17,8 @@ type ModelSelectorTriggerProps = {
   className?: string
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
+  showModelMeta?: boolean
+  isModelCompatible?: boolean
 }
 
 function ModelSelectorTrigger({
@@ -28,6 +30,8 @@ function ModelSelectorTrigger({
   className,
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
+  showModelMeta = true,
+  isModelCompatible = true,
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
@@ -56,10 +60,14 @@ function ModelSelectorTrigger({
   const isDisabled = status !== 'active' && status !== 'empty'
   const statusI18nKey = DERIVED_MODEL_STATUS_BADGE_I18N[status as keyof typeof DERIVED_MODEL_STATUS_BADGE_I18N]
   const tooltipI18nKey = DERIVED_MODEL_STATUS_TOOLTIP_I18N[status as keyof typeof DERIVED_MODEL_STATUS_TOOLTIP_I18N]
-  const statusLabel = statusI18nKey ? t(statusI18nKey, { ns: 'common' }) : null
-  const tooltipLabel = tooltipI18nKey ? t(tooltipI18nKey, { ns: 'common' }) : null
+  const statusLabel = isModelCompatible && statusI18nKey
+    ? t(statusI18nKey, { ns: 'common' })
+    : t('modelProvider.selector.incompatible', { ns: 'common' })
+  const tooltipLabel = isModelCompatible && tooltipI18nKey
+    ? t(tooltipI18nKey, { ns: 'common' })
+    : t('modelProvider.selector.incompatibleTip', { ns: 'common' })
   const isCreditsExhausted = status === 'credits-exhausted'
-  const shouldShowModelMeta = status === 'active'
+  const shouldShowModelMeta = showModelMeta && status === 'active' && isModelCompatible
   const deprecatedStatusLabel = statusLabel || t('modelProvider.selector.incompatible', { ns: 'common' })
   const deprecatedTooltipLabel = tooltipLabel || t('modelProvider.selector.incompatibleTip', { ns: 'common' })
 
@@ -96,22 +104,23 @@ function ModelSelectorTrigger({
           <ModelName
             className="grow"
             modelItem={currentModel}
+            nameClassName={currentModel?.deprecated ? 'line-through' : undefined}
             showMode={shouldShowModelMeta}
             showFeatures={shouldShowModelMeta}
           />
         )}
         {isDeprecated && (
-          <div className="grow truncate system-sm-regular text-components-input-text-filled">
+          <div className="grow truncate system-sm-regular text-components-input-text-filled line-through">
             {defaultModel.model}
           </div>
         )}
         {isEmpty && (
-          <div className="grow truncate text-[13px] text-text-quaternary">
+          <div className="grow truncate text-[13px] text-components-input-text-placeholder">
             {t('detailPanel.configureModel', { ns: 'plugin' })}
           </div>
         )}
 
-        {isSelected && !readonly && !isActive && statusI18nKey && (
+        {isSelected && !readonly && ((!isActive && statusI18nKey) || !isModelCompatible) && (
           <Tooltip>
             <TooltipTrigger
               disabled={!tooltipLabel}

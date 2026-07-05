@@ -6,6 +6,8 @@ import logging
 from collections.abc import Generator, Mapping
 from typing import Any, cast, override
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from core.entities.mcp_provider import IdentityMode
 from core.mcp.auth_client import MCPClientWithAuthRetry
@@ -30,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Custom header used to carry the forwarded SSO access token. Picked to avoid
 # stomping on the workspace-scoped Authorization header (provider OAuth /
 # user-supplied custom credentials), which would silently break those flows.
-FORWARDED_IDENTITY_HEADER = "X-Dify-SSO-Access-Token"
+FORWARDED_IDENTITY_HEADER = "X-Dify-SSO-Token"
 
 
 class MCPTool(Tool):
@@ -65,6 +67,7 @@ class MCPTool(Tool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
@@ -122,13 +125,14 @@ class MCPTool(Tool):
 
     def _process_json_content(self, content_json: Any) -> Generator[ToolInvokeMessage, None, None]:
         """Process JSON content based on its type."""
-        if isinstance(content_json, dict):
-            yield self.create_json_message(content_json)
-        elif isinstance(content_json, list):
-            yield from self._process_json_list(content_json)
-        else:
-            # For primitive types (str, int, bool, etc.), convert to string
-            yield self.create_text_message(str(content_json))
+        match content_json:
+            case dict():
+                yield self.create_json_message(content_json)
+            case list():
+                yield from self._process_json_list(content_json)
+            case _:
+                # For primitive types (str, int, bool, etc.), convert to string
+                yield self.create_text_message(str(content_json))
 
     def _process_json_list(self, json_list: list) -> Generator[ToolInvokeMessage, None, None]:
         """Process a list of JSON items."""
@@ -222,16 +226,17 @@ class MCPTool(Tool):
 
         # Recursively search through nested structures
         for value in payload.values():
-            if isinstance(value, Mapping):
-                found = cls._extract_usage_dict(value)
-                if found is not None:
-                    return found
-            elif isinstance(value, list) and not isinstance(value, (str, bytes, bytearray)):
-                for item in value:
-                    if isinstance(item, Mapping):
-                        found = cls._extract_usage_dict(item)
-                        if found is not None:
-                            return found
+            match value:
+                case _ if isinstance(value, Mapping):
+                    found = cls._extract_usage_dict(value)
+                    if found is not None:
+                        return found
+                case list() if not isinstance(value, (str, bytes, bytearray)):
+                    for item in value:
+                        if isinstance(item, Mapping):
+                            found = cls._extract_usage_dict(item)
+                            if found is not None:
+                                return found
         return None
 
     @override
@@ -305,7 +310,7 @@ class MCPTool(Tool):
 
         # Forwarded identity rides in a custom header so workspace-scoped
         # provider credentials (Authorization / custom Headers) keep working
-        # untouched. The MCP server is expected to read X-Dify-SSO-Access-Token
+        # untouched. The MCP server is expected to read X-Dify-SSO-Token
         # when identity forwarding is configured.
         forward_identity_active = False
         if self._forwarding_requested and user_id:
@@ -338,7 +343,7 @@ class MCPTool(Tool):
         audience: str,
     ) -> None:
         """Call the enterprise IssueMCPToken endpoint and stamp the issued
-        token into X-Dify-SSO-Access-Token.
+        token into X-Dify-SSO-Token.
 
         A custom header is used (rather than Authorization) so it composes
         with workspace-scoped provider credentials — the user may have OAuth
@@ -358,7 +363,17 @@ class MCPTool(Tool):
                 tenant_id=self.tenant_id,
                 app_id=app_id,
                 audience=audience,
+                user_type=self._resolve_user_type(),
             )
         except MCPTokenError as e:
             raise ToolInvokeError(f"Failed to obtain forwarded identity token: {e}") from e
         headers[FORWARDED_IDENTITY_HEADER] = token
+
+    def _resolve_user_type(self) -> str:
+        """Return "account" for console-authenticated callers (debugger/explore),
+        "end_user" for webapp / service-api / trigger callers — so the enterprise
+        side routes to the console store vs the published-webapp store."""
+        invoke_from = self.runtime.invoke_from
+        if invoke_from is not None and invoke_from.runs_as_account():
+            return "account"
+        return "end_user"

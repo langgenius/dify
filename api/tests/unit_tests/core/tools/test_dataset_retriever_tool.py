@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -20,6 +20,7 @@ def test_get_dataset_tools_returns_empty_for_empty_dataset_ids() -> None:
 
     # Act
     tools = DatasetRetrieverTool.get_dataset_tools(
+        session=MagicMock(),
         tenant_id="tenant",
         dataset_ids=[],
         retrieve_config=retrieve_config,
@@ -40,6 +41,7 @@ def test_get_dataset_tools_returns_empty_for_missing_retrieve_config() -> None:
 
     # Act
     tools = DatasetRetrieverTool.get_dataset_tools(
+        session=MagicMock(),
         tenant_id="tenant",
         dataset_ids=dataset_ids,
         retrieve_config=None,  # type: ignore[arg-type]
@@ -64,6 +66,7 @@ def test_get_dataset_tools_builds_tool_and_restores_strategy() -> None:
     # Act
     with patch("core.tools.utils.dataset_retriever_tool.DatasetRetrieval", return_value=feature):
         tools = DatasetRetrieverTool.get_dataset_tools(
+            session=MagicMock(),
             tenant_id="tenant",
             dataset_ids=["d1"],
             retrieve_config=retrieve_config,
@@ -81,11 +84,16 @@ def test_get_dataset_tools_builds_tool_and_restores_strategy() -> None:
 
 
 def _build_dataset_tool() -> tuple[DatasetRetrieverTool, SimpleNamespace]:
-    retrieval_tool = SimpleNamespace(name="dataset_tool", description="desc", run=lambda query: f"result:{query}")
+    retrieval_tool = SimpleNamespace(
+        name="dataset_tool",
+        description="desc",
+        run=lambda session, query: f"result:{query}",
+    )
     feature = Mock()
     feature.to_dataset_retriever_tool.return_value = [retrieval_tool]
     with patch("core.tools.utils.dataset_retriever_tool.DatasetRetrieval", return_value=feature):
         tools = DatasetRetrieverTool.get_dataset_tools(
+            session=MagicMock(),
             tenant_id="tenant",
             dataset_ids=["d1"],
             retrieve_config=_retrieve_config(),
@@ -115,7 +123,7 @@ def test_empty_query_behavior() -> None:
     tool, _ = _build_dataset_tool()
 
     # Act
-    empty_query = list(tool.invoke(user_id="u", tool_parameters={}))
+    empty_query = list(tool.invoke(session=MagicMock(), user_id="u", tool_parameters={}))
 
     # Assert
     assert len(empty_query) == 1
@@ -127,7 +135,7 @@ def test_query_invocation_result() -> None:
     tool, _ = _build_dataset_tool()
 
     # Act
-    result = list(tool.invoke(user_id="u", tool_parameters={"query": "hello"}))
+    result = list(tool.invoke(session=MagicMock(), user_id="u", tool_parameters={"query": "hello"}))
 
     # Assert
     assert len(result) == 1

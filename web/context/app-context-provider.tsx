@@ -21,6 +21,7 @@ import {
 import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { useWorkspacePermissionKeys } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import {
   useLangGeniusVersion,
@@ -31,6 +32,7 @@ type AppContextProviderProps = {
 }
 
 const workspaceRoles = new Set<ICurrentWorkspace['role']>(['owner', 'admin', 'editor', 'dataset_operator', 'normal'])
+const emptyWorkspacePermissionKeys: string[] = []
 
 const resolveWorkspaceRole = (role: PostWorkspacesCurrentResponse['role']): ICurrentWorkspace['role'] => {
   if (role && workspaceRoles.has(role as ICurrentWorkspace['role']))
@@ -68,14 +70,17 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
-  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace, isFetching: isValidatingCurrentWorkspace } = useQuery(consoleQuery.workspaces.current.post.queryOptions())
+  const currentWorkspaceQuery = useQuery(consoleQuery.workspaces.current.post.queryOptions({
+    select: normalizeCurrentWorkspace,
+  }))
+  const workspacePermissionKeysQuery = useWorkspacePermissionKeys()
   const langGeniusVersionQuery = useLangGeniusVersion(
     userProfileResp?.meta.currentVersion,
     !systemFeatures.branding.enabled,
   )
 
   const userProfile = useMemo<GetAccountProfileResponse>(() => userProfileResp?.profile || userProfilePlaceholder, [userProfileResp?.profile])
-  const currentWorkspace = useMemo<ICurrentWorkspace>(() => normalizeCurrentWorkspace(currentWorkspaceResp), [currentWorkspaceResp])
+  const currentWorkspace = currentWorkspaceQuery.data ?? initialWorkspaceInfo
   const langGeniusVersionInfo = useMemo<LangGeniusVersionResponse>(() => {
     if (!userProfileResp?.meta?.currentVersion || !langGeniusVersionQuery.data)
       return initialLangGeniusVersionInfo
@@ -181,13 +186,15 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
-      isLoadingCurrentWorkspace,
-      isValidatingCurrentWorkspace,
+      isLoadingCurrentWorkspace: currentWorkspaceQuery.isPending,
+      isLoadingWorkspacePermissionKeys: workspacePermissionKeysQuery.isPending,
+      isValidatingCurrentWorkspace: currentWorkspaceQuery.isFetching,
+      workspacePermissionKeys: workspacePermissionKeysQuery.data?.workspace.permission_keys ?? emptyWorkspacePermissionKeys,
     }}
     >
-      <div className="flex h-full flex-col overflow-y-auto">
+      <div className="flex h-full flex-col overflow-hidden">
         {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
-        <div className="relative flex grow flex-col overflow-x-hidden overflow-y-auto bg-background-body">
+        <div className="relative flex h-0 min-h-0 grow flex-col overflow-hidden bg-background-body">
           {children}
         </div>
       </div>

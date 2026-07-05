@@ -1,4 +1,4 @@
-import type { UserProfile } from '@/contract/console/workflow-comment'
+import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { MentionInput } from './mention-input'
@@ -32,8 +32,16 @@ vi.mock('@/next/navigation', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
-    workflowComments: {
-      mentionUsers: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+    apps: {
+      byAppId: {
+        workflow: {
+          comments: {
+            mentionUsers: {
+              get: (...args: unknown[]) => mockFetchMentionableUsers(...args),
+            },
+          },
+        },
+      },
     },
   },
 }))
@@ -98,7 +106,7 @@ describe('MentionInput', () => {
 
     await waitFor(() => {
       expect(mockFetchMentionableUsers).toHaveBeenCalledWith({
-        params: { appId: 'app-1' },
+        params: { app_id: 'app-1' },
       })
     })
 

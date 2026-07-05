@@ -36,7 +36,7 @@ const StrategyItem = ({
         onClick={() => setShowDetail(true)}
       >
         <div className="pb-0.5 system-md-semibold text-text-secondary">{getValueFromI18nObject(detail.identity.label)}</div>
-        <div className="line-clamp-2 system-xs-regular text-text-tertiary" title={getValueFromI18nObject(detail.description)}>{getValueFromI18nObject(detail.description)}</div>
+        <div className="line-clamp-2 system-xs-regular text-text-tertiary">{getValueFromI18nObject(detail.description)}</div>
       </div>
       {showDetail && (
         <StrategyDetailPanel

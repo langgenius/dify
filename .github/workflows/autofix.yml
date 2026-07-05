@@ -20,7 +20,7 @@ jobs:
         run: echo "autofix.ci updates pull request branches, not merge group refs."
 
       - if: github.event_name != 'merge_group'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Check Docker Compose inputs
         if: github.event_name != 'merge_group'
@@ -51,6 +51,18 @@ jobs:
         with:
           files: |
             api/**
+      - name: Check frontend contract inputs
+        if: github.event_name != 'merge_group'
+        id: frontend-contract-changes
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            api/**
+            packages/contracts/openapi-ts.api.config.ts
+            packages/contracts/package.json
+            packages/contracts/openapi/**
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
       - name: Check dify-agent inputs
         if: github.event_name != 'merge_group'
         id: dify-agent-changes
@@ -66,7 +78,7 @@ jobs:
           python-version: "3.11"
 
       - if: github.event_name != 'merge_group'
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Generate Docker Compose
         if: github.event_name != 'merge_group' && steps.docker-compose-changes.outputs.any_changed == 'true'
@@ -143,8 +155,8 @@ jobs:
           uv run dev/generate_swagger_markdown_docs.py --swagger-dir ../packages/contracts/openapi --markdown-dir openapi/markdown --keep-swagger-json
 
       - name: Generate frontend contracts
-        if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'
-        run: pnpm --dir packages/contracts gen-api-contract-from-openapi
+        if: github.event_name != 'merge_group' && steps.frontend-contract-changes.outputs.any_changed == 'true'
+        run: pnpm --dir packages/contracts gen-api-contract
 
       - name: ESLint autofix
         if: github.event_name != 'merge_group' && steps.web-changes.outputs.any_changed == 'true'

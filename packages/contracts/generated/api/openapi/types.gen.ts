@@ -11,7 +11,7 @@ export type AccountPayload = {
 }
 
 export type AccountResponse = {
-  account?: AccountPayload
+  account?: AccountPayload | null
   default_workspace_id?: string | null
   subject_email?: string | null
   subject_issuer?: string | null
@@ -20,14 +20,12 @@ export type AccountResponse = {
 }
 
 export type AppDescribeInfo = {
-  author?: string | null
   description?: string | null
   id: string
   is_agent?: boolean
   mode: string
   name: string
   service_api_enabled: boolean
-  tags?: Array<TagItem>
   updated_at?: string | null
 }
 
@@ -36,7 +34,7 @@ export type AppDescribeQuery = {
 }
 
 export type AppDescribeResponse = {
-  info?: AppDescribeInfo
+  info?: AppDescribeInfo | null
   input_schema?: {
     [key: string]: unknown
   } | null
@@ -66,21 +64,18 @@ export type AppDslImportPayload = {
   yaml_url?: string | null
 }
 
-export type AppInfoResponse = {
-  author?: string | null
+export type AppInfo = {
   description?: string | null
   id: string
   mode: string
   name: string
-  tags?: Array<TagItem>
 }
 
 export type AppListQuery = {
   limit?: number
-  mode?: AppMode
+  mode?: SupportedAppType | null
   name?: string | null
   page?: number
-  tag?: string | null
   workspace_id: string
 }
 
@@ -93,12 +88,10 @@ export type AppListResponse = {
 }
 
 export type AppListRow = {
-  created_by_name?: string | null
   description?: string | null
   id: string
   mode: AppMode
   name: string
-  tags?: Array<TagItem>
   updated_at?: string | null
   workspace_id?: string | null
   workspace_name?: string | null
@@ -168,6 +161,18 @@ export type DevicePollRequest = {
   device_code: string
 }
 
+export type DeviceTokenResponse = {
+  account?: AccountPayload | null
+  default_workspace_id?: string | null
+  expires_at: string
+  subject_email?: string | null
+  subject_issuer?: string | null
+  subject_type: 'account' | 'external_sso'
+  token: string
+  token_id: string
+  workspaces?: Array<WorkspacePayload>
+}
+
 export type ErrorBody = {
   code: string
   details?: Array<ErrorDetail> | null
@@ -177,10 +182,12 @@ export type ErrorBody = {
 }
 
 export type ErrorDetail = {
-  loc?: Array<unknown>
+  loc?: Array<string | number>
   msg: string
   type: string
 }
+
+export type EventStreamResponse = string
 
 export type FileResponse = {
   conversation_id?: string | null
@@ -215,6 +222,20 @@ export type HealthResponse = {
   ok: boolean
 }
 
+export type HumanInputFormDefinitionResponse = {
+  expiration_time?: number | null
+  form_content: string
+  inputs?: Array<{
+    [key: string]: unknown
+  }>
+  resolved_default_values: {
+    [key: string]: string
+  }
+  user_actions?: Array<{
+    [key: string]: unknown
+  }>
+}
+
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
@@ -229,6 +250,7 @@ export type Import = {
   error?: string
   id: string
   imported_dsl_version?: string
+  permission_keys?: Array<string>
   status: ImportStatus
 }
 
@@ -242,7 +264,7 @@ export type Marketplace = {
 }
 
 export type MemberActionResponse = {
-  result?: string
+  result?: 'success'
 }
 
 export type MemberInvitePayload = {
@@ -254,7 +276,7 @@ export type MemberInviteResponse = {
   email: string
   invite_url: string
   member_id: string
-  result?: string
+  result?: 'success'
   role: string
   tenant_id: string
 }
@@ -289,7 +311,7 @@ export type MessageMetadata = {
   retriever_resources?: Array<{
     [key: string]: unknown
   }>
-  usage?: UsageInfo
+  usage?: UsageInfo | null
 }
 
 export type OpenApiErrorCode
@@ -303,6 +325,7 @@ export type OpenApiErrorCode
     | 'file_too_large'
     | 'filename_not_exists'
     | 'forbidden'
+    | 'form_not_found'
     | 'internal_server_error'
     | 'invalid_param'
     | 'member_license_exceeded'
@@ -315,6 +338,7 @@ export type OpenApiErrorCode
     | 'provider_not_initialize'
     | 'provider_quota_exceeded'
     | 'rate_limit_error'
+    | 'recipient_surface_mismatch'
     | 'request_entity_too_large'
     | 'too_many_files'
     | 'too_many_requests'
@@ -330,7 +354,7 @@ export type Package = {
 
 export type PermittedExternalAppsListQuery = {
   limit?: number
-  mode?: AppMode
+  mode?: SupportedAppType | null
   name?: string | null
   page?: number
 }
@@ -346,7 +370,7 @@ export type PermittedExternalAppsListResponse = {
 export type PluginDependency = {
   current_identifier?: string | null
   type: Type
-  value: unknown
+  value: Github | Marketplace | Package
 }
 
 export type RevokeResponse = {
@@ -381,12 +405,14 @@ export type SessionRow = {
   prefix: string
 }
 
-export type TagItem = {
-  name: string
+export type SimpleResultResponse = {
+  result: string
 }
 
+export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+
 export type TaskStopResponse = {
-  result: string
+  result: 'success'
 }
 
 export type Type = 'github' | 'marketplace' | 'package'
@@ -569,10 +595,9 @@ export type GetAppsData = {
   path?: never
   query: {
     limit?: number
-    mode?: string
+    mode?: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
     name?: string
     page?: number
-    tag?: string
     workspace_id: string
   }
   url: '/apps'
@@ -676,18 +701,10 @@ export type PostAppsByAppIdFilesUploadData = {
 }
 
 export type PostAppsByAppIdFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  413: unknown
+  415: unknown
   default: ErrorBody
 }
 
@@ -712,9 +729,7 @@ export type GetAppsByAppIdFormHumanInputByFormTokenData = {
 }
 
 export type GetAppsByAppIdFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormDefinitionResponse
 }
 
 export type GetAppsByAppIdFormHumanInputByFormTokenResponse
@@ -761,9 +776,7 @@ export type PostAppsByAppIdRunErrors = {
 export type PostAppsByAppIdRunError = PostAppsByAppIdRunErrors[keyof PostAppsByAppIdRunErrors]
 
 export type PostAppsByAppIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
 export type PostAppsByAppIdRunResponse
@@ -775,14 +788,15 @@ export type GetAppsByAppIdTasksByTaskIdEventsData = {
     app_id: string
     task_id: string
   }
-  query?: never
+  query?: {
+    continue_on_pause?: boolean
+    include_state_snapshot?: boolean
+  }
   url: '/apps/{app_id}/tasks/{task_id}/events'
 }
 
 export type GetAppsByAppIdTasksByTaskIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
 export type GetAppsByAppIdTasksByTaskIdEventsResponse
@@ -878,9 +892,7 @@ export type PostOauthDeviceTokenData = {
 }
 
 export type PostOauthDeviceTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DeviceTokenResponse
 }
 
 export type PostOauthDeviceTokenResponse
@@ -891,7 +903,7 @@ export type GetPermittedExternalAppsData = {
   path?: never
   query?: {
     limit?: number
-    mode?: string
+    mode?: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
     name?: string
     page?: number
   }
@@ -912,6 +924,32 @@ export type GetPermittedExternalAppsResponses = {
 
 export type GetPermittedExternalAppsResponse
   = GetPermittedExternalAppsResponses[keyof GetPermittedExternalAppsResponses]
+
+export type GetPermittedExternalAppsByAppIdDescribeData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    fields?: string
+  }
+  url: '/permitted-external-apps/{app_id}/describe'
+}
+
+export type GetPermittedExternalAppsByAppIdDescribeErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type GetPermittedExternalAppsByAppIdDescribeError
+  = GetPermittedExternalAppsByAppIdDescribeErrors[keyof GetPermittedExternalAppsByAppIdDescribeErrors]
+
+export type GetPermittedExternalAppsByAppIdDescribeResponses = {
+  200: AppDescribeResponse
+}
+
+export type GetPermittedExternalAppsByAppIdDescribeResponse
+  = GetPermittedExternalAppsByAppIdDescribeResponses[keyof GetPermittedExternalAppsByAppIdDescribeResponses]
 
 export type GetWorkspacesData = {
   body?: never

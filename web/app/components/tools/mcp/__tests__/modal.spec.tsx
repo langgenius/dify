@@ -11,18 +11,6 @@ vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
 }))
 
-// Mock the plugins service to avoid React Query issues from TabSlider
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({
-    data: { pages: [] },
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    isLoading: false,
-    isSuccess: true,
-  }),
-}))
-
 const mockToastError = vi.hoisted(() => vi.fn())
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
@@ -863,6 +851,50 @@ describe('MCPModal', () => {
           }),
         )
       })
+    })
+
+    // Regression: editing a provider saved with identity_mode="idp_token" must
+    // hydrate the toggle ON (issue: it showed off despite the persisted value).
+    it('hydrates the toggle ON when editing a provider with identity_mode="idp_token"', () => {
+      enableRefreshCapableSSO()
+      const mockData = {
+        id: 'existing-idp',
+        name: 'srv',
+        server_url: 'https://example.com/mcp',
+        server_identifier: 'srv-id',
+        icon: { content: '🔗', background: '#6366F1' },
+        identity_mode: 'idp_token',
+      } as unknown as ToolWithProvider
+
+      render(
+        <MCPModal {...defaultProps} data={mockData} />,
+        { wrapper: createWrapper() },
+      )
+
+      expect(
+        screen.getByRole('switch', { name: 'tools.mcp.modal.forwardUserIdentity' }),
+      ).toBeChecked()
+    })
+
+    it('hydrates the toggle OFF when editing a provider with identity_mode="off"', () => {
+      enableRefreshCapableSSO()
+      const mockData = {
+        id: 'existing-off',
+        name: 'srv',
+        server_url: 'https://example.com/mcp',
+        server_identifier: 'srv-id',
+        icon: { content: '🔗', background: '#6366F1' },
+        identity_mode: 'off',
+      } as unknown as ToolWithProvider
+
+      render(
+        <MCPModal {...defaultProps} data={mockData} />,
+        { wrapper: createWrapper() },
+      )
+
+      expect(
+        screen.getByRole('switch', { name: 'tools.mcp.modal.forwardUserIdentity' }),
+      ).not.toBeChecked()
     })
   })
 })

@@ -15,9 +15,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
 )
 from core.workflow.human_input_policy import resolve_variable_select_input_options
-from factories.file_factory import build_from_mapping, build_from_mappings
-from graphon.file import FileUploadConfig
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -26,10 +24,12 @@ from graphon.nodes.human_input.entities import (
     SelectInputConfig,
     UserActionConfig,
 )
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     validate_human_input_submission as graphon_validate_human_input_submission,
 )
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.file import FileUploadConfig
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
@@ -223,9 +223,12 @@ class HumanInputService:
 
         if result.form_kind != HumanInputFormKind.RUNTIME:
             return
-        if result.workflow_run_id is None:
-            return
-        self.enqueue_resume(result.workflow_run_id)
+        # A RUNTIME form is owned by a workflow run (workflow Agent node) or a
+        # conversation (ENG-635: Agent v2 chat). Route the resume accordingly.
+        if result.workflow_run_id is not None:
+            self.enqueue_resume(result.workflow_run_id)
+        elif result.conversation_id is not None:
+            self.enqueue_agent_app_resume(conversation_id=result.conversation_id, form_id=result.form_id)
 
     def ensure_form_active(self, form: Form) -> None:
         if form.submitted:
@@ -285,6 +288,22 @@ class HumanInputService:
             return
 
         logger.warning("App mode %s does not support resume for workflow run %s", app.mode, workflow_run_id)
+
+    def enqueue_agent_app_resume(self, *, conversation_id: str, form_id: str) -> None:
+        """ENG-635: resume an Agent v2 chat after its ask_human form is submitted.
+
+        Enqueues a background turn for the conversation; the Agent App runner
+        continues the agent run, threading the human's reply into the request as
+        ``deferred_tool_results``.
+        """
+        from tasks.app_generate.resume_agent_app_task import resume_agent_app_execution
+
+        try:
+            resume_agent_app_execution.apply_async(
+                kwargs={"conversation_id": conversation_id, "form_id": form_id},
+            )
+        except Exception:  # pragma: no cover
+            logger.exception("Failed to enqueue Agent App resume for conversation %s form %s", conversation_id, form_id)
 
     def _load_variable_pool_for_form(self, form: Form) -> ReadOnlyVariablePool | None:
         workflow_run_id = form.workflow_run_id

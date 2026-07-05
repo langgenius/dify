@@ -8,11 +8,13 @@ readable error envelope.
 """
 
 import json
+from typing import Any, cast
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.workflow.generator.runner import WorkflowGenerator
+from core.workflow.generator.types import GraphDict
 
 
 def _llm_result(text: str) -> MagicMock:
@@ -411,7 +413,7 @@ class TestWorkflowGeneratorTransientRetry:
             }
         )
 
-    def test_retries_transient_invoke_error_then_succeeds(self, monkeypatch):
+    def test_retries_transient_invoke_error_then_succeeds(self, monkeypatch: pytest.MonkeyPatch):
         # The planner's first invoke raises a transient connection error; the
         # retry succeeds and the pipeline completes normally. Sleep is patched
         # out so the test doesn't actually wait for the backoff.
@@ -441,7 +443,7 @@ class TestWorkflowGeneratorTransientRetry:
         # planner (failed once + retried) + builder = 3 invocations total.
         assert model_instance.invoke_llm.call_count == 3
 
-    def test_gives_up_after_exhausting_transient_retries(self, monkeypatch):
+    def test_gives_up_after_exhausting_transient_retries(self, monkeypatch: pytest.MonkeyPatch):
         # Every attempt hits the transient error — once we exhaust the retry
         # budget the failure surfaces as a normal error envelope rather than
         # hanging or looping forever.
@@ -469,7 +471,7 @@ class TestWorkflowGeneratorTransientRetry:
 
         assert model_instance.invoke_llm.call_count == _INVOKE_MAX_ATTEMPTS
 
-    def test_does_not_retry_permanent_invoke_error(self, monkeypatch):
+    def test_does_not_retry_permanent_invoke_error(self, monkeypatch: pytest.MonkeyPatch):
         # An auth error is permanent — retrying just burns latency and quota.
         # The runner must fail on the first attempt.
         # If the code wrongly slept here we'd want the test to still be fast;
@@ -2495,3 +2497,592 @@ class TestWorkflowGeneratorFileVariables:
         ]
         WorkflowGenerator._normalize_start_file_variables(nodes=nodes)
         assert "allowed_file_types" not in nodes[0]["data"]["variables"][0]
+
+
+class TestWorkflowGeneratorIdSanitization:
+    """
+    Beyond hyphens: the sanitize pass must handle ANY character the run-time
+    placeholder regex rejects (dots, spaces, unicode) and must stay
+    collision-safe when stripping makes two ids identical — silently merging
+    ``node-1`` and ``node1`` would point every reference at one node.
+    """
+
+    def test_collision_between_stripped_and_existing_id_gets_a_suffix(self):
+        nodes: list[dict[str, Any]] = [
+            {"id": "node1", "data": {"type": "start", "variables": []}},
+            {
+                "id": "node-1",
+                "data": {
+                    "type": "llm",
+                    "prompt_template": [{"role": "user", "text": "{{#node-1.text#}} and {{#node1.x#}}"}],
+                },
+            },
+        ]
+        edges = [{"id": "e", "source": "node1", "target": "node-1"}]
+
+        WorkflowGenerator._sanitize_node_ids(nodes=nodes, edges=edges)
+
+        ids = [n["id"] for n in nodes]
+        assert len(set(ids)) == 2
+        assert ids[0] == "node1"
+        renamed = ids[1]
+        assert renamed != "node1"
+        # Edge target follows the rename; references to the untouched sibling
+        # stay untouched.
+        assert edges[0]["target"] == renamed
+        text = nodes[1]["data"]["prompt_template"][0]["text"]
+        assert f"{{{{#{renamed}.text#}}}}" in text
+        assert "{{#node1.x#}}" in text
+
+    def test_sanitizes_dots_and_spaces(self):
+        nodes: list[dict[str, Any]] = [
+            {"id": "step.one", "data": {"type": "start", "variables": []}},
+            {
+                "id": "step two",
+                "data": {"type": "llm", "prompt_template": [{"role": "user", "text": "{{#step two.text#}}"}]},
+            },
+        ]
+        edges = [{"id": "e", "source": "step.one", "target": "step two"}]
+
+        WorkflowGenerator._sanitize_node_ids(nodes=nodes, edges=edges)
+
+        assert [n["id"] for n in nodes] == ["stepone", "steptwo"]
+        assert (edges[0]["source"], edges[0]["target"]) == ("stepone", "steptwo")
+        assert "{{#steptwo.text#}}" in nodes[1]["data"]["prompt_template"][0]["text"]
+
+    def test_id_with_no_valid_characters_gets_a_fallback(self):
+        nodes = [
+            {"id": "节点", "data": {"type": "start", "variables": []}},
+            {"id": "node2", "data": {"type": "end", "outputs": []}},
+        ]
+        edges = [{"id": "e", "source": "节点", "target": "node2"}]
+
+        WorkflowGenerator._sanitize_node_ids(nodes=nodes, edges=edges)
+
+        new_id = nodes[0]["id"]
+        assert new_id
+        assert new_id != "节点"
+        assert edges[0]["source"] == new_id
+
+
+class TestWorkflowGeneratorLayeredLayout:
+    """
+    Top-level layout is computed from topology (longest-path layering), not
+    array order: branches that run in parallel share a column and stack in
+    lanes, and a join lands to the right of its deepest input.
+    """
+
+    @staticmethod
+    def _node(node_id: str, node_type: str) -> dict:
+        return {"id": node_id, "type": "custom", "data": {"type": node_type, "title": node_id}}
+
+    def test_diamond_branches_share_a_column_in_separate_lanes(self):
+        nodes = [
+            self._node("start", "start"),
+            self._node("branch", "if-else"),
+            self._node("a", "llm"),
+            self._node("b", "llm"),
+            self._node("join", "variable-aggregator"),
+        ]
+        edges = [
+            {"source": "start", "target": "branch"},
+            {"source": "branch", "target": "a"},
+            {"source": "branch", "target": "b"},
+            {"source": "a", "target": "join"},
+            {"source": "b", "target": "join"},
+        ]
+
+        WorkflowGenerator._layout_top_level_nodes(nodes=nodes, edges=edges)
+
+        pos = {n["id"]: n["position"] for n in nodes}
+        assert pos["start"]["x"] < pos["branch"]["x"] < pos["a"]["x"] < pos["join"]["x"]
+        # The two arms share the column but not the lane.
+        assert pos["a"]["x"] == pos["b"]["x"]
+        assert pos["a"]["y"] != pos["b"]["y"]
+
+    def test_out_of_order_node_array_still_flows_left_to_right(self):
+        # Builder emitted the array end-first; topology must win.
+        nodes = [
+            self._node("end", "end"),
+            self._node("middle", "llm"),
+            self._node("start", "start"),
+        ]
+        edges = [
+            {"source": "start", "target": "middle"},
+            {"source": "middle", "target": "end"},
+        ]
+
+        WorkflowGenerator._layout_top_level_nodes(nodes=nodes, edges=edges)
+
+        pos = {n["id"]: n["position"] for n in nodes}
+        assert pos["start"]["x"] < pos["middle"]["x"] < pos["end"]["x"]
+
+    def test_join_lands_right_of_its_deepest_branch(self):
+        # start → a → b → join, start → join: BFS depth would put join at 1;
+        # longest-path layering must put it at 3.
+        nodes = [
+            self._node("start", "start"),
+            self._node("a", "llm"),
+            self._node("b", "llm"),
+            self._node("join", "end"),
+        ]
+        edges = [
+            {"source": "start", "target": "a"},
+            {"source": "a", "target": "b"},
+            {"source": "b", "target": "join"},
+            {"source": "start", "target": "join"},
+        ]
+
+        WorkflowGenerator._layout_top_level_nodes(nodes=nodes, edges=edges)
+
+        pos = {n["id"]: n["position"] for n in nodes}
+        assert pos["join"]["x"] > pos["b"]["x"] > pos["a"]["x"] > pos["start"]["x"]
+
+    def test_container_children_are_not_repositioned(self):
+        nodes = [
+            self._node("start", "start"),
+            self._node("iter", "iteration"),
+            {
+                "id": "inner",
+                "type": "custom",
+                "parentId": "iter",
+                "position": {"x": 60.0, "y": 78.0},
+                "data": {"type": "llm", "title": "inner"},
+            },
+            self._node("end", "end"),
+        ]
+        edges = [
+            {"source": "start", "target": "iter"},
+            {"source": "iter", "target": "end"},
+        ]
+
+        WorkflowGenerator._layout_top_level_nodes(nodes=nodes, edges=edges)
+
+        inner = next(n for n in nodes if n["id"] == "inner")
+        assert inner["position"] == {"x": 60.0, "y": 78.0}
+
+    def test_cycle_members_are_parked_instead_of_hanging(self):
+        # A cycle must not hang the layout pass; its members get parked one
+        # layer past the laid-out nodes (validation flags the cycle itself).
+        nodes = [
+            self._node("start", "start"),
+            self._node("a", "llm"),
+            self._node("b", "llm"),
+        ]
+        edges = [
+            {"source": "start", "target": "a"},
+            {"source": "a", "target": "b"},
+            {"source": "b", "target": "a"},
+        ]
+
+        WorkflowGenerator._layout_top_level_nodes(nodes=nodes, edges=edges)
+
+        for node in nodes:
+            assert "position" in node
+
+
+class TestWorkflowGeneratorBranchHandleRepair:
+    """
+    Edges leaving if-else / question-classifier on the default "source"
+    handle dangle off a handle that doesn't exist on the canvas. The repair
+    pass re-homes them onto unused branch handles when (and only when) the
+    assignment is unambiguous.
+    """
+
+    @staticmethod
+    def _if_else_node() -> dict:
+        return {
+            "id": "branch",
+            "data": {
+                "type": "if-else",
+                "cases": [{"case_id": "true", "conditions": []}],
+            },
+        }
+
+    def test_assigns_true_then_false_to_default_handle_edges(self):
+        nodes = [self._if_else_node()]
+        edges = [
+            {"source": "branch", "target": "a", "sourceHandle": "source"},
+            {"source": "branch", "target": "b"},
+        ]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        assert edges[0]["sourceHandle"] == "true"
+        assert edges[1]["sourceHandle"] == "false"
+
+    def test_respects_an_already_correct_handle(self):
+        nodes = [self._if_else_node()]
+        edges = [
+            {"source": "branch", "target": "a", "sourceHandle": "true"},
+            {"source": "branch", "target": "b", "sourceHandle": "source"},
+        ]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        assert edges[0]["sourceHandle"] == "true"
+        assert edges[1]["sourceHandle"] == "false"
+
+    def test_leaves_ambiguous_assignments_alone(self):
+        # Three default edges, only two free handles — guessing could swap
+        # the IF and ELSE arms, so the repair must not touch anything.
+        nodes = [self._if_else_node()]
+        edges = [
+            {"source": "branch", "target": "a", "sourceHandle": "source"},
+            {"source": "branch", "target": "b", "sourceHandle": "source"},
+            {"source": "branch", "target": "c", "sourceHandle": "source"},
+        ]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        assert all(e["sourceHandle"] == "source" for e in edges)
+
+    def test_question_classifier_uses_class_ids(self):
+        nodes = [
+            {
+                "id": "qc",
+                "data": {
+                    "type": "question-classifier",
+                    "classes": [{"id": "1", "name": "A"}, {"id": "2", "name": "B"}],
+                },
+            }
+        ]
+        edges = [
+            {"source": "qc", "target": "a"},
+            {"source": "qc", "target": "b"},
+        ]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        assert edges[0]["sourceHandle"] == "1"
+        assert edges[1]["sourceHandle"] == "2"
+
+    def test_non_branch_nodes_are_untouched(self):
+        nodes = [{"id": "llm1", "data": {"type": "llm"}}]
+        edges = [{"source": "llm1", "target": "end", "sourceHandle": "source"}]
+
+        WorkflowGenerator._repair_branch_edge_handles(nodes=nodes, edges=edges)
+
+        assert edges[0]["sourceHandle"] == "source"
+
+
+class TestWorkflowGeneratorGraphCycleValidation:
+    """A workflow graph must be a DAG; cycles hang or error the run."""
+
+    def test_self_loop_is_flagged_with_the_node_id(self):
+        graph = {
+            "nodes": [],
+            "edges": [{"source": "a", "target": "a"}],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+        errors = WorkflowGenerator._collect_edge_cycle_errors(graph=cast(GraphDict, graph), known_ids={"a"})
+        assert len(errors) == 1
+        assert errors[0]["code"] == "GRAPH_CYCLE"
+        assert errors[0]["node_id"] == "a"
+
+    def test_two_node_cycle_is_flagged_once(self):
+        graph = {
+            "nodes": [],
+            "edges": [
+                {"source": "start", "target": "a"},
+                {"source": "a", "target": "b"},
+                {"source": "b", "target": "a"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+        errors = WorkflowGenerator._collect_edge_cycle_errors(
+            graph=cast(GraphDict, graph), known_ids={"start", "a", "b"}
+        )
+        assert len(errors) == 1
+        assert errors[0]["code"] == "GRAPH_CYCLE"
+        assert "a" in errors[0]["detail"]
+        assert "b" in errors[0]["detail"]
+
+    def test_acyclic_graph_produces_no_errors(self):
+        graph = {
+            "nodes": [],
+            "edges": [
+                {"source": "start", "target": "a"},
+                {"source": "start", "target": "b"},
+                {"source": "a", "target": "end"},
+                {"source": "b", "target": "end"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+        errors = WorkflowGenerator._collect_edge_cycle_errors(
+            graph=cast(GraphDict, graph), known_ids={"start", "a", "b", "end"}
+        )
+        assert errors == []
+
+    def test_cyclic_builder_output_surfaces_graph_cycle_code(self):
+        planner = json.dumps(
+            {
+                "title": "t",
+                "description": "d",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "LLM", "node_type": "llm", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+        builder = json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    {
+                        "id": "node2",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "llm", "title": "LLM"},
+                    },
+                    {
+                        "id": "node3",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End", "outputs": []},
+                    },
+                ],
+                "edges": [
+                    {"source": "node1", "target": "node2"},
+                    {"source": "node2", "target": "node2"},
+                    {"source": "node2", "target": "node3"},
+                ],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        assert any(e["code"] == "GRAPH_CYCLE" for e in result["errors"])
+
+
+class TestWorkflowGeneratorDuplicateNodeIds:
+    """Duplicate ids make every cross-reference ambiguous — fail loudly."""
+
+    def test_duplicate_ids_surface_dedicated_code(self):
+        planner = json.dumps(
+            {
+                "title": "t",
+                "description": "d",
+                "nodes": [
+                    {"label": "Start", "node_type": "start", "purpose": "x"},
+                    {"label": "End", "node_type": "end", "purpose": "x"},
+                ],
+            }
+        )
+        builder = json.dumps(
+            {
+                "nodes": [
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "start", "title": "Start", "variables": []},
+                    },
+                    {
+                        "id": "node1",
+                        "type": "custom",
+                        "position": {"x": 0, "y": 0},
+                        "data": {"type": "end", "title": "End", "outputs": []},
+                    },
+                ],
+                "edges": [{"source": "node1", "target": "node1"}],
+                "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+            }
+        )
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [_llm_result(planner), _llm_result(builder)]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="x",
+        )
+
+        codes = {e["code"] for e in result["errors"]}
+        assert "DUPLICATE_NODE_ID" in codes
+
+
+def _stream_planner_json() -> str:
+    return json.dumps(
+        {
+            "title": "URL Summarizer",
+            "description": "Fetch a URL, summarize it, return the summary.",
+            "app_name": "Summarizer",
+            "icon": "🔗",
+            "nodes": [
+                {"label": "Start", "node_type": "start", "purpose": "User submits URL."},
+                {"label": "Summarize", "node_type": "llm", "purpose": "Summarize the page."},
+                {"label": "End", "node_type": "end", "purpose": "Return summary."},
+            ],
+        }
+    )
+
+
+def _stream_builder_json() -> str:
+    return json.dumps(
+        {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {"type": "start", "title": "Start", "desc": "", "variables": []},
+                },
+                {
+                    "id": "node2",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "llm",
+                        "title": "Summarize",
+                        "desc": "",
+                        "prompt_template": [{"role": "user", "text": "{{#node1.url#}}"}],
+                    },
+                },
+                {
+                    "id": "node3",
+                    "type": "custom",
+                    "position": {"x": 0, "y": 0},
+                    "data": {
+                        "type": "end",
+                        "title": "End",
+                        "desc": "",
+                        "outputs": [{"variable": "summary", "value_selector": ["node2", "text"]}],
+                    },
+                },
+            ],
+            "edges": [
+                {"id": "x", "source": "node1", "target": "node2", "type": "custom"},
+                {"id": "y", "source": "node2", "target": "node3", "type": "custom"},
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+    )
+
+
+class TestWorkflowGeneratorStream:
+    """``generate_workflow_graph_stream`` yields a ``plan`` event then a ``result`` event."""
+
+    def test_stream_emits_plan_then_result(self):
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(_stream_planner_json()),
+            _llm_result(_stream_builder_json()),
+        ]
+
+        events = list(
+            WorkflowGenerator.generate_workflow_graph_stream(
+                model_instance=model_instance,
+                model_parameters={},
+                provider="openai",
+                model_name="gpt-4o",
+                model_mode="chat",
+                mode="workflow",
+                instruction="Summarize a URL",
+            )
+        )
+
+        assert [name for name, _ in events] == ["plan", "result"]
+
+        plan = events[0][1]
+        assert plan["title"] == "URL Summarizer"
+        assert plan["app_name"] == "Summarizer"
+        assert plan["mode"] == "workflow"
+        assert [n["node_type"] for n in plan["nodes"]] == ["start", "llm", "end"]
+        assert plan["nodes"][0]["label"] == "Start"
+        assert plan["nodes"][0]["purpose"] == "User submits URL."
+
+        result = events[1][1]
+        assert result["error"] == ""
+        assert result["mode"] == "workflow"
+        assert [n["data"]["type"] for n in result["graph"]["nodes"]] == ["start", "llm", "end"]
+
+    def test_stream_planner_failure_emits_only_result(self):
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = RuntimeError("planner exploded")
+
+        events = list(
+            WorkflowGenerator.generate_workflow_graph_stream(
+                model_instance=model_instance,
+                model_parameters={},
+                provider="openai",
+                model_name="gpt-4o",
+                model_mode="chat",
+                mode="workflow",
+                instruction="x",
+            )
+        )
+
+        assert [name for name, _ in events] == ["result"]
+        result = events[0][1]
+        assert "planner exploded" in result["error"]
+        assert result["graph"]["nodes"] == []
+        assert result["mode"] == "workflow"
+
+    def test_stream_and_blocking_results_match(self):
+        """The streaming ``result`` event must equal the blocking return value."""
+        stream_instance = MagicMock()
+        stream_instance.invoke_llm.side_effect = [
+            _llm_result(_stream_planner_json()),
+            _llm_result(_stream_builder_json()),
+        ]
+        blocking_instance = MagicMock()
+        blocking_instance.invoke_llm.side_effect = [
+            _llm_result(_stream_planner_json()),
+            _llm_result(_stream_builder_json()),
+        ]
+
+        kwargs = {
+            "model_parameters": {},
+            "provider": "openai",
+            "model_name": "gpt-4o",
+            "model_mode": "chat",
+            "mode": "advanced-chat",
+            "instruction": "Greet me",
+        }
+        stream_events = list(WorkflowGenerator.generate_workflow_graph_stream(model_instance=stream_instance, **kwargs))
+        stream_result = next(payload for name, payload in stream_events if name == "result")
+        blocking_result = WorkflowGenerator.generate_workflow_graph(model_instance=blocking_instance, **kwargs)
+
+        assert stream_result == blocking_result
+
+    def test_blocking_result_includes_resolved_mode(self):
+        """Task 3: the non-streaming envelope carries the resolved ``mode`` too."""
+        model_instance = MagicMock()
+        model_instance.invoke_llm.side_effect = [
+            _llm_result(_stream_planner_json()),
+            _llm_result(_stream_builder_json()),
+        ]
+
+        result = WorkflowGenerator.generate_workflow_graph(
+            model_instance=model_instance,
+            model_parameters={},
+            provider="openai",
+            model_name="gpt-4o",
+            model_mode="chat",
+            mode="workflow",
+            instruction="Summarize a URL",
+        )
+
+        assert result["mode"] == "workflow"

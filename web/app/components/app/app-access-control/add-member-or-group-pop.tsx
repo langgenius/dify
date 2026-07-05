@@ -16,7 +16,7 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { RiAddCircleFill, RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
+import { RiArrowRightSLine, RiOrganizationChart } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -109,10 +109,12 @@ export default function AddMemberOrGroupDialog() {
         aria-label={t('operation.add', { ns: 'common' })}
         icon={false}
         size="small"
-        className="flex h-6 w-auto shrink-0 items-center gap-x-0.5 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
+        className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
       >
-        <RiAddCircleFill className="size-4" aria-hidden="true" />
-        <span>{t('operation.add', { ns: 'common' })}</span>
+        <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
+          <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
+          <span className="shrink-0">{t('operation.add', { ns: 'common' })}</span>
+        </span>
       </ComboboxTrigger>
       <ComboboxContent
         placement="bottom-end"

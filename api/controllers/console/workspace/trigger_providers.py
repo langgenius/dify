@@ -1,21 +1,29 @@
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, RootModel, model_validator
 from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
 from controllers.common.errors import NotFoundError
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import BinaryFileResponse, RedirectResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from core.entities.parameter_entities import AppSelectorScope, ModelSelectorScope, ToolSelectorScope
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.trigger.entities.entities import SubscriptionBuilderUpdater
+from core.tools.entities.common_entities import I18nObject
+from core.trigger.entities.api_entities import (
+    SubscriptionBuilderApiEntity,
+    TriggerProviderApiEntity,
+    TriggerProviderSubscriptionApiEntity,
+)
+from core.trigger.entities.entities import RequestLog, SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from models.account import Account
@@ -27,9 +35,12 @@ from services.trigger.trigger_subscription_operator_service import TriggerSubscr
 
 from .. import console_ns
 from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -48,9 +59,9 @@ class TriggerSubscriptionBuilderVerifyPayload(BaseModel):
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
     name: str | None = None
-    parameters: dict[str, Any] | None = None
-    properties: dict[str, Any] | None = None
-    credentials: dict[str, Any] | None = None
+    parameters: dict[str, Any] | None = Field(default=None)
+    properties: dict[str, Any] | None = Field(default=None)
+    credentials: dict[str, Any] | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_at_least_one_field(self):
@@ -60,8 +71,75 @@ class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
 
 
 class TriggerOAuthClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = None
+    client_params: dict[str, Any] | None = Field(default=None)
     enabled: bool | None = None
+
+
+class TriggerOAuthAuthorizeResponse(BaseModel):
+    authorization_url: str
+    subscription_builder_id: str
+    subscription_builder: SubscriptionBuilderApiEntity
+
+
+class TriggerProviderConfigOptionResponse(BaseModel):
+    value: str = Field(..., description="The value of the option")
+    label: I18nObject = Field(..., description="The label of the option")
+
+
+class TriggerProviderConfigResponse(BaseModel):
+    type: Literal[
+        "secret-input",
+        "text-input",
+        "select",
+        "boolean",
+        "app-selector",
+        "model-selector",
+        "array[tools]",
+    ] = Field(..., description="The type of the credentials")
+    name: str = Field(..., description="The name of the credentials")
+    scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
+    required: bool = False
+    default: int | str | float | bool | None = None
+    options: list[TriggerProviderConfigOptionResponse] | None = None
+    multiple: bool = False
+    label: I18nObject | None = None
+    help: I18nObject | None = None
+    url: str | None = None
+    placeholder: I18nObject | None = None
+
+
+class TriggerOAuthClientResponse(BaseModel):
+    configured: bool
+    system_configured: bool
+    custom_configured: bool
+    oauth_client_schema: list[TriggerProviderConfigResponse]
+    custom_enabled: bool
+    redirect_uri: str
+    params: dict[str, Any]
+
+
+class TriggerProviderOpaqueResponse(RootModel[Any]):
+    root: Any
+
+
+class TriggerProviderListResponse(RootModel[list[TriggerProviderApiEntity]]):
+    root: list[TriggerProviderApiEntity]
+
+
+class TriggerSubscriptionListResponse(RootModel[list[TriggerProviderSubscriptionApiEntity]]):
+    root: list[TriggerProviderSubscriptionApiEntity]
+
+
+class TriggerSubscriptionBuilderCreateResponse(ResponseModel):
+    subscription_builder: SubscriptionBuilderApiEntity
+
+
+class TriggerSubscriptionBuilderVerifyResponse(ResponseModel):
+    verified: bool
+
+
+class TriggerSubscriptionBuilderLogsResponse(ResponseModel):
+    logs: list[RequestLog]
 
 
 register_schema_models(
@@ -71,11 +149,29 @@ register_schema_models(
     TriggerSubscriptionBuilderUpdatePayload,
     TriggerOAuthClientPayload,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(
+    console_ns,
+    BinaryFileResponse,
+    RedirectResponse,
+    SimpleResultResponse,
+    TriggerOAuthAuthorizeResponse,
+    TriggerOAuthClientResponse,
+    TriggerProviderOpaqueResponse,
+    TriggerProviderApiEntity,
+    TriggerProviderListResponse,
+    TriggerProviderSubscriptionApiEntity,
+    TriggerSubscriptionListResponse,
+    SubscriptionBuilderApiEntity,
+    TriggerSubscriptionBuilderCreateResponse,
+    TriggerSubscriptionBuilderVerifyResponse,
+    RequestLog,
+    TriggerSubscriptionBuilderLogsResponse,
+)
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/icon")
 class TriggerProviderIconApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -86,6 +182,7 @@ class TriggerProviderIconApi(Resource):
 
 @console_ns.route("/workspaces/current/triggers")
 class TriggerProviderListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -97,6 +194,7 @@ class TriggerProviderListApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/info")
 class TriggerProviderInfoApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderApiEntity.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -108,9 +206,11 @@ class TriggerProviderInfoApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/list")
 class TriggerSubscriptionListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionListResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -136,9 +236,11 @@ class TriggerSubscriptionListApi(Resource):
 )
 class TriggerSubscriptionBuilderCreateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderCreatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderCreateResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -164,9 +266,11 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderGetApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[SubscriptionBuilderApiEntity.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     def get(self, provider: str, subscription_builder_id: str):
         """Get a subscription instance for a trigger provider"""
@@ -180,9 +284,11 @@ class TriggerSubscriptionBuilderGetApi(Resource):
 )
 class TriggerSubscriptionBuilderVerifyApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderVerifyResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -211,9 +317,11 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
 )
 class TriggerSubscriptionBuilderUpdateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SubscriptionBuilderApiEntity.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str, subscription_builder_id: str):
@@ -242,9 +350,11 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/logs/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderLogsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderLogsResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     def get(self, provider: str, subscription_builder_id: str):
         """Get the request logs for a subscription instance for a trigger provider"""
@@ -261,9 +371,11 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
 )
 class TriggerSubscriptionBuilderBuildApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -294,9 +406,11 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
 )
 class TriggerSubscriptionUpdateApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerProviderOpaqueResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, subscription_id: str):
@@ -354,6 +468,7 @@ class TriggerSubscriptionDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, subscription_id: str):
@@ -382,6 +497,11 @@ class TriggerSubscriptionDeleteApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize")
 class TriggerOAuthAuthorizeApi(Resource):
+    @console_ns.response(
+        200,
+        "Authorization URL retrieved successfully",
+        console_ns.models[TriggerOAuthAuthorizeResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -463,6 +583,11 @@ class TriggerOAuthAuthorizeApi(Resource):
 
 @console_ns.route("/oauth/plugin/<path:provider>/trigger/callback")
 class TriggerOAuthCallbackApi(Resource):
+    @console_ns.response(
+        302,
+        "Redirect to console OAuth callback page",
+        console_ns.models[RedirectResponse.__name__],
+    )
     @setup_required
     def get(self, provider: str):
         """Handle OAuth callback for trigger provider"""
@@ -528,9 +653,11 @@ class TriggerOAuthCallbackApi(Resource):
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/oauth/client")
 class TriggerOAuthClientManageApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TriggerOAuthClientResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
@@ -572,9 +699,11 @@ class TriggerOAuthClientManageApi(Resource):
             raise
 
     @console_ns.expect(console_ns.models[TriggerOAuthClientPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):
@@ -599,7 +728,9 @@ class TriggerOAuthClientManageApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id
     def delete(self, tenant_id: str, provider: str):
         """Remove custom OAuth client configuration"""
@@ -622,9 +753,11 @@ class TriggerOAuthClientManageApi(Resource):
 )
 class TriggerSubscriptionVerifyApi(Resource):
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderVerifyPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[TriggerSubscriptionBuilderVerifyResponse.__name__])
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id

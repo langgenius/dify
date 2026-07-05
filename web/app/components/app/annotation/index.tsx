@@ -19,10 +19,12 @@ import { MessageFast } from '@/app/components/base/icons/src/vender/solid/commun
 import Loading from '@/app/components/base/loading'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { APP_PAGE_LIMIT } from '@/config'
+import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { addAnnotation, delAnnotation, delAnnotations, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
+import PageTitle from '../log-annotation/page-title'
 import EmptyElement from './empty-element'
 import Filter from './filter'
 import HeaderOpts from './header-opts'
@@ -37,6 +39,7 @@ type Props = Readonly<{
 const Annotation: FC<Props> = (props) => {
   const { appDetail } = props
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const [isShowEdit, setIsShowEdit] = useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
   const [isChatApp] = useState(appDetail.mode !== AppModeEnum.COMPLETION)
@@ -145,8 +148,13 @@ const Annotation: FC<Props> = (props) => {
 
   return (
     <div className="flex h-full flex-col">
-      <p className="system-sm-regular text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
-      <div className="relative flex h-full flex-1 flex-col py-4">
+      <PageTitle
+        title={t('title', { ns: 'appAnnotation' })}
+        description={t('noData.description', { ns: 'appAnnotation' })}
+        learnMoreHref={docLink('/use-dify/monitor/annotation-reply')}
+        learnMoreLabel={t('operation.learnMore', { ns: 'common' })}
+      />
+      <div className="relative flex min-h-0 flex-1 flex-col py-4">
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className="flex items-center space-x-2">
             {isChatApp && (

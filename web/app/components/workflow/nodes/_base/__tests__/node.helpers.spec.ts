@@ -24,6 +24,7 @@ describe('node helpers', () => {
 
   it('should identify entry and container nodes', () => {
     expect(isEntryWorkflowNode(BlockEnum.Start)).toBe(true)
+    expect(isEntryWorkflowNode(BlockEnum.StartPlaceholder)).toBe(true)
     expect(isEntryWorkflowNode(BlockEnum.TriggerWebhook)).toBe(true)
     expect(isEntryWorkflowNode(BlockEnum.Tool)).toBe(false)
 

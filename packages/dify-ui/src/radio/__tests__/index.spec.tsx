@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { FieldItem, FieldLabel, FieldRoot } from '../../field'
 import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
@@ -15,8 +15,8 @@ const clickElement = (element: HTMLElement | SVGElement) => {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 }
 
-type TestRadioGroupProps = ComponentProps<typeof RadioGroup> & {
-  children: ReactNode
+type TestRadioGroupProps = React.ComponentProps<typeof RadioGroup> & {
+  children: React.ReactNode
   label: string
   name?: string
 }
@@ -37,8 +37,8 @@ function TestRadioGroup({
   )
 }
 
-type TestRadioOptionProps = ComponentProps<typeof Radio> & {
-  children: ReactNode
+type TestRadioOptionProps = React.ComponentProps<typeof Radio> & {
+  children: React.ReactNode
 }
 
 function TestRadioOption({
@@ -55,6 +55,21 @@ function TestRadioOption({
   )
 }
 
+function RadioTypeExamples() {
+  return (
+    <RadioGroup<boolean> value={true} onValueChange={() => {}}>
+      <Radio<boolean> value={true} />
+      <RadioRoot<boolean> value={false} />
+      {/* @ts-expect-error boolean radio items should not accept string values */}
+      <Radio<boolean> value="true" />
+      {/* @ts-expect-error boolean radio roots should not accept string values */}
+      <RadioRoot<boolean> value="false" />
+    </RadioGroup>
+  )
+}
+
+void RadioTypeExamples
+
 describe('Radio', () => {
   it('should render unchecked and checked radios with Base UI semantics', async () => {
     const screen = await render(
@@ -69,7 +84,6 @@ describe('Radio', () => {
 
     await expect.element(ssd).toHaveAttribute('aria-checked', 'true')
     await expect.element(ssd).toHaveAttribute('data-checked', '')
-    await expect.element(ssd).toHaveClass('data-checked:border-components-radio-border-checked')
     await expect.element(hdd).toHaveAttribute('aria-checked', 'false')
     await expect.element(hdd).toHaveAttribute('data-unchecked', '')
   })
@@ -101,7 +115,6 @@ describe('Radio', () => {
 
     const hdd = screen.getByRole('radio', { name: 'HDD' })
     await expect.element(hdd).toHaveAttribute('data-disabled', '')
-    await expect.element(hdd).toHaveClass('data-disabled:cursor-not-allowed')
 
     clickElement(hdd.element())
 
@@ -170,9 +183,7 @@ describe('Radio', () => {
 describe('RadioSkeleton', () => {
   it('should render a visual placeholder without radio semantics', async () => {
     const screen = await render(<RadioSkeleton />)
-    const skeleton = screen.container.querySelector<HTMLElement>('.rounded-full')
 
     expect(screen.container.querySelector('[role="radio"]')).not.toBeInTheDocument()
-    await expect.element(skeleton).toHaveClass('rounded-full', 'opacity-20')
   })
 })

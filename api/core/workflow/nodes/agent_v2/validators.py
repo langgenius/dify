@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from core.workflow.graph_topology import WorkflowGraphTopology
 from graphon.enums import BuiltinNodeTypes
-from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentNodeBinding
+from models.agent import Agent, AgentConfigSnapshot, AgentStatus, WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentFileRefConfig,
     AgentHumanContactConfig,
@@ -18,6 +18,7 @@ from models.agent_config_entities import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from services.agent.knowledge_datasets import list_missing_tenant_knowledge_dataset_ids
 
 from .entities import DifyAgentNodeData
 
@@ -35,7 +36,6 @@ class WorkflowAgentNodeValidator:
             "soul",
             "prompt",
             "system_prompt",
-            "skills_files",
             "skills",
             "files",
             "tools",
@@ -102,10 +102,6 @@ class WorkflowAgentNodeValidator:
     ) -> None:
         if binding.agent_id is None:
             raise WorkflowAgentNodeValidationError(f"Workflow Agent node {binding.node_id} is missing agent binding.")
-        if binding.current_snapshot_id is None:
-            raise WorkflowAgentNodeValidationError(
-                f"Workflow Agent node {binding.node_id} is missing config snapshot binding."
-            )
 
         agent = session.scalar(
             select(Agent)
@@ -120,12 +116,22 @@ class WorkflowAgentNodeValidator:
                 f"Workflow Agent node {binding.node_id} references an unavailable agent."
             )
 
+        snapshot_id = (
+            agent.active_config_snapshot_id
+            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else binding.current_snapshot_id
+        )
+        if snapshot_id is None:
+            raise WorkflowAgentNodeValidationError(
+                f"Workflow Agent node {binding.node_id} is missing config snapshot binding."
+            )
+
         snapshot = session.scalar(
             select(AgentConfigSnapshot)
             .where(
                 AgentConfigSnapshot.tenant_id == binding.tenant_id,
                 AgentConfigSnapshot.agent_id == agent.id,
-                AgentConfigSnapshot.id == binding.current_snapshot_id,
+                AgentConfigSnapshot.id == snapshot_id,
             )
             .limit(1)
         )
@@ -141,6 +147,7 @@ class WorkflowAgentNodeValidator:
             )
         cls._validate_agent_soul_env(binding=binding, agent_soul=agent_soul)
         cls._validate_agent_soul_tools(binding=binding, agent_soul=agent_soul)
+        cls._validate_agent_soul_knowledge(binding=binding, agent_soul=agent_soul)
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         cls.validate_node_job(session=session, binding=binding, node_job=node_job, topology=topology)
 
@@ -322,7 +329,11 @@ class WorkflowAgentNodeValidator:
         for tool in agent_soul.tools.dify_tools:
             if not tool.enabled:
                 continue
-            exposed_name = tool.tool_name
+            # Provider-level entries (tool_name omitted = all tools of the
+            # provider) are deduped per provider here; the names they expand to
+            # are checked at runtime by the plugin tools builder.
+            provider_key = tool.provider_id or f"{tool.plugin_id}/{tool.provider}"
+            exposed_name = tool.tool_name or f"{provider_key}/*"
             if exposed_name in exposed_names:
                 raise WorkflowAgentNodeValidationError(
                     f"Workflow Agent node {binding.node_id} has duplicate Dify Plugin Tool name {exposed_name}."
@@ -354,6 +365,24 @@ class WorkflowAgentNodeValidator:
                     f"Workflow Agent node {binding.node_id} has duplicate CLI Tool name {normalized_name}."
                 )
             cli_tool_names.add(normalized_name)
+
+    @classmethod
+    def _validate_agent_soul_knowledge(
+        cls,
+        *,
+        binding: WorkflowAgentNodeBinding,
+        agent_soul: AgentSoulConfig,
+    ) -> None:
+        """Validate knowledge set dataset rows against the publishing tenant."""
+        missing_ids = list_missing_tenant_knowledge_dataset_ids(
+            tenant_id=binding.tenant_id,
+            agent_soul=agent_soul,
+        )
+        if missing_ids:
+            raise WorkflowAgentNodeValidationError(
+                f"Workflow Agent node {binding.node_id} references missing or out-of-scope knowledge datasets: "
+                f"{', '.join(missing_ids)}."
+            )
 
     @classmethod
     def _validate_agent_soul_env(

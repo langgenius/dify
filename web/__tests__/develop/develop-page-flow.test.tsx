@@ -56,6 +56,8 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceEditor: true,
   }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) =>
+    selector({ userProfile: { id: 'user-1' }, workspacePermissionKeys: ['app.create_and_management'] }),
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
@@ -108,6 +110,7 @@ describe('DevelopMain page flow', () => {
       name: 'Test App',
       api_base_url: 'https://api.test.com/v1',
       mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.edit'],
     }
 
     render(<DevelopMain appId="app-1" />)
@@ -128,6 +131,7 @@ describe('DevelopMain page flow', () => {
       name: 'Chat App',
       api_base_url: 'https://api.test.com/v1',
       mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.edit'],
     }
 
     const { container } = render(<DevelopMain appId="app-1" />)
@@ -150,6 +154,7 @@ describe('DevelopMain page flow', () => {
       name: 'My App',
       api_base_url: 'https://api.example.com/v1',
       mode: AppModeEnum.COMPLETION,
+      permission_keys: ['app.acl.edit'],
     }
     rerender(<DevelopMain appId="app-1" />)
 
@@ -166,6 +171,7 @@ describe('DevelopMain page flow', () => {
       name: 'Test App',
       api_base_url: 'https://api.test.com/v1',
       mode: AppModeEnum.WORKFLOW,
+      permission_keys: ['app.acl.edit'],
     }
 
     render(<DevelopMain appId="app-1" />)
@@ -196,6 +202,7 @@ describe('DevelopMain page flow', () => {
         name: `${mode} App`,
         api_base_url: 'https://api.test.com/v1',
         mode,
+        permission_keys: ['app.acl.edit'],
       }
 
       const { container, unmount } = render(<DevelopMain appId="app-1" />)
@@ -216,6 +223,7 @@ describe('DevelopMain page flow', () => {
       name: 'Test App',
       api_base_url: 'https://api.test.com/v1',
       mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.edit'],
     }
 
     render(<DevelopMain appId="app-1" />)

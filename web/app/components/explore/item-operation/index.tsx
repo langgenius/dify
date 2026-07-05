@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -14,7 +13,6 @@ import s from './style.module.css'
 
 type IItemOperationProps = {
   className?: string
-  isItemHovering?: boolean
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void
@@ -23,16 +21,15 @@ type IItemOperationProps = {
   onDelete: () => void
 }
 
-const ItemOperation: FC<IItemOperationProps> = ({
+function ItemOperation({
   className,
-  isItemHovering,
   isPinned,
   togglePin,
   isShowRenameConversation,
   onRenameConversation,
   isShowDelete,
   onDelete,
-}) => {
+}: IItemOperationProps) {
   const { t } = useTranslation('explore')
   const { t: tCommon } = useTranslation('common')
 
@@ -41,9 +38,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
       <DropdownMenuTrigger
         data-testid="item-operation-trigger"
         className={cn(
-          s.btn,
-          'size-6 rounded-md border-none py-1 data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
-          isItemHovering && `${s.open} bg-components-actionbar-bg! shadow-none!`,
+          'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
           className,
         )}
         onClick={(e) => {
@@ -51,6 +46,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
         }}
       >
         <span className="sr-only">{tCommon('operation.more')}</span>
+        <span aria-hidden className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"

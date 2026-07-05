@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -123,7 +123,7 @@ def test_mcp_tool_invoke_handles_content_types_and_structured_output():
     )
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
-        messages = list(tool.invoke(user_id="user-1", tool_parameters={"a": 1}))
+        messages = list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"a": 1}))
 
     types = [m.type for m in messages]
     assert ToolInvokeMessage.MessageType.JSON in types
@@ -141,7 +141,7 @@ def test_mcp_tool_invoke_raises_for_unsupported_embedded_resource():
 
     with patch.object(MCPTool, "invoke_remote_mcp_tool", return_value=result):
         with pytest.raises(ToolInvokeError, match="Unsupported embedded resource type"):
-            list(tool.invoke(user_id="user-1", tool_parameters={}))
+            list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={}))
 
 
 def test_mcp_tool_handle_none_parameter_filters_empty_values():
@@ -177,7 +177,7 @@ def _build_forwarding_tool(*, mode: str = "idp_token") -> MCPTool:
 
 
 def test_inject_forwarded_identity_stamps_custom_header():
-    """The minted SSO token must be placed in X-Dify-SSO-Access-Token; the
+    """The minted SSO token must be placed in X-Dify-SSO-Token; the
     workspace-scoped Authorization header and any other custom headers must
     pass through untouched so provider credentials keep working."""
     from core.tools.mcp_tool.tool import FORWARDED_IDENTITY_HEADER
@@ -217,6 +217,38 @@ def test_inject_forwarded_identity_translates_token_error_to_invoke_error():
     # Headers must NOT have been mutated when token-issuance failed.
     assert FORWARDED_IDENTITY_HEADER not in headers
     assert "Authorization" not in headers
+
+
+def test_inject_forwarded_identity_sends_end_user_type_for_webapp():
+    """A WEB_APP run forwards user_type=end_user so enterprise routes to the
+    published-webapp token store."""
+    tool = _build_forwarding_tool()
+    tool.runtime = ToolRuntime(tenant_id="tenant-1", invoke_from=InvokeFrom.WEB_APP)
+    headers: dict[str, str] = {}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+        return_value=("forwarded.jwt", 1900000000),
+    ) as issue:
+        tool._inject_forwarded_identity(
+            headers, user_id="eu-1", app_id="app-1", audience="https://mcp.example.com/mcp/"
+        )
+
+    assert issue.call_args.kwargs["user_type"] == "end_user"
+
+
+def test_inject_forwarded_identity_sends_account_type_for_debugger():
+    """A DEBUGGER/console run forwards user_type=account (the existing behaviour)."""
+    tool = _build_forwarding_tool()  # built with InvokeFrom.DEBUGGER
+    headers: dict[str, str] = {}
+
+    with patch(
+        "services.enterprise.enterprise_service.EnterpriseService.issue_mcp_token",
+        return_value=("forwarded.jwt", 1900000000),
+    ) as issue:
+        tool._inject_forwarded_identity(headers, user_id="acc-1", app_id=None, audience="https://mcp.example.com/mcp/")
+
+    assert issue.call_args.kwargs["user_type"] == "account"
 
 
 def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing():

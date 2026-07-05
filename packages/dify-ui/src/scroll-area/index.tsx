@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import { ScrollArea as BaseScrollArea } from '@base-ui/react/scroll-area'
 import { cn } from '../cn'
 
@@ -16,7 +16,7 @@ type ScrollAreaSlotClassNames = {
 }
 
 type ScrollAreaProps = Omit<ScrollAreaRootProps, 'children'> & {
-  children: ReactNode
+  children: React.ReactNode
   orientation?: 'vertical' | 'horizontal'
   slotClassNames?: ScrollAreaSlotClassNames
   label?: string
@@ -36,7 +36,7 @@ const scrollAreaThumbClassName = cn(
   'data-[orientation=vertical]:w-1',
   'data-[orientation=horizontal]:h-1',
   'group-data-hovering/scrollbar:bg-state-base-handle-hover',
-  'group-data-scrolling/scrollbar:bg-state-base-handle-hover',
+  'data-scrolling:bg-state-base-handle-hover',
   'active:bg-state-base-handle-hover',
 )
 

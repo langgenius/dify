@@ -18,6 +18,7 @@ from services.agent.prompt_mentions import (
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
+    ComposerSaveStrategy,
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
@@ -49,10 +50,22 @@ _DANGEROUS_ACK_KEYS = (
 
 class ComposerConfigValidator:
     @classmethod
-    def validate_save_payload(cls, payload: ComposerSavePayload) -> None:
-        if payload.variant == ComposerVariant.WORKFLOW and payload.soul_lock.locked and payload.agent_soul is not None:
+    def validate_draft_save_payload(cls, payload: ComposerSavePayload) -> None:
+        if (
+            payload.variant == ComposerVariant.WORKFLOW
+            and payload.soul_lock.locked
+            and payload.agent_soul is not None
+            and payload.save_strategy != ComposerSaveStrategy.NODE_JOB_ONLY
+        ):
             raise AgentSoulLockedError()
 
+    @classmethod
+    def validate_save_payload(cls, payload: ComposerSavePayload) -> None:
+        cls.validate_publish_payload(payload)
+
+    @classmethod
+    def validate_publish_payload(cls, payload: ComposerSavePayload) -> None:
+        cls.validate_draft_save_payload(payload)
         if payload.agent_soul is not None:
             cls.validate_agent_soul(payload.agent_soul)
         if payload.node_job is not None:
@@ -135,15 +148,15 @@ class ComposerConfigValidator:
         cls,
         payload: ComposerSavePayload,
         *,
-        existing_dataset_ids: set[str] | None = None,
+        existing_knowledge_set_ids: set[str] | None = None,
     ) -> dict[str, Any]:
         """ENG-617 §5.3/§5.4 soft findings — never block save.
 
         ``warnings`` carries ``mention_target_missing`` / ``mention_malformed``
-        entries; ``knowledge_retrieval_placeholder`` keeps dangling knowledge
+        entries; ``knowledge_retrieval_placeholder`` keeps dangling knowledge-set
         mentions with a placeholder name (0522 consensus) instead of dropping or
-        rejecting them. With ``existing_dataset_ids`` provided, configured-but-
-        deleted datasets surface as placeholders too.
+        rejecting them. With ``existing_knowledge_set_ids`` provided, mentions
+        that no longer exist in the current Agent Soul surface as placeholders too.
         """
         warnings: list[dict[str, Any]] = []
         placeholders: list[dict[str, str]] = []
@@ -175,7 +188,7 @@ class ComposerConfigValidator:
                 resolved = resolver(mention)
                 if mention.kind == MentionKind.KNOWLEDGE:
                     dangling = resolved is None or (
-                        existing_dataset_ids is not None and mention.ref_id not in existing_dataset_ids
+                        existing_knowledge_set_ids is not None and mention.ref_id not in existing_knowledge_set_ids
                     )
                     if dangling:
                         placeholders.append(
@@ -184,6 +197,8 @@ class ComposerConfigValidator:
                                 "placeholder_name": mention.label or f"Knowledge {mention.ref_id[:8]}",
                             }
                         )
+                    continue
+                if mention.kind in {MentionKind.SKILL, MentionKind.FILE}:
                     continue
                 if resolved is None:
                     warnings.append(
@@ -248,6 +263,20 @@ class ComposerConfigValidator:
         tools = soul.get("tools") or {}
         cli_tools = tools.get("cli_tools")
         if isinstance(cli_tools, list):
+            # Mention references resolve `[§cli_tool:<id>§]` by id, so ids must be
+            # unique across the whole list — disabled entries included, since they
+            # stay in config and would make resolution ambiguous.
+            seen_cli_tool_ids: set[str] = set()
+            for entry in cli_tools:
+                if not isinstance(entry, dict):
+                    continue
+                raw_id = entry.get("id")
+                if isinstance(raw_id, str) and raw_id.strip():
+                    if raw_id in seen_cli_tool_ids:
+                        raise InvalidComposerConfigError(
+                            f"duplicate CLI tool id '{raw_id}': cli_tool mention references require unique ids."
+                        )
+                    seen_cli_tool_ids.add(raw_id)
             for entry in cli_tools:
                 if not isinstance(entry, dict) or entry.get("enabled") is False:
                     continue
@@ -314,16 +343,17 @@ class ComposerConfigValidator:
 
     @classmethod
     def _reject_plaintext_secrets(cls, value: Any, *, path: str) -> None:
-        if isinstance(value, dict):
-            for key, nested in value.items():
-                normalized_key = key.lower().replace("-", "_")
-                nested_path = f"{path}.{key}"
-                if normalized_key in _PLAINTEXT_SECRET_KEYS and isinstance(nested, str) and nested:
-                    raise PlaintextSecretNotAllowedError(f"Plaintext secret is not allowed at {nested_path}")
-                cls._reject_plaintext_secrets(nested, path=nested_path)
-        elif isinstance(value, list):
-            for index, nested in enumerate(value):
-                cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
+        match value:
+            case dict():
+                for key, nested in value.items():
+                    normalized_key = key.lower().replace("-", "_")
+                    nested_path = f"{path}.{key}"
+                    if normalized_key in _PLAINTEXT_SECRET_KEYS and isinstance(nested, str) and nested:
+                        raise PlaintextSecretNotAllowedError(f"Plaintext secret is not allowed at {nested_path}")
+                    cls._reject_plaintext_secrets(nested, path=nested_path)
+            case list():
+                for index, nested in enumerate(value):
+                    cls._reject_plaintext_secrets(nested, path=f"{path}[{index}]")
 
     @classmethod
     def _has_install_command(cls, entry: dict[str, Any]) -> bool:

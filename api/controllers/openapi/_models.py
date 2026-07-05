@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -11,6 +12,30 @@ from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
+
+
+class SupportedAppType(StrEnum):
+    """App types the ``app`` usage face (``get app``) lists and filters.
+
+    A curated subset of :class:`AppMode`: the real, user-facing app categories.
+    Excludes runtime-only mode tags that are not standalone apps
+    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+    roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+    Members reference ``AppMode.*.value`` so the subset relationship is
+    type-checked: dropping a member from ``AppMode`` breaks this at import.
+    This is the single source for the listable set — params, filters, and the
+    generated CLI whitelist all derive from it.
+    """
+
+    COMPLETION = AppMode.COMPLETION.value
+    CHAT = AppMode.CHAT.value
+    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
+    WORKFLOW = AppMode.WORKFLOW.value
+    AGENT_CHAT = AppMode.AGENT_CHAT.value
+
+
+SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 
 class UsageInfo(BaseModel):
@@ -38,18 +63,12 @@ class PaginationEnvelope[T](BaseModel):
         return cls(page=page, limit=limit, total=total, has_more=page * limit < total, data=items)
 
 
-class TagItem(BaseModel):
-    name: str
-
-
 class AppListRow(BaseModel):
     id: str
     name: str
     description: str | None = None
     mode: AppMode
-    tags: list[TagItem] = []
     updated_at: str | None = None
-    created_by_name: str | None = None
     workspace_id: str | None = None
     workspace_name: str | None = None
 
@@ -70,16 +89,14 @@ class PermittedExternalAppsListResponse(BaseModel):
     data: list[AppListRow]
 
 
-class AppInfoResponse(BaseModel):
+class AppInfo(BaseModel):
     id: str
     name: str
     description: str | None = None
     mode: str
-    author: str | None = None
-    tags: list[TagItem] = []
 
 
-class AppDescribeInfo(AppInfoResponse):
+class AppDescribeInfo(AppInfo):
     updated_at: str | None = None
     service_api_enabled: bool
     is_agent: bool = False
@@ -87,12 +104,8 @@ class AppDescribeInfo(AppInfoResponse):
 
 class AppDescribeResponse(BaseModel):
     info: AppDescribeInfo | None = None
-    # `parameters` (the app-config blob) and `input_schema` (a Draft 2020-12 JSON Schema derived
-    # per-app) are deliberately open JSON, not under-annotated. The `x-dify-opaque` marker tells the
-    # contract generator's readiness detector to treat them as intentional, so the route is not
-    # flagged "annotations incomplete". CLI/web consume them as opaque objects either way.
-    parameters: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
-    input_schema: dict[str, Any] | None = Field(default=None, json_schema_extra={"x-dify-opaque": True})
+    parameters: dict[str, Any] | None = Field(default=None)
+    input_schema: dict[str, Any] | None = Field(default=None)
 
 
 class ChatMessageResponse(BaseModel):
@@ -148,6 +161,18 @@ class WorkspacePayload(BaseModel):
     id: str
     name: str
     role: str
+
+
+class DeviceTokenResponse(BaseModel):
+    token: str
+    expires_at: str
+    subject_type: Literal["account", "external_sso"]
+    account: AccountPayload | None = None
+    workspaces: list[WorkspacePayload] = []
+    default_workspace_id: str | None = None
+    token_id: str
+    subject_email: str | None = None
+    subject_issuer: str | None = None
 
 
 class AccountResponse(BaseModel):
@@ -279,20 +304,19 @@ class AppDescribeQuery(BaseModel):
 
 
 class AppListQuery(BaseModel):
-    """mode is a closed enum."""
+    """mode is a closed enum of listable app types."""
 
     workspace_id: UUIDStr
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
-    tag: str | None = Field(None, max_length=100)
 
 
 class AppRunRequest(BaseModel):
     inputs: dict[str, Any]
     query: str | None = None
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
     conversation_id: UUIDStrOrEmpty | None = None
     auto_generate_name: bool = True
     workflow_id: str | None = None
@@ -336,7 +360,7 @@ class PermittedExternalAppsListQuery(BaseModel):
 
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
 
@@ -469,3 +493,11 @@ class FormSubmitResponse(BaseModel):
     than an under-annotated open object."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class HumanInputFormDefinitionResponse(BaseModel):
+    form_content: str
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    resolved_default_values: dict[str, str]
+    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    expiration_time: int | None = None

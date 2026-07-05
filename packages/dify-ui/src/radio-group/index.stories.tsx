@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
 import { RadioGroup } from '.'
 import {
   FieldDescription,
@@ -28,7 +28,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 function StandardFormRowsDemo() {
-  const [value, setValue] = useState('vector')
+  const [value, setValue] = React.useState('vector')
 
   return (
     <FieldRoot name="retrievalIndex" className="w-80">
@@ -67,7 +67,7 @@ export const StandardFormRows: Story = {
 }
 
 function BooleanInlineDemo() {
-  const [value, setValue] = useState(true)
+  const [value, setValue] = React.useState(true)
 
   return (
     <FieldRoot name="streaming" className="w-80">
@@ -80,13 +80,13 @@ function BooleanInlineDemo() {
         <div className="flex items-center gap-3">
           <FieldItem>
             <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-              <Radio value={true} />
+              <Radio<boolean> value={true} />
               True
             </FieldLabel>
           </FieldItem>
           <FieldItem>
             <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-              <Radio value={false} />
+              <Radio<boolean> value={false} />
               False
             </FieldLabel>
           </FieldItem>
@@ -108,7 +108,7 @@ export const BooleanInline: Story = {
 }
 
 function OptionCardsDemo() {
-  const [value, setValue] = useState('default')
+  const [value, setValue] = React.useState('default')
 
   return (
     <FieldRoot name="promptMode" className="w-100">
@@ -136,7 +136,7 @@ function OptionCardsDemo() {
               variant="unstyled"
               nativeButton
               render={<button type="button" />}
-              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -174,7 +174,7 @@ function DynamicFormFieldDemo() {
     { value: 'high_quality', label: 'High quality' },
     { value: 'economy', label: 'Economy' },
   ]
-  const [selected, setSelected] = useState('automatic')
+  const [selected, setSelected] = React.useState('automatic')
 
   return (
     <FieldRoot name="generation_mode" className="flex w-80 flex-col gap-2">

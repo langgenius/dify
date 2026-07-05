@@ -2,7 +2,7 @@ import {
   ACCOUNT_SETTING_MODAL_ACTION,
   ACCOUNT_SETTING_TAB,
   DEFAULT_ACCOUNT_SETTING_TAB,
-  isValidAccountSettingTab,
+  isValidSettingsTab,
 } from '../constants'
 
 describe('AccountSetting Constants', () => {
@@ -13,10 +13,13 @@ describe('AccountSetting Constants', () => {
   it('should have correct ACCOUNT_SETTING_TAB values', () => {
     expect(ACCOUNT_SETTING_TAB.PROVIDER).toBe('provider')
     expect(ACCOUNT_SETTING_TAB.MEMBERS).toBe('members')
+    expect(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS).toBe('roles-and-permissions')
+    expect(ACCOUNT_SETTING_TAB.PERMISSION_SET).toBe('permission-set')
     expect(ACCOUNT_SETTING_TAB.BILLING).toBe('billing')
     expect(ACCOUNT_SETTING_TAB.DATA_SOURCE).toBe('data-source')
-    expect(ACCOUNT_SETTING_TAB.API_BASED_EXTENSION).toBe('api-based-extension')
+    expect(ACCOUNT_SETTING_TAB.API_BASED_EXTENSION).toBe('custom-endpoint')
     expect(ACCOUNT_SETTING_TAB.CUSTOM).toBe('custom')
+    expect(ACCOUNT_SETTING_TAB.PREFERENCES).toBe('preferences')
     expect(ACCOUNT_SETTING_TAB.LANGUAGE).toBe('language')
   })
 
@@ -24,19 +27,15 @@ describe('AccountSetting Constants', () => {
     expect(DEFAULT_ACCOUNT_SETTING_TAB).toBe(ACCOUNT_SETTING_TAB.MEMBERS)
   })
 
-  it('isValidAccountSettingTab should return true for valid tabs', () => {
-    expect(isValidAccountSettingTab('provider')).toBe(true)
-    expect(isValidAccountSettingTab('members')).toBe(true)
-    expect(isValidAccountSettingTab('billing')).toBe(true)
-    expect(isValidAccountSettingTab('data-source')).toBe(true)
-    expect(isValidAccountSettingTab('api-based-extension')).toBe(true)
-    expect(isValidAccountSettingTab('custom')).toBe(true)
-    expect(isValidAccountSettingTab('language')).toBe(true)
-  })
-
-  it('isValidAccountSettingTab should return false for invalid tabs', () => {
-    expect(isValidAccountSettingTab(null)).toBe(false)
-    expect(isValidAccountSettingTab('')).toBe(false)
-    expect(isValidAccountSettingTab('invalid')).toBe(false)
+  it('isValidSettingsTab should include integrations tabs', () => {
+    expect(isValidSettingsTab('roles-and-permissions')).toBe(true)
+    expect(isValidSettingsTab('permission-set')).toBe(true)
+    expect(isValidSettingsTab('billing')).toBe(true)
+    expect(isValidSettingsTab('preferences')).toBe(true)
+    expect(isValidSettingsTab('language')).toBe(true)
+    expect(isValidSettingsTab('provider')).toBe(true)
+    expect(isValidSettingsTab('mcp')).toBe(true)
+    expect(isValidSettingsTab('agent-strategy')).toBe(true)
+    expect(isValidSettingsTab('invalid')).toBe(false)
   })
 })

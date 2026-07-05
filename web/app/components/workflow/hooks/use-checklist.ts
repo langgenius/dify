@@ -31,6 +31,7 @@ import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
@@ -56,6 +57,7 @@ import {
 } from '../hooks'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
+import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '../nodes/llm/utils'
 import {
@@ -65,6 +67,7 @@ import {
 import { BlockEnum } from '../types'
 import {
   getDataSourceCheckParams,
+  getNodeCatalogType,
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
@@ -183,11 +186,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   }, [nodes])
   const knowledgeBaseProviderModelMap = useQueries({
     queries: knowledgeBaseEmbeddingProviders.map(provider =>
-      consoleQuery.modelProviders.models.queryOptions({
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
         input: { params: { provider } },
         enabled: !!provider,
         refetchOnWindowFocus: false,
-        select: response => response.data,
+        select: normalizeModelProviderModelsResponse,
       }),
     ),
     combine: (results) => {
@@ -249,7 +252,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         moreDataForCheckValid = getTriggerCheckParams(node!.data as PluginTriggerNodeType, triggerPlugins, language)
 
       const toolIcon = getToolIcon(node!.data)
-      if (node!.data.type === BlockEnum.Agent) {
+      if (node!.data.type === BlockEnum.Agent && !isAgentV2NodeData(node!.data)) {
         const data = node!.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
@@ -267,7 +270,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
-        const validator = nodesExtraData?.[node!.data.type as BlockEnum]?.checkValid
+        const validator = nodesExtraData?.[getNodeCatalogType(node!.data)]?.checkValid
         const isPluginMissing = isNodePluginMissing(node!.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
 
         const errorMessages: string[] = []
@@ -310,7 +313,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         }
 
         const isStartNodeMeta = nodesExtraData?.[node!.data.type as BlockEnum]?.metaData.isStart ?? false
-        const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
+        const isStartPlaceholderNode = node!.data.type === BlockEnum.StartPlaceholder
+        const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta || isStartPlaceholderNode : true
 
         const isUnconnected = !validNodes.some(n => n.id === node!.id)
         const shouldShowError = errorMessages.length > 0 || (isUnconnected && !canSkipConnectionCheck)
@@ -337,7 +341,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
     // Check for start nodes (including triggers)
     if (shouldCheckStartNode) {
       const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
-      if (startNodesFiltered.length === 0) {
+      const hasStartPlaceholderNode = nodes.some(node => node.data.type === BlockEnum.StartPlaceholder)
+      if (startNodesFiltered.length === 0 && !hasStartPlaceholderNode) {
         list.push({
           id: 'start-node-required',
           type: BlockEnum.Start,
@@ -463,13 +468,13 @@ export const useChecklistBeforePublish = () => {
       await Promise.all(knowledgeBaseEmbeddingProviders.map(async (provider) => {
         try {
           const modelList = await queryClient.fetchQuery(
-            consoleQuery.modelProviders.models.queryOptions({
+            consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
               input: { params: { provider } },
             }),
           )
 
           if (modelList.data)
-            modelMap[provider] = modelList.data
+            modelMap[provider] = normalizeModelProviderModelsResponse(modelList)
         }
         catch {
         }
@@ -520,7 +525,7 @@ export const useChecklistBeforePublish = () => {
       if (node!.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(node!.data as DataSourceNodeType, dataSourceList || [], language)
 
-      if (node!.data.type === BlockEnum.Agent) {
+      if (node!.data.type === BlockEnum.Agent && !isAgentV2NodeData(node!.data)) {
         const data = node!.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
@@ -549,7 +554,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![node!.data.type as BlockEnum].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
+      const { errorMessage } = nodesExtraData![getNodeCatalogType(node!.data)].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
 
       if (errorMessage) {
         toast.error(`[${node!.data.title}] ${errorMessage}`)

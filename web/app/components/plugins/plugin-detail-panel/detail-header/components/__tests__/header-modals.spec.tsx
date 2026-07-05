@@ -2,6 +2,7 @@ import type { PluginDetail } from '../../../../types'
 import type { ModalStates, VersionTarget } from '../../hooks'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectLoadingButton } from '@/test/button'
 import { PluginSource } from '../../../../types'
 import HeaderModals from '../header-modals'
 
@@ -301,7 +302,7 @@ describe('HeaderModals', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /common\.operation\.confirm/ })).toBeDisabled()
+      expectLoadingButton(screen.getByRole('button', { name: /common\.operation\.confirm/ }))
     })
   })
 

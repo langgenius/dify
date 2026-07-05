@@ -1,8 +1,10 @@
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
 
-def test_pandas_csv(tmp_path, monkeypatch: pytest.MonkeyPatch):
+def test_pandas_csv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path)
     data = {"col1": [1, 2.2, -3.3, 4.0, 5], "col2": ["A", "B", "C", "D", "E"]}
     df1 = pd.DataFrame(data)
@@ -17,7 +19,7 @@ def test_pandas_csv(tmp_path, monkeypatch: pytest.MonkeyPatch):
     assert df2[df2.columns[1]].to_list() == data["col2"]
 
 
-def test_pandas_xlsx(tmp_path, monkeypatch: pytest.MonkeyPatch):
+def test_pandas_xlsx(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path)
     data = {"col1": [1, 2.2, -3.3, 4.0, 5], "col2": ["A", "B", "C", "D", "E"]}
     df1 = pd.DataFrame(data)
@@ -32,7 +34,7 @@ def test_pandas_xlsx(tmp_path, monkeypatch: pytest.MonkeyPatch):
     assert df2[df2.columns[1]].to_list() == data["col2"]
 
 
-def test_pandas_xlsx_with_sheets(tmp_path, monkeypatch: pytest.MonkeyPatch):
+def test_pandas_xlsx_with_sheets(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.chdir(tmp_path)
     data1 = {"col1": [1, 2, 3, 4, 5], "col2": ["A", "B", "C", "D", "E"]}
     df1 = pd.DataFrame(data1)

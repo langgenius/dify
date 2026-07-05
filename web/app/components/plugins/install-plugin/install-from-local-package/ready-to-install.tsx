@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { PluginDeclaration } from '../../types'
+import type { PluginCategoryEnum, PluginDeclaration } from '../../types'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { InstallStep } from '../../types'
@@ -17,6 +17,7 @@ type Props = Readonly<{
   uniqueIdentifier: string | null
   manifest: PluginDeclaration | null
   errorMsg: string | null
+  installContextCategory?: PluginCategoryEnum
   onError: (errorMsg: string) => void
 }>
 
@@ -29,6 +30,7 @@ const ReadyToInstall: FC<Props> = ({
   uniqueIdentifier,
   manifest,
   errorMsg,
+  installContextCategory,
   onError,
 }) => {
   const { refreshPluginList } = useRefreshPluginList()
@@ -67,6 +69,7 @@ const ReadyToInstall: FC<Props> = ({
             payload={manifest}
             isFailed={[InstallStep.uploadFailed, InstallStep.installFailed].includes(step)}
             errMsg={errorMsg}
+            installContextCategory={installContextCategory}
             onCancel={onClose}
           />
         )

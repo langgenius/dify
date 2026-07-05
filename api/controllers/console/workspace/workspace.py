@@ -16,7 +16,7 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.admin import admin_required
 from controllers.console.error import AccountNotLinkTenantError
@@ -31,9 +31,10 @@ from controllers.console.wraps import (
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.helper import TimestampField, dump_response, to_timestamp
+from libs.helper import OptionalTimestampField, TimestampField, dump_response, to_timestamp
 from libs.login import login_required
-from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+from libs.pagination import paginate_query
+from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
@@ -96,6 +97,77 @@ class TenantInfoResponse(ResponseModel):
         return to_timestamp(value)
 
 
+class TenantListItemResponse(ResponseModel):
+    id: str
+    name: str | None = None
+    plan: str | None = None
+    status: str | None = None
+    created_at: int | None = None
+    last_opened_at: int | None = None
+    current: bool
+
+    @field_validator("plan", "status", mode="before")
+    @classmethod
+    def _normalize_enum_like(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(getattr(value, "value", value))
+
+    @field_validator("created_at", "last_opened_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None):
+        return to_timestamp(value)
+
+
+class TenantListResponse(ResponseModel):
+    workspaces: list[TenantListItemResponse]
+
+
+class WorkspaceListItemResponse(ResponseModel):
+    id: str
+    name: str | None = None
+    status: str | None = None
+    created_at: int | None = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_status(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value
+        return str(getattr(value, "value", value))
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None):
+        return to_timestamp(value)
+
+
+class WorkspaceListResponse(ResponseModel):
+    data: list[WorkspaceListItemResponse]
+    has_more: bool
+    limit: int
+    page: int
+    total: int
+
+
+class SwitchWorkspaceResponse(ResponseModel):
+    result: str
+    new_tenant: TenantInfoResponse
+
+
+class WorkspaceMutationResponse(ResponseModel):
+    result: str
+    tenant: TenantInfoResponse
+
+
+class WorkspaceLogoUploadResponse(ResponseModel):
+    id: str
+
+
 class WorkspacePermissionResponse(ResponseModel):
     workspace_id: str
     allow_member_invite: bool
@@ -112,6 +184,11 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     TenantInfoResponse,
+    TenantListResponse,
+    WorkspaceListResponse,
+    SwitchWorkspaceResponse,
+    WorkspaceMutationResponse,
+    WorkspaceLogoUploadResponse,
     WorkspaceCustomConfigResponse,
     WorkspacePermissionResponse,
 )
@@ -144,6 +221,7 @@ tenants_fields = {
     "plan": fields.String,
     "status": fields.String,
     "created_at": TimestampField,
+    "last_opened_at": OptionalTimestampField,
     "current": fields.Boolean,
 }
 
@@ -152,13 +230,19 @@ workspace_fields = {"id": fields.String, "name": fields.String, "status": fields
 
 @console_ns.route("/workspaces")
 class TenantListApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[TenantListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
-        tenants = TenantService.get_join_tenants(current_user)
+        tenant_rows: list[tuple[Tenant, TenantAccountJoin]] = [
+            (tenant, membership)
+            for tenant, membership in TenantService.get_workspaces_for_account(db.session, current_user.id)
+            if tenant.status == TenantStatus.NORMAL
+        ]
+        tenants = [tenant for tenant, _ in tenant_rows]
         tenant_dicts = []
         is_enterprise_only = dify_config.ENTERPRISE_ENABLED and not dify_config.BILLING_ENABLED
         is_saas = dify_config.EDITION == "CLOUD" and dify_config.BILLING_ENABLED
@@ -171,7 +255,7 @@ class TenantListApi(Resource):
                 if not tenant_plans:
                     logger.warning("get_plan_bulk returned empty result, falling back to legacy feature path")
 
-        for tenant in tenants:
+        for tenant, membership in tenant_rows:
             plan: str = CloudPlan.SANDBOX
             if is_saas:
                 tenant_plan = tenant_plans.get(tenant.id)
@@ -190,6 +274,7 @@ class TenantListApi(Resource):
                 "name": tenant.name,
                 "status": tenant.status,
                 "created_at": tenant.created_at,
+                "last_opened_at": membership.last_opened_at,
                 "plan": plan,
                 "current": tenant.id == current_tenant_id if current_tenant_id else False,
             }
@@ -201,7 +286,8 @@ class TenantListApi(Resource):
 
 @console_ns.route("/all-workspaces")
 class WorkspaceListApi(Resource):
-    @console_ns.expect(console_ns.models[WorkspaceListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(WorkspaceListQuery))
+    @console_ns.response(200, "Success", console_ns.models[WorkspaceListResponse.__name__])
     @setup_required
     @admin_required
     def get(self):
@@ -209,7 +295,7 @@ class WorkspaceListApi(Resource):
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
-        tenants = db.paginate(select=stmt, page=args.page, per_page=args.limit, error_out=False)
+        tenants = paginate_query(stmt, page=args.page, per_page=args.limit)
         has_more = False
 
         if tenants.has_next:
@@ -241,10 +327,10 @@ class TenantApi(Resource):
             raise ValueError("No current tenant")
 
         if tenant.status == TenantStatus.ARCHIVE:
-            tenants = TenantService.get_join_tenants(current_user)
+            tenants = TenantService.get_join_tenants(current_user, session=db.session)
             # if there is any tenant, switch to the first one
             if len(tenants) > 0:
-                TenantService.switch_tenant(current_user, tenants[0].id)
+                TenantService.switch_tenant(current_user, tenants[0].id, session=db.session)
                 tenant = tenants[0]
             # else, raise Unauthorized
             else:
@@ -256,6 +342,7 @@ class TenantApi(Resource):
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
     @console_ns.expect(console_ns.models[SwitchWorkspacePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SwitchWorkspaceResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -266,7 +353,7 @@ class SwitchWorkspaceApi(Resource):
 
         # check if tenant_id is valid, 403 if not
         try:
-            TenantService.switch_tenant(current_user, args.tenant_id)
+            TenantService.switch_tenant(current_user, args.tenant_id, session=db.session)
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
@@ -280,6 +367,7 @@ class SwitchWorkspaceApi(Resource):
 @console_ns.route("/workspaces/custom-config")
 class CustomConfigWorkspaceApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceCustomConfigPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[WorkspaceMutationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -307,6 +395,7 @@ class CustomConfigWorkspaceApi(Resource):
 
 @console_ns.route("/workspaces/custom-config/webapp-logo/upload")
 class WebappLogoWorkspaceApi(Resource):
+    @console_ns.response(201, "Logo uploaded", console_ns.models[WorkspaceLogoUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -348,6 +437,7 @@ class WebappLogoWorkspaceApi(Resource):
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceInfoPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[WorkspaceMutationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

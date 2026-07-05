@@ -173,6 +173,9 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
     mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
     mocker.patch("services.dataset_service.DocumentService.get_documents_position", return_value=1)
+    features = SimpleNamespace()
+    mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
+    check_limits = mocker.patch("services.dataset_service.DocumentService.check_document_creation_limits")
 
     document1 = SimpleNamespace(
         id="doc1",
@@ -226,7 +229,51 @@ def test_generate_published_pipeline_creates_documents_and_delay(generator, mock
 
     assert result["batch"]
     assert len(result["documents"]) == 2
+    check_limits.assert_called_once_with(len(datasource_info_list), features)
     task_proxy.delay.assert_called_once()
+
+
+def test_generate_published_pipeline_rejects_when_document_creation_limits_exceeded(generator, mocker: MockerFixture):
+    pipeline = _build_pipeline()
+    workflow = _build_workflow()
+
+    session = DummySession()
+    _patch_session(mocker, session)
+
+    datasource_info_list = [{"name": "file1"}, {"name": "file2"}]
+    mocker.patch.object(
+        generator,
+        "_format_datasource_info_list",
+        return_value=datasource_info_list,
+    )
+    mocker.patch.object(
+        module.PipelineConfigManager,
+        "get_pipeline_config",
+        return_value=SimpleNamespace(app_id="pipe", rag_pipeline_variables=[]),
+    )
+
+    features = SimpleNamespace()
+    mocker.patch("services.feature_service.FeatureService.get_features", return_value=features)
+    check_limits = mocker.patch(
+        "services.dataset_service.DocumentService.check_document_creation_limits",
+        side_effect=ValueError("document limit exceeded"),
+    )
+
+    db_session = MagicMock()
+    mocker.patch.object(module.db, "session", db_session)
+
+    with pytest.raises(ValueError, match="document limit exceeded"):
+        generator.generate(
+            pipeline=pipeline,
+            workflow=workflow,
+            user=_build_user(),
+            args=_build_args(),
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+            streaming=False,
+        )
+
+    check_limits.assert_called_once_with(len(datasource_info_list), features)
+    db_session.add.assert_not_called()
 
 
 def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture):

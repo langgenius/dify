@@ -1,5 +1,4 @@
 import type { Option } from '../../components/field/select'
-import type { CustomActionsProps } from '../../components/form/actions'
 import type { TransferMethod } from '@/types/app'
 
 export enum BaseFieldType {
@@ -52,10 +51,3 @@ export type BaseConfiguration = {
 } & NumberConfiguration
 & Partial<SelectConfiguration>
 & Partial<FileConfiguration>
-
-export type BaseFormProps = {
-  initialData?: Record<string, any>
-  configurations: BaseConfiguration[]
-  CustomActions?: (props: CustomActionsProps) => React.ReactNode
-  onSubmit: (value: Record<string, any>) => void
-}

@@ -54,6 +54,41 @@ describe('classifyResponse — canonical ErrorBody', () => {
     expect(err.code).toBe(ErrorCode.Server4xxOther)
     expect(err.serverError?.code).toBe('some_future_code')
   })
+
+  it('429 classifies as RateLimited (dedicated exit code) and keeps the server code', async () => {
+    const err = await classified(429, { code: 'too_many_requests', message: 'slow down', status: 429 })
+
+    expect(err.code).toBe(ErrorCode.RateLimited)
+    expect(err.exit()).toBe(7)
+    expect(err.serverError?.code).toBe('too_many_requests')
+  })
+
+  it('429 with no parseable ErrorBody falls back to a generic rate-limit message', async () => {
+    const err = await classified(429, 'not json')
+
+    expect(err.code).toBe(ErrorCode.RateLimited)
+    expect(err.serverError).toBeUndefined()
+    expect(err.message).toBe('too many requests')
+  })
+})
+
+describe('classifyResponse 403', () => {
+  it('maps 403 to AccessDenied (exit 4 bucket)', async () => {
+    const req403 = new Request('https://x/openapi/v1/apps/abc/export')
+    const res403 = new Response(
+      JSON.stringify({ code: 'unsupported_token_type', message: 'unsupported_token_type', status: 403 }),
+      { status: 403, headers: { 'content-type': 'application/json' } },
+    )
+    const err = await classifyResponse(req403, res403)
+    expect(err.code).toBe(ErrorCode.AccessDenied)
+    expect(err.message).toBe('unsupported_token_type')
+  })
+
+  it('403 with no parseable ErrorBody falls back to generic denied message', async () => {
+    const err = await classified(403, 'not json')
+    expect(err.code).toBe(ErrorCode.AccessDenied)
+    expect(err.message).toBe('not permitted')
+  })
 })
 
 describe('classifyResponse — non-conforming bodies (no fallback by design)', () => {
