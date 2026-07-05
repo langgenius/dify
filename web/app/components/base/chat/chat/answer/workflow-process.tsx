@@ -32,6 +32,15 @@ const WorkflowProcessItem = ({
   const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
   const fallbackTitle = t('common.workflowProcess', { ns: 'workflow' })
+  const statusLabel = running
+    ? t('common.workflowProcessRunning', { ns: 'workflow' })
+    : succeeded
+      ? t('common.workflowProcessSucceeded', { ns: 'workflow' })
+      : failed
+        ? t('common.workflowProcessFailed', { ns: 'workflow' })
+        : paused
+          ? t('common.workflowProcessPaused', { ns: 'workflow' })
+          : fallbackTitle
   const hasTracing = data.tracing.length > 0
   const collapsedTitle = failed
     ? (hasTracing
@@ -105,6 +114,7 @@ const WorkflowProcessItem = ({
           )
         }
         <div
+          data-testid="workflow-process-title"
           className={cn(
             'min-w-0 grow truncate system-xs-medium',
             showCollapsedWorkflowError ? 'text-text-destructive' : 'text-text-secondary',
@@ -120,7 +130,6 @@ const WorkflowProcessItem = ({
             {
               failed && data.error && (
                 <div
-<<<<<<< HEAD
                   className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular break-words whitespace-pre-wrap text-text-destructive"
                   data-testid="workflow-process-error"
                 >

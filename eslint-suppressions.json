@@ -1169,6 +1169,11 @@
       "count": 1
     }
   },
+  "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
+    "react/set-state-in-effect": {
+      "count": 1
+    }
+  },
   "web/app/components/base/chat/chat/check-input-forms-hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
