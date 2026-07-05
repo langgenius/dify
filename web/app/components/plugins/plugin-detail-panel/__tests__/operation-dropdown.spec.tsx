@@ -4,7 +4,7 @@ import { cloneElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginSource } from '../../types'
-import OperationDropdown from '../operation-dropdown'
+import { OperationDropdown } from '../operation-dropdown'
 
 const render = (ui: ReactElement) =>
   renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
