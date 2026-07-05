@@ -103,7 +103,7 @@ Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group
 
 ## Typed value contracts
 
-Selection primitives should preserve the caller's domain value type instead of widening values to `string`. Use `Select<Value, Multiple>`, `RadioGroup<Value>`, `Radio<Value>`, `RadioRoot<Value>`, and shared option-card components such as `RadioCard<Value>` when the selected value is an enum, union, boolean, number, object, or nullable placeholder value.
+Selection primitives should preserve the caller's domain value type instead of widening values to `string`. Use `Select<Value, Multiple>`, `RadioGroup<Value>`, `Radio<Value>`, and `RadioRoot<Value>` when the selected value is an enum, union, boolean, number, object, or nullable placeholder value.
 
 Root-level generics type `value`, `defaultValue`, `onValueChange`, and collection props such as `items`, but JSX children do not automatically inherit the parent generic. For non-string radio groups, type the child item too:
 

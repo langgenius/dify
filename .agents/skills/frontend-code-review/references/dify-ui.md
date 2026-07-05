@@ -45,7 +45,7 @@ Flag:
 
 Prefer Base UI/Dify UI data attributes and CSS variables for visual state: `data-open`, `data-checked`, `data-disabled`, `data-highlighted`, `data-popup-open`, `group-data-*`, `peer-data-*`, `has-[:focus-visible]`, and primitive CSS variables such as anchor width or transform origin. Use JS conditional classes for product/business state that the primitive does not expose.
 
-For non-string `Select` and `RadioGroup` values, prefer explicit domain generics at the root and at child value carriers. JSX children do not inherit the parent generic, so `RadioGroup<PromptMode>` should compose with `Radio<PromptMode>`, `RadioRoot<PromptMode>`, `RadioCard<PromptMode>`, or option values from a typed collection. For `Select`, prefer the Base UI `items` collection pattern for typed value-to-label rendering, and flag string coercion helpers used only to recover display labels.
+For non-string `Select` and `RadioGroup` values, prefer explicit domain generics at the root and at child value carriers. JSX children do not inherit the parent generic, so `RadioGroup<PromptMode>` should compose with `Radio<PromptMode>`, `RadioRoot<PromptMode>`, or option values from a typed collection. For `Select`, prefer the Base UI `items` collection pattern for typed value-to-label rendering, and flag string coercion helpers used only to recover display labels.
 
 ## Forms
 

@@ -69,7 +69,7 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 - Avoid barrel files that only re-export secondary owners. `index.tsx` is acceptable for a route/tab entry component; import header controls, switches, sections, and row owners from their concrete owner files.
 - Type simple one-off props inline. Use a named `Props` type only when reused, exported, complex, or clearer.
 - Use API-generated or API-returned types at component boundaries. Keep small UI conversion helpers and one-off UI extensions beside the component that needs them.
-- Preserve domain value types for selection components. Do not widen enum, union, boolean, numeric, object, or nullable select/radio values to `string`; keep shared option rows and option cards generic or typed from their feature option collection.
+- Preserve domain value types for selection components. Do not widen enum, union, boolean, numeric, object, or nullable select/radio values to `string`; keep wrappers and option value carriers typed from their feature option collection.
 - Avoid `common.tsx` buckets for shared UI. Use a feature-local `components/` folder with concrete filenames that describe the shared role.
 - Do not create type aliases that only rename another type. Use aliases only for real UI concepts, refinements, or reusable local contracts.
 - Name values by their domain role and backend API contract, especially persistent IDs and route params. Normalize framework or route params at the boundary.
