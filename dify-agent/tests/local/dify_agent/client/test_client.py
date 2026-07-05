@@ -137,7 +137,7 @@ class DisconnectingSyncStream(httpx.SyncByteStream):
 
 
 def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "result")
+    monkeypatch.setattr(client_module, "_function_tool_result_payload_key_cache", "result")
     decoder = client_module._SSEDecoder()
     payload = _function_tool_result_payload("part")
 
@@ -153,7 +153,7 @@ def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest
 def test_function_tool_result_payload_normalization_supports_old_part_schema(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "part")
+    monkeypatch.setattr(client_module, "_function_tool_result_payload_key_cache", "part")
     payload = _function_tool_result_payload("result")
 
     normalized = client_module._normalize_run_event_payload_for_local_pydantic_ai(payload)
