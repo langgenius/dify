@@ -50,7 +50,8 @@ class TestDeleteDraftVariableOffloadData:
         assert result == 0
         mock_conn.execute.assert_not_called()
 
-    def test_delete_draft_variable_offload_data_database_failure(self, caplog: pytest.LogCaptureFixture):
+    @patch("tasks.remove_app_and_related_data_task.logging")
+    def test_delete_draft_variable_offload_data_database_failure(self, mock_logging):
         """Test handling of database operation failures."""
         mock_conn = MagicMock()
         file_ids = ["file-1"]
@@ -59,14 +60,13 @@ class TestDeleteDraftVariableOffloadData:
         mock_conn.execute.side_effect = Exception("Database error")
 
         # Execute function - should not raise, but log error
-        with caplog.at_level(logging.ERROR):
-            result = _delete_draft_variable_offload_data(mock_conn, file_ids)
+        result = _delete_draft_variable_offload_data(mock_conn, file_ids)
 
         # Should return 0 when error occurs
         assert result == 0
 
         # Verify error was logged
-        assert "Error deleting draft variable offload data:" in caplog.text
+        mock_logging.exception.assert_called_once_with("Error deleting draft variable offload data:")
 
 
 class TestDeleteWorkflowArchiveLogs:
@@ -114,9 +114,7 @@ class TestDeleteAppStars:
 
 class TestDeleteArchivedWorkflowRunFiles:
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_not_configured(
-        self, mock_get_storage, caplog: pytest.LogCaptureFixture
-    ):
+    def test_delete_archived_workflow_run_files_not_configured(self, mock_get_storage, caplog):
         mock_get_storage.side_effect = ArchiveStorageNotConfiguredError("missing config")
 
         with caplog.at_level(logging.INFO, logger="tasks.remove_app_and_related_data_task"):
@@ -125,7 +123,7 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert caplog.text.count("Archive storage not configured") == 1
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_list_failure(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
+    def test_delete_archived_workflow_run_files_list_failure(self, mock_get_storage, caplog):
         storage = MagicMock()
         storage.list_objects.side_effect = Exception("list failed")
         mock_get_storage.return_value = storage
@@ -138,7 +136,7 @@ class TestDeleteArchivedWorkflowRunFiles:
         assert "Failed to list archive files for app app-1" in caplog.text
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
-    def test_delete_archived_workflow_run_files_success(self, mock_get_storage, caplog: pytest.LogCaptureFixture):
+    def test_delete_archived_workflow_run_files_success(self, mock_get_storage, caplog):
         storage = MagicMock()
         storage.list_objects.return_value = ["key-1", "key-2"]
         mock_get_storage.return_value = storage
