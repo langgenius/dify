@@ -46,6 +46,7 @@ from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models import Account, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, SegmentStatus
@@ -368,7 +369,7 @@ class DatasetDocumentListApi(Resource):
                     desc(Document.position),
                 )
 
-        paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_documents = paginate_query(query, page=page, per_page=limit, max_per_page=100)
         documents = paginated_documents.items
 
         DocumentService.enrich_documents_with_summary_index_status(

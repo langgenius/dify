@@ -170,7 +170,7 @@ export const InTooltip: Story = {
           <button
             type="button"
             aria-label="Collapse sidebar"
-            className="inline-flex size-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs"
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           >
             <span aria-hidden className="i-ri-sidebar-fold-line size-4" />
           </button>
@@ -204,7 +204,7 @@ export const InContextMenu: Story = {
         render={(
           <button
             type="button"
-            className="flex h-28 w-60 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center system-sm-regular text-text-tertiary"
+            className="flex h-28 w-60 items-center justify-center rounded-xl border border-divider-subtle bg-background-default-subtle px-6 text-center system-sm-regular text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
           />
         )}
       >

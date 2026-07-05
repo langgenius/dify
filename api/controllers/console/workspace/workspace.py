@@ -33,6 +33,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import OptionalTimestampField, TimestampField, dump_response, to_timestamp
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
@@ -294,7 +295,7 @@ class WorkspaceListApi(Resource):
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
-        tenants = db.paginate(select=stmt, page=args.page, per_page=args.limit, error_out=False)
+        tenants = paginate_query(stmt, page=args.page, per_page=args.limit)
         has_more = False
 
         if tenants.has_next:

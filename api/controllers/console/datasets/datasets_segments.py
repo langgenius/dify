@@ -57,6 +57,7 @@ from fields.segment_fields import (
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response, escape_like_pattern
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models import Account
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
@@ -270,7 +271,7 @@ class DatasetDocumentSegmentListApi(Resource):
             elif args.enabled.lower() == "false":
                 query = query.where(DocumentSegment.enabled == False)
 
-        segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        segments = paginate_query(query, page=page, per_page=limit, max_per_page=100)
 
         segment_list = list(segments.items)
         segment_ids = [segment.id for segment in segment_list]
