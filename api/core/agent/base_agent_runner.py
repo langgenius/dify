@@ -5,7 +5,6 @@ from decimal import Decimal
 from typing import Union, cast
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -52,7 +51,6 @@ class BaseAgentRunner(AppRunner):
     def __init__(
         self,
         *,
-        session: Session,
         tenant_id: str,
         application_generate_entity: AgentChatAppGenerateEntity,
         conversation: Conversation,
@@ -90,7 +88,6 @@ class BaseAgentRunner(AppRunner):
             invoke_from=self.application_generate_entity.invoke_from,
         )
         self.dataset_tools = DatasetRetrieverTool.get_dataset_tools(
-            session=session,
             tenant_id=tenant_id,
             dataset_ids=app_config.dataset.dataset_ids if app_config.dataset else [],
             retrieve_config=app_config.dataset.retrieve_config if app_config.dataset else None,
