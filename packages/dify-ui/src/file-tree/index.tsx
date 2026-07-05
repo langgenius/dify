@@ -288,7 +288,7 @@ export function FileTreeIcon({
             ? (
                 <React.Fragment>
                   <span className="size-4 i-ri-folder-line group-data-panel-open/file-tree-row:hidden" />
-                  <span className="hidden size-4 text-text-accent i-ri-folder-open-line group-data-panel-open/file-tree-row:block" />
+                  <span className="hidden size-4 text-text-secondary i-ri-folder-open-line group-data-panel-open/file-tree-row:block" />
                 </React.Fragment>
               )
             : <span className={cn('size-4', fileTreeIconClassNames[type])} />
@@ -319,7 +319,7 @@ export function FileTreeLabel({
   const defaultProps = {
     'data-label': labelText,
     'className': cn(
-      'min-w-0 truncate rounded-[5px] px-1 py-0.5',
+      'w-0 min-w-0 flex-1 truncate rounded-[5px] px-1 py-0.5',
       labelText && 'after:invisible after:block after:h-0 after:overflow-hidden after:system-sm-medium after:content-[attr(data-label)]',
       'system-sm-regular text-text-secondary group-data-[selected]/file-tree-row:system-sm-medium group-data-[selected]/file-tree-row:text-text-primary',
       className,

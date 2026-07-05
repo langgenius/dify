@@ -1170,12 +1170,6 @@
     }
   },
   "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }

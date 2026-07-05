@@ -108,6 +108,7 @@ export type AgentCliTool = AgentToolBase & {
 export type AgentTool = AgentProviderTool | AgentCliTool
 
 export type AgentSoulConfigFormState = {
+  configNote: string
   prompt: string
   model?: AgentComposerModel
   appFeatures?: AgentSoulAppFeaturesConfig
@@ -120,6 +121,7 @@ export type AgentSoulConfigFormState = {
 }
 
 export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
+  configNote: '',
   prompt: '',
   skills: [],
   files: [],

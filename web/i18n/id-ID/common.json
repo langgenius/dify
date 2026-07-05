@@ -407,6 +407,8 @@
   "modelProvider.selector.noProviderConfiguredDesc": "Jelajahi Marketplace untuk menginstal, atau konfigurasikan penyedia di pengaturan.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Hanya model yang kompatibel yang ditampilkan",
   "modelProvider.selector.showIncompatibleModels": "Tampilkan model yang tidak kompatibel",
+  "modelProvider.selector.suggestion": "Saran",
+  "modelProvider.selector.suggestionTip": "Direkomendasikan untuk tugas agen",
   "modelProvider.showModels": "Tampilkan Model",
   "modelProvider.speechToTextModel.key": "Model Ucapan-ke-Teks",
   "modelProvider.speechToTextModel.tip": "Atur model default untuk input ucapan-ke-teks dalam percakapan.",

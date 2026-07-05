@@ -19,8 +19,8 @@ Use API setup for prerequisite state, then use Playwright only for user-observab
 Use tags in three layers:
 
 - Capability tags describe the product area: `@build`, `@files`, `@advanced-settings`, `@agent-edit`, `@publish`, `@access-point`, `@output-variables`, and similar tags.
-- Execution-scope tags describe how the scenario should be selected: `@core`, `@infra`, `@web-app-runtime`, `@service-api-runtime`, `@preview`, and `@feature-gated`.
-- Narrow fixture or sub-surface tags describe a specific dependency or slice: `@stable-model`, `@skill-fixture`, `@web-app-access`, `@workflow-reference`, `@files-limits`, and similar tags.
+- Execution-scope tags describe how the scenario should be selected: `@core`, `@infra`, `@web-app-runtime`, `@service-api-runtime`, `@agent-backend-runtime`, `@preview`, `@feature-gated`, `@external-model`, and `@external-tool`.
+- Narrow fixture or sub-surface tags describe a specific dependency or slice: `@stable-model`, `@agent-decision-model`, `@skill-fixture`, `@web-app-access`, `@workflow-reference`, `@files-limits`, and similar tags.
 
 - `@agent-v2` — required capability tag for all Agent v2 scenarios.
 - `@core` — stable non-runtime scenario expected to run in the regular Agent v2 suite when its explicit preconditions are met. Do not apply `@core` to Preview/Test Run, Web app chat runtime, or Backend service API chat runtime scenarios.
@@ -28,7 +28,7 @@ Use tags in three layers:
 - `@build` — Build mode and Build draft behavior.
 - `@build-unavailable-resources` — feature-gated Build chat recovery when the user requests unavailable Skills or Tools.
 - `@files` — Files section upload, display, and fixture behavior.
-- `@files-limits` — feature-gated file format, size, count, and in-progress upload limit behavior.
+- `@files-limits` — file limit behavior. Multiple-file drop is stable core coverage; format, size, count, and in-progress upload recovery remain feature-gated until their product contracts are stable.
 - `@knowledge` — Knowledge Retrieval configuration display, persistence, and reference cleanup.
 - `@advanced-settings` — Env Editor, Content Moderation, and related Advanced Settings behavior.
 - `@agent-create` — Agent Roster creation and initial Configure navigation.
@@ -36,17 +36,22 @@ Use tags in three layers:
 - `@publish` — publish and publish-bar state.
 - `@access-point` — Web app, Backend service API, and Workflow access surfaces.
 - `@stable-model` — active model fixture dependency. Apply this to every scenario that includes `the Agent Builder stable chat model is available` or otherwise requires an active model configured in the workspace.
+- `@agent-decision-model` — stronger active model fixture dependency for scenarios that specifically validate Agent autonomous planning or resource-selection behavior, such as generated-query Knowledge Retrieval. Do not use it for scenarios that only need a model to exist or answer a deterministic prompt.
 - `@tool-fixture` — preseeded Tool dependency such as `JSON Process / JSON Replace` or `Tavily / Tavily Search`.
 - `@skill-fixture` — checked-in or preseeded Skill dependency such as `e2e-summary-skill`.
 - `@knowledge-fixture` — preseeded dataset dependency such as `E2E Agent Knowledge Base`.
 - `@full-config-agent` — fixed `E2E New Agent Builder Full Config` Agent dependency.
 - `@tool-states-agent` — fixed `E2E New Agent Builder Tool States` Agent dependency.
+- `@oauth-tool-agent` — fixed `E2E Agent With OAuth Tool` Agent dependency for OAuth2 tool credential preservation.
 - `@file-tree-fixture` — fixed file-tree Agent drive/config-files dependency.
 - `@dual-retrieval-fixture` — fixed dual Knowledge Retrieval Agent dependency.
 - `@backend-api-access` — fixed or scenario-owned Backend service API access dependency.
 - `@published-web-app` — fixed or scenario-owned published Web app access dependency.
 - `@web-app-runtime` — published public Web app runtime behavior. Use it for scenarios that open the public Web app and assert real chat responses. Access Point URL, launch, customization, and settings surfaces remain `@access-point` behavior unless they send messages through the public Web app.
 - `@service-api-runtime` — Backend service API runtime behavior. Use it for scenarios that call the published service API and assert real chat responses. Endpoint display, copy, API key, and API reference surfaces remain `@access-point` behavior.
+- `@agent-backend-runtime` — standalone `dify-agent` run-server dependency. Apply it only when the scenario goes through Agent v2 runtime execution that requires `AGENT_BACKEND_BASE_URL`, such as Build chat/finalize, published Web app chat, or Backend service API chat. This is separate from `@external-model`; a scenario can call a real model without using `dify-agent`, and a future Agent v2 runtime scenario might exercise `dify-agent` without a paid model provider.
+- `@external-model` — package-wide external runtime tag. In Agent v2, apply it to Build chat generation/finalization, published Web app chat, Backend service API chat, and other Agent runtime requests that can invoke a real model provider. Do not use this for scenarios that only require a configured active model.
+- `@external-tool` — package-wide external runtime tag. In Agent v2, apply it only when the scenario executes a real external tool provider at runtime. Do not use this for plugin installation, tool discovery, tool configuration persistence, or local deterministic tools.
 - `@feature-gated` — product capability is optional. This tag alone does not skip execution; the scenario must include an explicit step that returns `skipped` with a blocked-precondition reason when the feature is unavailable.
 
 Use feature-level `@core` only when every scenario in the file is stable, non-runtime, and not feature-gated. If a feature file mixes stable scenarios with runtime, Preview, or feature-gated scenarios, put `@core` only on the stable scenarios. Keep runtime tags scenario-level so the regular core suite cannot inherit them accidentally.
@@ -107,6 +112,8 @@ Use `a basic configured Agent v2 test agent has been created via API` when a sce
 
 Use `a runnable Agent v2 test agent has been created via API` after `the Agent Builder stable chat model is available` when a scenario needs a real model-backed Agent. The step writes the preflight model into the Agent Soul model config through `features/agent-v2/support/agent-soul.ts` with deterministic E2E model settings; do not duplicate provider/model payload construction in individual steps.
 
+Use `a runnable Agent v2 test agent using the agent-decision model has been created via API` after `the Agent Builder agent-decision chat model is available` only when the scenario is asserting Agent autonomous decision quality rather than generic runtime availability. Keep this scoped to scenarios tagged `@agent-decision-model`.
+
 Use `the Agent v2 configuration should be saved automatically` after UI edits that rely on Configure autosave. It waits for the user-visible publish bar saved state; do not replace it with network-idle waits or internal store checks.
 
 API setup is acceptable for creating scenario-owned Agents, enabling Backend service API, writing composer drafts, seeding Build drafts, and preparing fixed state. The scenario must still assert user-visible behavior or a real persisted product contract through the public Console API. Do not assert only that a setup API call succeeded.
@@ -153,7 +160,11 @@ Agent Builder preflight is read-only. It checks long-lived seed resources and re
 
 Treat preseeded Agent Builder resources as environment contracts. Preflight can report that a stable model, dataset, Skill, Tool credential, fixed Agent, published Web app, or workflow reference is missing, inactive, not indexed, or drifted, but it must not repair that drift during a scenario. Seed scripts, CI bootstrap, or the documented environment maintenance flow own creating and keeping those resources valid.
 
-Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios, model-backed build-mode assertions, and Workflow Agent v2 node setup because the backend rejects Agent nodes without model config. Do not add the model preflight to pure navigation or identity checks unless the setup API itself requires model config. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5.4-mini` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
+Use `the Agent v2 runtime backend is available` before scenarios tagged `@agent-backend-runtime`. The step checks the standalone `dify-agent` run server through `E2E_AGENT_BACKEND_URL`, `AGENT_BACKEND_BASE_URL`, or the default `http://127.0.0.1:5050` when `E2E_START_AGENT_BACKEND=1`. The E2E runner starts this service with `uv run --project dify-agent --extra server uvicorn dify_agent.server.app:app --host 127.0.0.1 --port 5050` only when `E2E_START_AGENT_BACKEND=1` is explicit. Because Agent App runtime always carries the `dify.config` layer and that layer depends on `dify.shell`, the same runner path also starts the `dify-agent/docker/local-sandbox` shellctl container on `E2E_SHELLCTL_PORT` (default `5004`) and injects `DIFY_AGENT_SHELLCTL_ENTRYPOINT` into the Agent backend. Missing or unreachable runtime backend or shellctl sandbox should be reported as a blocked precondition, not discovered later as a `/build-chat/finalize` 400 or Web app response timeout.
+
+Use `the Agent Builder stable chat model is available` before scenarios that need a real Agent Soul model configuration. This includes true runtime scenarios, model-backed build-mode assertions, and Workflow Agent v2 node setup because the backend rejects Agent nodes without model config. Do not add the model preflight to pure navigation or identity checks unless the setup API itself requires model config. `E2E_STABLE_MODEL_PROVIDER`, `E2E_STABLE_MODEL_NAME`, and optional `E2E_STABLE_MODEL_TYPE` are selectors for a model already configured in the workspace; they are not provider credentials. The step defaults to `openai` / `gpt-5-nano` / `llm`, verifies the selected model is present and `active` through `/console/api/workspaces/current/models/model-types/{type}`, then stores it on `DifyWorld.agentBuilder.preflight.stableModel`.
+
+Use `the Agent Builder agent-decision chat model is available` before scenarios that need a stronger model to exercise Agent autonomous planning, generated query selection, or tool/resource choice. `E2E_AGENT_DECISION_MODEL_PROVIDER`, `E2E_AGENT_DECISION_MODEL_NAME`, and optional `E2E_AGENT_DECISION_MODEL_TYPE` are selectors for a second active model fixture, defaulting to `openai` / `gpt-5.5` / `llm`. The step stores the model on `DifyWorld.agentBuilder.preflight.agentDecisionModel`. Do not use this fixture as a broad replacement for `@stable-model`; it is intentionally narrower and costlier.
 
 Keep `@stable-model` on Build draft apply scenarios that click `Apply`. The current product path calls `/build-chat/finalize` before applying the draft, and the backend returns `model is required` when the Agent Soul has no model config. Discard-only and pending-draft isolation scenarios can stay model-free when they do not finalize the Build draft.
 
@@ -163,8 +174,12 @@ Override the default selector only when a scenario or environment explicitly nee
 
 ```bash
 E2E_STABLE_MODEL_PROVIDER=openai
-E2E_STABLE_MODEL_NAME=gpt-5.4-mini
+E2E_STABLE_MODEL_NAME=gpt-5-nano
 E2E_STABLE_MODEL_TYPE=llm
+
+E2E_AGENT_DECISION_MODEL_PROVIDER=openai
+E2E_AGENT_DECISION_MODEL_NAME=gpt-5.5
+E2E_AGENT_DECISION_MODEL_TYPE=llm
 ```
 
 Dify may expose OpenAI as either `openai` or a plugin provider ID such as `langgenius/openai/openai`. The preflight accepts both forms for selection and stores the actual Console API provider ID for Agent Soul setup.
@@ -186,6 +201,8 @@ Use `the Agent Builder preseeded Agent "{agent}" has Backend service API access 
 Use `the Agent Builder preseeded Agent "{agent}" includes the core fixture configuration` for the fixed Full Config Agent prerequisite. It composes the stable model, Summary Skill, JSON Replace tool, and indexed knowledge-base preflights, then reads `/console/api/agent/{agent_id}/composer` to verify the Agent Soul contains the selected model, prompt success token, required file fixtures, JSON Replace tool entry, and knowledge dataset reference. Do not use this step for Agent node output variables; those live in workflow node-job `declared_outputs`, not the roster Agent App composer response.
 
 Use `the Agent Builder preseeded Agent "{agent}" includes the tool state fixture configuration` for the fixed Tool States Agent prerequisite. It composes the Summary Skill, JSON Replace tool, and Tavily Search tool preflights, then reads `/console/api/agent/{agent_id}/composer` to verify the Agent Soul includes JSON Replace, Tavily Search, and a Tavily credential reference. This proves the seed is configured to exercise tool status UI; keep actual invalid-credential errors in dependent user-visible configuration or runtime scenarios.
+
+Use `the Agent Builder preseeded Agent "{agent}" includes an OAuth2 tool credential` for the fixed OAuth Tool Agent prerequisite. It reads the Agent composer and verifies at least one Dify tool has `credential_type: oauth2` with a `credential_ref.id`. Scenarios that need to save or mutate this configuration should copy that tool config into a scenario-owned Agent instead of mutating the fixed preseeded Agent.
 
 Use `the Agent Builder preseeded Agent "{agent}" includes the dual retrieval fixture configuration` for the fixed Dual Retrieval Agent prerequisite. It composes the indexed knowledge-base preflight, then reads `/console/api/agent/{agent_id}/composer` to verify `agent_soul.knowledge.sets` includes both an Agent-decide generated query set and a custom user-query set using the fixed custom query.
 
@@ -213,6 +230,6 @@ Order blocked steps by the real owner of the first unresolved condition. If a sc
 
 Use partial coverage only when current product behavior is intentionally narrower than the written requirement and the test still asserts a real user-visible behavior. Example: Files are currently flat in Agent config files, so the flat Files list can be asserted while tree display remains blocked until product support exists.
 
-File format, size, count, and in-progress upload limit cases are feature-gated until the product exposes stable Agent config file restrictions and user-visible recovery/error states. Do not convert `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
+Multiple-file drop is already covered as stable `@core @files-limits` behavior. File format, size, count, and in-progress upload limit cases remain feature-gated until the product exposes stable Agent config file restrictions and user-visible recovery/error states. Do not convert those gated `@files-limits` scenarios to passing tests by relying on default environment behavior; first align the product contract or seed configuration.
 
 Do not mark a scenario as complete if it only proves setup state and does not assert the user-visible behavior or persisted product contract required by the case.

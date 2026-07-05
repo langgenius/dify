@@ -299,12 +299,11 @@ def test_cli_config_manifest_omits_hash_fields(
             "push_config_note_from_environment",
             {"local_path": "/tmp/note.md"},
         ),
-        (["config", "env", "push"], "push_config_env_from_environment", {"local_path": None}),
         (["config", "env", "push", "/tmp/.env"], "push_config_env_from_environment", {"local_path": "/tmp/.env"}),
         (
-            ["config", "files", "push", "/tmp/guide.txt", "--name", "runtime.txt"],
+            ["config", "files", "push", "/tmp/guide.txt"],
             "push_config_files_from_environment",
-            {"paths": ["/tmp/guide.txt"], "name": "runtime.txt"},
+            {"paths": ["/tmp/guide.txt"]},
         ),
         (
             ["config", "files", "delete", "old.txt", "legacy.txt"],

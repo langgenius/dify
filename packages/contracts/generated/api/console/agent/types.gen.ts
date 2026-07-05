@@ -18,7 +18,7 @@ export type AgentAppCreatePayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name: string
-  role: string
+  role?: string | null
 }
 
 export type AgentAppDetailWithSite = {
@@ -74,7 +74,7 @@ export type AgentAppUpdatePayload = {
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
-  role: string
+  role?: string | null
   use_icon_as_answer_icon?: boolean | null
 }
 
@@ -846,7 +846,7 @@ export type AgentSensitiveWordAvoidanceFeatureConfig = {
 
 export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
   enabled?: boolean
-  model?: AgentSoulModelConfig | null
+  model?: AgentSuggestedQuestionsAfterAnswerModelConfig | null
   prompt?: string | null
   [key: string]: unknown
 }
@@ -1324,6 +1324,16 @@ export type AgentModerationProviderConfig = {
   inputs_config?: AgentModerationIoConfig | null
   keywords?: string | null
   outputs_config?: AgentModerationIoConfig | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
   [key: string]: unknown
 }
 

@@ -5,6 +5,7 @@ from typing import cast
 from unittest.mock import patch
 
 import httpx
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from pydantic_ai.exceptions import ModelHTTPError, UserError
 from pydantic_ai.messages import (
     InstructionPart,
@@ -310,6 +311,62 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cast(TextPart, response.parts[0]).content, "adapter response")
         self.assertEqual(response.usage.input_tokens, 11)
         self.assertEqual(response.usage.output_tokens, 7)
+
+    async def test_request_stream_splits_embedded_thinking_tags_from_text_content_parts(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content=[TextPromptMessageContent(data="before<think>reasoning")],
+                            tool_calls=[],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=1,
+                        message=AssistantPromptMessage(
+                            content=[TextPromptMessageContent(data=" continues</think>after")],
+                            tool_calls=[],
+                        ),
+                    ),
+                ),
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=2,
+                        message=AssistantPromptMessage(content="", tool_calls=[]),
+                        usage=make_usage(prompt_tokens=6, completion_tokens=4),
+                        finish_reason="stop",
+                    ),
+                ),
+            )
+
+        async with self.mock_daemon_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+                credentials={"api_key": "secret"},
+            )
+
+            async with adapter.request_stream(
+                [ModelRequest(parts=[UserPromptPart("hello")])],
+                model_settings=None,
+                model_request_parameters=ModelRequestParameters(),
+            ) as stream:
+                events = [event async for event in stream]
+                response = stream.get()
+
+        self.assertTrue(events)
+        self.assertEqual([part.part_kind for part in response.parts], ["text", "thinking", "text"])
+        self.assertEqual(cast(TextPart, response.parts[0]).content, "before")
+        self.assertEqual(cast(ThinkingPart, response.parts[1]).content, "reasoning continues")
+        self.assertEqual(cast(TextPart, response.parts[2]).content, "after")
 
     async def test_request_stream_yields_response_parts_and_usage(self) -> None:
         def handler(_request: httpx.Request) -> httpx.Response:

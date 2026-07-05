@@ -100,6 +100,27 @@ Given('a runnable Agent v2 test agent has been created via API', async function 
   this.lastCreatedAgentRole = agent.role ?? undefined
 })
 
+Given(
+  'a runnable Agent v2 test agent using the agent-decision model has been created via API',
+  async function (this: DifyWorld) {
+    if (!this.agentBuilder.preflight.agentDecisionModel) {
+      throw new Error(
+        'Create an agent-decision Agent v2 test agent after agent-decision model preflight.',
+      )
+    }
+
+    const agent = await createConfiguredTestAgent({
+      agentSoul: createAgentSoulConfigWithModel(
+        normalAgentSoulConfig,
+        this.agentBuilder.preflight.agentDecisionModel,
+      ),
+    })
+    this.createdAgentIds.push(agent.id)
+    this.lastCreatedAgentName = agent.name
+    this.lastCreatedAgentRole = agent.role ?? undefined
+  },
+)
+
 Given('a minimal Agent v2 composer draft has been synced', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 

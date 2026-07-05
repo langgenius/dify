@@ -14,6 +14,11 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder stable chat model is available
 
+  @agent-decision-model
+  Scenario: Agent-decision chat model is available
+    Given I am signed in as the default E2E admin
+    And the Agent Builder agent-decision chat model is available
+
   @broken-model
   Scenario: Broken chat model is available for recovery scenarios
     Given I am signed in as the default E2E admin
@@ -78,6 +83,11 @@ Feature: Agent Builder preseeded environment
   Scenario: Tool states Agent includes tool state fixture configuration
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E New Agent Builder Tool States" includes the tool state fixture configuration
+
+  @oauth-tool-agent
+  Scenario: OAuth2 tool Agent includes credential fixture configuration
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E Agent With OAuth Tool" includes an OAuth2 tool credential
 
   @file-tree-fixture
   Scenario: File tree Agent includes fixture files
