@@ -122,7 +122,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
             onValueChange={value => onChunkForContextChange(value)}
             className="mt-1 flex-col items-stretch gap-2"
           >
-            <RadioCard
+            <RadioCard<ParentMode>
               value="paragraph"
               icon={<img src={Note.src} alt="" />}
               title={t('stepTwo.paragraph', { ns: 'datasetCreation' })}
@@ -142,7 +142,7 @@ export const ParentChildOptions: FC<ParentChildOptionsProps> = ({
                 </div>
               )}
             />
-            <RadioCard
+            <RadioCard<ParentMode>
               value="full-doc"
               icon={<img src={FileList.src} alt="" />}
               title={t('stepTwo.fullDoc', { ns: 'datasetCreation' })}

@@ -14,9 +14,9 @@ type BaseProps = {
   chosenConfigWrapClassName?: string
 }
 
-type SelectableRadioCardProps = BaseProps & {
+type SelectableRadioCardProps<Value = string> = BaseProps & {
   noRadio?: false
-} & Omit<RadioRootProps<string>, 'children' | 'className' | 'variant' | 'render' | 'nativeButton'>
+} & Omit<RadioRootProps<Value>, 'children' | 'className' | 'variant' | 'render' | 'nativeButton'>
 
 type StaticRadioCardProps = BaseProps & {
   noRadio: true
@@ -24,9 +24,9 @@ type StaticRadioCardProps = BaseProps & {
   checked?: never
 }
 
-type Props = SelectableRadioCardProps | StaticRadioCardProps
+type Props<Value = string> = SelectableRadioCardProps<Value> | StaticRadioCardProps
 
-function RadioCard(props: Props) {
+function RadioCard<Value = string>(props: Props<Value>) {
   if (props.noRadio) {
     const {
       icon,
@@ -106,7 +106,7 @@ function RadioCard(props: Props) {
     <div
       className={rootClassName}
     >
-      <RadioRoot
+      <RadioRoot<Value>
         {...radioRootProps}
         variant="unstyled"
         nativeButton
