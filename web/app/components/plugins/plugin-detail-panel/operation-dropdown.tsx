@@ -12,7 +12,6 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import Link from '@/next/link'
 import { PluginSource } from '../types'
 
 type OperationDropdownProps = Readonly<{
@@ -66,8 +65,9 @@ export function OperationDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn('action-btn data-popup-open:bg-state-base-hover', triggerSize === 'xs' ? 'action-btn-xs' : 'action-btn-m')}
+        aria-label={t('detailPanel.operation.moreActions', { ns: 'plugin' })}
       >
-        <span className="i-ri-more-fill size-4" />
+        <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement={placement}
@@ -88,14 +88,10 @@ export function OperationDropdown({
         {showMarketplaceDetail && (
           <DropdownMenuLinkItem
             className="px-2 py-1 system-md-regular text-text-secondary"
-            render={(
-              <Link
-                href={detailUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={t('detailPanel.operation.viewDetail', { ns: 'plugin' })}
-              />
-            )}
+            href={detailUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t('detailPanel.operation.viewDetail', { ns: 'plugin' })}
           >
             <span className="min-w-0 grow truncate px-1 py-0.5">{t('detailPanel.operation.viewDetail', { ns: 'plugin' })}</span>
             <span className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary" />
