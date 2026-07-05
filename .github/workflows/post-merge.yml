@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-  secrets: inherit
 
 concurrency:
   group: post-merge-${{ github.sha }}
