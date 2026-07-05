@@ -16,7 +16,17 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export const Select = BaseSelect.Root
+export type SelectRootProps<
+  Value,
+  Multiple extends boolean | undefined = false,
+> = BaseSelect.Root.Props<Value, Multiple>
+
+export function Select<Value, Multiple extends boolean | undefined = false>(
+  props: SelectRootProps<Value, Multiple>,
+): React.JSX.Element {
+  return <BaseSelect.Root {...props} />
+}
+
 export const SelectValue = BaseSelect.Value
 export const SelectGroup = BaseSelect.Group
 

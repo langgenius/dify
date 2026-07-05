@@ -17,7 +17,30 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export const Autocomplete = BaseAutocomplete.Root
+export type AutocompleteRootProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
+export type AutocompleteRootGroupedProps<
+  Items extends readonly { items: readonly unknown[] }[],
+> = Omit<AutocompleteRootProps<Items[number]['items'][number]>, 'items'> & {
+  items: Items
+}
+export type AutocompleteRootFlatProps<ItemValue>
+  = Omit<AutocompleteRootProps<ItemValue>, 'items'>
+    & {
+      items?: readonly ItemValue[]
+    }
+
+export function Autocomplete<Items extends readonly { items: readonly unknown[] }[]>(
+  props: AutocompleteRootGroupedProps<Items>,
+): React.JSX.Element
+export function Autocomplete<ItemValue>(
+  props: AutocompleteRootFlatProps<ItemValue>,
+): React.JSX.Element
+export function Autocomplete(
+  props: AutocompleteRootProps<unknown>,
+): React.JSX.Element {
+  return <BaseAutocomplete.Root {...props} />
+}
+
 export const AutocompleteValue = BaseAutocomplete.Value
 export const AutocompleteGroup = BaseAutocomplete.Group
 export const AutocompleteCollection = BaseAutocomplete.Collection
@@ -25,7 +48,6 @@ export const AutocompleteRow = BaseAutocomplete.Row
 export const useAutocompleteFilter = BaseAutocomplete.useFilter
 export const useAutocompleteFilteredItems = BaseAutocomplete.useFilteredItems
 
-export type AutocompleteRootProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
 export type AutocompleteRootChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
 export type AutocompleteRootHighlightEventDetails = BaseAutocomplete.Root.HighlightEventDetails
 
