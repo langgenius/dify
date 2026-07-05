@@ -4,22 +4,29 @@ import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import {
+  FileTreeBadge,
   FileTreeGuide,
+  FileTreeIcon,
+  FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { agentComposerOriginalConfigAtom } from '@/features/agent-v2/agent-composer/store'
+import { Trans, useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
+import { useDocLink } from '@/context/i18n'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
+import { DocsLink } from '../common/docs-link'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
@@ -91,6 +98,7 @@ function AgentFileItem({
   const selectedFile = selectedFileId ? findAgentFileNode(files, selectedFileId) : undefined
   const selectedPreviewFile = selectedFile ?? file
   const isVirtualPreviewFile = selectedPreviewFile.virtualContent !== undefined
+  const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
   const previewFileId = isVirtualPreviewFile ? undefined : getAgentFilePreviewKey(selectedPreviewFile)
   const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.files.byName.preview.get.queryOptions({
@@ -176,14 +184,17 @@ function AgentFileItem({
               type="button"
               data-selected={selected || undefined}
               aria-current={selected ? 'true' : undefined}
-              className="group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pr-7 pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active"
+              className={cn(
+                'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none group-hover/file-row:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
+                'pr-7',
+              )}
             />
           )}
         >
           {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
             <FileTreeGuide key={index} />
           ))}
-          <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-0.5">
             {children}
           </div>
         </DialogTrigger>
@@ -209,7 +220,12 @@ function AgentFileItem({
           }}
         />
       </Dialog>
-      {!readOnly && !file.virtualContent && (
+      {isBuildNoteFile && (
+        <AgentBuildNoteInfotip
+          className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
+        />
+      )}
+      {!readOnly && (!file.virtualContent || isBuildNoteFile) && (
         <button
           type="button"
           data-agent-file-remove-button
@@ -224,6 +240,51 @@ function AgentFileItem({
   )
 }
 
+function AgentBuildNoteFileRow() {
+  const { t } = useTranslation('agentV2')
+
+  return (
+    <>
+      <FileTreeIcon type="markdown" />
+      <FileTreeLabel title={BUILD_NOTE_FILE_NAME}>
+        {BUILD_NOTE_FILE_NAME}
+      </FileTreeLabel>
+      <FileTreeBadge className="ml-0.5 gap-0.5 px-1 py-0.5">
+        <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
+        <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
+      </FileTreeBadge>
+    </>
+  )
+}
+
+function AgentBuildNoteInfotip({
+  className,
+}: {
+  className?: string
+}) {
+  const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
+
+  return (
+    <Infotip
+      aria-label={t('agentDetail.configure.files.buildNote.tooltip')}
+      className={cn('absolute top-1/2 right-1 z-10 size-5 -translate-y-1/2', className)}
+      iconClassName="size-4"
+      popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
+    >
+      <p className="body-xs-regular text-text-secondary">
+        <Trans
+          i18nKey="agentDetail.configure.files.buildNote.richTooltip"
+          ns="agentV2"
+          components={{
+            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
+          }}
+        />
+      </p>
+    </Infotip>
+  )
+}
+
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
   const filesTip = t('agentDetail.configure.files.tip')
@@ -231,14 +292,23 @@ export function AgentFiles() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
-  const originalConfig = useAtomValue(agentComposerOriginalConfigAtom)
+  const draft = useAtomValue(agentComposerDraftAtom)
+  const setDraft = useSetAtom(agentComposerDraftAtom)
   const files = useAtomValue(agentComposerFilesAtom)
   const setFiles = useSetAtom(agentComposerFilesAtom)
-  const buildNoteFile = getBuildNoteFile(originalConfig?.config_note)
+  const buildNoteFile = getBuildNoteFile(draft.configNote)
   const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
   const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions())
   const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions())
   const removeFile = useCallback((fileId: string) => {
+    if (fileId === BUILD_NOTE_FILE_ID) {
+      setDraft(draft => ({
+        ...draft,
+        configNote: '',
+      }))
+      return
+    }
+
     const file = findAgentFileNode(files, fileId)
     const configName = file?.configName ?? file?.name
 
@@ -273,7 +343,7 @@ export function AgentFiles() {
         version_id: apiContext.versionId,
       },
     }, { onSuccess })
-  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setFiles])
+  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setDraft, setFiles])
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)
@@ -324,18 +394,22 @@ export function AgentFiles() {
                 treeLabel={t('agentDetail.configure.files.treeLabel')}
                 className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
                 scrollAreaClassName="max-h-[250px] flex-none"
-                renderFile={({ depth, file, selected, children }) => (
-                  <AgentFileItem
-                    depth={depth}
-                    file={file}
-                    files={visibleFiles}
-                    apiContext={apiContext}
-                    selected={selected}
-                    onRemove={removeFile}
-                  >
-                    {children}
-                  </AgentFileItem>
-                )}
+                renderFile={({ depth, file, selected, children }) => {
+                  const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
+
+                  return (
+                    <AgentFileItem
+                      depth={depth}
+                      file={file}
+                      files={visibleFiles}
+                      apiContext={apiContext}
+                      selected={selected}
+                      onRemove={removeFile}
+                    >
+                      {isBuildNoteFile ? <AgentBuildNoteFileRow /> : children}
+                    </AgentFileItem>
+                  )
+                }}
               />
             )}
       </ConfigureSection>

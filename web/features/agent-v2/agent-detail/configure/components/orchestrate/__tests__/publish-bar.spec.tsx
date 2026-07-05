@@ -250,7 +250,7 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
-  it('should block publish when knowledge retrieval validation fails', () => {
+  it('should allow publish request when knowledge retrieval validation fails', async () => {
     const { onPublish } = renderPublishBar({
       setupStore: (store) => {
         store.set(agentComposerDraftAtom, {
@@ -266,15 +266,17 @@ describe('AgentConfigurePublishBar', () => {
       },
     })
 
-    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeDisabled()
-    expect(screen.getByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeEnabled()
+    expect(screen.queryByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')).not.toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
     )
 
     fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
-    expect(onPublish).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('should restore the selected version from view-only mode', async () => {

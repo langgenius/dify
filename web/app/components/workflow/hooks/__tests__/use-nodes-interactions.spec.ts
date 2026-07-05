@@ -548,6 +548,73 @@ describe('useNodesInteractions', () => {
     expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
 
+  it('creates an inline agent binding when Agent v2 default data is pending inline', () => {
+    currentNodes = [
+      createNode({
+        id: 'node-1',
+        width: 100,
+        data: {
+          type: BlockEnum.Code,
+          title: 'Code',
+          desc: '',
+        },
+      }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = []
+    rfState.setNodes.mockImplementation((nextNodes) => {
+      rfState.nodes = nextNodes
+    })
+    runtimeNodesMetaDataMap.value = {
+      [BlockEnum.AgentV2]: {
+        defaultValue: {
+          type: BlockEnum.AgentV2,
+          title: 'Agent',
+          desc: '',
+          agent_binding: {
+            binding_type: 'inline_agent',
+          },
+          agent_node_kind: 'dify_agent',
+          version: '2',
+        },
+        metaData: {
+          isSingleton: false,
+        },
+      },
+    }
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: [],
+      },
+    })
+
+    act(() => {
+      result.current.handleNodeAdd(
+        {
+          nodeType: BlockEnum.AgentV2,
+        },
+        { prevNodeId: 'node-1' },
+      )
+    })
+
+    const agentNode = rfState.nodes.find(node => node.data.type === BlockEnum.AgentV2)
+    const firstSetNodesPayload = rfState.setNodes.mock.calls[0]?.[0]
+    const pendingAgentNode = firstSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+
+    expect(pendingAgentNode?.data._isTempNode).toBe(true)
+    expect(agentNode?.data.agent_binding).toEqual({
+      binding_type: 'inline_agent',
+      agent_id: 'inline-agent-1',
+      current_snapshot_id: 'inline-snapshot-1',
+    })
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(agentNode?.id, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
+  })
+
   it('cancels selection state with collaborative nodes snapshot', () => {
     currentNodes = [
       createNode({

@@ -3,15 +3,19 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
+from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol, ShellctlProvider
 from dify_agent.agent_stub.server.shell_agent_stub_env import (
     AGENT_STUB_API_BASE_URL_ENV_VAR,
     AGENT_STUB_AUTH_JWE_ENV_VAR,
@@ -32,10 +36,13 @@ from dify_agent.protocol import (
     build_sandbox_locator_from_run_request,
 )
 from dify_agent.server.sandbox_files import (
+    _LIST_SCRIPT,
     SandboxFileError,
     SandboxFileService,
     _OUTPUT_BEGIN,
     _OUTPUT_END,
+    _READ_SCRIPT,
+    _UPLOAD_SCRIPT,
     _decode_sandbox_payload,
     _shell_result_details,
 )
@@ -57,35 +64,35 @@ class _Job:
 class RunCall:
     script: str
     cwd: str | None
-    env: Mapping[str, str] | None
+    env: dict[str, str] | None
     timeout: float
 
 
 class FakeShellctlClient:
-    def __init__(self, *, run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], _Job]) -> None:
+    def __init__(self, *, run_handler: Callable[[str, str | None, dict[str, str] | None, float], _Job]) -> None:
         self.run_handler = run_handler
         self.run_calls: list[RunCall] = []
         self.delete_calls: list[str] = []
 
     async def run(
-        self, script: str, *, cwd: str | None = None, env: Mapping[str, str] | None = None, timeout: float = 10.0
-    ):
+        self, script: str, *, cwd: str | None = None, env: dict[str, str] | None = None, timeout: float = 10.0
+    ) -> _Job:
         self.run_calls.append(RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
         return self.run_handler(script, cwd, env, timeout)
 
-    async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0):
+    async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> _Job:
         raise AssertionError(f"Unexpected wait() call for {job_id} offset={offset} timeout={timeout}")
 
-    async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0):
+    async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> _Job:
         raise AssertionError(f"Unexpected input() call for {job_id} text={text!r}")
 
-    async def tail(self, job_id: str):
+    async def tail(self, job_id: str) -> _Job:
         raise AssertionError(f"Unexpected tail() call for {job_id}")
 
-    async def terminate(self, job_id: str, grace_seconds: float = 10.0):
+    async def terminate(self, job_id: str, grace_seconds: float = 10.0) -> _Job:
         raise AssertionError(f"Unexpected terminate() call for {job_id} grace={grace_seconds}")
 
-    async def delete(self, job_id: str, *, force: bool = False, grace_seconds: float | None = None):
+    async def delete(self, job_id: str, *, force: bool = False, grace_seconds: float | None = None) -> None:
         del force, grace_seconds
         self.delete_calls.append(job_id)
         return None
@@ -123,6 +130,28 @@ def _complete_result(
         offset=len(output),
         output_path="/tmp/sandbox-job.out",
     )
+
+
+def _run_embedded_script(
+    script_source: str,
+    *,
+    args: list[str],
+    cwd: Path,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, object]:
+    merged_env = dict(os.environ)
+    if env is not None:
+        merged_env.update(env)
+    completed = subprocess.run(
+        [sys.executable, "-", *args],
+        input=script_source,
+        text=True,
+        capture_output=True,
+        cwd=cwd,
+        env=merged_env,
+        check=False,
+    )
+    return _decode_sandbox_payload(_complete_result(output=completed.stdout, exit_code=completed.returncode))
 
 
 def _execution_context() -> DifyExecutionContextLayerConfig:
@@ -169,7 +198,7 @@ def _locator() -> SandboxLocator:
 
 
 def _service(
-    run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], _Job],
+    run_handler: Callable[[str, str | None, dict[str, str] | None, float], _Job],
 ) -> tuple[SandboxFileService, FakeShellctlClient]:
     client = FakeShellctlClient(run_handler=run_handler)
     execution_context_provider = LayerProvider.from_factory(
@@ -187,7 +216,7 @@ def _service(
             shell_provider=ShellctlProvider(
                 entrypoint="http://shellctl",
                 token="",
-                client_factory=lambda: client,
+                client_factory=lambda: cast(ShellctlClientProtocol, cast(object, client)),
             ),
             agent_stub_api_base_url="https://agent.example.com/agent-stub",
             agent_stub_token_factory=lambda execution_context, *, session_id: (
@@ -196,6 +225,19 @@ def _service(
         ),
     )
     return SandboxFileService(layer_providers=(execution_context_provider, shell_provider)), client
+
+
+def _sandbox_python_run_call(client: FakeShellctlClient) -> RunCall:
+    for run_call in reversed(client.run_calls):
+        if run_call.script.startswith("python3 - "):
+            return run_call
+    raise AssertionError("sandbox python script was not executed")
+
+
+def _sandbox_list_entries(payload: dict[str, object]) -> list[object]:
+    entries = payload.get("entries")
+    assert isinstance(entries, list)
+    return entries
 
 
 def test_list_files_runs_fixed_script_and_parses_response() -> None:
@@ -215,13 +257,153 @@ def test_list_files_runs_fixed_script_and_parses_response() -> None:
     result = asyncio.run(service.list_files(SandboxListRequest(locator=_locator(), path=".")))
 
     assert result.entries[0].name == "notes.txt"
-    assert client.run_calls[0].cwd == "~/workspace/abc12ff"
-    assert client.run_calls[0].env is None
-    assert "python3 - . 1000 <<'PY'" in client.run_calls[0].script
-    assert client.delete_calls == ["sandbox-job"]
+    script_call = _sandbox_python_run_call(client)
+    assert script_call.cwd == "/home/agent-1/workspace/abc12ff"
+    assert script_call.env == {"HOME": "/home/agent-1"}
+    assert "python3 - . 1000 <<'PY'" in script_call.script
+    assert client.delete_calls[-1] == "sandbox-job"
 
 
-@pytest.mark.parametrize("bad_path", ["/etc/passwd", "~/secret-dir", "bad\x00path"])
+def test_list_files_allows_parent_relative_paths() -> None:
+    service, client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap({"path": "../shared", "entries": [], "truncated": False}),
+        )
+    )
+
+    result = asyncio.run(service.list_files(SandboxListRequest(locator=_locator(), path="../shared")))
+
+    assert result.path == "../shared"
+    assert "python3 - ../shared 1000 <<'PY'" in _sandbox_python_run_call(client).script
+
+
+@pytest.mark.parametrize(
+    ("path", "expected_command"),
+    [
+        ("~", "python3 - '~' 1000 <<'PY'"),
+        ("~/shared", "python3 - '~/shared' 1000 <<'PY'"),
+    ],
+)
+def test_list_files_allows_home_relative_paths(path: str, expected_command: str) -> None:
+    service, client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap({"path": path, "entries": [], "truncated": False}),
+        )
+    )
+
+    result = asyncio.run(service.list_files(SandboxListRequest(locator=_locator(), path=path)))
+
+    assert result.path == path
+    assert expected_command in _sandbox_python_run_call(client).script
+
+
+def test_embedded_scripts_allow_parent_relative_paths(tmp_path: Path) -> None:
+    workspace_dir = tmp_path / "workspace"
+    cwd = workspace_dir / "run"
+    shared_dir = workspace_dir / "shared"
+    cwd.mkdir(parents=True)
+    shared_dir.mkdir()
+    notes_path = shared_dir / "notes.txt"
+    notes_path.write_text("hello", encoding="utf-8")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_dify_agent = bin_dir / "dify-agent"
+    fake_dify_agent.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env python3",
+                "import json",
+                "import sys",
+                'if sys.argv[1:] != ["file", "upload", "../shared/notes.txt"]:',
+                '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    fake_dify_agent.chmod(0o755)
+
+    list_payload = _run_embedded_script(_LIST_SCRIPT, args=["../shared", "1000"], cwd=cwd)
+    read_payload = _run_embedded_script(_READ_SCRIPT, args=["../shared/notes.txt", "8"], cwd=cwd)
+    upload_payload = _run_embedded_script(
+        _UPLOAD_SCRIPT,
+        args=["../shared/notes.txt"],
+        cwd=cwd,
+        env={"PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', os.defpath)}"},
+    )
+
+    assert list_payload["path"] == "../shared"
+    assert any(
+        isinstance(entry, dict) and entry.get("name") == "notes.txt" for entry in _sandbox_list_entries(list_payload)
+    )
+    assert read_payload == {
+        "path": "../shared/notes.txt",
+        "size": 5,
+        "truncated": False,
+        "binary": False,
+        "text": "hello",
+    }
+    assert upload_payload == {
+        "path": "../shared/notes.txt",
+        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+    }
+
+
+def test_embedded_scripts_expand_home_relative_paths(tmp_path: Path) -> None:
+    cwd = tmp_path / "workspace" / "run"
+    cwd.mkdir(parents=True)
+    home_dir = tmp_path / "home" / "agent-1"
+    shared_dir = home_dir / "shared"
+    shared_dir.mkdir(parents=True)
+    notes_path = shared_dir / "notes.txt"
+    notes_path.write_text("hello", encoding="utf-8")
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_dify_agent = bin_dir / "dify-agent"
+    fake_dify_agent.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env python3",
+                "import json",
+                "import sys",
+                'if sys.argv[1:] != ["file", "upload", "~/shared/notes.txt"]:',
+                '    raise SystemExit(f"unexpected args: {sys.argv[1:]!r}")',
+                'print(json.dumps({"transfer_method": "tool_file", "reference": "file-ref"}))',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    fake_dify_agent.chmod(0o755)
+
+    script_env = {"HOME": str(home_dir), "PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', os.defpath)}"}
+    list_payload = _run_embedded_script(_LIST_SCRIPT, args=["~/shared", "1000"], cwd=cwd, env=script_env)
+    read_payload = _run_embedded_script(_READ_SCRIPT, args=["~/shared/notes.txt", "8"], cwd=cwd, env=script_env)
+    upload_payload = _run_embedded_script(_UPLOAD_SCRIPT, args=["~/shared/notes.txt"], cwd=cwd, env=script_env)
+
+    assert list_payload["path"] == "~/shared"
+    assert any(
+        isinstance(entry, dict) and entry.get("name") == "notes.txt" for entry in _sandbox_list_entries(list_payload)
+    )
+    assert read_payload == {
+        "path": "~/shared/notes.txt",
+        "size": 5,
+        "truncated": False,
+        "binary": False,
+        "text": "hello",
+    }
+    assert upload_payload == {
+        "path": "~/shared/notes.txt",
+        "file": {"transfer_method": "tool_file", "reference": "file-ref"},
+    }
+
+
+@pytest.mark.parametrize("bad_path", ["/etc/passwd", "~other/secret-dir", "bad\x00path"])
 def test_list_files_rejects_invalid_paths_before_shell_execution(bad_path: str) -> None:
     service, client = _service(lambda script, cwd, env, timeout: _Job(job_id="sandbox-job", output="unused"))
 
@@ -262,8 +444,10 @@ def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:
 
     assert result.file.transfer_method == "tool_file"
     assert result.file.reference == "file-ref"
-    assert client.run_calls[0].cwd == "~/workspace/abc12ff"
-    assert client.run_calls[0].env == {
+    script_call = _sandbox_python_run_call(client)
+    assert script_call.cwd == "/home/agent-1/workspace/abc12ff"
+    assert script_call.env == {
+        "HOME": "/home/agent-1",
         AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
         AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
         AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
@@ -291,4 +475,38 @@ def test_read_file_uses_complete_mode_and_parses_response() -> None:
     result = asyncio.run(service.read_file(SandboxReadRequest(locator=_locator(), path="notes.txt", max_bytes=8)))
 
     assert result.text == "hello"
-    assert "python3 - notes.txt 8 <<'PY'" in client.run_calls[0].script
+    assert "python3 - notes.txt 8 <<'PY'" in _sandbox_python_run_call(client).script
+
+
+@pytest.mark.parametrize(
+    ("sandbox_request", "expected_command"),
+    [
+        (SandboxReadRequest(locator=_locator(), path="../notes.txt", max_bytes=8), "python3 - ../notes.txt 8 <<'PY'"),
+        (SandboxUploadRequest(locator=_locator(), path="../report.txt"), "python3 - ../report.txt <<'PY'"),
+        (SandboxReadRequest(locator=_locator(), path="~/notes.txt", max_bytes=8), "python3 - '~/notes.txt' 8 <<'PY'"),
+        (SandboxUploadRequest(locator=_locator(), path="~/report.txt"), "python3 - '~/report.txt' <<'PY'"),
+    ],
+)
+def test_read_and_upload_allow_relative_paths(
+    sandbox_request: SandboxReadRequest | SandboxUploadRequest, expected_command: str
+) -> None:
+    expected_path = sandbox_request.path
+    service, client = _service(
+        lambda script, cwd, env, timeout: _Job(
+            job_id="sandbox-job",
+            output=_wrap(
+                {"path": expected_path, "size": 5, "truncated": False, "binary": False, "text": "hello"}
+                if isinstance(sandbox_request, SandboxReadRequest)
+                else {"path": expected_path, "file": {"transfer_method": "tool_file", "reference": "file-ref"}}
+            ),
+        )
+    )
+
+    if isinstance(sandbox_request, SandboxReadRequest):
+        result = asyncio.run(service.read_file(sandbox_request))
+        assert result.path == expected_path
+    else:
+        result = asyncio.run(service.upload_file(sandbox_request))
+        assert result.path == expected_path
+
+    assert expected_command in _sandbox_python_run_call(client).script

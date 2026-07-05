@@ -52,13 +52,14 @@ Feature: Agent v2 files
     When I open the Agent v2 configure page
     Then Agent v2 oversized file rejection should be available
 
-  @files-limits @feature-gated
-  Scenario: Agent v2 single-batch file count limits are enforced
+  @core @files-limits
+  Scenario: Dropping multiple Agent v2 files at once is rejected
     Given I am signed in as the default E2E admin
-    And Agent v2 single-batch file count limits are available
     And a basic configured Agent v2 test agent has been created via API
     When I open the Agent v2 configure page
-    Then Agent v2 single-batch file count limits should be available
+    And I drop multiple Agent v2 files into the Files upload dialog
+    Then the Agent v2 Files upload dialog should reject the multiple-file drop
+    And I should not see the dropped Agent v2 files in the Files section
 
   @files-limits @feature-gated
   Scenario: Agent v2 total file count limits are enforced

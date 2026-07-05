@@ -117,7 +117,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
     const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
     const nameInput = within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' })
     expect(nameInput).toHaveValue('')
-    expect(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' })).toHaveValue('Tender Analyst')
+    expect(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel common.label.optional' })).toHaveValue('Tender Analyst')
     expect(within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder')).toHaveValue('Drafts tender clarifications.')
 
     await user.type(nameInput, 'Roster Tender Agent')

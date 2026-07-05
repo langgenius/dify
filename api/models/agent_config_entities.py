@@ -250,9 +250,10 @@ class AgentSecretRefConfig(AgentFlexibleConfig):
     env_name: str | None = Field(default=None, max_length=255)
     variable: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
-    # UI-facing selected secret reference. This is a credential/ref id, not the
-    # plaintext secret value; runtime maps it to the shell-layer ``ref``.
-    value: str | None = Field(default=None, max_length=255)
+    # User-provided secret value. Long API tokens are valid here; runtime maps
+    # this field into a shell env var, while ref/id/credential_id fields keep the
+    # backend-managed secret reference path.
+    value: str | None = None
     id: str | None = Field(default=None, max_length=255)
     ref: str | None = Field(default=None, max_length=255)
     credential_id: str | None = Field(default=None, max_length=255)
@@ -515,9 +516,18 @@ class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
     autoPlay: str | None = None
 
 
+class AgentSuggestedQuestionsAfterAnswerModelConfig(AgentFlexibleConfig):
+    """Legacy Chat App model config used only for follow-up question generation."""
+
+    provider: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    mode: str | None = Field(default=None, max_length=64)
+    completion_params: dict[str, Any] | None = None
+
+
 class AgentSuggestedQuestionsAfterAnswerFeatureConfig(AgentFeatureToggleConfig):
     prompt: str | None = None
-    model: AgentSoulModelConfig | None = None
+    model: AgentSuggestedQuestionsAfterAnswerModelConfig | None = None
 
 
 class AgentModerationIOConfig(AgentFlexibleConfig):

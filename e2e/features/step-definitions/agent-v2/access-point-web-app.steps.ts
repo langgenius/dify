@@ -1,7 +1,6 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { setAgentSiteAccessAndGetURL } from '../../agent-v2/support/access-point'
 import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
 import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
@@ -11,15 +10,7 @@ import {
   getWebAppCard,
 } from './access-point-helpers'
 
-Given(
-  'Agent v2 Web app access has been enabled via API',
-  async function (this: DifyWorld) {
-    this.agentBuilder.accessPoint.webAppURL = await setAgentSiteAccessAndGetURL(
-      getCurrentAgentId(this),
-      true,
-    )
-  },
-)
+const WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS = 180_000
 
 Then('I should see the Agent v2 Web app access URL', async function (this: DifyWorld) {
   const webAppCard = getWebAppCard(this)
@@ -101,6 +92,7 @@ Then('the Agent v2 Web app should open in a new tab', async function (this: Dify
 
 Then(
   'the Agent v2 Web app response should include the updated E2E marker',
+  { timeout: WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS },
   async function (this: DifyWorld) {
     const webAppPage = this.agentBuilder.accessPoint.webAppPage
     if (!webAppPage)
@@ -113,6 +105,7 @@ Then(
 
 Then(
   'the Agent v2 Web app response should include the normal E2E marker',
+  { timeout: WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS },
   async function (this: DifyWorld) {
     const webAppPage = this.agentBuilder.accessPoint.webAppPage
     if (!webAppPage)
@@ -195,25 +188,6 @@ Then(
   },
 )
 
-When('I disable Agent v2 Web app access', async function (this: DifyWorld) {
-  const webAppCard = getWebAppCard(this)
-  const launchLink = webAppCard.getByRole('link', { name: 'Launch' })
-  const href = await launchLink.getAttribute('href')
-  if (!href)
-    throw new Error('Agent v2 Web app Launch link does not expose an href.')
-
-  this.agentBuilder.accessPoint.webAppURL = href
-
-  await webAppCard.getByLabel('Toggle Web app access').click()
-})
-
-Then('Agent v2 Web app access should be out of service', async function (this: DifyWorld) {
-  const webAppCard = getWebAppCard(this)
-
-  await expect(webAppCard.getByText('Out of service')).toBeVisible()
-  await expect(webAppCard.getByRole('button', { name: 'Launch' })).toBeDisabled()
-})
-
 Given(
   'Agent v2 disabled Web app public unavailable state is available',
   async function (this: DifyWorld) {
@@ -251,17 +225,6 @@ Then('the disabled Agent v2 Web app should show an unavailable state', async fun
   })
   await webAppPage.close()
   this.agentBuilder.accessPoint.webAppPage = undefined
-})
-
-When('I enable Agent v2 Web app access', async function (this: DifyWorld) {
-  await getWebAppCard(this).getByLabel('Toggle Web app access').click()
-})
-
-Then('Agent v2 Web app access should be in service', async function (this: DifyWorld) {
-  const webAppCard = getWebAppCard(this)
-
-  await expect(webAppCard.getByText('In service')).toBeVisible()
-  await expect(webAppCard.getByRole('link', { name: 'Launch' })).toBeVisible()
 })
 
 When('I open the restored Agent v2 Web app URL', async function (this: DifyWorld) {

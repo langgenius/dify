@@ -16,8 +16,8 @@ When('I create an Agent v2 test agent from the Agent Roster', async function (th
   const dialog = page.getByRole('dialog', { name: 'Create agent' })
   await expect(dialog).toBeVisible()
   await dialog.getByRole('textbox', { name: 'Name' }).fill(agentName)
-  await dialog.getByRole('textbox', { name: 'Role' }).fill(agentRole)
-  await dialog.getByRole('textbox', { name: 'Description' }).fill(agentDescription)
+  await dialog.getByRole('textbox', { name: /Role.*optional/ }).fill(agentRole)
+  await dialog.getByRole('textbox', { name: /Description.*optional/ }).fill(agentDescription)
 
   const createResponsePromise = page.waitForResponse(response => (
     response.request().method() === 'POST'

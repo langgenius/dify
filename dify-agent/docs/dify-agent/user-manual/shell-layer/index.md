@@ -230,7 +230,7 @@ The provided `docker/local-sandbox/Dockerfile` installs:
 - `tmux`, required by `shellctl` to manage shell jobs;
 - common shell workspace tools: `git`, `openssh-client`, `jq`, `ripgrep`,
   `unzip`, `zip`, `file`, `procps`, and `less`;
-- `shell-session-manager==2.3.0` as a standalone uv tool, which provides the
+- `shell-session-manager==2.3.1` as a standalone uv tool, which provides the
   `shellctl` CLI/server;
 - `uv`, so uv shebang scripts with PEP 723 metadata can run inside the shell
   workspace and Python CLI tools can be installed with isolated tool
