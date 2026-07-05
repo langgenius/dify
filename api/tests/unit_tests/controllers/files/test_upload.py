@@ -65,6 +65,7 @@ class TestPluginUploadFileApi:
                 "sign": "sig",
                 "tenant_id": "tenant-1",
                 "user_id": "user-1",
+                "conversation_id": "conversation-1",
             },
             file=dummy_file,
         )
@@ -83,6 +84,10 @@ class TestPluginUploadFileApi:
         assert result["id"] == "file-id"
         assert result["reference"] == build_file_reference(record_id="file-id")
         assert result["preview_url"] == "signed-url"
+        mock_verify_signature.assert_called_once()
+        assert mock_verify_signature.call_args.kwargs["conversation_id"] == "conversation-1"
+        tool_file_manager_instance.create_file_by_raw.assert_called_once()
+        assert tool_file_manager_instance.create_file_by_raw.call_args.kwargs["conversation_id"] == "conversation-1"
 
     def test_missing_file(self):
         module.request = fake_request(

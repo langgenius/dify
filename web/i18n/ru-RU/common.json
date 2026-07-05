@@ -407,6 +407,8 @@
   "modelProvider.selector.noProviderConfiguredDesc": "Установите из Marketplace или настройте поставщиков в настройках.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Показаны только совместимые модели",
   "modelProvider.selector.showIncompatibleModels": "Показать несовместимые модели",
+  "modelProvider.selector.suggestion": "Рекомендация",
+  "modelProvider.selector.suggestionTip": "Рекомендуется для задач агента",
   "modelProvider.showModels": "Показать модели",
   "modelProvider.speechToTextModel.key": "Модель преобразования речи в текст",
   "modelProvider.speechToTextModel.tip": "Установите модель по умолчанию для ввода речи в текст в разговоре.",

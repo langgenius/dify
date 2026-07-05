@@ -289,7 +289,7 @@ def request_agent_stub_config_env_update_sync(
     timeout: float | httpx.Timeout = 30.0,
     sync_http_client: httpx.Client | None = None,
 ):
-    """Replace or delete config env entries through the HTTP transport."""
+    """Set or delete config env entries through the HTTP transport."""
     endpoint = _parse_endpoint(url)
     if endpoint.is_grpc:
         raise AgentStubValidationError("Agent Stub config operations require an HTTP Agent Stub URL")

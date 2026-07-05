@@ -77,34 +77,16 @@ def test_pull_config_files_from_environment_downloads_visible_files(
     assert (tmp_path / "guide.txt").read_bytes() == b"guide-bytes"
 
 
-def test_pull_config_env_from_environment_writes_only_declared_keys(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    monkeypatch.setattr(config_cli, "manifest_from_environment", _manifest_payload)
-    monkeypatch.setenv("API_KEY", "plain")
-    monkeypatch.setenv("JSON_VALUE", "two words")
-
-    result = config_cli.pull_config_env_from_environment(local_path=str(tmp_path / ".env"))
-
-    assert result.read_text(encoding="utf-8") == 'API_KEY=plain\nJSON_VALUE="two words"\n'
-
-
-def test_pull_config_env_and_note_use_hidden_default_dir(
+def test_pull_config_note_uses_hidden_default_dir(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(config_cli, "manifest_from_environment", _manifest_payload)
-    monkeypatch.setenv("API_KEY", "plain")
-    monkeypatch.setenv("JSON_VALUE", "two words")
 
-    env_path = config_cli.pull_config_env_from_environment()
     note_path = config_cli.pull_config_note_from_environment()
 
-    assert env_path == (tmp_path / ".dify_conf" / ".env").resolve()
     assert note_path == (tmp_path / ".dify_conf" / "note.md").resolve()
-    assert env_path.read_text(encoding="utf-8") == 'API_KEY=plain\nJSON_VALUE="two words"\n'
     assert note_path.read_text(encoding="utf-8") == "Use carefully."
 
 
@@ -177,31 +159,6 @@ def test_push_config_note_from_environment_reads_stdin(monkeypatch: pytest.Monke
     assert request.note == "from-stdin"
 
 
-def test_push_config_env_from_environment_reads_default_file(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    monkeypatch.chdir(tmp_path)
-    env_path = tmp_path / ".dify_conf" / ".env"
-    env_path.parent.mkdir()
-    env_path.write_text("API_KEY=value\n", encoding="utf-8")
-    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
-
-    captured: dict[str, object] = {}
-
-    def fake_push_sync(**kwargs):
-        captured.update(kwargs)
-        return _manifest_payload()
-
-    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
-
-    config_cli.push_config_env_from_environment(None)
-
-    request = cast(AgentStubConfigPushRequest, captured["request"])
-    assert request.env_text == "API_KEY=value\n"
-    assert request.note is None
-
-
 def test_push_config_env_from_environment_reads_explicit_file(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -264,7 +221,7 @@ def test_push_config_files_from_environment_builds_upload_items(
 
     monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
 
-    config_cli.push_config_files_from_environment([str(file_path)], None)
+    config_cli.push_config_files_from_environment([str(file_path)])
 
     request = cast(AgentStubConfigPushRequest, captured["request"])
     assert request.files[0].name == "guide.txt"
@@ -273,19 +230,9 @@ def test_push_config_files_from_environment_builds_upload_items(
     assert request.skills == []
 
 
-def test_push_config_files_from_environment_validates_name_usage(tmp_path: Path) -> None:
-    first = tmp_path / "a.txt"
-    second = tmp_path / "b.txt"
-    first.write_text("a", encoding="utf-8")
-    second.write_text("b", encoding="utf-8")
-
-    with pytest.raises(AgentStubValidationError, match="--name requires exactly one PATH"):
-        config_cli.push_config_files_from_environment([str(first), str(second)], "renamed.txt")
-
-
 def test_push_config_files_from_environment_rejects_empty_paths() -> None:
     with pytest.raises(AgentStubValidationError, match="at least one file path is required"):
-        config_cli.push_config_files_from_environment([], None)
+        config_cli.push_config_files_from_environment([])
 
 
 def test_delete_config_files_from_environment_builds_delete_items(monkeypatch: pytest.MonkeyPatch) -> None:

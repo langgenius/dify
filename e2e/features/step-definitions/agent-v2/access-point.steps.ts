@@ -1,9 +1,15 @@
 import type { DifyWorld } from '../../support/world'
+import type { AccessSurfaceName } from './access-point-helpers'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
+import {
+  setAgentApiAccess,
+  setAgentSiteAccessAndGetURL,
+} from '../../agent-v2/support/access-point'
 import { getAgentAccessPath, publishAgent } from '../../agent-v2/support/agent'
 import {
   getAccessRegion,
+  getAccessSurfaceCard,
   getCurrentAgentId,
   getPreseededResource,
 } from './access-point-helpers'
@@ -11,6 +17,22 @@ import {
 Given('the Agent v2 draft has been published via API', async function (this: DifyWorld) {
   await publishAgent(getCurrentAgentId(this))
 })
+
+Given(
+  /^Agent v2 (Web app|Backend service API) access has been enabled via API$/,
+  async function (this: DifyWorld, surface: AccessSurfaceName) {
+    if (surface === 'Web app') {
+      this.agentBuilder.accessPoint.webAppURL = await setAgentSiteAccessAndGetURL(
+        getCurrentAgentId(this),
+        true,
+      )
+      return
+    }
+
+    const apiAccess = await setAgentApiAccess(getCurrentAgentId(this), true)
+    this.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
+  },
+)
 
 When('I open the Agent v2 Access Point page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentAccessPath(getCurrentAgentId(this)))
@@ -70,3 +92,50 @@ Then('I should see the Agent v2 Access Point overview', async function (this: Di
   await expect(accessRegion.getByRole('columnheader', { name: 'Actions' })).toBeVisible()
   await expect(accessRegion.getByText('No workflow references yet.')).toBeVisible()
 })
+
+When(
+  /^I disable Agent v2 (Web app|Backend service API) access$/,
+  async function (this: DifyWorld, surface: AccessSurfaceName) {
+    const accessSurfaceCard = getAccessSurfaceCard(this, surface)
+
+    if (surface === 'Web app') {
+      const launchLink = accessSurfaceCard.getByRole('link', { name: 'Launch' })
+      const href = await launchLink.getAttribute('href')
+      if (!href)
+        throw new Error('Agent v2 Web app Launch link does not expose an href.')
+
+      this.agentBuilder.accessPoint.webAppURL = href
+    }
+
+    await accessSurfaceCard.getByLabel(`Toggle ${surface} access`).click()
+  },
+)
+
+When(
+  /^I enable Agent v2 (Web app|Backend service API) access$/,
+  async function (this: DifyWorld, surface: AccessSurfaceName) {
+    await getAccessSurfaceCard(this, surface).getByLabel(`Toggle ${surface} access`).click()
+  },
+)
+
+Then(
+  /^Agent v2 (Web app|Backend service API) access should be out of service$/,
+  async function (this: DifyWorld, surface: AccessSurfaceName) {
+    const accessSurfaceCard = getAccessSurfaceCard(this, surface)
+
+    await expect(accessSurfaceCard.getByText('Out of service')).toBeVisible({ timeout: 30_000 })
+    if (surface === 'Web app')
+      await expect(accessSurfaceCard.getByRole('button', { name: 'Launch' })).toBeDisabled()
+  },
+)
+
+Then(
+  /^Agent v2 (Web app|Backend service API) access should be in service$/,
+  async function (this: DifyWorld, surface: AccessSurfaceName) {
+    const accessSurfaceCard = getAccessSurfaceCard(this, surface)
+
+    await expect(accessSurfaceCard.getByText('In service')).toBeVisible({ timeout: 30_000 })
+    if (surface === 'Web app')
+      await expect(accessSurfaceCard.getByRole('link', { name: 'Launch' })).toBeVisible()
+  },
+)

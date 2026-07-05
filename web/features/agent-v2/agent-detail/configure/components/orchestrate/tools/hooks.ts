@@ -40,6 +40,9 @@ const getCredentialType = (tool: AgentProviderToolDefaultValue) => {
   if (!tool.credentialRequired)
     return undefined
 
+  if (tool.credentialType === 'oauth2')
+    return 'oauth2' as const
+
   if (!tool.allowDelete)
     return tool.credential_id ? 'api-key' as const : 'unauthorized' as const
 
@@ -102,25 +105,9 @@ export function useAgentToolsOperations() {
   const [tools, setTools] = useAtom(agentComposerToolsAtom)
   const removeProviderTool = useRemoveProviderTool()
   const removeProviderToolAction = useRemoveProviderToolAction()
-  const [expandedToolIds, setExpandedToolIds] = useState<Set<string>>(() => new Set())
   const [settingTarget, setSettingTarget] = useState<ToolSettingTarget | null>(null)
   const [isCliToolDialogOpen, setIsCliToolDialogOpen] = useState(false)
   const [editingCliTool, setEditingCliTool] = useState<AgentCliTool | null>(null)
-
-  const setToolOpen = useCallback((tool: AgentTool, open: boolean) => {
-    if (tool.kind === 'cli')
-      return
-
-    setExpandedToolIds((currentIds) => {
-      const nextIds = new Set(currentIds)
-      if (open)
-        nextIds.add(tool.id)
-      else
-        nextIds.delete(tool.id)
-
-      return nextIds
-    })
-  }, [])
 
   const addTools = useCallback((selectedTools: AgentProviderToolDefaultValue[]) => {
     setTools(addProviderTools(tools, selectedTools))
@@ -168,11 +155,6 @@ export function useAgentToolsOperations() {
   }, [])
 
   const deleteProviderTool = useCallback((toolId: string) => {
-    setExpandedToolIds((currentIds) => {
-      const nextIds = new Set(currentIds)
-      nextIds.delete(toolId)
-      return nextIds
-    })
     closeSettingTargetIfRemoved(toolId)
     removeProviderTool(toolId)
   }, [closeSettingTargetIfRemoved, removeProviderTool])
@@ -191,12 +173,10 @@ export function useAgentToolsOperations() {
   return {
     tools,
     selectedTools,
-    expandedToolIds,
     settingTarget,
     isCliToolDialogOpen,
     editingCliTool,
     setTools,
-    setToolOpen,
     setSettingTarget,
     addTools,
     deleteCliTool,

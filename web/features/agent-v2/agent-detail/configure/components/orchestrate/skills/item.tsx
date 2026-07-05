@@ -47,7 +47,7 @@ export function AgentSkillItem({
           onClick={handleOpenPreview}
         >
           <span aria-hidden className="i-custom-public-agent-building-blocks size-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
+          <span className="w-0 min-w-0 flex-1 truncate system-sm-medium text-text-secondary">
             {skill.name}
           </span>
           <span

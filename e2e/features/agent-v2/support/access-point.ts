@@ -6,6 +6,7 @@ import type {
   ChatRequestPayloadWithUser,
   PostChatMessagesResponse,
 } from '@dify/contracts/api/service/types.gen'
+import type { APIResponse } from '@playwright/test'
 import { request } from '@playwright/test'
 import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from '../../../support/api'
 import { getTestAgent } from './agent'
@@ -14,6 +15,84 @@ export type AgentServiceApiChatResult = {
   body: PostChatMessagesResponse | unknown
   ok: boolean
   status: number
+}
+
+type ServiceApiSseEvent = {
+  data: unknown
+  event?: string
+}
+
+async function parseServiceApiChatResponse(response: APIResponse) {
+  const contentType = response.headers()['content-type'] ?? ''
+  const text = await response.text().catch(() => '')
+
+  if (contentType.includes('text/event-stream'))
+    return parseServiceApiSseText(text)
+
+  if (contentType.includes('application/json')) {
+    try {
+      return JSON.parse(text) as unknown
+    }
+    catch {
+      return { message: text }
+    }
+  }
+
+  try {
+    return JSON.parse(text) as unknown
+  }
+  catch {
+    return { message: text }
+  }
+}
+
+function parseServiceApiSseText(text: string) {
+  const events: ServiceApiSseEvent[] = []
+  const answers: string[] = []
+
+  for (const block of text.split(/\r?\n\r?\n/)) {
+    const lines = block.split(/\r?\n/)
+    const eventName = lines
+      .find(line => line.startsWith('event:'))
+      ?.slice('event:'.length)
+      .trim()
+    const dataText = lines
+      .filter(line => line.startsWith('data:'))
+      .map(line => line.slice('data:'.length).trimStart())
+      .join('\n')
+
+    if (!dataText)
+      continue
+
+    let data: unknown = dataText
+    try {
+      data = JSON.parse(dataText) as unknown
+    }
+    catch {
+      data = dataText
+    }
+
+    events.push({
+      data,
+      ...(eventName ? { event: eventName } : {}),
+    })
+
+    if (
+      data
+      && typeof data === 'object'
+      && !Array.isArray(data)
+      && 'answer' in data
+      && typeof data.answer === 'string'
+    ) {
+      answers.push(data.answer)
+    }
+  }
+
+  return {
+    answer: answers.join(''),
+    events,
+    raw: text,
+  }
 }
 
 export async function setAgentSiteAccessAndGetURL(
@@ -77,7 +156,7 @@ export async function sendAgentServiceApiChatMessage({
   const body = {
     inputs: {},
     query,
-    response_mode: 'blocking',
+    response_mode: 'streaming',
     user: 'e2e-agent-access-point',
   } satisfies ChatRequestPayloadWithUser
 
@@ -88,9 +167,7 @@ export async function sendAgentServiceApiChatMessage({
         Authorization: `Bearer ${apiKey}`,
       },
     })
-    const responseBody = await response.json().catch(async () => ({
-      message: await response.text().catch(() => ''),
-    }))
+    const responseBody = await parseServiceApiChatResponse(response)
 
     return {
       body: responseBody as PostChatMessagesResponse | unknown,

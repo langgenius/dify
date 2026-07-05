@@ -2826,11 +2826,12 @@ def test_composer_validator_rejects_unauthorized_secret_and_cli_tool():
 
 def test_composer_validator_accepts_valid_shell_env_and_cli():
     """Valid shell identifiers + a disabled empty CLI tool pass validation."""
+    long_secret = "sk-" + "x" * 512
     config = ComposerConfigValidator.validate_agent_soul_dict(
         {
             "env": {
                 "variables": [{"name": "MY_VAR", "value": "v"}],
-                "secret_refs": [{"name": "API_TOKEN", "value": "credential-1"}],
+                "secret_refs": [{"name": "API_TOKEN", "value": long_secret}],
             },
             "tools": {
                 "cli_tools": [
@@ -2855,7 +2856,7 @@ def test_composer_validator_accepts_valid_shell_env_and_cli():
     )
     assert {variable.name for variable in config.env.variables} == {"MY_VAR"}
     assert {secret.name for secret in config.env.secret_refs} == {"API_TOKEN"}
-    assert config.env.secret_refs[0].value == "credential-1"
+    assert config.env.secret_refs[0].value == long_secret
     assert config.tools.cli_tools[0].env.variables[0].name == "JQ_COLOR"
     assert config.tools.cli_tools[0].env.secret_refs[0].name == "JQ_TOKEN"
     assert config.tools.cli_tools[0].env.secret_refs[0].value == "credential-2"

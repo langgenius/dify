@@ -1,8 +1,9 @@
 'use client'
 
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentBuildDraftChangedKey } from './components/orchestrate/build-draft-changes-context'
+import type { AgentBuildDraftChangedKey, AgentBuildDraftChangeItem, AgentBuildDraftChangeSummary } from './components/orchestrate/build-draft-changes-context'
 import type { AgentConfigureSoulSource } from './state'
+import type { AgentFileNode, AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
@@ -13,8 +14,120 @@ import { consoleQuery } from '@/service/client'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
+const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
+const BUILD_NOTE_FILE_NAME = 'build_note.md'
+
 const getAgentSoulConfigFromRefetchResult = (result: unknown) => {
   return (result as { data?: { agent_soul?: AgentSoulConfig } } | undefined)?.data?.agent_soul
+}
+const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => (
+  file.children?.length ? [file, ...flattenFileNodes(file.children)] : [file]
+))
+
+function getItemDiff<TItem>({
+  currentItems,
+  nextItems,
+  getIcon,
+  getKey,
+  getName,
+}: {
+  currentItems: readonly TItem[]
+  nextItems: readonly TItem[]
+  getIcon?: (item: TItem) => AgentBuildDraftChangeItem['icon']
+  getKey: (item: TItem) => string
+  getName: (item: TItem) => string
+}): AgentBuildDraftChangeItem[] {
+  const currentByKey = new Map(currentItems.map(item => [getKey(item), item]))
+  const nextByKey = new Map(nextItems.map(item => [getKey(item), item]))
+  const changes: AgentBuildDraftChangeItem[] = []
+
+  for (const item of nextItems) {
+    const key = getKey(item)
+    const currentItem = currentByKey.get(key)
+    if (!currentItem) {
+      changes.push({
+        id: key,
+        name: getName(item),
+        operation: 'added',
+        icon: getIcon?.(item),
+      })
+      continue
+    }
+
+    if (!isEqual(item, currentItem)) {
+      changes.push({
+        id: key,
+        name: getName(item),
+        operation: 'updated',
+        icon: getIcon?.(item),
+      })
+    }
+  }
+
+  for (const item of currentItems) {
+    const key = getKey(item)
+    if (nextByKey.has(key))
+      continue
+
+    changes.push({
+      id: key,
+      name: getName(item),
+      operation: 'removed',
+      icon: getIcon?.(item),
+    })
+  }
+
+  return changes
+}
+
+function getAgentBuildDraftChangeSummary({
+  buildDraft,
+  changedKeys,
+  normalAgentSoulConfig,
+  normalDraft,
+}: {
+  buildDraft: AgentSoulConfigFormState
+  changedKeys: readonly AgentBuildDraftChangedKey[]
+  normalAgentSoulConfig: AgentSoulConfig
+  normalDraft: AgentSoulConfigFormState
+}): AgentBuildDraftChangeSummary {
+  const buildNoteChange = {
+    id: BUILD_NOTE_FILE_ID,
+    name: BUILD_NOTE_FILE_NAME,
+    operation: normalAgentSoulConfig.config_note?.trim() ? 'updated' : 'added',
+    icon: 'markdown',
+    descriptionKey: 'agentDetail.configure.buildDraft.buildNoteDescription',
+  } satisfies AgentBuildDraftChangeItem
+  const fileChanges = [
+    buildNoteChange,
+    ...getItemDiff({
+      currentItems: flattenFileNodes(normalDraft.files),
+      nextItems: flattenFileNodes(buildDraft.files),
+      getIcon: file => file.icon,
+      getKey: file => file.configName ?? file.id ?? file.name,
+      getName: file => file.name,
+    }),
+  ]
+  const skillChanges = getItemDiff({
+    currentItems: normalDraft.skills,
+    nextItems: buildDraft.skills,
+    getKey: skill => skill.id || skill.name,
+    getName: skill => skill.name,
+  })
+  const envVariableChanges = getItemDiff({
+    currentItems: normalDraft.envVariables,
+    nextItems: buildDraft.envVariables,
+    getKey: variable => variable.id || variable.key,
+    getName: variable => variable.key,
+  })
+
+  return {
+    changedKeys,
+    changesCount: fileChanges.length + skillChanges.length + envVariableChanges.length,
+    skills: skillChanges,
+    files: fileChanges,
+    envVariables: envVariableChanges,
+  }
 }
 
 export function useAgentConfigureBuildDraftData({
@@ -92,22 +205,36 @@ export function useAgentConfigureBuildDraftData({
   const isBuildDraftActive = soulSource === 'build-draft'
   const buildDraftAgentSoulConfig = buildDraftData?.agent_soul as AgentSoulConfig | undefined
   const visibleAgentSoulConfig = isBuildDraftActive ? buildDraftAgentSoulConfig : normalAgentSoulConfig
-  const buildDraftChangedKeys = useMemo<AgentBuildDraftChangedKey[]>(() => {
-    if (!buildDraftAgentSoulConfig || !composerAgentSoulConfig)
-      return []
+  const buildDraftChangeSummary = useMemo<AgentBuildDraftChangeSummary>(() => {
+    if (!buildDraftAgentSoulConfig || !composerAgentSoulConfig) {
+      return {
+        changedKeys: [],
+        changesCount: 0,
+        skills: [],
+        files: [],
+        envVariables: [],
+      }
+    }
 
     const normalDraft = agentSoulConfigToFormState(composerAgentSoulConfig)
     const buildDraft = agentSoulConfigToFormState(buildDraftAgentSoulConfig)
-
-    return (Object.keys(buildDraft) as Array<keyof typeof buildDraft>)
+    const changedKeys = (Object.keys(buildDraft) as Array<keyof typeof buildDraft>)
       .filter(key => !isEqual(buildDraft[key], normalDraft[key]))
+
+    return getAgentBuildDraftChangeSummary({
+      buildDraft,
+      changedKeys,
+      normalAgentSoulConfig: composerAgentSoulConfig,
+      normalDraft,
+    })
   }, [buildDraftAgentSoulConfig, composerAgentSoulConfig])
 
   return {
     activeVersionId: isBuildDraftActive ? `build-draft:${buildDraftDataUpdatedAt}` : activeVersionId,
     agentSoulConfig: visibleAgentSoulConfig,
-    changedKeys: buildDraftChangedKeys,
-    changesCount: buildDraftChangedKeys.length,
+    changedKeys: buildDraftChangeSummary.changedKeys,
+    changeSummary: buildDraftChangeSummary,
+    changesCount: buildDraftChangeSummary.changesCount,
     isActive: isBuildDraftActive,
     isPending: !isViewingVersion && soulSourceOverride !== 'draft' && soulSourceOverride !== 'view-version' && isBuildDraftPending,
     refetch: refetchBuildDraft,

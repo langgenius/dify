@@ -171,7 +171,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
-    # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
+    # through the back proxy, never inline content.
     drive_config: DifyDriveLayerConfig | None = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement; a deferred call ends the run and
@@ -220,7 +220,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
-    # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
+    # through the back proxy, never inline content.
     drive_config: DifyDriveLayerConfig | None = None
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement (ENG-635).
@@ -254,10 +254,11 @@ class AgentBackendRunRequestBuilder:
         """Build an Agent App conversation-turn run request.
 
         Layer graph: optional Agent Soul system prompt → user prompt →
-        execution context → optional history (multi-turn) → LLM → optional
-        plugin-direct tools / core-routed tools / knowledge search →
-        optional structured output. Mirrors the workflow-node layer ordering
-        minus the workflow-job / previous-node prompt.
+        execution context → optional shell / config / drive / history
+        (multi-turn) → LLM → optional plugin-direct tools / core-routed tools /
+        knowledge search / ask_human / structured output. Mirrors the
+        workflow-node layer ordering minus the workflow-job / previous-node
+        prompt.
         """
         layers: list[RunLayerSpec] = []
         if run_input.agent_soul_prompt:
@@ -354,11 +355,14 @@ class AgentBackendRunRequestBuilder:
         )
 
         if run_input.tools is not None and run_input.tools.tools:
+            plugin_tool_deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+            if include_shell:
+                plugin_tool_deps["shell"] = DIFY_SHELL_LAYER_ID
             layers.append(
                 RunLayerSpec(
                     name=DIFY_PLUGIN_TOOLS_LAYER_ID,
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    deps=plugin_tool_deps,
                     metadata=run_input.metadata,
                     config=run_input.tools,
                 )
@@ -474,9 +478,9 @@ class AgentBackendRunRequestBuilder:
         """Build a workflow Agent Node run request without defining another wire schema.
 
         Layer graph mirrors the workflow surface: prompts → execution context →
-        optional drive/history → LLM → optional plugin-direct tools /
-        core-routed tools / knowledge search → optional auxiliary layers such
-        as ask_human, shell, and structured output.
+        optional shell / config / drive / history → LLM → optional
+        plugin-direct tools / core-routed tools / knowledge search /
+        ask_human / structured output.
         """
         layers: list[RunLayerSpec] = []
         if run_input.agent_soul_prompt:
@@ -581,11 +585,14 @@ class AgentBackendRunRequestBuilder:
         )
 
         if run_input.tools is not None and run_input.tools.tools:
+            plugin_tool_deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+            if include_shell:
+                plugin_tool_deps["shell"] = DIFY_SHELL_LAYER_ID
             layers.append(
                 RunLayerSpec(
                     name=DIFY_PLUGIN_TOOLS_LAYER_ID,
                     type=DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    deps=plugin_tool_deps,
                     metadata=run_input.metadata,
                     config=run_input.tools,
                 )

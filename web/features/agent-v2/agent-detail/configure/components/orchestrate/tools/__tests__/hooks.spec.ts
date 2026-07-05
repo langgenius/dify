@@ -29,6 +29,14 @@ const unauthorizedCredentialTool = {
   credentialRequired: true,
 } satisfies AgentProviderToolDefaultValue
 
+const unauthorizedOAuthTool = {
+  ...unauthorizedCredentialTool,
+  provider_id: 'slack',
+  provider_name: 'slack',
+  provider_show_name: 'Slack',
+  credentialType: 'oauth2',
+} satisfies AgentProviderToolDefaultValue
+
 describe('addProviderTools', () => {
   it('should not mark tools that do not need credentials as unauthorized', () => {
     const nextTools = addProviderTools([], [noCredentialTool])
@@ -49,6 +57,18 @@ describe('addProviderTools', () => {
       expect.objectContaining({
         credentialId: undefined,
         credentialType: 'unauthorized',
+        credentialVariant: 'unauthorized',
+      }),
+    ])
+  })
+
+  it('should preserve oauth credential type for credential-required OAuth tools', () => {
+    const nextTools = addProviderTools([], [unauthorizedOAuthTool])
+
+    expect(nextTools).toEqual([
+      expect.objectContaining({
+        credentialId: undefined,
+        credentialType: 'oauth2',
         credentialVariant: 'unauthorized',
       }),
     ])

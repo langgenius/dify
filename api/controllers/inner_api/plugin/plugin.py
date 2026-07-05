@@ -434,6 +434,7 @@ class PluginUploadFileRequestApi(Resource):
             mimetype=payload.mimetype,
             tenant_id=tenant_model.id,
             user_id=user_model.id,
+            conversation_id=payload.conversation_id,
         )
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 

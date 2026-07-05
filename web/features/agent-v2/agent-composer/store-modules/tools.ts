@@ -1,4 +1,4 @@
-import type { AgentSoulConfigFormState, AgentTool } from '../form-state'
+import type { AgentProviderTool, AgentSoulConfigFormState, AgentTool } from '../form-state'
 import type { DraftFieldUpdate } from './utils'
 import { atom, useSetAtom } from 'jotai'
 import { useCallback } from 'react'
@@ -91,15 +91,19 @@ export function useRemoveProviderToolAction() {
 export function useSetProviderToolCredential() {
   const setTools = useSetAtom(agentComposerToolsAtom)
 
-  return useCallback((toolId: string, credentialId?: string) => {
+  return useCallback((toolId: string, credentialId?: string, credentialType?: AgentProviderTool['credentialType']) => {
     setTools(tools => tools.map((tool) => {
       if (tool.kind !== 'provider' || tool.id !== toolId)
         return tool
 
+      const nextCredentialType = credentialType === 'oauth2' || tool.credentialType === 'oauth2'
+        ? 'oauth2'
+        : 'api-key'
+
       return {
         ...tool,
         credentialId,
-        credentialType: 'api-key',
+        credentialType: nextCredentialType,
         credentialVariant: 'authorized',
       }
     }))
