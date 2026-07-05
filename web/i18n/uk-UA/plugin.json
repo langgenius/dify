@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "Деталі",
   "detailPanel.operation.info": "Інформація про плагін",
   "detailPanel.operation.install": "Інсталювати",
+  "detailPanel.operation.moreActions": "Більше дій",
   "detailPanel.operation.remove": "Видалити",
   "detailPanel.operation.update": "Оновлювати",
   "detailPanel.operation.updateTooltip": "Оновіть, щоб отримати доступ до найновіших моделей.",
