@@ -27,6 +27,7 @@ jobs:
               - 'e2e/features/agent-v2/**'
               - 'e2e/scripts/**'
               - 'e2e/support/**'
+              - '.github/workflows/post-merge.yml'
               - '.github/workflows/web-e2e.yml'
               - '.github/actions/setup-web/**'
               - 'dify-agent/**'
