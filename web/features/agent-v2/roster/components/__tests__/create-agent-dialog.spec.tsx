@@ -55,7 +55,7 @@ describe('CreateAgentDialog', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
     await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), ' Research Agent ')
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), ' Research Assistant ')
+    await user.type(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }), ' Research Assistant ')
     await user.type(within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder'), ' Find and summarize market materials. ')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
@@ -83,7 +83,6 @@ describe('CreateAgentDialog', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
     await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), 'Research Agent')
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), 'Research Assistant')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
@@ -102,7 +101,7 @@ describe('CreateAgentDialog', () => {
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), 'Research Assistant')
+    await user.type(within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.roleLabel/ }), 'Research Assistant')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
     expect(await within(dialog).findByText('agentV2.roster.createForm.nameRequired')).toBeInTheDocument()
@@ -110,22 +109,23 @@ describe('CreateAgentDialog', () => {
     expect(mutationMock.mutate).not.toHaveBeenCalled()
   })
 
-  it('shows a field error when creating with an empty role', async () => {
+  it('marks role and description as optional', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), 'Research Agent')
-    await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
-    expect(await within(dialog).findByText('agentV2.roster.createForm.roleRequired')).toBeInTheDocument()
-    expect(toastMock.error).not.toHaveBeenCalled()
-    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    expect(within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.roleLabel.*common\.label\.optional/,
+    })).not.toBeRequired()
+    expect(within(dialog).getByRole('textbox', {
+      name: /agentV2\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
+    })).not.toBeRequired()
   })
 
-  it('shows a field error when creating with a blank role', async () => {
+  it('submits an empty role when role is left blank', async () => {
     const user = userEvent.setup()
     render(<CreateAgentDialog />)
 
@@ -133,12 +133,20 @@ describe('CreateAgentDialog', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
     await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), 'Research Agent')
-    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' }), '   ')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.create' }))
 
-    expect(await within(dialog).findByText('agentV2.roster.createForm.roleRequired')).toBeInTheDocument()
-    expect(toastMock.error).not.toHaveBeenCalled()
-    expect(mutationMock.mutate).not.toHaveBeenCalled()
+    expect(mutationMock.mutate).toHaveBeenCalledWith({
+      body: {
+        name: 'Research Agent',
+        description: '',
+        role: '',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      },
+    }, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
   })
 
   it('keeps the form open when the backdrop is clicked', async () => {

@@ -12,6 +12,9 @@ const metaData = genNodeMetaData({
 const nodeDefault: NodeDefault<AgentV2NodeType> = {
   metaData,
   defaultValue: {
+    agent_binding: {
+      binding_type: 'inline_agent',
+    },
     agent_node_kind: 'dify_agent',
     version: '2',
   },

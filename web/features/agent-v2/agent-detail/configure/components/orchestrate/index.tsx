@@ -157,7 +157,7 @@ export function AgentOrchestratePanel({
 
       {orchestrateBottomAction
         ? (
-            <AgentOrchestrateBottomActions>
+            <AgentOrchestrateBottomActions shrinkOnOpen={!bottomAction}>
               {orchestrateBottomAction}
             </AgentOrchestrateBottomActions>
           )

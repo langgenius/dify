@@ -1,3 +1,11 @@
+"""Shellctl-backed shell provider adapter for dify-agent.
+
+The shell-session-manager SDK owns the HTTP timeout policy for long-polling
+shellctl requests. This adapter stays narrowly focused on translating SDK and
+transport failures into ``ShellProviderError`` so the shell layer can return
+tool observations instead of aborting the agent loop.
+"""
+
 from __future__ import annotations
 
 import base64
@@ -9,6 +17,8 @@ from collections.abc import Awaitable
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol, TypeVar
+
+import httpx
 
 from dify_agent.adapters.shell.protocols import (
     ShellCommandProtocol,
@@ -168,11 +178,11 @@ class ShellctlCommands(ShellCommandProtocol):
         grace_seconds: float | None = None,
     ) -> None:
         try:
-            _ = await self.client.delete(job_id, force=force, grace_seconds=grace_seconds)
-        except RuntimeError as exc:
-            if getattr(exc, "code", None) == "job_not_found":
+            _ = await _run_client_call(self.client.delete(job_id, force=force, grace_seconds=grace_seconds))
+        except ShellProviderError as exc:
+            if exc.code == "job_not_found":
                 return
-            raise _map_error(exc) from exc
+            raise
 
 
 @dataclass(slots=True)
@@ -274,8 +284,14 @@ class _CompletedShellctlJob:
 
 
 async def _run_client_call(awaitable: Awaitable[ResultT]) -> ResultT:
+    """Map shellctl client boundary failures into provider-layer errors."""
+
     try:
         return await awaitable
+    except httpx.TimeoutException as exc:
+        raise ShellProviderError(str(exc), code="timeout") from exc
+    except httpx.RequestError as exc:
+        raise ShellProviderError(str(exc), code="request_error") from exc
     except RuntimeError as exc:
         raise _map_error(exc) from exc
 
@@ -338,7 +354,7 @@ async def _run_to_completion(
     finally:
         if job_id is not None:
             try:
-                await client.delete(job_id, force=True)
+                await _run_client_call(client.delete(job_id, force=True))
             except RuntimeError as exc:
                 logger.warning("Failed to delete shellctl job %s: %s", job_id, exc)
 

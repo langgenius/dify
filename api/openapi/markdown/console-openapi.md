@@ -12935,7 +12935,7 @@ Default namespace
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | name | string | Agent name | Yes |
-| role | string | Agent role | Yes |
+| role | string | Agent role | No |
 
 #### AgentAppDetailWithSite
 
@@ -13062,7 +13062,7 @@ default (the config form sends the full desired feature state on save).
 | icon_type | [IconType](#icontype) | Icon type | No |
 | max_active_requests | integer | Maximum active requests | No |
 | name | string | App name | Yes |
-| role | string | Agent role | Yes |
+| role | string | Agent role | No |
 | use_icon_as_answer_icon | boolean | Use icon as answer icon | No |
 
 #### AgentAverageResponseTimeStatisticResponse
@@ -14569,8 +14569,19 @@ Soft lifecycle state for Agent records.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
-| model | [AgentSoulModelConfig](#agentsoulmodelconfig) |  | No |
+| model | [AgentSuggestedQuestionsAfterAnswerModelConfig](#agentsuggestedquestionsafteranswermodelconfig) |  | No |
 | prompt | string |  | No |
+
+#### AgentSuggestedQuestionsAfterAnswerModelConfig
+
+Legacy Chat App model config used only for follow-up question generation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_params | object |  | No |
+| mode | string |  | No |
+| name | string |  | Yes |
+| provider | string |  | Yes |
 
 #### AgentTextToSpeechFeatureConfig
 

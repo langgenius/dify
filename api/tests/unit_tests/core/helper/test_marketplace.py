@@ -14,22 +14,22 @@ from core.helper.marketplace import (
 
 
 def test_get_plugin_pkg_url_contains_unique_identifier() -> None:
-    url = get_plugin_pkg_url("plugin@1.0.0")
+    url = get_plugin_pkg_url("langgenius/openai:0.4.2@checksum")
 
     assert "api/v1/plugins/download" in url
-    assert "unique_identifier=plugin@1.0.0" in url
+    assert "unique_identifier=langgenius%2Fopenai%3A0.4.2%40checksum" in url
 
 
 def test_download_plugin_pkg_delegates_with_configured_size(mocker: MockerFixture) -> None:
     mocked_download = mocker.patch("core.helper.marketplace.download_with_size_limit", return_value=b"pkg")
     mocker.patch("core.helper.marketplace.dify_config.PLUGIN_MAX_PACKAGE_SIZE", 1234)
 
-    result = download_plugin_pkg("plugin.a.b")
+    result = download_plugin_pkg("langgenius/openai:0.4.2@checksum")
 
     assert result == b"pkg"
     mocked_download.assert_called_once()
     called_url, called_limit = mocked_download.call_args.args
-    assert "unique_identifier=plugin.a.b" in called_url
+    assert "unique_identifier=langgenius%2Fopenai%3A0.4.2%40checksum" in called_url
     assert called_limit == 1234
 
 

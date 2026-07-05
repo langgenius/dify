@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 
 export function AgentOrchestrateBottomActions({
   children,
+  shrinkOnOpen = true,
 }: {
   children: ReactNode
+  shrinkOnOpen?: boolean
 }) {
   return (
     <div
@@ -14,7 +17,10 @@ export function AgentOrchestrateBottomActions({
         className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-components-panel-bg to-components-panel-bg-transparent [mask-image:linear-gradient(to_top,black,transparent)] backdrop-blur-[2px] [-webkit-mask-image:linear-gradient(to_top,black,transparent)]"
       />
       <div
-        className="relative z-10 flex w-full max-w-[506px] flex-col items-center justify-end transition-[max-width] duration-150 ease-out has-[[data-open]]:max-w-96 motion-reduce:transition-none"
+        className={cn(
+          'relative z-10 flex w-full max-w-[506px] flex-col items-center justify-end transition-[max-width] duration-150 ease-out motion-reduce:transition-none',
+          shrinkOnOpen && 'has-[[data-open]]:max-w-96',
+        )}
       >
         {children}
       </div>

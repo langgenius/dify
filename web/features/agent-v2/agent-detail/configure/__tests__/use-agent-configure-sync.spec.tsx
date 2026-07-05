@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
@@ -437,7 +438,7 @@ describe('useAgentConfigureSync', () => {
     }))
   })
 
-  it('should skip autosave when knowledge retrieval validation fails', async () => {
+  it('should autosave when knowledge retrieval validation fails', async () => {
     const { result, store } = renderUseAgentConfigureSync()
 
     act(() => {
@@ -457,8 +458,8 @@ describe('useAgentConfigureSync', () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
 
-    expect(composerPutMutationFn).not.toHaveBeenCalled()
-    expect(result.current.draftSavedAt).toBeUndefined()
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(result.current.draftSavedAt).toBeDefined()
   })
 
   it('should keep autosave failures silent and leave the local draft dirty', async () => {
@@ -582,7 +583,7 @@ describe('useAgentConfigureSync', () => {
     }))
   })
 
-  it('should reject manual save when knowledge retrieval validation fails', async () => {
+  it('should save draft manually when knowledge retrieval validation fails', async () => {
     const { result, store } = renderUseAgentConfigureSync()
 
     act(() => {
@@ -598,8 +599,11 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    await expect(result.current.saveDraft()).rejects.toThrow('Agent knowledge retrieval configuration is invalid.')
-    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should publish only when publishDraft is called explicitly', async () => {
@@ -755,7 +759,7 @@ describe('useAgentConfigureSync', () => {
     expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
-  it('should reject publish when knowledge retrieval validation fails', async () => {
+  it('should toast and skip publish when knowledge retrieval validation fails', async () => {
     const { result, store } = renderUseAgentConfigureSync()
 
     act(() => {
@@ -771,9 +775,39 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
-    await expect(result.current.publishDraft()).rejects.toThrow('Agent knowledge retrieval configuration is invalid.')
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
     expect(composerPutMutationFn).not.toHaveBeenCalled()
     expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')
+  })
+
+  it('should toast metadata filtering model error when publishing with automatic metadata filtering and no model', async () => {
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        knowledgeRetrievals: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasetRefs: [{ id: 'dataset-1', name: 'Docs' }],
+            metadataFilterMode: MetadataFilteringModeEnum.automatic,
+          },
+        ],
+      })
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('agentV2.agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired')
   })
 
   it('should expose publishing status from the publish mutation while publish is pending', async () => {

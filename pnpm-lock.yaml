@@ -153,6 +153,9 @@ catalogs:
     '@svgdotjs/svg.js':
       specifier: 3.2.5
       version: 3.2.5
+    '@t3-oss/env-core':
+      specifier: 0.13.11
+      version: 0.13.11
     '@t3-oss/env-nextjs':
       specifier: 0.13.11
       version: 0.13.11
@@ -772,6 +775,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.61.1
+      '@t3-oss/env-core':
+        specifier: 'catalog:'
+        version: 0.13.11(typescript@6.0.3)(valibot@1.4.2(typescript@6.0.3))(zod@4.4.3)
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.4
@@ -790,6 +796,9 @@ importers:
       vite-plus:
         specifier: 'catalog:'
         version: 0.2.1(@types/node@25.9.4)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(@voidzero-dev/vite-plus-core@0.2.1(@types/node@25.9.4)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(esbuild@0.28.1)(happy-dom@20.10.6)(jiti@2.7.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
 
   packages/contracts:
     dependencies:
@@ -20092,6 +20101,7 @@ time:
   '@storybook/react@10.4.6': '2026-06-16T11:43:30.413Z'
   '@streamdown/math@1.0.2': '2026-02-09T17:31:31.085Z'
   '@svgdotjs/svg.js@3.2.5': '2025-09-15T16:22:12.771Z'
+  '@t3-oss/env-core@0.13.11': '2026-03-22T19:16:09.121Z'
   '@t3-oss/env-nextjs@0.13.11': '2026-03-22T19:16:09.026Z'
   '@tailwindcss/postcss@4.3.1': '2026-06-12T17:59:36.796Z'
   '@tailwindcss/typography@0.5.20': '2026-06-08T10:34:41.124Z'

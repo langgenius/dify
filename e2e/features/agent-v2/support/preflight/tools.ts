@@ -36,6 +36,17 @@ export const splitToolDisplayName = (resourceName: string) => {
   }
 }
 
+export const splitToolResourceId = (resourceId: string) => {
+  const parts = resourceId.split('/').map(item => item.trim()).filter(Boolean)
+  const toolName = parts.at(-1)
+  const providerName = parts.slice(0, -1).join('/')
+
+  return {
+    providerName,
+    toolName: toolName ?? '',
+  }
+}
+
 export const findToolEntry = (
   items: unknown[],
   {

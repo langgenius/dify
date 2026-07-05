@@ -7,8 +7,9 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentCliTool, AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { CollectionType } from '@/app/components/tools/types'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useGetLanguage } from '@/context/i18n'
 import { useSetProviderToolCredential } from '@/features/agent-v2/agent-composer/store-modules/tools'
@@ -31,10 +32,8 @@ import { useAgentToolsOperations } from './hooks'
 import { ProviderToolSettingsDialog } from './provider-tool/dialog'
 import { AgentProviderToolItem } from './provider-tool/item'
 
-function AgentToolItem({
+const AgentToolItem = memo(({
   tool,
-  isExpanded,
-  onOpenChange,
   onConfigureAction,
   onDeleteCliTool,
   onDeleteProviderTool,
@@ -43,18 +42,14 @@ function AgentToolItem({
   onCredentialChange,
 }: {
   tool: AgentTool
-  isExpanded: boolean
-  onOpenChange: (tool: AgentTool, open: boolean) => void
   onConfigureAction: (target: ToolSettingTarget) => void
   onDeleteCliTool: (toolId: string) => void
   onDeleteProviderTool: (toolId: string) => void
   onDeleteProviderToolAction: (toolId: string, actionId: string) => void
   onEditCliTool: (tool: AgentCliTool) => void
-  onCredentialChange: (toolId: string, credentialId?: string) => void
-}) {
-  const handleOpenChange = useCallback((open: boolean) => {
-    onOpenChange(tool, open)
-  }, [onOpenChange, tool])
+  onCredentialChange: (toolId: string, credentialId?: string, credentialType?: AgentProviderTool['credentialType']) => void
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const handleRemoveProvider = useCallback(() => {
     onDeleteProviderTool(tool.id)
@@ -73,8 +68,8 @@ function AgentToolItem({
       onEditCliTool(tool)
   }, [onEditCliTool, tool])
 
-  const handleCredentialChange = useCallback((credentialId?: string) => {
-    onCredentialChange(tool.id, credentialId)
+  const handleCredentialChange = useCallback((credentialId?: string, credentialType?: AgentProviderTool['credentialType']) => {
+    onCredentialChange(tool.id, credentialId, credentialType)
   }, [onCredentialChange, tool.id])
 
   if (tool.kind === 'provider') {
@@ -82,7 +77,7 @@ function AgentToolItem({
       <AgentProviderToolItem
         tool={tool}
         isExpanded={isExpanded}
-        onOpenChange={handleOpenChange}
+        onOpenChange={setIsExpanded}
         onConfigureAction={onConfigureAction}
         onRemoveAction={handleRemoveProviderAction}
         onRemoveProvider={handleRemoveProvider}
@@ -98,7 +93,7 @@ function AgentToolItem({
       onEdit={handleEditCliTool}
     />
   )
-}
+})
 
 function useAgentToolProviderMap() {
   const { data: buildInTools } = useAllBuiltInTools()
@@ -139,8 +134,44 @@ function getLocalizedText(
   return text?.[language] ?? text?.en_US ?? text?.zh_Hans
 }
 
-function getProviderCredentialRequired(provider?: ToolWithProvider) {
-  return Object.keys(provider?.team_credentials ?? {}).length > 0
+function getProviderCredentialType(provider?: ToolWithProvider): AgentProviderTool['credentialType'] {
+  if (!provider)
+    return undefined
+
+  if (Object.keys(provider.team_credentials ?? {}).length > 0)
+    return 'api-key'
+
+  if (provider.type === CollectionType.builtIn && provider.allow_delete)
+    return 'oauth2'
+
+  return undefined
+}
+
+function getDisplayCredentialType(
+  tool: AgentProviderTool,
+  providerCredentialType: AgentProviderTool['credentialType'],
+) {
+  if (!providerCredentialType)
+    return undefined
+
+  if (providerCredentialType === 'oauth2' && tool.credentialType === 'unauthorized')
+    return 'oauth2' as const
+
+  return tool.credentialType ?? providerCredentialType
+}
+
+function getProviderCredentialVariant(
+  tool: AgentProviderTool,
+  provider: ToolWithProvider,
+  providerCredentialType: AgentProviderTool['credentialType'],
+) {
+  if (!providerCredentialType)
+    return 'none' as const
+
+  if (tool.credentialVariant !== 'none')
+    return tool.credentialVariant
+
+  return tool.credentialId || provider.is_team_authorization ? 'authorized' as const : 'unauthorized' as const
 }
 
 function useDisplayTools(
@@ -161,7 +192,7 @@ function useDisplayTools(
         return tool
 
       const providerToolByName = new Map(provider.tools.map(providerTool => [providerTool.name, providerTool]))
-      const credentialRequired = getProviderCredentialRequired(provider)
+      const providerCredentialType = getProviderCredentialType(provider)
 
       return {
         ...tool,
@@ -170,9 +201,11 @@ function useDisplayTools(
         iconDark: tool.iconDark ?? provider.icon_dark,
         providerType: tool.providerType ?? provider.type,
         allowDelete: tool.allowDelete ?? provider.allow_delete,
-        credentialKey: credentialRequired ? tool.credentialKey : undefined,
-        credentialType: credentialRequired ? tool.credentialType : undefined,
-        credentialVariant: credentialRequired ? tool.credentialVariant : 'none',
+        credentialKey: providerCredentialType
+          ? tool.credentialKey ?? 'agentDetail.configure.tools.credential.authOne'
+          : undefined,
+        credentialType: getDisplayCredentialType(tool, providerCredentialType),
+        credentialVariant: getProviderCredentialVariant(tool, provider, providerCredentialType),
         actions: tool.actions.map((action) => {
           const providerTool = providerToolByName.get(action.toolName)
 
@@ -266,7 +299,10 @@ function AddToolMenu({
     allowDelete: (providerById.get(tool.provider_id)
       ?? providerById.get(tool.provider_name)
       ?? (tool.plugin_id ? providerById.get(tool.plugin_id) : undefined))?.allow_delete,
-    credentialRequired: getProviderCredentialRequired(providerById.get(tool.provider_id)
+    credentialType: getProviderCredentialType(providerById.get(tool.provider_id)
+      ?? providerById.get(tool.provider_name)
+      ?? (tool.plugin_id ? providerById.get(tool.plugin_id) : undefined)),
+    credentialRequired: !!getProviderCredentialType(providerById.get(tool.provider_id)
       ?? providerById.get(tool.provider_name)
       ?? (tool.plugin_id ? providerById.get(tool.plugin_id) : undefined)),
   }), [providerById])
@@ -316,7 +352,7 @@ function AddToolMenu({
           : (
               <ToolPickerContent
                 focusSearchOnMount
-                panelClassName="w-full"
+                panelClassName="w-full overflow-hidden"
                 supportAddCustomTool
                 selectedTools={selectedTools}
                 onSelect={handleSelectTool}
@@ -336,11 +372,9 @@ export function AgentTools() {
   const {
     tools,
     selectedTools,
-    expandedToolIds,
     settingTarget,
     isCliToolDialogOpen,
     editingCliTool,
-    setToolOpen,
     setSettingTarget,
     addTools,
     deleteCliTool,
@@ -462,8 +496,6 @@ export function AgentTools() {
               <AgentToolItem
                 key={tool.id}
                 tool={tool}
-                isExpanded={tool.kind === 'provider' && expandedToolIds.has(tool.id)}
-                onOpenChange={setToolOpen}
                 onConfigureAction={setSettingTarget}
                 onDeleteCliTool={deleteCliTool}
                 onDeleteProviderTool={deleteProviderTool}
