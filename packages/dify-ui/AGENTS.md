@@ -10,6 +10,8 @@ Shared design tokens, the `cn()` utility, CSS-first Tailwind styles, and headles
 - One component per folder: `src/<name>/index.tsx`, optional `index.stories.tsx` and `__tests__/index.spec.tsx`. Add a matching `./<name>` subpath to `package.json#exports`.
 - Props pattern: `Omit<BaseXxx.Root.Props, 'className' | ...> & VariantProps<typeof xxxVariants> & { /* custom */ }`.
 - Use plain `Omit<...>` only for non-union Base UI props. When a prop changes the valid shape of related props (for example `value` / `defaultValue`, `multiple` / `value`, or `clearable` / `onChange`), model that relationship with an explicit discriminated union or a distributive helper instead of flattening the props.
+- Preserve Base UI generic value contracts in wrappers. If the upstream primitive is generic, expose the same generic parameters and pass them through to the Base UI part, such as `Select.Root<Value, Multiple>`, `RadioGroup<Value>`, or `Radio.Root<Value>`.
+- Do not hard-code shared selection wrappers to `string` unless the upstream primitive is string-only. Option rows, radio cards, and select item helpers that carry selected values should be generic or typed from a feature option collection.
 - When a component accepts a prop typed from a shared internal module, `export type` it from that component so consumers import it from the component subpath.
 - Prefer Base UI data attributes and CSS variables for visual states; do not mirror state in React solely to add classes.
 - When a Base UI API or selector contract is unclear, read the docs linked from `README.md` and the local `@base-ui/react` `.d.ts` files before coding.
