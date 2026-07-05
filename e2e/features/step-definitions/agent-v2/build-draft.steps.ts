@@ -7,7 +7,10 @@ import {
   getAgentComposerDraft,
   saveAgentComposerDraft,
 } from '../../agent-v2/support/agent'
-import { saveAgentBuildDraft } from '../../agent-v2/support/agent-build-draft'
+import {
+  applyAgentBuildDraft,
+  saveAgentBuildDraft,
+} from '../../agent-v2/support/agent-build-draft'
 import { agentBuilderFixedInputs, agentBuilderPreseededResources } from '../../agent-v2/support/agent-builder-resources'
 import { uploadAgentConfigFileToDraft } from '../../agent-v2/support/agent-drive'
 import {
@@ -183,6 +186,10 @@ When(
     await expect(page.getByText('Action succeeded')).toBeVisible()
   },
 )
+
+When('I apply the Agent v2 Build draft via API', async function (this: DifyWorld) {
+  await applyAgentBuildDraft(getCurrentAgentId(this))
+})
 
 async function skipBuildDraftToolWriteback(world: DifyWorld) {
   return skipBlockedPrecondition(
