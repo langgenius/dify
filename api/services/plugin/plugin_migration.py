@@ -25,6 +25,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
 from extensions.ext_database import db
+from libs.pagination import paginate_query
 from models.account import Tenant
 from models.model import App, AppMode, AppModelConfig
 from models.provider_ids import ModelProviderID, ToolProviderID
@@ -499,7 +500,7 @@ class PluginMigration:
         total_failed_tenant = 0
         while True:
             # paginate
-            tenants = db.paginate(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
+            tenants = paginate_query(sa.select(Tenant).order_by(Tenant.created_at.desc()), page=page, per_page=100)
             if tenants.items is None or len(tenants.items) == 0:
                 break
 

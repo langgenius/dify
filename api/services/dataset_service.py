@@ -34,6 +34,7 @@ from graphon.model_runtime.model_providers.base.text_embedding_model import Text
 from libs import helper
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
+from libs.pagination import paginate_query
 from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -355,7 +356,7 @@ class DatasetService:
             else:
                 return [], 0
 
-        datasets = db.paginate(select=query, page=page, per_page=per_page, max_per_page=100, error_out=False)
+        datasets = paginate_query(query, page=page, per_page=per_page, max_per_page=100)
 
         return datasets.items, datasets.total
 
@@ -399,7 +400,7 @@ class DatasetService:
                 accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
             stmt = stmt.where(accessible_filter)
 
-        datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
+        datasets = paginate_query(stmt, page=1, per_page=len(ids), max_per_page=len(ids))
 
         return datasets.items, datasets.total
 
@@ -1403,7 +1404,7 @@ class DatasetService:
     def get_dataset_queries(dataset_id: str, page: int, per_page: int):
         stmt = select(DatasetQuery).filter_by(dataset_id=dataset_id).order_by(db.desc(DatasetQuery.created_at))
 
-        dataset_queries = db.paginate(select=stmt, page=page, per_page=per_page, max_per_page=100, error_out=False)
+        dataset_queries = paginate_query(stmt, page=page, per_page=per_page, max_per_page=100)
 
         return dataset_queries.items, dataset_queries.total
 
@@ -4120,7 +4121,7 @@ class SegmentService:
         if keyword:
             escaped_keyword = helper.escape_like_pattern(keyword)
             query = query.where(ChildChunk.content.ilike(f"%{escaped_keyword}%", escape="\\"))
-        return db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        return paginate_query(query, page=page, per_page=limit, max_per_page=100)
 
     @classmethod
     def get_child_chunk_by_id(
@@ -4172,7 +4173,7 @@ class SegmentService:
             query = query.where(DocumentSegment.content.ilike(f"%{escaped_keyword}%", escape="\\"))
 
         query = query.order_by(DocumentSegment.position.asc(), DocumentSegment.id.asc())
-        paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_segments = paginate_query(query, page=page, per_page=limit, max_per_page=100)
 
         return paginated_segments.items, paginated_segments.total
 

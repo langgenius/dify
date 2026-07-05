@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
-from flask_sqlalchemy.pagination import Pagination
 from pydantic import BaseModel, Field
 from sqlalchemy import ColumnElement, select
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +23,7 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey, Mode
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
+from libs.pagination import PaginatedResult, paginate_query
 from models import Account, AppStar
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType, Site
@@ -220,7 +220,7 @@ class AppService:
 
     def get_paginate_apps(
         self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
-    ) -> Pagination | None:
+    ) -> PaginatedResult | None:
         """
         Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
@@ -234,11 +234,10 @@ class AppService:
 
         order_by = self._build_app_list_order_by(params.sort_by)
 
-        app_models = db.paginate(
+        app_models = paginate_query(
             sa.select(App).where(*filters).order_by(order_by),
             page=params.page,
             per_page=params.limit,
-            error_out=False,
         )
 
         app_ids = [str(app.id) for app in app_models.items]
@@ -255,7 +254,7 @@ class AppService:
 
     def get_paginate_starred_apps(
         self, user_id: str, tenant_id: str, params: StarredAppListParams, session: scoped_session
-    ) -> Pagination | None:
+    ) -> PaginatedResult | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.
         """
@@ -264,7 +263,7 @@ class AppService:
             return None
 
         order_by = self._build_app_list_order_by(params.sort_by)
-        app_models = db.paginate(
+        app_models = paginate_query(
             sa.select(App)
             .join(
                 AppStar,
@@ -278,7 +277,6 @@ class AppService:
             .order_by(order_by),
             page=params.page,
             per_page=params.limit,
-            error_out=False,
         )
 
         for app in app_models.items:
