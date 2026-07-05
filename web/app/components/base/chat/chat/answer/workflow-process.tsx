@@ -32,7 +32,7 @@ const WorkflowProcessItem = ({
   const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
   const fallbackTitle = t('common.workflowProcess', { ns: 'workflow' })
-const hasTracing = data.tracing.length > 0
+  const hasTracing = data.tracing.length > 0
   const collapsedTitle = failed
     ? (hasTracing
         ? (latestNode?.error || latestNode?.title || fallbackTitle)
