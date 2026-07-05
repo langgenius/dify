@@ -6,8 +6,6 @@ on:
   merge_group:
     branches: ["main"]
     types: [checks_requested]
-  push:
-    branches: ["main"]
 
 permissions:
   actions: write
@@ -344,8 +342,6 @@ jobs:
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && (needs.check-changes.outputs.e2e-changed == 'true' || needs.check-changes.outputs.external-e2e-changed == 'true')
     uses: ./.github/workflows/web-e2e.yml
-    with:
-      run-external-runtime: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-changes.outputs.external-e2e-changed == 'true' }}
     secrets: inherit
 
   web-e2e-skip:
