@@ -335,6 +335,50 @@ describe('normalizeConsoleOpenAPIURL', () => {
   })
 })
 
+// Scenario: oRPC query defaults own shared Agent detail fetch behavior.
+describe('consoleQuery agent query defaults', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should not retry missing agent detail errors', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryOptions = consoleQuery.agent.byAgentId.get.queryOptions({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+    })
+    const retry = queryOptions.retry
+
+    expect(typeof retry).toBe('function')
+    if (typeof retry !== 'function')
+      throw new TypeError('Expected agent detail retry to be a function.')
+
+    expect(retry(0, new Response(null, { status: 404 }))).toBe(false)
+  })
+
+  it('should retry other agent detail errors fewer than three times', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryOptions = consoleQuery.agent.byAgentId.get.queryOptions({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+    })
+    const retry = queryOptions.retry
+
+    expect(typeof retry).toBe('function')
+    if (typeof retry !== 'function')
+      throw new TypeError('Expected agent detail retry to be a function.')
+
+    expect(retry(2, new Error('temporary failure'))).toBe(true)
+    expect(retry(3, new Error('temporary failure'))).toBe(false)
+  })
+})
+
 // Scenario: oRPC mutation defaults own shared Agent roster cache behavior.
 describe('consoleQuery agent mutation defaults', () => {
   beforeEach(() => {
