@@ -7,6 +7,7 @@ import { hasValidAgentBinding } from './types'
 const metaData = genNodeMetaData({
   sort: 3,
   type: BlockEnum.AgentV2,
+  helpLinkUri: 'agent',
 })
 
 const nodeDefault: NodeDefault<AgentV2NodeType> = {

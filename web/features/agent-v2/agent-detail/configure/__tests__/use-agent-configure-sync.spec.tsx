@@ -91,6 +91,11 @@ function setDocumentVisibilityState(visibilityState: DocumentVisibilityState) {
   })
 }
 
+const configuredModel = {
+  provider: 'langgenius/openai/openai',
+  model: 'gpt-4o-mini',
+}
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMock,
 }))
@@ -607,7 +612,9 @@ describe('useAgentConfigureSync', () => {
   })
 
   it('should publish only when publishDraft is called explicitly', async () => {
-    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    const { queryClient, result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: false,
@@ -654,12 +661,28 @@ describe('useAgentConfigureSync', () => {
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
+  it('should toast and skip publish when no model is configured', async () => {
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Published prompt',
+      })
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+  })
+
   it('should keep default model fallback from creating unpublished changes after publish', async () => {
     const { result, store } = renderUseAgentConfigureSync({
-      currentModel: {
-        provider: 'langgenius/openai/openai',
-        model: 'gpt-4o-mini',
-      },
+      currentModel: configuredModel,
     })
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -681,6 +704,7 @@ describe('useAgentConfigureSync', () => {
 
   it('should keep base config fallback fields from creating unpublished changes after publish', async () => {
     const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
       baseConfig: {
         app_features: {
           file_upload: {
@@ -708,7 +732,9 @@ describe('useAgentConfigureSync', () => {
   })
 
   it('should publish the current draft snapshot instead of a stale caller payload', async () => {
-    const { result, store } = renderUseAgentConfigureSync()
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -736,7 +762,9 @@ describe('useAgentConfigureSync', () => {
 
   it('should reject publish and keep the publish mutation untouched when saving the draft fails', async () => {
     composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
-    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    const { queryClient, result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: false,
       name: 'Agent',
@@ -760,7 +788,9 @@ describe('useAgentConfigureSync', () => {
   })
 
   it('should toast and skip publish when knowledge retrieval validation fails', async () => {
-    const { result, store } = renderUseAgentConfigureSync()
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -785,7 +815,9 @@ describe('useAgentConfigureSync', () => {
   })
 
   it('should toast metadata filtering model error when publishing with automatic metadata filtering and no model', async () => {
-    const { result, store } = renderUseAgentConfigureSync()
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
 
     act(() => {
       store.set(agentComposerDraftAtom, {
@@ -813,7 +845,9 @@ describe('useAgentConfigureSync', () => {
   it('should expose publishing status from the publish mutation while publish is pending', async () => {
     const publishDeferred = createDeferredPromise<PublishAgentResponse>()
     publishAgentMutationFn.mockReturnValueOnce(publishDeferred.promise)
-    const { result } = renderUseAgentConfigureSync()
+    const { result } = renderUseAgentConfigureSync({
+      currentModel: configuredModel,
+    })
     let publishPromise!: Promise<void>
     act(() => {
       publishPromise = result.current.publishDraft()

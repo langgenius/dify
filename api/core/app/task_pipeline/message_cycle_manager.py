@@ -257,7 +257,7 @@ class MessageCycleManager:
             task_id=self._application_generate_entity.task_id,
             id=message_id,
             answer=answer,
-            from_variable_selector=from_variable_selector,
+            from_variable_selector=from_variable_selector or [],
             event=event_type or StreamEvent.MESSAGE,
         )
 

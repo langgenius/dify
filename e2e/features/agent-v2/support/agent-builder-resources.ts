@@ -11,7 +11,6 @@ export const agentBuilderPreseededResources = {
   fullConfigAgent: 'E2E New Agent Builder Full Config',
   toolStatesAgent: 'E2E New Agent Builder Tool States',
   oauthToolAgent: 'E2E Agent With OAuth Tool',
-  fileTreeAgent: 'E2E Agent With File Tree',
   dualRetrievalAgent: 'E2E Agent With Dual Retrieval',
   publishedWebAppAgent: 'E2E Agent Published Web App',
   backendApiEnabledAgent: 'E2E Agent Backend API Enabled',
