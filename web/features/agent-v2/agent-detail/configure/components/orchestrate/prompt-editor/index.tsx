@@ -1,6 +1,8 @@
 'use client'
 
+import type { LexicalNode } from 'lexical'
 import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { TextRange } from './options'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
 import type { AgentFileNode, AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
@@ -8,8 +10,18 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useAtom, useAtomValue } from 'jotai'
+import {
+  $getRoot,
+  $getSelection,
+  $isElementNode,
+  $isRangeSelection,
+  COMMAND_PRIORITY_LOW,
+  SELECTION_CHANGE_COMMAND,
+} from 'lexical'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
@@ -25,7 +37,7 @@ import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
-import { replaceTrailingSlashWithToken } from './options'
+import { replaceTextRangeWithToken, replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
 
 const subscribeHydrationState = () => () => {}
@@ -152,6 +164,100 @@ const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: s
   return previousChild ? getLastTextContent(previousChild).endsWith('/') : false
 }
 
+const getNodeOffset = (
+  node: LexicalNode,
+  anchorNode: LexicalNode,
+  anchorOffset: number,
+): { found: boolean, offset: number } => {
+  if (node.getKey() === anchorNode.getKey())
+    return { found: true, offset: anchorOffset }
+
+  if (!$isElementNode(node))
+    return { found: false, offset: node.getTextContent().length }
+
+  let offset = 0
+  for (const child of node.getChildren()) {
+    const childOffset = getNodeOffset(child, anchorNode, anchorOffset)
+    if (childOffset.found)
+      return { found: true, offset: offset + childOffset.offset }
+
+    offset += childOffset.offset
+  }
+
+  return { found: false, offset }
+}
+
+const getSelectionTextOffset = () => {
+  const selection = $getSelection()
+  if (!$isRangeSelection(selection) || !selection.isCollapsed())
+    return null
+
+  const anchor = selection.anchor
+  const anchorNode = anchor.getNode()
+  const root = $getRoot()
+  let offset = 0
+
+  for (const child of root.getChildren()) {
+    const childOffset = getNodeOffset(child, anchorNode, anchor.offset)
+    if (childOffset.found)
+      return offset + childOffset.offset
+
+    offset += childOffset.offset + 1
+  }
+
+  return null
+}
+
+const readSlashInsertRange = (): TextRange | null => {
+  const offset = getSelectionTextOffset()
+  if (!offset)
+    return null
+
+  const value = $getRoot().getChildren().map(node => node.getTextContent()).join('\n')
+  if (value[offset - 1] !== '/')
+    return null
+
+  return {
+    start: offset - 1,
+    end: offset,
+  }
+}
+
+function AgentPromptSelectionTracker({
+  onSlashRangeChange,
+}: {
+  onSlashRangeChange: (range: TextRange | null) => void
+}) {
+  const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    const updateSlashRange = () => {
+      editor.getEditorState().read(() => {
+        onSlashRangeChange(readSlashInsertRange())
+      })
+
+      return false
+    }
+
+    updateSlashRange()
+
+    return mergeRegister(
+      editor.registerCommand(
+        SELECTION_CHANGE_COMMAND,
+        updateSlashRange,
+        COMMAND_PRIORITY_LOW,
+      ),
+      editor.registerUpdateListener(({ editorState }) => {
+        editorState.read(() => {
+          onSlashRangeChange(readSlashInsertRange())
+        })
+      }),
+    )
+  }, [editor, onSlashRangeChange])
+
+  return null
+}
+
 export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
@@ -180,6 +286,7 @@ export function AgentPromptEditor() {
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
+  const slashInsertRangeRef = useRef<TextRange | null>(null)
   const configuredReferenceIds = useMemo(() => {
     const skillIds = new Set<string>()
     skills.forEach((skill) => {
@@ -227,11 +334,19 @@ export function AgentPromptEditor() {
     if (!isHydrated || readOnly)
       return
 
-    if (isSelectionAfterSlash(editorRef.current, value))
+    if (isSelectionAfterSlash(editorRef.current, value)) {
       openSlashMenu()
-    else
+    }
+    else {
+      slashInsertRangeRef.current = null
       closeSlashMenu()
+    }
   }, [isHydrated, readOnly, value])
+
+  const handleSlashRangeChange = useCallback((range: TextRange | null) => {
+    if (range)
+      slashInsertRangeRef.current = range
+  }, [])
 
   const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!isHydrated || readOnly)
@@ -287,7 +402,9 @@ export function AgentPromptEditor() {
   }
 
   const handleSlashSelect = (token: string) => {
-    setValue(replaceTrailingSlashWithToken(value, token))
+    const slashRange = slashInsertRangeRef.current
+    setValue(slashRange ? replaceTextRangeWithToken(value, slashRange, token) : replaceTrailingSlashWithToken(value, token))
+    slashInsertRangeRef.current = null
     closeSlashMenu()
   }
 
@@ -442,7 +559,9 @@ export function AgentPromptEditor() {
               }}
               disableSlashPicker
               disableBracePicker
-            />
+            >
+              <AgentPromptSelectionTracker onSlashRangeChange={handleSlashRangeChange} />
+            </PromptEditor>
           </div>
           {!readOnly && (
             <div
