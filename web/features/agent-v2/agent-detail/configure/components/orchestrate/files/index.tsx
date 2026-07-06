@@ -232,7 +232,7 @@ function AgentFileItem({
               aria-current={selected ? 'true' : undefined}
               className={cn(
                 'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none group-hover/file-row:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
-                'pr-14',
+                isBuildNoteFile ? 'pr-28' : 'pr-14',
               )}
             />
           )}
@@ -267,9 +267,14 @@ function AgentFileItem({
         />
       </Dialog>
       {isBuildNoteFile && (
-        <AgentBuildNoteInfotip
-          className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
-        />
+        <>
+          <AgentBuildNoteBadge
+            className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
+          />
+          <AgentBuildNoteInfotip
+            className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
+          />
+        </>
       )}
       <button
         type="button"
@@ -298,19 +303,28 @@ function AgentFileItem({
 }
 
 function AgentBuildNoteFileRow() {
-  const { t } = useTranslation('agentV2')
-
   return (
     <>
       <FileTreeIcon type="markdown" />
       <FileTreeLabel title={BUILD_NOTE_FILE_NAME}>
         {BUILD_NOTE_FILE_NAME}
       </FileTreeLabel>
-      <FileTreeBadge className="ml-0.5 gap-0.5 px-1 py-0.5">
-        <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
-        <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
-      </FileTreeBadge>
     </>
+  )
+}
+
+function AgentBuildNoteBadge({
+  className,
+}: {
+  className?: string
+}) {
+  const { t } = useTranslation('agentV2')
+
+  return (
+    <FileTreeBadge className={cn('absolute top-1/2 right-7 z-10 ms-0 -translate-y-1/2 gap-0.5 px-1 py-0.5', className)}>
+      <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
+      <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
+    </FileTreeBadge>
   )
 }
 
