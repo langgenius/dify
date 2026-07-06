@@ -33,6 +33,7 @@ from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
+    AgentModelNotConfiguredError,
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionConflictError,
@@ -510,6 +511,8 @@ class AgentComposerService:
                 version_note=version_note,
             )
         )
+        if not agent_soul_has_model(agent_soul):
+            raise AgentModelNotConfiguredError()
         cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=agent_soul)
         version = cls._create_config_version(
             tenant_id=tenant_id,
