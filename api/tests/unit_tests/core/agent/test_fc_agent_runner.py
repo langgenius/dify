@@ -81,6 +81,7 @@ def runner(mocker: MockerFixture):
     mocker.patch("core.agent.fc_agent_runner.LLMResultChunkDelta", MagicMock)
 
     app_config = MagicMock()
+    app_config.app_id = "app"
     app_config.agent = MagicMock(max_iteration=2)
     app_config.prompt_template = MagicMock(simple_prompt_template="system")
 
@@ -299,6 +300,7 @@ class TestRunMethod:
 
         outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) == 1
+        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
         runner.queue_manager.publish.assert_called()
 
         queue_calls = runner.queue_manager.publish.call_args_list
