@@ -1,12 +1,16 @@
 import json
+from collections.abc import Iterator
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from models.account import Account, AccountStatus, TenantAccountRole, TenantStatus
+from models.base import TypeBase
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -16,6 +20,16 @@ from services.errors.account import (
     CurrentPasswordIncorrectError,
     NoPermissionError,
 )
+
+
+@pytest.fixture
+def sqlite_session(request: pytest.FixtureRequest) -> Iterator[Session]:
+    models: tuple[type[TypeBase], ...] = request.param
+    engine = create_engine("sqlite:///:memory:")
+    tables = [model.metadata.tables[model.__tablename__] for model in models]
+    Account.metadata.create_all(engine, tables=tables)
+    with Session(engine, expire_on_commit=False) as session:
+        yield session
 
 
 class TestAccountAssociatedDataFactory:
@@ -2626,19 +2640,19 @@ class TestSessionInjectedGetters:
 
         assert AccountService.get_account_by_id(mock_session, "missing") is None
 
-    def test_get_account_by_email_returns_scalar_or_none(self):
+    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
+    def test_get_account_by_email_returns_scalar_or_none(self, sqlite_session: Session):
         """Plain getter — case-sensitive equality (callers needing the
         case-insensitive existence check use
         :meth:`has_active_account_with_email`).
         """
-        mock_session = MagicMock()
-        sentinel = MagicMock(spec=Account)
-        mock_session.execute.return_value.scalar_one_or_none.return_value = sentinel
+        account = Account(name="Alice", email="alice@example.com")
+        sqlite_session.add(account)
+        sqlite_session.commit()
 
-        assert AccountService.get_account_by_email(mock_session, "alice@example.com") is sentinel
-
-        mock_session.execute.return_value.scalar_one_or_none.return_value = None
-        assert AccountService.get_account_by_email(mock_session, "ghost@example.com") is None
+        assert AccountService.get_account_by_email(sqlite_session, "alice@example.com") == account
+        assert AccountService.get_account_by_email(sqlite_session, "ALICE@example.com") is None
+        assert AccountService.get_account_by_email(sqlite_session, "ghost@example.com") is None
 
     def test_account_belongs_to_tenant_short_circuits_on_falsy_account_id(self):
         """SSO bearers with no ``account_id`` (and any other falsy id)
