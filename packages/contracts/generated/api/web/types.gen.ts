@@ -213,6 +213,8 @@ export type FormInputConfig
     type: 'file-list'
   } & FileListInputConfig)
 
+export type GeneratedAppResponse = JsonValue
+
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
   form_submission_data?: HumanInputFormSubmissionData | null
@@ -282,7 +284,16 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue = unknown
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
 
 export type JsonValueType = unknown
 
@@ -645,6 +656,8 @@ export type WorkflowRunPayload = {
   }
 }
 
+export type GeneratedAppResponseWritable = JsonValue
+
 export type HumanInputFormDefinitionResponseWritable = {
   expiration_time: number
   form_content: string
@@ -727,9 +740,7 @@ export type PostChatMessagesErrors = {
 }
 
 export type PostChatMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -774,9 +785,7 @@ export type PostCompletionMessagesErrors = {
 }
 
 export type PostCompletionMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostCompletionMessagesResponse
@@ -1255,9 +1264,7 @@ export type GetMessagesByMessageIdMoreLikeThisErrors = {
 }
 
 export type GetMessagesByMessageIdMoreLikeThisResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type GetMessagesByMessageIdMoreLikeThisResponse
@@ -1599,9 +1606,7 @@ export type PostWorkflowsRunErrors = {
 }
 
 export type PostWorkflowsRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
