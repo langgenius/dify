@@ -3077,7 +3077,7 @@ export const zPostDatasetsByDatasetIdPipelineRunPath = z.object({
 /**
  * Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object.
  */
-export const zPostDatasetsByDatasetIdPipelineRunResponse = z.record(z.string(), z.unknown())
+export const zPostDatasetsByDatasetIdPipelineRunResponse = zGeneratedAppResponse
 
 export const zPostDatasetsByDatasetIdRetrieveBody = zHitTestingPayload
 

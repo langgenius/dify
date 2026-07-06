@@ -3221,9 +3221,7 @@ export type PostDatasetsByDatasetIdPipelineRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponse
