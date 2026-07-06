@@ -75,12 +75,10 @@ Feature: Agent v2 build draft
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And the Agent v2 Build draft should no longer be active
 
-  @external-model @agent-backend-runtime @stable-model @skill-fixture
+  @core @skill-fixture
   Scenario: Applying a Build draft updates supported configuration sections
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And the Agent v2 runtime backend is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     And an Agent v2 Build draft adds the supported E2E files, skills, and env
     When I open the Agent v2 configure page
     Then I should see the Agent v2 Build draft pending changes
@@ -89,13 +87,8 @@ Feature: Agent v2 build draft
     And I should see the e2e-summary-skill Skill in the Skills section
     And I should see the supported E2E environment variable in Advanced Settings
     And the normal Agent v2 draft should still use the normal E2E prompt
-    When I apply the Agent v2 Build draft
-    Then I should see the updated E2E prompt in the Agent v2 prompt editor
-    And I should see the small Agent v2 file in the Files section
-    And I should see the e2e-summary-skill Skill in the Skills section
-    And I should see the supported E2E environment variable in Advanced Settings
-    And the Agent v2 draft should include the supported Build draft config
-    And the Agent v2 Build draft should no longer be active
+    When I apply the Agent v2 Build draft via API
+    Then the Agent v2 draft should include the supported Build draft config
     When I refresh the current page
     Then I should see the updated E2E prompt in the Agent v2 prompt editor
     And I should see the small Agent v2 file in the Files section
@@ -103,24 +96,21 @@ Feature: Agent v2 build draft
     And I should see the supported E2E environment variable in Advanced Settings
     And the Agent v2 Build draft should no longer be active
 
-  @external-model @agent-backend-runtime @stable-model @skill-fixture
+  @core @skill-fixture
   Scenario: Applying a Build draft with an existing Skill keeps a single Skill entry
     Given I am signed in as the default E2E admin
-    And the Agent Builder stable chat model is available
-    And the Agent v2 runtime backend is available
-    And a runnable Agent v2 test agent has been created via API
+    And a basic configured Agent v2 test agent has been created via API
     And an Agent v2 Build draft includes the existing e2e-summary-skill Skill
     When I open the Agent v2 configure page
     Then I should see the Agent v2 Build draft pending changes
     And I should see one e2e-summary-skill Skill in the Skills section
     And the Agent v2 draft should include one e2e-summary-skill Skill
-    When I apply the Agent v2 Build draft
-    Then I should see one e2e-summary-skill Skill in the Skills section
-    And the Agent v2 draft should include one e2e-summary-skill Skill
-    And the Agent v2 Build draft should no longer be active
+    When I apply the Agent v2 Build draft via API
+    Then the Agent v2 draft should include one e2e-summary-skill Skill
     When I refresh the current page
     Then I should see one e2e-summary-skill Skill in the Skills section
     And the Agent v2 draft should include one e2e-summary-skill Skill
+    And the Agent v2 Build draft should no longer be active
 
   @core
   Scenario: Pending Build draft remains protected after leaving Configure
