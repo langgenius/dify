@@ -101,6 +101,10 @@ describe('agent/default', () => {
     })
   })
 
+  it('reuses the legacy agent node help document', () => {
+    expect(nodeDefault.metaData.helpLinkUri).toBe('agent')
+  })
+
   it('identifies version 2 agent data as Agent v2', () => {
     expect(isAgentV2NodeData(createPayload({ type: BlockEnum.Agent }))).toBe(true)
     expect(isAgentV2NodeData({
