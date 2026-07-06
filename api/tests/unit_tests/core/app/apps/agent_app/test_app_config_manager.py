@@ -75,7 +75,7 @@ def test_missing_soul_model_leaves_no_model_key():
     }
 
 
-def test_legacy_app_model_config_file_upload_takes_precedence():
+def test_soul_file_upload_overrides_legacy_app_model_config():
     fake_amc = SimpleNamespace(
         to_dict=lambda: {
             "file_upload": {
@@ -88,8 +88,12 @@ def test_legacy_app_model_config_file_upload_takes_precedence():
     d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), fake_amc)  # type: ignore[arg-type]
 
     assert d["file_upload"] == {
-        "enabled": False,
-        "image": {"enabled": False},
+        "allowed_file_extensions": ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"],
+        "allowed_file_types": ["document", "image", "audio", "video"],
+        "allowed_file_upload_methods": ["local_file", "remote_url"],
+        "enabled": True,
+        "image": {"enabled": True},
+        "number_limits": 3,
     }
 
 

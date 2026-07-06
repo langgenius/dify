@@ -21,6 +21,7 @@ from core.app.app_config.entities import (
     EasyUIBasedAppModelConfigFrom,
     PromptTemplateEntity,
 )
+from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
@@ -83,10 +84,7 @@ class AgentAppConfigManager(BaseAppConfigManager):
         ``app_model_config`` when one exists; model + prompt always come from
         the Agent Soul (the single source of truth for those).
         """
-        base: dict[str, Any] = dict(app_model_config.to_dict()) if app_model_config else {}
-        soul_features = agent_soul.app_features.model_dump(mode="json", exclude_none=True)
-        for key, value in soul_features.items():
-            base.setdefault(key, value)
+        base = merge_agent_app_features(agent_soul=agent_soul, app_model_config=app_model_config)
 
         model = agent_soul.model
         if model is not None:
