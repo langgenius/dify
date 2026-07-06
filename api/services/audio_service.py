@@ -37,7 +37,15 @@ logger = logging.getLogger(__name__)
 class AudioService:
     @staticmethod
     def _get_message_by_ref(session: Session, message_ref: MessageRef) -> Message | None:
-        stmt = select(Message).where(Message.id == message_ref.message_id, Message.app_id == message_ref.app_id)
+        stmt = (
+            select(Message)
+            .join(App, App.id == Message.app_id)
+            .where(
+                Message.id == message_ref.message_id,
+                App.id == message_ref.app.app_id,
+                App.tenant_id == message_ref.app.tenant_id,
+            )
+        )
         if message_ref.end_user_id is not None:
             stmt = stmt.where(Message.from_end_user_id == message_ref.end_user_id)
         if message_ref.account_id is not None:

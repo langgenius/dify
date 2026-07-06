@@ -6,10 +6,11 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.dataset import Document, Pipeline
+from models.dataset import Pipeline
 from models.enums import IndexingStatus
 from models.model import Account, App, EndUser
 from models.workflow import Workflow
+from services.dataset_ref_service import DatasetRefService, DocumentRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
@@ -37,8 +38,12 @@ class PipelineGenerateService:
         try:
             workflow = cls._get_workflow(pipeline, invoke_from, session)
             if original_document_id := args.get("original_document_id"):
-                # update document status to waiting
-                cls.update_document_status(original_document_id, session=session)
+                dataset = pipeline.retrieve_dataset(session)
+                if dataset is None or dataset.tenant_id != pipeline.tenant_id:
+                    raise ValueError("Pipeline dataset is required")
+                dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+                document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, original_document_id)
+                cls.update_document_status(document_ref, session=session)
             return PipelineGenerator.convert_to_event_stream(
                 PipelineGenerator().generate(
                     session=session,
@@ -123,12 +128,9 @@ class PipelineGenerateService:
         return workflow
 
     @classmethod
-    def update_document_status(cls, document_id: str, *, session: Session):
-        """
-        Update document status to waiting
-        :param document_id: document id
-        """
-        document = session.get(Document, document_id)
+    def update_document_status(cls, document_ref: DocumentRef, *, session: Session) -> None:
+        """Set a document in the owner-bound dataset to waiting, if it exists."""
+        document = DatasetRefService.get_document_by_ref(document_ref, session=session)
         if document:
             document.indexing_status = IndexingStatus.WAITING
             session.add(document)

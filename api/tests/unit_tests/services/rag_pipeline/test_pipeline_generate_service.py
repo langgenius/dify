@@ -5,8 +5,9 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.dataset import Pipeline
+from models.dataset import Dataset, Pipeline
 from models.model import Account, App, EndUser
+from services.dataset_ref_service import DatasetRefService
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 
 
@@ -58,7 +59,15 @@ def test_get_workflow(mocker: MockerFixture, invoke_from, workflow, expected_err
 
 
 def test_generate_updates_document_status_and_returns_event_stream(mocker: MockerFixture) -> None:
-    pipeline = cast(Pipeline, SimpleNamespace(id="pipeline-1"))
+    dataset = cast(Dataset, SimpleNamespace(id="dataset-1", tenant_id="tenant-1"))
+    pipeline = cast(
+        Pipeline,
+        SimpleNamespace(
+            id="pipeline-1",
+            tenant_id="tenant-1",
+            retrieve_dataset=mocker.Mock(return_value=dataset),
+        ),
+    )
     user = cast(Account | EndUser, SimpleNamespace(id="user-1"))
     args = {"original_document_id": "doc-1", "query": "hello"}
     session_mock = mocker.Mock()
@@ -81,30 +90,92 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
     )
 
     assert result == "stream-events"
-    update_status_mock.assert_called_once_with("doc-1", session=session_mock)
+    document_ref = update_status_mock.call_args.args[0]
+    assert document_ref.dataset.tenant_id == "tenant-1"
+    assert document_ref.dataset.dataset_id == "dataset-1"
+    assert document_ref.document_id == "doc-1"
+    update_status_mock.assert_called_once_with(document_ref, session=session_mock)
     assert generator_instance.generate.call_args.kwargs["session"] is session_mock
+
+
+def test_generate_rejects_pipeline_dataset_from_another_tenant(mocker: MockerFixture) -> None:
+    dataset = cast(Dataset, SimpleNamespace(id="dataset-1", tenant_id="tenant-2"))
+    pipeline = cast(
+        Pipeline,
+        SimpleNamespace(
+            id="pipeline-1",
+            tenant_id="tenant-1",
+            retrieve_dataset=mocker.Mock(return_value=dataset),
+        ),
+    )
+    mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
+    update_status_mock = mocker.patch.object(PipelineGenerateService, "update_document_status")
+
+    with pytest.raises(ValueError, match="Pipeline dataset is required"):
+        PipelineGenerateService.generate(
+            pipeline=pipeline,
+            user=cast(Account, SimpleNamespace(id="user-1")),
+            args={"original_document_id": "doc-1"},
+            invoke_from=InvokeFrom.WEB_APP,
+            session=mocker.Mock(),
+        )
+
+    update_status_mock.assert_not_called()
 
 
 def test_update_document_status_updates_existing_document(mocker: MockerFixture) -> None:
     document = SimpleNamespace(indexing_status="completed")
+    dataset = cast(Dataset, SimpleNamespace(id="dataset-1", tenant_id="tenant-1"))
+    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, "doc-1")
 
     session_mock = mocker.Mock()
-    session_mock.get.return_value = document
+    get_document_mock = mocker.patch.object(DatasetRefService, "get_document_by_ref", return_value=document)
     add_mock = session_mock.add
 
-    PipelineGenerateService.update_document_status("doc-1", session=session_mock)
+    PipelineGenerateService.update_document_status(document_ref, session=session_mock)
 
     assert document.indexing_status == "waiting"
+    get_document_mock.assert_called_once_with(document_ref, session=session_mock)
     add_mock.assert_called_once_with(document)
 
 
-def test_update_document_status_skips_when_document_missing(mocker: MockerFixture) -> None:
+@pytest.mark.parametrize(
+    ("document_tenant_id", "document_dataset_id"),
+    [
+        pytest.param("other-tenant", "dataset-1", id="other-tenant"),
+        pytest.param("tenant-1", "other-dataset", id="other-dataset"),
+    ],
+)
+def test_update_document_status_skips_document_outside_owner(
+    mocker: MockerFixture,
+    document_tenant_id: str,
+    document_dataset_id: str,
+) -> None:
+    dataset = cast(Dataset, SimpleNamespace(id="dataset-1", tenant_id="tenant-1"))
+    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+    document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, "doc-1")
+    outside_document = SimpleNamespace(
+        id="doc-1",
+        tenant_id=document_tenant_id,
+        dataset_id=document_dataset_id,
+        indexing_status="completed",
+    )
     session_mock = mocker.Mock()
-    session_mock.get.return_value = None
+
+    def resolve_document(statement):
+        params = set(statement.compile().params.values())
+        outside_owner = {outside_document.id, outside_document.dataset_id, outside_document.tenant_id}
+        return outside_document if outside_owner <= params else None
+
+    session_mock.scalar.side_effect = resolve_document
     add_mock = session_mock.add
 
-    PipelineGenerateService.update_document_status("missing", session=session_mock)
+    PipelineGenerateService.update_document_status(document_ref, session=session_mock)
 
+    statement = session_mock.scalar.call_args.args[0]
+    assert {"doc-1", "dataset-1", "tenant-1"} <= set(statement.compile().params.values())
+    assert outside_document.indexing_status == "completed"
     add_mock.assert_not_called()
 
 

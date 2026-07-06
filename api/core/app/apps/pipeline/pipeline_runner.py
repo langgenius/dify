@@ -27,9 +27,10 @@ from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
-from models.dataset import Document, Pipeline
+from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
+from services.dataset_ref_service import DatasetRefService, DocumentRef
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +94,26 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 user_id = self.application_generate_entity.user_id
 
             pipeline = session.get(Pipeline, app_config.app_id)
-            if not pipeline:
+            if not pipeline or pipeline.tenant_id != app_config.tenant_id:
                 raise ValueError("Pipeline not found")
+
+            dataset = pipeline.retrieve_dataset(session)
+            if (
+                not dataset
+                or dataset.tenant_id != pipeline.tenant_id
+                or dataset.id != self.application_generate_entity.dataset_id
+            ):
+                raise ValueError("Pipeline dataset not found")
+
+            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+            document_ref = (
+                DatasetRefService.create_document_ref_from_id(
+                    dataset_ref,
+                    self.application_generate_entity.document_id,
+                )
+                if self.application_generate_entity.document_id
+                else None
+            )
 
             workflow = self.get_workflow(session=session, pipeline=pipeline, workflow_id=app_config.workflow_id)
             if not workflow:
@@ -206,9 +225,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
         generator = workflow_entry.run()
 
         for event in generator:
-            self._update_document_status(
-                event, self.application_generate_entity.document_id, self.application_generate_entity.dataset_id
-            )
+            self._update_document_status(event, document_ref)
             self._handle_event(workflow_entry, event)
 
     def get_workflow(self, session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
@@ -295,17 +312,14 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         return graph
 
-    def _update_document_status(self, event: GraphEngineEvent, document_id: str | None, dataset_id: str | None) -> None:
-        """
-        Update document status
-        """
-        if isinstance(event, GraphRunFailedEvent):
-            if document_id and dataset_id:
-                with create_session() as session, session.begin():
-                    document = session.scalar(
-                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                    )
-                    if document:
-                        document.indexing_status = "error"
-                        document.error = event.error or "Unknown error"
-                        session.add(document)
+    def _update_document_status(self, event: GraphEngineEvent, document_ref: DocumentRef | None) -> None:
+        """Set an owner-bound document to error after a failed graph run, if it exists."""
+        if not isinstance(event, GraphRunFailedEvent) or document_ref is None:
+            return
+
+        with create_session() as session, session.begin():
+            document = DatasetRefService.get_document_by_ref(document_ref, session=session)
+            if document:
+                document.indexing_status = "error"
+                document.error = event.error or "Unknown error"
+                session.add(document)

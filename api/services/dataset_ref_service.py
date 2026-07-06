@@ -2,6 +2,9 @@
 
 from typing import NamedTuple
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from models.dataset import Dataset, Document
 
 
@@ -15,17 +18,14 @@ class DatasetRef(NamedTuple):
 class DocumentRef(NamedTuple):
     """Document identifiers used to scope downstream resource lookups."""
 
-    tenant_id: str
-    dataset_id: str
+    dataset: DatasetRef
     document_id: str
 
 
 class SegmentRef(NamedTuple):
     """Segment identifiers used to scope downstream resource lookups."""
 
-    tenant_id: str
-    dataset_id: str
-    document_id: str
+    document: DocumentRef
     segment_id: str
 
 
@@ -40,17 +40,23 @@ class DatasetRefService:
     def create_document_ref(dataset_ref: DatasetRef, document: Document) -> DocumentRef | None:
         if document.tenant_id != dataset_ref.tenant_id or document.dataset_id != dataset_ref.dataset_id:
             return None
-        return DocumentRef(
-            tenant_id=dataset_ref.tenant_id,
-            dataset_id=dataset_ref.dataset_id,
-            document_id=document.id,
-        )
+        return DatasetRefService.create_document_ref_from_id(dataset_ref, document.id)
+
+    @staticmethod
+    def create_document_ref_from_id(dataset_ref: DatasetRef, document_id: str) -> DocumentRef:
+        return DocumentRef(dataset=dataset_ref, document_id=document_id)
 
     @staticmethod
     def create_segment_ref(document_ref: DocumentRef, segment_id: str) -> SegmentRef:
-        return SegmentRef(
-            tenant_id=document_ref.tenant_id,
-            dataset_id=document_ref.dataset_id,
-            document_id=document_ref.document_id,
-            segment_id=segment_id,
+        return SegmentRef(document=document_ref, segment_id=segment_id)
+
+    @staticmethod
+    def get_document_by_ref(document_ref: DocumentRef, *, session: Session) -> Document | None:
+        """Resolve a document through its complete tenant and dataset ownership chain."""
+        return session.scalar(
+            select(Document).where(
+                Document.id == document_ref.document_id,
+                Document.dataset_id == document_ref.dataset.dataset_id,
+                Document.tenant_id == document_ref.dataset.tenant_id,
+            )
         )

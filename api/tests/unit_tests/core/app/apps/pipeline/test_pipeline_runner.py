@@ -140,21 +140,51 @@ def test_init_rag_pipeline_graph_not_found(mocker, runner):
 
 def test_update_document_status_on_failure(mocker, runner):
     document = MagicMock()
+    document_ref = MagicMock()
 
     session = MagicMock()
-    session.scalar.return_value = document
     _patch_create_session(mocker, session)
+    get_document_by_ref = mocker.patch.object(
+        module.DatasetRefService,
+        "get_document_by_ref",
+        return_value=document,
+    )
 
     event = GraphRunFailedEvent(error="boom")
 
-    runner._update_document_status(event, document_id="doc", dataset_id="ds")
+    runner._update_document_status(event, document_ref)
 
+    get_document_by_ref.assert_called_once_with(document_ref, session=session)
     assert document.indexing_status == "error"
     assert document.error == "boom"
     session.add.assert_called_once_with(document)
     session.begin.assert_called_once()
     session.begin.return_value.__enter__.assert_called_once()
     session.begin.return_value.__exit__.assert_called_once()
+
+
+def test_update_document_status_skips_when_document_not_found(mocker, runner):
+    document_ref = MagicMock()
+    session = MagicMock()
+    _patch_create_session(mocker, session)
+    get_document_by_ref = mocker.patch.object(
+        module.DatasetRefService,
+        "get_document_by_ref",
+        return_value=None,
+    )
+
+    runner._update_document_status(GraphRunFailedEvent(error="boom"), document_ref)
+
+    get_document_by_ref.assert_called_once_with(document_ref, session=session)
+    session.add.assert_not_called()
+
+
+def test_update_document_status_skips_without_document_ref(mocker, runner):
+    create_session = mocker.patch.object(module, "create_session")
+
+    runner._update_document_status(GraphRunFailedEvent(error="boom"), None)
+
+    create_session.assert_not_called()
 
 
 def test_run_pipeline_not_found(mocker: MockerFixture):
@@ -181,10 +211,50 @@ def test_run_pipeline_not_found(mocker: MockerFixture):
         runner.run()
 
 
+def test_run_pipeline_from_other_tenant_is_not_found(mocker: MockerFixture, runner: PipelineRunner):
+    pipeline = MagicMock(id="pipe", tenant_id="other-tenant")
+    session = MagicMock()
+    session.get.side_effect = [None, pipeline]
+    _patch_create_session(mocker, session)
+
+    with pytest.raises(ValueError, match="Pipeline not found"):
+        runner.run()
+
+    pipeline.retrieve_dataset.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "dataset",
+    [
+        pytest.param(None, id="missing"),
+        pytest.param(SimpleNamespace(id="ds", tenant_id="other-tenant"), id="other-tenant"),
+        pytest.param(SimpleNamespace(id="other-dataset", tenant_id="tenant"), id="other-dataset"),
+    ],
+)
+def test_run_rejects_unowned_pipeline_dataset(
+    mocker: MockerFixture,
+    runner: PipelineRunner,
+    dataset: SimpleNamespace | None,
+):
+    pipeline = MagicMock(id="pipe", tenant_id="tenant")
+    pipeline.retrieve_dataset.return_value = dataset
+    session = MagicMock()
+    session.get.side_effect = [None, pipeline]
+    _patch_create_session(mocker, session)
+    runner.get_workflow = MagicMock()
+
+    with pytest.raises(ValueError, match="Pipeline dataset not found"):
+        runner.run()
+
+    pipeline.retrieve_dataset.assert_called_once_with(session)
+    runner.get_workflow.assert_not_called()
+
+
 def test_run_workflow_not_initialized(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
 
-    pipeline = MagicMock(id="pipe")
+    pipeline = MagicMock(id="pipe", tenant_id="tenant")
+    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
 
     session = MagicMock()
     session.get.side_effect = [None, pipeline]
@@ -209,11 +279,11 @@ def test_run_single_iteration_path(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.single_iteration_run = MagicMock()
 
-    pipeline = MagicMock(id="pipe")
-    end_user = MagicMock(session_id="sess")
-
+    pipeline = MagicMock(id="pipe", tenant_id="tenant")
+    dataset = SimpleNamespace(id="ds", tenant_id="tenant")
+    pipeline.retrieve_dataset.return_value = dataset
     session = MagicMock()
-    session.get.side_effect = [end_user, pipeline]
+    session.get.return_value = pipeline
     _patch_create_session(mocker, session)
 
     runner = PipelineRunner(
@@ -241,23 +311,41 @@ def test_run_single_iteration_path(mocker: MockerFixture):
     runner._update_document_status = MagicMock()
     runner._handle_event = MagicMock()
 
+    dataset_ref = MagicMock()
+    document_ref = MagicMock()
+    create_dataset_ref = mocker.patch.object(
+        module.DatasetRefService,
+        "create_dataset_ref",
+        return_value=dataset_ref,
+    )
+    create_document_ref_from_id = mocker.patch.object(
+        module.DatasetRefService,
+        "create_document_ref_from_id",
+        return_value=document_ref,
+    )
+
+    event = MagicMock()
     workflow_entry = MagicMock()
     workflow_entry.graph_engine = MagicMock()
-    workflow_entry.run.return_value = [MagicMock()]
+    workflow_entry.run.return_value = [event]
     mocker.patch.object(module, "WorkflowEntry", return_value=workflow_entry)
 
     mocker.patch.object(module, "WorkflowPersistenceLayer", return_value=MagicMock())
 
     runner.run()
 
+    create_dataset_ref.assert_called_once_with(dataset)
+    create_document_ref_from_id.assert_called_once_with(dataset_ref, "doc")
     runner._prepare_single_node_execution.assert_called_once()
+    runner._update_document_status.assert_called_once_with(event, document_ref)
     runner._handle_event.assert_called()
 
 
 def test_run_normal_path_builds_graph(mocker: MockerFixture):
     app_generate_entity = _build_app_generate_entity()
 
-    pipeline = MagicMock(id="pipe")
+    pipeline = MagicMock(id="pipe", tenant_id="tenant")
+    pipeline.retrieve_dataset.return_value = SimpleNamespace(id="ds", tenant_id="tenant")
     end_user = MagicMock(session_id="sess")
     events = []
 
