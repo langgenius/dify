@@ -3458,6 +3458,63 @@ export const zUserActionConfig = z.object({
 })
 
 /**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * FileInputConfig
+ */
+export const zFileInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  output_variable_name: z.string(),
+  type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInputConfig
+ */
+export const zFileListInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  number_limits: z.int().gte(0).optional().default(0),
+  output_variable_name: z.string(),
+  type: z.literal('file-list').optional().default('file-list'),
+})
+
+/**
+ * AgentFileUploadImageFeatureConfig
+ */
+export const zAgentFileUploadImageFeatureConfig = z.object({
+  enabled: z.boolean().optional().default(true),
+})
+
+/**
+ * AgentFileUploadFeatureConfig
+ */
+export const zAgentFileUploadFeatureConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  enabled: z.boolean().optional().default(true),
+  image: zAgentFileUploadImageFeatureConfig.optional(),
+  number_limits: z.int().optional().default(3),
+})
+
+/**
  * AgentSuggestedQuestionsAfterAnswerModelConfig
  *
  * Legacy Chat App model config used only for follow-up question generation.
@@ -3654,44 +3711,6 @@ export const zAgentSoulToolsConfig = z.object({
 })
 
 /**
- * FileType
- */
-export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
-
-/**
- * FileTransferMethod
- */
-export const zFileTransferMethod = z.enum([
-  'datasource_file',
-  'local_file',
-  'remote_url',
-  'tool_file',
-])
-
-/**
- * FileInputConfig
- */
-export const zFileInputConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  output_variable_name: z.string(),
-  type: z.literal('file').optional().default('file'),
-})
-
-/**
- * FileListInputConfig
- */
-export const zFileListInputConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  number_limits: z.int().gte(0).optional().default(0),
-  output_variable_name: z.string(),
-  type: z.literal('file-list').optional().default('file-list'),
-})
-
-/**
  * AgentModerationIOConfig
  */
 export const zAgentModerationIoConfig = z.object({
@@ -3722,6 +3741,7 @@ export const zAgentSensitiveWordAvoidanceFeatureConfig = z.object({
  * AgentSoulAppFeaturesConfig
  */
 export const zAgentSoulAppFeaturesConfig = z.object({
+  file_upload: zAgentFileUploadFeatureConfig.optional(),
   opening_statement: z.string().nullish(),
   retriever_resource: zAgentFeatureToggleConfig.nullish(),
   sensitive_word_avoidance: zAgentSensitiveWordAvoidanceFeatureConfig.nullish(),

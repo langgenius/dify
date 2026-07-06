@@ -13747,6 +13747,23 @@ Stable Agent Soul reference to one normalized skill archive.
 | upload_file_id | string |  | No |
 | url | string |  | No |
 
+#### AgentFileUploadFeatureConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
+| image | [AgentFileUploadImageFeatureConfig](#agentfileuploadimagefeatureconfig) |  | No |
+| number_limits | integer, <br>**Default:** 3 |  | No |
+
+#### AgentFileUploadImageFeatureConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean, <br>**Default:** true |  | No |
+
 #### AgentHumanContactConfig
 
 | Name | Type | Description | Required |
@@ -14338,6 +14355,7 @@ Visibility and lifecycle scope of an Agent record.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| file_upload | [AgentFileUploadFeatureConfig](#agentfileuploadfeatureconfig) |  | No |
 | opening_statement | string |  | No |
 | retriever_resource | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | sensitive_word_avoidance | [AgentSensitiveWordAvoidanceFeatureConfig](#agentsensitivewordavoidancefeatureconfig) |  | No |

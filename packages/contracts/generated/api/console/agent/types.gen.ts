@@ -1116,6 +1116,7 @@ export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'work
 export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
@@ -1428,6 +1429,16 @@ export type AgentConfigRevisionOperation
     | 'save_new_version'
     | 'save_to_roster'
 
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
+
 export type AgentSecretRefConfig = {
   credential_id?: string | null
   env_name?: string | null
@@ -1679,6 +1690,15 @@ export type FormInputConfig
 
 export type JsonValue2 = unknown
 
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
 export type AgentKnowledgeDatasetConfig = {
   description?: string | null
   id?: string | null
@@ -1800,10 +1820,6 @@ export type StringListSource = {
   type: ValueSourceType
   value?: Array<string>
 }
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
