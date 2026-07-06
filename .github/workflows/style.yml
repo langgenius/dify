@@ -54,16 +54,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
-      - name: Fetch merge target ref for getattr guard
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
-
-      - name: Bind merge target branch for getattr guard
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: git show-ref --verify --quiet refs/heads/main || git branch main origin/main
-
       - name: Run No New Getattr Guard
         if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
         run: uv run --project api python scripts/check_no_new_getattr.py --mode ci --merge-target main
 
       - name: Run Type Checks
