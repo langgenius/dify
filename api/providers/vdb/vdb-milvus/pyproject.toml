@@ -3,7 +3,7 @@ name = "dify-vdb-milvus"
 version = "0.0.1"
 
 dependencies = [
-    "pymilvus~=2.6.12",
+    "pymilvus~=3.0.0",
 ]
 description = "Dify vector store backend (dify-vdb-milvus)."
 
