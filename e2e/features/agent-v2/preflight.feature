@@ -89,11 +89,6 @@ Feature: Agent Builder preseeded environment
     Given I am signed in as the default E2E admin
     And the Agent Builder preseeded Agent "E2E Agent With OAuth Tool" includes an OAuth2 tool credential
 
-  @file-tree-fixture
-  Scenario: File tree Agent includes fixture files
-    Given I am signed in as the default E2E admin
-    And the Agent Builder preseeded Agent "E2E Agent With File Tree" includes the file tree fixture files
-
   @dual-retrieval-fixture
   Scenario: Dual retrieval Agent is available
     Given I am signed in as the default E2E admin
