@@ -30,6 +30,14 @@ type ConfigSkillFileQueryOptionsInput = {
   }
 }
 
+type ConfigSkillDownloadQueryOptionsInput = {
+  input: {
+    params: {
+      name: string
+    }
+  }
+}
+
 const mocks = vi.hoisted(() => ({
   deleteSkillMutationFn: vi.fn(async (_input: unknown) => ({ removed_names: ['Tender Analyzer'], result: 'success' })),
   uploadSkillMutationFn: vi.fn(async (_input: unknown) => ({
@@ -44,9 +52,12 @@ const mocks = vi.hoisted(() => ({
       size: 128,
     },
   })),
+  skillDownloadQueryOptions: vi.fn((_options: ConfigSkillDownloadQueryOptionsInput) => ({})),
   inspectQueryOptions: vi.fn((_options: ConfigSkillInspectQueryOptionsInput) => ({})),
   previewQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
   downloadQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
+  downloadBlob: vi.fn(),
+  downloadUrl: vi.fn(),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -54,6 +65,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}))
+
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mocks.downloadBlob,
+  downloadUrl: mocks.downloadUrl,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -70,6 +86,11 @@ vi.mock('@/service/client', () => ({
             byName: {
               delete: {
                 mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+              },
+              download: {
+                get: {
+                  queryOptions: mocks.skillDownloadQueryOptions,
+                },
               },
               inspect: {
                 get: {
@@ -106,6 +127,11 @@ vi.mock('@/service/client', () => ({
               byName: {
                 delete: {
                   mutationOptions: () => ({ mutationFn: mocks.deleteSkillMutationFn }),
+                },
+                download: {
+                  get: {
+                    queryOptions: mocks.skillDownloadQueryOptions,
+                  },
                 },
                 inspect: {
                   get: {
@@ -233,6 +259,12 @@ describe('AgentSkills', () => {
       queryKey: ['download-skill-file', input],
       queryFn: async () => ({
         url: `https://example.com/${input.query.path}`,
+      }),
+    }))
+    mocks.skillDownloadQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['download-skill', input],
+      queryFn: async () => ({
+        url: `https://example.com/${input.params.name}.skill`,
       }),
     }))
   })
@@ -390,6 +422,69 @@ describe('AgentSkills', () => {
     })
   })
 
+  it('should download a whole skill package from the row action', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills()
+
+    await user.click(screen.getByRole('button', {
+      name: /common\.operation\.download.*Tender Analyzer/,
+    }))
+
+    await waitFor(() => {
+      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            agent_id: 'agent-1',
+            name: 'Tender Analyzer',
+          },
+          query: {
+            draft_type: 'draft',
+            version_id: undefined,
+          },
+        }),
+      }))
+    })
+    expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      url: 'https://example.com/Tender Analyzer.skill',
+      fileName: 'Tender Analyzer',
+    })
+  })
+
+  it('should download a whole workflow skill package with node_id', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({
+      apiContext: {
+        agentId: 'agent-1',
+        draftType: 'draft',
+        versionId: 'draft-1',
+        workflow: {
+          appId: 'app-1',
+          nodeId: 'node-1',
+        },
+      },
+    })
+
+    await user.click(screen.getByRole('button', {
+      name: /common\.operation\.download.*Tender Analyzer/,
+    }))
+
+    await waitFor(() => {
+      expect(mocks.skillDownloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            app_id: 'app-1',
+            name: 'Tender Analyzer',
+          },
+          query: {
+            draft_type: 'draft',
+            node_id: 'node-1',
+            version_id: 'draft-1',
+          },
+        }),
+      }))
+    })
+  })
+
   it('should inspect skills by config name and preview package members by member path', async () => {
     const user = userEvent.setup()
     renderAgentSkills()
@@ -423,6 +518,59 @@ describe('AgentSkills', () => {
         }),
       }))
     })
+  })
+
+  it('should download skill package members from the detail file tree', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByText('references'))
+    await user.click(screen.getByRole('button', {
+      name: /common\.operation\.download.*guide\.md/,
+    }))
+
+    await waitFor(() => {
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            agent_id: 'agent-1',
+            name: 'Tender Analyzer',
+          },
+          query: expect.objectContaining({
+            path: 'references/guide.md',
+          }),
+        }),
+      }))
+    })
+    expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      url: 'https://example.com/references/guide.md',
+      fileName: 'guide.md',
+    })
+  })
+
+  it('should download inspected SKILL.md content as markdown', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByRole('button', {
+      name: /common\.operation\.download.*SKILL\.md/,
+    }))
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'SKILL.md',
+    })
+    const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
+    await expect(blob.text()).resolves.toBe('# Skill\n')
+    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
+      input: expect.objectContaining({
+        query: expect.objectContaining({
+          path: 'SKILL.md',
+        }),
+      }),
+    }))
   })
 
   it('should disable add and remove actions when the section is read only', () => {

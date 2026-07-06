@@ -4,9 +4,10 @@ import type { AgentConfigSkillFileResponse } from '@dify/contracts/api/console/a
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkillDetail } from './detail-dialog'
 import type { AgentFileNode, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
-import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useMemo, useState } from 'react'
 import { consoleQuery } from '@/service/client'
+import { downloadBlob, downloadUrl } from '@/utils/download'
 import { getDriveFileIconType } from '../files/file-icon'
 
 const isSkillFolder = (file: AgentConfigSkillFileResponse) =>
@@ -150,6 +151,7 @@ export function useAgentSkillDetail({
   isOpen: boolean
   skill: AgentSkill
 }): AgentSkillDetail {
+  const queryClient = useQueryClient()
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const agentSkillInspectQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.skills.byName.inspect.get.queryOptions({
@@ -263,6 +265,52 @@ export function useAgentSkillDetail({
     enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
   const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
+  const handleDownloadFile = useCallback(async (file: AgentFileNode) => {
+    const path = file.configName ?? file.id
+    const isSkillMdFile = path === inspectQuery.data?.skill_md.path || file.name === 'SKILL.md'
+
+    if (isSkillMdFile && inspectQuery.data?.skill_md.text !== undefined) {
+      downloadBlob({
+        data: new Blob([inspectQuery.data.skill_md.text], { type: 'text/markdown;charset=utf-8' }),
+        fileName: file.name,
+      })
+      return
+    }
+
+    if (apiContext.workflow) {
+      const result = await queryClient.fetchQuery(consoleQuery.apps.byAppId.agent.config.skills.byName.files.download.get.queryOptions({
+        input: {
+          params: {
+            app_id: apiContext.workflow.appId,
+            name: skill.name,
+          },
+          query: {
+            node_id: apiContext.workflow.nodeId,
+            path,
+            draft_type: apiContext.draftType,
+            version_id: apiContext.versionId,
+          },
+        },
+      }))
+      downloadUrl({ url: result.url, fileName: file.name })
+      return
+    }
+
+    const result = await queryClient.fetchQuery(consoleQuery.agent.byAgentId.config.skills.byName.files.download.get.queryOptions({
+      input: {
+        params: {
+          agent_id: apiContext.agentId,
+          name: skill.name,
+        },
+        query: {
+          path,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
+        },
+      },
+    }))
+    downloadUrl({ url: result.url, fileName: file.name })
+  }, [apiContext, inspectQuery.data?.skill_md.path, inspectQuery.data?.skill_md.text, queryClient, skill.name])
 
   return {
     description,
@@ -279,6 +327,7 @@ export function useAgentSkillDetail({
       isImage: isImagePreviewFile,
       isLoading: isSkillMdSelected ? inspectQuery.isPending : !!selectedPreviewPath && previewQuery.isPending,
     },
+    onDownloadFile: handleDownloadFile,
     onSelectFile: file => setSelectedFileId(file.id),
     selectedFileId: previewFileId,
     sections: [],
