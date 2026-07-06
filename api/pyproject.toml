@@ -39,7 +39,7 @@ dependencies = [
     "opentelemetry-instrumentation-httpx==0.62b1",
     "opentelemetry-instrumentation-redis==0.62b1",
     "opentelemetry-instrumentation-sqlalchemy==0.62b1",
-    "opentelemetry-propagator-b3>=1.41.1,<2.0.0",
+    "opentelemetry-propagator-b3>=1.43.0,<2.0.0",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     "zstandard==0.25.0",
