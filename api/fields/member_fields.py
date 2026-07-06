@@ -8,6 +8,7 @@ from fields.base import ResponseModel
 from libs.helper import build_avatar_url, to_timestamp
 
 
+
 class SimpleAccountResponse(ResponseModel):
     id: str
     name: str
