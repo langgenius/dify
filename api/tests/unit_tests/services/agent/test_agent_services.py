@@ -36,6 +36,7 @@ from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
+    AgentModelNotConfiguredError,
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionConflictError,
@@ -574,6 +575,55 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
 
     assert agent.active_config_is_published is True
     assert fake_session.commits == 1
+
+
+def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.MonkeyPatch):
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+        active_config_is_published=False,
+    )
+    draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=AgentSoulConfig(),
+    )
+    fake_session = FakeSession(scalar=[agent, draft])
+
+    def fail_create_config_version(**_kwargs):
+        raise AssertionError("config version must not be created when Agent Soul has no model")
+
+    def fail_validate_knowledge_datasets(**_kwargs):
+        raise AssertionError("knowledge datasets must not be validated when Agent Soul has no model")
+
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
+    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", fail_validate_knowledge_datasets)
+    monkeypatch.setattr(AgentComposerService, "_create_config_version", fail_create_config_version)
+
+    with pytest.raises(AgentModelNotConfiguredError) as exc_info:
+        AgentComposerService.publish_agent_app_draft(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+            version_note="ship it",
+        )
+
+    assert exc_info.value.error_code == "agent_model_not_configured"
+    assert agent.active_config_snapshot_id == "version-1"
+    assert agent.active_config_is_published is False
+    assert draft.base_snapshot_id == "version-1"
+    assert fake_session.commits == 0
 
 
 def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.MonkeyPatch):
