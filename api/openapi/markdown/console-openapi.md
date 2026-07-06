@@ -1794,7 +1794,7 @@ Get human input form preview for advanced chat workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Human input form preview retrieved | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
+| 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run
 **Submit human input form preview**
@@ -1816,9 +1816,9 @@ Submit human input form preview for advanced chat workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Human input form submitted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -1840,11 +1840,11 @@ Run draft workflow iteration node for advanced chat
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Iteration node run started successfully |
-| 403 | Permission denied |
-| 404 | Node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -1866,11 +1866,11 @@ Run draft workflow loop node for advanced chat
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Loop node run started successfully |
-| 403 | Permission denied |
-| 404 | Node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/run
 **Run draft workflow**
@@ -1891,11 +1891,11 @@ Run draft workflow for advanced chat application
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow run started successfully |
-| 400 | Invalid request parameters |
-| 403 | Permission denied |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 403 | Permission denied |  |
 
 ### [GET] /apps/{app_id}/agent/config/files
 #### Parameters
@@ -4084,9 +4084,9 @@ Get default block configurations for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Default block configurations retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block configurations retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs/{block_type}
 **Get default block config**
@@ -4103,10 +4103,10 @@ Get default block configuration by type
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Default block configuration retrieved successfully |
-| 404 | Block type not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block configuration retrieved successfully | **application/json**: [DefaultBlockConfigResponse](#defaultblockconfigresponse)<br> |
+| 404 | Block type not found |  |
 
 ### [GET] /apps/{app_id}/workflows/draft
 **Get draft workflow**
@@ -4164,7 +4164,7 @@ Get conversation variables for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/conversation-variables
@@ -4203,7 +4203,7 @@ Get environment variables for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Environment variables retrieved successfully | **application/json**: [WorkflowDraftEnvironmentVariableListResponse](#workflowdraftenvironmentvariablelistresponse)<br> |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/environment-variables
@@ -4270,7 +4270,7 @@ Test human input delivery for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Human input delivery tested | **application/json**: [HumanInputDeliveryTestResponse](#humaninputdeliverytestresponse)<br> |
+| 200 | Human input delivery test result | **application/json**: [EmptyObjectResponse](#emptyobjectresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview
 **Preview human input form content and placeholders**
@@ -4294,7 +4294,7 @@ Get human input form preview for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Human input form preview retrieved | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
+| 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run
 **Submit human input form preview**
@@ -4316,9 +4316,9 @@ Submit human input form preview for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Human input form submitted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -4338,11 +4338,11 @@ Submit human input form preview for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow iteration node run started successfully |
-| 403 | Permission denied |
-| 404 | Node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 404 | Node not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -4362,11 +4362,11 @@ Submit human input form preview for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow loop node run started successfully |
-| 403 | Permission denied |
-| 404 | Node not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 404 | Node not found |  |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
 #### Parameters
@@ -4553,7 +4553,7 @@ Get last run result for draft workflow node
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Trigger event received and node executed successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| 200 | Trigger event received and node executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied |  |
 | 500 | Internal server error |  |
 
@@ -4587,7 +4587,7 @@ Get variables for a specific node
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/run
 **Run draft workflow**
@@ -4606,10 +4606,10 @@ Get variables for a specific node
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Draft workflow run started successfully |
-| 403 | Permission denied |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a draft workflow run.
@@ -4695,7 +4695,7 @@ Get system variables for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
 **Poll for trigger events and execute full workflow when event arrives**
@@ -4710,15 +4710,15 @@ Get system variables for workflow
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [DraftWorkflowTriggerRunPayload](#draftworkflowtriggerrunpayload)<br> |
+|  Yes | **application/json**: [DraftWorkflowTriggerRunRequest](#draftworkflowtriggerrunrequest)<br> |
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Trigger event received and workflow executed successfully |
-| 403 | Permission denied |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Trigger event received and workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 500 | Internal server error |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run-all
 **Full workflow debug when the start node is a trigger**
@@ -4737,11 +4737,11 @@ Get system variables for workflow
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Workflow executed successfully |
-| 403 | Permission denied |
-| 500 | Internal server error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 403 | Permission denied |  |
+| 500 | Internal server error |  |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/variables
 Delete all draft workflow variables
@@ -4775,7 +4775,7 @@ Get draft workflow variables
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Delete a workflow variable
@@ -4808,7 +4808,7 @@ Get a specific workflow variable
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
 ### [PATCH] /apps/{app_id}/workflows/draft/variables/{variable_id}
@@ -4831,7 +4831,7 @@ Update a workflow variable
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
 ### [PUT] /apps/{app_id}/workflows/draft/variables/{variable_id}/reset
@@ -4848,7 +4848,7 @@ Reset a workflow variable to its default value
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found |  |
 
@@ -4888,7 +4888,7 @@ Get published workflow for an application
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow published successfully | **application/json**: [PublishWorkflowResponse](#publishworkflowresponse)<br> |
+| 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a published workflow run.
@@ -5033,7 +5033,7 @@ Restore a published workflow version into the draft workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow restored successfully | **application/json**: [SyncDraftWorkflowResponse](#syncdraftworkflowresponse)<br> |
+| 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published |  |
 | 404 | Workflow not found |  |
 
@@ -7460,9 +7460,9 @@ Get instruction generation template
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 302 | Redirect to OAuth callback page |
 
 ### [GET] /notification
 Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
@@ -7667,7 +7667,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Authorization URL retrieved successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
+| 200 | Tool OAuth authorization URL generated successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/callback
 #### Parameters
@@ -7678,9 +7678,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 302 | Redirect to OAuth callback page |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
 **Handle OAuth callback for trigger provider**
@@ -7693,9 +7693,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 302 | Redirect to OAuth callback page |
 
 ### [POST] /oauth/provider
 #### Request Body
@@ -7847,7 +7847,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Datasource plugins retrieved successfully | **application/json**: [DatasourcePluginListResponse](#datasourcepluginlistresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/imports
 #### Request Body
@@ -7902,7 +7902,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Recommended plugins retrieved successfully | **application/json**: [RagPipelineRecommendedPluginResponse](#ragpipelinerecommendedpluginresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/transform/datasets/{dataset_id}
 #### Parameters
@@ -7915,7 +7915,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dataset transformed successfully | **application/json**: [RagPipelineTransformResponse](#ragpipelinetransformresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/customized/publish
 #### Parameters
@@ -8046,9 +8046,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Default workflow block configurations retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block configs retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}
 **Get default block config**
@@ -8063,9 +8063,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Default workflow block configuration retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block config retrieved successfully | **application/json**: [DefaultBlockConfigResponse](#defaultblockconfigresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft
 **Get draft rag pipeline's workflow**
@@ -8122,9 +8122,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect
 **Set datasource variables**
@@ -8160,7 +8160,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Environment variables retrieved successfully | **application/json**: [RagPipelineEnvironmentVariableListResponse](#ragpipelineenvironmentvariablelistresponse)<br> |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -8180,9 +8180,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -8202,9 +8202,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run
 #### Parameters
@@ -8268,7 +8268,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters
 **Get first step parameters of rag pipeline**
@@ -8284,7 +8284,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | First step parameters retrieved successfully | **application/json**: [RagPipelineVariablesResponse](#ragpipelinevariablesresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters
 **Get second step parameters of rag pipeline**
@@ -8300,7 +8300,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Second step parameters retrieved successfully | **application/json**: [RagPipelineVariablesResponse](#ragpipelinevariablesresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/run
 **Run draft workflow**
@@ -8319,9 +8319,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/system-variables
 #### Parameters
@@ -8334,7 +8334,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 #### Parameters
@@ -8347,7 +8347,7 @@ Initiate OAuth login process
 
 | Code | Description |
 | ---- | ----------- |
-| 204 | Variables deleted successfully |
+| 204 | Workflow variables deleted successfully |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 **Get draft workflow**
@@ -8356,13 +8356,15 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
 | pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8390,7 +8392,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 
 ### [PATCH] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8410,7 +8412,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 
 ### [PUT] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset
 #### Parameters
@@ -8424,8 +8426,8 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
-| 204 | Variable reset to empty state |  |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 204 | Variable reset (no content) |  |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/publish
 **Get published pipeline**
@@ -8497,9 +8499,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters
 **Get first step parameters of rag pipeline**
@@ -8515,7 +8517,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | First step parameters retrieved successfully | **application/json**: [RagPipelineVariablesResponse](#ragpipelinevariablesresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/published/processing/parameters
 **Get second step parameters of rag pipeline**
@@ -8531,7 +8533,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Second step parameters retrieved successfully | **application/json**: [RagPipelineVariablesResponse](#ragpipelinevariablesresponse)<br> |
+| 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/run
 **Run published workflow**
@@ -8550,9 +8552,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
 **Delete a published workflow version that is not currently active on the pipeline**
@@ -8807,9 +8809,9 @@ Get all published workflows for a snippet
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Default block configs retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default block configs retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft
 **Get draft workflow for snippet**
@@ -8846,7 +8848,7 @@ Get all published workflows for a snippet
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow synced successfully | **application/json**: [SyncDraftWorkflowResponse](#syncdraftworkflowresponse)<br> |
+| 200 | Draft workflow synced successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Hash mismatch |  |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/config
@@ -8877,7 +8879,7 @@ Conversation variables are not used in snippet workflows; returns an empty list 
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/environment-variables
 Get environment variables from snippet draft workflow graph
@@ -8892,7 +8894,7 @@ Get environment variables from snippet draft workflow graph
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Environment variables retrieved successfully | **application/json**: [WorkflowDraftEnvironmentVariableListResponse](#workflowdraftenvironmentvariablelistresponse)<br> |
+| 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/iteration/nodes/{node_id}/run
@@ -8919,7 +8921,7 @@ Returns an SSE event stream with iteration progress and results.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Iteration node run started successfully (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Iteration node run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 404 | Snippet or draft workflow not found |  |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/loop/nodes/{node_id}/run
@@ -8946,7 +8948,7 @@ Returns an SSE event stream with loop progress and results.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Loop node run started successfully (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Loop node run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 404 | Snippet or draft workflow not found |  |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/last-run
@@ -9027,7 +9029,7 @@ Get variables for a specific node (snippet draft workflow)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/run
 **Run draft workflow for snippet**
@@ -9051,7 +9053,7 @@ and returns an SSE event stream with execution progress and results.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Draft workflow run started successfully (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Draft workflow run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 404 | Snippet or draft workflow not found |  |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/system-variables
@@ -9067,7 +9069,7 @@ System variables are not used in snippet workflows; returns an empty list for AP
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables
 Delete all draft workflow variables for the current user (snippet scope)
@@ -9099,7 +9101,7 @@ List draft workflow variables without values (paginated, snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Delete a draft workflow variable (snippet scope)
@@ -9132,7 +9134,7 @@ Get a specific draft workflow variable (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
 ### [PATCH] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
@@ -9155,7 +9157,7 @@ Update a draft workflow variable (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 404 | Variable not found |  |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}/reset
@@ -9172,7 +9174,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found |  |
 
@@ -9211,7 +9213,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow published successfully | **application/json**: [PublishWorkflowResponse](#publishworkflowresponse)<br> |
+| 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
 | 400 | No draft workflow found |  |
 
 ### [PATCH] /snippets/{snippet_id}/workflows/{workflow_id}
@@ -9254,7 +9256,7 @@ Update published snippet workflow attributes
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow restored successfully | **application/json**: [SyncDraftWorkflowResponse](#syncdraftworkflowresponse)<br> |
+| 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published |  |
 | 404 | Workflow not found |  |
 
@@ -11658,7 +11660,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Tool labels retrieved successfully | **application/json**: [ToolLabelListResponse](#toollabellistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/add
 #### Request Body
@@ -11671,7 +11673,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/delete
 #### Request Body
@@ -11684,7 +11686,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/get
 #### Parameters
@@ -11697,7 +11699,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider retrieved successfully | **application/json**: [ApiProviderDetailResponse](#apiproviderdetailresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/remote
 #### Parameters
@@ -11710,7 +11712,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Remote API provider schema retrieved successfully | **application/json**: [ApiProviderRemoteSchemaResponse](#apiproviderremoteschemaresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/schema
 #### Request Body
@@ -11723,7 +11725,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API schema parsed successfully | **application/json**: [ApiSchemaParseResponse](#apischemaparseresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/test/pre
 #### Request Body
@@ -11736,7 +11738,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API tool test preview completed successfully | **application/json**: [ApiToolPreviewResponse](#apitoolpreviewresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/tools
 #### Parameters
@@ -11749,7 +11751,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/update
 #### Request Body
@@ -11762,7 +11764,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/add
 #### Parameters
@@ -11781,7 +11783,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/info
 #### Parameters
@@ -11795,7 +11797,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider credential info retrieved successfully | **application/json**: [ToolProviderCredentialInfoApiEntity](#toolprovidercredentialinfoapientity)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}
 #### Parameters
@@ -11809,7 +11811,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider credential schema retrieved successfully | **application/json**: [ProviderConfigListResponse](#providerconfiglistresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credentials
 #### Parameters
@@ -11823,7 +11825,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider credentials retrieved successfully | **application/json**: [ToolProviderCredentialListResponse](#toolprovidercredentiallistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/default-credential
 #### Parameters
@@ -11842,7 +11844,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Default credential set successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/delete
 #### Parameters
@@ -11861,7 +11863,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider credential deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/icon
 #### Parameters
@@ -11872,9 +11874,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Builtin provider icon |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/info
 #### Parameters
@@ -11887,7 +11889,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider info retrieved successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/client-schema
 #### Parameters
@@ -11900,7 +11902,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolOAuthClientSchemaResponse](#tooloauthclientschemaresponse)<br> |
+| 200 | Builtin provider OAuth client schema retrieved successfully | **application/json**: [BuiltinProviderOAuthClientSchemaResponse](#builtinprovideroauthclientschemaresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -11913,7 +11915,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Custom OAuth client deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -11924,9 +11926,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolOAuthCustomClientResponse](#tooloauthcustomclientresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Custom OAuth client retrieved successfully |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -11945,7 +11947,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Custom OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/tools
 #### Parameters
@@ -11958,7 +11960,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/update
 #### Parameters
@@ -11977,7 +11979,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -12003,7 +12005,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP provider created successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
 
 ### [PUT] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -12016,7 +12018,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | MCP provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/mcp/auth
 #### Request Body
@@ -12029,7 +12031,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP provider authorized successfully | **application/json**: [MCPAuthResponse](#mcpauthresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/mcp/tools/{provider_id}
 #### Parameters
@@ -12042,7 +12044,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP provider retrieved successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/mcp/update/{provider_id}
 #### Parameters
@@ -12055,7 +12057,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP provider tools refreshed successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/create
 #### Request Body
@@ -12068,7 +12070,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tool created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/delete
 #### Request Body
@@ -12081,7 +12083,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tool deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/workflow/get
 #### Parameters
@@ -12095,7 +12097,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tool retrieved successfully | **application/json**: [WorkflowToolDetailResponse](#workflowtooldetailresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/workflow/tools
 #### Parameters
@@ -12108,7 +12110,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/update
 #### Request Body
@@ -12121,7 +12123,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tool updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-providers
 #### Parameters
@@ -12134,35 +12136,35 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Tool providers retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/tools/api
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/tools/builtin
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/tools/mcp
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/tools/workflow
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/icon
 #### Parameters
@@ -12173,9 +12175,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Trigger provider icon |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/info
 **Get info for a trigger provider**
@@ -12190,7 +12192,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderApiEntity](#triggerproviderapientity)<br> |
+| 200 | Trigger provider retrieved successfully | **application/json**: [TriggerProviderApiEntity](#triggerproviderapientity)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Remove custom OAuth client configuration**
@@ -12205,7 +12207,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Trigger OAuth client deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Get OAuth client configuration for a provider**
@@ -12220,7 +12222,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
+| 200 | Trigger OAuth client retrieved successfully | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Configure custom OAuth client for a provider**
@@ -12241,7 +12243,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Trigger OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
 **Build a subscription instance for a trigger provider**
@@ -12263,7 +12265,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription builder built successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
 **Add a new subscription instance for a trigger provider**
@@ -12284,7 +12286,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerSubscriptionBuilderCreateResponse](#triggersubscriptionbuildercreateresponse)<br> |
+| 200 | Trigger subscription builder created successfully | **application/json**: [TriggerSubscriptionBuilderCreateResponse](#triggersubscriptionbuildercreateresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscription_builder_id}
 **Get the request logs for a subscription instance for a trigger provider**
@@ -12300,7 +12302,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerSubscriptionBuilderLogsResponse](#triggersubscriptionbuilderlogsresponse)<br> |
+| 200 | Trigger subscription builder logs retrieved successfully | **application/json**: [TriggerSubscriptionBuilderLogsResponse](#triggersubscriptionbuilderlogsresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscription_builder_id}
 **Update a subscription instance for a trigger provider**
@@ -12322,7 +12324,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
+| 200 | Trigger subscription builder updated successfully | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscription_builder_id}
 **Verify and update a subscription instance for a trigger provider**
@@ -12344,7 +12346,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerSubscriptionBuilderVerifyResponse](#triggersubscriptionbuilderverifyresponse)<br> |
+| 200 | Trigger subscription builder verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/{subscription_builder_id}
 **Get a subscription instance for a trigger provider**
@@ -12360,7 +12362,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
+| 200 | Trigger subscription builder retrieved successfully | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/list
 **List all trigger subscriptions for the current tenant's provider**
@@ -12375,7 +12377,8 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerSubscriptionListResponse](#triggersubscriptionlistresponse)<br> |
+| 200 | Trigger subscriptions retrieved successfully | **application/json**: [TriggerProviderSubscriptionListResponse](#triggerprovidersubscriptionlistresponse)<br> |
+| 404 | Trigger provider not found | **application/json**: [TriggerProviderErrorResponse](#triggerprovidererrorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
 **Initiate OAuth authorization flow for a trigger provider**
@@ -12390,7 +12393,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Authorization URL retrieved successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
+| 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
 **Verify credentials for an existing subscription (edit mode only)**
@@ -12412,7 +12415,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerSubscriptionBuilderVerifyResponse](#triggersubscriptionbuilderverifyresponse)<br> |
+| 200 | Trigger subscription verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
 **Delete a subscription instance**
@@ -12448,7 +12451,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/triggers
 **List all trigger providers for the current tenant**
@@ -12457,7 +12460,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
+| 200 | Trigger providers retrieved successfully | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
 
 ### [POST] /workspaces/custom-config
 #### Request Body
@@ -14870,6 +14873,26 @@ Legacy Chat App model config used only for follow-up question generation.
 | ---- | ---- | ----------- | -------- |
 | data | [ [ApiKeyItem](#apikeyitem) ] |  | Yes |
 
+#### ApiProviderDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object |  | No |
+| custom_disclaimer | string |  | No |
+| description | string |  | No |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
+| labels | [ string ] |  | No |
+| privacy_policy | string |  | No |
+| schema | string |  | Yes |
+| schema_type | [ApiProviderSchemaType](#apiproviderschematype) |  | Yes |
+| tools | [ [ApiToolBundle](#apitoolbundle) ] |  | Yes |
+
+#### ApiProviderRemoteSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| schema | string |  | Yes |
+
 #### ApiProviderSchemaType
 
 Enum class for api provider schema type.
@@ -14878,13 +14901,52 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | ApiProviderSchemaType | string | Enum class for api provider schema type. |  |
 
+#### ApiSchemaParseResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
+| parameters_schema | [ [ApiToolBundle](#apitoolbundle) ] |  | Yes |
+| schema_type | [ApiProviderSchemaType](#apiproviderschematype) |  | Yes |
+| warning | object |  | Yes |
+
+#### ApiToolBundle
+
+This class is used to store the schema information of an api based tool.
+ such as the url, the method, the parameters, etc.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string |  | Yes |
+| icon | string |  | No |
+| method | string |  | Yes |
+| openapi | object |  | Yes |
+| operation_id | string |  | No |
+| output_schema | object |  | No |
+| parameters | [ [ToolParameter](#toolparameter) ] |  | No |
+| server_url | string |  | Yes |
+| summary | string |  | No |
+
+#### ApiToolPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ApiToolPreviewResponse |  |  |  |
+
+#### ApiToolPreviewResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| result | string |  | No |
+
 #### ApiToolProviderAddPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
 | custom_disclaimer | string |  | No |
-| icon | object |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
 | labels | [ string ] |  | No |
 | privacy_policy | string |  | No |
 | provider | string |  | Yes |
@@ -14903,7 +14965,7 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
 | custom_disclaimer | string |  | No |
-| icon | object |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
 | labels | [ string ] |  | No |
 | original_provider | string |  | Yes |
 | privacy_policy | string |  | No |
@@ -15378,6 +15440,16 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
+
+#### BuiltinProviderOAuthClientSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_params | object |  | No |
+| is_oauth_custom_client_enabled | boolean |  | Yes |
+| is_system_oauth_params_exists | boolean |  | Yes |
+| redirect_uri | string |  | Yes |
+| schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
 
 #### BuiltinToolAddPayload
 
@@ -16695,25 +16767,6 @@ Model class for provider custom model configuration.
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
 
-#### DatasourceEntity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | [I18nObject](#i18nobject) | The label of the datasource | Yes |
-| identity | [DatasourceIdentity](#datasourceidentity) |  | Yes |
-| output_schema | object |  | No |
-| parameters | [ [DatasourceParameter](#datasourceparameter) ] |  | No |
-
-#### DatasourceIdentity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author | string | The author of the datasource | Yes |
-| icon | string |  | No |
-| label | [I18nObject](#i18nobject) | The label of the datasource | Yes |
-| name | string | The name of the datasource | Yes |
-| provider | string | The provider of the datasource | Yes |
-
 #### DatasourceNodeRunPayload
 
 | Name | Type | Description | Required |
@@ -16748,41 +16801,6 @@ Model class for provider custom model configuration.
 | oauth_custom_client_params | object | Masked plugin-defined OAuth client parameters, when configured for the tenant. | Yes |
 | redirect_uri | string |  | Yes |
 
-#### DatasourceParameter
-
-Overrides type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
-| default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
-| description | [I18nObject](#i18nobject) | The description of the parameter | Yes |
-| label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
-| max | number<br>integer |  | No |
-| min | number<br>integer |  | No |
-| name | string | The name of the parameter | Yes |
-| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
-| placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
-| precision | integer |  | No |
-| required | boolean |  | No |
-| scope | string |  | No |
-| template | [PluginParameterTemplate](#pluginparametertemplate) |  | No |
-| type | [DatasourceParameterType](#datasourceparametertype) | The type of the parameter | Yes |
-
-#### DatasourceParameterType
-
-removes TOOLS_SELECTOR from PluginParameterType
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DatasourceParameterType | string | removes TOOLS_SELECTOR from PluginParameterType |  |
-
-#### DatasourcePluginListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DatasourcePluginListResponse | array |  |  |
-
 #### DatasourceProviderAuthListResponse
 
 | Name | Type | Description | Required |
@@ -16804,35 +16822,6 @@ removes TOOLS_SELECTOR from PluginParameterType
 | plugin_id | string |  | Yes |
 | plugin_unique_identifier | string |  | Yes |
 | provider | string |  | Yes |
-
-#### DatasourceProviderEntityWithPlugin
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | No |
-| datasources | [ [DatasourceEntity](#datasourceentity) ] |  | No |
-| identity | [DatasourceProviderIdentity](#datasourceprovideridentity) |  | Yes |
-| oauth_schema | [OAuthSchema](#oauthschema) |  | No |
-| provider_type | [DatasourceProviderType](#datasourceprovidertype) |  | Yes |
-
-#### DatasourceProviderIdentity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author | string | The author of the tool | Yes |
-| description | [I18nObject](#i18nobject) | The description of the tool | Yes |
-| icon | string | The icon of the tool | Yes |
-| label | [I18nObject](#i18nobject) | The label of the tool | Yes |
-| name | string | The name of the tool | Yes |
-| tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
-
-#### DatasourceProviderType
-
-Enum class for datasource provider
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DatasourceProviderType | string | Enum class for datasource provider |  |
 
 #### DatasourceUpdateNamePayload
 
@@ -16941,6 +16930,18 @@ Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | q | string |  | No |
+
+#### DefaultBlockConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DefaultBlockConfigResponse | object |  |  |
+
+#### DefaultBlockConfigsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DefaultBlockConfigsResponse | array |  |  |
 
 #### DefaultModelDataResponse
 
@@ -17150,6 +17151,12 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | node_id | string |  | Yes |
 
+#### DraftWorkflowTriggerRunRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string | Node ID | Yes |
+
 #### EducationActivatePayload
 
 | Name | Type | Description | Required |
@@ -17252,6 +17259,12 @@ Request payload for bulk downloading documents as a zip archive.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | token | string |  | Yes |
+
+#### EmptyObjectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmptyObjectResponse | object |  |  |
 
 #### EndpointCreatePayload
 
@@ -17389,6 +17402,27 @@ Request payload for bulk downloading documents as a zip archive.
 | name | string |  | No |
 | value |  |  | No |
 | value_type | string |  | No |
+
+#### EnvironmentVariableItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| editable | boolean |  | Yes |
+| edited | boolean |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| selector | [ string ] |  | Yes |
+| type | string |  | Yes |
+| value |  |  | Yes |
+| value_type | string |  | Yes |
+| visible | boolean |  | Yes |
+
+#### EnvironmentVariableListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [EnvironmentVariableItemResponse](#environmentvariableitemresponse) ] |  | Yes |
 
 #### EnvironmentVariableUpdatePayload
 
@@ -17813,6 +17847,12 @@ Enum class for form type.
 | ---- | ---- | ----------- | -------- |
 | document_list | [ string ] |  | Yes |
 
+#### GeneratedAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| GeneratedAppResponse |  |  |  |
+
 #### GeneratorResponse
 
 | Name | Type | Description | Required |
@@ -17936,11 +17976,6 @@ Enum class for form type.
 | delivery_method_id | string | Delivery method ID | Yes |
 | inputs | object | Values used to fill missing upstream variables referenced in form_content | No |
 
-#### HumanInputDeliveryTestResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-
 #### HumanInputFormDefinition
 
 | Name | Type | Description | Required |
@@ -17966,13 +18001,12 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| TYPE | string, <br>**Default:** human_input_required |  | No |
-| actions | [ [HumanInputUserActionResponse](#humaninputuseractionresponse) ] |  | No |
-| display_in_ui | boolean | Always false for draft preview responses. | No |
-| expiration_time | integer | Always null for draft preview responses. | No |
+| actions | [ object ] |  | No |
+| display_in_ui | boolean |  | No |
+| expiration_time | integer |  | No |
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
-| form_token | string | Always null for draft preview responses. | No |
+| form_token | string |  | No |
 | inputs | [ object ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
@@ -17997,6 +18031,12 @@ Enum class for form type.
 | form_inputs | object | Values the user provides for the form's own fields | Yes |
 | inputs | object | Values used to fill missing upstream variables referenced in form_content | Yes |
 
+#### HumanInputFormSubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormSubmitResponse | object |  |  |
+
 #### HumanInputPauseTypeResponse
 
 | Name | Type | Description | Required |
@@ -18004,14 +18044,6 @@ Enum class for form type.
 | backstage_input_url | string |  | No |
 | form_id | string |  | Yes |
 | type | string |  | Yes |
-
-#### HumanInputUserActionResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| button_style | string, <br>**Default:** default |  | No |
-| id | string |  | Yes |
-| title | string |  | Yes |
 
 #### I18nObject
 
@@ -18234,7 +18266,7 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONValue |  |  |  |
+| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
 
 #### JSONValueType
 
@@ -18388,6 +18420,20 @@ Enum class for large language model mode.
 | authorization_code | string |  | No |
 | provider_id | string |  | Yes |
 
+#### MCPAuthResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorization_url | string |  | No |
+| result | string |  | No |
+
+#### MCPAuthentication
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| client_secret | string |  | No |
+
 #### MCPCallbackQuery
 
 | Name | Type | Description | Required |
@@ -18395,12 +18441,19 @@ Enum class for large language model mode.
 | code | string |  | Yes |
 | state | string |  | Yes |
 
+#### MCPConfiguration
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| sse_read_timeout | number, <br>**Default:** 300 |  | No |
+| timeout | number, <br>**Default:** 30 |  | No |
+
 #### MCPProviderCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| authentication | object |  | No |
-| configuration | object |  | No |
+| authentication | [MCPAuthentication](#mcpauthentication) |  | No |
+| configuration | [MCPConfiguration](#mcpconfiguration) |  | No |
 | headers | object |  | No |
 | icon | string |  | Yes |
 | icon_background | string |  | No |
@@ -18420,8 +18473,8 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| authentication | object |  | No |
-| configuration | object |  | No |
+| authentication | [MCPAuthentication](#mcpauthentication) |  | No |
+| configuration | [MCPConfiguration](#mcpconfiguration) |  | No |
 | headers | object |  | No |
 | icon | string |  | Yes |
 | icon_background | string |  | No |
@@ -19730,16 +19783,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | PluginDaemonOperationResponse |  |  |  |
 
-#### PluginDatasourceProviderEntity
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| declaration | [DatasourceProviderEntityWithPlugin](#datasourceproviderentitywithplugin) |  | Yes |
-| is_authorized | boolean |  | No |
-| plugin_id | string |  | Yes |
-| plugin_unique_identifier | string |  | Yes |
-| provider | string |  | Yes |
-
 #### PluginDebuggingKeyResponse
 
 | Name | Type | Description | Required |
@@ -19993,6 +20036,12 @@ Model class for common provider settings like credentials
 | type | [ProviderConfigType](#providerconfigtype) | The type of the credentials | Yes |
 | url | string |  | No |
 
+#### ProviderConfigListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderConfigListResponse | array |  |  |
+
 #### ProviderConfigType
 
 | Name | Type | Description | Required |
@@ -20129,17 +20178,11 @@ Model class for provider with models response.
 
 #### PublishWorkflowPayload
 
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-
-#### PublishWorkflowResponse
+Payload for publishing snippet workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at | integer |  | Yes |
-| result | string |  | Yes |
+| knowledge_base_setting | object |  | No |
 
 #### PublishedWorkflowRunPayload
 
@@ -20224,27 +20267,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | yaml_content | string |  | Yes |
 
-#### RagPipelineEnvironmentVariableListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [RagPipelineEnvironmentVariableResponse](#ragpipelineenvironmentvariableresponse) ] |  | Yes |
-
-#### RagPipelineEnvironmentVariableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| editable | boolean |  | Yes |
-| edited | boolean |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| selector | [ string ] |  | Yes |
-| type | string |  | Yes |
-| value |  |  | Yes |
-| value_type | string |  | Yes |
-| visible | boolean |  | Yes |
-
 #### RagPipelineImportCheckDependenciesResponse
 
 | Name | Type | Description | Required |
@@ -20277,28 +20299,19 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | pipeline_id | string |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 
+#### RagPipelineOpaqueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RagPipelineOpaqueResponse |  |  |  |
+
 #### RagPipelineRecommendedPluginQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string, <br>**Default:** all |  | No |
 
-#### RagPipelineRecommendedPluginResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| installed_recommended_plugins | [ object ] | Installed tool provider payloads. Shape follows the tool provider serializer. | Yes |
-| uninstalled_recommended_plugins | [ object ] | Marketplace plugin manifest payloads returned by the marketplace service. | Yes |
-
-#### RagPipelineTransformResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| dataset_id | string |  | Yes |
-| pipeline_id | string |  | Yes |
-| status | string |  | Yes |
-
-#### RagPipelineVariablesResponse
+#### RagPipelineStepParametersResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21276,9 +21289,9 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| hash | string |  | Yes |
-| result | string |  | Yes |
-| updated_at | integer |  | Yes |
+| hash | string |  | No |
+| result | string |  | No |
+| updated_at | string |  | No |
 
 #### SystemConfigurationResponse
 
@@ -21539,17 +21552,46 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | data | [ [TokensPerSecondStatisticItem](#tokenspersecondstatisticitem) ] |  | Yes |
 
-#### ToolLabelEnum
+#### ToolApiEntity
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ToolLabelEnum | string |  |  |
+| author | string |  | Yes |
+| description | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| labels | [ string ] |  | No |
+| name | string |  | Yes |
+| output_schema | object |  | No |
+| parameters | [ [ToolParameter](#toolparameter) ] |  | No |
 
-#### ToolOAuthClientSchemaResponse
+#### ToolApiListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ToolOAuthClientSchemaResponse | array |  |  |
+| ToolApiListResponse | array |  |  |
+
+#### ToolEmojiIcon
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | Yes |
+| content | string |  | Yes |
+
+#### ToolLabel
+
+Tool label
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string | The icon of the tool | Yes |
+| label | [I18nObject](#i18nobject) | The label of the tool | Yes |
+| name | string | The name of the tool | Yes |
+
+#### ToolLabelListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolLabelListResponse | array |  |  |
 
 #### ToolOAuthCustomClientPayload
 
@@ -21558,11 +21600,29 @@ Available voices
 | client_params | object |  | No |
 | enable_oauth_custom_client | boolean |  | No |
 
-#### ToolOAuthCustomClientResponse
+#### ToolParameter
+
+Overrides type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ToolOAuthCustomClientResponse | object |  |  |
+| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
+| default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
+| form | [ToolParameterForm](#toolparameterform) | The form of the parameter, schema/form/llm | Yes |
+| human_description | [I18nObject](#i18nobject) | The description presented to the user | No |
+| input_schema | object |  | No |
+| label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
+| llm_description | string |  | No |
+| max | number<br>integer |  | No |
+| min | number<br>integer |  | No |
+| name | string | The name of the parameter | Yes |
+| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
+| precision | integer |  | No |
+| required | boolean |  | No |
+| scope | string |  | No |
+| template | [PluginParameterTemplate](#pluginparametertemplate) |  | No |
+| type | [ToolParameterType](#toolparametertype) | The type of the parameter | Yes |
 
 #### ToolParameterForm
 
@@ -21570,17 +21630,84 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | ToolParameterForm | string |  |  |
 
+#### ToolParameterType
+
+removes TOOLS_SELECTOR from PluginParameterType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolParameterType | string | removes TOOLS_SELECTOR from PluginParameterType |  |
+
+#### ToolProviderApiEntityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allow_delete | boolean, <br>**Default:** true |  | No |
+| authentication | [MCPAuthentication](#mcpauthentication) | The OAuth config of the MCP tool | No |
+| author | string |  | Yes |
+| configuration | [MCPConfiguration](#mcpconfiguration) | The timeout and sse_read_timeout of the MCP tool | No |
+| description | [I18nObject](#i18nobject) |  | Yes |
+| icon | string<br>object |  | Yes |
+| icon_dark | string<br>object |  | No |
+| id | string |  | Yes |
+| identity_mode | string, <br>**Default:** off | Identity-forwarding mechanism: 'off' or 'idp_token' | No |
+| is_dynamic_registration | boolean, <br>**Default:** true | Whether the MCP tool is dynamically registered | No |
+| is_team_authorization | boolean |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| labels | [ string ] |  | No |
+| masked_headers | object | The masked headers of the MCP tool | No |
+| name | string |  | Yes |
+| original_headers | object | The original headers of the MCP tool | No |
+| plugin_id | string | The plugin id of the tool | No |
+| plugin_unique_identifier | string | The unique identifier of the tool | No |
+| server_identifier | string | The server identifier of the MCP tool | No |
+| server_url | string | The server url of the tool | No |
+| team_credentials | object |  | No |
+| tools | [ [ToolApiEntity](#toolapientity) ] |  | No |
+| type | [ToolProviderType](#toolprovidertype) |  | Yes |
+| updated_at | integer |  | No |
+| workflow_app_id | string | The app id of the workflow tool | No |
+
+#### ToolProviderCredentialApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_by | string | User ID of the credential creator | No |
+| credential_type | [CredentialType](#credentialtype) | The type of the credential | Yes |
+| credentials | object | The credentials of the provider | No |
+| from_other_member | boolean | True when this credential is being returned only because a workflow/agent node still references it but it would normally be hidden from this user by the visibility filter (another member's only_me credential). The frontend renders it as 'borrowed' — selectable until the node switches away, but not editable/deletable. | No |
+| id | string | The unique id of the credential | Yes |
+| is_default | boolean | Whether the credential is the default credential for the provider in the workspace | No |
+| name | string | The name of the credential | Yes |
+| partial_member_list | [ string ] | List of user IDs allowed when visibility is partial_members | No |
+| provider | string | The provider of the credential | Yes |
+| visibility | string, <br>**Default:** all_team_members | Credential visibility: only_me, all_team_members, or partial_members | No |
+
+#### ToolProviderCredentialInfoApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [ToolProviderCredentialApiEntity](#toolprovidercredentialapientity) ] | The credentials of the provider | Yes |
+| is_oauth_custom_client_enabled | boolean | Whether the OAuth custom client is enabled for the provider | No |
+| supported_credential_types | [ [CredentialType](#credentialtype) ] | The supported credential types of the provider | Yes |
+
+#### ToolProviderCredentialListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolProviderCredentialListResponse | array |  |  |
+
 #### ToolProviderListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string |  | No |
 
-#### ToolProviderOpaqueResponse
+#### ToolProviderListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ToolProviderOpaqueResponse |  |  |  |
+| ToolProviderListResponse | array |  |  |
 
 #### ToolProviderType
 
@@ -21839,20 +21966,6 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | TriggerCreationMethod | string |  |  |
 
-#### TriggerDebugErrorResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| error | string |  | No |
-| status | string |  | Yes |
-
-#### TriggerDebugWaitingResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| retry_in | integer |  | Yes |
-| status | string |  | Yes |
-
 #### TriggerOAuthAuthorizeResponse
 
 | Name | Type | Description | Required |
@@ -21875,7 +21988,7 @@ Enum class for tool provider
 | configured | boolean |  | Yes |
 | custom_configured | boolean |  | Yes |
 | custom_enabled | boolean |  | Yes |
-| oauth_client_schema | [ [TriggerProviderConfigResponse](#triggerproviderconfigresponse) ] |  | Yes |
+| oauth_client_schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
 | params | object |  | Yes |
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
@@ -21898,40 +22011,17 @@ Enum class for tool provider
 | supported_creation_methods | [ [TriggerCreationMethod](#triggercreationmethod) ] | Supported creation methods for the trigger provider. like 'OAUTH', 'APIKEY', 'MANUAL'. | No |
 | tags | [ string ] | The tags of the trigger provider | No |
 
-#### TriggerProviderConfigOptionResponse
+#### TriggerProviderErrorResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| label | [I18nObject](#i18nobject) | The label of the option | Yes |
-| value | string | The value of the option | Yes |
-
-#### TriggerProviderConfigResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default | integer<br>string<br>number<br>boolean |  | No |
-| help | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) |  | No |
-| multiple | boolean |  | No |
-| name | string | The name of the credentials | Yes |
-| options | [ [TriggerProviderConfigOptionResponse](#triggerproviderconfigoptionresponse) ] |  | No |
-| placeholder | [I18nObject](#i18nobject) |  | No |
-| required | boolean |  | No |
-| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
-| type | string, <br>**Available values:** "app-selector", "array[tools]", "boolean", "model-selector", "secret-input", "select", "text-input" | The type of the credentials<br>*Enum:* `"app-selector"`, `"array[tools]"`, `"boolean"`, `"model-selector"`, `"secret-input"`, `"select"`, `"text-input"` | Yes |
-| url | string |  | No |
+| error | string |  | Yes |
 
 #### TriggerProviderListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TriggerProviderListResponse | array |  |  |
-
-#### TriggerProviderOpaqueResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| TriggerProviderOpaqueResponse |  |  |  |
 
 #### TriggerProviderSubscriptionApiEntity
 
@@ -21946,6 +22036,12 @@ Enum class for tool provider
 | properties | object | The properties of the subscription | Yes |
 | provider | string | The provider id of the subscription | Yes |
 | workflows_in_use | integer | The number of workflows using this subscription | Yes |
+
+#### TriggerProviderSubscriptionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerProviderSubscriptionListResponse | array |  |  |
 
 #### TriggerSubscriptionBuilderCreatePayload
 
@@ -21980,17 +22076,11 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
 
-#### TriggerSubscriptionBuilderVerifyResponse
+#### TriggerVerificationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | verified | boolean |  | Yes |
-
-#### TriggerSubscriptionListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| TriggerSubscriptionListResponse | array |  |  |
 
 #### UnaddedModelConfiguration
 
@@ -22504,35 +22594,46 @@ How a workflow node is bound to an Agent.
 | ---- | ---- | ----------- | -------- |
 | data | [ [WorkflowDailyTokenCostStatisticItem](#workflowdailytokencoststatisticitem) ] |  | Yes |
 
-#### WorkflowDraftEnvironmentVariableListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftEnvironmentVariableResponse](#workflowdraftenvironmentvariableresponse) ] |  | Yes |
-
-#### WorkflowDraftEnvironmentVariableResponse
+#### WorkflowDraftEnvVariable
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | No |
-| editable | boolean |  | Yes |
-| edited | boolean |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| selector | [ string ] |  | Yes |
-| type | string |  | Yes |
-| value |  |  | Yes |
-| value_type | string |  | Yes |
-| visible | boolean |  | Yes |
+| edited | boolean |  | No |
+| id | string |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
 
-#### WorkflowDraftVariableFullContentResponse
+#### WorkflowDraftEnvVariableList
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| download_url | string |  | Yes |
-| length | integer |  | Yes |
-| size_bytes | integer |  | Yes |
-| value_type | string |  | Yes |
+| items | [ [WorkflowDraftEnvVariable](#workflowdraftenvvariable) ] |  | No |
+
+#### WorkflowDraftVariable
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| edited | boolean |  | No |
+| full_content | object |  | No |
+| id | string |  | No |
+| is_truncated | boolean |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
+
+#### WorkflowDraftVariableList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [WorkflowDraftVariable](#workflowdraftvariable) ] |  | No |
 
 #### WorkflowDraftVariableListQuery
 
@@ -22541,41 +22642,19 @@ How a workflow node is bound to an Agent.
 | limit | integer, <br>**Default:** 20 | Items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 
-#### WorkflowDraftVariableListResponse
+#### WorkflowDraftVariableListWithoutValue
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftVariableResponse](#workflowdraftvariableresponse) ] |  | Yes |
-
-#### WorkflowDraftVariableListWithoutValueResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftVariableWithoutValueResponse](#workflowdraftvariablewithoutvalueresponse) ] |  | Yes |
-| total | integer |  | Yes |
+| items | [ [WorkflowDraftVariableWithoutValue](#workflowdraftvariablewithoutvalue) ] |  | No |
+| total | integer |  | No |
 
 #### WorkflowDraftVariablePatchPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string | Variable name | No |
+| name | string |  | No |
 | value |  |  | No |
-
-#### WorkflowDraftVariableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| edited | boolean |  | Yes |
-| full_content | [WorkflowDraftVariableFullContentResponse](#workflowdraftvariablefullcontentresponse) |  | Yes |
-| id | string |  | Yes |
-| is_truncated | boolean |  | Yes |
-| name | string |  | Yes |
-| selector | [ string ] |  | Yes |
-| type | string |  | Yes |
-| value |  |  | Yes |
-| value_type | string |  | Yes |
-| visible | boolean |  | Yes |
 
 #### WorkflowDraftVariableUpdatePayload
 
@@ -22584,19 +22663,19 @@ How a workflow node is bound to an Agent.
 | name | string | Variable name | No |
 | value |  | Variable value | No |
 
-#### WorkflowDraftVariableWithoutValueResponse
+#### WorkflowDraftVariableWithoutValue
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| edited | boolean |  | Yes |
-| id | string |  | Yes |
-| is_truncated | boolean |  | Yes |
-| name | string |  | Yes |
-| selector | [ string ] |  | Yes |
-| type | string |  | Yes |
-| value_type | string |  | Yes |
-| visible | boolean |  | Yes |
+| description | string |  | No |
+| edited | boolean |  | No |
+| id | string |  | No |
+| is_truncated | boolean |  | No |
+| name | string |  | No |
+| selector | [ string ] |  | No |
+| type | string |  | No |
+| value_type | string |  | No |
+| visible | boolean |  | No |
 
 #### WorkflowEnvironmentVariableResponse
 
@@ -22810,6 +22889,13 @@ tenant's default model. The underlying generator never raises — an empty
 | variable | string |  | No |
 | variable_selector | [ string<br>integer<br>number<br>boolean ] |  | No |
 
+#### WorkflowPublishResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| result | string |  | Yes |
+
 #### WorkflowResponse
 
 | Name | Type | Description | Required |
@@ -22829,6 +22915,14 @@ tenant's default model. The underlying generator never raises — an empty
 | updated_at | integer |  | Yes |
 | updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
+
+#### WorkflowRestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hash | string |  | Yes |
+| result | string |  | Yes |
+| updated_at | integer |  | Yes |
 
 #### WorkflowRunCountQuery
 
@@ -23038,7 +23132,7 @@ Query parameters for workflow runs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | Yes |
-| icon | object |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
 | label | string |  | Yes |
 | labels | [ string ] |  | No |
 | name | string |  | Yes |
@@ -23050,6 +23144,22 @@ Query parameters for workflow runs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| workflow_tool_id | string |  | Yes |
+
+#### WorkflowToolDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
+| label | string |  | Yes |
+| name | string |  | Yes |
+| output_schema | object |  | No |
+| parameters | [ [WorkflowToolParameterConfiguration](#workflowtoolparameterconfiguration) ] |  | Yes |
+| privacy_policy | string |  | No |
+| synced | boolean |  | Yes |
+| tool | [ToolApiEntity](#toolapientity) |  | Yes |
+| workflow_app_id | string |  | Yes |
 | workflow_tool_id | string |  | Yes |
 
 #### WorkflowToolGetQuery
@@ -23080,7 +23190,7 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | Yes |
-| icon | object |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
 | label | string |  | Yes |
 | labels | [ string ] |  | No |
 | name | string |  | Yes |
