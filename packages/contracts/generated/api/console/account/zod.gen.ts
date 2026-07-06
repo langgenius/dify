@@ -128,11 +128,6 @@ export const zEducationActivatePayload = z.object({
 })
 
 /**
- * EducationActivateResponse
- */
-export const zEducationActivateResponse = z.record(z.string(), z.unknown())
-
-/**
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
@@ -301,7 +296,7 @@ export const zPostAccountEducationBody = zEducationActivatePayload
 /**
  * Success
  */
-export const zPostAccountEducationResponse = zEducationActivateResponse
+export const zPostAccountEducationResponse = z.record(z.string(), z.unknown())
 
 export const zGetAccountEducationAutocompleteQuery = z.object({
   keywords: z.string(),

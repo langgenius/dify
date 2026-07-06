@@ -415,7 +415,7 @@ export type PipelineTemplateItemResponse = {
 
 export type PluginDependency = {
   current_identifier?: string | null
-  type: Type
+  type: PluginDependencyType
   value: Github | Marketplace | Package
 }
 
@@ -515,7 +515,7 @@ export type DatasetWeightedScoreResponse = {
   weight_type?: string | null
 }
 
-export type Type = 'github' | 'marketplace' | 'package'
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
   github_plugin_unique_identifier: string
