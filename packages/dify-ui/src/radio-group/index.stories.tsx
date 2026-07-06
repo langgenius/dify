@@ -8,7 +8,7 @@ import {
   FieldRoot,
 } from '../field'
 import { FieldsetLegend, FieldsetRoot } from '../fieldset'
-import { Radio, RadioControl, RadioRoot } from '../radio'
+import { Radio, RadioControl, RadioIndicator, RadioRoot } from '../radio'
 
 const meta = {
   title: 'Base/Form/RadioGroup',
@@ -17,7 +17,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'RadioGroup primitive built on Base UI. For normal form rows, compose FieldRoot, FieldsetRoot, FieldLabel, RadioGroup, and Radio. For option cards, wrap each option in FieldItem and make the card itself a RadioRoot with variant="unstyled".',
+        component: '`RadioGroup` owns single-selection state. Use `Radio` for plain form rows, `RadioRoot` when an entire row or card is the radio item, `RadioControl` for the standard visual dot inside custom roots, and `RadioIndicator` only when the design owns a custom control shell.',
       },
     },
   },
@@ -60,7 +60,7 @@ export const StandardFormRows: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Default form composition. Most product code should use this shape: RadioGroup owns value, FieldsetLegend names the group, and FieldLabel makes each row clickable.',
+        story: 'Plain form-row composition. `RadioGroup` owns value, `FieldsetLegend` names the group, `FieldLabel` makes each option label clickable, and `Radio` renders the default dot.',
       },
     },
   },
@@ -107,31 +107,39 @@ export const BooleanInline: Story = {
   },
 }
 
+type PromptMode = 'default' | 'custom'
+
 function OptionCardsDemo() {
-  const [value, setValue] = React.useState('default')
+  const [value, setValue] = React.useState<PromptMode>('default')
+
+  const options = [
+    {
+      value: 'default',
+      title: 'Default prompt',
+      description: 'Use the built-in prompt for consistent output.',
+    },
+    {
+      value: 'custom',
+      title: 'Custom prompt',
+      description: 'Write a prompt for this app and keep full control.',
+    },
+  ] satisfies Array<{
+    value: PromptMode
+    title: string
+    description: string
+  }>
 
   return (
     <FieldRoot name="promptMode" className="w-100">
       <FieldsetRoot
         render={(
-          <RadioGroup value={value} onValueChange={setValue} className="flex-col items-stretch gap-3" />
+          <RadioGroup<PromptMode> value={value} onValueChange={setValue} className="flex-col items-stretch gap-3" />
         )}
       >
         <FieldsetLegend>Prompt mode</FieldsetLegend>
-        {[
-          {
-            value: 'default',
-            title: 'Default prompt',
-            description: 'Use the built-in prompt for consistent output.',
-          },
-          {
-            value: 'custom',
-            title: 'Custom prompt',
-            description: 'Write a prompt for this app and keep full control.',
-          },
-        ].map(option => (
+        {options.map(option => (
           <FieldItem key={option.value}>
-            <RadioRoot
+            <RadioRoot<PromptMode>
               value={option.value}
               variant="unstyled"
               nativeButton
@@ -162,7 +170,76 @@ export const OptionCards: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Wrap each option card in FieldItem, then use RadioRoot with variant="unstyled" when the entire card is the radio. RadioControl renders the visual dot inside the card.',
+        story: 'Product option cards should make the whole card the radio item with `RadioRoot variant="unstyled"`. `RadioControl` renders the standard visual dot inside the custom root.',
+      },
+    },
+  },
+}
+
+type ApprovalMode = 'automatic' | 'manual'
+
+function CustomIndicatorPartDemo() {
+  const [value, setValue] = React.useState<ApprovalMode>('automatic')
+
+  const options = [
+    {
+      value: 'automatic',
+      title: 'Automatic approval',
+      description: 'Approve requests that match policy.',
+    },
+    {
+      value: 'manual',
+      title: 'Manual review',
+      description: 'Ask an admin to review each request.',
+    },
+  ] satisfies Array<{
+    value: ApprovalMode
+    title: string
+    description: string
+  }>
+
+  return (
+    <FieldRoot name="approvalMode" className="w-100">
+      <FieldsetRoot
+        render={(
+          <RadioGroup<ApprovalMode> value={value} onValueChange={setValue} className="flex-col items-stretch gap-2" />
+        )}
+      >
+        <FieldsetLegend>Approval mode</FieldsetLegend>
+        {options.map(option => (
+          <FieldItem key={option.value}>
+            <RadioRoot<ApprovalMode>
+              value={option.value}
+              variant="unstyled"
+              nativeButton
+              render={<button type="button" />}
+              className="flex w-full items-center gap-3 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+            >
+              <span className="flex size-4 shrink-0 items-center justify-center rounded-full border border-components-radio-border bg-components-radio-bg">
+                <RadioIndicator className="text-components-radio-border-checked" />
+              </span>
+              <span className="min-w-0 grow">
+                <span className="block truncate system-sm-semibold text-text-primary">
+                  {option.title}
+                </span>
+                <span className="block truncate system-xs-regular text-text-tertiary">
+                  {option.description}
+                </span>
+              </span>
+            </RadioRoot>
+          </FieldItem>
+        ))}
+      </FieldsetRoot>
+    </FieldRoot>
+  )
+}
+
+export const CustomIndicatorPart: Story = {
+  render: () => <CustomIndicatorPartDemo />,
+  parameters: {
+    docs: {
+      description: {
+        story: '`RadioIndicator` is the low-level indicator part. Use it only when a custom root owns the outer control shell; otherwise prefer `Radio` for form rows or `RadioControl` inside option cards.',
       },
     },
   },
