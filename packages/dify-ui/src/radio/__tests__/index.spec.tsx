@@ -1,34 +1,29 @@
-import type * as React from 'react'
+import type { RadioGroupProps } from '../index'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { FieldItem, FieldLabel, FieldRoot } from '../../field'
 import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
-import { RadioGroup } from '../../radio-group'
-import {
-  Radio,
-  RadioControl,
-  RadioItem,
-  RadioSkeleton,
-} from '../index'
+import { Radio, RadioControl, RadioGroup, RadioItem, RadioSkeleton } from '../index'
 
 const clickElement = (element: HTMLElement | SVGElement) => {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 }
 
-type TestRadioGroupProps = React.ComponentProps<typeof RadioGroup> & {
+type TestRadioGroupProps<Value = string> = RadioGroupProps<Value> & {
   children: React.ReactNode
   label: string
   name?: string
 }
 
-function TestRadioGroup({
+function TestRadioGroup<Value = string>({
   children,
   label,
   name = 'radioField',
   ...props
-}: TestRadioGroupProps) {
+}: TestRadioGroupProps<Value>) {
   return (
     <FieldRoot name={name}>
-      <FieldsetRoot render={<RadioGroup {...props} />}>
+      <FieldsetRoot render={<RadioGroup<Value> {...props} />}>
         <FieldsetLegend>{label}</FieldsetLegend>
         {children}
       </FieldsetRoot>
@@ -68,6 +63,52 @@ function RadioTypeExamples() {
 }
 
 void RadioTypeExamples
+
+describe('RadioGroup', () => {
+  it('should manage a controlled single selection', async () => {
+    function StorageDemo() {
+      const [value, setValue] = React.useState('ssd')
+
+      return (
+        <TestRadioGroup value={value} onValueChange={setValue} label="Storage type">
+          <TestRadioOption value="ssd">SSD</TestRadioOption>
+          <TestRadioOption value="hdd">HDD</TestRadioOption>
+        </TestRadioGroup>
+      )
+    }
+
+    const screen = await render(<StorageDemo />)
+
+    await expect.element(screen.getByRole('radio', { name: 'SSD' })).toHaveAttribute('aria-checked', 'true')
+
+    clickElement(screen.getByRole('radio', { name: 'HDD' }).element())
+
+    await vi.waitFor(async () => {
+      await expect.element(screen.getByRole('radio', { name: 'SSD' })).toHaveAttribute('aria-checked', 'false')
+      await expect.element(screen.getByRole('radio', { name: 'HDD' })).toHaveAttribute('aria-checked', 'true')
+    })
+  })
+
+  it('should compose with Dify UI Field and Fieldset without losing labels', async () => {
+    const onValueChange = vi.fn()
+    const screen = await render(
+      <TestRadioGroup value="ssd" onValueChange={onValueChange} label="Storage type">
+        <TestRadioOption value="ssd">SSD</TestRadioOption>
+        <TestRadioOption value="hdd">HDD</TestRadioOption>
+      </TestRadioGroup>,
+    )
+
+    await expect.element(screen.getByRole('radiogroup', { name: 'Storage type' })).toBeInTheDocument()
+
+    const hdd = screen.getByRole('radio', { name: 'HDD' })
+    await expect.element(hdd).toHaveAttribute('aria-checked', 'false')
+
+    clickElement(hdd.element())
+
+    expect(onValueChange).toHaveBeenCalledTimes(1)
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('hdd')
+  })
+})
 
 describe('Radio', () => {
   it('should render unchecked and checked radios with Base UI semantics', async () => {

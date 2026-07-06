@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { RiDatabase2Line, RiFileList3Line, RiRocketLine } from '@remixicon/react'
 import { useState } from 'react'
 import RadioCard from '.'

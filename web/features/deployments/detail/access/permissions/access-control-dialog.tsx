@@ -12,8 +12,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { RadioItem } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
