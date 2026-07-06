@@ -4,8 +4,8 @@ import type { EnableType, OnSend } from '../../types'
 import type { InputForm } from '../type'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { noop } from 'es-toolkit/function'
 import { decode } from 'html-entities'
 import Recorder from 'js-audio-recorder'
@@ -214,8 +214,11 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
             <span aria-hidden className="i-ri-information-line size-3.5 shrink-0 text-text-accent" />
             <div className="body-xs-medium text-text-accent">{footerNotice}</div>
             {shouldShowFooterNoticeTooltip && (
-              <Tooltip>
-                <TooltipTrigger
+              <Popover>
+                <PopoverTrigger
+                  openOnHover
+                  delay={300}
+                  closeDelay={200}
                   render={(
                     <button
                       type="button"
@@ -226,10 +229,13 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
                     </button>
                   )}
                 />
-                <TooltipContent className="max-w-80">
+                <PopoverContent
+                  placement="top"
+                  popupClassName="max-w-80 rounded-md border-0 px-3 py-2 text-start system-xs-regular wrap-break-word text-text-tertiary"
+                >
                   {footerNoticeTooltip}
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         </div>
