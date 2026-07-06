@@ -226,7 +226,7 @@ function AgentFileItem({
   return (
     <li
       data-selected={selected || undefined}
-      className="group/file-row flex h-6 min-w-0 items-center rounded-md focus-within:bg-state-base-hover hover:bg-state-base-hover data-[selected]:bg-state-base-active"
+      className="group/file-row relative flex h-6 min-w-0 items-center rounded-md focus-within:bg-state-base-hover hover:bg-state-base-hover data-[selected]:bg-state-base-active"
     >
       <Dialog open={isPreviewOpen} onOpenChange={handlePreviewOpenChange}>
         <DialogTrigger
@@ -268,7 +268,12 @@ function AgentFileItem({
           }}
         />
       </Dialog>
-      <div className="pointer-events-none mr-1 flex shrink-0 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100">
+      {isBuildNoteFile && (
+        <div className="mr-1 flex shrink-0 items-center group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0">
+          <AgentBuildNoteInfotip />
+        </div>
+      )}
+      <div className="pointer-events-none absolute top-1/2 right-1 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100">
         <button
           type="button"
           aria-label={t('agentDetail.configure.files.download', { name: file.name })}
@@ -302,7 +307,6 @@ function AgentBuildNoteFileRow() {
       </FileTreeLabel>
       <div className="ml-1 flex shrink-0 items-center gap-0.5 group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0">
         <AgentBuildNoteBadge />
-        <AgentBuildNoteInfotip />
       </div>
     </>
   )
@@ -327,7 +331,7 @@ function AgentBuildNoteInfotip() {
     <Infotip
       aria-label={t('agentDetail.configure.files.buildNote.tooltip')}
       className="size-5"
-      iconClassName="size-4"
+      iconClassName="size-4 text-text-quaternary hover:text-text-quaternary"
       popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
     >
       <p className="body-xs-regular text-text-secondary">

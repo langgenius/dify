@@ -520,12 +520,28 @@ describe('AgentSkills', () => {
     })
   })
 
+  it('should wrap long preview lines instead of forcing a horizontal code block', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+
+    const skillMdCode = await screen.findByText('# Skill')
+    expect(skillMdCode.tagName).toBe('CODE')
+    expect(skillMdCode).toHaveClass('[overflow-wrap:anywhere]')
+    expect(skillMdCode).toHaveClass('break-words')
+    expect(skillMdCode).toHaveClass('whitespace-pre-wrap')
+    expect(skillMdCode).not.toHaveClass('whitespace-pre')
+    expect(skillMdCode).not.toHaveClass('min-w-max')
+  })
+
   it('should download skill package members from the detail file tree', async () => {
     const user = userEvent.setup()
     renderAgentSkills()
 
     await user.click(screen.getByText('Tender Analyzer').closest('button')!)
     await user.click(await screen.findByText('references'))
+    await user.click(screen.getByText('guide.md').closest('button')!)
     await user.click(screen.getByRole('button', {
       name: /common\.operation\.download.*guide\.md/,
     }))

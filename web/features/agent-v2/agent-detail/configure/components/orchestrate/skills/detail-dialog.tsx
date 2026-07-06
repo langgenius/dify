@@ -1,6 +1,6 @@
 'use client'
 
-import type { MouseEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { FileTreeGuide } from '@langgenius/dify-ui/file-tree'
+import { FileTreeFile } from '@langgenius/dify-ui/file-tree'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -48,7 +48,7 @@ export type AgentSkillDetail = {
   }
   onFolderOpenChange?: (context: { file: AgentSkillFileNode, depth: number, open: boolean }) => void
   onFolderDoubleClick?: (context: { file: AgentSkillFileNode, depth: number }) => void
-  onDownloadFile?: (file: AgentSkillFileNode) => void
+  onDownloadFile?: () => void
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: (context: { file: AgentSkillFileNode, depth: number }) => ReactNode
   selectedFileId?: string
@@ -67,7 +67,6 @@ function AgentSkillFileList({
   folderOpenState,
   onFolderOpenChange,
   onFolderDoubleClick,
-  onDownloadFile,
   onSelectFile,
   renderFolderSuffix,
   selectedFileId,
@@ -81,13 +80,11 @@ function AgentSkillFileList({
   folderOpenState?: AgentSkillDetail['folderOpenState']
   onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
   onFolderDoubleClick?: AgentSkillDetail['onFolderDoubleClick']
-  onDownloadFile?: AgentSkillDetail['onDownloadFile']
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
 }) {
   const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
 
   if (fileListLoading) {
     return (
@@ -118,38 +115,9 @@ function AgentSkillFileList({
       onFolderDoubleClick={onFolderDoubleClick}
       renderFile={onSelectFile
         ? ({ depth, file, selected, children }) => (
-            <li className="group/skill-file-row relative min-w-0">
-              <button
-                type="button"
-                data-selected={selected || undefined}
-                aria-current={selected ? 'true' : undefined}
-                onClick={() => onSelectFile(file)}
-                className={cn(
-                  'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 text-start outline-hidden select-none hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
-                  onDownloadFile ? 'pe-7' : 'pe-1.5',
-                )}
-              >
-                {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
-                  <FileTreeGuide key={index} />
-                ))}
-                <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
-                  {children}
-                </div>
-              </button>
-              {onDownloadFile && (
-                <button
-                  type="button"
-                  aria-label={`${tCommon('operation.download')} ${file.name}`}
-                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
-                    event.stopPropagation()
-                    onDownloadFile(file)
-                  }}
-                  className="pointer-events-none absolute top-1/2 right-1 z-10 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within/skill-file-row:pointer-events-auto group-focus-within/skill-file-row:opacity-100 group-hover/skill-file-row:pointer-events-auto group-hover/skill-file-row:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                >
-                  <span aria-hidden className="i-ri-download-line size-4" />
-                </button>
-              )}
-            </li>
+            <FileTreeFile level={depth} selected={selected} onClick={() => onSelectFile(file)}>
+              {children}
+            </FileTreeFile>
           )
         : undefined}
       renderFolderSuffix={renderFolderSuffix}
@@ -277,20 +245,24 @@ function AgentFilePreviewContent({
     )
   }
 
-  const lines = content.split('\n')
+  const lines = content.split('\n').map((line, index) => ({
+    content: line,
+    key: `${index}:${line}`,
+    lineNumber: String(index + 1).padStart(2, '0'),
+  }))
 
   return (
     <div className="min-h-0 flex-1 overflow-auto px-2 pb-4 font-mono text-[13px] leading-[22px]">
-      {lines.map((line, index) => (
-        <div key={index} className="flex min-w-0 items-start">
+      {lines.map(line => (
+        <div key={line.key} className="flex min-w-0 items-start">
           <span
             aria-hidden="true"
             className="w-7 shrink-0 pr-2 text-right text-text-quaternary select-none"
           >
-            {String(index + 1).padStart(2, '0')}
+            {line.lineNumber}
           </span>
           <code className="block min-w-0 flex-1 [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-text-primary">
-            {line}
+            {line.content}
           </code>
         </div>
       ))}
@@ -306,6 +278,7 @@ export function AgentSkillDetailDialog({
   detail: AgentSkillDetail
 }) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
   const previewTitle = detail.filePreview?.fileName
 
   return (
@@ -328,7 +301,6 @@ export function AgentSkillDetailDialog({
             folderOpenState={detail.folderOpenState}
             onFolderOpenChange={detail.onFolderOpenChange}
             onFolderDoubleClick={detail.onFolderDoubleClick}
-            onDownloadFile={detail.onDownloadFile}
             selectedFileId={detail.selectedFileId}
             onSelectFile={detail.onSelectFile}
             renderFolderSuffix={detail.renderFolderSuffix}
@@ -344,6 +316,16 @@ export function AgentSkillDetailDialog({
               </h2>
             )}
           </div>
+          {detail.onDownloadFile && previewTitle && (
+            <button
+              type="button"
+              aria-label={`${tCommon('operation.download')} ${previewTitle}`}
+              onClick={detail.onDownloadFile}
+              className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            >
+              <span aria-hidden className="i-ri-download-line size-4" />
+            </button>
+          )}
           <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
         </div>
         <ScrollArea

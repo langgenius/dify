@@ -265,7 +265,11 @@ export function useAgentSkillDetail({
     enabled: shouldDownloadPreviewFile && !!apiContext.workflow,
   })
   const downloadQuery = apiContext.workflow ? workflowDownloadQuery : agentDownloadQuery
-  const handleDownloadFile = useCallback(async (file: AgentFileNode) => {
+  const handleDownloadFile = useCallback(async () => {
+    if (!selectedFile)
+      return
+
+    const file = selectedFile
     const path = file.configName ?? file.id
     const isSkillMdFile = path === inspectQuery.data?.skill_md.path || file.name === 'SKILL.md'
 
@@ -310,7 +314,7 @@ export function useAgentSkillDetail({
       },
     }))
     downloadUrl({ url: result.url, fileName: file.name })
-  }, [apiContext, inspectQuery.data?.skill_md.path, inspectQuery.data?.skill_md.text, queryClient, skill.name])
+  }, [apiContext, inspectQuery.data?.skill_md.path, inspectQuery.data?.skill_md.text, queryClient, selectedFile, skill.name])
 
   return {
     description,
