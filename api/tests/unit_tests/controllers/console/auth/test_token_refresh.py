@@ -98,53 +98,63 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_fails_with_invalid_token(self, mock_refresh_token, mock_extract_token, app: Flask):
+    def test_refresh_propagates_invalid_token_error(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
-        Test token refresh failure with invalid refresh token.
+        Test token refresh preserves invalid refresh token errors.
 
         Verifies that:
-        - Exception is caught when token is invalid
-        - 401 status code is returned
-        - Error message is included in response
+        - Invalid refresh token errors are not masked as 401 responses
+        - Callers can observe the original exception
         """
         # Arrange
         mock_extract_token.return_value = "invalid_refresh_token"
-        mock_refresh_token.side_effect = Exception("Invalid refresh token")
+        mock_refresh_token.side_effect = ValueError("Invalid refresh token")
 
-        # Act
+        # Act & Assert
         with app.test_request_context("/refresh-token", method="POST"):
             refresh_api = RefreshTokenApi()
-            response, status_code = refresh_api.post()
-
-        # Assert
-        assert status_code == 401
-        assert response["result"] == "fail"
-        assert "Invalid refresh token" in response["message"]
+            with pytest.raises(ValueError, match="Invalid refresh token"):
+                refresh_api.post()
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_fails_with_expired_token(self, mock_refresh_token, mock_extract_token, app: Flask):
+    def test_refresh_propagates_expired_token_error(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
-        Test token refresh failure with expired refresh token.
+        Test token refresh preserves expired refresh token errors.
 
         Verifies that:
-        - Expired tokens are rejected
-        - 401 status code is returned
-        - Appropriate error handling
+        - Expired token errors are not masked as 401 responses
+        - Callers can observe the original exception
         """
         # Arrange
         mock_extract_token.return_value = "expired_refresh_token"
-        mock_refresh_token.side_effect = Exception("Refresh token expired")
+        mock_refresh_token.side_effect = ValueError("Refresh token expired")
 
-        # Act
+        # Act & Assert
         with app.test_request_context("/refresh-token", method="POST"):
             refresh_api = RefreshTokenApi()
-            response, status_code = refresh_api.post()
+            with pytest.raises(ValueError, match="Refresh token expired"):
+                refresh_api.post()
 
-        # Assert
-        assert status_code == 401
-        assert response["result"] == "fail"
-        assert "expired" in response["message"].lower()
+    @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
+    @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
+    def test_refresh_propagates_unexpected_service_errors(self, mock_refresh_token, mock_extract_token, app: Flask):
+        """
+        Test token refresh preserves unexpected service failures.
+
+        Verifies that:
+        - Operational errors are not misreported as authentication failures
+        - The original exception is preserved for higher-level error handling
+        """
+        # Arrange
+        mock_extract_token.return_value = "valid_refresh_token"
+        mock_refresh_token.side_effect = RuntimeError("redis unavailable")
+
+        # Act & Assert
+        with app.test_request_context("/refresh-token", method="POST"):
+            refresh_api = RefreshTokenApi()
+            with pytest.raises(RuntimeError, match="redis unavailable"):
+                refresh_api.post()
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
