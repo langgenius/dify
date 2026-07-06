@@ -12,8 +12,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
@@ -166,9 +165,8 @@ function AccessControlItem({ type, children }: PropsWithChildren<{
   type: AppAccessMode
 }>) {
   return (
-    <RadioRoot<AppAccessMode>
+    <RadioItem<AppAccessMode>
       value={type}
-      variant="unstyled"
       render={<div />}
       className={cn(
         'cursor-pointer rounded-[10px] border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg shadow-xs transition-colors',
@@ -179,7 +177,7 @@ function AccessControlItem({ type, children }: PropsWithChildren<{
       )}
     >
       {children}
-    </RadioRoot>
+    </RadioItem>
   )
 }
 

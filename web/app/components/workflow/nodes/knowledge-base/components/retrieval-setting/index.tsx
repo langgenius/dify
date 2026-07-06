@@ -11,7 +11,7 @@ import type {
 } from './top-k-and-score-threshold'
 import { FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   memo,
 } from 'react'
