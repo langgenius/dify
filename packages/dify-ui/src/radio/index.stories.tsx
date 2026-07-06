@@ -233,8 +233,8 @@ export const StateMatrix: Story = {
   render: () => (
     <div className="flex flex-col gap-3">
       <FieldRoot name="radioStates">
-        <FieldsetRoot render={<RadioGroup value="checked" className="flex-col items-start gap-3" />}>
-          <FieldsetLegend>Radio states</FieldsetLegend>
+        <FieldsetRoot render={<RadioGroup defaultValue="checked" className="flex-col items-start gap-3" />}>
+          <FieldsetLegend>Interactive radio states</FieldsetLegend>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
               <Radio value="unchecked" />
@@ -247,15 +247,20 @@ export const StateMatrix: Story = {
               Checked
             </FieldLabel>
           </FieldItem>
+        </FieldsetRoot>
+      </FieldRoot>
+      <FieldRoot name="disabledRadioStates">
+        <FieldsetRoot render={<RadioGroup defaultValue="disabled-checked" disabled className="flex-col items-start gap-3" />}>
+          <FieldsetLegend>Disabled radio states</FieldsetLegend>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
-              <Radio value="disabled-unchecked" disabled />
+              <Radio value="disabled-unchecked" />
               Disabled unchecked
             </FieldLabel>
           </FieldItem>
           <FieldItem>
             <FieldLabel className="flex items-center gap-2 system-sm-medium text-text-secondary">
-              <Radio value="checked" disabled />
+              <Radio value="disabled-checked" />
               Disabled checked
             </FieldLabel>
           </FieldItem>
