@@ -594,9 +594,7 @@ class PluginMigration:
         # at most 8 plugins one batch
         for i in range(0, len(package_identifier_by_plugin_id), 8):
             batch_plugin_ids = list(package_identifier_by_plugin_id.keys())[i : i + 8]
-            batch_package_identifiers = [
-                package_identifier_by_plugin_id[plugin_id] for plugin_id in batch_plugin_ids
-            ]
+            batch_package_identifiers = [package_identifier_by_plugin_id[plugin_id] for plugin_id in batch_plugin_ids]
 
             try:
                 response = manager.install_from_identifiers(

@@ -127,9 +127,7 @@ class TestHandlePluginInstanceInstall:
     def test_install_plugins_reports_missing_plugin_ids(self, tmp_path) -> None:
         extracted_plugins = tmp_path / "plugins.jsonl"
         output_file = tmp_path / "output.json"
-        extracted_plugins.write_text(
-            '{"tenant_id":"tenant1","plugins":["langgenius/openai","langgenius/missing"]}\n'
-        )
+        extracted_plugins.write_text('{"tenant_id":"tenant1","plugins":["langgenius/openai","langgenius/missing"]}\n')
 
         with (
             patch(
