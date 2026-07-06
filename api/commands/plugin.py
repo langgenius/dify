@@ -16,7 +16,7 @@ from core.plugin.plugin_service import PluginService
 from core.tools.utils.system_encryption import encrypt_system_params
 from extensions.ext_database import db
 from models import Tenant
-from models.account import TenantPluginAutoUpgradeStrategy
+from models.account import TenantPluginAutoUpgradeCategory, TenantPluginAutoUpgradeStrategy
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
@@ -406,7 +406,7 @@ def migrate_data_for_plugin():
 
 
 def _candidate_auto_upgrade_strategy_tenant_ids_stmt(limit: int | None = None):
-    category_count = len(TenantPluginAutoUpgradeStrategy.PluginCategory)
+    category_count = len(TenantPluginAutoUpgradeCategory)
     stmt = (
         select(TenantPluginAutoUpgradeStrategy.tenant_id)
         .group_by(TenantPluginAutoUpgradeStrategy.tenant_id)
