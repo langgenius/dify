@@ -231,13 +231,10 @@ def _safe_remove_scoped_session(context: str) -> None:
         db.session.remove()
     except Exception:
         logger.warning("Ignoring DB scoped-session cleanup error after %s", context, exc_info=True)
-        registry = getattr(db.session, "registry", None)
-        clear_registry = getattr(registry, "clear", None)
-        if callable(clear_registry):
-            try:
-                clear_registry()
-            except Exception:
-                logger.warning("Ignoring DB scoped-session registry cleanup error after %s", context, exc_info=True)
+        try:
+            db.session.registry.clear()
+        except Exception:
+            logger.warning("Ignoring DB scoped-session registry cleanup error after %s", context, exc_info=True)
         try:
             db.engine.dispose()
         except Exception:

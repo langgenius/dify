@@ -27,7 +27,7 @@ def is_retryable_db_disconnect(exc: BaseException) -> bool:
     if not _is_db_operational_error(exc):
         return False
 
-    original_exception = getattr(exc, "orig", None)
+    original_exception = exc.orig if isinstance(exc, DBAPIError) else None
     message = f"{exc} {original_exception or ''}".lower()
     return any(pattern in message for pattern in _DB_DISCONNECT_PATTERNS)
 
