@@ -196,7 +196,7 @@
   "noAccessResourcePermission": "目前沒有權限訪問此資源",
   "noUserInputNode": "缺少使用者輸入節點",
   "notPublishedYet": "應用程式尚未發布",
-  "openInExplore": "在“探索”中打開",
+  "openInExplore": "開啟左側 Web App",
   "publishApp.notSet": "未設定",
   "publishApp.notSetDesc": "目前沒有人能夠訪問網絡應用程序。請設置權限。",
   "publishApp.title": "誰可以訪問網絡應用程序",
