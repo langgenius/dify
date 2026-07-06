@@ -268,11 +268,6 @@ function AgentFileItem({
           }}
         />
       </Dialog>
-      {isBuildNoteFile && (
-        <div className="mr-1 flex shrink-0 items-center group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0">
-          <AgentBuildNoteInfotip />
-        </div>
-      )}
       <div className="pointer-events-none absolute top-1/2 right-1 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100">
         <button
           type="button"
@@ -305,8 +300,9 @@ function AgentBuildNoteFileRow() {
       <FileTreeLabel className="w-auto flex-none" title={BUILD_NOTE_FILE_NAME}>
         {BUILD_NOTE_FILE_NAME}
       </FileTreeLabel>
-      <div className="ml-1 flex shrink-0 items-center gap-0.5 group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0">
+      <div className="ml-1 flex shrink-0 items-center gap-0.5">
         <AgentBuildNoteBadge />
+        <AgentBuildNoteInfotip />
       </div>
     </>
   )

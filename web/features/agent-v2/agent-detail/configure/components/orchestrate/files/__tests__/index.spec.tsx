@@ -509,9 +509,13 @@ describe('AgentFiles', () => {
       initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
     })
 
-    expect(screen.getByText('agentV2.agentDetail.configure.files.buildNote.generated')).toBeInTheDocument()
+    const generatedBadge = screen.getByText('agentV2.agentDetail.configure.files.buildNote.generated')
+    const buildNoteRow = generatedBadge.closest('li')
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.buildNote.tooltip' }))
+    expect(generatedBadge).toBeInTheDocument()
+    expect(buildNoteRow).not.toBeNull()
+
+    await user.click(within(buildNoteRow!).getByRole('button', { name: 'agentV2.agentDetail.configure.files.buildNote.tooltip' }))
 
     expect(await screen.findByText('agentDetail.configure.files.buildNote.richTooltip')).toBeInTheDocument()
   })
