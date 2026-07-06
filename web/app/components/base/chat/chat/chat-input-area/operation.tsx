@@ -18,6 +18,7 @@ type OperationProps = {
   onShowVoiceInput?: () => void
   onSend: () => void
   sendButtonLabel?: string
+  sendButtonLoading?: boolean
   disabled?: boolean
   theme?: Theme | null
   ref?: Ref<HTMLDivElement>
@@ -30,6 +31,7 @@ const Operation: FC<OperationProps> = ({
   onShowVoiceInput,
   onSend,
   sendButtonLabel,
+  sendButtonLoading,
   disabled,
   theme,
 }) => {
@@ -68,6 +70,7 @@ const Operation: FC<OperationProps> = ({
           )}
           variant="primary"
           disabled={readonly || disabled}
+          loading={sendButtonLoading}
           onClick={onSend}
           style={
             theme

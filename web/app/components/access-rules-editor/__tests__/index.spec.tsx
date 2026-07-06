@@ -134,10 +134,13 @@ describe('AccessRulesEditor', () => {
     expect(screen.getByRole('button', { name: 'permission.accessRule.resourceOpenScopeDescription' })).toBeInTheDocument()
 
     const allMembersButton = screen.getByRole('button', { name: /permission\.accessRule\.allPermittedMembers/ })
+    const onlyMeButton = screen.getByRole('button', { name: /permission\.accessRule\.onlyMe/ })
     const specificMembersButton = screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ })
     expect(allMembersButton).toBeDisabled()
+    expect(onlyMeButton).toBeDisabled()
     expect(specificMembersButton).toBeDisabled()
     expect(allMembersButton).toHaveAttribute('aria-pressed', 'false')
+    expect(onlyMeButton).toHaveAttribute('aria-pressed', 'false')
     expect(specificMembersButton).toHaveAttribute('aria-pressed', 'false')
   })
 
@@ -179,6 +182,30 @@ describe('AccessRulesEditor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
     expect(onRemoveAccessPolicyMemberBinding).toHaveBeenCalledWith('account-1', 'app-policy-id')
+  })
+
+  it('should render and update the only-me resource access scope', () => {
+    const onOpenScopeChange = vi.fn()
+
+    render(
+      <AccessRulesEditor
+        rules={[]}
+        userAccessSettings={[]}
+        isLoadingRules={false}
+        isLoadingUserAccessSettings={false}
+        openScope="only_me"
+        isUpdatingOpenScope={false}
+        updatingAccountId={null}
+        onOpenScopeChange={onOpenScopeChange}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /permission\.accessRule\.onlyMe/ })).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: /permission\.accessRule\.specificMembersOnly/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.change' }))
+
+    expect(onOpenScopeChange).toHaveBeenCalledWith('specific')
   })
 
   it('should render the fixed default option when an account has no exception policy', () => {

@@ -2,33 +2,56 @@
 
 import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
-import type { AgentDriveApiContext } from '../drive-context'
+import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import {
+  FileTreeBadge,
   FileTreeGuide,
+  FileTreeIcon,
+  FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
+import { useDocLink } from '@/context/i18n'
+import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
+import { DocsLink } from '../common/docs-link'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { FILES_DRIVE_PREFIX, useAgentDriveApiContext } from '../drive-context'
+import { useAgentConfigApiContext } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
 import { AgentFileTree } from './tree'
 import { AgentFileUploadDialog } from './upload-dialog'
 
-const getAgentFilePreviewKey = (file: AgentFileNode) => file.driveKey ?? file.id
+const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
+const BUILD_NOTE_FILE_NAME = 'build_note.md'
+
+const getAgentFilePreviewKey = (file: AgentFileNode) => file.configName ?? file.name
+
+const getBuildNoteFile = (configNote: string | undefined): AgentFileNode | undefined => {
+  if (!configNote?.trim())
+    return undefined
+
+  return {
+    id: BUILD_NOTE_FILE_ID,
+    icon: 'markdown',
+    name: BUILD_NOTE_FILE_NAME,
+    virtualContent: configNote,
+  }
+}
 
 const findAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode | undefined => {
   for (const file of files) {
@@ -64,7 +87,7 @@ function AgentFileItem({
   depth: number
   file: AgentFileNode
   files: AgentFileNode[]
-  apiContext: AgentDriveApiContext
+  apiContext: AgentConfigApiContext
   onRemove: (fileId: string) => void
   selected: boolean
 }) {
@@ -73,60 +96,70 @@ function AgentFileItem({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const selectedFile = selectedFileId ? findAgentFileNode(files, selectedFileId) : undefined
-  const previewFileId = getAgentFilePreviewKey(selectedFile ?? file)
+  const selectedPreviewFile = selectedFile ?? file
+  const isVirtualPreviewFile = selectedPreviewFile.virtualContent !== undefined
+  const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
+  const previewFileId = isVirtualPreviewFile ? undefined : getAgentFilePreviewKey(selectedPreviewFile)
   const agentPreviewQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.preview.get.queryOptions({
+    ...consoleQuery.agent.byAgentId.config.files.byName.preview.get.queryOptions({
       input: {
         params: {
           agent_id: apiContext.agentId,
+          name: previewFileId ?? '',
         },
         query: {
-          key: previewFileId ?? '',
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
-    enabled: isPreviewOpen && !!previewFileId && !apiContext.workflow,
+    enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && !apiContext.workflow,
   })
   const workflowPreviewQuery = useQuery({
-    ...consoleQuery.apps.byAppId.agent.drive.files.preview.get.queryOptions({
+    ...consoleQuery.apps.byAppId.agent.config.files.byName.preview.get.queryOptions({
       input: {
         params: {
           app_id: apiContext.workflow?.appId ?? '',
+          name: previewFileId ?? '',
         },
         query: {
-          key: previewFileId ?? '',
           node_id: apiContext.workflow?.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
-    enabled: isPreviewOpen && !!previewFileId && !!apiContext.workflow,
+    enabled: isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && !!apiContext.workflow,
   })
   const previewQuery = apiContext.workflow ? workflowPreviewQuery : agentPreviewQuery
-  const selectedPreviewFile = selectedFile ?? file
   const isImagePreviewFile = selectedPreviewFile.icon === 'image'
-  const shouldDownloadPreviewFile = isPreviewOpen && !!previewFileId && (isImagePreviewFile || !!previewQuery.data?.binary)
+  const shouldDownloadPreviewFile = isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && (isImagePreviewFile || !!previewQuery.data?.binary)
   const agentDownloadQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.download.get.queryOptions({
+    ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
       input: {
         params: {
           agent_id: apiContext.agentId,
+          name: previewFileId ?? '',
         },
         query: {
-          key: previewFileId ?? '',
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
     enabled: shouldDownloadPreviewFile && !apiContext.workflow,
   })
   const workflowDownloadQuery = useQuery({
-    ...consoleQuery.apps.byAppId.agent.drive.files.download.get.queryOptions({
+    ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
       input: {
         params: {
           app_id: apiContext.workflow?.appId ?? '',
+          name: previewFileId ?? '',
         },
         query: {
-          key: previewFileId ?? '',
           node_id: apiContext.workflow?.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
@@ -151,14 +184,17 @@ function AgentFileItem({
               type="button"
               data-selected={selected || undefined}
               aria-current={selected ? 'true' : undefined}
-              className="group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pr-7 pl-2 text-left outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset data-[selected]:bg-state-base-active"
+              className={cn(
+                'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none group-hover/file-row:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
+                'pr-7',
+              )}
             />
           )}
         >
           {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
             <FileTreeGuide key={index} />
           ))}
-          <div className="flex min-w-0 flex-[1_0_0] items-center py-0.5">
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-0.5">
             {children}
           </div>
         </DialogTrigger>
@@ -169,14 +205,14 @@ function AgentFileItem({
             files,
             filePreview: {
               binary: previewQuery.data?.binary,
-              content: previewQuery.data?.text ?? undefined,
+              content: selectedPreviewFile.virtualContent ?? previewQuery.data?.text ?? undefined,
               downloadUrl: downloadQuery.data?.url,
               fileName: selectedPreviewFile.name,
               isDownloadError: downloadQuery.isError,
               isDownloadLoading: shouldDownloadPreviewFile && downloadQuery.isPending,
-              isError: previewQuery.isError,
+              isError: !isVirtualPreviewFile && previewQuery.isError,
               isImage: isImagePreviewFile,
-              isLoading: previewQuery.isPending,
+              isLoading: !isVirtualPreviewFile && previewQuery.isPending,
             },
             onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
             selectedFileId: selectedFileId ?? file.id,
@@ -184,7 +220,12 @@ function AgentFileItem({
           }}
         />
       </Dialog>
-      {!readOnly && (
+      {isBuildNoteFile && (
+        <AgentBuildNoteInfotip
+          className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
+        />
+      )}
+      {!readOnly && (!file.virtualContent || isBuildNoteFile) && (
         <button
           type="button"
           data-agent-file-remove-button
@@ -199,23 +240,79 @@ function AgentFileItem({
   )
 }
 
+function AgentBuildNoteFileRow() {
+  const { t } = useTranslation('agentV2')
+
+  return (
+    <>
+      <FileTreeIcon type="markdown" />
+      <FileTreeLabel title={BUILD_NOTE_FILE_NAME}>
+        {BUILD_NOTE_FILE_NAME}
+      </FileTreeLabel>
+      <FileTreeBadge className="ml-0.5 gap-0.5 px-1 py-0.5">
+        <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
+        <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
+      </FileTreeBadge>
+    </>
+  )
+}
+
+function AgentBuildNoteInfotip({
+  className,
+}: {
+  className?: string
+}) {
+  const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
+
+  return (
+    <Infotip
+      aria-label={t('agentDetail.configure.files.buildNote.tooltip')}
+      className={cn('absolute top-1/2 right-1 z-10 size-5 -translate-y-1/2', className)}
+      iconClassName="size-4"
+      popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
+    >
+      <p className="body-xs-regular text-text-secondary">
+        <Trans
+          i18nKey="agentDetail.configure.files.buildNote.richTooltip"
+          ns="agentV2"
+          components={{
+            docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
+          }}
+        />
+      </p>
+    </Infotip>
+  )
+}
+
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
   const filesTip = t('agentDetail.configure.files.tip')
   const filesTreeId = 'agent-configure-files-tree'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
-  const apiContext = useAgentDriveApiContext()
-  const draftFiles = useAtomValue(agentComposerFilesAtom)
+  const apiContext = useAgentConfigApiContext()
+  const draft = useAtomValue(agentComposerDraftAtom)
+  const setDraft = useSetAtom(agentComposerDraftAtom)
+  const files = useAtomValue(agentComposerFilesAtom)
   const setFiles = useSetAtom(agentComposerFilesAtom)
-  const files = draftFiles.filter(file => file.driveKey?.startsWith(FILES_DRIVE_PREFIX))
-  const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.files.delete.mutationOptions())
-  const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.files.delete.mutationOptions())
+  const buildNoteFile = getBuildNoteFile(draft.configNote)
+  const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
+  const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions())
+  const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions())
   const removeFile = useCallback((fileId: string) => {
-    const file = findAgentFileNode(files, fileId)
-    const driveKey = file?.driveKey
+    if (fileId === BUILD_NOTE_FILE_ID) {
+      setDraft(draft => ({
+        ...draft,
+        configNote: '',
+      }))
+      return
+    }
 
-    if (!driveKey)
+    const file = findAgentFileNode(files, fileId)
+    const configName = file?.configName ?? file?.name
+
+    if (!configName)
       return
 
     const onSuccess = () => {
@@ -225,10 +322,12 @@ export function AgentFiles() {
       deleteWorkflowAgentFile({
         params: {
           app_id: apiContext.workflow.appId,
+          name: configName,
         },
         query: {
-          key: driveKey,
           node_id: apiContext.workflow.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       }, { onSuccess })
       return
@@ -237,12 +336,14 @@ export function AgentFiles() {
     deleteAgentFile({
       params: {
         agent_id: apiContext.agentId,
+        name: configName,
       },
       query: {
-        key: driveKey,
+        draft_type: apiContext.draftType,
+        version_id: apiContext.versionId,
       },
     }, { onSuccess })
-  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setFiles])
+  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setDraft, setFiles])
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)
@@ -267,6 +368,7 @@ export function AgentFiles() {
       <ConfigureSection
         label={t('agentDetail.configure.files.label')}
         labelId="agent-configure-files-label"
+        buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
         tipAriaLabel={filesTip}
         rootClassName="border-b border-divider-subtle pt-4"
@@ -278,7 +380,7 @@ export function AgentFiles() {
           />
         )}
       >
-        {files.length === 0
+        {visibleFiles.length === 0
           ? (
               <ConfigureSectionEmpty
                 title={t('agentDetail.configure.files.empty.title')}
@@ -288,22 +390,26 @@ export function AgentFiles() {
           : (
               <AgentFileTree
                 id={filesTreeId}
-                files={files}
+                files={visibleFiles}
                 treeLabel={t('agentDetail.configure.files.treeLabel')}
                 className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
                 scrollAreaClassName="max-h-[250px] flex-none"
-                renderFile={({ depth, file, selected, children }) => (
-                  <AgentFileItem
-                    depth={depth}
-                    file={file}
-                    files={files}
-                    apiContext={apiContext}
-                    selected={selected}
-                    onRemove={removeFile}
-                  >
-                    {children}
-                  </AgentFileItem>
-                )}
+                renderFile={({ depth, file, selected, children }) => {
+                  const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
+
+                  return (
+                    <AgentFileItem
+                      depth={depth}
+                      file={file}
+                      files={visibleFiles}
+                      apiContext={apiContext}
+                      selected={selected}
+                      onRemove={removeFile}
+                    >
+                      {isBuildNoteFile ? <AgentBuildNoteFileRow /> : children}
+                    </AgentFileItem>
+                  )
+                }}
               />
             )}
       </ConfigureSection>

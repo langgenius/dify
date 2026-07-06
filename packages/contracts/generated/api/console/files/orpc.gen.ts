@@ -8,6 +8,7 @@ import {
   zGetFilesByFileIdPreviewResponse,
   zGetFilesSupportTypeResponse,
   zGetFilesUploadResponse,
+  zPostFilesUploadBody,
   zPostFilesUploadResponse,
 } from './zod.gen'
 
@@ -44,6 +45,7 @@ export const post = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
 
 export const upload = {

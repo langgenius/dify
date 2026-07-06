@@ -1,8 +1,9 @@
 'use client'
 
+import type { TenantListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
-import type { ICurrentWorkspace, IWorkspace } from '@/models/common'
+import type { ICurrentWorkspace } from '@/models/common'
 import {
   Select,
   SelectTrigger,
@@ -13,11 +14,17 @@ import { WorkplaceSelectorContent } from '@/app/components/header/account-dropdo
 import { PlanBadge } from '@/app/components/header/plan-badge'
 
 type AppliedEducationContentProps = {
-  workspaces: IWorkspace[]
+  workspaces: TenantListItemResponse[]
   currentWorkspace: ICurrentWorkspace
   plan: PlanType
   action: ReactNode
   onSwitchWorkspace: (tenantId: string) => void
+}
+
+const workspacePlans = new Set<string>(Object.values(Plan))
+
+function isWorkspacePlan(plan: string | null | undefined): plan is Plan {
+  return !!plan && workspacePlans.has(plan)
 }
 
 const AppliedEducationContent = ({
@@ -29,10 +36,10 @@ const AppliedEducationContent = ({
 }: AppliedEducationContentProps) => {
   const { t } = useTranslation()
   const currentWorkspaceInList = workspaces.find(workspace => workspace.current)
-  const workspacePlan = Object.values(Plan).includes(currentWorkspaceInList?.plan as Plan)
-    ? currentWorkspaceInList?.plan as Plan
-    : Object.values(Plan).includes(plan as Plan)
-      ? plan as Plan
+  const workspacePlan = isWorkspacePlan(currentWorkspaceInList?.plan)
+    ? currentWorkspaceInList.plan
+    : isWorkspacePlan(plan)
+      ? plan
       : Plan.sandbox
   const workspaceName = currentWorkspaceInList?.name || currentWorkspace?.name
   const workspaceId = currentWorkspaceInList?.id || currentWorkspace?.id

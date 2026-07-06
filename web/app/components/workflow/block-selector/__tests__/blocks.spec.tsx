@@ -160,7 +160,10 @@ describe('Blocks', () => {
       </QueryClientProvider>,
     )
 
-    await user.hover(screen.getByRole('button', { name: 'Agent' }))
+    const agentBlock = screen.getByRole('button', { name: /Agent/ })
+    expect(agentBlock).toHaveTextContent('common.menus.status')
+
+    await user.hover(agentBlock)
 
     expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
   })
@@ -226,7 +229,7 @@ describe('Blocks', () => {
       screen.getByText('Agent').compareDocumentPosition(screen.getByText('LLM')) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' })).toBeInTheDocument()
@@ -308,7 +311,7 @@ describe('Blocks', () => {
       </QueryClientProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
     await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
@@ -355,7 +358,11 @@ describe('Blocks', () => {
       </QueryClientProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
+    const consoleLink = await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.manageInAgentConsole' })
+    expect(consoleLink).toHaveAttribute('href', '/roster')
+    expect(consoleLink).toHaveAttribute('target', '_blank')
+    expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     await user.click(await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.startFromScratch' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
@@ -404,7 +411,7 @@ describe('Blocks', () => {
       </QueryClientProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Agent' }))
+    await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' })).toBeInTheDocument()
 

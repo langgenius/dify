@@ -17,7 +17,7 @@ vi.mock('../../../plugins/card/base/card-icon', () => ({
 }))
 
 vi.mock('../../../plugins/marketplace/utils', () => ({
-  getPluginIconInMarketplace: vi.fn(() => 'icon-url'),
+  getFormattedPlugin: vi.fn(plugin => ({ ...plugin, icon: 'icon-url' })),
 }))
 
 describe('pluginAction', () => {

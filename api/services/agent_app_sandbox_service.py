@@ -13,7 +13,7 @@ from collections.abc import Callable
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.client import Client
 from dify_agent.protocol import RuntimeLayerSpec, SandboxLocator, build_sandbox_locator_from_layer_specs
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import select
 
 from configs import dify_config
@@ -38,8 +38,15 @@ class AgentSandboxInspectorError(Exception):
         self.status_code = status_code
 
 
+class AgentSandboxInfo(BaseModel):
+    """Basic Agent App sandbox metadata returned after a successful availability probe."""
+
+    session_id: str
+    workspace_cwd: str
+
+
 class AgentAppSandboxService:
-    """List/read/upload files in an Agent App conversation sandbox."""
+    """Inspect and proxy file access for an Agent App conversation sandbox."""
 
     def __init__(
         self,
@@ -49,6 +56,18 @@ class AgentAppSandboxService:
     ) -> None:
         self._session_store = session_store or AgentAppRuntimeSessionStore()
         self._client_factory = client_factory or _default_client_factory
+
+    def get_info(self, *, tenant_id: str, app_id: str, conversation_id: str) -> AgentSandboxInfo:
+        locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
+        session_id, workspace_cwd = _extract_shell_workspace_or_raise(
+            snapshot=locator.session_snapshot,
+            not_found_message="this conversation's agent has no sandbox workspace",
+        )
+
+        return AgentSandboxInfo(
+            session_id=session_id,
+            workspace_cwd=workspace_cwd,
+        )
 
     def list_files(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str):
         locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
@@ -205,6 +224,22 @@ def _build_locator_or_raise(
         raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404) from exc
 
 
+def _extract_shell_workspace_or_raise(
+    *,
+    snapshot: CompositorSessionSnapshot,
+    not_found_message: str,
+) -> tuple[str, str]:
+    shell_layer = next((layer for layer in snapshot.layers if layer.name == "shell"), None)
+    if shell_layer is None:
+        raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404)
+
+    session_id = shell_layer.runtime_state.get("session_id")
+    workspace_cwd = shell_layer.runtime_state.get("workspace_cwd")
+    if not isinstance(session_id, str) or not isinstance(workspace_cwd, str):
+        raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404)
+    return session_id, workspace_cwd
+
+
 def _deserialize_runtime_layer_specs(value: str | None) -> list[RuntimeLayerSpec]:
     if not value:
         return []
@@ -222,4 +257,4 @@ def _default_client_factory() -> Client:
     return Client(base_url=base_url)
 
 
-__all__ = ["AgentAppSandboxService", "AgentSandboxInspectorError", "WorkflowAgentSandboxService"]
+__all__ = ["AgentAppSandboxService", "AgentSandboxInfo", "AgentSandboxInspectorError", "WorkflowAgentSandboxService"]

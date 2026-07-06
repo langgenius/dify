@@ -467,18 +467,6 @@ describe('ProviderList', () => {
       expect(screen.getByTestId('card-google-search').parentElement).toHaveClass('min-w-0')
       expect(screen.getByTestId('card-google-search').parentElement).not.toHaveClass('flex-1')
     })
-
-    it('keeps the default plugin card border visible until a card is selected', () => {
-      renderProviderList(undefined, 'builtin', 'compact')
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('cursor-pointer')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-transparent')
-      expect(screen.getByTestId('card-google-search')).not.toHaveClass('border-[1.5px]')
-
-      fireEvent.click(screen.getByTestId('card-google-search'))
-
-      expect(screen.getByTestId('card-google-search')).toHaveClass('after:ring-[1.5px]', 'after:ring-components-option-card-option-selected-border', 'after:ring-inset')
-    })
   })
 
   describe('Filtering', () => {

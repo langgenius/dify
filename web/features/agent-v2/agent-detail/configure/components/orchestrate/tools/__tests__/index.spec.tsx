@@ -1,12 +1,20 @@
+import type { AddOAuthButtonProps } from '@/app/components/plugins/plugin-auth/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import {
+  agentComposerDraftAtom,
+  agentComposerOriginalDraftAtom,
+  agentComposerPublishedDraftAtom,
+  isAgentComposerDirtyAtom,
+} from '@/features/agent-v2/agent-composer/store'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentTools } from '../index'
 
@@ -30,6 +38,23 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   ),
 }))
 
+vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () => ({
+  default: ({ buttonText, onUpdate, renderTrigger }: AddOAuthButtonProps) => {
+    if (renderTrigger) {
+      return renderTrigger({
+        isConfigured: false,
+        onClick: () => onUpdate?.(),
+      })
+    }
+
+    return (
+      <button type="button" onClick={onUpdate}>
+        {buttonText}
+      </button>
+    )
+  },
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
   default: ({ formSchemas }: { formSchemas: Array<{ label?: Record<string, string>, variable?: string }> }) => (
     <div data-testid="tool-setting-form">
@@ -45,6 +70,7 @@ vi.mock('@/service/use-tools', () => ({
   useAllCustomTools: () => ({ data: [] }),
   useAllWorkflowTools: () => ({ data: [] }),
   useAllMCPTools: () => ({ data: [] }),
+  useInvalidToolsByType: () => vi.fn(),
 }))
 
 const agentToolsDraft = {
@@ -114,6 +140,28 @@ const reflectedUnauthorizedNoCredentialDraft = {
       actions: [
         {
           id: 'duckduckgo-search',
+          name: 'search',
+          toolName: 'search',
+          description: '',
+        },
+      ],
+    },
+  ],
+} satisfies AgentSoulConfigFormState
+
+const reflectedUnauthorizedOAuthCredentialTypeDraft = {
+  ...defaultAgentSoulConfigFormState,
+  tools: [
+    {
+      id: 'google',
+      kind: 'provider',
+      name: 'google',
+      iconClassName: 'i-custom-public-other-default-tool-icon',
+      credentialType: 'unauthorized',
+      credentialVariant: 'none',
+      actions: [
+        {
+          id: 'google-search',
           name: 'search',
           toolName: 'search',
           description: '',
@@ -231,6 +279,33 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
+}
+
+function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+  const store = createStore()
+  store.set(agentComposerDraftAtom, initialDraft)
+  store.set(agentComposerOriginalDraftAtom, initialDraft)
+  store.set(agentComposerPublishedDraftAtom, initialDraft)
+
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <JotaiProvider store={store}>
+        <AgentTools />
+      </JotaiProvider>
+    </QueryClientProvider>,
+  )
+
+  return {
+    ...view,
+    store,
+  }
 }
 
 function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDraft) {
@@ -359,7 +434,10 @@ describe('AgentTools', () => {
   describe('Display Metadata', () => {
     it('should enrich reflected provider tools with provider icon and localized names', async () => {
       const user = userEvent.setup()
-      toolProviderState.builtInTools = [googleProvider]
+      toolProviderState.builtInTools = [{
+        ...googleProvider,
+        allow_delete: false,
+      }]
       renderAgentTools(reflectedAgentToolsDraft)
 
       expect(screen.getByRole('button', {
@@ -382,6 +460,36 @@ describe('AgentTools', () => {
         name: 'DuckDuckGo',
       })).toBeInTheDocument()
       expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
+    })
+
+    it('should keep provider credential metadata display-only without dirtying the composer draft', () => {
+      toolProviderState.builtInTools = [duckDuckGoProvider]
+      const { store } = renderAgentToolsWithStore(reflectedUnauthorizedNoCredentialDraft)
+
+      expect(screen.getByRole('button', {
+        name: 'DuckDuckGo',
+      })).toBeInTheDocument()
+      expect(screen.queryByText('tools.notAuthorized')).not.toBeInTheDocument()
+      expect(store.get(agentComposerDraftAtom).tools[0]).toMatchObject({
+        credentialType: 'unauthorized',
+        credentialVariant: 'unauthorized',
+      })
+      expect(store.get(isAgentComposerDirtyAtom)).toBe(false)
+    })
+
+    it('should show authorization action for reflected OAuth provider tools with unauthorized credential type', () => {
+      toolProviderState.builtInTools = [{
+        ...googleProvider,
+        allow_delete: true,
+        is_team_authorization: false,
+        team_credentials: {},
+      }]
+      renderAgentTools(reflectedUnauthorizedOAuthCredentialTypeDraft)
+
+      expect(screen.getByRole('button', {
+        name: 'tools.notAuthorized',
+      })).toBeInTheDocument()
+      expect(screen.queryByText('plugin.auth.setupOAuth')).not.toBeInTheDocument()
     })
 
     it('should open provider tool settings with catalog icon and parameters', async () => {

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -47,7 +47,7 @@ def test_plugin_tool_invoke_and_fork_runtime():
             "core.tools.plugin_tool.tool.convert_parameters_to_plugin_format",
             return_value={"converted": 1},
         ):
-            messages = list(tool.invoke(user_id="user-1", tool_parameters={"raw": 1}))
+            messages = list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"raw": 1}))
 
     assert [m.message.text for m in messages] == ["ok"]
     manager.invoke.assert_called_once()

@@ -93,6 +93,9 @@ describe('agent/default', () => {
 
   it('creates Agent v2 graph data by default', () => {
     expect(nodeDefault.defaultValue).toMatchObject({
+      agent_binding: {
+        binding_type: 'inline_agent',
+      },
       agent_node_kind: 'dify_agent',
       version: '2',
     })

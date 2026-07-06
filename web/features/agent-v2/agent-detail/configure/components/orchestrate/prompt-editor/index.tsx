@@ -3,14 +3,14 @@
 import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
-import type { AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import type { AgentFileNode, AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useAtom, useAtomValue } from 'jotai'
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -22,7 +22,7 @@ import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentDriveFiles, useAgentDriveSkills } from '../drive-context'
+import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
 import { replaceTrailingSlashWithToken } from './options'
@@ -63,11 +63,16 @@ function getProviderToolFromToken(token: RosterReferenceToken, tools: AgentTool[
   return tools.find(tool =>
     tool.kind === 'provider'
     && (
-      token.id === `${tool.id}/*`
+      token.id === tool.id
+      || token.id === `${tool.id}/*`
       || tool.actions.some(action => token.id === `${tool.id}/${action.toolName}`)
     ),
   )
 }
+
+const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => (
+  file.children?.length ? flattenFileNodes(file.children) : [file]
+))
 
 function AgentPromptRosterReferenceIcon({
   token,
@@ -151,8 +156,8 @@ export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const [value, setValue] = useAtom(agentComposerPromptAtom)
-  const { skills } = useAgentDriveSkills()
-  const { files } = useAgentDriveFiles()
+  const { skills } = useAgentConfigSkills()
+  const { files } = useAgentConfigFiles()
   const [tools, setTools] = useAtom(agentComposerToolsAtom)
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
@@ -165,7 +170,8 @@ export function AgentPromptEditor() {
       insertLabel={t('agentDetail.configure.prompt.insert.label').toLocaleLowerCase()}
     />
   )
-  const { copied, copy, reset } = useClipboard({
+  const { copied, copy } = useClipboard({
+    timeout: 2000,
     onCopyError: () => {
       toast.error(t('agentDetail.configure.prompt.copyFailed'))
     },
@@ -174,6 +180,34 @@ export function AgentPromptEditor() {
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
+  const configuredReferenceIds = useMemo(() => {
+    const skillIds = new Set<string>()
+    skills.forEach((skill) => {
+      skillIds.add(skill.id)
+      skillIds.add(encodeURIComponent(skill.id))
+      if (skill.skillMdKey) {
+        skillIds.add(skill.skillMdKey)
+        skillIds.add(encodeURIComponent(skill.skillMdKey))
+      }
+    })
+
+    const fileIds = new Set<string>()
+    flattenFileNodes(files).forEach((file) => {
+      fileIds.add(file.id)
+      fileIds.add(encodeURIComponent(file.id))
+      if (file.driveKey) {
+        fileIds.add(file.driveKey)
+        fileIds.add(encodeURIComponent(file.driveKey))
+      }
+    })
+
+    return {
+      skills: skillIds,
+      files: fileIds,
+      knowledge: new Set(retrievals.map(retrieval => retrieval.id)),
+      cliTools: new Set(tools.flatMap(tool => tool.kind === 'cli' ? [tool.id] : [])),
+    }
+  }, [files, retrievals, skills, tools])
 
   const handleCopyPrompt = useCallback(() => {
     void copy(value)
@@ -269,6 +303,9 @@ export function AgentPromptEditor() {
     if (token.kind !== 'tool' && token.kind !== 'tool-all' && token.kind !== 'cli_tool')
       return null
 
+    if ((token.kind === 'tool' || token.kind === 'tool-all') && !getProviderToolFromToken(token, tools))
+      return null
+
     return (
       <AgentPromptRosterReferenceIcon
         token={token}
@@ -277,6 +314,25 @@ export function AgentPromptEditor() {
       />
     )
   }, [getConfiguredToolIcon, tools])
+
+  const getRosterReferenceWarning = useCallback((token: RosterReferenceToken) => {
+    const warning = t('agentDetail.configure.prompt.referenceMissing', { name: token.label })
+
+    if (token.kind === 'skill')
+      return configuredReferenceIds.skills.has(token.id) ? undefined : warning
+
+    if (token.kind === 'file')
+      return configuredReferenceIds.files.has(token.id) ? undefined : warning
+
+    if (token.kind === 'knowledge')
+      return configuredReferenceIds.knowledge.has(token.id) ? undefined : warning
+
+    if (token.kind === 'cli_tool')
+      return ENABLE_AGENT_CLI_TOOLS && configuredReferenceIds.cliTools.has(token.id) ? undefined : warning
+
+    if (token.kind === 'tool' || token.kind === 'tool-all')
+      return getProviderToolFromToken(token, tools) ? undefined : warning
+  }, [configuredReferenceIds, t, tools])
 
   useEffect(() => {
     if (!isSlashMenuOpen)
@@ -342,7 +398,6 @@ export function AgentPromptEditor() {
                 aria-label={copied ? t('agentDetail.configure.prompt.copied') : t('agentDetail.configure.prompt.copy')}
                 className="flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={handleCopyPrompt}
-                onMouseLeave={reset}
               >
                 <span aria-hidden className={copied ? 'i-ri-check-line size-4' : 'i-ri-clipboard-line size-4'} />
               </button>
@@ -368,6 +423,7 @@ export function AgentPromptEditor() {
           <div ref={editorRef} className="min-h-[104px] overflow-y-auto px-3 pt-0.5">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
+              aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
               className="min-h-[104px] text-text-primary"
@@ -382,6 +438,7 @@ export function AgentPromptEditor() {
               rosterReferenceBlock={{
                 show: true,
                 renderIcon: renderRosterReferenceIcon,
+                getWarning: getRosterReferenceWarning,
               }}
               disableSlashPicker
               disableBracePicker

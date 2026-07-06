@@ -1,22 +1,4 @@
 {
-  "e2e/features/support/hooks.ts": {
-    "no-console": {
-      "count": 3
-    },
-    "node/prefer-global/buffer": {
-      "count": 1
-    }
-  },
-  "e2e/scripts/common.ts": {
-    "node/prefer-global/buffer": {
-      "count": 2
-    }
-  },
-  "e2e/support/process.ts": {
-    "ts/no-use-before-define": {
-      "count": 2
-    }
-  },
   "packages/migrate-no-unchecked-indexed-access/src/no-unchecked-indexed-access/migrate.ts": {
     "no-console": {
       "count": 11
@@ -1188,12 +1170,6 @@
     }
   },
   "web/app/components/base/chat/chat/answer/workflow-process.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
     "react/set-state-in-effect": {
       "count": 1
     }
@@ -3317,14 +3293,6 @@
       "count": 1
     }
   },
-  "web/app/components/explore/sidebar/app-nav-item/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/explore/try-app/app/text-generation.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -3601,11 +3569,6 @@
       "count": 2
     }
   },
-  "web/app/components/header/account-setting/model-provider-page/model-provider-page-body.tsx": {
-    "jsx-a11y/anchor-has-content": {
-      "count": 1
-    }
-  },
   "web/app/components/header/account-setting/model-provider-page/provider-added-card/cooldown-timer.tsx": {
     "react/set-state-in-effect": {
       "count": 1
@@ -3804,14 +3767,6 @@
     },
     "no-barrel-files/no-barrel-files": {
       "count": 2
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/__tests__/operation-dropdown.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/plugins/plugin-detail-panel/agent-strategy-list.tsx": {
@@ -4660,14 +4615,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/block-selector/tool/action-item.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/block-selector/tool/tool.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
@@ -5248,17 +5195,6 @@
   "web/app/components/workflow/nodes/_base/hooks/use-var-list.ts": {
     "ts/no-explicit-any": {
       "count": 2
-    }
-  },
-  "web/app/components/workflow/nodes/_base/node.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/workflow/nodes/_base/types.ts": {
@@ -7080,11 +7016,6 @@
       "count": 1
     }
   },
-  "web/service/access-control/__tests__/index.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/__tests__/use-app-access-control.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7106,11 +7037,6 @@
     }
   },
   "web/service/access-control/__tests__/use-workspace-access-rules.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/access-control/index.ts": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -7164,11 +7090,6 @@
     },
     "ts/no-explicit-any": {
       "count": 7
-    }
-  },
-  "web/service/base.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/service/base.ts": {
@@ -7302,19 +7223,6 @@
       "count": 1
     }
   },
-  "web/service/try-app.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/try-app.ts": {
-    "no-barrel-files/no-barrel-files": {
-      "count": 2
-    },
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-apps.ts": {
     "no-restricted-imports": {
       "count": 1
@@ -7385,17 +7293,7 @@
       "count": 4
     }
   },
-  "web/service/use-snippet-workflows.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/use-tools.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/service/use-triggers.ts": {
     "no-restricted-imports": {
       "count": 1
     }
@@ -7431,11 +7329,6 @@
   },
   "web/service/workflow.ts": {
     "no-restricted-imports": {
-      "count": 1
-    }
-  },
-  "web/types/app.ts": {
-    "ts/no-explicit-any": {
       "count": 1
     }
   },
@@ -7508,16 +7401,6 @@
   "web/utils/mcp.ts": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/utils/model-config.spec.ts": {
-    "ts/no-explicit-any": {
-      "count": 13
-    }
-  },
-  "web/utils/model-config.ts": {
-    "ts/no-explicit-any": {
-      "count": 6
     }
   },
   "web/utils/tool-call.spec.ts": {

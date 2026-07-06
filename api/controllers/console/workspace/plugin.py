@@ -302,11 +302,28 @@ class PluginListResponse(ResponseModel):
 
 
 class PluginVersionsResponse(ResponseModel):
-    versions: Any
+    versions: Mapping[str, PluginService.LatestPluginCache | None]
+
+
+class PluginInstallationItemResponse(ResponseModel):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    tenant_id: str
+    endpoints_setups: int
+    endpoints_active: int
+    runtime_type: str
+    source: PluginInstallationSource
+    meta: Mapping[str, Any]
+    plugin_id: str
+    plugin_unique_identifier: str
+    version: str
+    checksum: str
+    declaration: PluginDeclarationResponse
 
 
 class PluginInstallationsResponse(ResponseModel):
-    plugins: Any
+    plugins: list[PluginInstallationItemResponse]
 
 
 class PluginManifestResponse(ResponseModel):

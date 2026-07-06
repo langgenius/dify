@@ -150,7 +150,7 @@ function SearchMethodRadioCard({
         readonly && 'cursor-not-allowed',
       )}
     >
-      <RadioRoot
+      <RadioRoot<RetrievalSearchMethodEnum>
         value={option.id}
         variant="unstyled"
         nativeButton
@@ -206,7 +206,7 @@ function HybridSearchModeRadioCard({
 }) {
   return (
     <FieldItem>
-      <RadioRoot
+      <RadioRoot<HybridSearchModeEnum>
         value={option.id}
         variant="unstyled"
         nativeButton

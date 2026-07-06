@@ -15,6 +15,7 @@ type MarketplaceSectionProps = {
   theme?: string
   onMarketplaceCollapsedChange: (collapsed: boolean) => void
   onInstallPlugin: (key: ModelProviderQuotaGetPaid) => void | Promise<void>
+  onOpenMarketplace?: () => void
 }
 
 function MarketplaceSection({
@@ -26,6 +27,7 @@ function MarketplaceSection({
   theme,
   onMarketplaceCollapsedChange,
   onInstallPlugin,
+  onOpenMarketplace,
 }: MarketplaceSectionProps) {
   const { t } = useTranslation()
 
@@ -82,17 +84,32 @@ function MarketplaceSection({
                 </div>
               )
             })}
-            <a
-              className="flex cursor-pointer items-center gap-0.5 px-3 py-1.5"
-              href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="flex-1 system-xs-regular text-text-accent">
-                {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
-              </span>
-              <span className="i-ri-arrow-right-up-line size-3! text-text-accent" />
-            </a>
+            {onOpenMarketplace
+              ? (
+                  <button
+                    type="button"
+                    className="flex w-full cursor-pointer items-center gap-0.5 border-0 bg-transparent px-3 py-1.5 text-left"
+                    onClick={onOpenMarketplace}
+                  >
+                    <span className="flex-1 system-xs-regular text-text-accent">
+                      {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
+                    </span>
+                    <span className="i-ri-arrow-right-up-line size-3! text-text-accent" aria-hidden="true" />
+                  </button>
+                )
+              : (
+                  <a
+                    className="flex cursor-pointer items-center gap-0.5 px-3 py-1.5"
+                    href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span className="flex-1 system-xs-regular text-text-accent">
+                      {t('modelProvider.selector.discoverMoreInMarketplace', { ns: 'common' })}
+                    </span>
+                    <span className="i-ri-arrow-right-up-line size-3! text-text-accent" aria-hidden="true" />
+                  </a>
+                )}
           </div>
         )}
       </div>

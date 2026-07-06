@@ -6,7 +6,7 @@ from typing import Any, NotRequired, TypedDict, cast
 
 from flask import abort, request
 from flask_restx import Resource, fields
-from pydantic import AliasChoices, BaseModel, Field, RootModel, ValidationError, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, ValidationError, field_validator
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -27,7 +27,7 @@ from controllers.console.app.error import (
     DraftWorkflowNotSync,
 )
 from controllers.console.app.permission_keys import get_app_permission_keys
-from controllers.console.app.wraps import get_app_model
+from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -78,6 +78,7 @@ from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -158,8 +159,71 @@ class ConvertToWorkflowPayload(BaseModel):
     icon_background: str | None = None
 
 
+class WorkflowFeatureTogglePayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    enabled: bool | None = None
+
+
+class WorkflowSuggestedQuestionsAfterAnswerPayload(WorkflowFeatureTogglePayload):
+    model: dict[str, Any] | None = None
+    prompt: str | None = None
+
+
+class WorkflowTextToSpeechPayload(WorkflowFeatureTogglePayload):
+    language: str | None = None
+    voice: str | None = None
+    autoPlay: str | None = None
+
+
+class WorkflowSensitiveWordAvoidancePayload(WorkflowFeatureTogglePayload):
+    type: str | None = None
+    config: dict[str, Any] | None = None
+
+
+class WorkflowFileUploadTransferPayload(WorkflowFeatureTogglePayload):
+    number_limits: int | None = None
+    transfer_methods: list[str] | None = None
+
+
+class WorkflowFileUploadImagePayload(WorkflowFileUploadTransferPayload):
+    detail: str | None = None
+
+
+class WorkflowFileUploadPreviewConfigPayload(BaseModel):
+    mode: str | None = None
+    file_type_list: list[str] | None = None
+
+
+class WorkflowFileUploadPayload(WorkflowFeatureTogglePayload):
+    allowed_file_types: list[str] | None = None
+    allowed_file_extensions: list[str] | None = None
+    allowed_file_upload_methods: list[str] | None = None
+    number_limits: int | None = None
+    image: WorkflowFileUploadImagePayload | None = None
+    document: WorkflowFileUploadTransferPayload | None = None
+    audio: WorkflowFileUploadTransferPayload | None = None
+    video: WorkflowFileUploadTransferPayload | None = None
+    custom: WorkflowFileUploadTransferPayload | None = None
+    preview_config: WorkflowFileUploadPreviewConfigPayload | None = None
+    fileUploadConfig: dict[str, Any] | None = None
+
+
+class WorkflowFeaturesConfigPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    opening_statement: str | None = None
+    suggested_questions: list[str] | None = None
+    suggested_questions_after_answer: WorkflowSuggestedQuestionsAfterAnswerPayload | None = None
+    text_to_speech: WorkflowTextToSpeechPayload | None = None
+    speech_to_text: WorkflowFeatureTogglePayload | None = None
+    retriever_resource: WorkflowFeatureTogglePayload | None = None
+    sensitive_word_avoidance: WorkflowSensitiveWordAvoidancePayload | None = None
+    file_upload: WorkflowFileUploadPayload | None = None
+
+
 class WorkflowFeaturesPayload(BaseModel):
-    features: dict[str, Any] = Field(
+    features: WorkflowFeaturesConfigPayload = Field(
         ...,
         description="Workflow feature configuration",
     )
@@ -343,6 +407,15 @@ register_schema_models(
     ConvertToWorkflowPayload,
     WorkflowListQuery,
     WorkflowUpdatePayload,
+    WorkflowFeatureTogglePayload,
+    WorkflowSuggestedQuestionsAfterAnswerPayload,
+    WorkflowTextToSpeechPayload,
+    WorkflowSensitiveWordAvoidancePayload,
+    WorkflowFileUploadTransferPayload,
+    WorkflowFileUploadImagePayload,
+    WorkflowFileUploadPreviewConfigPayload,
+    WorkflowFileUploadPayload,
+    WorkflowFeaturesConfigPayload,
     WorkflowFeaturesPayload,
     WorkflowOnlineUsersPayload,
     DraftWorkflowTriggerRunPayload,
@@ -558,7 +631,8 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
@@ -571,7 +645,12 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -972,7 +1051,8 @@ class DraftWorkflowRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Run draft workflow
         """
@@ -984,6 +1064,7 @@ class DraftWorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model,
                 user=current_user,
                 args=args,
@@ -1274,7 +1355,7 @@ class WorkflowFeaturesApi(Resource):
     def post(self, current_user: Account, app_model: App):
 
         args = WorkflowFeaturesPayload.model_validate(console_ns.payload or {})
-        features = args.features
+        features = args.features.model_dump(mode="json", exclude_unset=True)
 
         workflow_service = WorkflowService()
         workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)
@@ -1406,15 +1487,15 @@ class WorkflowByIdApi(Resource):
             return {"message": "No valid fields to update"}, 400
 
         workflow_service = WorkflowService()
+        workflow_ref = WorkflowRefService.create_app_workflow_ref(app_model, workflow_id)
 
         # Create a session and manage the transaction
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = workflow_service.update_workflow(
                 session=session,
-                workflow_id=workflow_id,
-                tenant_id=app_model.tenant_id,
                 account_id=current_user.id,
                 data=update_data,
+                workflow_ref=workflow_ref,
             )
 
             if not workflow:
@@ -1434,12 +1515,14 @@ class WorkflowByIdApi(Resource):
         Delete workflow
         """
         workflow_service = WorkflowService()
+        workflow_ref = WorkflowRefService.create_app_workflow_ref(app_model, workflow_id)
 
         # Create a session and manage the transaction
         with sessionmaker(db.engine).begin() as session:
             try:
                 workflow_service.delete_workflow(
-                    session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id
+                    session=session,
+                    workflow_ref=workflow_ref,
                 )
             except WorkflowInUseError as e:
                 abort(400, description=str(e))
@@ -1515,7 +1598,8 @@ class DraftWorkflowTriggerRunApi(Resource):
     @get_app_model(mode=[AppMode.WORKFLOW])
     @with_current_user
     @edit_permission_required
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Poll for trigger events and execute full workflow when event arrives
         """
@@ -1543,6 +1627,7 @@ class DraftWorkflowTriggerRunApi(Resource):
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
+                    session=session,
                     app_model=app_model,
                     user=current_user,
                     args=workflow_args,
@@ -1665,7 +1750,8 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    def post(self, session: Session, current_user: Account, app_model: App):
         """
         Full workflow debug when the start node is a trigger
         """
@@ -1697,6 +1783,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
 
             workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
+                session=session,
                 app_model=app_model,
                 user=current_user,
                 args=workflow_args,

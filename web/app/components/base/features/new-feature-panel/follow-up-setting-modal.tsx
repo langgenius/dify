@@ -162,7 +162,7 @@ const FollowUpSettingModal = ({
                 {t('feature.suggestedQuestionsAfterAnswer.modal.promptLabel', { ns: 'appDebug' })}
               </FieldsetLegend>
               <FieldItem>
-                <RadioRoot
+                <RadioRoot<PromptMode>
                   value={PROMPT_MODE.default}
                   variant="unstyled"
                   nativeButton
@@ -195,7 +195,7 @@ const FollowUpSettingModal = ({
                 </RadioRoot>
               </FieldItem>
               <FieldItem>
-                <RadioRoot
+                <RadioRoot<PromptMode>
                   value={PROMPT_MODE.custom}
                   variant="unstyled"
                   nativeButton

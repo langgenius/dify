@@ -222,6 +222,8 @@ describe('SnippetInfoDropdown', () => {
       expect(screen.getByText('snippet.editDialogTitle')).toBeInTheDocument()
       expect(screen.getByText('common.operation.save')).toBeInTheDocument()
       expect(screen.getByText(mockSnippet.name)).toBeInTheDocument()
+      if (!mockSnippet.description)
+        throw new Error('mockSnippet.description is required for this test')
       expect(screen.getByText(mockSnippet.description)).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'submit-edit' }))

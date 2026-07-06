@@ -42,15 +42,15 @@ export const useCreateSnippet = () => {
     try {
       const createPayload = {
         name,
-        description: description || undefined,
+        description,
         graph,
         input_fields,
       }
       const snippet = await createSnippetMutation.mutateAsync({
         body: createPayload,
       })
-      await consoleClient.snippets.syncDraftWorkflow({
-        params: { snippetId: snippet.id },
+      await consoleClient.snippets.bySnippetId.workflows.draft.post({
+        params: { snippet_id: snippet.id },
         body: {
           graph: createPayload.graph,
           input_fields: createPayload.input_fields,

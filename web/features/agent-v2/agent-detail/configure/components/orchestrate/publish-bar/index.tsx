@@ -10,11 +10,9 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
-import { hasAgentComposerUnpublishedChangesAtom } from '@/features/agent-v2/agent-composer/store'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
+import { hasAgentComposerUnpublishedChangesAtom, isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
@@ -37,27 +35,32 @@ type AgentConfigurePublishBarProps = {
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
-  onOpenVersions: () => void
+  onOpenVersions?: () => void
 }
 
 function getPublishState({
   activeConfigIsPublished,
   activeConfigSnapshot,
-  isDirty,
+  hasLocalChanges,
+  hasUnpublishedChanges,
   isPublishing,
 }: {
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  isDirty: boolean
+  hasLocalChanges: boolean
+  hasUnpublishedChanges: boolean
   isPublishing: boolean
 }): AgentConfigurePublishState {
   if (isPublishing)
     return 'publishing'
 
+  if (hasLocalChanges)
+    return 'unpublished'
+
   if (activeConfigIsPublished)
     return 'published'
 
-  if (isDirty)
+  if (hasUnpublishedChanges)
     return 'unpublished'
 
   if (!activeConfigSnapshot)
@@ -96,24 +99,29 @@ export function AgentConfigurePublishBar({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
+  const lastKnownPublishedRef = useRef(false)
+  if (activeConfigIsPublished === true)
+    lastKnownPublishedRef.current = true
+  if (activeConfigIsPublished === false)
+    lastKnownPublishedRef.current = false
+  const stableActiveConfigIsPublished = activeConfigIsPublished ?? (lastKnownPublishedRef.current ? true : undefined)
   const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
-  const knowledgeRetrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
-  const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
-  const getValidationMessage = useKnowledgeValidationMessage()
+  const hasLocalChanges = useAtomValue(isAgentComposerDirtyAtom)
   const publishableState = getPublishState({
-    activeConfigIsPublished,
+    activeConfigIsPublished: stableActiveConfigIsPublished,
     activeConfigSnapshot,
-    isDirty: hasUnpublishedChanges,
+    hasLocalChanges,
+    hasUnpublishedChanges,
     isPublishing: false,
   })
   const publishState = getPublishState({
-    activeConfigIsPublished,
+    activeConfigIsPublished: stableActiveConfigIsPublished,
     activeConfigSnapshot,
-    isDirty: hasUnpublishedChanges,
+    hasLocalChanges,
+    hasUnpublishedChanges,
     isPublishing,
   })
   const publishIsAvailable = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')
-  const publishValidationMessage = getValidationMessage(knowledgeValidation.firstIssue?.code)
   const workflowReferencesQueryOptions = consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
     input: {
       params: {
@@ -126,7 +134,7 @@ export function AgentConfigurePublishBar({
     enabled: publishIsAvailable && !selectedVersionSnapshot,
   })
   const restoreVersionMutation = useMutation(consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions())
-  const canPublish = publishIsAvailable && knowledgeValidation.isValid
+  const canPublish = publishIsAvailable
 
   const handleRestoreVersion = (versionId: string) => {
     if (restoreVersionMutation.isPending)
@@ -270,9 +278,6 @@ export function AgentConfigurePublishBar({
   const currentStateMeta = stateMeta[publishState]
   const isConfirmingImpact = publishBarMode.status === 'confirmingImpact' && (canPublish || isPublishing)
   const impactReferences = publishBarMode.status === 'confirmingImpact' ? publishBarMode.references : []
-  const effectiveMetaLabel = publishValidationMessage && publishIsAvailable
-    ? publishValidationMessage
-    : currentStateMeta.metaLabel
 
   return (
     <CollapsibleRoot
@@ -291,12 +296,12 @@ export function AgentConfigurePublishBar({
         actionLabel={currentStateMeta.actionLabel}
         dotStatus={currentStateMeta.dotStatus}
         isPublishing={isPublishing}
-        metaLabel={effectiveMetaLabel}
+        metaLabel={currentStateMeta.metaLabel}
         showShortcut={currentStateMeta.showShortcut}
         statusLabel={currentStateMeta.statusLabel}
         canPublish={canPublish}
         onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
-        onOpenVersions={onOpenVersions}
+        onOpenVersions={() => onOpenVersions?.()}
         onPublishRequest={handlePublishRequest}
       />
     </CollapsibleRoot>
@@ -332,7 +337,11 @@ function PublishBarActions({
 
   return (
     <div className="flex w-full min-w-0 items-center justify-between gap-2 p-2 group-data-open/publish-bar:justify-end group-data-open/publish-bar:px-4 group-data-open/publish-bar:pt-2 group-data-open/publish-bar:pb-4">
-      <div className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden">
+      <div
+        role="status"
+        aria-label={`${statusLabel}. ${metaLabel}`}
+        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary group-data-open/publish-bar:hidden"
+      >
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={dotStatus} />
         </span>

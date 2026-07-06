@@ -1,6 +1,23 @@
 from __future__ import annotations
 
+from inspect import unwrap
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+import pytest
+from flask import Flask
+from werkzeug.exceptions import NotFound
+
 from controllers.console.app import annotation as annotation_module
+from services.app_ref_service import AnnotationRef, AppRef
+
+
+def _app_model() -> SimpleNamespace:
+    return SimpleNamespace(id="app-1", tenant_id="tenant-1", status="normal")
+
+
+def _annotation_model(annotation_id: str = "ann-1") -> SimpleNamespace:
+    return SimpleNamespace(id=annotation_id, question="q", content="a", hit_count=0, created_at=None)
 
 
 def test_annotation_reply_payload_valid():
@@ -90,3 +107,113 @@ def test_annotation_file_payload_valid():
     """Test AnnotationFilePayload with valid message ID."""
     payload = annotation_module.AnnotationFilePayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.message_id == "550e8400-e29b-41d4-a716-446655440000"
+
+
+def test_get_app_ref_raises_not_found_when_app_is_not_in_current_tenant():
+    with (
+        patch.object(
+            annotation_module,
+            "current_account_with_tenant",
+            return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+        ),
+        patch.object(annotation_module.db.session, "scalar", return_value=None),
+    ):
+        with pytest.raises(NotFound):
+            annotation_module._get_app_ref("app-1")
+
+
+class TestConsoleAnnotationRefBoundaries:
+    def test_batch_delete_uses_app_ref(self, app: Flask):
+        api = annotation_module.AnnotationApi()
+        handler = unwrap(api.delete)
+        delete_mock = Mock()
+
+        with (
+            app.test_request_context("/?annotation_id=ann-1&annotation_id=ann-2", method="DELETE"),
+            patch.object(
+                annotation_module,
+                "current_account_with_tenant",
+                return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+            ),
+            patch.object(annotation_module.db.session, "scalar", return_value=_app_model()),
+            patch.object(annotation_module.AppAnnotationService, "delete_app_annotations_in_batch", delete_mock),
+        ):
+            response, status = handler(api, "app-1")
+
+        assert response == ""
+        assert status == 204
+        delete_mock.assert_called_once_with(AppRef("tenant-1", "app-1"), ["ann-1", "ann-2"])
+
+    def test_update_uses_annotation_ref(self, app: Flask):
+        api = annotation_module.AnnotationUpdateDeleteApi()
+        handler = unwrap(api.post)
+        update_mock = Mock(return_value=_annotation_model())
+        payload = {"question": "updated"}
+
+        with (
+            app.test_request_context("/annotations/ann-1", method="POST", json=payload),
+            patch.object(type(annotation_module.console_ns), "payload", payload),
+            patch.object(
+                annotation_module,
+                "current_account_with_tenant",
+                return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+            ),
+            patch.object(annotation_module.db.session, "scalar", return_value=_app_model()),
+            patch.object(annotation_module.AppAnnotationService, "update_app_annotation_directly", update_mock),
+        ):
+            response = handler(api, "app-1", "ann-1")
+
+        assert response["question"] == "q"
+        update_mock.assert_called_once()
+        assert update_mock.call_args.args[1] == AnnotationRef("tenant-1", "app-1", "ann-1")
+
+    def test_delete_uses_annotation_ref(self, app: Flask):
+        api = annotation_module.AnnotationUpdateDeleteApi()
+        handler = unwrap(api.delete)
+        delete_mock = Mock()
+
+        with (
+            app.test_request_context("/annotations/ann-1", method="DELETE"),
+            patch.object(
+                annotation_module,
+                "current_account_with_tenant",
+                return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+            ),
+            patch.object(annotation_module.db.session, "scalar", return_value=_app_model()),
+            patch.object(annotation_module.AppAnnotationService, "delete_app_annotation", delete_mock),
+        ):
+            response, status = handler(api, "app-1", "ann-1")
+
+        assert response == ""
+        assert status == 204
+        delete_mock.assert_called_once()
+        assert delete_mock.call_args.args[0] == AnnotationRef("tenant-1", "app-1", "ann-1")
+
+    def test_hit_history_uses_annotation_ref(self, app: Flask):
+        api = annotation_module.AnnotationHitHistoryListApi()
+        handler = unwrap(api.get)
+        history = SimpleNamespace(
+            id="history-1",
+            source="hit-testing",
+            score=0.9,
+            question="q",
+            annotation_question="q",
+            annotation_content="a",
+            created_at=None,
+        )
+        hit_history_mock = Mock(return_value=([history], 1))
+
+        with (
+            app.test_request_context("/hit-histories?page=2&limit=5", method="GET"),
+            patch.object(
+                annotation_module,
+                "current_account_with_tenant",
+                return_value=(SimpleNamespace(id="account-1"), "tenant-1"),
+            ),
+            patch.object(annotation_module.db.session, "scalar", return_value=_app_model()),
+            patch.object(annotation_module.AppAnnotationService, "get_annotation_hit_histories", hit_history_mock),
+        ):
+            response = handler(api, "app-1", "ann-1")
+
+        assert response["total"] == 1
+        hit_history_mock.assert_called_once_with(AnnotationRef("tenant-1", "app-1", "ann-1"), 2, 5)

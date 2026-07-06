@@ -15,7 +15,7 @@ export function RadioGroup<Value = string>({
   ...props
 }: RadioGroupProps<Value>) {
   return (
-    <BaseRadioGroup
+    <BaseRadioGroup<Value>
       className={cn('flex items-center gap-2', className)}
       {...props}
     />

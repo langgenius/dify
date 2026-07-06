@@ -156,8 +156,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
       language,
       schema,
     })
+    const selectValue = typeof varInput?.value === 'string' ? varInput.value : null
     const selectedOption = isSelect && options
-      ? pickerProps.selectItems.find(item => item.value === (varInput?.value as string | number | undefined)) ?? null
+      ? pickerProps.selectItems.find(item => item.value === selectValue) ?? null
       : null
 
     return (
@@ -230,13 +231,20 @@ const ReasoningConfigForm: React.FC<Props> = ({
               />
             )}
             {isSelect && options && (
-              <Select value={selectedOption ? String(selectedOption.value) : null} onValueChange={value => value && handleValueChange(variable, type)(value)}>
+              <Select<string>
+                value={selectedOption?.value ?? null}
+                onValueChange={(value) => {
+                  if (value == null || value === '')
+                    return
+                  handleValueChange(variable, type)(value)
+                }}
+              >
                 <SelectTrigger className="h-8 grow">
                   {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
                 </SelectTrigger>
                 <SelectContent>
                   {pickerProps.selectItems.map(item => (
-                    <SelectItem key={item.value} value={String(item.value)}>
+                    <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />
                     </SelectItem>

@@ -134,6 +134,7 @@ describe('AgentOutputBlockComponent', () => {
         }),
       ]),
       onChange,
+      undefined,
     )
     expect(mockNodeReplace).toHaveBeenCalledTimes(1)
     expect(mockSelectNext).not.toHaveBeenCalled()
@@ -202,6 +203,7 @@ describe('AgentOutputBlockComponent', () => {
         }),
       ]),
       onChange,
+      undefined,
     )
   })
 
@@ -240,6 +242,7 @@ describe('AgentOutputBlockComponent', () => {
         }),
       ]),
       onChange,
+      undefined,
     )
     expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({
@@ -280,6 +283,7 @@ describe('AgentOutputBlockComponent', () => {
         }),
       ]),
       onChange,
+      undefined,
     )
   })
 
@@ -320,6 +324,7 @@ describe('AgentOutputBlockComponent', () => {
         }),
       ]),
       onChange,
+      undefined,
     )
   })
 
@@ -365,5 +370,24 @@ describe('AgentOutputBlockComponent', () => {
     expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.outputVars.typeLabel' })).not.toBeInTheDocument()
     expect(screen.getByText('qna_report_pdf')).toBeInTheDocument()
     expect(screen.getByText('file')).toBeInTheDocument()
+  })
+
+  it('requests the output editor when hovering a committed output block', () => {
+    const onEdit = vi.fn()
+
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="qna_report_pdf"
+        outputType="file"
+        isEditing={false}
+        outputs={outputs}
+        onEdit={onEdit}
+      />,
+    )
+
+    fireEvent.mouseEnter(screen.getByText('qna_report_pdf').parentElement!)
+
+    expect(onEdit).toHaveBeenCalledWith('qna_report_pdf', 'file')
   })
 })

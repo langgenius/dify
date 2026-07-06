@@ -1,4 +1,4 @@
-import type { WorkflowCommentList } from '@/contract/console/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CommentIcon } from './comment-icon'
@@ -56,6 +56,7 @@ const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCo
     id: 'user-1',
     name: 'Alice',
     email: 'alice@example.com',
+    avatar_url: null,
   },
   created_at: 1,
   updated_at: 2,

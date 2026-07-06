@@ -80,13 +80,13 @@ function BooleanInlineDemo() {
         <div className="flex items-center gap-3">
           <FieldItem>
             <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-              <Radio value={true} />
+              <Radio<boolean> value={true} />
               True
             </FieldLabel>
           </FieldItem>
           <FieldItem>
             <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-              <Radio value={false} />
+              <Radio<boolean> value={false} />
               False
             </FieldLabel>
           </FieldItem>
@@ -136,7 +136,7 @@ function OptionCardsDemo() {
               variant="unstyled"
               nativeButton
               render={<button type="button" />}
-              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
+              className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

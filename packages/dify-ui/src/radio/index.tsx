@@ -36,7 +36,7 @@ export function RadioRoot<Value = string>({
   ...props
 }: RadioRootProps<Value>) {
   return (
-    <BaseRadio.Root
+    <BaseRadio.Root<Value>
       className={cn(variant === 'control' && radioRootClassName, className)}
       {...props}
     />
@@ -83,7 +83,7 @@ export type RadioProps<Value = string>
 export function Radio<Value = string>({
   ...props
 }: RadioProps<Value>) {
-  return <RadioRoot {...props} />
+  return <RadioRoot<Value> {...props} />
 }
 
 export type RadioSkeletonProps

@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session
 
 from configs import dify_config
 from core.rag.entities import ParentMode, Rule
@@ -1670,7 +1670,7 @@ class Pipeline(TypeBase):
         init=False,
     )
 
-    def retrieve_dataset(self, session: Session):
+    def retrieve_dataset(self, session: Session | scoped_session):
         return session.scalar(select(Dataset).where(Dataset.pipeline_id == self.id))
 
 

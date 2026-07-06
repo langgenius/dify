@@ -33,6 +33,7 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import OptionalTimestampField, TimestampField, dump_response, to_timestamp
 from libs.login import login_required
+from libs.pagination import paginate_query
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
@@ -102,6 +103,7 @@ class TenantListItemResponse(ResponseModel):
     plan: str | None = None
     status: str | None = None
     created_at: int | None = None
+    last_opened_at: int | None = None
     current: bool
 
     @field_validator("plan", "status", mode="before")
@@ -113,9 +115,9 @@ class TenantListItemResponse(ResponseModel):
             return value
         return str(getattr(value, "value", value))
 
-    @field_validator("created_at", mode="before")
+    @field_validator("created_at", "last_opened_at", mode="before")
     @classmethod
-    def _normalize_created_at(cls, value: datetime | int | None):
+    def _normalize_timestamp(cls, value: datetime | int | None):
         return to_timestamp(value)
 
 
@@ -293,7 +295,7 @@ class WorkspaceListApi(Resource):
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
-        tenants = db.paginate(select=stmt, page=args.page, per_page=args.limit, error_out=False)
+        tenants = paginate_query(stmt, page=args.page, per_page=args.limit)
         has_more = False
 
         if tenants.has_next:
