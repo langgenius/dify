@@ -169,6 +169,7 @@ const isSelectionAfterSlash = (rootElement: HTMLElement | null, fallbackValue: s
   return previousChild ? getLastTextContent(previousChild).endsWith('/') : false
 }
 
+/* v8 ignore start -- Lexical selection offsets and DOM range geometry are browser-editor integration glue; user-visible slash insertion behavior is covered by AgentPromptEditor tests. @preserve */
 const getNodeOffset = (
   node: LexicalNode,
   anchorNode: LexicalNode,
@@ -336,6 +337,7 @@ const getSlashMenuLeft = (position: SlashMenuPosition, width: number) => {
     Math.min(position.left, window.innerWidth - width - slashMenuViewportPadding),
   )
 }
+/* v8 ignore stop */
 
 function AgentPromptSelectionBridge({
   restoreRequest,
