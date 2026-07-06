@@ -65,6 +65,12 @@ def _normalize_raw(raw: Any) -> Any:
             raw = {**raw, "enabled": False}
         elif raw.get("enabled") is True and raw.get("config") is None:
             raw = {**raw, "config": {}}
+        elif raw.get("enabled") is False:
+            # When the moderation is disabled, the client may still send
+            # leftover 'type' / 'config' fields (e.g. {"enabled": false, "type": "", "config": {}}).
+            # Strip them so the discriminator-tagged union in
+            # SensitiveWordAvoidanceDisabledConfig (extra="forbid") does not reject the payload.
+            raw = {key: value for key, value in raw.items() if key in {"enabled"}}
     return raw
 
 
