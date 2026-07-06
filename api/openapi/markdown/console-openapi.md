@@ -13907,6 +13907,8 @@ Per-set metadata filtering policy.
 The Python attribute uses ``metadata_model_config`` for clarity because the
 model belongs to metadata filtering specifically, while the external API and
 generated schema keep the historical ``model_config`` field name via alias.
+Mode-dependent completeness is enforced by composer publish validation so
+draft saves can persist partially configured metadata filters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -13929,8 +13931,9 @@ Per-set query policy for Agent v2 knowledge retrieval.
 
 Agent v2 stores knowledge as explicit ``knowledge.sets`` rather than the
 legacy flat ``datasets`` / ``query_mode`` / ``query_config`` shape. Each
-set owns its own query policy, so ``user_query`` must carry an explicit
-``value`` while ``generated_query`` leaves that value empty.
+set owns its own query policy. Mode-dependent completeness, such as
+requiring ``value`` for ``user_query``, is enforced by composer publish
+validation so draft saves can persist partially configured knowledge sets.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -13955,8 +13958,9 @@ set owns its own query policy, so ``user_query`` must carry an explicit
 Per-set retrieval policy for Agent v2 knowledge retrieval.
 
 Retrieval settings now live on each knowledge set instead of one shared
-flat config. A set may use either ``multiple`` retrieval with ``top_k`` or
-``single`` retrieval with a required model config.
+flat config. Mode-dependent completeness, such as requiring ``top_k`` for
+``multiple`` or a model for ``single``, is enforced by composer publish
+validation so draft saves can persist partially configured knowledge sets.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
