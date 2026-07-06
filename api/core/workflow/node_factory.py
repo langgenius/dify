@@ -549,7 +549,11 @@ class DifyNodeFactory(NodeFactory):
             "credentials_provider": self._llm_credentials_provider,
             "model_factory": self._llm_model_factory,
             "model_instance": (
-                self._wrap_model_instance_for_node(node_data=validated_node_data, model_instance=model_instance)
+                self._wrap_model_instance_for_node(
+                    node_data=validated_node_data,
+                    model_instance=model_instance,
+                    request_metadata={"app_id": self._dify_context.app_id},
+                )
                 if wrap_model_instance
                 else model_instance
             ),
@@ -581,13 +585,14 @@ class DifyNodeFactory(NodeFactory):
         *,
         node_data: LLMCompatibleNodeData,
         model_instance: ModelInstance,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> DifyPreparedLLM:
         # Only graphon's LLM node consumes the polling protocol. Keep classifier
         # and extractor nodes on the existing wrapper even if the same model
         # advertises polling support.
         if node_data.type == BuiltinNodeTypes.LLM and DifyNodeFactory._supports_plugin_llm_polling(model_instance):
-            return DifyPreparedPollingLLM(model_instance)
-        return DifyPreparedLLM(model_instance)
+            return DifyPreparedPollingLLM(model_instance, request_metadata=request_metadata)
+        return DifyPreparedLLM(model_instance, request_metadata=request_metadata)
 
     @staticmethod
     def _supports_plugin_llm_polling(model_instance: ModelInstance) -> bool:
