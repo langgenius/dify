@@ -28,6 +28,7 @@ def __getattr__(name: str) -> object:
         return import_module("dify_agent.adapters.shell.shellctl")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
+
 __all__ = [
     "CompleteShellCommandResult",
     "DEFAULT_SHELL_PROVIDER",
