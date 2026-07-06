@@ -346,14 +346,32 @@ class TestPluginAppBackwardsInvocation:
         assert "end_users.app_id" in compiled
         assert stmt.compile().params == {"id_1": "uid", "tenant_id_1": "tenant-1", "app_id_1": "app-1"}
 
+    def test_get_user_returns_end_user_by_session_id(self, mocker: MockerFixture):
+        session = self.patch_create_session(mocker, side_effect=[None, MagicMock(id="session-user")])
+        app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+
+        user = PluginAppBackwardsInvocation._get_user("wecom-sender-1", app)
+
+        assert user.id == "session-user"
+        stmt = session.scalar.call_args_list[1].args[0]
+        compiled = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "end_users.session_id" in compiled
+        assert "end_users.tenant_id" in compiled
+        assert "end_users.app_id" in compiled
+        assert stmt.compile().params == {
+            "session_id_1": "wecom-sender-1",
+            "tenant_id_1": "tenant-1",
+            "app_id_1": "app-1",
+        }
+
     def test_get_user_falls_back_to_account_user(self, mocker: MockerFixture):
-        session = self.patch_create_session(mocker, side_effect=[None, MagicMock(id="account-user")])
+        session = self.patch_create_session(mocker, side_effect=[None, None, MagicMock(id="account-user")])
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
         user = PluginAppBackwardsInvocation._get_user("uid", app)
 
         assert user.id == "account-user"
-        stmt = session.scalar.call_args_list[1].args[0]
+        stmt = session.scalar.call_args_list[2].args[0]
         compiled = str(stmt.compile(dialect=postgresql.dialect()))
         assert "accounts.id" in compiled
         assert "tenant_account_joins.account_id" in compiled
@@ -361,11 +379,40 @@ class TestPluginAppBackwardsInvocation:
         assert stmt.compile().params == {"id_1": "uid", "tenant_id_1": "tenant-1"}
 
     def test_get_user_raises_when_user_not_found(self, mocker: MockerFixture):
-        self.patch_create_session(mocker, side_effect=[None, None])
+        self.patch_create_session(mocker, side_effect=[None, None, None])
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
         with pytest.raises(ValueError, match="user not found"):
             PluginAppBackwardsInvocation._get_user("uid", app)
+
+    def test_invoke_app_creates_end_user_for_unknown_external_user_id(self, mocker: MockerFixture):
+        app = MagicMock(mode=AppMode.WORKFLOW)
+        end_user = MagicMock()
+        workflow = MagicMock()
+        mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
+        mocker.patch.object(PluginAppBackwardsInvocation, "_get_workflow", return_value=workflow)
+        mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", side_effect=ValueError("user not found"))
+        get_or_create = mocker.patch(
+            "core.plugin.backwards_invocation.app.EndUserService.get_or_create_end_user",
+            return_value=end_user,
+        )
+        route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_workflow_app", return_value={"ok": True})
+
+        result = PluginAppBackwardsInvocation.invoke_app(
+            MagicMock(),
+            app_id="app",
+            user_id="wecom-sender-1",
+            tenant_id="tenant",
+            conversation_id="",
+            query=None,
+            stream=True,
+            inputs={},
+            files=[],
+        )
+
+        assert result == {"ok": True}
+        get_or_create.assert_called_once_with(app, user_id="wecom-sender-1")
+        assert route.call_args.args[2] is end_user
 
     def test_get_app_returns_app(self, mocker: MockerFixture):
         app_obj = MagicMock(id="app")
