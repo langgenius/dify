@@ -17,6 +17,7 @@ const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 let latestDebounceFn = () => {}
 let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 let mockIsCurrentWorkspaceEditor = true
+const mockUserProfile = { id: 'user-1' }
 
 vi.mock('ahooks', () => ({
   useDebounceFn: (fn: () => void) => {
@@ -31,6 +32,7 @@ vi.mock('ahooks', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    userProfile: mockUserProfile,
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
@@ -296,7 +298,37 @@ describe('Apps', () => {
       id: 'created-app-id',
       mode: AppModeEnum.CHAT,
       permission_keys: ['app.acl.view_layout'],
-    }, mockPush, { isRbacEnabled: false })
+    }, mockPush, {
+      currentUserId: 'user-1',
+      resourceMaintainer: 'user-1',
+      workspacePermissionKeys: ['app.create_and_management'],
+      isRbacEnabled: false,
+    })
+  })
+
+  it('passes creator context when template import response has no permission keys', async () => {
+    mockImportDSL.mockResolvedValueOnce({
+      app_id: 'created-without-permissions',
+      app_mode: AppModeEnum.WORKFLOW,
+    })
+
+    render(<Apps />)
+
+    fireEvent.click(screen.getAllByTestId('app-card')[0]!)
+    fireEvent.click(screen.getByTestId('confirm-create'))
+
+    await waitFor(() => {
+      expect(mockGetRedirection).toHaveBeenCalledWith({
+        id: 'created-without-permissions',
+        mode: AppModeEnum.WORKFLOW,
+        permission_keys: undefined,
+      }, mockPush, {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      })
+    })
   })
 
   it('shows an error toast when importing the template fails', async () => {
