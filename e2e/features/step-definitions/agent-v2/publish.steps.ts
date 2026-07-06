@@ -4,7 +4,7 @@ import { expect } from '@playwright/test'
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
 import { getAgentVersionDetail, getTestAgent } from '../../agent-v2/support/agent'
 import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
-import { getCurrentAgentId } from './configure-helpers'
+import { expectAgentModelRequiredFeedback, getCurrentAgentId } from './configure-helpers'
 
 When('I publish the Agent v2 draft', async function (this: DifyWorld) {
   const page = this.getPage()
@@ -12,6 +12,25 @@ When('I publish the Agent v2 draft', async function (this: DifyWorld) {
 
   await expect(publishButton).toBeEnabled({ timeout: 30_000 })
   await publishButton.click()
+})
+
+When('I try to publish the Agent v2 draft without a model', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const publishButton = page.getByRole('button', { name: /^Publish(?: update)?$/ })
+
+  await expect(publishButton).toBeEnabled({ timeout: 30_000 })
+  await publishButton.click()
+})
+
+Then('Agent v2 publish should be blocked until a model is configured', async function (this: DifyWorld) {
+  await expectAgentModelRequiredFeedback(this.getPage())
+})
+
+Then('the Agent v2 draft should remain unpublished', async function (this: DifyWorld) {
+  await expect.poll(
+    async () => (await getTestAgent(getCurrentAgentId(this))).active_config_is_published,
+    { timeout: 30_000 },
+  ).toBe(false)
 })
 
 Then('the Agent v2 configuration should be saved automatically', async function (this: DifyWorld) {

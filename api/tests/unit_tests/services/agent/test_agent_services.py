@@ -36,6 +36,7 @@ from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
+    AgentModelNotConfiguredError,
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionConflictError,
@@ -574,6 +575,55 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
 
     assert agent.active_config_is_published is True
     assert fake_session.commits == 1
+
+
+def test_publish_agent_app_draft_rejects_missing_model(monkeypatch: pytest.MonkeyPatch):
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+        active_config_is_published=False,
+    )
+    draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=AgentSoulConfig(),
+    )
+    fake_session = FakeSession(scalar=[agent, draft])
+
+    def fail_create_config_version(**_kwargs):
+        raise AssertionError("config version must not be created when Agent Soul has no model")
+
+    def fail_validate_knowledge_datasets(**_kwargs):
+        raise AssertionError("knowledge datasets must not be validated when Agent Soul has no model")
+
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
+    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", fail_validate_knowledge_datasets)
+    monkeypatch.setattr(AgentComposerService, "_create_config_version", fail_create_config_version)
+
+    with pytest.raises(AgentModelNotConfiguredError) as exc_info:
+        AgentComposerService.publish_agent_app_draft(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+            version_note="ship it",
+        )
+
+    assert exc_info.value.error_code == "agent_model_not_configured"
+    assert agent.active_config_snapshot_id == "version-1"
+    assert agent.active_config_is_published is False
+    assert draft.base_snapshot_id == "version-1"
+    assert fake_session.commits == 0
 
 
 def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.MonkeyPatch):
@@ -4257,31 +4307,7 @@ def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch):
     assert captured == {}
 
 
-@pytest.mark.parametrize(
-    ("variant", "save_call"),
-    [
-        (
-            ComposerVariant.AGENT_APP,
-            lambda payload: AgentComposerService.save_agent_app_composer(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                account_id="account-1",
-                payload=payload,
-            ),
-        ),
-        (
-            ComposerVariant.WORKFLOW,
-            lambda payload: AgentComposerService.save_workflow_composer(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                node_id="node-1",
-                account_id="account-1",
-                payload=payload,
-            ),
-        ),
-    ],
-)
-def test_composer_save_rejects_malformed_knowledge_dataset_ids(monkeypatch: pytest.MonkeyPatch, variant, save_call):
+def test_validate_knowledge_datasets_rejects_malformed_ids_without_dataset_lookup(monkeypatch: pytest.MonkeyPatch):
     captured = {"calls": 0}
 
     def fake_get_datasets_by_ids(ids, tenant_id):
@@ -4294,60 +4320,29 @@ def test_composer_save_rejects_malformed_knowledge_dataset_ids(monkeypatch: pyte
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
-    payload = ComposerSavePayload.model_validate(
+    agent_soul = AgentSoulConfig.model_validate(
         {
-            "variant": variant.value,
-            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
-            "soul_lock": {"locked": False},
-            "agent_soul": {
-                "knowledge": {
-                    "sets": [
-                        {
-                            "id": "support",
-                            "name": "Support KB",
-                            "datasets": [{"id": "not-a-uuid"}],
-                            "query": {"mode": "generated_query"},
-                            "retrieval": {"mode": "multiple", "top_k": 4},
-                        }
-                    ]
-                }
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "not-a-uuid"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
             },
         }
     )
 
     with pytest.raises(InvalidComposerConfigError, match="not-a-uuid"):
-        save_call(payload)
+        AgentComposerService.validate_knowledge_datasets(tenant_id="tenant-1", agent_soul=agent_soul)
 
     assert captured == {"calls": 0}
 
 
-@pytest.mark.parametrize(
-    ("variant", "save_call"),
-    [
-        (
-            ComposerVariant.AGENT_APP,
-            lambda payload: AgentComposerService.save_agent_app_composer(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                account_id="account-1",
-                payload=payload,
-            ),
-        ),
-        (
-            ComposerVariant.WORKFLOW,
-            lambda payload: AgentComposerService.save_workflow_composer(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                node_id="node-1",
-                account_id="account-1",
-                payload=payload,
-            ),
-        ),
-    ],
-)
-def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
-    monkeypatch: pytest.MonkeyPatch, variant, save_call
-):
+def test_validate_knowledge_datasets_rejects_missing_or_out_of_scope_datasets(monkeypatch: pytest.MonkeyPatch):
     captured = {}
     missing_dataset_id = "550e8400-e29b-41d4-a716-446655440000"
 
@@ -4360,20 +4355,70 @@ def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
 
     monkeypatch.setattr(dataset_service_module.DatasetService, "get_datasets_by_ids", fake_get_datasets_by_ids)
 
+    agent_soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": missing_dataset_id}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ]
+            },
+        }
+    )
+
+    with pytest.raises(InvalidComposerConfigError, match=missing_dataset_id):
+        AgentComposerService.validate_knowledge_datasets(tenant_id="tenant-1", agent_soul=agent_soul)
+
+    assert captured == {"ids": [missing_dataset_id], "tenant_id": "tenant-1"}
+
+
+def test_save_agent_composer_allows_incomplete_knowledge_draft(monkeypatch: pytest.MonkeyPatch):
+    agent = SimpleNamespace(
+        id="agent-1",
+        source=AgentSource.AGENT_APP,
+        active_config_snapshot_id="version-1",
+        active_config_is_published=True,
+        updated_by=None,
+    )
+    active_version = SimpleNamespace(config_snapshot_dict=AgentSoulConfig().model_dump(mode="json"))
+    fake_session = FakeSession(scalar=[agent])
+    saved = {}
+
+    import services.dataset_service as dataset_service_module
+
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    monkeypatch.setattr(
+        dataset_service_module.DatasetService,
+        "get_datasets_by_ids",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("draft save must skip dataset lookup")),
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_save_agent_draft",
+        lambda **kwargs: saved.update(kwargs) or SimpleNamespace(id="draft-1"),
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
+    monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **_kwargs: {"loaded": True})
+
     payload = ComposerSavePayload.model_validate(
         {
-            "variant": variant.value,
+            "variant": ComposerVariant.AGENT_APP.value,
             "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
-            "soul_lock": {"locked": False},
             "agent_soul": {
                 "knowledge": {
                     "sets": [
                         {
                             "id": "support",
                             "name": "Support KB",
-                            "datasets": [{"id": missing_dataset_id}],
+                            "datasets": [{"id": "not-a-uuid"}],
                             "query": {"mode": "generated_query"},
-                            "retrieval": {"mode": "multiple", "top_k": 4},
+                            "retrieval": {"mode": "single"},
+                            "metadata_filtering": {"mode": "automatic"},
                         }
                     ]
                 }
@@ -4381,10 +4426,20 @@ def test_composer_save_rejects_missing_or_out_of_scope_knowledge_datasets(
         }
     )
 
-    with pytest.raises(InvalidComposerConfigError, match=missing_dataset_id):
-        save_call(payload)
+    result = AgentComposerService.save_agent_composer(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+        payload=payload,
+    )
 
-    assert captured == {"ids": [missing_dataset_id], "tenant_id": "tenant-1"}
+    assert result["loaded"] is True
+    assert saved["draft_type"] == AgentConfigDraftType.DRAFT
+    assert saved["agent_soul"].knowledge.sets[0].retrieval.mode == "single"
+    assert saved["agent_soul"].knowledge.sets[0].retrieval.model is None
+    assert saved["agent_soul"].knowledge.sets[0].metadata_filtering.mode == "automatic"
+    assert saved["agent_soul"].knowledge.sets[0].metadata_filtering.metadata_model_config is None
+    assert fake_session.commits == 1
 
 
 def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatch: pytest.MonkeyPatch):

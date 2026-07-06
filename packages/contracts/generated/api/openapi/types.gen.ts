@@ -315,7 +315,8 @@ export type MessageMetadata = {
 }
 
 export type OpenApiErrorCode
-  = | 'app_unavailable'
+  = | 'agent_not_published'
+    | 'app_unavailable'
     | 'bad_gateway'
     | 'bad_request'
     | 'completion_request_error'

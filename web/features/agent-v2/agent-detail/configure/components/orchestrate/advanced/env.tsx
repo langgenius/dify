@@ -7,10 +7,18 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { agentComposerEnvVariablesAtom } from '@/features/agent-v2/agent-composer/store-modules/env'
+import {
+  addEnvVariableAtom,
+  agentComposerEnvVariablesAtom,
+  importEnvVariablesAtom,
+  removeEnvVariableAtom,
+  setEnvVariableKeyAtom,
+  setEnvVariableScopeAtom,
+  setEnvVariableValueAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/env'
 import { checkKeys } from '@/utils/var'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
@@ -410,7 +418,13 @@ export function EnvVariablesTable({
 export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
-  const [envVariables, setEnvVariables] = useAtom(agentComposerEnvVariablesAtom)
+  const envVariables = useAtomValue(agentComposerEnvVariablesAtom)
+  const addEnvVariable = useSetAtom(addEnvVariableAtom)
+  const importEnvVariables = useSetAtom(importEnvVariablesAtom)
+  const removeEnvVariable = useSetAtom(removeEnvVariableAtom)
+  const setEnvVariableKey = useSetAtom(setEnvVariableKeyAtom)
+  const setEnvVariableScope = useSetAtom(setEnvVariableScopeAtom)
+  const setEnvVariableValue = useSetAtom(setEnvVariableValueAtom)
   const starterVariableRef = useRef<EnvVariable | undefined>(undefined)
   if (!starterVariableRef.current)
     starterVariableRef.current = createEnvVariable()
@@ -454,10 +468,10 @@ export function AgentEnvEditor() {
     setEnvVariables(currentEnvVariables => [
       ...(currentEnvVariables.length > 0 ? currentEnvVariables : [starterVariable]),
       variable,
-    ])
+    })
     setFocusedVariable({ id: variable.id, field: focusField })
   }
-  const importEnvVariables = async (file: File) => {
+  const handleImportEnvVariables = async (file: File) => {
     const {
       invalidLineCount,
       variables,
@@ -476,13 +490,13 @@ export function AgentEnvEditor() {
     setEnvVariables(currentEnvVariables => [...currentEnvVariables, ...importedVariables])
   }
   const updateVariableKey = (id: string, key: string) => {
-    updateVariable(id, variable => ({ ...variable, key }))
+    setEnvVariableKey({ id, key, starterVariable })
   }
   const updateVariableScope = (id: string, scope: EnvScope) => {
-    updateVariable(id, variable => ({ ...variable, scope }))
+    setEnvVariableScope({ id, scope, starterVariable })
   }
   const updateVariableValue = (id: string, value: string) => {
-    updateVariable(id, variable => ({ ...variable, value }))
+    setEnvVariableValue({ id, starterVariable, value })
   }
   const deleteVariable = (id: string) => {
     setEnvVariables(currentEnvVariables => currentEnvVariables.filter(variable => variable.id !== id))
@@ -511,7 +525,7 @@ export function AgentEnvEditor() {
                   event.target.value = ''
 
                   if (file)
-                    void importEnvVariables(file)
+                    void handleImportEnvVariables(file)
                 }}
               />
               <Tooltip>
