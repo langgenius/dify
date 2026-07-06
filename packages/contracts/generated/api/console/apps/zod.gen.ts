@@ -565,6 +565,13 @@ export const zWorkflowAgentSandboxUploadPayload = z.object({
 })
 
 /**
+ * SandboxUploadResponse
+ */
+export const zSandboxUploadResponse = z.object({
+  url: z.string(),
+})
+
+/**
  * WorkflowCommentCreatePayload
  */
 export const zWorkflowCommentCreatePayload = z.object({
@@ -1671,22 +1678,6 @@ export const zSandboxListResponse = z.object({
   entries: z.array(zSandboxFileEntryResponse).optional(),
   path: z.string(),
   truncated: z.boolean().optional().default(false),
-})
-
-/**
- * SandboxToolFileResponse
- */
-export const zSandboxToolFileResponse = z.object({
-  reference: z.string(),
-  transfer_method: z.literal('tool_file').optional().default('tool_file'),
-})
-
-/**
- * SandboxUploadResponse
- */
-export const zSandboxUploadResponse = z.object({
-  file: zSandboxToolFileResponse,
-  path: z.string(),
 })
 
 /**

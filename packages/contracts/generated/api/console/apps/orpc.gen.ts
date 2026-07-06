@@ -3029,11 +3029,11 @@ export const read = {
 }
 
 /**
- * Upload one workflow Agent sandbox file as a Dify ToolFile mapping
+ * Upload one workflow Agent sandbox file and return a signed download URL
  */
 export const post41 = oc
   .route({
-    description: 'Upload one workflow Agent sandbox file as a Dify ToolFile mapping',
+    description: 'Upload one workflow Agent sandbox file and return a signed download URL',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUpload',

@@ -1268,7 +1268,7 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 
 ### [POST] /agent/{agent_id}/sandbox/files/upload
-Upload one Agent App sandbox file as a Dify ToolFile mapping
+Upload one Agent App sandbox file and return a signed download URL
 
 #### Parameters
 
@@ -3777,7 +3777,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload
-Upload one workflow Agent sandbox file as a Dify ToolFile mapping
+Upload one workflow Agent sandbox file and return a signed download URL
 
 #### Parameters
 
@@ -20545,19 +20545,11 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | text | string |  | No |
 | truncated | boolean |  | Yes |
 
-#### SandboxToolFileResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reference | string |  | Yes |
-| transfer_method | string, <br>**Default:** tool_file |  | No |
-
 #### SandboxUploadResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| file | [SandboxToolFileResponse](#sandboxtoolfileresponse) |  | Yes |
-| path | string |  | Yes |
+| url | string |  | Yes |
 
 #### SavedMessageCreatePayload
 

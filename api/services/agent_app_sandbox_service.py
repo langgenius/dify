@@ -21,9 +21,9 @@ from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import select
 
 from configs import dify_config
+from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.db.session_factory import session_factory
 from factories import file_factory
 from models.agent import AgentRuntimeSessionOwnerType, WorkflowAgentRuntimeSession, WorkflowAgentRuntimeSessionStatus
@@ -313,6 +313,7 @@ def _default_client_factory() -> Client:
             status_code=503,
         )
     return Client(base_url=base_url)
+
 
 __all__ = [
     "AgentAppSandboxService",

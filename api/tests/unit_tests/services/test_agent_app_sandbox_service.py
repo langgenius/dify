@@ -20,8 +20,8 @@ from services.agent_app_sandbox_service import (
     AgentSandboxInspectorError,
     AgentSandboxUploadDownload,
     WorkflowAgentSandboxService,
-    _upload_download_response,
     _default_client_factory,
+    _upload_download_response,
 )
 
 
@@ -338,7 +338,6 @@ def test_upload_download_response_maps_missing_url_to_inspector_error(
         def resolve_file_url(self, *, file: object, for_external: bool) -> None:
             assert file is built_file
             assert for_external is True
-            return None
 
     monkeypatch.setattr("services.agent_app_sandbox_service.file_factory.build_from_mapping", fake_build_from_mapping)
     monkeypatch.setattr("services.agent_app_sandbox_service.DifyWorkflowFileRuntime", FakeRuntime)

@@ -873,8 +873,7 @@ export type WorkflowAgentSandboxUploadPayload = {
 }
 
 export type SandboxUploadResponse = {
-  file: SandboxToolFileResponse
-  path: string
+  url: string
 }
 
 export type WorkflowCommentBasicList = {
@@ -1805,11 +1804,6 @@ export type SandboxFileEntryResponse = {
   name: string
   size?: number | null
   type: 'dir' | 'file' | 'other' | 'symlink'
-}
-
-export type SandboxToolFileResponse = {
-  reference: string
-  transfer_method?: 'tool_file'
 }
 
 export type WorkflowCommentBasic = {
