@@ -1072,13 +1072,13 @@ Execute the full knowledge pipeline for a knowledge base. Supports both streamin
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `forbidden` : Forbidden. |
-| 404 | `not_found` : Dataset not found. |
-| 500 | `pipeline_run_error` : Pipeline execution failed. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | `forbidden` : Forbidden. |  |
+| 404 | `not_found` : Dataset not found. |  |
+| 500 | `pipeline_run_error` : Pipeline execution failed. |  |
 
 ---
 ## default
