@@ -4,7 +4,7 @@ Feature: Agent Builder preseeded environment
   Scenario: Agent lifecycle permissions are available
     Given I am signed in as the default E2E admin
     And an Agent v2 test agent has been created via API
-    And the Agent v2 composer draft uses the normal E2E prompt
+    And the Agent v2 composer draft is publishable
     When I open the Agent v2 configure page
     And I publish the Agent v2 draft
     Then the Agent v2 draft should be published and up to date
