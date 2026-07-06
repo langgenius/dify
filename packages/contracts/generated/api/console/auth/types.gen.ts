@@ -86,7 +86,7 @@ export type ProviderConfig = {
   placeholder?: I18nObject | null
   required?: boolean
   scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
-  type: CoreEntitiesProviderEntitiesBasicProviderConfigType
+  type: ProviderConfigType
   url?: string | null
 }
 
@@ -126,7 +126,7 @@ export type ModelSelectorScope
 
 export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
 
-export type CoreEntitiesProviderEntitiesBasicProviderConfigType
+export type ProviderConfigType
   = | 'app-selector'
     | 'array[tools]'
     | 'boolean'
