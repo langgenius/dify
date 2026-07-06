@@ -1,13 +1,12 @@
 """Summary index service for generating and managing document segment summaries."""
 
-from sqlalchemy import update
 import logging
 import time
 import uuid
 from datetime import UTC, datetime
 from typing import TypedDict, cast
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, scoped_session
 
 from core.db.session_factory import session_factory
