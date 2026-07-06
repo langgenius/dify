@@ -3644,9 +3644,7 @@ export type PostWorkflowsRunErrors = {
 }
 
 export type PostWorkflowsRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -3716,9 +3714,7 @@ export type PostWorkflowsByWorkflowIdRunErrors = {
 }
 
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsByWorkflowIdRunResponse
