@@ -247,16 +247,20 @@ function AgentFilePreviewContent({
   const lines = content.split('\n')
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-auto px-2 pb-4">
-      <pre
-        aria-hidden="true"
-        className="m-0 w-7 shrink-0 pr-2 text-right font-mono text-[13px] leading-[22px] text-text-quaternary select-none"
-      >
-        {lines.map((_, index) => String(index + 1).padStart(2, '0')).join('\n')}
-      </pre>
-      <pre className="m-0 min-w-max flex-1 font-mono text-[13px] leading-[22px] whitespace-pre text-text-primary">
-        {content}
-      </pre>
+    <div className="min-h-0 flex-1 overflow-auto px-2 pb-4 font-mono text-[13px] leading-[22px]">
+      {lines.map((line, index) => (
+        <div key={index} className="flex min-w-0 items-start">
+          <span
+            aria-hidden="true"
+            className="w-7 shrink-0 pr-2 text-right text-text-quaternary select-none"
+          >
+            {String(index + 1).padStart(2, '0')}
+          </span>
+          <code className="block min-w-0 flex-1 [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-text-primary">
+            {line}
+          </code>
+        </div>
+      ))}
     </div>
   )
 }
