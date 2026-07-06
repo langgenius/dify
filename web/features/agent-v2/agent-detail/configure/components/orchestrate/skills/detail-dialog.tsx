@@ -211,29 +211,25 @@ function AgentFilePreviewContent({
   }
 
   if (binary) {
-    if (downloadUrl) {
-      return (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 px-4">
-          <span className="system-sm-regular text-text-tertiary">
-            {t('agentDetail.configure.files.preview.unsupported')}
-          </span>
-          <a
-            href={downloadUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span aria-hidden className="i-ri-download-2-line size-4 shrink-0" />
-            <span className="shrink-0">{tCommon('operation.download')}</span>
-          </a>
-        </div>
-      )
-    }
-
     return (
-      <p className="px-4 system-sm-regular text-text-tertiary">
-        {t('agentDetail.configure.files.preview.empty')}
-      </p>
+      <div className="flex min-w-0 flex-wrap items-center gap-2 px-4">
+        <span className="system-sm-regular text-text-tertiary">
+          {t('agentDetail.configure.files.preview.unsupported')}
+        </span>
+        <a
+          href={downloadUrl || '#'}
+          onClick={(event) => {
+            if (!downloadUrl)
+              event.preventDefault()
+          }}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          <span aria-hidden className="i-ri-download-2-line size-4 shrink-0" />
+          <span className="shrink-0">{tCommon('operation.download')}</span>
+        </a>
+      </div>
     )
   }
 
