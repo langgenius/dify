@@ -335,6 +335,7 @@ function AgentConfigurePageComposerContent({
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={!buildDraft.isActive}
+          workflowReferencesEnabled={agentQuery.isSuccess}
           bottomAction={showBuildDraftBar
             ? (
                 <AgentBuildDraftBar

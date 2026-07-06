@@ -59,6 +59,16 @@ type AgentMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQue
 type AgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.composer.put.mutationOptions>['onSuccess']>>[0]
 type AgentPublishMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.publish.post.mutationOptions>['onSuccess']>>[0]
 type WorkflowAgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions>['onSuccess']>>[0]
+type RetryFn = (failureCount: number, error: unknown) => boolean
+
+const getRetryFn = (queryOptions: object): RetryFn => {
+  const retry = (queryOptions as { retry?: unknown }).retry
+  expect(typeof retry).toBe('function')
+  if (typeof retry !== 'function')
+    throw new TypeError('Expected query retry to be a function.')
+
+  return retry as RetryFn
+}
 
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
@@ -350,11 +360,7 @@ describe('consoleQuery agent query defaults', () => {
         },
       },
     })
-    const retry = queryOptions.retry
-
-    expect(typeof retry).toBe('function')
-    if (typeof retry !== 'function')
-      throw new TypeError('Expected agent detail retry to be a function.')
+    const retry = getRetryFn(queryOptions)
 
     expect(retry(0, new Response(null, { status: 404 }))).toBe(false)
   })
@@ -368,11 +374,7 @@ describe('consoleQuery agent query defaults', () => {
         },
       },
     })
-    const retry = queryOptions.retry
-
-    expect(typeof retry).toBe('function')
-    if (typeof retry !== 'function')
-      throw new TypeError('Expected agent detail retry to be a function.')
+    const retry = getRetryFn(queryOptions)
 
     expect(retry(2, new Error('temporary failure'))).toBe(true)
     expect(retry(3, new Error('temporary failure'))).toBe(false)
