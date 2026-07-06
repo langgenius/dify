@@ -1,5 +1,6 @@
 import logging
 from urllib.parse import quote
+from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource
@@ -185,7 +186,7 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, snippet_id: str):
+    def get(self, current_tenant_id: str, snippet_id: UUID):
         """Get customized snippet details."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
