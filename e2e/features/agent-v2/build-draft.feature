@@ -1,5 +1,15 @@
 @agent-v2 @authenticated @build
 Feature: Agent v2 build draft
+  @core
+  Scenario: Build chat is blocked until a model is configured
+    Given I am signed in as the default E2E admin
+    And an Agent v2 test agent has been created via API
+    And the Agent v2 composer draft uses the normal E2E prompt
+    When I open the Agent v2 configure page
+    And I try to generate an Agent v2 Build draft without a model
+    Then Agent v2 Build chat should be blocked until a model is configured
+    And the Agent v2 Build draft should not be checked out
+
   @external-model @agent-backend-runtime @stable-model
   Scenario: Generating a Build draft leaves the normal Agent configuration unchanged
     Given I am signed in as the default E2E admin

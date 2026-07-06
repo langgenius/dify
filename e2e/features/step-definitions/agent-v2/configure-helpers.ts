@@ -138,6 +138,12 @@ export const expectAgentConfigFileSaved = async (
     })
 }
 
+export const expectAgentModelRequiredFeedback = async (page: ReturnType<DifyWorld['getPage']>) => {
+  await expect(
+    page.getByText(/configure a model|model is required|model.*not configured|select.*model/i),
+  ).toBeVisible({ timeout: 10_000 })
+}
+
 export const uploadSummaryConfigSkillForBuildDraft = async (world: DifyWorld) => {
   const agentId = getCurrentAgentId(world)
   const skill = await uploadAgentConfigSkillToDraft({
