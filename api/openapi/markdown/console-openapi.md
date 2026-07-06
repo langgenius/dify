@@ -38,7 +38,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/change-email
 #### Request Body
@@ -77,7 +77,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/change-email/validity
 #### Request Body
@@ -198,7 +198,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/interface-theme
 #### Request Body
@@ -211,7 +211,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/name
 #### Request Body
@@ -224,7 +224,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/password
 #### Request Body
@@ -237,14 +237,14 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [GET] /account/profile
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/timezone
 #### Request Body
@@ -257,7 +257,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /activate
 Activate account with invitation token
@@ -7067,9 +7067,9 @@ Request body:
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
 #### Parameters
@@ -7100,9 +7100,9 @@ Request body:
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /installed-apps/{installed_app_id}/completion-messages/{task_id}/stop
 #### Parameters
@@ -7243,9 +7243,9 @@ Request body:
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions
 #### Parameters
@@ -7375,9 +7375,9 @@ Request body:
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -9328,7 +9328,7 @@ Remove one or more tag bindings from a target.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ [TagResponse](#tagresponse) ]<br> |
+| 200 | Success | **application/json**: [TagListResponse](#taglistresponse)<br> |
 
 ### [POST] /tags
 #### Request Body
@@ -9943,7 +9943,7 @@ Increment snippet use count by 1
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountWithRoleList](#accountwithrolelist)<br> |
+| 200 | Success | **application/json**: [AccountWithRoleListResponse](#accountwithrolelistresponse)<br> |
 
 ### [GET] /workspaces/current/default-model
 #### Parameters
@@ -10152,7 +10152,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountWithRoleList](#accountwithrolelist)<br> |
+| 200 | Success | **application/json**: [AccountWithRoleListResponse](#accountwithrolelistresponse)<br> |
 
 ### [POST] /workspaces/current/members/invite-email
 #### Request Body
@@ -12661,23 +12661,6 @@ Default namespace
 | role_name | string |  | No |
 | tenant_id | string |  | No |
 
-#### Account
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar | string |  | No |
-| avatar_url | string |  | Yes |
-| created_at | integer |  | No |
-| email | string |  | Yes |
-| id | string |  | Yes |
-| interface_language | string |  | No |
-| interface_theme | string |  | No |
-| is_password_set | boolean |  | Yes |
-| last_login_at | integer |  | No |
-| last_login_ip | string |  | No |
-| name | string |  | Yes |
-| timezone | string |  | No |
-
 #### AccountAvatarPayload
 
 | Name | Type | Description | Required |
@@ -12753,13 +12736,36 @@ Default namespace
 | password | string |  | No |
 | repeat_new_password | string |  | Yes |
 
+#### AccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| avatar_url | string |  | Yes |
+| created_at | integer |  | No |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| interface_language | string |  | No |
+| interface_theme | string |  | No |
+| is_password_set | boolean |  | Yes |
+| last_login_at | integer |  | No |
+| last_login_ip | string |  | No |
+| name | string |  | Yes |
+| timezone | string |  | No |
+
 #### AccountTimezonePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | timezone | string |  | Yes |
 
-#### AccountWithRole
+#### AccountWithRoleListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accounts | [ [AccountWithRoleResponse](#accountwithroleresponse) ] |  | Yes |
+
+#### AccountWithRoleResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -12774,12 +12780,6 @@ Default namespace
 | role | string |  | Yes |
 | roles | [ object ] |  | No |
 | status | string |  | Yes |
-
-#### AccountWithRoleList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| accounts | [ [AccountWithRole](#accountwithrole) ] |  | Yes |
 
 #### ActivateCheckQuery
 
@@ -12829,7 +12829,7 @@ Default namespace
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string |  | No |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
@@ -20610,6 +20610,14 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | id | string |  | Yes |
 | name | string |  | Yes |
 
+#### SimpleAccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
 #### SimpleConversation
 
 | Name | Type | Description | Required |
@@ -20947,7 +20955,7 @@ Query parameters for listing snippet published workflows.
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
 | created_at | integer |  | Yes |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
 | features | object |  | Yes |
 | graph | object |  | Yes |
@@ -20959,7 +20967,7 @@ Query parameters for listing snippet published workflows.
 | rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
 | tool_published | boolean |  | Yes |
 | updated_at | integer |  | Yes |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
 
 #### StarredAppListQuery
@@ -21180,6 +21188,12 @@ Model class for provider system configuration response.
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
 | type | string, <br>**Available values:** "", "app", "knowledge", "snippet" | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"`, `"snippet"` | No |
+
+#### TagListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TagListResponse | array |  |  |
 
 #### TagResponse
 
@@ -21434,35 +21448,6 @@ Enum class for tool provider
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [TrialWorkflowPartialResponse](#trialworkflowpartialresponse) |  | No |
 
-#### TrialAppDetailWithSite
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| access_mode | string |  | No |
-| api_base_url | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| deleted_tools | [ [TrialDeletedTool](#trialdeletedtool) ] |  | No |
-| description | string |  | No |
-| enable_api | boolean |  | No |
-| enable_site | boolean |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-| id | string |  | No |
-| max_active_requests | integer |  | No |
-| mode | string |  | No |
-| model_config | [TrialAppModelConfig](#trialappmodelconfig) |  | No |
-| name | string |  | No |
-| permission_keys | [ string ] |  | No |
-| site | [TrialSite](#trialsite) |  | No |
-| tags | [ [TrialTag](#trialtag) ] |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-| workflow | [TrialWorkflowPartial](#trialworkflowpartial) |  | No |
-
 #### TrialAppMode
 
 | Name | Type | Description | Required |
@@ -21477,35 +21462,6 @@ Enum class for tool provider
 | mode | string |  | No |
 | name | string |  | Yes |
 | provider | string |  | Yes |
-
-#### TrialAppModelConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_mode | object |  | No |
-| annotation_reply | object |  | No |
-| chat_prompt_config | object |  | No |
-| completion_prompt_config | object |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| dataset_configs | object |  | No |
-| dataset_query_variable | string |  | No |
-| external_data_tools | [ object ] |  | No |
-| file_upload | object |  | No |
-| model | object |  | No |
-| more_like_this | object |  | No |
-| opening_statement | string |  | No |
-| pre_prompt | string |  | No |
-| prompt_type | string |  | No |
-| retriever_resource | object |  | No |
-| sensitive_word_avoidance | object |  | No |
-| speech_to_text | object |  | No |
-| suggested_questions | [ string ] |  | No |
-| suggested_questions_after_answer | object |  | No |
-| text_to_speech | object |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| user_input_form | [ object ] |  | No |
 
 #### TrialAppModelConfigResponse
 
@@ -21535,40 +21491,6 @@ Enum class for tool provider
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 | user_input_form | [ [JsonObject](#jsonobject) ] |  | No |
-
-#### TrialConversationVariable
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
-| value_type | string |  | No |
-
-#### TrialDataset
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| data_source_type | string |  | No |
-| description | string |  | No |
-| id | string |  | No |
-| indexing_technique | string |  | No |
-| name | string |  | No |
-| permission | string |  | No |
-| permission_keys | [ string ] |  | No |
-
-#### TrialDatasetList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [TrialDataset](#trialdataset) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
-| total | integer |  | No |
 
 #### TrialDatasetListQuery
 
@@ -21602,14 +21524,6 @@ Enum class for tool provider
 | permission | string |  | No |
 | permission_keys | [ string ] |  | No |
 
-#### TrialDeletedTool
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| provider_id | string |  | No |
-| tool_name | string |  | No |
-| type | string |  | No |
-
 #### TrialDeletedToolResponse
 
 | Name | Type | Description | Required |
@@ -21630,25 +21544,6 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | trial_models | [ string ] |  | Yes |
 
-#### TrialPipelineVariable
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allow_file_extension | [ string ] |  | No |
-| allow_file_upload_methods | [ string ] |  | No |
-| allowed_file_types | [ string ] |  | No |
-| belong_to_node_id | string |  | No |
-| default_value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
-| label | string |  | No |
-| max_length | integer |  | No |
-| options | [ string ] |  | No |
-| placeholder | string |  | No |
-| required | boolean |  | No |
-| tooltips | string |  | No |
-| type | string |  | No |
-| unit | string |  | No |
-| variable | string |  | No |
-
 #### TrialSimpleAccount
 
 | Name | Type | Description | Required |
@@ -21656,35 +21551,6 @@ Enum class for tool provider
 | email | string |  | No |
 | id | string |  | Yes |
 | name | string |  | No |
-
-#### TrialSite
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| access_token | string |  | No |
-| app_base_url | string |  | No |
-| chat_color_theme | string |  | No |
-| chat_color_theme_inverted | boolean |  | No |
-| code | string |  | No |
-| copyright | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| custom_disclaimer | string |  | No |
-| customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
-| default_language | string |  | No |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-| privacy_policy | string |  | No |
-| prompt_public | boolean |  | No |
-| show_workflow_steps | boolean |  | No |
-| title | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
 
 #### TrialSiteResponse
 
@@ -21716,14 +21582,6 @@ Enum class for tool provider
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 
-#### TrialTag
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
 #### TrialTagResponse
 
 | Name | Type | Description | Required |
@@ -21731,36 +21589,6 @@ Enum class for tool provider
 | id | string |  | Yes |
 | name | string |  | Yes |
 | type | string |  | Yes |
-
-#### TrialWorkflow
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_variables | [ [TrialConversationVariable](#trialconversationvariable) ] |  | No |
-| created_at | long |  | No |
-| created_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
-| environment_variables | [ object ] |  | No |
-| features | object |  | No |
-| graph | object |  | No |
-| hash | string |  | No |
-| id | string |  | No |
-| marked_comment | string |  | No |
-| marked_name | string |  | No |
-| rag_pipeline_variables | [ [TrialPipelineVariable](#trialpipelinevariable) ] |  | No |
-| tool_published | boolean |  | No |
-| updated_at | long |  | No |
-| updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
-| version | string |  | No |
-
-#### TrialWorkflowPartial
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| id | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
 
 #### TrialWorkflowPartialResponse
 
@@ -22208,7 +22036,7 @@ How a workflow node is bound to an Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | created_from | string |  | No |
@@ -22245,7 +22073,7 @@ How a workflow node is bound to an Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | id | string |  | Yes |
 | trigger_metadata |  |  | No |
@@ -22346,7 +22174,7 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| users | [ [AccountWithRole](#accountwithrole) ] |  | Yes |
+| users | [ [AccountWithRoleResponse](#accountwithroleresponse) ] |  | Yes |
 
 #### WorkflowCommentReply
 
@@ -22769,7 +22597,7 @@ tenant's default model. The underlying generator never raises — an empty
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
 | created_at | integer |  | Yes |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
 | features | object |  | Yes |
 | graph | object |  | Yes |
@@ -22780,7 +22608,7 @@ tenant's default model. The underlying generator never raises — an empty
 | rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
 | tool_published | boolean |  | Yes |
 | updated_at | integer |  | Yes |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
 
 #### WorkflowRestoreResponse
@@ -22815,7 +22643,7 @@ tenant's default model. The underlying generator never raises — an empty
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
@@ -22854,7 +22682,7 @@ tenant's default model. The underlying generator never raises — an empty
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
@@ -22901,7 +22729,7 @@ tenant's default model. The underlying generator never raises — an empty
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |

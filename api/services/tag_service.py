@@ -73,7 +73,7 @@ class TagService:
         target must be bound to all requested tags.
         """
         # Check if tag_ids is not empty to avoid WHERE false condition
-        if not tag_ids or len(tag_ids) == 0:
+        if not tag_ids:
             return []
         # Deduplicate repeated query params so match_all counts each requested tag once.
         requested_tag_ids = list(dict.fromkeys(tag_ids))
@@ -88,7 +88,7 @@ class TagService:
             return []
         tag_ids = list(tags)
         # Check if tag_ids is not empty to avoid WHERE false condition
-        if not tag_ids or len(tag_ids) == 0:
+        if not tag_ids:
             return []
         if match_all:
             if len(tag_ids) != len(requested_tag_ids):
