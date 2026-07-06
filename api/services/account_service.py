@@ -63,6 +63,8 @@ from services.errors.account import (
     LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
+    RefreshTokenAccountNotFoundError,
+    RefreshTokenNotFoundError,
     RoleAlreadyAssignedError,
     TenantNotFoundError,
 )
@@ -652,11 +654,11 @@ class AccountService:
         # Verify the refresh token
         account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
         if not account_id:
-            raise ValueError("Invalid refresh token")
+            raise RefreshTokenNotFoundError("Invalid refresh token")
 
         account = AccountService.load_user(account_id.decode("utf-8"), session)
         if not account:
-            raise ValueError("Invalid account")
+            raise RefreshTokenAccountNotFoundError("Invalid account")
 
         # Generate new access token and refresh token
         new_access_token = AccountService.get_account_jwt_token(account)

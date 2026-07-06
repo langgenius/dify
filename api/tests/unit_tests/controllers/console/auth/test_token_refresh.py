@@ -16,6 +16,7 @@ from flask_restx import Api
 from werkzeug.exceptions import Unauthorized
 
 from controllers.console.auth.login import RefreshTokenApi
+from services.errors.account import RefreshTokenAccountNotFoundError, RefreshTokenNotFoundError
 
 
 class TestRefreshTokenApi:
@@ -111,7 +112,7 @@ class TestRefreshTokenApi:
         """
         # Arrange
         mock_extract_token.return_value = "invalid_refresh_token"
-        mock_refresh_token.side_effect = ValueError("Invalid refresh token")
+        mock_refresh_token.side_effect = RefreshTokenNotFoundError("Invalid refresh token")
 
         # Act
         with app.test_request_context("/refresh-token", method="POST"):
@@ -137,7 +138,7 @@ class TestRefreshTokenApi:
         """
         # Arrange
         mock_extract_token.return_value = "refresh_token_for_missing_account"
-        mock_refresh_token.side_effect = ValueError("Invalid account")
+        mock_refresh_token.side_effect = RefreshTokenAccountNotFoundError("Invalid account")
 
         # Act
         with app.test_request_context("/refresh-token", method="POST"):

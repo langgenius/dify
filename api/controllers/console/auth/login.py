@@ -52,12 +52,11 @@ from services.account_service import AccountService, InvitationDetailDict, Regis
 from services.billing_service import BillingService
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
 from services.errors.account import AccountRegisterError
+from services.errors.account import RefreshTokenAccountNotFoundError, RefreshTokenNotFoundError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
-
-REFRESH_TOKEN_VALIDATION_ERRORS = frozenset({"Invalid refresh token", "Invalid account"})
 
 
 class LoginPayload(LoginPayloadBase):
@@ -351,9 +350,7 @@ class RefreshTokenApi(Resource):
             new_token_pair = AccountService.refresh_token(refresh_token, session=db.session)
         except Unauthorized as exc:
             return {"result": "fail", "message": exc.description}, 401
-        except ValueError as exc:
-            if str(exc) not in REFRESH_TOKEN_VALIDATION_ERRORS:
-                raise
+        except (RefreshTokenNotFoundError, RefreshTokenAccountNotFoundError) as exc:
             return {"result": "fail", "message": str(exc)}, 401
 
         # Create response with new cookies
