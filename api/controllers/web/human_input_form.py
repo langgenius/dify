@@ -19,9 +19,9 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.web import web_ns
 from controllers.web.error import WebFormRateLimitExceededError
 from controllers.web.site import WebAppSiteResponse
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
 from models.model import App, Site
