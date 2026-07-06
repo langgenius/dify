@@ -119,10 +119,9 @@ export type HumanInputFormPreviewPayload = {
 }
 
 export type HumanInputFormPreviewResponse = {
-  actions?: Array<{
-    [key: string]: unknown
-  }>
-  display_in_ui?: boolean | null
+  TYPE?: 'human_input_required'
+  actions?: Array<HumanInputUserActionResponse>
+  display_in_ui?: boolean
   expiration_time?: number | null
   form_content: string
   form_id: string
@@ -147,17 +146,11 @@ export type HumanInputFormSubmitPayload = {
   }
 }
 
-export type HumanInputFormSubmitResponse = {
-  [key: string]: unknown
-}
-
 export type IterationNodeRunPayload = {
   inputs?: {
     [key: string]: unknown
   } | null
 }
-
-export type GeneratedAppResponse = JsonValue
 
 export type LoopNodeRunPayload = {
   inputs?: {
@@ -970,14 +963,6 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
-
-export type DefaultBlockConfigResponse = {
-  [key: string]: unknown
-}
-
 export type WorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
@@ -1017,9 +1002,9 @@ export type SyncDraftWorkflowPayload = {
 }
 
 export type SyncDraftWorkflowResponse = {
-  hash?: string
-  result?: string
-  updated_at?: string
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type WorkflowDraftVariableList = {
@@ -1049,7 +1034,7 @@ export type HumanInputDeliveryTestPayload = {
   }
 }
 
-export type EmptyObjectResponse = {
+export type HumanInputDeliveryTestResponse = {
   [key: string]: unknown
 }
 
@@ -1193,7 +1178,7 @@ export type OutputPreviewView = {
   value?: unknown
 }
 
-export type DraftWorkflowTriggerRunRequest = {
+export type DraftWorkflowTriggerRunPayload = {
   node_id: string
 }
 
@@ -1237,14 +1222,11 @@ export type WorkflowDraftVariableUpdatePayload = {
 }
 
 export type PublishWorkflowPayload = {
-  knowledge_base_setting?: {
-    [key: string]: unknown
-  } | null
   marked_comment?: string | null
   marked_name?: string | null
 }
 
-export type WorkflowPublishResponse = {
+export type PublishWorkflowResponse = {
   created_at: number
   result: string
 }
@@ -1261,12 +1243,6 @@ export type WebhookTriggerResponse = {
 export type WorkflowUpdatePayload = {
   marked_comment?: string | null
   marked_name?: string | null
-}
-
-export type WorkflowRestoreResponse = {
-  hash: string
-  result: string
-  updated_at: number
 }
 
 export type ApiKeyList = {
@@ -1398,16 +1374,11 @@ export type AdvancedChatWorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type HumanInputUserActionResponse = {
+  button_style?: string
+  id: string
+  title: string
+}
 
 export type AgentConfigVersionResponse = {
   id: string
@@ -1650,7 +1621,6 @@ export type ConversationVariableResponse = {
 }
 
 export type AgentThought = {
-  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -1693,6 +1663,8 @@ export type Feedback = {
   from_source: string
   rating: string
 }
+
+export type JsonValue = unknown
 
 export type MessageFile = {
   belongs_to?: string | null
@@ -3061,8 +3033,6 @@ export type AppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type GeneratedAppResponseWritable = JsonValue
-
 export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
 }
@@ -3086,6 +3056,10 @@ export type WorkflowCommentDetailWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type HumanInputDeliveryTestResponseWritable = {
+  [key: string]: unknown
 }
 
 export type AppPartialWritable = {
@@ -3470,7 +3444,9 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
-  200: HumanInputFormSubmitResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse
@@ -3492,7 +3468,9 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunEr
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse
@@ -3514,7 +3492,9 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors 
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse
@@ -3535,7 +3515,9 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors = {
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse
@@ -5883,7 +5865,9 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
-  200: DefaultBlockConfigsResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse
@@ -5906,7 +5890,9 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors 
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses = {
-  200: DefaultBlockConfigResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
@@ -6052,7 +6038,7 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestData
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses = {
-  200: EmptyObjectResponse
+  200: HumanInputDeliveryTestResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse
@@ -6086,7 +6072,9 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
-  200: HumanInputFormSubmitResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse
@@ -6108,7 +6096,9 @@ export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse
@@ -6130,7 +6120,9 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse
@@ -6317,7 +6309,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses = {
-  200: GeneratedAppResponse
+  200: WorkflowRunNodeExecutionResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse
@@ -6371,7 +6363,9 @@ export type PostAppsByAppIdWorkflowsDraftRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftRunResponse
@@ -6482,7 +6476,7 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponse
   = GetAppsByAppIdWorkflowsDraftSystemVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
-  body: DraftWorkflowTriggerRunRequest
+  body: DraftWorkflowTriggerRunPayload
   path: {
     app_id: string
   }
@@ -6496,7 +6490,9 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunResponse
@@ -6517,7 +6513,9 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponse
@@ -6669,7 +6667,7 @@ export type PostAppsByAppIdWorkflowsPublishData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishResponses = {
-  200: WorkflowPublishResponse
+  200: PublishWorkflowResponse
 }
 
 export type PostAppsByAppIdWorkflowsPublishResponse
@@ -6838,7 +6836,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: WorkflowRestoreResponse
+  200: SyncDraftWorkflowResponse
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse

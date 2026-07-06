@@ -726,9 +726,9 @@ export const zModelSelectorScope = z.enum([
 export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
 
 /**
- * Type
+ * ProviderConfigType
  */
-export const zCoreEntitiesProviderEntitiesBasicProviderConfigType = z.enum([
+export const zProviderConfigType = z.enum([
   'app-selector',
   'array[tools]',
   'boolean',
@@ -753,7 +753,7 @@ export const zProviderConfig = z.object({
   placeholder: zI18nObject.nullish(),
   required: z.boolean().optional().default(false),
   scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
-  type: zCoreEntitiesProviderEntitiesBasicProviderConfigType,
+  type: zProviderConfigType,
   url: z.string().nullish(),
 })
 
@@ -846,17 +846,15 @@ export const zDatasourceParameterType = z.enum([
 ])
 
 /**
- * Type
+ * PluginParameterAutoGenerateType
  */
-export const zCorePluginEntitiesParametersPluginParameterAutoGenerateType = z.enum([
-  'prompt_instruction',
-])
+export const zPluginParameterAutoGenerateType = z.enum(['prompt_instruction'])
 
 /**
  * PluginParameterAutoGenerate
  */
 export const zPluginParameterAutoGenerate = z.object({
-  type: zCorePluginEntitiesParametersPluginParameterAutoGenerateType,
+  type: zPluginParameterAutoGenerateType,
 })
 
 /**

@@ -1002,13 +1002,13 @@ Execute the full knowledge pipeline for a knowledge base. Supports both streamin
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `forbidden` : Forbidden. |
-| 404 | `not_found` : Dataset not found. |
-| 500 | `pipeline_run_error` : Pipeline execution failed. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | `forbidden` : Forbidden. |  |
+| 404 | `not_found` : Dataset not found. |  |
+| 500 | `pipeline_run_error` : Pipeline execution failed. |  |
 
 ---
 ## default
@@ -2153,15 +2153,15 @@ Execute a workflow. Cannot be executed without a published workflow.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
-| 404 | Workflow not found |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |
-| 500 | `internal_server_error` : Internal server error. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | Workflow not found |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
+| 500 | `internal_server_error` : Internal server error. |  |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -2230,15 +2230,15 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
-| 404 | `not_found` : Workflow not found. |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |
-| 500 | `internal_server_error` : Internal server error. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | `not_found` : Workflow not found. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
+| 500 | `internal_server_error` : Internal server error. |  |
 
 ---
 ## default
@@ -3205,6 +3205,12 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
+#### GeneratedAppResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| GeneratedAppResponse |  |  |  |
+
 #### HitTestingChildChunk
 
 | Name | Type | Description | Required |
@@ -3389,7 +3395,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONValue |  |  |  |
+| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
 
 #### JSONValueType
 

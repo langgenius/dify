@@ -163,16 +163,7 @@ export const zWorkflowRunPayload = z.object({
   inputs: z.record(z.string(), z.unknown()),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zJsonValue = z.unknown()
 
 /**
  * SimpleConversation

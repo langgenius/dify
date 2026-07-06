@@ -89,7 +89,7 @@ export type PipelineTemplateDetailResponse = {
   name: string
 }
 
-export type RagPipelineOpaqueResponse = unknown
+export type DatasourcePluginListResponse = Array<PluginDatasourceProviderEntity>
 
 export type RagPipelineImportPayload = {
   description?: string | null
@@ -105,6 +105,21 @@ export type RagPipelineImportPayload = {
 
 export type RagPipelineImportCheckDependenciesResponse = {
   leaked_dependencies?: Array<PluginDependency>
+}
+
+export type RagPipelineRecommendedPluginResponse = {
+  installed_recommended_plugins: Array<{
+    [key: string]: unknown
+  }>
+  uninstalled_recommended_plugins: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type RagPipelineTransformResponse = {
+  dataset_id: string
+  pipeline_id: string
+  status: string
 }
 
 export type WorkflowRunPaginationResponse = {
@@ -145,14 +160,6 @@ export type WorkflowPaginationResponse = {
   items: Array<WorkflowResponse>
   limit: number
   page: number
-}
-
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
-
-export type DefaultBlockConfigResponse = {
-  [key: string]: unknown
 }
 
 export type WorkflowResponse = {
@@ -264,7 +271,7 @@ export type WorkflowDraftVariableList = {
   items?: Array<WorkflowDraftVariable>
 }
 
-export type RagPipelineStepParametersResponse = {
+export type RagPipelineVariablesResponse = {
   variables: unknown
 }
 
@@ -411,6 +418,14 @@ export type PipelineTemplateItemResponse = {
   privacy_policy?: string | null
 }
 
+export type PluginDatasourceProviderEntity = {
+  declaration: DatasourceProviderEntityWithPlugin
+  is_authorized?: boolean
+  plugin_id: string
+  plugin_unique_identifier: string
+  provider: string
+}
+
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
@@ -513,6 +528,14 @@ export type DatasetWeightedScoreResponse = {
   weight_type?: string | null
 }
 
+export type DatasourceProviderEntityWithPlugin = {
+  credentials_schema?: Array<ProviderConfig>
+  datasources?: Array<DatasourceEntity>
+  identity: DatasourceProviderIdentity
+  oauth_schema?: OAuthSchema | null
+  provider_type: DatasourceProviderType
+}
+
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -541,6 +564,162 @@ export type DatasetVectorSettingResponse = {
   embedding_provider_name?: string | null
   vector_weight?: number | null
 }
+
+export type ProviderConfig = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<Option> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type: ProviderConfigType
+  url?: string | null
+}
+
+export type DatasourceEntity = {
+  description: I18nObject
+  identity: DatasourceIdentity
+  output_schema?: {
+    [key: string]: unknown
+  } | null
+  parameters?: Array<DatasourceParameter>
+}
+
+export type DatasourceProviderIdentity = {
+  author: string
+  description: I18nObject
+  icon: string
+  label: I18nObject
+  name: string
+  tags?: Array<ToolLabelEnum> | null
+}
+
+export type OAuthSchema = {
+  client_schema?: Array<ProviderConfig>
+  credentials_schema?: Array<ProviderConfig>
+}
+
+export type DatasourceProviderType
+  = | 'local_file'
+    | 'online_document'
+    | 'online_drive'
+    | 'website_crawl'
+
+export type I18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type Option = {
+  label: I18nObject
+  value: string
+}
+
+export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
+
+export type ModelSelectorScope
+  = | 'llm'
+    | 'moderation'
+    | 'rerank'
+    | 'speech2text'
+    | 'text-embedding'
+    | 'tts'
+    | 'vision'
+
+export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
+
+export type ProviderConfigType
+  = | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
+
+export type DatasourceIdentity = {
+  author: string
+  icon?: string | null
+  label: I18nObject
+  name: string
+  provider: string
+}
+
+export type DatasourceParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?:
+    | number
+    | number
+    | string
+    | boolean
+    | Array<unknown>
+    | {
+      [key: string]: unknown
+    }
+    | null
+  description: I18nObject
+  label: I18nObject
+  max?: number | number | null
+  min?: number | number | null
+  name: string
+  options?: Array<PluginParameterOption>
+  placeholder?: I18nObject | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: DatasourceParameterType
+}
+
+export type ToolLabelEnum
+  = | 'business'
+    | 'design'
+    | 'education'
+    | 'entertainment'
+    | 'finance'
+    | 'image'
+    | 'medical'
+    | 'news'
+    | 'other'
+    | 'productivity'
+    | 'rag'
+    | 'search'
+    | 'social'
+    | 'travel'
+    | 'utilities'
+    | 'videos'
+    | 'weather'
+
+export type PluginParameterAutoGenerate = {
+  type: PluginParameterAutoGenerateType
+}
+
+export type PluginParameterOption = {
+  icon?: string | null
+  label: I18nObject
+  value: string
+}
+
+export type PluginParameterTemplate = {
+  enabled?: boolean
+}
+
+export type DatasourceParameterType
+  = | 'boolean'
+    | 'file'
+    | 'files'
+    | 'number'
+    | 'secret-input'
+    | 'select'
+    | 'string'
+    | 'system-files'
+
+export type PluginParameterAutoGenerateType = 'prompt_instruction'
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
   body?: never
@@ -661,7 +840,7 @@ export type GetRagPipelinesDatasourcePluginsData = {
 }
 
 export type GetRagPipelinesDatasourcePluginsResponses = {
-  200: RagPipelineOpaqueResponse
+  200: DatasourcePluginListResponse
 }
 
 export type GetRagPipelinesDatasourcePluginsResponse
@@ -738,7 +917,7 @@ export type GetRagPipelinesRecommendedPluginsData = {
 }
 
 export type GetRagPipelinesRecommendedPluginsResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelineRecommendedPluginResponse
 }
 
 export type GetRagPipelinesRecommendedPluginsResponse
@@ -754,7 +933,7 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdData = {
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
-  200: RagPipelineOpaqueResponse
+  200: RagPipelineTransformResponse
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponse
@@ -899,7 +1078,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsData 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
-  200: DefaultBlockConfigsResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse
@@ -918,7 +1099,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlo
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses = {
-  200: DefaultBlockConfigResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
@@ -971,7 +1154,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRun
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponses = {
-  200: RagPipelineOpaqueResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse
@@ -1020,7 +1205,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunD
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
-  200: RagPipelineOpaqueResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse
@@ -1037,7 +1224,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunData =
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
-  200: RagPipelineOpaqueResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse
@@ -1123,7 +1312,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersData
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponses = {
-  200: RagPipelineStepParametersResponse
+  200: RagPipelineVariablesResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse
@@ -1141,7 +1330,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses = {
-  200: RagPipelineStepParametersResponse
+  200: RagPipelineVariablesResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse
@@ -1157,7 +1346,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunResponses = {
-  200: RagPipelineOpaqueResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunResponse
@@ -1346,7 +1537,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponses = {
-  200: RagPipelineOpaqueResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse
@@ -1364,7 +1557,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParameters
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponses = {
-  200: RagPipelineStepParametersResponse
+  200: RagPipelineVariablesResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse
@@ -1382,7 +1575,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersDat
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponses = {
-  200: RagPipelineStepParametersResponse
+  200: RagPipelineVariablesResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse
@@ -1398,7 +1591,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses = {
-  200: RagPipelineOpaqueResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse
