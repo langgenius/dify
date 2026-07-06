@@ -276,7 +276,61 @@ class TestPluginModelRuntime:
             tools=None,
             stop=None,
             stream=False,
+            app_id=None,
         )
+
+    def test_invoke_llm_forwards_string_app_id_from_request_metadata(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        client.invoke_llm.return_value = iter([])
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            request_metadata={"app_id": "app-1"},
+        )
+
+        assert list(result) == []
+        client.invoke_llm.assert_called_once_with(
+            tenant_id="tenant",
+            user_id="user",
+            plugin_id="langgenius/openai",
+            provider="openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            app_id="app-1",
+        )
+
+    def test_invoke_llm_ignores_non_string_app_id_request_metadata(self) -> None:
+        client = Mock(spec=PluginModelClient)
+        client.invoke_llm.return_value = iter([])
+        runtime = PluginModelRuntime(tenant_id="tenant", user_id="user", client=client, plugin_service=PluginService)
+
+        result = runtime.invoke_llm(
+            provider="langgenius/openai/openai",
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+            model_parameters={"temperature": 0.3},
+            prompt_messages=[],
+            tools=None,
+            stop=None,
+            stream=True,
+            request_metadata={"app_id": 123},
+        )
+
+        assert result is client.invoke_llm.return_value
+        assert client.invoke_llm.call_args.kwargs["app_id"] is None
 
     def test_invoke_llm_returns_plugin_stream_directly(self) -> None:
         client = Mock(spec=PluginModelClient)
@@ -308,6 +362,7 @@ class TestPluginModelRuntime:
             tools=None,
             stop=["END"],
             stream=True,
+            app_id=None,
         )
 
     def test_start_llm_polling_resolves_plugin_fields(self) -> None:
