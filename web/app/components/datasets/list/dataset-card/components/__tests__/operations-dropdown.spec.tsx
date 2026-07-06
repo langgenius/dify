@@ -1,5 +1,5 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, screen } from '@testing-library/react'
+import { createEvent, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
@@ -13,6 +13,7 @@ const mockAppContextState = vi.hoisted(() => ({
 }))
 
 let mockIsRbacEnabled = true
+const noopKeyboardHandler = () => {}
 
 const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
   systemFeatures: {
@@ -206,6 +207,73 @@ describe('OperationsDropdown', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Outside action' }))
 
       expect(onOutsideClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should prevent the card click default behavior when opening the menu', () => {
+      render(<OperationsDropdown {...defaultProps} />)
+
+      const trigger = screen.getByLabelText('Dataset operations')
+      const event = createEvent.click(trigger)
+
+      fireEvent(trigger, event)
+
+      expect(event.defaultPrevented).toBe(true)
+    })
+
+    it('should keep menu item clicks from bubbling to the card while running the item action', async () => {
+      const detectIsUsedByApp = vi.fn()
+      const onCardClick = vi.fn()
+
+      render(
+        <div role="button" tabIndex={0} onClick={onCardClick} onKeyDown={noopKeyboardHandler}>
+          <OperationsDropdown
+            {...defaultProps}
+            detectIsUsedByApp={detectIsUsedByApp}
+          />
+        </div>,
+      )
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete' }))
+
+      expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
+      expect(onCardClick).not.toHaveBeenCalled()
+    })
+
+    it('should keep the tour-opened operations menu open when its trigger is clicked', async () => {
+      render((
+        <OperationsDropdown
+          {...defaultProps}
+          stepByStepTourHighlightPart="knowledge-card-actions-menu"
+          stepByStepTourOpen
+        />
+      ))
+
+      expect(await screen.findByText('common.operation.edit')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
+      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.getByRole('menu', { hidden: true })).toHaveClass('pointer-events-none')
+    })
+
+    it('should keep tour-opened operations menu items from running actions', async () => {
+      const detectIsUsedByApp = vi.fn()
+
+      render((
+        <OperationsDropdown
+          {...defaultProps}
+          detectIsUsedByApp={detectIsUsedByApp}
+          stepByStepTourHighlightPart="knowledge-card-actions-menu"
+          stepByStepTourOpen
+        />
+      ))
+
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete', hidden: true }))
+
+      expect(detectIsUsedByApp).not.toHaveBeenCalled()
+      expect(screen.getByRole('menu', { hidden: true })).toBeInTheDocument()
     })
 
     it('should pass openRenameModal to Operations', () => {

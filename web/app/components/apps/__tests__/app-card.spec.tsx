@@ -1744,7 +1744,7 @@ describe('AppCard', () => {
       })
     })
 
-    it('should render the tour-forced operations menu as presentation only', async () => {
+    it('should render the tour-controlled operations menu as presentation only', async () => {
       render(
         <AppCard
           app={mockApp}
@@ -1754,12 +1754,43 @@ describe('AppCard', () => {
       )
 
       expect(await screen.findByText('app.editApp')).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'app.editApp' })).not.toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.editApp', hidden: true })).toBeInTheDocument()
       expect(screen.getByTestId('dropdown-menu-positioner'))
         .toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu)
-      expect(screen.getByTestId('dropdown-menu-positioner')).toHaveAttribute('inert')
       expect(screen.getByTestId('dropdown-menu-content')).toHaveAttribute('aria-hidden', 'true')
       expect(screen.getByTestId('dropdown-menu-content')).toHaveClass('pointer-events-none')
+    })
+
+    it('should keep the tour-controlled operations menu open when its trigger is clicked', async () => {
+      render(
+        <AppCard
+          app={mockApp}
+          stepByStepTourActionMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu}
+          stepByStepTourActionMenuOpen
+        />,
+      )
+
+      expect(await screen.findByText('app.editApp')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      expect(screen.getByText('app.editApp')).toBeInTheDocument()
+      expect(screen.getByTestId('dropdown-menu-content')).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.getByTestId('dropdown-menu-content')).toHaveClass('pointer-events-none')
+    })
+
+    it('should keep tour-controlled operations menu items from running actions', async () => {
+      render(
+        <AppCard
+          app={mockApp}
+          stepByStepTourActionMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu}
+          stepByStepTourActionMenuOpen
+        />,
+      )
+
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'common.operation.delete', hidden: true }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
   })
 

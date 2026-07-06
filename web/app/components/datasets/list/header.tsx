@@ -5,7 +5,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import { getStepByStepTourDropdownMenuContentProps } from '@/app/components/step-by-step-tour/dropdown-menu'
+import { getStepByStepTourDropdownMenuContentProps, useStepByStepTourControlledDropdown } from '@/app/components/step-by-step-tour/dropdown-menu'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import ServiceApi from '../extra-info/service-api'
 
@@ -52,12 +52,9 @@ const DatasetListHeader = ({
 }: Props) => {
   const { t } = useTranslation()
   const showCreateMenu = canCreateDataset || canConnectExternalDataset
-  const createMenuOpenProps = stepByStepTourCreateMenuOpen === undefined
-    ? {}
-    : {
-        open: stepByStepTourCreateMenuOpen,
-        onOpenChange: () => {},
-      }
+  const createMenu = useStepByStepTourControlledDropdown({
+    controlledOpen: stepByStepTourCreateMenuOpen,
+  })
 
   return (
     <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
@@ -107,7 +104,7 @@ const DatasetListHeader = ({
         </div>
         <div className="flex items-center gap-2">
           {showCreateMenu && (
-            <DropdownMenu modal={false} {...createMenuOpenProps}>
+            <DropdownMenu modal={false} open={createMenu.open} onOpenChange={createMenu.onOpenChange}>
               <DropdownMenuTrigger
                 render={(
                   <Button
@@ -126,9 +123,10 @@ const DatasetListHeader = ({
                 placement="bottom-end"
                 sideOffset={4}
                 {...getStepByStepTourDropdownMenuContentProps({
-                  highlightPart: stepByStepTourCreateMenuHighlightPart,
+                  disableMotion: createMenu.controlled,
+                  highlightPart: createMenu.controlled ? stepByStepTourCreateMenuHighlightPart : undefined,
+                  interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
                   popupClassName: 'w-80',
-                  presentationOnly: Boolean(stepByStepTourCreateMenuOpen),
                 })}
               >
                 {canCreateDataset && (

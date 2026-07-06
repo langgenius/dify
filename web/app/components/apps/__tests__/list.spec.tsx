@@ -533,12 +533,25 @@ describe('List', () => {
       expect(await screen.findByText('app.newApp.startFromBlank')).toBeInTheDocument()
       expect(screen.getByText('app.newApp.startFromTemplate')).toBeInTheDocument()
       expect(screen.getByText(/app\.importDSL/)).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' })).not.toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank', hidden: true })).toBeInTheDocument()
       const createMenuHighlightPart = document.body.querySelector('[data-step-by-step-tour-highlight-part]')
       expect(createMenuHighlightPart)
         .toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu)
-      expect(createMenuHighlightPart).toHaveAttribute('inert')
-      expect(createMenuHighlightPart?.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    it('should allow closing the tour-opened Studio create menu from its trigger', async () => {
+      setActiveStudioStepByStepTour(0)
+
+      renderList()
+
+      expect(await screen.findByText('app.newApp.startFromBlank')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('app.newApp.startFromBlank')).not.toBeInTheDocument()
+      })
     })
 
     it('should open the create menu before the Studio with-apps guide group is persisted', async () => {
@@ -549,12 +562,11 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' }))
         .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate)
       expect(await screen.findByText('app.newApp.startFromBlank')).toBeInTheDocument()
-      expect(screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' })).not.toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank', hidden: true })).toBeInTheDocument()
       const createMenuHighlightPart = document.body.querySelector('[data-step-by-step-tour-highlight-part]')
       expect(createMenuHighlightPart)
         .toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu)
-      expect(createMenuHighlightPart).toHaveAttribute('inert')
-      expect(createMenuHighlightPart?.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
     })
 
     it('should render filters and search before the right aligned actions', () => {

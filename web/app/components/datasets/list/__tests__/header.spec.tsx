@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import DatasetListHeader from '../header'
 
@@ -10,9 +10,21 @@ vi.mock('@langgenius/dify-ui/button', () => ({
 
 vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuContent: ({ children, positionerProps }: { children: React.ReactNode, positionerProps?: React.HTMLAttributes<HTMLDivElement> }) => <div {...positionerProps}>{children}</div>,
+  DropdownMenuContent: ({
+    children,
+    popupProps,
+    positionerProps,
+  }: {
+    children: React.ReactNode
+    popupProps?: React.HTMLAttributes<HTMLDivElement>
+    positionerProps?: React.HTMLAttributes<HTMLDivElement>
+  }) => (
+    <div {...positionerProps}>
+      <div role="menu" {...popupProps}>{children}</div>
+    </div>
+  ),
   DropdownMenuItem: ({ children, className, onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
-    <button type="button" className={className} onClick={onClick}>{children}</button>
+    <button type="button" role="menuitem" className={className} onClick={onClick}>{children}</button>
   ),
   DropdownMenuSeparator: ({ className }: { className?: string }) => <hr data-testid="create-menu-separator" className={className} />,
   DropdownMenuTrigger: ({ render }: { render: React.ReactNode }) => render,
@@ -56,9 +68,9 @@ describe('DatasetListHeader', () => {
   it('uses the updated create menu labels and pipeline icon', () => {
     render(<DatasetListHeader {...defaultProps} />)
 
-    expect(screen.getByRole('button', { name: /dataset\.firstEmpty\.createTitle/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /dataset\.firstEmpty\.createTitle/ })).toBeInTheDocument()
 
-    const menuItem = screen.getByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ })
+    const menuItem = screen.getByRole('menuitem', { name: /dataset\.firstEmpty\.pipelineTitle/ })
 
     expect(menuItem.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
   })
@@ -66,9 +78,9 @@ describe('DatasetListHeader', () => {
   it('should hide dataset creation actions when dataset.create_and_management is unavailable', () => {
     render(<DatasetListHeader {...defaultProps} canCreateDataset={false} />)
 
-    expect(screen.queryByRole('button', { name: /dataset\.firstEmpty\.createTitle/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /dataset\.firstEmpty\.pipelineTitle/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /dataset\.connectDataset/ })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /dataset\.firstEmpty\.createTitle/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /dataset\.firstEmpty\.pipelineTitle/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /dataset\.connectDataset/ })).toBeInTheDocument()
   })
 
   it('should hide external API panel entry when dataset.external.connect is unavailable', () => {
@@ -102,10 +114,24 @@ describe('DatasetListHeader', () => {
     expect(screen.getByRole('button', { name: /common\.operation\.create/ }))
       .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate)
     expect(screen.getByText('dataset.firstEmpty.createTitle')).toBeInTheDocument()
-    expect(screen.queryByRole('menuitem', { name: 'dataset.firstEmpty.createTitle' })).not.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'dataset.firstEmpty.createTitle', hidden: true })).toBeInTheDocument()
     const createMenuHighlightPart = document.body.querySelector(`[data-step-by-step-tour-highlight-part="${STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu}"]`)
     expect(createMenuHighlightPart).toBeInTheDocument()
-    expect(createMenuHighlightPart).toHaveAttribute('inert')
-    expect(createMenuHighlightPart?.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+    expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('keeps the tour-opened create menu as presentation only', () => {
+    render((
+      <DatasetListHeader
+        {...defaultProps}
+        stepByStepTourCreateMenuOpen
+        stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate}
+        stepByStepTourCreateMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu}
+      />
+    ))
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'dataset.firstEmpty.createTitle', hidden: true }))
+
+    expect(defaultProps.onCreateDataset).not.toHaveBeenCalled()
   })
 })

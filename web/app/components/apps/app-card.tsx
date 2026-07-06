@@ -39,7 +39,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import StarIcon from '@/app/components/base/icons/src/vender/Star'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
-import { getStepByStepTourDropdownMenuContentProps } from '@/app/components/step-by-step-tour/dropdown-menu'
+import { getStepByStepTourDropdownMenuContentProps, useStepByStepTourControlledDropdown } from '@/app/components/step-by-step-tour/dropdown-menu'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -773,7 +773,13 @@ export function AppCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
+  const operationsMenu = useStepByStepTourControlledDropdown({
+    allowTriggerCloseWhileControlled: false,
+    controlledOpen: stepByStepTourActionMenuOpen,
+  })
+  const closeOperationsMenu = operationsMenu.close
+  const isOperationsMenuOpen = operationsMenu.open
+  const setIsOperationsMenuOpen = operationsMenu.onOpenChange
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
@@ -824,44 +830,44 @@ export function AppCard({
   }
 
   function handleShowEditModal() {
-    setIsOperationsMenuOpen(false)
+    closeOperationsMenu()
     queueMicrotask(() => {
       setShowEditModal(true)
     })
   }
 
   function handleShowDuplicateModal() {
-    setIsOperationsMenuOpen(false)
+    closeOperationsMenu()
     queueMicrotask(() => {
       setShowDuplicateModal(true)
     })
   }
 
   function handleShowSwitchModal() {
-    setIsOperationsMenuOpen(false)
+    closeOperationsMenu()
     queueMicrotask(() => {
       setShowSwitchModal(true)
     })
   }
 
   function handleShowDeleteConfirm() {
-    setIsOperationsMenuOpen(false)
+    closeOperationsMenu()
     queueMicrotask(() => {
       setShowConfirmDelete(true)
     })
   }
 
   function handleShowAccessControl() {
-    setIsOperationsMenuOpen(false)
+    closeOperationsMenu()
     queueMicrotask(() => {
       setShowAccessControl(true)
     })
   }
 
   const handleOpenAccessConfig = useCallback(() => {
-    setIsOperationsMenuOpen(false)
+    closeOperationsMenu()
     push(`/app/${app.id}/access-config`)
-  }, [app.id, push])
+  }, [app.id, closeOperationsMenu, push])
 
   const onEdit: CreateAppModalProps['onConfirm'] = async ({
     name,
@@ -1047,7 +1053,7 @@ export function AppCard({
   const starActionLabel = app.is_starred
     ? t('studio.unstarApp', { ns: 'app' })
     : t('studio.starApp', { ns: 'app' })
-  const operationsMenuOpen = isOperationsMenuOpen || stepByStepTourActionMenuOpen
+  const operationsMenuOpen = isOperationsMenuOpen
   const showPreviewOnlyAccessWarning = useCallback(() => {
     toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
   }, [t])
@@ -1208,9 +1214,10 @@ export function AppCard({
                   placement="bottom-end"
                   sideOffset={4}
                   {...getStepByStepTourDropdownMenuContentProps({
-                    highlightPart: stepByStepTourActionMenuHighlightPart,
+                    disableMotion: operationsMenu.controlled,
+                    highlightPart: operationsMenu.controlled ? stepByStepTourActionMenuHighlightPart : undefined,
+                    interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
                     popupClassName: operationsMenuWidthClassName,
-                    presentationOnly: stepByStepTourActionMenuOpen,
                   })}
                 >
                   {systemFeatures.webapp_auth.enabled

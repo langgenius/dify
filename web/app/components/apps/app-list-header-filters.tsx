@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
-import { getStepByStepTourDropdownMenuContentProps } from '@/app/components/step-by-step-tour/dropdown-menu'
+import { getStepByStepTourDropdownMenuContentProps, useStepByStepTourControlledDropdown } from '@/app/components/step-by-step-tour/dropdown-menu'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { AppSortFilter } from './app-sort-filter'
@@ -59,12 +59,9 @@ export function AppListHeaderFilters({
   stepByStepTourCreateMenuHighlightPart,
 }: AppListHeaderFiltersProps) {
   const { t } = useTranslation()
-  const createMenuOpenProps = stepByStepTourCreateMenuOpen === undefined
-    ? {}
-    : {
-        open: stepByStepTourCreateMenuOpen,
-        onOpenChange: () => {},
-      }
+  const createMenu = useStepByStepTourControlledDropdown({
+    controlledOpen: stepByStepTourCreateMenuOpen,
+  })
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -96,7 +93,7 @@ export function AppListHeaderFilters({
           {t('studio.viewSnippets', { ns: 'app' })}
         </Link>
         {showCreateButton && (
-          <DropdownMenu modal={false} {...createMenuOpenProps}>
+          <DropdownMenu modal={false} open={createMenu.open} onOpenChange={createMenu.onOpenChange}>
             <DropdownMenuTrigger
               render={(
                 <Button
@@ -115,9 +112,10 @@ export function AppListHeaderFilters({
               placement="bottom-end"
               sideOffset={4}
               {...getStepByStepTourDropdownMenuContentProps({
-                highlightPart: stepByStepTourCreateMenuHighlightPart,
+                disableMotion: createMenu.controlled,
+                highlightPart: createMenu.controlled ? stepByStepTourCreateMenuHighlightPart : undefined,
+                interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
                 popupClassName: 'w-70 p-0',
-                presentationOnly: Boolean(stepByStepTourCreateMenuOpen),
               })}
             >
               <div className="py-1">
