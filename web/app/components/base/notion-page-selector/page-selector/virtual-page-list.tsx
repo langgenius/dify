@@ -1,7 +1,7 @@
 'use client'
 
 import type { NotionPageRow, NotionPageSelectionMode } from './types'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
