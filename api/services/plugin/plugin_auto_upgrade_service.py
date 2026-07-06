@@ -14,11 +14,16 @@ from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from core.plugin.impl.plugin import PluginInstaller
-from models.account import TenantPluginAutoUpgradeStrategy
+from models.account import (
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategy,
+    TenantPluginAutoUpgradeStrategySetting,
+)
 
 logger = logging.getLogger(__name__)
 
-PluginCategory = TenantPluginAutoUpgradeStrategy.PluginCategory
+PluginCategory = TenantPluginAutoUpgradeCategory
 PLUGIN_CATEGORIES = tuple(PluginCategory)
 SECONDS_PER_DAY = 24 * 60 * 60
 AUTO_UPGRADE_CHECK_SLOT_SECONDS = 15 * 60
@@ -35,10 +40,10 @@ class PluginAutoUpgradeService:
     @staticmethod
     def default_strategy_setting_for_category(
         category: PluginCategory,
-    ) -> TenantPluginAutoUpgradeStrategy.StrategySetting:
+    ) -> TenantPluginAutoUpgradeStrategySetting:
         if category == PluginCategory.MODEL:
-            return TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST
-        return TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY
+            return TenantPluginAutoUpgradeStrategySetting.LATEST
+        return TenantPluginAutoUpgradeStrategySetting.FIX_ONLY
 
     @staticmethod
     def default_upgrade_time_of_day(tenant_id: str) -> int:
@@ -102,9 +107,9 @@ class PluginAutoUpgradeService:
     @staticmethod
     def _has_default_strategy(strategy: TenantPluginAutoUpgradeStrategy) -> bool:
         return (
-            strategy.strategy_setting == TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY
+            strategy.strategy_setting == TenantPluginAutoUpgradeStrategySetting.FIX_ONLY
             and strategy.upgrade_time_of_day == 0
-            and strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
+            and strategy.upgrade_mode == TenantPluginAutoUpgradeMode.EXCLUDE
             and not strategy.exclude_plugins
             and not strategy.include_plugins
         )
@@ -114,7 +119,7 @@ class PluginAutoUpgradeService:
         source_strategy: TenantPluginAutoUpgradeStrategy,
         category: PluginCategory,
         source_has_default_strategy: bool,
-    ) -> TenantPluginAutoUpgradeStrategy.StrategySetting:
+    ) -> TenantPluginAutoUpgradeStrategySetting:
         # Only pure legacy defaults adopt the new model=latest default. User-edited
         # strategies keep their original setting across all categories.
         if source_has_default_strategy:
@@ -266,9 +271,9 @@ class PluginAutoUpgradeService:
         session: Session,
         tenant_id: str,
         category: PluginCategory,
-        strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting,
+        strategy_setting: TenantPluginAutoUpgradeStrategySetting,
         upgrade_time_of_day: int,
-        upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
+        upgrade_mode: TenantPluginAutoUpgradeMode,
         exclude_plugins: list[str],
         include_plugins: list[str],
     ) -> None:
@@ -294,9 +299,9 @@ class PluginAutoUpgradeService:
     @staticmethod
     def change_strategy(
         tenant_id: str,
-        strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting,
+        strategy_setting: TenantPluginAutoUpgradeStrategySetting,
         upgrade_time_of_day: int,
-        upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
+        upgrade_mode: TenantPluginAutoUpgradeMode,
         exclude_plugins: list[str],
         include_plugins: list[str],
         category: PluginCategory,
@@ -329,28 +334,28 @@ class PluginAutoUpgradeService:
                 session,
                 tenant_id,
                 category,
-                TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+                TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
                 0,
-                TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                TenantPluginAutoUpgradeMode.EXCLUDE,
                 [plugin_id],
                 [],
             )
         else:
-            if exist_strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE:
+            if exist_strategy.upgrade_mode == TenantPluginAutoUpgradeMode.EXCLUDE:
                 # In exclude mode, disabling one plugin means adding it to exclude_plugins.
                 if plugin_id not in exist_strategy.exclude_plugins:
                     new_exclude_plugins = exist_strategy.exclude_plugins.copy()
                     new_exclude_plugins.append(plugin_id)
                     exist_strategy.exclude_plugins = new_exclude_plugins
-            elif exist_strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.PARTIAL:
+            elif exist_strategy.upgrade_mode == TenantPluginAutoUpgradeMode.PARTIAL:
                 # In partial mode, disabling one plugin means removing it from include_plugins.
                 if plugin_id in exist_strategy.include_plugins:
                     new_include_plugins = exist_strategy.include_plugins.copy()
                     new_include_plugins.remove(plugin_id)
                     exist_strategy.include_plugins = new_include_plugins
-            elif exist_strategy.upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL:
+            elif exist_strategy.upgrade_mode == TenantPluginAutoUpgradeMode.ALL:
                 # In all mode, switch to exclude mode so only this plugin is skipped.
-                exist_strategy.upgrade_mode = TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
+                exist_strategy.upgrade_mode = TenantPluginAutoUpgradeMode.EXCLUDE
                 exist_strategy.exclude_plugins = [plugin_id]
 
     @staticmethod

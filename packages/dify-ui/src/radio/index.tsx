@@ -80,17 +80,11 @@ export function RadioControl({
 export type RadioProps<Value = string>
   = Omit<RadioRootProps<Value>, 'children'>
 
-export function Radio<Value = string>({
-  ...props
-}: RadioProps<Value>) {
+export function Radio<Value = string>(props: RadioProps<Value>) {
   return <RadioRoot<Value> {...props} />
 }
 
-export type RadioSkeletonProps
-  = Omit<React.ComponentProps<'div'>, 'className'>
-    & {
-      className?: string
-    }
+export type RadioSkeletonProps = React.ComponentProps<'div'>
 
 export function RadioSkeleton({
   className,

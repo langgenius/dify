@@ -15,7 +15,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Radio primitive built on Base UI. It preserves RadioGroup selection, hidden input, disabled, and form semantics while applying the Dify 16px radio design from Figma. Import from `@langgenius/dify-ui/radio` and place radios inside `RadioGroup` from `@langgenius/dify-ui/radio-group`.',
+        component: '`Radio` is the default Dify 16px radio control, intended for plain form rows inside `RadioGroup`. It does not accept children. For option cards or rich rows, use `RadioRoot` as the item root and place `RadioControl` inside it; see the `RadioGroup` stories.',
       },
     },
   },
@@ -67,6 +67,13 @@ export const Default: Story = {
   render: args => <RadioDemo {...args} />,
   args: {
     disabled: false,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: '`Radio` renders the standard visual control. `FieldLabel` owns the clickable text label, and `RadioGroup` owns the selected value.',
+      },
+    },
   },
 }
 
