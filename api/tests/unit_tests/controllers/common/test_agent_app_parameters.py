@@ -1,10 +1,11 @@
 from types import SimpleNamespace
 
+from controllers.common import agent_app_parameters
 from controllers.common.agent_app_parameters import get_published_agent_app_feature_dict_and_user_input_form
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 
 
-def test_published_agent_app_parameters_use_soul_file_upload(mocker):
+def test_published_agent_app_parameters_use_soul_file_upload(monkeypatch):
     app_model_config = SimpleNamespace(
         to_dict=lambda: {
             "opening_statement": "Hi from legacy presentation config",
@@ -39,7 +40,8 @@ def test_published_agent_app_parameters_use_soul_file_upload(mocker):
             "app_variables": [{"name": "topic", "type": "string", "required": True}],
         }
     )
-    mocker.patch("controllers.common.agent_app_parameters.db.session.scalar", side_effect=[agent, snapshot])
+    query_results = iter([agent, snapshot])
+    monkeypatch.setattr(agent_app_parameters.db.session, "scalar", lambda _: next(query_results))
 
     features_dict, user_input_form = get_published_agent_app_feature_dict_and_user_input_form(app_model)
     parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
