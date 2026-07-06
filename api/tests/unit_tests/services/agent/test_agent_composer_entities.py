@@ -14,6 +14,23 @@ from services.entities.agent_entities import (
 )
 
 
+def test_default_agent_soul_enables_file_upload_feature():
+    agent_soul = AgentSoulConfig()
+
+    file_upload = agent_soul.model_dump(mode="json")["app_features"]["file_upload"]
+    assert file_upload == {
+        "allowed_file_extensions": ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"],
+        "allowed_file_types": ["document", "image", "audio", "video"],
+        "allowed_file_upload_methods": ["local_file", "remote_url"],
+        "enabled": True,
+        "image": {"enabled": True},
+        "number_limits": 3,
+    }
+    # The product default should be visible in API responses, but it must not
+    # make workflow-only payload validation treat app_features as user-authored.
+    assert bool(agent_soul.app_features) is False
+
+
 def test_workflow_variant_rejects_agent_app_only_fields():
     with pytest.raises(ValueError):
         ComposerSavePayload.model_validate(

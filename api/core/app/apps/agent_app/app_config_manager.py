@@ -3,9 +3,9 @@
 An Agent App has no legacy ``app_model_config``: its model / prompt live in the
 bound Agent Soul snapshot. To ride the existing chat message + SSE pipeline we
 synthesize an ``app_model_config``-shaped dict from the Soul (model + system
-prompt) plus any app-level feature flags (opening statement, follow-up, …)
-stored on ``app_model_config`` when present, then reuse the same sub-managers
-the chat app type uses.
+prompt) plus app-level feature flags from Agent Soul, while preserving any
+legacy ``app_model_config`` feature flags when present. Then we reuse the same
+sub-managers the chat app type uses.
 """
 
 from typing import Any, cast
@@ -79,12 +79,14 @@ class AgentAppConfigManager(BaseAppConfigManager):
     ) -> dict[str, Any]:
         """Shape a Soul + feature flags into an ``app_model_config``-style dict.
 
-        Feature flags (opening statement / follow-up / tts / stt / citations /
-        moderation / annotation) come from ``app_model_config`` when present
-        (Q3: stored there), otherwise defaults; model + prompt always come from
+        Feature flags come from Agent Soul and fill gaps in the legacy
+        ``app_model_config`` when one exists; model + prompt always come from
         the Agent Soul (the single source of truth for those).
         """
         base: dict[str, Any] = dict(app_model_config.to_dict()) if app_model_config else {}
+        soul_features = agent_soul.app_features.model_dump(mode="json", exclude_none=True)
+        for key, value in soul_features.items():
+            base.setdefault(key, value)
 
         model = agent_soul.model
         if model is not None:
