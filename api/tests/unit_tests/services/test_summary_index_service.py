@@ -10,9 +10,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
 
 import services.summary_index_service as summary_module
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from models.dataset import DocumentSegmentSummary
 from models.enums import SegmentStatus, SummaryStatus
 from services.summary_index_service import SummaryIndexService
 
@@ -671,32 +674,48 @@ def test_generate_summaries_for_document_applies_segment_ids_and_only_parent_chu
     session.scalars.assert_called()
 
 
-def test_disable_summaries_for_segments_handles_vector_delete_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    dataset = _dataset()
-    summary1 = _summary_record(summary_content="s", node_id="n1")
-    summary2 = _summary_record(summary_content="s", node_id=None)
+def test_disable_summaries_for_segments_updates_sqlite_records() -> None:
+    dataset = SimpleNamespace(id="dataset-1", indexing_technique=IndexTechniqueType.ECONOMY)
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    DocumentSegmentSummary.__table__.create(engine)
+    summary_rows = [
+        {
+            "id": "sum-1",
+            "dataset_id": dataset.id,
+            "document_id": "doc-1",
+            "chunk_id": "seg-1",
+            "summary_content": "s",
+            "summary_index_node_id": "n1",
+            "status": SummaryStatus.COMPLETED,
+            "enabled": True,
+        },
+        {
+            "id": "sum-2",
+            "dataset_id": dataset.id,
+            "document_id": "doc-1",
+            "chunk_id": "seg-1",
+            "summary_content": "s",
+            "summary_index_node_id": None,
+            "status": SummaryStatus.COMPLETED,
+            "enabled": True,
+        },
+    ]
+    with engine.begin() as connection:
+        connection.execute(DocumentSegmentSummary.__table__.insert(), summary_rows)
 
-    session = MagicMock()
-    session.scalars.return_value.all.return_value = [summary1, summary2]
-
-    monkeypatch.setattr(
-        summary_module,
-        "session_factory",
-        SimpleNamespace(create_session=MagicMock(return_value=_SessionContext(session))),
-    )
-    monkeypatch.setattr(
-        summary_module,
-        "Vector",
-        MagicMock(return_value=MagicMock(delete_by_ids=MagicMock(side_effect=RuntimeError("boom")))),
-    )
-    monkeypatch.setitem(
-        sys.modules, "libs.datetime_utils", SimpleNamespace(naive_utc_now=MagicMock(return_value=datetime(2024, 1, 1)))
-    )
+    session_maker = sessionmaker(bind=engine, expire_on_commit=False)
+    summary_module.session_factory.configure(engine, expire_on_commit=False)
 
     SummaryIndexService.disable_summaries_for_segments(dataset, segment_ids=["seg-1"], disabled_by="u")
-    assert summary1.enabled is False
-    assert summary1.disabled_by == "u"
-    session.commit.assert_called_once()
+
+    with session_maker() as session:
+        summaries = session.scalars(select(DocumentSegmentSummary).order_by(DocumentSegmentSummary.id)).all()
+
+    assert [(summary.id, summary.enabled, summary.disabled_by) for summary in summaries] == [
+        ("sum-1", False, "u"),
+        ("sum-2", False, "u"),
+    ]
+    assert all(summary.disabled_at is not None for summary in summaries)
 
 
 def test_disable_summaries_for_segments_no_summaries_noop(monkeypatch: pytest.MonkeyPatch) -> None:
