@@ -522,9 +522,7 @@ class TestChatApiController:
         monkeypatch.setattr(
             AppGenerateService,
             "generate",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(
-                AgentAppNotPublishedError("Agent has not been published")
-            ),
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(AgentAppNotPublishedError("Agent has not been published")),
         )
 
         api = ChatApi()
