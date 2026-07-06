@@ -290,10 +290,12 @@ const WorkspaceRoleCheckboxList = ({
                                 <RadioItem
                                   value={role.id}
                                   disabled={disabled}
+                                  nativeButton
                                   render={(
-                                    <div
+                                    <button
+                                      type="button"
                                       className={cn(
-                                        'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
+                                        'flex w-full cursor-pointer items-start gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
                                         checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
                                         disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
                                       )}

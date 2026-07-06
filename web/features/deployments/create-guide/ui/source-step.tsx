@@ -104,6 +104,8 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
   return (
     <RadioItem<GuideMethod>
       value={value}
+      nativeButton
+      render={<button type="button" />}
       className={cn(
         `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px]
         border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3

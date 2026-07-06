@@ -120,6 +120,8 @@ function EnvironmentOptionRow({ environment }: {
   return (
     <RadioItem<string>
       value={environment.id}
+      nativeButton
+      render={<button type="button" />}
       className={cn(
         'group flex cursor-pointer items-center gap-3 rounded-xl border p-3 outline-hidden',
         'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
