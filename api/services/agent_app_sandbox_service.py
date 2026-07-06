@@ -3,12 +3,16 @@
 These services keep product-facing locators (conversation, workflow run, node)
 on the API boundary and translate them into the agent backend's
 ``SandboxLocator`` using persisted non-sensitive runtime layer specs plus the
-saved Agenton session snapshot.
+saved Agenton session snapshot. Upload responses stay console-facing here: the
+agent backend still returns a canonical ToolFile mapping, while this API layer
+re-resolves that mapping into a signed browser download URL.
 """
 
 from __future__ import annotations
 
+import urllib.parse
 from collections.abc import Callable
+from typing import Any
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.client import Client
@@ -17,8 +21,11 @@ from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import select
 
 from configs import dify_config
+from core.app.file_access import DatabaseFileAccessController
+from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.db.session_factory import session_factory
+from factories import file_factory
 from models.agent import AgentRuntimeSessionOwnerType, WorkflowAgentRuntimeSession, WorkflowAgentRuntimeSessionStatus
 
 _RUNTIME_LAYER_SPECS_ADAPTER: TypeAdapter[list[RuntimeLayerSpec]] = TypeAdapter(list[RuntimeLayerSpec])
@@ -43,6 +50,12 @@ class AgentSandboxInfo(BaseModel):
 
     session_id: str
     workspace_cwd: str
+
+
+class AgentSandboxUploadDownload(BaseModel):
+    """Signed browser download URL for one sandbox upload result."""
+
+    url: str
 
 
 class AgentAppSandboxService:
@@ -77,9 +90,15 @@ class AgentAppSandboxService:
         locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
         return self._client_factory().read_sandbox_file_sync(locator, path)
 
-    def upload_file(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str):
+    def upload_file(
+        self, *, tenant_id: str, app_id: str, conversation_id: str, path: str
+    ) -> AgentSandboxUploadDownload:
         locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
-        return self._client_factory().upload_sandbox_file_sync(locator, path)
+        uploaded = self._client_factory().upload_sandbox_file_sync(locator, path)
+        return _upload_download_response(
+            tenant_id=tenant_id,
+            file_mapping=uploaded.file.model_dump(mode="python"),
+        )
 
     def _resolve_locator(self, *, tenant_id: str, app_id: str, conversation_id: str) -> SandboxLocator:
         stored = self._session_store.load_active_session_for_conversation(
@@ -153,7 +172,7 @@ class WorkflowAgentSandboxService:
         node_id: str,
         node_execution_id: str | None,
         path: str,
-    ):
+    ) -> AgentSandboxUploadDownload:
         locator = self._resolve_locator(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -161,7 +180,11 @@ class WorkflowAgentSandboxService:
             node_id=node_id,
             node_execution_id=node_execution_id,
         )
-        return self._client_factory().upload_sandbox_file_sync(locator, path)
+        uploaded = self._client_factory().upload_sandbox_file_sync(locator, path)
+        return _upload_download_response(
+            tenant_id=tenant_id,
+            file_mapping=uploaded.file.model_dump(mode="python"),
+        )
 
     def _resolve_locator(
         self,
@@ -246,6 +269,41 @@ def _deserialize_runtime_layer_specs(value: str | None) -> list[RuntimeLayerSpec
     return _RUNTIME_LAYER_SPECS_ADAPTER.validate_json(value)
 
 
+def _upload_download_response(*, tenant_id: str, file_mapping: dict[str, Any]) -> AgentSandboxUploadDownload:
+    """Resolve one uploaded ToolFile mapping into a signed external download URL."""
+
+    controller = DatabaseFileAccessController()
+    runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
+    try:
+        file = file_factory.build_from_mapping(
+            mapping=file_mapping,
+            tenant_id=tenant_id,
+            access_controller=controller,
+        )
+        url = runtime.resolve_file_url(file=file, for_external=True)
+    except ValueError as exc:
+        raise AgentSandboxInspectorError(
+            "sandbox_upload_download_unavailable",
+            "uploaded sandbox file could not be converted to a download URL",
+            status_code=502,
+        ) from exc
+
+    if not url:
+        raise AgentSandboxInspectorError(
+            "sandbox_upload_download_unavailable",
+            "uploaded sandbox file does not support download URL generation",
+            status_code=502,
+        )
+    return AgentSandboxUploadDownload(url=_with_as_attachment(url))
+
+
+def _with_as_attachment(url: str) -> str:
+    parsed = urllib.parse.urlsplit(url)
+    query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    query.append(("as_attachment", "true"))
+    return urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
+
+
 def _default_client_factory() -> Client:
     base_url = dify_config.AGENT_BACKEND_BASE_URL
     if not base_url:
@@ -256,5 +314,10 @@ def _default_client_factory() -> Client:
         )
     return Client(base_url=base_url)
 
-
-__all__ = ["AgentAppSandboxService", "AgentSandboxInfo", "AgentSandboxInspectorError", "WorkflowAgentSandboxService"]
+__all__ = [
+    "AgentAppSandboxService",
+    "AgentSandboxInfo",
+    "AgentSandboxInspectorError",
+    "AgentSandboxUploadDownload",
+    "WorkflowAgentSandboxService",
+]
