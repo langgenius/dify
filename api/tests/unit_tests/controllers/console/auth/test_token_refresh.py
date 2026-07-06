@@ -126,9 +126,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_returns_unauthorized_for_invalid_account(
-        self, mock_refresh_token, mock_extract_token, app: Flask
-    ):
+    def test_refresh_returns_unauthorized_for_invalid_account(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh maps missing accounts to unauthorized responses.
 
@@ -152,9 +150,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_returns_unauthorized_for_banned_account(
-        self, mock_refresh_token, mock_extract_token, app: Flask
-    ):
+    def test_refresh_returns_unauthorized_for_banned_account(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh maps banned accounts to unauthorized responses.
 
@@ -178,9 +174,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_propagates_non_whitelisted_value_error(
-        self, mock_refresh_token, mock_extract_token, app: Flask
-    ):
+    def test_refresh_propagates_non_whitelisted_value_error(self, mock_refresh_token, mock_extract_token, app: Flask):
         """
         Test token refresh preserves non-whitelisted ValueError failures.
 
