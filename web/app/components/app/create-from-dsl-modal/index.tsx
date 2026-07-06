@@ -15,6 +15,7 @@ import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
@@ -59,6 +60,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const setNeedRefresh = useSetNeedRefreshAppList()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
+  const { userProfile, workspacePermissionKeys } = useAppContext()
 
   const readFile = useCallback((file: File) => {
     const reader = new FileReader()
@@ -133,7 +135,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         invalidateAppList()
         if (app_id) {
           await handleCheckPluginDependencies(app_id)
-          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, { isRbacEnabled })
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+            currentUserId: userProfile?.id,
+            resourceMaintainer: userProfile?.id,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
         }
       }
       else if (status === DSLImportStatus.PENDING) {
@@ -187,8 +194,14 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           await handleCheckPluginDependencies(app_id)
         setNeedRefresh('1')
         invalidateAppList()
-        if (app_id)
-          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, { isRbacEnabled })
+        if (app_id) {
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+            currentUserId: userProfile?.id,
+            resourceMaintainer: userProfile?.id,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
+        }
       }
       else if (status === DSLImportStatus.FAILED) {
         toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
