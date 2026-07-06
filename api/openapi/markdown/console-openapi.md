@@ -17943,12 +17943,6 @@ Enum class for form type.
 | ---- | ---- | ----------- | -------- |
 | document_list | [ string ] |  | Yes |
 
-#### GeneratedAppResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| GeneratedAppResponse |  |  |  |
-
 #### GeneratorResponse
 
 | Name | Type | Description | Required |
