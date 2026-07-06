@@ -100,11 +100,14 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
         )
 
         for document in documents:
+            if not document:
+                logger.warning("Document not found before indexing started in dataset %s", dataset_id)
+                continue
             document.indexing_status = IndexingStatus.PARSING
             document.processing_started_at = naive_utc_now()
             session.add(document)
 
-        found_ids = {doc.id for doc in documents}
+        found_ids = {doc.id for doc in documents if doc}
         for doc_id in document_ids:
             if doc_id not in found_ids:
                 logger.warning("Document %s was deleted before indexing started in dataset %s", doc_id, dataset_id)
@@ -148,6 +151,11 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     )
 
                     for document in documents:
+                        if not document:
+                            logger.warning(
+                                "Document not found during summary-index scan in dataset %s", dataset_id
+                            )
+                            continue
                         logger.info(
                             "Checking document %s for summary generation: status=%s, doc_form=%s, need_summary=%s",
                             document.id,
@@ -184,7 +192,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                                 document.need_summary,
                             )
 
-                    found_ids = {doc.id for doc in documents}
+                    found_ids = {doc.id for doc in documents if doc}
                     for doc_id in document_ids:
                         if doc_id not in found_ids:
                             logger.warning(
