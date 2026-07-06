@@ -2337,7 +2337,6 @@ export const zConversationDetail = z.object({
 
 /**
  * PluginDependencyType
- * Type
  */
 export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
 
