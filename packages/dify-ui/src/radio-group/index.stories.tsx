@@ -8,7 +8,7 @@ import {
   FieldRoot,
 } from '../field'
 import { FieldsetLegend, FieldsetRoot } from '../fieldset'
-import { Radio, RadioControl, RadioIndicator, RadioRoot } from '../radio'
+import { Radio, RadioControl, RadioItem } from '../radio'
 
 const meta = {
   title: 'Base/Form/RadioGroup',
@@ -17,7 +17,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: '`RadioGroup` owns single-selection state. Use `Radio` for plain form rows, `RadioRoot` when an entire row or card is the radio item, `RadioControl` for the standard visual dot inside custom roots, and `RadioIndicator` only when the design owns a custom control shell.',
+        component: '`RadioGroup` owns single-selection state. Use `Radio` for plain form rows, `RadioItem` when custom UI should be the radio item, and `RadioControl` for the standard Dify visual dot inside custom items. `RadioControl` is a Dify visual part, not a Base UI anatomy export.',
       },
     },
   },
@@ -139,9 +139,8 @@ function OptionCardsDemo() {
         <FieldsetLegend>Prompt mode</FieldsetLegend>
         {options.map(option => (
           <FieldItem key={option.value}>
-            <RadioRoot<PromptMode>
+            <RadioItem<PromptMode>
               value={option.value}
-              variant="unstyled"
               nativeButton
               render={<button type="button" />}
               className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
@@ -157,7 +156,7 @@ function OptionCardsDemo() {
                 </div>
                 <RadioControl aria-hidden="true" />
               </div>
-            </RadioRoot>
+            </RadioItem>
           </FieldItem>
         ))}
       </FieldsetRoot>
@@ -170,76 +169,7 @@ export const OptionCards: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Product option cards should make the whole card the radio item with `RadioRoot variant="unstyled"`. `RadioControl` renders the standard visual dot inside the custom root.',
-      },
-    },
-  },
-}
-
-type ApprovalMode = 'automatic' | 'manual'
-
-function CustomIndicatorPartDemo() {
-  const [value, setValue] = React.useState<ApprovalMode>('automatic')
-
-  const options = [
-    {
-      value: 'automatic',
-      title: 'Automatic approval',
-      description: 'Approve requests that match policy.',
-    },
-    {
-      value: 'manual',
-      title: 'Manual review',
-      description: 'Ask an admin to review each request.',
-    },
-  ] satisfies Array<{
-    value: ApprovalMode
-    title: string
-    description: string
-  }>
-
-  return (
-    <FieldRoot name="approvalMode" className="w-100">
-      <FieldsetRoot
-        render={(
-          <RadioGroup<ApprovalMode> value={value} onValueChange={setValue} className="flex-col items-stretch gap-2" />
-        )}
-      >
-        <FieldsetLegend>Approval mode</FieldsetLegend>
-        {options.map(option => (
-          <FieldItem key={option.value}>
-            <RadioRoot<ApprovalMode>
-              value={option.value}
-              variant="unstyled"
-              nativeButton
-              render={<button type="button" />}
-              className="flex w-full items-center gap-3 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-3 py-2 text-left outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg"
-            >
-              <span className="flex size-4 shrink-0 items-center justify-center rounded-full border border-components-radio-border bg-components-radio-bg">
-                <RadioIndicator className="text-components-radio-border-checked" />
-              </span>
-              <span className="min-w-0 grow">
-                <span className="block truncate system-sm-semibold text-text-primary">
-                  {option.title}
-                </span>
-                <span className="block truncate system-xs-regular text-text-tertiary">
-                  {option.description}
-                </span>
-              </span>
-            </RadioRoot>
-          </FieldItem>
-        ))}
-      </FieldsetRoot>
-    </FieldRoot>
-  )
-}
-
-export const CustomIndicatorPart: Story = {
-  render: () => <CustomIndicatorPartDemo />,
-  parameters: {
-    docs: {
-      description: {
-        story: '`RadioIndicator` is the low-level indicator part. Use it only when a custom root owns the outer control shell; otherwise prefer `Radio` for form rows or `RadioControl` inside option cards.',
+        story: 'Custom option UIs should make the whole interactive surface the radio item with `RadioItem`. `RadioControl` renders the standard visual dot inside it.',
       },
     },
   },

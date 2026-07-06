@@ -5,7 +5,7 @@ import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { cn } from '../cn'
 
-const radioRootClassName = cn(
+const radioControlClassName = cn(
   'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0 transition-colors motion-reduce:transition-none',
   'border border-components-radio-border bg-components-radio-bg shadow-xs shadow-shadow-shadow-3',
   'hover:border-components-radio-border-hover hover:bg-components-radio-bg-hover',
@@ -17,52 +17,31 @@ const radioRootClassName = cn(
   'data-disabled:data-checked:hover:border-components-radio-border-checked-disabled',
 )
 
-const radioIndicatorClassName = 'flex items-center justify-center data-unchecked:hidden before:size-1.5 before:rounded-full before:bg-current'
-
-const radioControlClassName = radioRootClassName
-
 const radioSkeletonClassName = 'size-4 shrink-0 rounded-full bg-text-quaternary opacity-20'
 
-export type RadioRootProps<Value = string>
+export type RadioItemProps<Value = string>
   = Omit<BaseRadioNS.Root.Props<Value>, 'className'>
     & {
       className?: string
-      variant?: 'control' | 'unstyled'
     }
 
-export function RadioRoot<Value = string>({
+export function RadioItem<Value = string>({
   className,
-  variant = 'control',
   ...props
-}: RadioRootProps<Value>) {
+}: RadioItemProps<Value>) {
   return (
     <BaseRadio.Root<Value>
-      className={cn(variant === 'control' && radioRootClassName, className)}
-      {...props}
-    />
-  )
-}
-
-export type RadioIndicatorProps
-  = Omit<BaseRadioNS.Indicator.Props, 'className' | 'children'>
-    & {
-      className?: string
-    }
-
-export function RadioIndicator({
-  className,
-  ...props
-}: RadioIndicatorProps) {
-  return (
-    <BaseRadio.Indicator
-      className={cn(radioIndicatorClassName, className)}
+      className={className}
       {...props}
     />
   )
 }
 
 export type RadioControlProps
-  = Omit<RadioIndicatorProps, 'keepMounted'>
+  = Omit<BaseRadioNS.Indicator.Props, 'className' | 'children' | 'keepMounted'>
+    & {
+      className?: string
+    }
 
 export function RadioControl({
   className,
@@ -70,18 +49,26 @@ export function RadioControl({
 }: RadioControlProps) {
   return (
     <BaseRadio.Indicator
+      {...props}
       keepMounted
       className={cn(radioControlClassName, className)}
-      {...props}
     />
   )
 }
 
 export type RadioProps<Value = string>
-  = Omit<RadioRootProps<Value>, 'children'>
+  = Omit<RadioItemProps<Value>, 'children'>
 
-export function Radio<Value = string>(props: RadioProps<Value>) {
-  return <RadioRoot<Value> {...props} />
+export function Radio<Value = string>({
+  className,
+  ...props
+}: RadioProps<Value>) {
+  return (
+    <BaseRadio.Root<Value>
+      className={cn(radioControlClassName, className)}
+      {...props}
+    />
+  )
 }
 
 export type RadioSkeletonProps = React.ComponentProps<'div'>

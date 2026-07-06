@@ -6,8 +6,7 @@ import { RadioGroup } from '../../radio-group'
 import {
   Radio,
   RadioControl,
-  RadioIndicator,
-  RadioRoot,
+  RadioItem,
   RadioSkeleton,
 } from '../index'
 
@@ -59,11 +58,11 @@ function RadioTypeExamples() {
   return (
     <RadioGroup<boolean> value={true} onValueChange={() => {}}>
       <Radio<boolean> value={true} />
-      <RadioRoot<boolean> value={false} />
+      <RadioItem<boolean> value={false} />
       {/* @ts-expect-error boolean radio items should not accept string values */}
       <Radio<boolean> value="true" />
-      {/* @ts-expect-error boolean radio roots should not accept string values */}
-      <RadioRoot<boolean> value="false" />
+      {/* @ts-expect-error boolean radio items should not accept string values */}
+      <RadioItem<boolean> value="false" />
     </RadioGroup>
   )
 }
@@ -141,36 +140,17 @@ describe('Radio', () => {
     expect(data.get('storageType')).toBe('ssd')
   })
 
-  it('should support custom compound composition with RadioRoot and RadioIndicator', async () => {
-    const screen = await render(
-      <TestRadioGroup defaultValue="custom" label="Custom">
-        <FieldItem>
-          <FieldLabel>
-            <RadioRoot value="custom" className="custom-root">
-              <RadioIndicator className="custom-indicator" keepMounted />
-            </RadioRoot>
-            Custom
-          </FieldLabel>
-        </FieldItem>
-      </TestRadioGroup>,
-    )
-
-    await expect.element(screen.getByRole('radio', { name: 'Custom' })).toHaveClass('custom-root')
-    expect(screen.container.querySelector('.custom-indicator')).toBeInTheDocument()
-  })
-
-  it('should support unstyled roots with a visual RadioControl for option cards', async () => {
+  it('should support custom items with a visual RadioControl', async () => {
     const screen = await render(
       <RadioGroup defaultValue="card" aria-label="Card choice">
-        <RadioRoot
+        <RadioItem
           value="card"
-          variant="unstyled"
           nativeButton
           render={<button type="button" className="custom-card" />}
         >
           <span>Card option</span>
           <RadioControl className="custom-control" />
-        </RadioRoot>
+        </RadioItem>
       </RadioGroup>,
     )
 

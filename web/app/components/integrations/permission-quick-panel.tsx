@@ -2,7 +2,7 @@
 
 import type { Permissions } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioItem } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useTranslation } from 'react-i18next'
 import { PluginSidecarPanel } from '@/app/components/plugins/plugin-page/plugin-sidecar-panel'
@@ -71,16 +71,15 @@ export function PermissionQuickPanel({
                 const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
 
                 return (
-                  <RadioRoot<PermissionType>
+                  <RadioItem<PermissionType>
                     key={option}
                     value={option}
-                    variant="unstyled"
                     nativeButton
                     render={<button type="button" className={permissionOptionCardClassName} />}
                     aria-label={`${row.label}: ${optionLabel}`}
                   >
                     <span className="min-w-0 truncate">{optionLabel}</span>
-                  </RadioRoot>
+                  </RadioItem>
                 )
               })}
             </RadioGroup>

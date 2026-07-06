@@ -14,7 +14,7 @@ import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioItem } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { intersectionBy } from 'es-toolkit/compat'
@@ -500,17 +500,16 @@ export function AgentKnowledgeRetrievalDialog({
               }}
             >
               {queryModeOptions.map(mode => (
-                <RadioRoot<KnowledgeRetrievalQueryMode>
+                <RadioItem<KnowledgeRetrievalQueryMode>
                   key={mode}
                   value={mode}
-                  variant="unstyled"
                   nativeButton
                   render={<button type="button" className={optionCardClassName} />}
                 >
                   <span className="min-w-0 truncate">
                     {t(`agentDetail.configure.knowledgeRetrieval.dialog.query.${mode}`)}
                   </span>
-                </RadioRoot>
+                </RadioItem>
               ))}
             </RadioGroup>
             {queryMode === 'custom'

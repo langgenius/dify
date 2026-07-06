@@ -10,7 +10,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { FieldItem, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { produce } from 'immer'
@@ -162,9 +162,8 @@ const FollowUpSettingModal = ({
                 {t('feature.suggestedQuestionsAfterAnswer.modal.promptLabel', { ns: 'appDebug' })}
               </FieldsetLegend>
               <FieldItem>
-                <RadioRoot<PromptMode>
+                <RadioItem<PromptMode>
                   value={PROMPT_MODE.default}
-                  variant="unstyled"
                   nativeButton
                   render={<button type="button" />}
                   className={cn(
@@ -192,12 +191,11 @@ const FollowUpSettingModal = ({
                       </div>
                     </div>
                   )}
-                </RadioRoot>
+                </RadioItem>
               </FieldItem>
               <FieldItem>
-                <RadioRoot<PromptMode>
+                <RadioItem<PromptMode>
                   value={PROMPT_MODE.custom}
-                  variant="unstyled"
                   nativeButton
                   render={<button type="button" />}
                   className={cn(
@@ -228,7 +226,7 @@ const FollowUpSettingModal = ({
                       placeholder={t('feature.suggestedQuestionsAfterAnswer.modal.promptPlaceholder', { ns: 'appDebug' }) || ''}
                     />
                   )}
-                </RadioRoot>
+                </RadioItem>
               </FieldItem>
             </FieldsetRoot>
           </FieldRoot>

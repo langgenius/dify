@@ -15,7 +15,7 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: '`Radio` is the default Dify 16px radio control, intended for plain form rows inside `RadioGroup`. It does not accept children. For option cards or rich rows, use `RadioRoot` as the item root and place `RadioControl` inside it; see the `RadioGroup` stories.',
+        component: '`Radio` is the default Dify 16px radio control, intended for plain form rows inside `RadioGroup`. It does not accept children. For custom radio items, use `RadioItem` and place `RadioControl` inside it when the standard dot is needed; see the `RadioGroup` stories.',
       },
     },
   },

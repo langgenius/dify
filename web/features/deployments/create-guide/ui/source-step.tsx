@@ -4,7 +4,7 @@ import type { GuideMethod, WorkflowSourceApp } from '@/features/deployments/crea
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioItem } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
@@ -103,9 +103,8 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
   badge?: string
 }) {
   return (
-    <RadioRoot<GuideMethod>
+    <RadioItem<GuideMethod>
       value={value}
-      variant="unstyled"
       className={cn(
         `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px]
         border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3
@@ -132,7 +131,7 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
           </span>
         </TitleTooltip>
       </span>
-    </RadioRoot>
+    </RadioItem>
   )
 }
 

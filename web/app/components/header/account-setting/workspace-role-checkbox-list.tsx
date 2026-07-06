@@ -4,7 +4,7 @@ import type { Role } from '@/models/access-control'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioItem } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -288,10 +288,9 @@ const WorkspaceRoleCheckboxList = ({
 
                             return (
                               <li key={role.id}>
-                                <RadioRoot
+                                <RadioItem
                                   value={role.id}
                                   disabled={disabled}
-                                  variant="unstyled"
                                   render={(
                                     <div
                                       className={cn(
@@ -304,7 +303,7 @@ const WorkspaceRoleCheckboxList = ({
                                 >
                                   <RadioControl className="pointer-events-none mt-0.5" />
                                   {renderRoleText(role)}
-                                </RadioRoot>
+                                </RadioItem>
                               </li>
                             )
                           })}
