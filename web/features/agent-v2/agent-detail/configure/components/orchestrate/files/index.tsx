@@ -21,7 +21,12 @@ import { Trans, useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
-import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
+import {
+  agentComposerFilesAtom,
+  clearAgentConfigNoteAtom,
+  removeAgentFileAtom,
+  upsertAgentFileAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { downloadBlob, downloadUrl } from '@/utils/download'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
@@ -63,16 +68,6 @@ const findAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNod
       return child
   }
 }
-
-const removeAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode[] => files.flatMap((file) => {
-  if (file.id === fileId)
-    return []
-
-  if (file.children)
-    return [{ ...file, children: removeAgentFileNode(file.children, fileId) }]
-
-  return [file]
-})
 
 function AgentFileItem({
   children,
@@ -351,19 +346,17 @@ export function AgentFiles() {
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
   const draft = useAtomValue(agentComposerDraftAtom)
-  const setDraft = useSetAtom(agentComposerDraftAtom)
   const files = useAtomValue(agentComposerFilesAtom)
-  const setFiles = useSetAtom(agentComposerFilesAtom)
+  const clearAgentConfigNote = useSetAtom(clearAgentConfigNoteAtom)
+  const removeAgentFile = useSetAtom(removeAgentFileAtom)
+  const upsertAgentFile = useSetAtom(upsertAgentFileAtom)
   const buildNoteFile = getBuildNoteFile(draft.configNote)
   const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
   const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions())
   const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions())
   const removeFile = useCallback((fileId: string) => {
     if (fileId === BUILD_NOTE_FILE_ID) {
-      setDraft(draft => ({
-        ...draft,
-        configNote: '',
-      }))
+      clearAgentConfigNote()
       return
     }
 
@@ -374,7 +367,7 @@ export function AgentFiles() {
       return
 
     const onSuccess = () => {
-      setFiles(files => removeAgentFileNode(files, fileId))
+      removeAgentFile(fileId)
     }
     if (apiContext.workflow) {
       deleteWorkflowAgentFile({
@@ -401,20 +394,17 @@ export function AgentFiles() {
         version_id: apiContext.versionId,
       },
     }, { onSuccess })
-  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setDraft, setFiles])
+  }, [apiContext, clearAgentConfigNote, deleteAgentFile, deleteWorkflowAgentFile, files, removeAgentFile])
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)
   }, [])
   useRegisterAgentOrchestrateAddAction('files', handleOpenUpload)
   const handleUploaded = useCallback((file: AgentFileNode) => {
-    setFiles(files => [
-      ...removeAgentFileNode(files, file.id),
-      file,
-    ])
+    upsertAgentFile(file)
     promptAddCallbackRef.current?.(file)
     promptAddCallbackRef.current = undefined
-  }, [setFiles])
+  }, [upsertAgentFile])
   const handleUploadOpenChange = useCallback((open: boolean) => {
     if (!open)
       promptAddCallbackRef.current = undefined
