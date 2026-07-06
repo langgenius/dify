@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dify_agent.agent_stub.cli._env import read_agent_stub_environment
-from dify_agent.agent_stub.client._agent_stub import connect_agent_stub_sync
+from dify_agent.agent_stub.client import connect_agent_stub_sync
 from dify_agent.agent_stub.protocol.agent_stub import AgentStubConnectResponse
 
 

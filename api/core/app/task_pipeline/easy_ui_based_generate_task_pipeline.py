@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from threading import Thread
 from typing import Any, cast
 
@@ -44,7 +44,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.app.task_pipeline.message_file_utils import prepare_file_dict
+from core.app.task_pipeline.message_file_utils import MessageFileInfoDict, prepare_file_dict
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_manager import ModelInstance
 from core.ops.entities.trace_entity import TraceTaskName
@@ -466,10 +466,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         :return:
         """
         self._task_state.metadata.usage = self._task_state.llm_result.usage
-        metadata_dict = self._task_state.metadata.model_dump()
+        metadata_dict = self._task_state.metadata.model_dump(exclude_none=True)
 
         # Fetch files associated with this message
-        files = None
+        files: list[MessageFileInfoDict] = []
         with Session(db.engine, expire_on_commit=False) as session:
             message_files = session.scalars(select(MessageFile).where(MessageFile.message_id == self._message_id)).all()
 
@@ -492,13 +492,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     file_dict = prepare_file_dict(message_file, upload_files_map)
                     files_list.append(file_dict)
 
-                files = files_list or None
+                files = files_list
 
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
             metadata=metadata_dict,
-            files=files,
+            files=cast(Sequence[Mapping[str, Any]], files),
         )
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:
@@ -528,11 +528,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 task_id=self._application_generate_entity.task_id,
                 id=agent_thought.id,
                 position=agent_thought.position,
-                thought=agent_thought.thought,
-                observation=agent_thought.observation,
-                tool=agent_thought.tool,
+                thought=agent_thought.thought or "",
+                observation=agent_thought.observation or "",
+                tool=agent_thought.tool or "",
                 tool_labels=agent_thought.tool_labels,
-                tool_input=agent_thought.tool_input,
+                tool_input=agent_thought.tool_input or "",
                 message_files=agent_thought.files,
             )
 
