@@ -1,12 +1,11 @@
 """Unit tests for EnterpriseOtelTrace."""
 
 from __future__ import annotations
-from typing import cast
-import logging
 
 import json
+import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -477,7 +476,11 @@ class TestWorkflowTrace:
         assert span_call[1]["start_time"] == _T0
         assert span_call[1]["end_time"] == _T1
 
-    def test_emits_companion_log_with_event_name(self, trace_handler: EnterpriseOtelTrace, caplog: pytest.LogCaptureFixture,):
+    def test_emits_companion_log_with_event_name(
+        self,
+        trace_handler: EnterpriseOtelTrace,
+        caplog: pytest.LogCaptureFixture,
+    ):
         with caplog.at_level(logging.INFO, logger="dify.telemetry"):
             trace_handler._workflow_trace(make_workflow_info())
 
