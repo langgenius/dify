@@ -11,7 +11,7 @@ import type {
   DefaultValueForm,
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
+import type { RetryCondition, WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
@@ -111,6 +111,7 @@ export type CommonNodeType<T = {}> = {
   loop_id?: string
   error_strategy?: ErrorHandleTypeEnum
   retry_config?: WorkflowRetryConfig
+  retry_condition?: RetryCondition
   default_value?: DefaultValueForm[]
   credential_id?: string
   subscription_id?: string

@@ -194,6 +194,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         workflow_entry.graph_engine.layer(persistence_layer)
         workflow_entry.graph_engine.layer(build_workflow_agent_session_cleanup_layer())
+
+        # Register conditional retry layer before other layers so it can
+        # evaluate retry conditions before graphon's ErrorHandler runs.
+        from core.app.workflow.layers import ConditionalRetryLayer
+        workflow_entry.graph_engine.layer(ConditionalRetryLayer())
+
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 

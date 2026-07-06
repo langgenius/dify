@@ -264,6 +264,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ConversationVariableUpdater(session_factory.get_session_maker())
         )
         workflow_entry.graph_engine.layer(conversation_variable_layer)
+
+        # Register conditional retry layer before other layers so it can
+        # evaluate retry conditions before graphon's ErrorHandler runs.
+        from core.app.workflow.layers import ConditionalRetryLayer
+        workflow_entry.graph_engine.layer(ConditionalRetryLayer())
+
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 
