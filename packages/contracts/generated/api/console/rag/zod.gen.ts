@@ -200,11 +200,6 @@ export const zParser = z.object({
 })
 
 /**
- * DataSourceContentPreviewResponse
- */
-export const zDataSourceContentPreviewResponse = z.unknown()
-
-/**
  * PublishedWorkflowRunPayload
  */
 export const zPublishedWorkflowRunPayload = z.object({
@@ -545,9 +540,9 @@ export const zDatasetRerankingModelResponse = z.object({
 })
 
 /**
- * Type
+ * PluginDependencyType
  */
-export const zType = z.enum(['github', 'marketplace', 'package'])
+export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
 
 /**
  * Github
@@ -580,7 +575,7 @@ export const zPackage = z.object({
  */
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
-  type: zType,
+  type: zPluginDependencyType,
   value: z.union([zGithub, zMarketplace, zPackage]),
 })
 
@@ -1179,7 +1174,7 @@ export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNod
  * Success
  */
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse
-  = zDataSourceContentPreviewResponse
+  = z.record(z.string(), z.unknown())
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody
   = zDatasourceNodeRunPayload

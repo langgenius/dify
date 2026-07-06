@@ -1372,7 +1372,7 @@ export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 
 
 export type PluginDependency = {
   current_identifier?: string | null
-  type: Type
+  type: PluginDependencyType
   value: Github | Marketplace | Package
 }
 
@@ -2186,7 +2186,7 @@ export type ModelConfigPartial = {
 
 export type LlmMode = 'chat' | 'completion'
 
-export type Type = 'github' | 'marketplace' | 'package'
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
   github_plugin_unique_identifier: string

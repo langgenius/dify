@@ -2,17 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from flask_restx import fields
 from pydantic import Field, computed_field, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import build_avatar_url, to_timestamp
-
-simple_account_fields = {
-    "id": fields.String,
-    "name": fields.String,
-    "email": fields.String,
-}
 
 
 class SimpleAccountResponse(ResponseModel):

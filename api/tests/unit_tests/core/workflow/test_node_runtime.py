@@ -171,7 +171,7 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
     model_schema = _build_model_schema()
     model_instance = _ModelInstanceStub(model_schema=model_schema)
     model_type_instance = model_instance.model_type_instance
-    prepared = DifyPreparedLLM(model_instance)
+    prepared = DifyPreparedLLM(model_instance, request_metadata={"app_id": "app-id"})
 
     assert prepared.provider == "langgenius/openai/openai"
     assert prepared.model_name == "gpt-4o-mini"
@@ -197,6 +197,7 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
         tools=[],
         stop=[],
         stream=False,
+        request_metadata={"app_id": "app-id"},
     )
 
 
