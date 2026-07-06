@@ -360,7 +360,9 @@ class RefreshTokenApi(Resource):
         try:
             new_token_pair = AccountService.refresh_token(refresh_token, session=db.session)
         except Unauthorized as exc:
-            return SimpleResultMessageResponse(result="fail", message=exc.description).model_dump(mode="json"), 401
+            return SimpleResultMessageResponse(result="fail", message=exc.description or "Unauthorized.").model_dump(
+                mode="json"
+            ), 401
         except (RefreshTokenNotFoundError, RefreshTokenAccountNotFoundError) as exc:
             return SimpleResultMessageResponse(result="fail", message=str(exc)).model_dump(mode="json"), 401
 
