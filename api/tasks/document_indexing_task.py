@@ -45,9 +45,7 @@ def document_indexing_task(dataset_id: str, document_ids: list):
 
     Usage: document_indexing_task.delay(dataset_id, document_ids)
     """
-    logger.warning(
-        "document indexing legacy mode received: %s - %s", dataset_id, document_ids
-    )
+    logger.warning("document indexing legacy mode received: %s - %s", dataset_id, document_ids)
     _document_indexing(dataset_id, document_ids)
 
 
@@ -62,9 +60,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset = session.scalar(
-            select(Dataset).where(Dataset.id == dataset_id).limit(1)
-        )
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if not dataset:
             logger.info(click.style(f"Dataset is not found: {dataset_id}", fg="yellow"))
             return
@@ -76,17 +72,10 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                 assert vector_space is not None
                 count = len(document_ids)
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-                if (
-                    features.billing.subscription.plan == CloudPlan.SANDBOX
-                    and count > 1
-                ):
-                    raise ValueError(
-                        "Your current plan does not support batch upload, please upgrade your plan."
-                    )
+                if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
+                    raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
                 if count > batch_upload_limit:
-                    raise ValueError(
-                        f"You have reached the batch upload limit of {batch_upload_limit}."
-                    )
+                    raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
                 if 0 < vector_space.limit <= vector_space.size:
                     raise ValueError(
                         "Your total number of documents plus the number of uploads have over the limit of "
@@ -95,11 +84,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
         except Exception as e:
             for document_id in document_ids:
                 document = session.scalar(
-                    select(Document)
-                    .where(
-                        Document.id == document_id, Document.dataset_id == dataset_id
-                    )
-                    .limit(1)
+                    select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
                 )
                 if document:
                     document.indexing_status = IndexingStatus.ERROR
@@ -113,9 +98,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
     with session_factory.create_session() as session, session.begin():
         documents: list[Document] = list(
             session.scalars(
-                select(Document).where(
-                    Document.id.in_(document_ids), Document.dataset_id == dataset_id
-                )
+                select(Document).where(Document.id.in_(document_ids), Document.dataset_id == dataset_id)
             ).all()
         )
 
@@ -164,9 +147,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
             # Trigger summary index generation for completed documents if enabled
             # Only generate for high_quality indexing technique and when summary_index_setting is enabled
             # Re-query dataset to get latest summary_index_setting (in case it was updated)
-            dataset = session.scalar(
-                select(Dataset).where(Dataset.id == dataset_id).limit(1)
-            )
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
             if not dataset:
                 logger.warning("Dataset %s not found after indexing", dataset_id)
                 return
@@ -207,9 +188,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                             and document.need_summary is True
                         ):
                             try:
-                                generate_summary_index_task.delay(
-                                    dataset.id, document.id, None
-                                )
+                                generate_summary_index_task.delay(dataset.id, document.id, None)
                                 logger.info(
                                     "Queued summary index generation task for document %s in dataset %s "
                                     "after indexing completed",
@@ -224,8 +203,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                                 # Don't fail the entire indexing process if summary task queuing fails
                         else:
                             logger.info(
-                                "Skipping summary generation for document %s: "
-                                "status=%s, doc_form=%s, need_summary=%s",
+                                "Skipping summary generation for document %s: status=%s, doc_form=%s, need_summary=%s",
                                 document.id,
                                 document.indexing_status,
                                 document.doc_form,
@@ -265,15 +243,11 @@ def _document_indexing_with_tenant_queue(
             exc_info=True,
         )
     finally:
-        tenant_isolated_task_queue = TenantIsolatedTaskQueue(
-            tenant_id, "document_indexing"
-        )
+        tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
 
         # Check if there are waiting tasks in the queue
         # Use rpop to get the next task from the queue (FIFO order)
-        next_tasks = tenant_isolated_task_queue.pull_tasks(
-            count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY
-        )
+        next_tasks = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
 
         logger.info(
             "document indexing tenant isolation queue %s next tasks: %s",
@@ -302,9 +276,7 @@ def _document_indexing_with_tenant_queue(
 
 
 @shared_task(queue="dataset")
-def normal_document_indexing_task(
-    tenant_id: str, dataset_id: str, document_ids: Sequence[str]
-):
+def normal_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
     """
     Async process document
     :param tenant_id:
@@ -319,15 +291,11 @@ def normal_document_indexing_task(
         dataset_id,
         document_ids,
     )
-    _document_indexing_with_tenant_queue(
-        tenant_id, dataset_id, document_ids, normal_document_indexing_task
-    )
+    _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, normal_document_indexing_task)
 
 
 @shared_task(queue="priority_dataset")
-def priority_document_indexing_task(
-    tenant_id: str, dataset_id: str, document_ids: Sequence[str]
-):
+def priority_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
     """
     Priority async process document
     :param tenant_id:
@@ -342,6 +310,4 @@ def priority_document_indexing_task(
         dataset_id,
         document_ids,
     )
-    _document_indexing_with_tenant_queue(
-        tenant_id, dataset_id, document_ids, priority_document_indexing_task
-    )
+    _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, priority_document_indexing_task)
