@@ -18,7 +18,6 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolTypeEnum as ToolTabEnum } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
-import { addProviderTools } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import {
   useAllBuiltInTools,
@@ -42,7 +41,7 @@ type AgentPromptSlashMenuProps = {
   skills: AgentSkill[]
   files: AgentFileNode[]
   tools: AgentTool[]
-  onToolsChange: (tools: AgentTool[]) => void
+  onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onAddCliTool?: AgentOrchestrateAddAction
   onAddFile?: AgentOrchestrateAddAction
   onAddKnowledge?: AgentOrchestrateAddAction
@@ -83,7 +82,7 @@ export function AgentPromptSlashMenu({
   skills,
   files,
   tools,
-  onToolsChange,
+  onAddProviderTools,
   onAddCliTool,
   onAddFile,
   onAddKnowledge,
@@ -167,7 +166,7 @@ export function AgentPromptSlashMenu({
         {view === 'tools' && (
           <AgentPromptToolRows
             configuredTools={tools}
-            onConfiguredToolsChange={onToolsChange}
+            onAddProviderTools={onAddProviderTools}
             onSelect={onSelect}
           />
         )}
@@ -279,11 +278,11 @@ function AgentPromptFileRows({
 
 function AgentPromptToolRows({
   configuredTools,
-  onConfiguredToolsChange,
+  onAddProviderTools,
   onSelect,
 }: {
   configuredTools: AgentTool[]
-  onConfiguredToolsChange: (tools: AgentTool[]) => void
+  onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onSelect: (token: string) => void
 }) {
   const { t } = useTranslation('agentV2')
@@ -329,7 +328,7 @@ function AgentPromptToolRows({
   ]
 
   const selectTools = (tools: AgentProviderToolDefaultValue[]) => {
-    onConfiguredToolsChange(addProviderTools(configuredTools, tools))
+    onAddProviderTools(tools)
   }
 
   const toggleProvider = (providerId: string) => {

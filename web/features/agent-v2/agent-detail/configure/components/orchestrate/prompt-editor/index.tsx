@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import { useClipboard } from 'foxact/use-clipboard'
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import {
   $getRoot,
   $getSelection,
@@ -32,7 +32,10 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import {
+  addProviderToolsAtom,
+  agentComposerToolsAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
@@ -388,7 +391,8 @@ export function AgentPromptEditor() {
   const [value, setValue] = useAtom(agentComposerPromptAtom)
   const { skills } = useAgentConfigSkills()
   const { files } = useAgentConfigFiles()
-  const [tools, setTools] = useAtom(agentComposerToolsAtom)
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const addProviderTools = useSetAtom(addProviderToolsAtom)
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
@@ -674,7 +678,7 @@ export function AgentPromptEditor() {
             skills={skills}
             files={files}
             tools={tools}
-            onToolsChange={setTools}
+            onAddProviderTools={addProviderTools}
             onAddCliTool={ENABLE_AGENT_CLI_TOOLS ? addActions.cli : undefined}
             onAddFile={addActions.files}
             onAddKnowledge={addActions.knowledge}
