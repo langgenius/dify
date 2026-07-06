@@ -369,21 +369,21 @@ describe('AgentTools', () => {
       expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
     })
 
-    it('should keep the add trigger mounted while the tool picker is open', async () => {
+    it('should open the tool picker directly from the add trigger', async () => {
       const user = userEvent.setup()
       renderAgentTools()
 
       await user.click(screen.getByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.add',
       }))
+
+      expect(screen.getByText('Mock tool picker')).toBeInTheDocument()
       expect(screen.queryByRole('button', {
         name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.cliTool\.label/,
       })).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', {
+      expect(screen.queryByRole('button', {
         name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.tool\.label/,
-      }))
-
-      expect(screen.getByText('Mock tool picker')).toBeInTheDocument()
+      })).not.toBeInTheDocument()
       expect(screen.getByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.add',
       })).toBeInTheDocument()

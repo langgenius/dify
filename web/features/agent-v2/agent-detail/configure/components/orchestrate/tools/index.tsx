@@ -264,6 +264,12 @@ function AddToolMenuItem({
   )
 }
 
+type AddToolMenuView = 'menu' | 'tool-picker'
+
+// CLI tools are not available yet, so open the tool picker directly for now.
+// Switch this back to 'menu' when the CLI tool entry returns.
+const addToolDefaultView = 'tool-picker' satisfies AddToolMenuView
+
 function AddToolMenu({
   onAddCliTool,
   onAddTools,
@@ -275,7 +281,7 @@ function AddToolMenu({
 }) {
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState<'menu' | 'tool-picker'>('menu')
+  const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
   const providerById = useAgentToolProviderMap()
 
   const openToolPicker = useCallback(() => {
@@ -291,7 +297,7 @@ function AddToolMenu({
     setOpen(nextOpen)
 
     if (nextOpen)
-      setView('menu')
+      setView(addToolDefaultView)
   }, [])
 
   const toAgentToolDefaultValue = useCallback((tool: ToolDefaultValue): AgentProviderToolDefaultValue => ({
