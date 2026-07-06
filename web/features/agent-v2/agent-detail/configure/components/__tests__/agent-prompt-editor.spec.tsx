@@ -350,7 +350,7 @@ describe('AgentPromptEditor', () => {
           skills={[]}
           files={[]}
           tools={[]}
-          onToolsChange={vi.fn()}
+          onAddProviderTools={vi.fn()}
           onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One' })}
           retrievals={[]}
           onBack={vi.fn()}
@@ -368,7 +368,7 @@ describe('AgentPromptEditor', () => {
           skills={[]}
           files={[]}
           tools={[]}
-          onToolsChange={vi.fn()}
+          onAddProviderTools={vi.fn()}
           onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown', configName: 'Guide.md' })}
           retrievals={[]}
           onBack={vi.fn()}
@@ -386,7 +386,7 @@ describe('AgentPromptEditor', () => {
           skills={[]}
           files={[]}
           tools={[]}
-          onToolsChange={vi.fn()}
+          onAddProviderTools={vi.fn()}
           onAddKnowledge={options => options?.onAdded?.({ id: 'retrieval-1', name: 'Retrieval One', queryMode: 'agent' })}
           retrievals={[]}
           onBack={vi.fn()}
@@ -404,7 +404,7 @@ describe('AgentPromptEditor', () => {
           skills={[]}
           files={[]}
           tools={[]}
-          onToolsChange={vi.fn()}
+          onAddProviderTools={vi.fn()}
           onAddCliTool={options => options?.onAdded?.({ id: 'cli-1', kind: 'cli', name: 'Lark CLI' })}
           retrievals={[]}
           onBack={vi.fn()}

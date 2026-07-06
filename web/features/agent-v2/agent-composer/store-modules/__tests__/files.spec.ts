@@ -16,16 +16,19 @@ describe('agent composer files store', () => {
       files: [
         {
           id: 'folder',
+          icon: 'folder',
           name: 'Folder',
           children: [
             {
               id: 'brief.md',
+              icon: 'markdown',
               name: 'brief.md',
             },
           ],
         },
         {
           id: 'diagram.png',
+          icon: 'image',
           name: 'diagram.png',
         },
       ],
@@ -33,6 +36,7 @@ describe('agent composer files store', () => {
 
     store.set(upsertAgentFileAtom, {
       id: 'diagram.png',
+      icon: 'image',
       name: 'updated-diagram.png',
     })
     store.set(removeAgentFileAtom, 'brief.md')
@@ -40,11 +44,13 @@ describe('agent composer files store', () => {
     expect(store.get(agentComposerDraftAtom).files).toEqual([
       {
         id: 'folder',
+        icon: 'folder',
         name: 'Folder',
         children: [],
       },
       {
         id: 'diagram.png',
+        icon: 'image',
         name: 'updated-diagram.png',
       },
     ])
