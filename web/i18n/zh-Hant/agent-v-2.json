@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "已生成",
   "agentDetail.configure.files.buildNote.richTooltip": "Agent 在建置模式中完成的設定都記錄在這裡。每次對話開始時，它會連同提示詞一起讀取這份記錄。<docLink>了解更多</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Agent 在建置模式中完成的設定都記錄在這裡。每次對話開始時，它會連同提示詞一起讀取這份記錄。了解更多",
+  "agentDetail.configure.files.download": "下載 {{name}}",
   "agentDetail.configure.files.empty.description": "上傳 Agent 可讀取的文件，例如規格、範本或指南",
   "agentDetail.configure.files.empty.title": "暫無檔案",
   "agentDetail.configure.files.label": "檔案",

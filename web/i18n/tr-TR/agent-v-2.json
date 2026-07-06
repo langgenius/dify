@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "Oluşturuldu",
   "agentDetail.configure.files.buildNote.richTooltip": "Agent'ın Build mode'da kurduğu şeylerin kaydı. Her konuşmanın başında bunu Prompt'unuzla birlikte okur. <docLink>Daha fazla bilgi</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Agent'ın Build mode'da kurduğu şeylerin kaydı. Her konuşmanın başında bunu Prompt'unuzla birlikte okur. Daha fazla bilgi",
+  "agentDetail.configure.files.download": "{{name}} indir",
   "agentDetail.configure.files.empty.description": "Ajanın okuyabileceği belgeleri yükleyin, örneğin spesifikasyonlar, şablonlar veya yönergeler",
   "agentDetail.configure.files.empty.title": "Henüz dosya yok",
   "agentDetail.configure.files.label": "Dosyalar",

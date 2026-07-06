@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "Ustvarjeno",
   "agentDetail.configure.files.buildNote.richTooltip": "Agentov zapis tega, kar je nastavil v načinu Build. Prebere ga na začetku vsakega pogovora skupaj z vašim Promptom. <docLink>Več informacij</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Agentov zapis tega, kar je nastavil v načinu Build. Prebere ga na začetku vsakega pogovora skupaj z vašim Promptom. Več informacij",
+  "agentDetail.configure.files.download": "Prenesi {{name}}",
   "agentDetail.configure.files.empty.description": "Naložite dokumente, ki jih lahko agent bere, npr. specifikacije, predloge ali smernice",
   "agentDetail.configure.files.empty.title": "Še ni datotek",
   "agentDetail.configure.files.label": "Datoteke",

@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "Generat",
   "agentDetail.configure.files.buildNote.richTooltip": "Înregistrarea agentului despre ce a configurat în modul Build. O citește la începutul fiecărei conversații, împreună cu Promptul dvs. <docLink>Aflați mai multe</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Înregistrarea agentului despre ce a configurat în modul Build. O citește la începutul fiecărei conversații, împreună cu Promptul dvs. Aflați mai multe",
+  "agentDetail.configure.files.download": "Descarcă {{name}}",
   "agentDetail.configure.files.empty.description": "Încarcă documente pe care agentul le poate citi, precum specificații, șabloane sau ghiduri",
   "agentDetail.configure.files.empty.title": "Niciun fișier încă",
   "agentDetail.configure.files.label": "Fișiere",

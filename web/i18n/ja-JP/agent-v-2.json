@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "生成済み",
   "agentDetail.configure.files.buildNote.richTooltip": "Build モードでエージェントが設定した内容の記録です。各会話の開始時に、Prompt と一緒にこれを読み取ります。<docLink>詳しく見る</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Build モードでエージェントが設定した内容の記録です。各会話の開始時に、Prompt と一緒にこれを読み取ります。詳しく見る",
+  "agentDetail.configure.files.download": "{{name}} をダウンロード",
   "agentDetail.configure.files.empty.description": "仕様、テンプレート、ガイドラインなど、エージェントが読めるドキュメントをアップロード",
   "agentDetail.configure.files.empty.title": "ファイルはまだありません",
   "agentDetail.configure.files.label": "ファイル",

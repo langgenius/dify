@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "Сгенерировано",
   "agentDetail.configure.files.buildNote.richTooltip": "Запись агента о том, что он настроил в режиме Build. Он читает ее в начале каждого разговора вместе с вашим Prompt. <docLink>Подробнее</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Запись агента о том, что он настроил в режиме Build. Он читает ее в начале каждого разговора вместе с вашим Prompt. Подробнее",
+  "agentDetail.configure.files.download": "Скачать {{name}}",
   "agentDetail.configure.files.empty.description": "Загрузите документы, которые может прочитать агент, например спецификации, шаблоны или руководства",
   "agentDetail.configure.files.empty.title": "Пока нет файлов",
   "agentDetail.configure.files.label": "Файлы",

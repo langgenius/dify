@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "تم إنشاؤه",
   "agentDetail.configure.files.buildNote.richTooltip": "سجل الوكيل لما أعدّه في وضع Build. يقرأه في بداية كل محادثة إلى جانب Prompt الخاص بك. <docLink>معرفة المزيد</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "سجل الوكيل لما أعدّه في وضع Build. يقرأه في بداية كل محادثة إلى جانب Prompt الخاص بك. معرفة المزيد",
+  "agentDetail.configure.files.download": "تنزيل {{name}}",
   "agentDetail.configure.files.empty.description": "قم بتحميل المستندات التي يمكن للوكيل قراءتها، مثل المواصفات أو القوالب أو الإرشادات",
   "agentDetail.configure.files.empty.title": "لا توجد ملفات بعد",
   "agentDetail.configure.files.label": "الملفات",

@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "Dihasilkan",
   "agentDetail.configure.files.buildNote.richTooltip": "Catatan agen tentang apa yang disiapkannya dalam mode Build. Agen membaca ini di awal setiap percakapan, bersama Prompt Anda. <docLink>Pelajari selengkapnya</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Catatan agen tentang apa yang disiapkannya dalam mode Build. Agen membaca ini di awal setiap percakapan, bersama Prompt Anda. Pelajari selengkapnya",
+  "agentDetail.configure.files.download": "Unduh {{name}}",
   "agentDetail.configure.files.empty.description": "Unggah dokumen yang dapat dibaca agen, seperti spesifikasi, templat, atau pedoman",
   "agentDetail.configure.files.empty.title": "Belum ada file",
   "agentDetail.configure.files.label": "File",

@@ -39,6 +39,8 @@ const mocks = vi.hoisted(() => ({
   deleteFileMutationFn: vi.fn(async (_input: unknown) => ({ removed_names: ['brief.md'], result: 'success' })),
   previewQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
   downloadQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
+  downloadBlob: vi.fn(),
+  downloadUrl: vi.fn(),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -46,6 +48,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     success: vi.fn(),
     error: vi.fn(),
   },
+}))
+
+vi.mock('@/utils/download', () => ({
+  downloadBlob: mocks.downloadBlob,
+  downloadUrl: mocks.downloadUrl,
 }))
 
 vi.mock('@/service/client', () => ({
@@ -368,6 +375,30 @@ describe('AgentFiles', () => {
     })
   })
 
+  it('should download configured files from the row action by config name', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles()
+
+    await user.click(screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.files\.download.*diagram\.png/,
+    }))
+
+    await waitFor(() => {
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            agent_id: 'agent-1',
+            name: 'diagram.png',
+          },
+        }),
+      }))
+    })
+    expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      url: 'https://example.com/diagram.png',
+      fileName: 'diagram.png',
+    })
+  })
+
   it('should show config note as a virtual build note file and preview its content locally', async () => {
     const user = userEvent.setup()
     renderAgentFiles({
@@ -390,6 +421,31 @@ describe('AgentFiles', () => {
         }),
       }),
     }))
+    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
+      input: expect.objectContaining({
+        params: expect.objectContaining({
+          name: 'build_note.md',
+        }),
+      }),
+    }))
+  })
+
+  it('should download the virtual build note file as markdown content', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles({
+      initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
+    })
+
+    await user.click(screen.getByRole('button', {
+      name: /agentV2\.agentDetail\.configure\.files\.download.*build_note\.md/,
+    }))
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'build_note.md',
+    })
+    const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
+    await expect(blob.text()).resolves.toBe('Build context from the latest build chat.')
     expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
       input: expect.objectContaining({
         params: expect.objectContaining({

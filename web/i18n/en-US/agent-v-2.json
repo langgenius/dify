@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "Generated",
   "agentDetail.configure.files.buildNote.richTooltip": "The agent's record of what it set up in Build mode. It reads this at the start of every conversation, alongside your Prompt. <docLink>Learn more</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "The agent's record of what it set up in Build mode. It reads this at the start of every conversation, alongside your Prompt. Learn more",
+  "agentDetail.configure.files.download": "Download {{name}}",
   "agentDetail.configure.files.empty.description": "Upload docs the agent can read, like specs, templates, or guidelines",
   "agentDetail.configure.files.empty.title": "No files yet",
   "agentDetail.configure.files.label": "Files",

@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "تولید شده",
   "agentDetail.configure.files.buildNote.richTooltip": "رکورد عامل از چیزهایی که در حالت Build تنظیم کرده است. در آغاز هر گفتگو، آن را همراه با Prompt شما می‌خواند. <docLink>بیشتر بدانید</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "رکورد عامل از چیزهایی که در حالت Build تنظیم کرده است. در آغاز هر گفتگو، آن را همراه با Prompt شما می‌خواند. بیشتر بدانید",
+  "agentDetail.configure.files.download": "دانلود {{name}}",
   "agentDetail.configure.files.empty.description": "اسنادی را که عامل می‌تواند بخواند بارگذاری کنید، مانند مشخصات، قالب‌ها یا دستورالعمل‌ها",
   "agentDetail.configure.files.empty.title": "هنوز فایلی وجود ندارد",
   "agentDetail.configure.files.label": "فایل‌ها",

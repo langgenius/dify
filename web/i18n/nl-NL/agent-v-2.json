@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "Gegenereerd",
   "agentDetail.configure.files.buildNote.richTooltip": "Het verslag van de agent van wat hij in de Build-modus heeft ingesteld. Hij leest dit aan het begin van elk gesprek, samen met uw Prompt. <docLink>Meer informatie</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Het verslag van de agent van wat hij in de Build-modus heeft ingesteld. Hij leest dit aan het begin van elk gesprek, samen met uw Prompt. Meer informatie",
+  "agentDetail.configure.files.download": "{{name}} downloaden",
   "agentDetail.configure.files.empty.description": "Upload documenten die de agent kan lezen, zoals specificaties, sjablonen of richtlijnen",
   "agentDetail.configure.files.empty.title": "Nog geen bestanden",
   "agentDetail.configure.files.label": "Bestanden",

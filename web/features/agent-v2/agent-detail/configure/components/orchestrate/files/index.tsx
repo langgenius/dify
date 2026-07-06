@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
@@ -15,7 +15,7 @@ import {
   FileTreeIcon,
   FileTreeLabel,
 } from '@langgenius/dify-ui/file-tree'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -24,6 +24,7 @@ import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
+import { downloadBlob, downloadUrl } from '@/utils/download'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { DocsLink } from '../common/docs-link'
@@ -93,6 +94,7 @@ function AgentFileItem({
 }) {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
+  const queryClient = useQueryClient()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const selectedFile = selectedFileId ? findAgentFileNode(files, selectedFileId) : undefined
@@ -169,6 +171,50 @@ function AgentFileItem({
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
+  const handleDownload = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+
+    if (file.virtualContent !== undefined) {
+      downloadBlob({
+        data: new Blob([file.virtualContent], { type: 'text/markdown;charset=utf-8' }),
+        fileName: file.name,
+      })
+      return
+    }
+
+    const fileName = getAgentFilePreviewKey(file)
+    if (apiContext.workflow) {
+      const result = await queryClient.fetchQuery(consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
+        input: {
+          params: {
+            app_id: apiContext.workflow.appId,
+            name: fileName,
+          },
+          query: {
+            node_id: apiContext.workflow.nodeId,
+            draft_type: apiContext.draftType,
+            version_id: apiContext.versionId,
+          },
+        },
+      }))
+      downloadUrl({ url: result.url, fileName: file.name })
+      return
+    }
+
+    const result = await queryClient.fetchQuery(consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
+      input: {
+        params: {
+          agent_id: apiContext.agentId,
+          name: fileName,
+        },
+        query: {
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
+        },
+      },
+    }))
+    downloadUrl({ url: result.url, fileName: file.name })
+  }, [apiContext, file, queryClient])
   const handlePreviewOpenChange = useCallback((open: boolean) => {
     if (open)
       setSelectedFileId(file.id)
@@ -186,7 +232,7 @@ function AgentFileItem({
               aria-current={selected ? 'true' : undefined}
               className={cn(
                 'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none group-hover/file-row:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
-                'pr-7',
+                'pr-14',
               )}
             />
           )}
@@ -225,6 +271,17 @@ function AgentFileItem({
           className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
         />
       )}
+      <button
+        type="button"
+        aria-label={t('agentDetail.configure.files.download', { name: file.name })}
+        onClick={handleDownload}
+        className={cn(
+          'pointer-events-none absolute top-1/2 z-10 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+          readOnly && !isBuildNoteFile ? 'right-1' : 'right-7',
+        )}
+      >
+        <span aria-hidden className="i-ri-download-line size-4" />
+      </button>
       {!readOnly && (!file.virtualContent || isBuildNoteFile) && (
         <button
           type="button"

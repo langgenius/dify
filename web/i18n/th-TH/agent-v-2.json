@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "สร้างแล้ว",
   "agentDetail.configure.files.buildNote.richTooltip": "บันทึกของ agent เกี่ยวกับสิ่งที่ตั้งค่าไว้ในโหมด Build โดยจะอ่านสิ่งนี้ตอนเริ่มทุกบทสนทนา พร้อมกับ Prompt ของคุณ <docLink>เรียนรู้เพิ่มเติม</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "บันทึกของ agent เกี่ยวกับสิ่งที่ตั้งค่าไว้ในโหมด Build โดยจะอ่านสิ่งนี้ตอนเริ่มทุกบทสนทนา พร้อมกับ Prompt ของคุณ เรียนรู้เพิ่มเติม",
+  "agentDetail.configure.files.download": "ดาวน์โหลด {{name}}",
   "agentDetail.configure.files.empty.description": "อัปโหลดเอกสารที่ตัวแทนสามารถอ่านได้ เช่น ข้อกำหนด เทมเพลต หรือแนวทาง",
   "agentDetail.configure.files.empty.title": "ยังไม่มีไฟล์",
   "agentDetail.configure.files.label": "ไฟล์",

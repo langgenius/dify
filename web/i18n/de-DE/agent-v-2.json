@@ -82,6 +82,7 @@
   "agentDetail.configure.files.buildNote.generated": "Generiert",
   "agentDetail.configure.files.buildNote.richTooltip": "Die Aufzeichnung des Agenten darüber, was er im Build-Modus eingerichtet hat. Er liest sie zu Beginn jeder Unterhaltung zusammen mit Ihrem Prompt. <docLink>Mehr erfahren</docLink>",
   "agentDetail.configure.files.buildNote.tooltip": "Die Aufzeichnung des Agenten darüber, was er im Build-Modus eingerichtet hat. Er liest sie zu Beginn jeder Unterhaltung zusammen mit Ihrem Prompt. Mehr erfahren",
+  "agentDetail.configure.files.download": "{{name}} herunterladen",
   "agentDetail.configure.files.empty.description": "Laden Sie Dokumente hoch, die der Agent lesen kann, z. B. Spezifikationen, Vorlagen oder Richtlinien",
   "agentDetail.configure.files.empty.title": "Noch keine Dateien",
   "agentDetail.configure.files.label": "Dateien",
