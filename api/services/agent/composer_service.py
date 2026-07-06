@@ -168,7 +168,8 @@ class AgentComposerService:
 
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
-        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
+        if payload.save_strategy in _PUBLISH_SAVE_STRATEGIES:
+            cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
         workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
 
@@ -357,7 +358,6 @@ class AgentComposerService:
             raise ValueError("agent_soul is required")
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
-        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
 
         agent = cls._get_agent_app_agent(tenant_id=tenant_id, app_id=app_id)
         if not agent:
@@ -401,7 +401,6 @@ class AgentComposerService:
             raise ValueError("agent_soul is required")
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
-        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
         return cls._save_agent_composer_for_agent(
             tenant_id=tenant_id,
@@ -591,7 +590,6 @@ class AgentComposerService:
             raise ValueError("agent_soul is required")
         _backfill_cli_tool_ids(payload.agent_soul)
         ComposerConfigValidator.validate_draft_save_payload(payload)
-        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._save_agent_draft(
             tenant_id=tenant_id,
