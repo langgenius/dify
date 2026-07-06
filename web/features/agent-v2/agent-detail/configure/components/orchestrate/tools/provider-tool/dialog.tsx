@@ -4,11 +4,15 @@ import type { ToolSettingTarget } from '../types'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentProviderTool } from '@/features/agent-v2/agent-composer/form-state'
-import { useAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import { CollectionType } from '@/app/components/tools/types'
-import { agentComposerToolSettingsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import {
+  agentComposerToolsAtom,
+  agentComposerToolSettingsAtom,
+  saveProviderToolActionSettingsAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/tools'
 
 const localize = (value: string) => ({
   en_US: value,
@@ -51,34 +55,50 @@ export function ProviderToolSettingsDialog({
   collection?: ToolWithProvider
   onClose: () => void
 }) {
-  const [toolSettings, setToolSettings] = useAtom(agentComposerToolSettingsAtom)
-  const toolCollection = useMemo(() => {
+  const tools = useAtomValue(agentComposerToolsAtom)
+  const toolSettings = useAtomValue(agentComposerToolSettingsAtom)
+  const saveProviderToolActionSettings = useSetAtom(saveProviderToolActionSettingsAtom)
+  const currentTarget = useMemo(() => {
     if (!settingTarget)
       return null
 
-    return collection ?? createFallbackToolCollection(settingTarget.tool)
-  }, [collection, settingTarget])
+    const tool = tools.find(tool => tool.kind === 'provider' && tool.id === settingTarget.toolId)
+    if (tool?.kind !== 'provider')
+      return null
+
+    const action = tool.actions.find(action => action.id === settingTarget.actionId)
+    if (!action)
+      return null
+
+    return { action, tool }
+  }, [settingTarget, tools])
+  const toolCollection = useMemo(() => {
+    if (!currentTarget)
+      return null
+
+    return collection ?? createFallbackToolCollection(currentTarget.tool)
+  }, [collection, currentTarget])
   const handleSave = useCallback((value: Record<string, unknown>) => {
-    if (!settingTarget)
+    if (!currentTarget)
       return
 
-    setToolSettings({
-      ...toolSettings,
-      [settingTarget.action.id]: value,
+    saveProviderToolActionSettings({
+      actionId: currentTarget.action.id,
+      value,
     })
     onClose()
-  }, [onClose, setToolSettings, settingTarget, toolSettings])
+  }, [currentTarget, onClose, saveProviderToolActionSettings])
 
-  if (!settingTarget || !toolCollection)
+  if (!currentTarget || !toolCollection)
     return null
 
   return (
     <SettingBuiltInTool
-      toolName={settingTarget.action.toolName}
-      setting={toolSettings[settingTarget.action.id]}
+      toolName={currentTarget.action.toolName}
+      setting={toolSettings[currentTarget.action.id]}
       collection={toolCollection}
       isModel={false}
-      credentialId={settingTarget.tool.credentialId}
+      credentialId={currentTarget.tool.credentialId}
       onSave={handleSave}
       onHide={onClose}
     />

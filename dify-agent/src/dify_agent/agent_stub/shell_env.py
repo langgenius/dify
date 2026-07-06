@@ -1,19 +1,20 @@
-"""Server-side environment injection helpers for Agent Stub forwarding.
+"""Client-safe shell environment helpers for Agent Stub forwarding.
 
 Only user-visible ``shell.run`` commands receive these variables. Internal
-lifecycle commands remain free of Agent Stub credentials and drive-base defaults
-so workspace setup and cleanup cannot accidentally inherit user-facing forwarding
-state.
+lifecycle commands remain free of Agent Stub credentials and drive-base
+defaults so workspace setup and cleanup cannot accidentally inherit
+user-facing forwarding state. The module stays server-extra-free because the
+shell runtime and provider factory use it in sandbox-visible paths.
 """
 
 from __future__ import annotations
 
 from typing import Protocol
 
+from dify_agent.agent_stub._constants import AGENT_STUB_DRIVE_BASE_ENV_VAR
 from dify_agent.agent_stub.protocol.agent_stub import (
-    AGENT_STUB_AUTH_JWE_ENV_VAR,
-    AGENT_STUB_DRIVE_BASE_ENV_VAR,
     AGENT_STUB_API_BASE_URL_ENV_VAR,
+    AGENT_STUB_AUTH_JWE_ENV_VAR,
     agent_stub_drive_base_for_ref,
     normalize_agent_stub_api_base_url,
 )

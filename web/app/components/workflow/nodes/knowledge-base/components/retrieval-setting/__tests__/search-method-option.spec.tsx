@@ -1,7 +1,7 @@
 import type { ComponentType, SVGProps } from 'react'
 import { FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   fireEvent,
   render,

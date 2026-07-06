@@ -990,14 +990,6 @@ const agentV2FullSeedTasks = (): SeedTask[] => [
     run: seedOAuthToolAgent,
   },
   {
-    id: 'file-tree-agent',
-    title: agentBuilderPreseededResources.fileTreeAgent,
-    run: async () => blocked(
-      agentBuilderPreseededResources.fileTreeAgent,
-      'Agent drive arbitrary file upload does not have a stable public seed helper yet.',
-    ),
-  },
-  {
     id: 'dual-retrieval-agent',
     title: agentBuilderPreseededResources.dualRetrievalAgent,
     run: seedDualRetrievalAgent,

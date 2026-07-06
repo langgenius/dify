@@ -196,7 +196,7 @@
   "noAccessResourcePermission": "Geen toestemming om deze resource te openen",
   "noUserInputNode": "Missing user input node",
   "notPublishedYet": "App is not published yet",
-  "openInExplore": "Open in Explore",
+  "openInExplore": "Sidebar Web App openen",
   "publishApp.notSet": "Not set",
   "publishApp.notSetDesc": "Currently nobody can access the web app. Please set permissions.",
   "publishApp.title": "Who can access web app",

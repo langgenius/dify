@@ -160,22 +160,6 @@ export const zTrialWorkflowPartialResponse = z.object({
   updated_by: z.string().nullish(),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
-
 /**
  * TrialDatasetResponse
  */
@@ -345,11 +329,6 @@ export const zTrialAppDetailResponse = z.object({
 })
 
 /**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponseWritable = zJsonValue
-
-/**
  * Site
  */
 export const zSiteWritable = z.object({
@@ -396,7 +375,7 @@ export const zPostTrialAppsByAppIdChatMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdChatMessagesResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdCompletionMessagesBody = zCompletionRequest
 
@@ -407,7 +386,7 @@ export const zPostTrialAppsByAppIdCompletionMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zGetTrialAppsByAppIdDatasetsPath = z.object({
   app_id: z.uuid(),
@@ -482,7 +461,7 @@ export const zPostTrialAppsByAppIdWorkflowsRunPath = z.object({
 /**
  * Success
  */
-export const zPostTrialAppsByAppIdWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostTrialAppsByAppIdWorkflowsRunResponse = z.record(z.string(), z.unknown())
 
 export const zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath = z.object({
   app_id: z.uuid(),

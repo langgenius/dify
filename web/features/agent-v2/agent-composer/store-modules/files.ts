@@ -22,3 +22,33 @@ export const agentComposerFilesAtom = atom<AgentFileNode[], [DraftFieldUpdate<Ag
     })
   },
 )
+
+const removeAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode[] => files.flatMap((file) => {
+  if (file.id === fileId)
+    return []
+
+  if (file.children)
+    return [{ ...file, children: removeAgentFileNode(file.children, fileId) }]
+
+  return [file]
+})
+
+export const upsertAgentFileAtom = atom(null, (_get, set, file: AgentFileNode) => {
+  set(agentComposerFilesAtom, files => [
+    ...removeAgentFileNode(files, file.id),
+    file,
+  ])
+})
+
+export const removeAgentFileAtom = atom(null, (_get, set, fileId: string) => {
+  set(agentComposerFilesAtom, files => removeAgentFileNode(files, fileId))
+})
+
+export const clearAgentConfigNoteAtom = atom(null, (get, set) => {
+  const draft = get(agentComposerDraftAtom)
+
+  set(agentComposerDraftAtom, {
+    ...draft,
+    configNote: '',
+  })
+})

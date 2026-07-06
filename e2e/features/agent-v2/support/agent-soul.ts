@@ -36,6 +36,11 @@ export const normalAgentSoulConfig: AgentSoulConfig = {
   },
 }
 
+export const publishOnlyAgentModel: AgentModelSelection = {
+  name: 'gpt-5-nano',
+  provider: 'openai',
+}
+
 export const updatedAgentSoulConfig: AgentSoulConfig = {
   prompt: {
     system_prompt: updatedAgentPrompt,
@@ -79,6 +84,13 @@ export function createAgentSoulConfigWithModel(
       model_settings: stableAgentModelSettings,
     },
   }
+}
+
+export function createPublishableAgentSoulConfig(agentSoul: AgentSoulConfig): AgentSoulConfig {
+  if (agentSoul.model)
+    return agentSoul
+
+  return createAgentSoulConfigWithModel(agentSoul, publishOnlyAgentModel)
 }
 
 export function createAgentSoulConfigWithKnowledgeDataset(

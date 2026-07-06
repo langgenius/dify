@@ -14,6 +14,9 @@ def mock_queue_manager(mocker: MockerFixture):
 
 @pytest.fixture
 def handler(mock_queue_manager, mocker: MockerFixture):
+    mocker.patch(
+        "core.callback_handler.index_tool_callback_handler.db",
+    )
     return DatasetIndexToolCallbackHandler(
         queue_manager=mock_queue_manager,
         app_id="app-1",
@@ -33,8 +36,18 @@ class TestOnQuery:
         ],
     )
     def test_on_query_success_roles(self, mocker: MockerFixture, mock_queue_manager, invoke_from, expected_role):
-        # Arrange
-        mock_session = mocker.Mock()
+        # Arrange — the caller passes a session, but our fix uses an independent one
+        caller_session = mocker.Mock()
+
+        independent_session = mocker.MagicMock()
+        mock_session_factory = mocker.MagicMock()
+        mock_session_factory.begin.return_value.__enter__ = mocker.MagicMock(return_value=independent_session)
+        mock_session_factory.begin.return_value.__exit__ = mocker.MagicMock(return_value=False)
+        mocker.patch(
+            "core.callback_handler.index_tool_callback_handler.sessionmaker",
+            return_value=mock_session_factory,
+        )
+        mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         handler = DatasetIndexToolCallbackHandler(
             queue_manager=mock_queue_manager,
@@ -46,17 +59,28 @@ class TestOnQuery:
 
         handler._invoke_from = invoke_from
 
-        # Act
-        handler.on_query("test query", "dataset-1", mock_session)
+        # Act — pass caller_session as required by signature
+        handler.on_query("test query", "dataset-1", caller_session)
 
-        # Assert
-        mock_session.add.assert_called_once()
-        dataset_query = mock_session.add.call_args.args[0]
+        # Assert — independent session used, not the caller's session
+        independent_session.add.assert_called_once()
+        dataset_query = independent_session.add.call_args.args[0]
         assert dataset_query.created_by_role == expected_role
-        mock_session.commit.assert_called_once()
+        caller_session.add.assert_not_called()
+        caller_session.commit.assert_not_called()
 
     def test_on_query_none_values(self, mocker: MockerFixture, mock_queue_manager):
-        mock_session = mocker.Mock()
+        caller_session = mocker.Mock()
+
+        independent_session = mocker.MagicMock()
+        mock_session_factory = mocker.MagicMock()
+        mock_session_factory.begin.return_value.__enter__ = mocker.MagicMock(return_value=independent_session)
+        mock_session_factory.begin.return_value.__exit__ = mocker.MagicMock(return_value=False)
+        mocker.patch(
+            "core.callback_handler.index_tool_callback_handler.sessionmaker",
+            return_value=mock_session_factory,
+        )
+        mocker.patch("core.callback_handler.index_tool_callback_handler.db")
 
         handler = DatasetIndexToolCallbackHandler(
             queue_manager=mock_queue_manager,
@@ -66,40 +90,67 @@ class TestOnQuery:
             invoke_from=None,
         )
 
-        handler.on_query(None, None, mock_session)
+        handler.on_query(None, None, caller_session)
 
-        mock_session.add.assert_called_once()
-        mock_session.commit.assert_called_once()
+        independent_session.add.assert_called_once()
+        caller_session.add.assert_not_called()
 
 
 class TestOnToolEnd:
     def test_on_tool_end_no_metadata(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
-        mock_session = mocker.Mock()
+        caller_session = mocker.Mock()
+
+        independent_session = mocker.MagicMock()
+        mocker.patch(
+            "core.callback_handler.index_tool_callback_handler.Session",
+            return_value=independent_session,
+        )
+        independent_session.__enter__ = mocker.MagicMock(return_value=independent_session)
+        independent_session.__exit__ = mocker.MagicMock(return_value=False)
 
         document = mocker.Mock()
         document.metadata = None
 
-        handler.on_tool_end([document], mock_session)
+        handler.on_tool_end([document], caller_session)
 
-        mock_session.commit.assert_not_called()
+        independent_session.commit.assert_called_once()
+        independent_session.execute.assert_not_called()
+        caller_session.commit.assert_not_called()
 
     def test_on_tool_end_dataset_document_not_found(
         self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture
     ):
-        mock_session = mocker.Mock()
-        mock_session.scalar.return_value = None
+        caller_session = mocker.Mock()
+
+        independent_session = mocker.MagicMock()
+        mocker.patch(
+            "core.callback_handler.index_tool_callback_handler.Session",
+            return_value=independent_session,
+        )
+        independent_session.__enter__ = mocker.MagicMock(return_value=independent_session)
+        independent_session.__exit__ = mocker.MagicMock(return_value=False)
+        independent_session.scalar.return_value = None
 
         document = mocker.Mock()
         document.metadata = {"document_id": "doc-1", "doc_id": "node-1"}
 
-        handler.on_tool_end([document], mock_session)
+        handler.on_tool_end([document], caller_session)
 
-        mock_session.scalar.assert_called_once()
+        independent_session.scalar.assert_called_once()
+        caller_session.scalar.assert_not_called()
 
     def test_on_tool_end_parent_child_index_with_child(
         self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture
     ):
-        mock_session = mocker.Mock()
+        caller_session = mocker.Mock()
+
+        independent_session = mocker.MagicMock()
+        mocker.patch(
+            "core.callback_handler.index_tool_callback_handler.Session",
+            return_value=independent_session,
+        )
+        independent_session.__enter__ = mocker.MagicMock(return_value=independent_session)
+        independent_session.__exit__ = mocker.MagicMock(return_value=False)
 
         mock_dataset_doc = mocker.Mock()
         from core.callback_handler.index_tool_callback_handler import IndexStructureType
@@ -111,23 +162,32 @@ class TestOnToolEnd:
         mock_child_chunk = mocker.Mock()
         mock_child_chunk.segment_id = "segment-1"
 
-        mock_session.scalar.side_effect = [mock_dataset_doc, mock_child_chunk]
+        independent_session.scalar.side_effect = [mock_dataset_doc, mock_child_chunk]
 
         document = mocker.Mock()
         document.metadata = {"document_id": "doc-1", "doc_id": "node-1"}
 
-        handler.on_tool_end([document], mock_session)
+        handler.on_tool_end([document], caller_session)
 
-        mock_session.execute.assert_called_once()
-        mock_session.commit.assert_called_once()
+        independent_session.execute.assert_called_once()
+        independent_session.commit.assert_called_once()
+        caller_session.execute.assert_not_called()
 
     def test_on_tool_end_non_parent_child_index(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
-        mock_session = mocker.Mock()
+        caller_session = mocker.Mock()
+
+        independent_session = mocker.MagicMock()
+        mocker.patch(
+            "core.callback_handler.index_tool_callback_handler.Session",
+            return_value=independent_session,
+        )
+        independent_session.__enter__ = mocker.MagicMock(return_value=independent_session)
+        independent_session.__exit__ = mocker.MagicMock(return_value=False)
 
         mock_dataset_doc = mocker.Mock()
         mock_dataset_doc.doc_form = "OTHER"
 
-        mock_session.scalar.return_value = mock_dataset_doc
+        independent_session.scalar.return_value = mock_dataset_doc
 
         document = mocker.Mock()
         document.metadata = {
@@ -136,14 +196,24 @@ class TestOnToolEnd:
             "dataset_id": "dataset-1",
         }
 
-        handler.on_tool_end([document], mock_session)
+        handler.on_tool_end([document], caller_session)
 
-        mock_session.execute.assert_called_once()
-        mock_session.commit.assert_called_once()
+        independent_session.execute.assert_called_once()
+        independent_session.commit.assert_called_once()
+        caller_session.execute.assert_not_called()
 
     def test_on_tool_end_empty_documents(self, handler: DatasetIndexToolCallbackHandler, mocker: MockerFixture):
-        mock_session = mocker.Mock()
-        handler.on_tool_end([], mock_session)
+        caller_session = mocker.Mock()
+
+        independent_session = mocker.MagicMock()
+        mocker.patch(
+            "core.callback_handler.index_tool_callback_handler.Session",
+            return_value=independent_session,
+        )
+        independent_session.__enter__ = mocker.MagicMock(return_value=independent_session)
+        independent_session.__exit__ = mocker.MagicMock(return_value=False)
+
+        handler.on_tool_end([], caller_session)
 
 
 class TestReturnRetrieverResourceInfo:

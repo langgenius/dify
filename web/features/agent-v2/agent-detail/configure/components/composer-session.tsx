@@ -2,6 +2,7 @@
 
 import type { AgentAppDetailWithSite, AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { useAgentConfigureData } from '../hooks'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
@@ -214,6 +215,7 @@ function AgentConfigurePageComposerContent({
     activeConfigSnapshot,
     agentSoulConfig,
   } = configureData
+  const { t: tCommon } = useTranslation('common')
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(null)
@@ -333,6 +335,7 @@ function AgentConfigurePageComposerContent({
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={!buildDraft.isActive}
+          workflowReferencesEnabled={agentQuery.isSuccess}
           bottomAction={showBuildDraftBar
             ? (
                 <AgentBuildDraftBar
@@ -407,6 +410,11 @@ function AgentConfigurePageComposerContent({
               }}
               onSaveDraftBeforeRun={rightPanelChatMode === 'build'
                 ? async () => {
+                  if (!currentModel?.provider || !currentModel.model) {
+                    toast.error(tCommon('modelProvider.selectModel'))
+                    throw new Error('Agent model is required.')
+                  }
+
                   setBuildDraftActionsDisabled(true)
                   try {
                     return await buildDraftActions.prepareBuildDraftBeforeRun()
