@@ -196,7 +196,7 @@
   "noAccessResourcePermission": "इस संसाधन तक पहुँचने की अनुमति नहीं है",
   "noUserInputNode": "उपयोगकर्ता इनपुट नोड गायब है",
   "notPublishedYet": "ऐप अभी प्रकाशित नहीं हुआ है",
-  "openInExplore": "एक्सप्लोर में खोलें",
+  "openInExplore": "साइडबार Web App खोलें",
   "publishApp.notSet": "अनुबंधित नहीं किया गया",
   "publishApp.notSetDesc": "वर्तमान में कोई भी वेब ऐप तक पहुंच नहीं बना सकता। कृपया अनुमतियाँ सेट करें।",
   "publishApp.title": "वेब ऐप तक कौन पहुँच सकता है",

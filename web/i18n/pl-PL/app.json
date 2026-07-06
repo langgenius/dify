@@ -196,7 +196,7 @@
   "noAccessResourcePermission": "Brak uprawnień dostępu do tego zasobu",
   "noUserInputNode": "Brak węzła wejściowego użytkownika",
   "notPublishedYet": "Aplikacja nie została jeszcze opublikowana",
-  "openInExplore": "Otwieranie w obszarze Eksploruj",
+  "openInExplore": "Otwórz Web App z paska bocznego",
   "publishApp.notSet": "Nie ustawiono",
   "publishApp.notSetDesc": "Obecnie nikt nie może uzyskać dostępu do aplikacji internetowej. Proszę ustawić uprawnienia.",
   "publishApp.title": "Kto ma dostęp do aplikacji internetowej",
