@@ -19,6 +19,7 @@ import {
   $getSelection,
   $isElementNode,
   $isRangeSelection,
+  $isTextNode,
   COMMAND_PRIORITY_LOW,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
@@ -37,7 +38,7 @@ import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
-import { replaceTextRangeWithToken, replaceTrailingSlashWithToken } from './options'
+import { insertTokenAtTextRange, replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
 
 const subscribeHydrationState = () => () => {}
@@ -223,9 +224,66 @@ const readSlashInsertRange = (): TextRange | null => {
   }
 }
 
-function AgentPromptSelectionTracker({
+const selectNodeTextOffset = (node: LexicalNode, textOffset: number): boolean => {
+  if ($isTextNode(node)) {
+    const offset = Math.max(0, Math.min(textOffset, node.getTextContentSize()))
+    node.select(offset, offset)
+    return true
+  }
+
+  if (!$isElementNode(node))
+    return false
+
+  const children = node.getChildren()
+  let currentOffset = 0
+
+  for (let index = 0; index < children.length; index++) {
+    const child = children[index]!
+    const childLength = child.getTextContent().length
+    if (textOffset > currentOffset + childLength) {
+      currentOffset += childLength
+      continue
+    }
+
+    if ($isElementNode(child) || $isTextNode(child))
+      return selectNodeTextOffset(child, textOffset - currentOffset)
+
+    const childSelectionOffset = textOffset <= currentOffset ? index : index + 1
+    node.select(childSelectionOffset, childSelectionOffset)
+    return true
+  }
+
+  node.select(children.length, children.length)
+  return true
+}
+
+const selectTextOffset = (textOffset: number) => {
+  const root = $getRoot()
+  let currentOffset = 0
+
+  for (const child of root.getChildren()) {
+    const childLength = child.getTextContent().length
+    if (textOffset <= currentOffset + childLength) {
+      selectNodeTextOffset(child, textOffset - currentOffset)
+      return
+    }
+
+    currentOffset += childLength + 1
+  }
+
+  root.selectEnd()
+}
+
+type SelectionRestoreRequest = {
+  id: number
+  offset: number
+}
+
+function AgentPromptSelectionBridge({
+  restoreRequest,
   onSlashRangeChange,
 }: {
+  restoreRequest: SelectionRestoreRequest | null
   onSlashRangeChange: (range: TextRange | null) => void
 }) {
   const [editor] = useLexicalComposerContext()
@@ -254,6 +312,17 @@ function AgentPromptSelectionTracker({
       }),
     )
   }, [editor, onSlashRangeChange])
+
+  useEffect(() => {
+    if (!restoreRequest)
+      return
+
+    editor.focus(() => {
+      editor.update(() => {
+        selectTextOffset(restoreRequest.offset)
+      })
+    })
+  }, [editor, restoreRequest])
 
   return null
 }
@@ -284,9 +353,11 @@ export function AgentPromptEditor() {
   })
   const [slashMenuView, setSlashMenuView] = useState<SlashMenuView>('main')
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
+  const [selectionRestoreRequest, setSelectionRestoreRequest] = useState<SelectionRestoreRequest | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
   const slashInsertRangeRef = useRef<TextRange | null>(null)
+  const selectionRestoreRequestIdRef = useRef(0)
   const configuredReferenceIds = useMemo(() => {
     const skillIds = new Set<string>()
     skills.forEach((skill) => {
@@ -403,8 +474,24 @@ export function AgentPromptEditor() {
 
   const handleSlashSelect = (token: string) => {
     const slashRange = slashInsertRangeRef.current
-    setValue(slashRange ? replaceTextRangeWithToken(value, slashRange, token) : replaceTrailingSlashWithToken(value, token))
+    let insertionResult
+    if (slashRange) {
+      insertionResult = insertTokenAtTextRange(value, slashRange, token)
+    }
+    else {
+      const nextValue = replaceTrailingSlashWithToken(value, token)
+      insertionResult = {
+        value: nextValue,
+        cursorOffset: nextValue.length,
+      }
+    }
+    setValue(insertionResult.value)
     slashInsertRangeRef.current = null
+    selectionRestoreRequestIdRef.current += 1
+    setSelectionRestoreRequest({
+      id: selectionRestoreRequestIdRef.current,
+      offset: insertionResult.cursorOffset,
+    })
     closeSlashMenu()
   }
 
@@ -560,7 +647,10 @@ export function AgentPromptEditor() {
               disableSlashPicker
               disableBracePicker
             >
-              <AgentPromptSelectionTracker onSlashRangeChange={handleSlashRangeChange} />
+              <AgentPromptSelectionBridge
+                restoreRequest={selectionRestoreRequest}
+                onSlashRangeChange={handleSlashRangeChange}
+              />
             </PromptEditor>
           </div>
           {!readOnly && (
