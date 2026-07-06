@@ -3888,7 +3888,12 @@ class TestDatasetRetrievalAdditionalHelpers:
         trace_manager.add_trace_task.assert_not_called()
 
     def test_on_query(self, retrieval: DatasetRetrieval) -> None:
-        with patch("core.rag.retrieval.dataset_retrieval.db.session") as mock_session:
+        with patch(
+            "core.rag.retrieval.dataset_retrieval.session_factory.create_session"
+        ) as mock_create:
+            mock_session = MagicMock()
+            mock_create.return_value.__enter__.return_value = mock_session
+
             retrieval._on_query(
                 query=None,
                 attachment_ids=None,
@@ -3908,9 +3913,15 @@ class TestDatasetRetrievalAdditionalHelpers:
                 user_id="u1",
             )
             mock_session.add_all.assert_called()
+            mock_session.commit.assert_called()
 
     def test_on_query_normalizes_workflow_end_user_role(self, retrieval: DatasetRetrieval) -> None:
-        with patch("core.rag.retrieval.dataset_retrieval.db.session") as mock_session:
+        with patch(
+            "core.rag.retrieval.dataset_retrieval.session_factory.create_session"
+        ) as mock_create:
+            mock_session = MagicMock()
+            mock_create.return_value.__enter__.return_value = mock_session
+
             retrieval._on_query(
                 query="python",
                 attachment_ids=None,

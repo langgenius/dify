@@ -1060,7 +1060,9 @@ class DatasetRetrieval:
                 )
                 dataset_queries.append(dataset_query)
             if dataset_queries:
-                db.session.add_all(dataset_queries)
+                with session_factory.create_session() as session:
+                    session.add_all(dataset_queries)
+                    session.commit()
 
     def _retriever(
         self,
