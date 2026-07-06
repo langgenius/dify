@@ -227,6 +227,15 @@ def _previous_node_prompt_payload(result, selector: str) -> object:
     raise AssertionError(f"missing prompt payload for {selector}")
 
 
+def _uploaded_workflow_files_prompt_payload(result) -> object:
+    prefix = "  - sys.files: "
+    user_prompt = _workflow_user_prompt(result)
+    for line in user_prompt.splitlines():
+        if line.startswith(prefix):
+            return json.loads(line.removeprefix(prefix))
+    raise AssertionError("missing prompt payload for sys.files")
+
+
 def test_builds_create_run_request_from_agent_soul_and_node_job():
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
 
@@ -1250,6 +1259,48 @@ def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_
             "url": "https://example.com/second.pdf",
         },
     ]
+
+
+def test_uploaded_workflow_files_are_included_without_prompt_marker():
+    file_reference = build_file_reference(record_id="uploaded-file-1")
+
+    class UploadedFilesVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["sys", "files"]:
+                return ArrayFileSegment(
+                    value=[
+                        File(
+                            type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=file_reference,
+                            remote_url=None,
+                            filename="requirements.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=12,
+                        )
+                    ]
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=UploadedFilesVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Answer the user's question.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    user_prompt = _workflow_user_prompt(result)
+    assert "- Uploaded workflow files:" in user_prompt
+    assert _uploaded_workflow_files_prompt_payload(result) == [
+        {
+            "transfer_method": "local_file",
+            "reference": file_reference,
+        }
+    ]
+    assert "Previous node outputs:" not in user_prompt
 
 
 def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context():
