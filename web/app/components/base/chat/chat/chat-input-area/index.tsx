@@ -211,16 +211,18 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
       {shouldShowFooterNotice && (
         <div className="m-1 mt-0 -translate-y-2 rounded-b-[10px] border-r border-b border-l border-components-panel-border-subtle bg-util-colors-indigo-indigo-50 px-2.5 py-2 pt-4">
           <div className="flex items-center gap-1">
+            <span aria-hidden className="i-ri-information-line size-3.5 shrink-0 text-text-accent" />
+            <div className="body-xs-medium text-text-accent">{footerNotice}</div>
             {shouldShowFooterNoticeTooltip && (
               <Tooltip>
                 <TooltipTrigger
                   render={(
                     <button
                       type="button"
-                      className="flex size-5 items-center justify-center rounded-md text-text-accent hover:bg-state-base-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg"
+                      className="ml-auto flex size-5 items-center justify-center rounded-md system-xs-medium text-text-accent hover:bg-state-base-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg"
                       aria-label={typeof footerNoticeTooltip === 'string' ? footerNoticeTooltip : undefined}
                     >
-                      <span aria-hidden className="i-ri-information-line size-3.5 shrink-0" />
+                      <span aria-hidden className="i-ri-question-line size-3.5 shrink-0" />
                     </button>
                   )}
                 />
@@ -229,7 +231,6 @@ const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, s
                 </TooltipContent>
               </Tooltip>
             )}
-            <div className="body-xs-medium text-text-accent">{footerNotice}</div>
           </div>
         </div>
       )}

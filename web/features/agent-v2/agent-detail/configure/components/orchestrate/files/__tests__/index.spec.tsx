@@ -3,7 +3,7 @@ import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -399,6 +399,33 @@ describe('AgentFiles', () => {
     })
   })
 
+  it('should download the selected file from the preview header action', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles()
+
+    await user.click(screen.getByText('diagram.png').closest('button')!)
+    const dialog = await screen.findByRole('dialog')
+
+    await user.click(within(dialog).getByRole('button', {
+      name: /common\.operation\.download.*diagram\.png/,
+    }))
+
+    await waitFor(() => {
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(expect.objectContaining({
+        input: expect.objectContaining({
+          params: {
+            agent_id: 'agent-1',
+            name: 'diagram.png',
+          },
+        }),
+      }))
+    })
+    expect(mocks.downloadUrl).toHaveBeenCalledWith({
+      url: 'https://example.com/diagram.png',
+      fileName: 'diagram.png',
+    })
+  })
+
   it('should show config note as a virtual build note file and preview its content locally', async () => {
     const user = userEvent.setup()
     renderAgentFiles({
@@ -453,6 +480,27 @@ describe('AgentFiles', () => {
         }),
       }),
     }))
+  })
+
+  it('should download the virtual build note from the preview header action', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles({
+      initialDraft: createInitialDraft({ configNote: 'Build context from the latest build chat.' }),
+    })
+
+    await user.click(screen.getByText('build_note.md').closest('button')!)
+    const dialog = await screen.findByRole('dialog')
+
+    await user.click(within(dialog).getByRole('button', {
+      name: /common\.operation\.download.*build_note\.md/,
+    }))
+
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'build_note.md',
+    })
+    const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
+    await expect(blob.text()).resolves.toBe('Build context from the latest build chat.')
   })
 
   it('should show generated build note metadata with an explanatory infotip', async () => {

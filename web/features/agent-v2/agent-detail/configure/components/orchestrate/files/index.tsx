@@ -4,7 +4,6 @@ import type { MouseEvent, ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogTrigger,
@@ -171,18 +170,16 @@ function AgentFileItem({
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
-  const handleDownload = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-
-    if (file.virtualContent !== undefined) {
+  const downloadFile = useCallback(async (targetFile: AgentFileNode) => {
+    if (targetFile.virtualContent !== undefined) {
       downloadBlob({
-        data: new Blob([file.virtualContent], { type: 'text/markdown;charset=utf-8' }),
-        fileName: file.name,
+        data: new Blob([targetFile.virtualContent], { type: 'text/markdown;charset=utf-8' }),
+        fileName: targetFile.name,
       })
       return
     }
 
-    const fileName = getAgentFilePreviewKey(file)
+    const fileName = getAgentFilePreviewKey(targetFile)
     if (apiContext.workflow) {
       const result = await queryClient.fetchQuery(consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
         input: {
@@ -197,7 +194,7 @@ function AgentFileItem({
           },
         },
       }))
-      downloadUrl({ url: result.url, fileName: file.name })
+      downloadUrl({ url: result.url, fileName: targetFile.name })
       return
     }
 
@@ -213,27 +210,31 @@ function AgentFileItem({
         },
       },
     }))
-    downloadUrl({ url: result.url, fileName: file.name })
-  }, [apiContext, file, queryClient])
+    downloadUrl({ url: result.url, fileName: targetFile.name })
+  }, [apiContext, queryClient])
+  const handleDownload = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    await downloadFile(file)
+  }, [downloadFile, file])
   const handlePreviewOpenChange = useCallback((open: boolean) => {
     if (open)
       setSelectedFileId(file.id)
     setIsPreviewOpen(open)
   }, [file.id])
+  const canRemoveFile = !readOnly && (!file.virtualContent || isBuildNoteFile)
 
   return (
-    <li className="group/file-row relative min-w-0">
+    <li
+      data-selected={selected || undefined}
+      className="group/file-row flex h-6 min-w-0 items-center rounded-md focus-within:bg-state-base-hover hover:bg-state-base-hover data-[selected]:bg-state-base-active"
+    >
       <Dialog open={isPreviewOpen} onOpenChange={handlePreviewOpenChange}>
         <DialogTrigger
           render={(
             <button
               type="button"
-              data-selected={selected || undefined}
               aria-current={selected ? 'true' : undefined}
-              className={cn(
-                'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none group-hover/file-row:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-[selected]:bg-state-base-active',
-                isBuildNoteFile ? 'pr-28' : 'pr-14',
-              )}
+              className="group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
             />
           )}
         >
@@ -260,44 +261,34 @@ function AgentFileItem({
               isImage: isImagePreviewFile,
               isLoading: !isVirtualPreviewFile && previewQuery.isPending,
             },
+            onDownloadFile: () => downloadFile(selectedPreviewFile),
             onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
             selectedFileId: selectedFileId ?? file.id,
             sections: [],
           }}
         />
       </Dialog>
-      {isBuildNoteFile && (
-        <>
-          <AgentBuildNoteBadge
-            className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
-          />
-          <AgentBuildNoteInfotip
-            className={cn(!readOnly && 'group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0')}
-          />
-        </>
-      )}
-      <button
-        type="button"
-        aria-label={t('agentDetail.configure.files.download', { name: file.name })}
-        onClick={handleDownload}
-        className={cn(
-          'pointer-events-none absolute top-1/2 z-10 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-          readOnly && !isBuildNoteFile ? 'right-1' : 'right-7',
-        )}
-      >
-        <span aria-hidden className="i-ri-download-line size-4" />
-      </button>
-      {!readOnly && (!file.virtualContent || isBuildNoteFile) && (
+      <div className="pointer-events-none mr-1 flex shrink-0 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100">
         <button
           type="button"
-          data-agent-file-remove-button
-          aria-label={t('agentDetail.configure.files.remove', { name: file.name })}
-          onClick={handleRemove}
-          className="pointer-events-none absolute top-1/2 right-1 z-10 flex size-5 -translate-y-1/2 items-center justify-center rounded-md text-text-tertiary opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100 hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          aria-label={t('agentDetail.configure.files.download', { name: file.name })}
+          onClick={handleDownload}
+          className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >
-          <span aria-hidden className="i-ri-delete-bin-line size-4" />
+          <span aria-hidden className="i-ri-download-line size-4" />
         </button>
-      )}
+        {canRemoveFile && (
+          <button
+            type="button"
+            data-agent-file-remove-button
+            aria-label={t('agentDetail.configure.files.remove', { name: file.name })}
+            onClick={handleRemove}
+            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+          </button>
+        )}
+      </div>
     </li>
   )
 }
@@ -306,40 +297,36 @@ function AgentBuildNoteFileRow() {
   return (
     <>
       <FileTreeIcon type="markdown" />
-      <FileTreeLabel title={BUILD_NOTE_FILE_NAME}>
+      <FileTreeLabel className="w-auto flex-none" title={BUILD_NOTE_FILE_NAME}>
         {BUILD_NOTE_FILE_NAME}
       </FileTreeLabel>
+      <div className="ml-1 flex shrink-0 items-center gap-0.5 group-focus-within/file-row:opacity-0 group-hover/file-row:opacity-0">
+        <AgentBuildNoteBadge />
+        <AgentBuildNoteInfotip />
+      </div>
     </>
   )
 }
 
-function AgentBuildNoteBadge({
-  className,
-}: {
-  className?: string
-}) {
+function AgentBuildNoteBadge() {
   const { t } = useTranslation('agentV2')
 
   return (
-    <FileTreeBadge className={cn('absolute top-1/2 right-7 z-10 ms-0 -translate-y-1/2 gap-0.5 px-1 py-0.5', className)}>
+    <FileTreeBadge className="ms-0 gap-0.5 px-1 py-0.5">
       <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
       <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
     </FileTreeBadge>
   )
 }
 
-function AgentBuildNoteInfotip({
-  className,
-}: {
-  className?: string
-}) {
+function AgentBuildNoteInfotip() {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
 
   return (
     <Infotip
       aria-label={t('agentDetail.configure.files.buildNote.tooltip')}
-      className={cn('absolute top-1/2 right-1 z-10 size-5 -translate-y-1/2', className)}
+      className="size-5"
       iconClassName="size-4"
       popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
     >
