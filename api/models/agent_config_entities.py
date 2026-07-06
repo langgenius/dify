@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validat
 
 from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
 from core.workflow.file_reference import is_canonical_file_reference
-from graphon.file import FileTransferMethod
+from graphon.file import FileTransferMethod, FileType
 
 
 class AgentKnowledgeQueryMode(StrEnum):
@@ -547,6 +547,23 @@ class AgentSensitiveWordAvoidanceFeatureConfig(AgentFeatureToggleConfig):
     config: AgentModerationProviderConfig | None = None
 
 
+class AgentFileUploadImageFeatureConfig(AgentFeatureToggleConfig):
+    enabled: bool = True
+
+
+class AgentFileUploadFeatureConfig(AgentFeatureToggleConfig):
+    enabled: bool = True
+    allowed_file_extensions: list[str] = Field(default_factory=lambda: ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"])
+    allowed_file_types: list[FileType] = Field(
+        default_factory=lambda: [FileType.DOCUMENT, FileType.IMAGE, FileType.AUDIO, FileType.VIDEO]
+    )
+    allowed_file_upload_methods: list[FileTransferMethod] = Field(
+        default_factory=lambda: [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]
+    )
+    image: AgentFileUploadImageFeatureConfig = Field(default_factory=AgentFileUploadImageFeatureConfig)
+    number_limits: int = 3
+
+
 class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
     opening_statement: str | None = None
     suggested_questions: list[str] | None = None
@@ -555,6 +572,7 @@ class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
     text_to_speech: AgentTextToSpeechFeatureConfig | None = None
     retriever_resource: AgentFeatureToggleConfig | None = None
     sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = None
+    file_upload: AgentFileUploadFeatureConfig = Field(default_factory=AgentFileUploadFeatureConfig)
 
 
 class WorkflowPreviousNodeOutputRef(AgentFlexibleConfig):
