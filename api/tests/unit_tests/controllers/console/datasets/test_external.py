@@ -18,7 +18,6 @@ from controllers.console.datasets.external import (
     ExternalDatasetCreateApi,
     ExternalKnowledgeHitTestingApi,
 )
-from extensions.ext_database import db
 from models.account import Account, TenantAccountRole
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
@@ -197,6 +196,7 @@ class TestExternalApiTemplateListApi:
             },
         }
         created = _external_api_object("api-created")
+        session = MagicMock()
 
         with (
             app.test_request_context("/", json=payload),
@@ -208,7 +208,7 @@ class TestExternalApiTemplateListApi:
                 return_value=created,
             ) as create_external_knowledge_api,
         ):
-            resp, status = method(api, "tenant-1", current_user)
+            resp, status = method(api, session, "tenant-1", current_user)
 
         assert status == 201
         assert resp == _external_api_dict("api-created")
@@ -217,6 +217,7 @@ class TestExternalApiTemplateListApi:
             tenant_id="tenant-1",
             user_id="user-1",
             args=payload,
+            session=session,
         )
 
     def test_post_forbidden(self, app: Flask, current_user: Account):
@@ -259,6 +260,7 @@ class TestExternalApiTemplateApi:
         api = ExternalApiTemplateApi()
         method = inspect.unwrap(api.get)
         template = _external_api_object("api-detail")
+        session = MagicMock()
 
         with (
             app.test_request_context("/"),
@@ -268,11 +270,13 @@ class TestExternalApiTemplateApi:
                 return_value=template,
             ) as get_external_knowledge_api,
         ):
-            resp, status = method(api, "tenant-1", "api-detail")
+            resp, status = method(api, session, "tenant-1", "api-detail")
 
         assert status == 200
         assert resp == _external_api_dict("api-detail")
-        get_external_knowledge_api.assert_called_once_with("api-detail", "tenant-1")
+        get_external_knowledge_api.assert_called_once_with(
+            external_knowledge_api_id="api-detail", tenant_id="tenant-1", session=session
+        )
 
     def test_get_not_found(self, app: Flask):
         api = ExternalApiTemplateApi()
@@ -302,6 +306,7 @@ class TestExternalApiTemplateApi:
             },
         }
         updated = _external_api_object("api-updated")
+        session = MagicMock()
 
         with (
             app.test_request_context("/", json=payload),
@@ -313,7 +318,7 @@ class TestExternalApiTemplateApi:
                 return_value=updated,
             ) as update_external_knowledge_api,
         ):
-            resp, status = method(api, "tenant-1", current_user, "api-updated")
+            resp, status = method(api, session, "tenant-1", current_user, "api-updated")
 
         assert status == 200
         assert resp == _external_api_dict("api-updated")
@@ -323,6 +328,7 @@ class TestExternalApiTemplateApi:
             user_id="user-1",
             external_knowledge_api_id="api-updated",
             args=payload,
+            session=session,
         )
 
     def test_delete_forbidden(self, app: Flask, current_user: Account):
@@ -462,6 +468,7 @@ class TestExternalKnowledgeHitTestingApi:
                 }
             ],
         }
+        session = MagicMock()
 
         with (
             app.test_request_context("/", json=payload),
@@ -476,13 +483,13 @@ class TestExternalKnowledgeHitTestingApi:
             ) as external_retrieve,
             patch("controllers.console.datasets.external.dump_response", side_effect=lambda _model, value: value),
         ):
-            resp = method(api, MagicMock(), current_user, "dataset-id")
+            resp = method(api, session, current_user, "dataset-id")
 
         assert resp == retrieve_response
-        check_dataset_permission.assert_called_once_with(dataset, current_user, db.session)
+        check_dataset_permission.assert_called_once_with(dataset, current_user, session)
         hit_testing_args_check.assert_called_once_with(payload)
         external_retrieve.assert_called_once_with(
-            session=db.session,
+            session=session,
             dataset=dataset,
             query="hello",
             account=current_user,
@@ -517,6 +524,8 @@ class TestBedrockRetrievalApi:
                 },
             ]
         }
+
+        session = MagicMock()
 
         with (
             app.test_request_context("/", json=payload),
@@ -634,6 +643,7 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
             "external_retrieval_model": {"type": "bm25"},
             "metadata_filtering_conditions": {"status": "active"},
         }
+        session = MagicMock()
 
         with (
             app.test_request_context("/", json=payload),
@@ -659,7 +669,7 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
                 },
             ) as external_retrieve,
         ):
-            resp = method(api, MagicMock(), current_user, "ds-1")
+            resp = method(api, session, current_user, "ds-1")
 
         assert resp == {
             "query": {"content": "test query"},
@@ -672,10 +682,10 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
                 }
             ],
         }
-        check_permission.assert_called_once_with(dataset, current_user, db.session)
+        check_permission.assert_called_once_with(dataset, current_user, session)
         args_check.assert_called_once_with(payload)
         external_retrieve.assert_called_once_with(
-            session=db.session,
+            session=session,
             dataset=dataset,
             query="test query",
             account=current_user,
