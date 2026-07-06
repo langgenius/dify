@@ -67,14 +67,42 @@ const isPermissionFallbackGuideGroup = (
 const shouldHideOnPathname = (pathname: string) =>
   pathname.startsWith('/app/') || pathname.includes('/installed/')
 
-const isOptionalGuideTargetAvailable = (guide: StepByStepTourGuide) => {
+const isGuideEligibleForPlan = (
+  guide: StepByStepTourGuide,
+  canSetPluginPreferences: boolean,
+) => guide.target !== STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings || canSetPluginPreferences
+
+const isOptionalGuideTargetAvailable = (
+  guide: StepByStepTourGuide,
+  pathname: string,
+) => {
   if (!guide.optional)
+    return true
+
+  if (guide.integrationSection && pathname !== buildIntegrationPath(guide.integrationSection))
     return true
 
   if (typeof document === 'undefined')
     return true
 
   return Boolean(document.querySelector(getStepByStepTourTargetSelector(guide.target)))
+}
+
+const isElementVerticallyVisible = (element: HTMLElement) => {
+  const rect = element.getBoundingClientRect()
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+
+  return rect.top >= 0 && rect.bottom <= viewportHeight
+}
+
+const scrollTourTargetIntoView = (element: HTMLElement) => {
+  if (isElementVerticallyVisible(element))
+    return
+
+  element.scrollIntoView({
+    block: 'nearest',
+    behavior: 'auto',
+  })
 }
 
 const createGuideIndexes = (guides: StepByStepTourGuide[]) =>
@@ -127,6 +155,7 @@ export default function StepByStepTourMount({
     : 'homeNoCreate'
   const hasKnowledgeWalkthroughPermissions = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
     && hasPermission(workspacePermissionKeys, 'dataset.external.connect')
+  const canSetPluginPreferences = hasPermission(workspacePermissionKeys, 'plugin.plugin_preferences')
   const integrationGuideGroup: Extract<StepByStepTourGuideGroup, 'integrationLimitedAccess'> | undefined = isCurrentWorkspaceManager
     ? undefined
     : 'integrationLimitedAccess'
@@ -162,7 +191,8 @@ export default function StepByStepTourMount({
   const minimized = Boolean(activeTask) || accountState.minimized
   const activeGuideIndexes = activeGuides.length > 0
     ? getActiveGuideIndexes(activeGuides, accountState.activeGuideIndexes)
-        .filter(index => isOptionalGuideTargetAvailable(activeGuides[index]!))
+        .filter(index => isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences))
+        .filter(index => isOptionalGuideTargetAvailable(activeGuides[index]!, pathname))
     : []
   const activeGuidePlanIndex = activeGuideIndexes.findIndex(index => index === activeGuideIndex)
   const activeStepIndex = activeGuideIndexes.length > 0
@@ -272,10 +302,10 @@ export default function StepByStepTourMount({
   }, [activeGuide?.integrationSection, activeTask?.id, pathname, router])
 
   useEffect(() => {
-    activeTargetElement?.scrollIntoView?.({
-      block: 'center',
-      behavior: 'smooth',
-    })
+    if (!activeTargetElement)
+      return
+
+    scrollTourTargetIntoView(activeTargetElement)
   }, [activeGuide?.target, activeTargetElement])
 
   useEffect(() => {
@@ -494,8 +524,12 @@ export default function StepByStepTourMount({
       let nextGuideIndex = nextGuideIndexes.find(index => index >= startIndex)
 
       while (nextGuideIndex !== undefined) {
-        if (isOptionalGuideTargetAvailable(activeGuides[nextGuideIndex]!))
+        if (
+          isGuideEligibleForPlan(activeGuides[nextGuideIndex]!, canSetPluginPreferences)
+          && isOptionalGuideTargetAvailable(activeGuides[nextGuideIndex]!, pathname)
+        ) {
           return { activeGuideIndex: nextGuideIndex, activeGuideIndexes: nextGuideIndexes }
+        }
 
         nextGuideIndexes = nextGuideIndexes.filter(index => index !== nextGuideIndex)
         nextGuideIndex = nextGuideIndexes.find(index => index >= startIndex)
@@ -505,8 +539,12 @@ export default function StepByStepTourMount({
     }
 
     for (let index = startIndex; index < activeGuides.length; index += 1) {
-      if (isOptionalGuideTargetAvailable(activeGuides[index]!))
+      if (
+        isGuideEligibleForPlan(activeGuides[index]!, canSetPluginPreferences)
+        && isOptionalGuideTargetAvailable(activeGuides[index]!, pathname)
+      ) {
         return { activeGuideIndex: index, activeGuideIndexes: undefined }
+      }
     }
 
     return { activeGuideIndex: -1, activeGuideIndexes: undefined }
@@ -680,12 +718,14 @@ export default function StepByStepTourMount({
         }
 
         const guides = getStepByStepTourGuides(taskId, guideGroup)
+        const guideIndexes = createGuideIndexes(guides)
+          .filter(index => isGuideEligibleForPlan(guides[index]!, canSetPluginPreferences))
         updateAccountState({
           ...accountState,
           activeTaskId: taskId,
           activeGuideIndex: 0,
           activeGuideGroup: guideGroup,
-          activeGuideIndexes: guides.length > 0 ? createGuideIndexes(guides) : undefined,
+          activeGuideIndexes: guideIndexes.length > 0 ? guideIndexes : undefined,
           minimized: true,
         })
         router.push(task.route)
@@ -789,7 +829,7 @@ function SkipRecoveryPrompt({
   return (
     <section
       aria-label={label}
-      className="fixed bottom-[52px] left-1.5 z-50 flex w-[260px] max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
+      className="fixed bottom-[76px] left-1.5 z-50 flex w-[260px] max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
     >
       <p className="system-sm-regular text-text-secondary">{message}</p>
       <div className="flex h-12 items-end justify-end pt-4">
@@ -797,7 +837,8 @@ function SkipRecoveryPrompt({
           {dismissLabel}
         </Button>
       </div>
-      <span aria-hidden className="absolute top-[140px] left-[214px] h-7 w-0.5 bg-state-accent-hover-alt" />
+      <span aria-hidden className="absolute top-full left-[214px] h-7 w-0.5 bg-state-accent-hover-alt" />
+      <span aria-hidden className="absolute top-[calc(100%+22px)] left-[209px] size-3 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs" />
     </section>
   )
 }

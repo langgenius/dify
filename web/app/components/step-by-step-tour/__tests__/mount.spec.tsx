@@ -29,6 +29,7 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
     'dataset.create_and_management',
     'dataset.external.connect',
     'plugin.model_config',
+    'plugin.plugin_preferences',
     'tool.manage',
     'mcp.manage',
     'api_extension.manage',
@@ -449,6 +450,7 @@ describe('StepByStepTourMount', () => {
       'dataset.create_and_management',
       'dataset.external.connect',
       'plugin.model_config',
+      'plugin.plugin_preferences',
       'tool.manage',
       'mcp.manage',
       'api_extension.manage',
@@ -488,8 +490,11 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
     expect(screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' })).toHaveClass('bg-state-accent-hover', 'border-state-accent-hover-alt')
+    expect(screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' })).toHaveClass('bottom-[76px]', 'bg-state-accent-hover', 'border-state-accent-hover-alt')
     expect(screen.getByText('Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.')).toBeInTheDocument()
+    const [arrowLine, arrowDot] = screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }).querySelectorAll('span[aria-hidden="true"]')
+    expect(arrowLine).toHaveClass('top-full', 'left-[214px]', 'h-7', 'w-0.5')
+    expect(arrowDot).toHaveClass('top-[calc(100%+22px)]', 'left-[209px]', 'size-3', 'rounded-full', 'bg-state-accent-solid')
 
     await waitFor(() => {
       const state = mockStepByStepTour.observedState
@@ -943,6 +948,73 @@ describe('StepByStepTourMount', () => {
     }
   })
 
+  it('does not scroll the page when the active guide target is already visible', async () => {
+    setStepByStepTourTestState({
+      activeTaskId: 'home',
+      activeGuideIndex: 0,
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: true,
+      completedTaskIds: [],
+      skipped: false,
+    })
+    const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.home, 120, {
+      height: 180,
+      left: 40,
+      width: 360,
+    })
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(target, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+
+    try {
+      renderStepByStepTourMount()
+
+      expect(await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' })).toBeInTheDocument()
+      expect(scrollIntoView).not.toHaveBeenCalled()
+    }
+    finally {
+      target.remove()
+    }
+  })
+
+  it('scrolls an offscreen active guide target into view without smooth page animation', async () => {
+    setStepByStepTourTestState({
+      activeTaskId: 'home',
+      activeGuideIndex: 0,
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: true,
+      completedTaskIds: [],
+      skipped: false,
+    })
+    const target = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.home, 900, {
+      height: 180,
+      left: 40,
+      width: 360,
+    })
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(target, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+
+    try {
+      renderStepByStepTourMount()
+
+      expect(await screen.findByRole('region', { name: 'Pick a lesson to see how it works.' })).toBeInTheDocument()
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: 'nearest',
+        behavior: 'auto',
+      })
+    }
+    finally {
+      target.remove()
+    }
+  })
+
   it('uses no-create Learn Dify copy when the workspace cannot create apps', async () => {
     mockWorkspacePermissionKeys.value = []
     setStepByStepTourTestState({
@@ -1193,8 +1265,71 @@ describe('StepByStepTourMount', () => {
     }
   })
 
-  it('skips the optional Integration update settings guide when its target is unavailable', async () => {
+  it('keeps the Integration update settings guide in the plan until its section target is rendered', async () => {
     mockPathname = '/integrations/model-provider'
+    setStepByStepTourTestState({
+      activeTaskId: 'integration',
+      activeGuideIndex: 0,
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: true,
+      completedTaskIds: ['home', 'studio', 'knowledge'],
+      skipped: false,
+    })
+    const targets = [
+      STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderNav,
+      STEP_BY_STEP_TOUR_TARGETS.integrationToolPluginNav,
+      STEP_BY_STEP_TOUR_TARGETS.integrationMcpNav,
+      STEP_BY_STEP_TOUR_TARGETS.integrationDataSourceNav,
+      STEP_BY_STEP_TOUR_TARGETS.integrationTriggerNav,
+    ].map((targetName, index) => createTourTarget(targetName, 96 + index * 8))
+
+    try {
+      renderStepByStepTourMount()
+
+      expect(await screen.findByRole('region', { name: 'Model Provider' })).toBeInTheDocument()
+      expect(screen.getByText('1 of 6')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'Tool Plugin' })).toBeInTheDocument()
+      expect(screen.getByText('2 of 6')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'MCP' })).toBeInTheDocument()
+      expect(screen.getByText('3 of 6')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'Data Source' })).toBeInTheDocument()
+      expect(screen.getByText('4 of 6')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'Trigger' })).toBeInTheDocument()
+      expect(screen.getByText('5 of 6')).toBeInTheDocument()
+
+      const updateSettingsTarget = createTourTarget(STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings, 144)
+      targets.push(updateSettingsTarget)
+      mockPathname = '/integrations/tools/built-in'
+
+      fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+      expect(await screen.findByRole('region', { name: 'Update Settings' })).toBeInTheDocument()
+      expect(screen.getByText('6 of 6')).toBeInTheDocument()
+    }
+    finally {
+      targets.forEach(target => target.remove())
+    }
+  })
+
+  it('skips the optional Integration update settings guide when plugin preferences permission is unavailable', async () => {
+    mockPathname = '/integrations/model-provider'
+    mockWorkspacePermissionKeys.value = [
+      'app.create_and_management',
+      'dataset.create_and_management',
+      'dataset.external.connect',
+      'plugin.model_config',
+      'tool.manage',
+      'mcp.manage',
+      'api_extension.manage',
+    ]
     setStepByStepTourTestState({
       activeTaskId: 'integration',
       activeGuideIndex: 0,
