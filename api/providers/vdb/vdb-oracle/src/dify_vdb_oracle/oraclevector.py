@@ -316,7 +316,7 @@ def collection_dimension_cache_value(dimension: int) -> str:
 
 
 def collection_cache_key(collection_name: str, config: OracleVectorConfig) -> str:
-    """Scope schema readiness to a non-secret fingerprint of the Oracle target."""
+    """Scope schema readiness to an Oracle target fingerprint."""
     target = "\0".join(
         (
             config.user,

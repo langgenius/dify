@@ -1,3 +1,4 @@
+import os
 from typing import override
 
 import pytest
@@ -7,15 +8,22 @@ from core.rag.datasource.vdb.vector_integration_test_support import AbstractVect
 from core.rag.models.document import Document
 
 
+def required_oracle_setting(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        pytest.skip(f"{name} is required for Oracle vector integration tests")
+    return value
+
+
 class OracleVectorTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()
         self.vector = OracleVector(
             collection_name=self.collection_name,
             config=OracleVectorConfig(
-                user="dify",
-                password="dify",
-                dsn="localhost:1521/FREEPDB1",
+                user=required_oracle_setting("ORACLE_USER"),
+                password=required_oracle_setting("ORACLE_PASSWORD"),
+                dsn=required_oracle_setting("ORACLE_DSN"),
             ),
         )
 

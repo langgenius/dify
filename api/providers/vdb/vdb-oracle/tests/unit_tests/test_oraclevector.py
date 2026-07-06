@@ -1,7 +1,9 @@
 import array
 import importlib
+import os
 import sys
 import types
+import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +12,10 @@ import pytest
 from pydantic import ValidationError
 
 from core.rag.models.document import Document
+
+TEST_ORACLE_PASSWORD = os.environ.get("DIFY_TEST_ORACLE_PASSWORD") or uuid.uuid4().hex
+TEST_ORACLE_ROTATED_PASSWORD = os.environ.get("DIFY_TEST_ORACLE_ROTATED_PASSWORD") or uuid.uuid4().hex
+TEST_ORACLE_WALLET_PASSWORD = os.environ.get("DIFY_TEST_ORACLE_WALLET_PASSWORD") or uuid.uuid4().hex
 
 
 def _build_fake_oracle_modules():
@@ -63,7 +69,7 @@ def oracle_module(monkeypatch: pytest.MonkeyPatch):
 def _config(module, **overrides):
     values = {
         "user": "test_user",
-        "password": "test_password",
+        "password": TEST_ORACLE_PASSWORD,
         "dsn": "test-db.example:1521/testpdb",
         "is_autonomous": False,
     }
@@ -116,7 +122,7 @@ def test_oracle_config_validation_pool_settings(oracle_module):
 def test_oracle_config_validation_autonomous_requirements(oracle_module):
     with pytest.raises(ValidationError, match="config_dir is required"):
         oracle_module.OracleVectorConfig.model_validate(
-            {"user": "u", "password": "p", "dsn": "d", "is_autonomous": True}
+            {"user": "u", "password": TEST_ORACLE_PASSWORD, "dsn": "d", "is_autonomous": True}
         )
 
 
@@ -142,7 +148,7 @@ def test_init_reuses_pool_for_matching_config(oracle_module, monkeypatch: pytest
     assert second.pool is pool
     create_pool.assert_called_once_with(
         user="test_user",
-        password="test_password",
+        password=TEST_ORACLE_PASSWORD,
         dsn="test-db.example:1521/testpdb",
         min=1,
         max=5,
@@ -167,7 +173,7 @@ def test_init_uses_different_pools_for_different_configs(oracle_module, monkeypa
 
 def test_collection_cache_key_is_scoped_to_target_without_credentials(oracle_module):
     config = _config(oracle_module)
-    rotated_password = _config(oracle_module, password="rotated-secret")
+    rotated_password = _config(oracle_module, password=TEST_ORACLE_ROTATED_PASSWORD)
     other_database = _config(oracle_module, dsn="other-db.example:1521/testpdb")
 
     cache_key = oracle_module.collection_cache_key("collection_1", config)
@@ -323,7 +329,7 @@ def test_create_connection_pool_supports_standard_and_autonomous_paths(oracle_mo
     assert vector._create_connection_pool(_config(oracle_module, pool_min=2, pool_max=8, pool_increment=2)) == "pool"
     create_pool.assert_called_with(
         user="test_user",
-        password="test_password",
+        password=TEST_ORACLE_PASSWORD,
         dsn="test-db.example:1521/testpdb",
         min=2,
         max=8,
@@ -336,7 +342,7 @@ def test_create_connection_pool_supports_standard_and_autonomous_paths(oracle_mo
             oracle_module,
             config_dir="/network/admin",
             wallet_location="/ignored/wallet",
-            wallet_password="ignored",
+            wallet_password=TEST_ORACLE_WALLET_PASSWORD,
         )
     )
     assert create_pool.call_args.kwargs["config_dir"] == "/network/admin"
@@ -348,7 +354,7 @@ def test_create_connection_pool_supports_standard_and_autonomous_paths(oracle_mo
         is_autonomous=True,
         config_dir="/wallet",
         wallet_location="/wallet",
-        wallet_password="pw",
+        wallet_password=TEST_ORACLE_WALLET_PASSWORD,
     )
     vector._create_connection_pool(config)
     assert create_pool.call_args.kwargs["config_dir"] == "/wallet"
@@ -1094,7 +1100,7 @@ def test_oracle_factory_init_vector_uses_existing_or_generated_collection(
 
     monkeypatch.setattr(oracle_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_USER", "test_user")
-    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_PASSWORD", "test_password")
+    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_PASSWORD", TEST_ORACLE_PASSWORD)
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_DSN", "test-db.example:1521/testpdb")
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_CONFIG_DIR", None)
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_WALLET_LOCATION", None)
@@ -1142,7 +1148,7 @@ def test_oracle_factory_rejects_missing_connection_configuration(
     )
     settings = {
         "ORACLE_USER": "test_user",
-        "ORACLE_PASSWORD": "test_password",
+        "ORACLE_PASSWORD": TEST_ORACLE_PASSWORD,
         "ORACLE_DSN": "test-db.example:1521/testpdb",
         "ORACLE_CONFIG_DIR": None,
         "ORACLE_WALLET_LOCATION": None,
