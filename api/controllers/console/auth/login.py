@@ -57,6 +57,8 @@ from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
 
+REFRESH_TOKEN_VALIDATION_ERRORS = frozenset({"Invalid refresh token", "Invalid account"})
+
 
 class LoginPayload(LoginPayloadBase):
     remember_me: bool = Field(default=False, description="Remember me flag")
@@ -345,7 +347,14 @@ class RefreshTokenApi(Resource):
         if not refresh_token:
             return {"result": "fail", "message": "No refresh token provided"}, 401
 
-        new_token_pair = AccountService.refresh_token(refresh_token, session=db.session)
+        try:
+            new_token_pair = AccountService.refresh_token(refresh_token, session=db.session)
+        except Unauthorized as exc:
+            return {"result": "fail", "message": exc.description}, 401
+        except ValueError as exc:
+            if str(exc) not in REFRESH_TOKEN_VALIDATION_ERRORS:
+                raise
+            return {"result": "fail", "message": str(exc)}, 401
 
         # Create response with new cookies
         response = make_response({"result": "success"})
