@@ -6,7 +6,7 @@ import {
   setAgentApiAccess,
   setAgentSiteAccessAndGetURL,
 } from '../../agent-v2/support/access-point'
-import { getAgentAccessPath, publishAgent } from '../../agent-v2/support/agent'
+import { getAgentAccessPath, publishAgentWithPublishableDraft } from '../../agent-v2/support/agent'
 import {
   getAccessRegion,
   getAccessSurfaceCard,
@@ -15,7 +15,7 @@ import {
 } from './access-point-helpers'
 
 Given('the Agent v2 draft has been published via API', async function (this: DifyWorld) {
-  await publishAgent(getCurrentAgentId(this))
+  await publishAgentWithPublishableDraft(getCurrentAgentId(this))
 })
 
 Given(

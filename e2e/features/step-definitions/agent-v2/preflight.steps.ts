@@ -9,8 +9,6 @@ import { skipMissingAgentBackendRuntime } from '../../agent-v2/support/preflight
 import {
   skipMissingPreseededAgent,
   skipMissingPreseededAgentDriveSkill,
-  skipMissingPreseededAgentFileTreeFixture,
-  skipMissingPreseededAgentFlatFileFixtureConfiguration,
   skipMissingPreseededDualRetrievalAgentConfiguration,
   skipMissingPreseededFullConfigAgentCoreConfiguration,
   skipMissingPreseededOAuthToolAgentConfiguration,
@@ -179,29 +177,6 @@ Given(
       return resource
 
     this.agentBuilder.preflight.preseededResources[`${agentName} / dual retrieval fixture configuration`]
-      = resource
-  },
-)
-
-Given(
-  'the Agent Builder preseeded Agent {string} includes the file tree fixture files',
-  async function (this: DifyWorld, agentName: string) {
-    const resource = await skipMissingPreseededAgentFileTreeFixture(this, agentName)
-    if (resource === 'skipped')
-      return resource
-
-    this.agentBuilder.preflight.preseededResources[`${agentName} / file tree fixture`] = resource
-  },
-)
-
-Given(
-  'the Agent Builder preseeded Agent {string} includes the current flat file fixture configuration',
-  async function (this: DifyWorld, agentName: string) {
-    const resource = await skipMissingPreseededAgentFlatFileFixtureConfiguration(this, agentName)
-    if (resource === 'skipped')
-      return resource
-
-    this.agentBuilder.preflight.preseededResources[`${agentName} / flat file fixture configuration`]
       = resource
   },
 )

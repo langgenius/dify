@@ -48,7 +48,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -354,16 +354,21 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> str:
         lines: list[str] = []
         query = get_system_text(context.variable_pool, SystemVariableKey.QUERY)
+        uploaded_files = self._summarize_uploaded_workflow_files(context.variable_pool)
         resolved_outputs = self._resolve_previous_node_outputs(
             context.variable_pool,
             node_job.previous_node_output_refs,
         )
-        if not query and not resolved_outputs:
+        if not query and uploaded_files is None and not resolved_outputs:
             return ""
 
         lines.append("Workflow context loaded for this run:")
         if query:
             lines.append(f"- User query: {query}")
+
+        if uploaded_files is not None:
+            lines.append("- Uploaded workflow files:")
+            lines.append(f"  - sys.files: {uploaded_files}")
 
         if resolved_outputs:
             lines.append("- Previous node outputs:")
@@ -372,6 +377,14 @@ class WorkflowAgentRuntimeRequestBuilder:
 
         lines.append("The above workflow context is run-specific. Do not treat it as Agent Soul or persistent memory.")
         return "\n".join(lines)
+
+    def _summarize_uploaded_workflow_files(self, variable_pool: VariablePoolReader) -> str | None:
+        files = get_system_value(variable_pool, SystemVariableKey.FILES)
+        if files is None:
+            return None
+        if isinstance(files, list | tuple) and not files:
+            return None
+        return self._summarize_value(files)
 
     def _build_workflow_task_prompt(
         self,

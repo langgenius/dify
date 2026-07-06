@@ -398,6 +398,7 @@ export const zMemberRoleUpdatePayload = z.object({
  * OpenApiErrorCode
  */
 export const zOpenApiErrorCode = z.enum([
+  'agent_not_published',
   'app_unavailable',
   'bad_gateway',
   'bad_request',

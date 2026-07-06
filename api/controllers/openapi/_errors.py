@@ -49,6 +49,7 @@ class OpenApiErrorCode(StrEnum):
     # domain codes (must match the error_code attribute of the exception
     # classes raised on the openapi surface)
     APP_UNAVAILABLE = "app_unavailable"
+    AGENT_NOT_PUBLISHED = "agent_not_published"
     CONVERSATION_COMPLETED = "conversation_completed"
     PROVIDER_NOT_INITIALIZE = "provider_not_initialize"
     PROVIDER_QUOTA_EXCEEDED = "provider_quota_exceeded"

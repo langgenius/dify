@@ -27,14 +27,16 @@ from dify_agent.agent_stub._drive_materialization import (
     materialize_drive_downloads,
     resolve_drive_destination,
 )
+from dify_agent.agent_stub._constants import DEFAULT_AGENT_STUB_DRIVE_BASE
 from dify_agent.agent_stub.cli._env import read_agent_stub_environment
 from dify_agent.agent_stub.cli._files import upload_tool_file_resource_from_environment
-from dify_agent.agent_stub.client._agent_stub import (
+from dify_agent.agent_stub.client import (
+    AgentStubTransferError,
+    AgentStubValidationError,
     download_file_bytes_from_signed_url_sync,
     request_agent_stub_drive_commit_sync,
     request_agent_stub_drive_manifest_sync,
 )
-from dify_agent.agent_stub.client._errors import AgentStubTransferError, AgentStubValidationError
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveCommitItem,
     AgentStubDriveCommitRequest,
@@ -42,7 +44,6 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveFileRef,
     AgentStubDriveItem,
     AgentStubDriveManifestResponse,
-    DEFAULT_AGENT_STUB_DRIVE_BASE,
 )
 
 _SKILL_MD_FILENAME = "SKILL.md"
