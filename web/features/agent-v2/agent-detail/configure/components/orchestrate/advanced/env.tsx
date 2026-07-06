@@ -423,17 +423,20 @@ export function AgentEnvEditor() {
   const visibleEnvVariables = envVariables.length > 0 ? envVariables : [starterVariable]
 
   const updateVariable = (id: string, updater: (variable: EnvVariable) => EnvVariable) => {
-    const existingVariable = envVariables.find(variable => variable.id === id)
+    setEnvVariables((currentEnvVariables) => {
+      const existingVariable = currentEnvVariables.find(variable => variable.id === id)
 
-    if (existingVariable) {
-      setEnvVariables(envVariables.map(variable => (
-        variable.id === id ? updater(variable) : variable
-      )))
-      return
-    }
+      if (existingVariable) {
+        return currentEnvVariables.map(variable => (
+          variable.id === id ? updater(variable) : variable
+        ))
+      }
 
-    if (id === starterVariable.id)
-      setEnvVariables([updater(starterVariable)])
+      if (id === starterVariable.id)
+        return [updater(starterVariable)]
+
+      return currentEnvVariables
+    })
   }
 
   const addVariable = ({
@@ -448,8 +451,8 @@ export function AgentEnvEditor() {
       ...(scope ? { scope } : {}),
     }
 
-    setEnvVariables([
-      ...(envVariables.length > 0 ? envVariables : [starterVariable]),
+    setEnvVariables(currentEnvVariables => [
+      ...(currentEnvVariables.length > 0 ? currentEnvVariables : [starterVariable]),
       variable,
     ])
     setFocusedVariable({ id: variable.id, field: focusField })
@@ -470,7 +473,7 @@ export function AgentEnvEditor() {
     if (importedVariables.length === 0)
       return
 
-    setEnvVariables([...envVariables, ...importedVariables])
+    setEnvVariables(currentEnvVariables => [...currentEnvVariables, ...importedVariables])
   }
   const updateVariableKey = (id: string, key: string) => {
     updateVariable(id, variable => ({ ...variable, key }))
@@ -482,7 +485,7 @@ export function AgentEnvEditor() {
     updateVariable(id, variable => ({ ...variable, value }))
   }
   const deleteVariable = (id: string) => {
-    setEnvVariables(envVariables.filter(variable => variable.id !== id))
+    setEnvVariables(currentEnvVariables => currentEnvVariables.filter(variable => variable.id !== id))
   }
 
   return (

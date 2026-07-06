@@ -1,5 +1,5 @@
 import { toast } from '@langgenius/dify-ui/toast'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -118,6 +118,41 @@ describe('AgentEnvEditor', () => {
       await user.type(newKeyInput, 'SECOND_KEY')
 
       expect(screen.getByDisplayValue('SECOND_KEY')).toBeInTheDocument()
+    })
+
+    it('should preserve a newly added variable key when key and value change in the same batch', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <AgentComposerProvider
+          initialDraft={{
+            ...defaultAgentSoulConfigFormState,
+            envVariables: [{
+              id: 'env-1',
+              key: 'API_KEY',
+              value: 'secret-value',
+              scope: 'plain',
+            }],
+          }}
+        >
+          <AgentEnvEditor />
+        </AgentComposerProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.add' }))
+
+      const keyInputs = screen.getAllByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+      const valueInputs = screen.getAllByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')
+      const newKeyInput = keyInputs[1]!
+      const newValueInput = valueInputs[1]!
+
+      act(() => {
+        fireEvent.change(newKeyInput, { target: { value: 'SECOND_KEY' } })
+        fireEvent.change(newValueInput, { target: { value: 'plain' } })
+      })
+
+      expect(newKeyInput).toHaveValue('SECOND_KEY')
+      expect(newValueInput).toHaveValue('plain')
     })
 
     it('should import dotenv variables into the env table when a file is selected', async () => {
