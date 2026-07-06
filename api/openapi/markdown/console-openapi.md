@@ -9432,9 +9432,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
 #### Parameters
@@ -9451,9 +9451,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /trial-apps/{app_id}/datasets
 #### Parameters
@@ -9568,9 +9568,9 @@ Returns the site configuration for the application including theme, icons, and t
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /trial-apps/{app_id}/workflows/tasks/{task_id}/stop
 **Stop workflow task**

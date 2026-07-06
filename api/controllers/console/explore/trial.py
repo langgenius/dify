@@ -13,7 +13,6 @@ import services
 from controllers.common.fields import (
     AudioBinaryResponse,
     AudioTranscriptResponse,
-    GeneratedAppResponse,
     SimpleResultResponse,
 )
 from controllers.common.fields import Parameters as ParametersResponse
@@ -391,7 +390,6 @@ register_response_schema_models(
     ParametersResponse,
     AudioBinaryResponse,
     AudioTranscriptResponse,
-    GeneratedAppResponse,
     SimpleResultResponse,
     SiteResponse,
     SuggestedQuestionsResponse,
@@ -406,7 +404,7 @@ simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 class TrialAppWorkflowRunApi(TrialAppResource):
     @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @with_current_user
     @with_session
     def post(self, session: Session, current_user: Account, trial_app):
@@ -434,6 +432,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
                 streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -478,7 +477,7 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @trial_feature_enable
     @with_current_user
     @with_session
@@ -513,6 +512,7 @@ class TrialChatApi(TrialAppResource):
                 streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -680,7 +680,7 @@ class TrialChatTextApi(TrialAppResource):
 
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @trial_feature_enable
     @with_current_user
     @with_session
@@ -710,6 +710,7 @@ class TrialCompletionApi(TrialAppResource):
             )
 
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
