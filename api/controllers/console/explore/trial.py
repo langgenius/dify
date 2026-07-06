@@ -1,9 +1,9 @@
 import logging
 from datetime import datetime
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
+from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -19,7 +19,6 @@ from controllers.common.fields import (
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import (
-    get_or_create_model,
     query_params_from_model,
     register_response_schema_models,
     register_schema_models,
@@ -58,27 +57,12 @@ from core.errors.error import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from fields.app_fields import (
-    app_detail_fields_with_site,
-    deleted_tool_fields,
-    model_config_fields,
-    site_fields,
-    tag_fields,
-)
 from fields.base import ResponseModel
-from fields.dataset_fields import dataset_fields
-from fields.member_fields import simple_account_fields
 from fields.message_fields import SuggestedQuestionsResponse
-from fields.workflow_fields import (
-    conversation_variable_fields,
-    pipeline_variable_fields,
-    workflow_fields,
-    workflow_partial_fields,
-)
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import to_timestamp, uuid_value
+from libs.helper import dump_response, to_timestamp, uuid_value
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
@@ -104,48 +88,6 @@ from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
 
 logger = logging.getLogger(__name__)
-
-
-model_config_model = get_or_create_model("TrialAppModelConfig", model_config_fields)
-workflow_partial_model = get_or_create_model("TrialWorkflowPartial", workflow_partial_fields)
-deleted_tool_model = get_or_create_model("TrialDeletedTool", deleted_tool_fields)
-tag_model = get_or_create_model("TrialTag", tag_fields)
-site_model = get_or_create_model("TrialSite", site_fields)
-
-app_detail_fields_with_site_copy = app_detail_fields_with_site.copy()
-app_detail_fields_with_site_copy["model_config"] = fields.Nested(
-    model_config_model, attribute="app_model_config", allow_null=True
-)
-app_detail_fields_with_site_copy["workflow"] = fields.Nested(workflow_partial_model, allow_null=True)
-app_detail_fields_with_site_copy["deleted_tools"] = fields.List(fields.Nested(deleted_tool_model))
-app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
-app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
-app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
-
-simple_account_model = get_or_create_model("TrialSimpleAccount", simple_account_fields)
-conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
-pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
-
-workflow_fields_copy = workflow_fields.copy()
-workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
-workflow_fields_copy["updated_by"] = fields.Nested(
-    simple_account_model, attribute="updated_by_account", allow_null=True
-)
-workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
-workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
-workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
-
-dataset_model = get_or_create_model("TrialDataset", dataset_fields)
-dataset_list_model = get_or_create_model(
-    "TrialDatasetList",
-    {
-        "data": fields.List(fields.Nested(dataset_model)),
-        "has_more": fields.Boolean,
-        "limit": fields.Integer,
-        "total": fields.Integer,
-        "page": fields.Integer,
-    },
-)
 
 
 class WorkflowRunRequest(BaseModel):
@@ -387,6 +329,11 @@ class TrialDatasetResponse(ResponseModel):
     created_at: int | None = None
     permission_keys: list[str] = Field(default_factory=list)
 
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
 
 class TrialDatasetListResponse(ResponseModel):
     data: list[TrialDatasetResponse]
@@ -396,7 +343,7 @@ class TrialDatasetListResponse(ResponseModel):
     page: int
 
 
-class TrialWorkflowAccount(ResponseModel):
+class TrialSimpleAccount(ResponseModel):
     id: str
     name: str | None = None
     email: str | None = None
@@ -410,12 +357,12 @@ class TrialWorkflowResponse(ResponseModel):
     version: str | None = None
     marked_name: str | None = None
     marked_comment: str | None = None
-    created_by: TrialWorkflowAccount | None = Field(
+    created_by: TrialSimpleAccount | None = Field(
         default=None,
         validation_alias=AliasChoices("created_by_account", "created_by"),
     )
     created_at: int | None = None
-    updated_by: TrialWorkflowAccount | None = Field(
+    updated_by: TrialSimpleAccount | None = Field(
         default=None,
         validation_alias=AliasChoices("updated_by_account", "updated_by"),
     )
@@ -452,6 +399,8 @@ register_response_schema_models(
     TrialDatasetListResponse,
     TrialWorkflowResponse,
 )
+
+simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
@@ -840,27 +789,28 @@ class TrialAppParameterApi(Resource):
 class AppApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @get_app_model_with_trial(None)
-    @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
         """Get app detail"""
 
         app_service = AppService()
         app_model = app_service.get_app(app_model)
 
-        return app_model
+        return dump_response(TrialAppDetailResponse, app_model)
 
 
 class AppWorkflowApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @get_app_model_with_trial(None)
-    @marshal_with(workflow_model)
     def get(self, app_model):
         """Get workflow detail"""
         if not app_model.workflow_id:
             raise AppUnavailableError()
 
         workflow = db.session.get(Workflow, app_model.workflow_id)
-        return workflow
+        if workflow is None:
+            raise AppUnavailableError()
+
+        return dump_response(TrialWorkflowResponse, workflow)
 
 
 class DatasetListApi(Resource):
@@ -878,10 +828,8 @@ class DatasetListApi(Resource):
         else:
             raise NeedAddIdsError()
 
-        data = cast(list[dict[str, Any]], marshal(datasets, dataset_fields))
-
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
-        return response
+        response = {"data": datasets, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        return dump_response(TrialDatasetListResponse, response)
 
 
 console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")

@@ -109,8 +109,8 @@ export type SnippetUseCountResponse = {
   use_count: number
 }
 
-export type AccountWithRoleList = {
-  accounts: Array<AccountWithRole>
+export type AccountWithRoleListResponse = {
+  accounts: Array<AccountWithRoleResponse>
 }
 
 export type DefaultModelDataResponse = {
@@ -1009,7 +1009,7 @@ export type PluginDependency = {
   value: Github | Marketplace | Package
 }
 
-export type AccountWithRole = {
+export type AccountWithRoleResponse = {
   avatar?: string | null
   readonly avatar_url: string | null
   created_at?: number | null
@@ -1823,11 +1823,11 @@ export type RestrictModel = {
 
 export type CorePluginEntitiesParametersPluginParameterAutoGenerateType = 'prompt_instruction'
 
-export type AccountWithRoleListWritable = {
-  accounts: Array<AccountWithRoleWritable>
+export type AccountWithRoleListResponseWritable = {
+  accounts: Array<AccountWithRoleResponseWritable>
 }
 
-export type AccountWithRoleWritable = {
+export type AccountWithRoleResponseWritable = {
   avatar?: string | null
   created_at?: number | null
   email: string
@@ -2108,7 +2108,7 @@ export type GetWorkspacesCurrentDatasetOperatorsData = {
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponse
@@ -2335,7 +2335,7 @@ export type GetWorkspacesCurrentMembersData = {
 }
 
 export type GetWorkspacesCurrentMembersResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentMembersResponse
