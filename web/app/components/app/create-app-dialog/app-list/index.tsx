@@ -48,7 +48,7 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { workspacePermissionKeys } = useAppContext()
+  const { userProfile, workspacePermissionKeys } = useAppContext()
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { push } = useRouter()
@@ -163,8 +163,14 @@ const Apps = ({
         await handleCheckPluginDependencies(app.app_id)
       setNeedRefresh('1')
       invalidateAppList()
-      if (app.app_id)
-        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push, { isRbacEnabled })
+      if (app.app_id) {
+        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push, {
+          currentUserId: userProfile?.id,
+          resourceMaintainer: userProfile?.id,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        })
+      }
     }
     catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))

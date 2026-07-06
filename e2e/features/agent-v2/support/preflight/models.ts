@@ -1,4 +1,4 @@
-import type { ProviderWithModelsDataResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import { createApiContext, expectApiResponseOK } from '../../../../support/api'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
@@ -110,7 +110,7 @@ async function skipMissingAgentBuilderModel(
       `/console/api/workspaces/current/models/model-types/${config.type}`,
     )
     await expectApiResponseOK(response, `Check ${config.resourceName}`)
-    const body = (await response.json()) as ProviderWithModelsDataResponse
+    const body = (await response.json()) as { data: ProviderWithModelsResponse[] }
     const provider = body.data.find(item => matchesProvider(item.provider, config.provider))
     const model = provider?.models.find(
       item =>

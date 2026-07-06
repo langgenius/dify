@@ -196,7 +196,7 @@
   "noAccessResourcePermission": "Tidak ada izin untuk mengakses sumber daya ini",
   "noUserInputNode": "Node input pengguna hilang",
   "notPublishedYet": "Aplikasi belum diterbitkan",
-  "openInExplore": "Buka di Jelajahi",
+  "openInExplore": "Buka Web App Bilah Samping",
   "publishApp.notSet": "Tidak diatur",
   "publishApp.notSetDesc": "Saat ini tidak ada yang dapat mengakses aplikasi web. Silakan atur izin.",
   "publishApp.title": "Siapa yang dapat mengakses aplikasi web",

@@ -87,11 +87,11 @@ def test_check_dependencies_returns_empty_when_no_redis_data(mocker: MockerFixtu
 
 
 def test_check_dependencies_returns_leaked_deps_from_redis(mocker: MockerFixture) -> None:
-    from core.plugin.entities.plugin import PluginDependency
+    from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
     from services.rag_pipeline.rag_pipeline_dsl_service import CheckDependenciesPendingData
 
     dep = PluginDependency(
-        type=PluginDependency.Type.Marketplace,
+        type=PluginDependencyType.Marketplace,
         value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="test/plugin:0.1.0"),
     )
     pending_data = CheckDependenciesPendingData(
@@ -1371,7 +1371,7 @@ def test_confirm_import_fails_when_no_knowledge_index_node(mocker: MockerFixture
 
 
 def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker: MockerFixture) -> None:
-    from core.plugin.entities.plugin import PluginDependency
+    from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 
     session = cast(MagicMock, Mock())
     service = RagPipelineDslService(session=cast(Session, session))
@@ -1386,7 +1386,7 @@ def test_create_or_update_pipeline_saves_dependencies_to_redis(mocker: MockerFix
     session.scalar.return_value = None
     setex = mocker.patch("services.rag_pipeline.rag_pipeline_dsl_service.redis_client.setex")
     dependency = PluginDependency(
-        type=PluginDependency.Type.Marketplace,
+        type=PluginDependencyType.Marketplace,
         value=PluginDependency.Marketplace(marketplace_plugin_unique_identifier="langgenius/example:0.1.0"),
     )
 

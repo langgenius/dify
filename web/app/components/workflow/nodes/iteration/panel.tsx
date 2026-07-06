@@ -124,12 +124,12 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
 
       <div className="px-4 py-2">
         <Field title={errorResponseMethodLabel}>
-          <Select
-            value={selectedResponseMethod ? String(selectedResponseMethod.value) : null}
+          <Select<ErrorHandleMode>
+            value={selectedResponseMethod?.value ?? null}
             onValueChange={(nextValue) => {
-              if (!nextValue)
+              if (nextValue == null)
                 return
-              const nextItem = responseMethod.find(item => String(item.value) === nextValue)
+              const nextItem = responseMethod.find(item => item.value === nextValue)
               if (nextItem)
                 changeErrorResponseMode(nextItem)
             }}
@@ -140,7 +140,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
             </SelectTrigger>
             <SelectContent>
               {responseMethod.map(item => (
-                <SelectItem key={item.value} value={String(item.value)}>
+                <SelectItem key={item.value} value={item.value}>
                   <SelectItemText>{item.name}</SelectItemText>
                   <SelectItemIndicator />
                 </SelectItem>
