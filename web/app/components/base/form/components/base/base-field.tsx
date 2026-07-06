@@ -3,8 +3,7 @@ import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { Radio } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   Select,
   SelectContent,

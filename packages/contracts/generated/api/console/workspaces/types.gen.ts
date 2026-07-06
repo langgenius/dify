@@ -109,8 +109,8 @@ export type SnippetUseCountResponse = {
   use_count: number
 }
 
-export type AccountWithRoleList = {
-  accounts: Array<AccountWithRole>
+export type AccountWithRoleListResponse = {
+  accounts: Array<AccountWithRoleResponse>
 }
 
 export type DefaultModelDataResponse = {
@@ -133,7 +133,7 @@ export type EndpointCreatePayload = {
   }
 }
 
-export type EndpointCreateResponse = {
+export type SuccessResponse = {
   success: boolean
 }
 
@@ -141,28 +141,8 @@ export type EndpointIdPayload = {
   endpoint_id: string
 }
 
-export type EndpointDeleteResponse = {
-  success: boolean
-}
-
-export type EndpointDisableResponse = {
-  success: boolean
-}
-
-export type EndpointEnableResponse = {
-  success: boolean
-}
-
 export type EndpointListResponse = {
-  endpoints: Array<{
-    [key: string]: unknown
-  }>
-}
-
-export type PluginEndpointListResponse = {
-  endpoints: Array<{
-    [key: string]: unknown
-  }>
+  endpoints: Array<EndpointListItemResponse>
 }
 
 export type LegacyEndpointUpdatePayload = {
@@ -171,10 +151,6 @@ export type LegacyEndpointUpdatePayload = {
   settings: {
     [key: string]: unknown
   }
-}
-
-export type EndpointUpdateResponse = {
-  success: boolean
 }
 
 export type EndpointUpdatePayload = {
@@ -216,7 +192,7 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
-export type MemberActionTenantResponse = {
+export type MemberActionResponse = {
   result: string
   tenant_id: string
 }
@@ -383,7 +359,7 @@ export type BinaryFileResponse = Blob | File
 
 export type ParserAutoUpgradeChange = {
   auto_upgrade: PluginAutoUpgradeSettingsPayload
-  category: PluginCategory
+  category: TenantPluginAutoUpgradeCategory
 }
 
 export type PluginAutoUpgradeChangeResponse = {
@@ -392,17 +368,13 @@ export type PluginAutoUpgradeChangeResponse = {
 }
 
 export type ParserExcludePlugin = {
-  category: PluginCategory
+  category: TenantPluginAutoUpgradeCategory
   plugin_id: string
-}
-
-export type SuccessResponse = {
-  success: boolean
 }
 
 export type PluginAutoUpgradeFetchResponse = {
   auto_upgrade: PluginAutoUpgradeSettingsResponseModel
-  category: PluginCategory
+  category: TenantPluginAutoUpgradeCategory
 }
 
 export type PluginDebuggingKeyResponse = {
@@ -463,13 +435,13 @@ export type ParserDynamicOptionsWithCredentials = {
 }
 
 export type ParserPermissionChange = {
-  debug_permission?: DebugPermission
-  install_permission?: InstallPermission
+  debug_permission?: TenantPluginDebugPermission
+  install_permission?: TenantPluginInstallPermission
 }
 
 export type PluginPermissionResponse = {
-  debug_permission: DebugPermission
-  install_permission: InstallPermission
+  debug_permission: TenantPluginDebugPermission
+  install_permission: TenantPluginInstallPermission
 }
 
 export type PluginReadmeResponse = {
@@ -913,7 +885,7 @@ export type WorkspaceCustomConfigPayload = {
   replace_webapp_logo?: string | null
 }
 
-export type WorkspaceMutationResponse = {
+export type WorkspaceTenantResultResponse = {
   result: string
   tenant: TenantInfoResponse
 }
@@ -1005,11 +977,11 @@ export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 
 
 export type PluginDependency = {
   current_identifier?: string | null
-  type: Type
+  type: PluginDependencyType
   value: Github | Marketplace | Package
 }
 
-export type AccountWithRole = {
+export type AccountWithRoleResponse = {
   avatar?: string | null
   readonly avatar_url: string | null
   created_at?: number | null
@@ -1035,6 +1007,23 @@ export type Inner = {
   model?: string | null
   model_type: ModelType
   provider?: string | null
+}
+
+export type EndpointListItemResponse = {
+  created_at: string
+  declaration?: EndpointProviderDeclarationResponse
+  enabled: boolean
+  expired_at: string
+  hook_id: string
+  id: string
+  name: string
+  plugin_id: string
+  settings: {
+    [key: string]: unknown
+  }
+  tenant_id: string
+  updated_at: string
+  url: string
 }
 
 export type MemberInviteResultResponse = {
@@ -1126,12 +1115,12 @@ export type ProviderWithModelsResponse = {
 export type PluginAutoUpgradeSettingsPayload = {
   exclude_plugins?: Array<string>
   include_plugins?: Array<string>
-  strategy_setting?: StrategySetting
-  upgrade_mode?: UpgradeMode
+  strategy_setting?: TenantPluginAutoUpgradeStrategySetting
+  upgrade_mode?: TenantPluginAutoUpgradeMode
   upgrade_time_of_day?: number
 }
 
-export type PluginCategory
+export type TenantPluginAutoUpgradeCategory
   = | 'agent-strategy'
     | 'datasource'
     | 'extension'
@@ -1142,8 +1131,8 @@ export type PluginCategory
 export type PluginAutoUpgradeSettingsResponseModel = {
   exclude_plugins: Array<string>
   include_plugins: Array<string>
-  strategy_setting: StrategySetting
-  upgrade_mode: UpgradeMode
+  strategy_setting: TenantPluginAutoUpgradeStrategySetting
+  upgrade_mode: TenantPluginAutoUpgradeMode
   upgrade_time_of_day: number
 }
 
@@ -1175,9 +1164,9 @@ export type LatestPluginCache = {
   version: string
 }
 
-export type DebugPermission = 'admins' | 'everyone' | 'noone'
+export type TenantPluginDebugPermission = 'admins' | 'everyone' | 'noone'
 
-export type InstallPermission = 'admins' | 'everyone' | 'noone'
+export type TenantPluginInstallPermission = 'admins' | 'everyone' | 'noone'
 
 export type PluginCategoryBuiltinToolProviderResponse = {
   allow_delete: boolean
@@ -1350,7 +1339,7 @@ export type ProviderConfig = {
   placeholder?: I18nObject | null
   required?: boolean
   scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
-  type: CoreEntitiesProviderEntitiesBasicProviderConfigType
+  type: ProviderConfigType
   url?: string | null
 }
 
@@ -1407,7 +1396,7 @@ export type TriggerProviderSubscriptionApiEntity = {
   workflows_in_use: number
 }
 
-export type Type = 'github' | 'marketplace' | 'package'
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
   github_plugin_unique_identifier: string
@@ -1435,6 +1424,11 @@ export type SimpleProviderEntityResponse = {
   provider_name?: string
   supported_model_types: Array<ModelType>
   tenant_id: string
+}
+
+export type EndpointProviderDeclarationResponse = {
+  endpoints?: Array<EndpointDeclarationResponse> | null
+  settings?: Array<EndpointProviderConfigResponse>
 }
 
 export type ConfigurateMethod = 'customizable-model' | 'predefined-model'
@@ -1529,9 +1523,9 @@ export type ProviderModelWithStatusEntity = {
 
 export type CustomConfigurationStatus = 'active' | 'no-configure'
 
-export type StrategySetting = 'disabled' | 'fix_only' | 'latest'
+export type TenantPluginAutoUpgradeStrategySetting = 'disabled' | 'fix_only' | 'latest'
 
-export type UpgradeMode = 'all' | 'exclude' | 'partial'
+export type TenantPluginAutoUpgradeMode = 'all' | 'exclude' | 'partial'
 
 export type PluginDeclarationResponse = {
   agent_strategy?: {
@@ -1673,7 +1667,7 @@ export type ModelSelectorScope
 
 export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
 
-export type CoreEntitiesProviderEntitiesBasicProviderConfigType
+export type ProviderConfigType
   = | 'app-selector'
     | 'array[tools]'
     | 'boolean'
@@ -1699,6 +1693,26 @@ export type AiModelEntityResponse = {
   model_type: ModelType
   parameter_rules?: Array<ParameterRule>
   pricing?: PriceConfigResponse | null
+}
+
+export type EndpointDeclarationResponse = {
+  hidden?: boolean
+  method: string
+  path: string
+}
+
+export type EndpointProviderConfigResponse = {
+  default?: number | string | number | boolean | null
+  help?: EndpointProviderConfigI18nResponse | null
+  label?: EndpointProviderConfigI18nResponse | null
+  multiple?: boolean
+  name: string
+  options?: Array<EndpointProviderConfigOptionResponse> | null
+  placeholder?: EndpointProviderConfigI18nResponse | null
+  required?: boolean
+  scope?: EndpointProviderConfigScope | null
+  type: ProviderConfigType
+  url?: string | null
 }
 
 export type UnaddedModelConfiguration = {
@@ -1746,6 +1760,14 @@ export type QuotaConfiguration = {
   restrict_models?: Array<RestrictModel>
 }
 
+export type PluginCategory
+  = | 'agent-strategy'
+    | 'datasource'
+    | 'extension'
+    | 'model'
+    | 'tool'
+    | 'trigger'
+
 export type ProviderEntityResponse = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
@@ -1766,7 +1788,7 @@ export type ProviderEntityResponse = {
 }
 
 export type PluginParameterAutoGenerate = {
-  type: CorePluginEntitiesParametersPluginParameterAutoGenerateType
+  type: PluginParameterAutoGenerateType
 }
 
 export type PluginParameterOption = {
@@ -1800,6 +1822,33 @@ export type PriceConfigResponse = {
   unit: string
 }
 
+export type EndpointProviderConfigI18nResponse = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type EndpointProviderConfigOptionResponse = {
+  label: EndpointProviderConfigI18nResponse
+  value: string
+}
+
+export type EndpointProviderConfigScope
+  = | 'all'
+    | 'builtin'
+    | 'chat'
+    | 'completion'
+    | 'custom'
+    | 'llm'
+    | 'moderation'
+    | 'rerank'
+    | 'speech2text'
+    | 'text-embedding'
+    | 'tts'
+    | 'vision'
+    | 'workflow'
+
 export type FormOption = {
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   show_on?: Array<FormShowOnObject>
@@ -1821,13 +1870,13 @@ export type RestrictModel = {
   model_type: ModelType
 }
 
-export type CorePluginEntitiesParametersPluginParameterAutoGenerateType = 'prompt_instruction'
+export type PluginParameterAutoGenerateType = 'prompt_instruction'
 
-export type AccountWithRoleListWritable = {
-  accounts: Array<AccountWithRoleWritable>
+export type AccountWithRoleListResponseWritable = {
+  accounts: Array<AccountWithRoleResponseWritable>
 }
 
-export type AccountWithRoleWritable = {
+export type AccountWithRoleResponseWritable = {
   avatar?: string | null
   created_at?: number | null
   email: string
@@ -2108,7 +2157,7 @@ export type GetWorkspacesCurrentDatasetOperatorsData = {
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponse
@@ -2156,7 +2205,7 @@ export type PostWorkspacesCurrentEndpointsErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsResponses = {
-  200: EndpointCreateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsResponse
@@ -2174,7 +2223,7 @@ export type PostWorkspacesCurrentEndpointsCreateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponses = {
-  200: EndpointCreateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponse
@@ -2192,7 +2241,7 @@ export type PostWorkspacesCurrentEndpointsDeleteErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponses = {
-  200: EndpointDeleteResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponse
@@ -2210,7 +2259,7 @@ export type PostWorkspacesCurrentEndpointsDisableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponses = {
-  200: EndpointDisableResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponse
@@ -2228,7 +2277,7 @@ export type PostWorkspacesCurrentEndpointsEnableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponses = {
-  200: EndpointEnableResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponse
@@ -2263,7 +2312,7 @@ export type GetWorkspacesCurrentEndpointsListPluginData = {
 }
 
 export type GetWorkspacesCurrentEndpointsListPluginResponses = {
-  200: PluginEndpointListResponse
+  200: EndpointListResponse
 }
 
 export type GetWorkspacesCurrentEndpointsListPluginResponse
@@ -2281,7 +2330,7 @@ export type PostWorkspacesCurrentEndpointsUpdateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponses = {
-  200: EndpointUpdateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponse
@@ -2301,7 +2350,7 @@ export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponses = {
-  200: EndpointDeleteResponse
+  200: SuccessResponse
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponse
@@ -2321,7 +2370,7 @@ export type PatchWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponses = {
-  200: EndpointUpdateResponse
+  200: SuccessResponse
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse
@@ -2335,7 +2384,7 @@ export type GetWorkspacesCurrentMembersData = {
 }
 
 export type GetWorkspacesCurrentMembersResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentMembersResponse
@@ -2393,7 +2442,7 @@ export type DeleteWorkspacesCurrentMembersByMemberIdData = {
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdResponses = {
-  200: MemberActionTenantResponse
+  200: MemberActionResponse
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdResponse
@@ -4936,14 +4985,16 @@ export type PostWorkspacesCustomConfigData = {
 }
 
 export type PostWorkspacesCustomConfigResponses = {
-  200: WorkspaceMutationResponse
+  200: WorkspaceTenantResultResponse
 }
 
 export type PostWorkspacesCustomConfigResponse
   = PostWorkspacesCustomConfigResponses[keyof PostWorkspacesCustomConfigResponses]
 
 export type PostWorkspacesCustomConfigWebappLogoUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/custom-config/webapp-logo/upload'
@@ -4964,7 +5015,7 @@ export type PostWorkspacesInfoData = {
 }
 
 export type PostWorkspacesInfoResponses = {
-  200: WorkspaceMutationResponse
+  200: WorkspaceTenantResultResponse
 }
 
 export type PostWorkspacesInfoResponse

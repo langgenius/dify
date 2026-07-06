@@ -1,35 +1,29 @@
-import type * as React from 'react'
+import type { RadioGroupProps } from '../index'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { FieldItem, FieldLabel, FieldRoot } from '../../field'
 import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
-import { RadioGroup } from '../../radio-group'
-import {
-  Radio,
-  RadioControl,
-  RadioIndicator,
-  RadioRoot,
-  RadioSkeleton,
-} from '../index'
+import { Radio, RadioControl, RadioGroup, RadioItem, RadioSkeleton } from '../index'
 
 const clickElement = (element: HTMLElement | SVGElement) => {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 }
 
-type TestRadioGroupProps = React.ComponentProps<typeof RadioGroup> & {
+type TestRadioGroupProps<Value = string> = RadioGroupProps<Value> & {
   children: React.ReactNode
   label: string
   name?: string
 }
 
-function TestRadioGroup({
+function TestRadioGroup<Value = string>({
   children,
   label,
   name = 'radioField',
   ...props
-}: TestRadioGroupProps) {
+}: TestRadioGroupProps<Value>) {
   return (
     <FieldRoot name={name}>
-      <FieldsetRoot render={<RadioGroup {...props} />}>
+      <FieldsetRoot render={<RadioGroup<Value> {...props} />}>
         <FieldsetLegend>{label}</FieldsetLegend>
         {children}
       </FieldsetRoot>
@@ -54,6 +48,67 @@ function TestRadioOption({
     </FieldItem>
   )
 }
+
+function RadioTypeExamples() {
+  return (
+    <RadioGroup<boolean> value={true} onValueChange={() => {}}>
+      <Radio<boolean> value={true} />
+      <RadioItem<boolean> value={false} />
+      {/* @ts-expect-error boolean radio items should not accept string values */}
+      <Radio<boolean> value="true" />
+      {/* @ts-expect-error boolean radio items should not accept string values */}
+      <RadioItem<boolean> value="false" />
+    </RadioGroup>
+  )
+}
+
+void RadioTypeExamples
+
+describe('RadioGroup', () => {
+  it('should manage a controlled single selection', async () => {
+    function StorageDemo() {
+      const [value, setValue] = React.useState('ssd')
+
+      return (
+        <TestRadioGroup value={value} onValueChange={setValue} label="Storage type">
+          <TestRadioOption value="ssd">SSD</TestRadioOption>
+          <TestRadioOption value="hdd">HDD</TestRadioOption>
+        </TestRadioGroup>
+      )
+    }
+
+    const screen = await render(<StorageDemo />)
+
+    await expect.element(screen.getByRole('radio', { name: 'SSD' })).toHaveAttribute('aria-checked', 'true')
+
+    clickElement(screen.getByRole('radio', { name: 'HDD' }).element())
+
+    await vi.waitFor(async () => {
+      await expect.element(screen.getByRole('radio', { name: 'SSD' })).toHaveAttribute('aria-checked', 'false')
+      await expect.element(screen.getByRole('radio', { name: 'HDD' })).toHaveAttribute('aria-checked', 'true')
+    })
+  })
+
+  it('should compose with Dify UI Field and Fieldset without losing labels', async () => {
+    const onValueChange = vi.fn()
+    const screen = await render(
+      <TestRadioGroup value="ssd" onValueChange={onValueChange} label="Storage type">
+        <TestRadioOption value="ssd">SSD</TestRadioOption>
+        <TestRadioOption value="hdd">HDD</TestRadioOption>
+      </TestRadioGroup>,
+    )
+
+    await expect.element(screen.getByRole('radiogroup', { name: 'Storage type' })).toBeInTheDocument()
+
+    const hdd = screen.getByRole('radio', { name: 'HDD' })
+    await expect.element(hdd).toHaveAttribute('aria-checked', 'false')
+
+    clickElement(hdd.element())
+
+    expect(onValueChange).toHaveBeenCalledTimes(1)
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('hdd')
+  })
+})
 
 describe('Radio', () => {
   it('should render unchecked and checked radios with Base UI semantics', async () => {
@@ -126,36 +181,17 @@ describe('Radio', () => {
     expect(data.get('storageType')).toBe('ssd')
   })
 
-  it('should support custom compound composition with RadioRoot and RadioIndicator', async () => {
-    const screen = await render(
-      <TestRadioGroup defaultValue="custom" label="Custom">
-        <FieldItem>
-          <FieldLabel>
-            <RadioRoot value="custom" className="custom-root">
-              <RadioIndicator className="custom-indicator" keepMounted />
-            </RadioRoot>
-            Custom
-          </FieldLabel>
-        </FieldItem>
-      </TestRadioGroup>,
-    )
-
-    await expect.element(screen.getByRole('radio', { name: 'Custom' })).toHaveClass('custom-root')
-    expect(screen.container.querySelector('.custom-indicator')).toBeInTheDocument()
-  })
-
-  it('should support unstyled roots with a visual RadioControl for option cards', async () => {
+  it('should support custom items with a visual RadioControl', async () => {
     const screen = await render(
       <RadioGroup defaultValue="card" aria-label="Card choice">
-        <RadioRoot
+        <RadioItem
           value="card"
-          variant="unstyled"
           nativeButton
           render={<button type="button" className="custom-card" />}
         >
           <span>Card option</span>
           <RadioControl className="custom-control" />
-        </RadioRoot>
+        </RadioItem>
       </RadioGroup>,
     )
 

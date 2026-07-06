@@ -3769,14 +3769,6 @@
       "count": 2
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/__tests__/operation-dropdown.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/agent-strategy-list.tsx": {
     "ts/no-explicit-any": {
       "count": 1

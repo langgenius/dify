@@ -131,6 +131,7 @@
   "detailPanel.operation.detail": "ราย ละเอียด",
   "detailPanel.operation.info": "ข้อมูลปลั๊กอิน",
   "detailPanel.operation.install": "ติดตั้ง",
+  "detailPanel.operation.moreActions": "การดำเนินการเพิ่มเติม",
   "detailPanel.operation.remove": "ถอด",
   "detailPanel.operation.update": "อัพเดต",
   "detailPanel.operation.updateTooltip": "อัปเดตเพื่อเข้าถึงโมเดลล่าสุด",
