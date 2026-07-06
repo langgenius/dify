@@ -54,6 +54,19 @@ const mocks = vi.hoisted(() => ({
   },
 }))
 
+const toastMock = vi.hoisted(() => ({
+  error: vi.fn(),
+}))
+
+const modelHooksState = vi.hoisted(() => ({
+  defaultTextGenerationModel: {
+    provider: {
+      provider: 'langgenius/openai/openai',
+    },
+    model: 'gpt-4o-mini',
+  } as { provider: { provider: string }, model: string } | undefined,
+}))
+
 function createDeferredPromise<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((promiseResolve) => {
@@ -100,6 +113,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     }),
   }
 })
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMock,
+}))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -194,7 +211,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: () => ({ data: undefined }),
+  useDefaultModel: () => ({ data: modelHooksState.defaultTextGenerationModel }),
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
     textGenerationModelList: [],
   }),
@@ -271,7 +288,7 @@ vi.mock('../components/preview/build-chat', async () => {
               void props.onSaveDraftBeforeRun?.().then(() => {
                 setMessageSent(true)
                 props.onConversationIdChange?.('build-conversation-new')
-              })
+              }).catch(() => undefined)
             }}
           >
             send build message
@@ -359,6 +376,12 @@ vi.mock('../components/preview/versions-panel', () => ({
 describe('AgentConfigurePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    modelHooksState.defaultTextGenerationModel = {
+      provider: {
+        provider: 'langgenius/openai/openai',
+      },
+      model: 'gpt-4o-mini',
+    }
     mocks.refreshDebugConversation.mockResolvedValue({
       debug_conversation_has_messages: false,
       debug_conversation_id: 'debug-conversation-new',
@@ -1034,6 +1057,50 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
+    })
+
+    it('should block build chat checkout when no model is configured', async () => {
+      const queryClient = new QueryClient()
+      modelHooksState.defaultTextGenerationModel = undefined
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: undefined as unknown,
+        dataUpdatedAt: 0,
+        error: new Response(null, { status: 404 }),
+        isFetching: false,
+        isError: true,
+        isPending: false,
+        isSuccess: false,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(toastMock.error).toHaveBeenCalledWith('common.modelProvider.selectModel')
+      })
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
     })
 
     it('should keep the build draft bar disabled while a build conversation is responding', async () => {

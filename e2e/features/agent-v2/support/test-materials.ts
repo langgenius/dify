@@ -1,4 +1,3 @@
-import path from 'node:path'
 import { getGeneratedTextMaterialPath, getTestMaterialPath } from '../../../support/test-materials'
 
 export const agentBuilderTestMaterials = {
@@ -11,7 +10,6 @@ export const agentBuilderTestMaterials = {
   invalidEnv: 'agent-invalid.env',
   buildInstruction: 'agent-build-instruction.txt',
   summarySkill: 'e2e-summary-skill/SKILL.md',
-  fileTreeFixture: 'file_tree_fixture',
   countBatch5: 'count_batch_5_valid_files',
   countBatch6: 'count_batch_6_valid_files',
   countTotal50: 'count_total_50_valid_files',
@@ -22,17 +20,6 @@ export const agentBuilderGeneratedTestMaterials = {
   slowUploadFile: 'agent-slow-upload-file.txt',
   tooLargeFile: 'agent-too-large-file.txt',
 } as const
-
-export const agentBuilderFileTreeFixtureFiles = [
-  'assets/sample.csv',
-  'docs/中文说明.md',
-  'public/index.html',
-  'src/main.txt',
-  'web-game/README.md',
-] as const
-
-export const agentBuilderFileTreeFixtureFileNames = agentBuilderFileTreeFixtureFiles
-  .map(filePath => path.basename(filePath))
 
 export const getAgentBuilderTestMaterialPath = (material: keyof typeof agentBuilderTestMaterials) =>
   getTestMaterialPath(agentBuilderTestMaterials[material])

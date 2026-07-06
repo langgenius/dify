@@ -2,11 +2,11 @@
 
 import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddAction, AgentOrchestrateAddedItem } from '../add-actions-context'
-import type { AgentProviderToolDefaultValue } from '../tools/types'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolTypeEnum, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentFileNode, AgentKnowledgeRetrievalItem, AgentSkill, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { useMemo, useState } from 'react'
@@ -25,7 +25,6 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { addProviderTools } from '../tools/hooks'
 import { useAgentPromptToolIconResolver } from './hooks'
 
 export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'
@@ -42,7 +41,7 @@ type AgentPromptSlashMenuProps = {
   skills: AgentSkill[]
   files: AgentFileNode[]
   tools: AgentTool[]
-  onToolsChange: (tools: AgentTool[]) => void
+  onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onAddCliTool?: AgentOrchestrateAddAction
   onAddFile?: AgentOrchestrateAddAction
   onAddKnowledge?: AgentOrchestrateAddAction
@@ -83,7 +82,7 @@ export function AgentPromptSlashMenu({
   skills,
   files,
   tools,
-  onToolsChange,
+  onAddProviderTools,
   onAddCliTool,
   onAddFile,
   onAddKnowledge,
@@ -167,7 +166,7 @@ export function AgentPromptSlashMenu({
         {view === 'tools' && (
           <AgentPromptToolRows
             configuredTools={tools}
-            onConfiguredToolsChange={onToolsChange}
+            onAddProviderTools={onAddProviderTools}
             onSelect={onSelect}
           />
         )}
@@ -279,11 +278,11 @@ function AgentPromptFileRows({
 
 function AgentPromptToolRows({
   configuredTools,
-  onConfiguredToolsChange,
+  onAddProviderTools,
   onSelect,
 }: {
   configuredTools: AgentTool[]
-  onConfiguredToolsChange: (tools: AgentTool[]) => void
+  onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onSelect: (token: string) => void
 }) {
   const { t } = useTranslation('agentV2')
@@ -329,7 +328,7 @@ function AgentPromptToolRows({
   ]
 
   const selectTools = (tools: AgentProviderToolDefaultValue[]) => {
-    onConfiguredToolsChange(addProviderTools(configuredTools, tools))
+    onAddProviderTools(tools)
   }
 
   const toggleProvider = (providerId: string) => {

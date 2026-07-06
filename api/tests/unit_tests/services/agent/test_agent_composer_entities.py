@@ -14,6 +14,23 @@ from services.entities.agent_entities import (
 )
 
 
+def test_default_agent_soul_enables_file_upload_feature():
+    agent_soul = AgentSoulConfig()
+
+    file_upload = agent_soul.model_dump(mode="json")["app_features"]["file_upload"]
+    assert file_upload == {
+        "allowed_file_extensions": ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"],
+        "allowed_file_types": ["document", "image", "audio", "video"],
+        "allowed_file_upload_methods": ["local_file", "remote_url"],
+        "enabled": True,
+        "image": {"enabled": True},
+        "number_limits": 3,
+    }
+    # The product default should be visible in API responses, but it must not
+    # make workflow-only payload validation treat app_features as user-authored.
+    assert bool(agent_soul.app_features) is False
+
+
 def test_workflow_variant_rejects_agent_app_only_fields():
     with pytest.raises(ValueError):
         ComposerSavePayload.model_validate(
@@ -257,6 +274,16 @@ def test_knowledge_query_mode_uses_stable_backend_enums():
             },
             "knowledge set dataset ids must be unique",
         ),
+    ],
+)
+def test_knowledge_sets_contract_rejects_invalid_configs(knowledge_payload, match: str):
+    with pytest.raises(ValidationError, match=match):
+        AgentSoulConfig.model_validate({"knowledge": knowledge_payload})
+
+
+@pytest.mark.parametrize(
+    ("knowledge_payload", "match"),
+    [
         (
             {
                 "sets": [
@@ -317,9 +344,25 @@ def test_knowledge_query_mode_uses_stable_backend_enums():
         ),
     ],
 )
-def test_knowledge_sets_contract_rejects_invalid_configs(knowledge_payload, match: str):
-    with pytest.raises(ValidationError, match=match):
-        AgentSoulConfig.model_validate({"knowledge": knowledge_payload})
+def test_knowledge_runtime_requirements_block_publish_but_not_draft_save(knowledge_payload, match: str):
+    draft_payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+            "agent_soul": {"knowledge": knowledge_payload},
+        }
+    )
+    ComposerConfigValidator.validate_draft_save_payload(draft_payload)
+
+    publish_payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP,
+            "save_strategy": ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+            "agent_soul": {"knowledge": knowledge_payload},
+        }
+    )
+    with pytest.raises(InvalidComposerConfigError, match=match):
+        ComposerConfigValidator.validate_publish_payload(publish_payload)
 
 
 def test_agent_soul_model_config_is_first_class_without_credentials():

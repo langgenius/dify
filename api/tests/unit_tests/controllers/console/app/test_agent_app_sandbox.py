@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgentTimeoutError
-from dify_agent.protocol import SandboxListResponse, SandboxReadResponse, SandboxUploadResponse
+from dify_agent.protocol import SandboxListResponse, SandboxReadResponse
 
 from controllers.console import agent_app_sandbox as module
 from models.model import App, AppMode, IconType
-from services.agent_app_sandbox_service import AgentSandboxInfo, AgentSandboxInspectorError
+from services.agent_app_sandbox_service import AgentSandboxInfo, AgentSandboxInspectorError, AgentSandboxUploadDownload
 
 
 class _AgentAppService:
@@ -28,11 +28,11 @@ class _AgentAppService:
         self.calls.append(("read", tenant_id, app_id, conversation_id, path))
         return SandboxReadResponse(path=path, size=5, truncated=False, binary=False, text="hello")
 
-    def upload_file(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str) -> SandboxUploadResponse:
+    def upload_file(
+        self, *, tenant_id: str, app_id: str, conversation_id: str, path: str
+    ) -> AgentSandboxUploadDownload:
         self.calls.append(("upload", tenant_id, app_id, conversation_id, path))
-        return SandboxUploadResponse(
-            path=path, file={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
-        )
+        return AgentSandboxUploadDownload(url="https://files.example/report.txt")
 
 
 class _WorkflowService:
@@ -74,11 +74,9 @@ class _WorkflowService:
         node_id: str,
         node_execution_id: str | None,
         path: str,
-    ) -> SandboxUploadResponse:
+    ) -> AgentSandboxUploadDownload:
         self.calls.append(("upload", tenant_id, app_id, workflow_run_id, node_id, node_execution_id, path))
-        return SandboxUploadResponse(
-            path=path, file={"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"}
-        )
+        return AgentSandboxUploadDownload(url="https://files.example/upload.txt")
 
 
 def _app_model(app_id: str = "app-1") -> App:
@@ -143,7 +141,7 @@ def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPat
     assert info == {"session_id": "abc1234", "workspace_cwd": "~/workspace/abc1234"}
     assert listing["path"] == "sub/report.txt"
     assert preview["text"] == "hello"
-    assert upload["file"]["reference"] == "dify-file-ref:file-1"
+    assert upload == {"url": "https://files.example/report.txt"}
     assert service.calls == [
         ("info", "tenant-1", "app-1", "conv-1", ""),
         ("list", "tenant-1", "app-1", "conv-1", "sub/report.txt"),
@@ -203,7 +201,7 @@ def test_workflow_agent_sandbox_resources_proxy_service(monkeypatch: pytest.Monk
 
     assert listing["path"] == "out.txt"
     assert preview["text"] == "hello"
-    assert upload["file"]["reference"] == "dify-file-ref:file-1"
+    assert upload == {"url": "https://files.example/upload.txt"}
     assert service.calls == [
         ("list", "tenant-1", "app-1", "run-1", "agent-node", "exec-1", "out.txt"),
         ("read", "tenant-1", "app-1", "run-1", "agent-node", "exec-1", "out.txt"),

@@ -43,18 +43,18 @@ Importing from `@langgenius/dify-ui` (no subpath) is intentionally not supported
 
 ## Primitives
 
-| Category         | Subpath                                                                                                                                                                        | Notes                                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Actions          | `./button`                                                                                                                                                                     | Design-system CTA primitive with `cva` variants.                                                      |
-| Controls         | `./segmented-control`                                                                                                                                                          | SegmentedControl for mode, filter, and view selection.                                                |
-| Display          | `./collapsible`, `./kbd`                                                                                                                                                       | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
-| Feedback         | `./meter`, `./toast`                                                                                                                                                           | Meter is inline status; Toast owns the `z-60` layer.                                                  |
-| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                                                  |
-| Layout           | `./scroll-area`                                                                                                                                                                | Custom-styled scrollbar over the host viewport.                                                       |
-| Media            | `./avatar`                                                                                                                                                                     | Avatar root, image, and fallback primitives.                                                          |
-| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                                        | FileTree for preview-oriented file disclosure lists; Pagination for page navigation; Tabs for panels. |
-| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                                      | Portalled. See [Overlay & portal contract] below.                                                     |
-| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                                     | Search input, searchable picker, and closed picker.                                                   |
+| Category         | Subpath                                                                                                                                                       | Notes                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Actions          | `./button`                                                                                                                                                    | Design-system CTA primitive with `cva` variants.                                                      |
+| Controls         | `./segmented-control`                                                                                                                                         | SegmentedControl for mode, filter, and view selection.                                                |
+| Display          | `./collapsible`, `./kbd`                                                                                                                                      | Collapsible disclosure primitive; keyboard input and shortcut keycap primitives.                      |
+| Feedback         | `./meter`, `./toast`                                                                                                                                          | Meter is inline status; Toast owns the `z-60` layer.                                                  |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio`, `./number-field`, `./select`, `./slider`, `./switch` | Native form boundary, field semantics, and controls.                                                  |
+| Layout           | `./scroll-area`                                                                                                                                               | Custom-styled scrollbar over the host viewport.                                                       |
+| Media            | `./avatar`                                                                                                                                                    | Avatar root, image, and fallback primitives.                                                          |
+| Navigation       | `./file-tree`, `./pagination`, `./tabs`                                                                                                                       | FileTree for preview-oriented file disclosure lists; Pagination for page navigation; Tabs for panels. |
+| Overlay / menu   | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./dropdown-menu`, `./popover`, `./preview-card`, `./tooltip`                                     | Portalled. See [Overlay & portal contract] below.                                                     |
+| Search / pickers | `./autocomplete`, `./combobox`, `./select`                                                                                                                    | Search input, searchable picker, and closed picker.                                                   |
 
 Utilities:
 
@@ -103,16 +103,21 @@ Use `FieldsetRoot` and `FieldsetLegend` when one field is represented by a group
 
 ## Typed value contracts
 
-Selection primitives should preserve the caller's domain value type instead of widening values to `string`. Use `Select<Value, Multiple>`, `RadioGroup<Value>`, `Radio<Value>`, and `RadioRoot<Value>` when the selected value is an enum, union, boolean, number, object, or nullable placeholder value.
+Selection primitives should preserve the caller's domain value type instead of widening values to `string`. Use `Select<Value, Multiple>`, `RadioGroup<Value>`, `Radio<Value>`, and `RadioItem<Value>` when the selected value is an enum, union, boolean, number, object, or nullable placeholder value.
 
 Root-level generics type `value`, `defaultValue`, `onValueChange`, and collection props such as `items`, but JSX children do not automatically inherit the parent generic. For non-string radio groups, type the child item too:
 
 ```tsx
 <RadioGroup<PromptMode> value={promptMode} onValueChange={setPromptMode}>
-  <RadioRoot<PromptMode> value={PROMPT_MODE.default} />
-  <RadioRoot<PromptMode> value={PROMPT_MODE.custom} />
+  <Radio<PromptMode> value={PROMPT_MODE.default} />
+  <RadioItem<PromptMode> value={PROMPT_MODE.custom}>
+    <RadioControl />
+    Custom prompt
+  </RadioItem>
 </RadioGroup>
 ```
+
+Use `Radio` for the default Dify control. Use `RadioItem` when custom UI should be the radio item; place `RadioControl` inside it for the standard visual dot. `RadioControl` is a Dify visual part, not a Base UI anatomy export.
 
 For select labels and display values, prefer the Base UI `items` collection pattern so the root, value display, and item list share the same typed values. Avoid helpers that stringify values only to recover labels later; convert values to strings only at real boundaries such as form submission, URL/search params, or legacy APIs that require strings.
 

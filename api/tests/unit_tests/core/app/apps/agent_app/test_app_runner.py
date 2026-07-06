@@ -568,7 +568,7 @@ def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
 
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
     assert rows[0].thought == "I need to inspect the file."
-    assert rows[0].tool is None
+    assert rows[0].tool == ""
     assert rows[1].tool == "bash"
     assert rows[1].tool_input == '{"cmd": "ls"}'
     assert rows[1].observation == "ok"
@@ -656,9 +656,9 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypat
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
     assert rows[0].tool_input == '{"script": "npx skills find browser"}'
-    assert rows[0].observation is None
-    assert rows[1].tool is None
-    assert rows[1].tool_input is None
+    assert rows[0].observation == ""
+    assert rows[1].tool == ""
+    assert rows[1].tool_input == ""
     assert rows[1].observation == "Knowledge base search results: browser skill"
 
 

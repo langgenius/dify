@@ -74,8 +74,9 @@ vi.mock('@/service/client', () => ({
         },
         referencingWorkflows: {
           get: {
-            queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
+            queryOptions: ({ enabled = true, input }: { enabled?: boolean, input: { params: { agent_id: string } } }) => ({
               queryKey: ['agent-referencing-workflows', input],
+              enabled,
               queryFn: async () => ({
                 data: (workflowReferences.fetchCount++, workflowReferences.data),
               }),
@@ -162,6 +163,7 @@ function renderPublishBar({
   selectedVersionSnapshot,
   setupStore,
   usedByAppReferences = [],
+  workflowReferencesEnabled,
 }: {
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
@@ -173,6 +175,7 @@ function renderPublishBar({
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   setupStore?: (store: ReturnType<typeof createStore>) => void
   usedByAppReferences?: AgentReferencingWorkflowResponse[]
+  workflowReferencesEnabled?: boolean
 } = {}) {
   workflowReferences.data = usedByAppReferences
   const queryClient = new QueryClient({
@@ -200,6 +203,7 @@ function renderPublishBar({
           agentName="Iris"
           isPublishing={nextProps?.isPublishing ?? isPublishing}
           selectedVersionSnapshot={selectedVersionSnapshot}
+          workflowReferencesEnabled={workflowReferencesEnabled}
           onPublish={onPublish}
           onExitVersions={onExitVersions}
           onOpenVersions={vi.fn()}
@@ -405,6 +409,28 @@ describe('AgentConfigurePublishBar', () => {
     await waitFor(() => {
       expect(onPublish).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('should publish without loading workflow references when references are disabled', async () => {
+    const { onPublish } = renderPublishBar({
+      activeConfigSnapshot,
+      prompt: 'Updated system prompt',
+      usedByAppReferences: publishedReferences,
+      workflowReferencesEnabled: false,
+    })
+
+    await waitFor(() => {
+      expect(workflowReferences.fetchCount).toBe(0)
+    })
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
+
+    await waitFor(() => {
+      expect(onPublish).toHaveBeenCalledTimes(1)
+    })
+    expect(workflowReferences.fetchCount).toBe(0)
+    expect(screen.queryByRole('region', {
+      name: /agentV2\.agentDetail\.configure\.publishImpact\.title/,
+    })).not.toBeInTheDocument()
   })
 
   it('should mark non-prompt draft changes as unpublished', () => {

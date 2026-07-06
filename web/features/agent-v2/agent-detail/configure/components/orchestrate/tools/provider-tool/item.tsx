@@ -186,8 +186,8 @@ const ProviderToolActionItem = memo(({
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const handleConfigureAction = useCallback(() => {
-    onConfigureAction({ action, tool })
-  }, [action, onConfigureAction, tool])
+    onConfigureAction({ actionId: action.id, toolId: tool.id })
+  }, [action.id, onConfigureAction, tool.id])
   const handleRemoveAction = useCallback(() => {
     onRemoveAction(action.id)
   }, [action.id, onRemoveAction])

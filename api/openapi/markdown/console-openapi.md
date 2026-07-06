@@ -1268,7 +1268,7 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 
 ### [POST] /agent/{agent_id}/sandbox/files/upload
-Upload one Agent App sandbox file as a Dify ToolFile mapping
+Upload one Agent App sandbox file and return a signed download URL
 
 #### Parameters
 
@@ -3777,7 +3777,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload
-Upload one workflow Agent sandbox file as a Dify ToolFile mapping
+Upload one workflow Agent sandbox file and return a signed download URL
 
 #### Parameters
 
@@ -13754,6 +13754,23 @@ Stable Agent Soul reference to one normalized skill archive.
 | upload_file_id | string |  | No |
 | url | string |  | No |
 
+#### AgentFileUploadFeatureConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ [FileType](#filetype) ] |  | No |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| enabled | boolean, <br>**Default:** true |  | No |
+| image | [AgentFileUploadImageFeatureConfig](#agentfileuploadimagefeatureconfig) |  | No |
+| number_limits | integer, <br>**Default:** 3 |  | No |
+
+#### AgentFileUploadImageFeatureConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean, <br>**Default:** true |  | No |
+
 #### AgentHumanContactConfig
 
 | Name | Type | Description | Required |
@@ -13897,6 +13914,8 @@ Per-set metadata filtering policy.
 The Python attribute uses ``metadata_model_config`` for clarity because the
 model belongs to metadata filtering specifically, while the external API and
 generated schema keep the historical ``model_config`` field name via alias.
+Mode-dependent completeness is enforced by composer publish validation so
+draft saves can persist partially configured metadata filters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -13919,8 +13938,9 @@ Per-set query policy for Agent v2 knowledge retrieval.
 
 Agent v2 stores knowledge as explicit ``knowledge.sets`` rather than the
 legacy flat ``datasets`` / ``query_mode`` / ``query_config`` shape. Each
-set owns its own query policy, so ``user_query`` must carry an explicit
-``value`` while ``generated_query`` leaves that value empty.
+set owns its own query policy. Mode-dependent completeness, such as
+requiring ``value`` for ``user_query``, is enforced by composer publish
+validation so draft saves can persist partially configured knowledge sets.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -13945,8 +13965,9 @@ set owns its own query policy, so ``user_query`` must carry an explicit
 Per-set retrieval policy for Agent v2 knowledge retrieval.
 
 Retrieval settings now live on each knowledge set instead of one shared
-flat config. A set may use either ``multiple`` retrieval with ``top_k`` or
-``single`` retrieval with a required model config.
+flat config. Mode-dependent completeness, such as requiring ``top_k`` for
+``multiple`` or a model for ``single``, is enforced by composer publish
+validation so draft saves can persist partially configured knowledge sets.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -14345,6 +14366,7 @@ Visibility and lifecycle scope of an Agent record.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| file_upload | [AgentFileUploadFeatureConfig](#agentfileuploadfeatureconfig) |  | No |
 | opening_statement | string |  | No |
 | retriever_resource | [AgentFeatureToggleConfig](#agentfeaturetoggleconfig) |  | No |
 | sensitive_word_avoidance | [AgentSensitiveWordAvoidanceFeatureConfig](#agentsensitivewordavoidancefeatureconfig) |  | No |
@@ -20523,19 +20545,11 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | text | string |  | No |
 | truncated | boolean |  | Yes |
 
-#### SandboxToolFileResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reference | string |  | Yes |
-| transfer_method | string, <br>**Default:** tool_file |  | No |
-
 #### SandboxUploadResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| file | [SandboxToolFileResponse](#sandboxtoolfileresponse) |  | Yes |
-| path | string |  | Yes |
+| url | string |  | Yes |
 
 #### SavedMessageCreatePayload
 

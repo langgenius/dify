@@ -108,14 +108,8 @@ class SandboxReadResponse(ResponseModel):
     text: str | None = None
 
 
-class SandboxToolFileResponse(ResponseModel):
-    transfer_method: Literal["tool_file"] = "tool_file"
-    reference: str
-
-
 class SandboxUploadResponse(ResponseModel):
-    path: str
-    file: SandboxToolFileResponse
+    url: str
 
 
 register_schema_models(
@@ -225,7 +219,7 @@ class AgentAppSandboxReadResource(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files/upload")
 class AgentAppSandboxUploadResource(Resource):
     @console_ns.doc("upload_agent_app_sandbox_file")
-    @console_ns.doc(description="Upload one Agent App sandbox file as a Dify ToolFile mapping")
+    @console_ns.doc(description="Upload one Agent App sandbox file and return a signed download URL")
     @console_ns.expect(console_ns.models[AgentSandboxUploadPayload.__name__])
     @console_ns.response(200, "Uploaded", console_ns.models[SandboxUploadResponse.__name__])
     @setup_required
@@ -322,7 +316,7 @@ class WorkflowAgentSandboxReadResource(Resource):
 )
 class WorkflowAgentSandboxUploadResource(Resource):
     @console_ns.doc("upload_workflow_agent_sandbox_file")
-    @console_ns.doc(description="Upload one workflow Agent sandbox file as a Dify ToolFile mapping")
+    @console_ns.doc(description="Upload one workflow Agent sandbox file and return a signed download URL")
     @console_ns.expect(console_ns.models[WorkflowAgentSandboxUploadPayload.__name__])
     @console_ns.response(200, "Uploaded", console_ns.models[SandboxUploadResponse.__name__])
     @setup_required
