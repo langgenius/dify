@@ -8,8 +8,10 @@ from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
+from controllers.common.agent_app_parameters import get_published_agent_app_feature_dict_and_user_input_form
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, AppMode, EndUser
@@ -19,7 +21,7 @@ from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
 from . import web_ns
-from .error import AppUnavailableError
+from .error import AgentNotPublishedError, AppUnavailableError
 from .wraps import WebApiResource
 
 logger = logging.getLogger(__name__)
@@ -74,12 +76,21 @@ class AppParameterApi(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[fields.Parameters.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        features_dict: dict[str, Any]
+        user_input_form: list[dict[str, Any]]
+        if app_model.mode == AppMode.AGENT:
+            try:
+                features_dict, user_input_form = get_published_agent_app_feature_dict_and_user_input_form(app_model)
+            except AgentAppNotPublishedError:
+                raise AgentNotPublishedError()
+            except AgentAppGeneratorError:
+                raise AppUnavailableError()
+        elif app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()
 
-            features_dict: dict[str, Any] = workflow.features_dict
+            features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config

@@ -1,19 +1,21 @@
 import logging
-import re
 from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 
 from flask import Response, request
-from flask_restx import Resource, marshal
+from flask_restx import Resource
 from pydantic import Field as PydanticField
 from pydantic import field_validator
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound
 
 from controllers.common.fields import TextFileResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.snippets.payloads import (
     CreateSnippetPayload,
@@ -35,8 +37,7 @@ from controllers.console.wraps import (
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.snippet_fields import snippet_fields, snippet_list_fields
-from libs.helper import to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
@@ -44,9 +45,6 @@ from services.snippet_dsl_service import ImportStatus, SnippetDslService
 from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
-_TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
-_CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
-_CREATORS_BRACKET_PATTERN = re.compile(r"^creators\[(\d+)\]$")
 
 
 class SnippetImportResponse(ResponseModel):
@@ -142,40 +140,15 @@ def _snippet_service() -> SnippetService:
     return SnippetService(sessionmaker(bind=db.engine, expire_on_commit=False))
 
 
-def _normalize_snippet_list_query_args(query_args: MultiDict[str, str]) -> dict[str, str | list[str]]:
-    normalized: dict[str, str | list[str]] = {}
-    indexed_tag_ids: list[tuple[int, str]] = []
-    indexed_creator_ids: list[tuple[int, str]] = []
+def _snippet_list_query_from_request() -> SnippetListQuery:
+    query_data: dict[str, str | list[str]] = dict(request.args.to_dict())
+    query_data["tag_ids"] = request.args.getlist("tag_ids")
 
-    for key in query_args:
-        match = _TAG_IDS_BRACKET_PATTERN.fullmatch(key)
-        if match:
-            indexed_tag_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
-            continue
+    creator_ids = request.args.getlist("creators") or request.args.getlist("creator_ids")
+    if creator_ids:
+        query_data["creators"] = creator_ids
 
-        match = _CREATOR_IDS_BRACKET_PATTERN.fullmatch(key) or _CREATORS_BRACKET_PATTERN.fullmatch(key)
-        if match:
-            indexed_creator_ids.extend((int(match.group(1)), value) for value in query_args.getlist(key))
-            continue
-
-        if key in {"tag_ids", "creators", "creator_ids"}:
-            values = query_args.getlist(key)
-            if values:
-                normalized["creators" if key in {"creators", "creator_ids"} else key] = (
-                    values if len(values) > 1 else values[0]
-                )
-            continue
-
-        value = query_args.get(key)
-        if value is not None:
-            normalized[key] = value
-
-    if indexed_tag_ids:
-        normalized["tag_ids"] = [value for _, value in sorted(indexed_tag_ids)]
-    if indexed_creator_ids:
-        normalized["creators"] = [value for _, value in sorted(indexed_creator_ids)]
-
-    return normalized
+    return SnippetListQuery.model_validate(query_data)
 
 
 # Register Pydantic models with Swagger
@@ -210,7 +183,7 @@ class CustomizedSnippetsApi(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         """List customized snippets with pagination and search."""
-        query = SnippetListQuery.model_validate(_normalize_snippet_list_query_args(request.args))
+        query = _snippet_list_query_from_request()
 
         snippet_service = _snippet_service()
         snippets, total, has_more = snippet_service.get_snippets(
@@ -224,13 +197,16 @@ class CustomizedSnippetsApi(Resource):
             tag_ids=query.tag_ids,
         )
 
-        return {
-            "data": marshal(snippets, snippet_list_fields),
-            "page": query.page,
-            "limit": query.limit,
-            "total": total,
-            "has_more": has_more,
-        }, 200
+        return dump_response(
+            SnippetPaginationResponse,
+            {
+                "data": snippets,
+                "page": query.page,
+                "limit": query.limit,
+                "total": total,
+                "has_more": has_more,
+            },
+        ), 200
 
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))
@@ -271,7 +247,7 @@ class CustomizedSnippetsApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 201
+        return dump_response(SnippetResponse, snippet), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
@@ -294,7 +270,7 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
@@ -343,7 +319,7 @@ class CustomizedSnippetDetailApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")
@@ -559,4 +535,4 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
             session.commit()
             session.refresh(snippet)
 
-        return {"result": "success", "use_count": snippet.use_count}, 200
+        return SnippetUseCountResponse(result="success", use_count=snippet.use_count).model_dump(mode="json"), 200

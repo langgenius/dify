@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import json
 import logging
+import time
+from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -74,12 +76,23 @@ def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
     return [UserPromptMessage(content=user_query)]
 
 
+def _llm_usage_from_agent_backend(usage: Mapping[str, Any] | None) -> LLMUsage | None:
+    if usage is None:
+        return None
+    try:
+        return LLMUsage.from_metadata(usage)
+    except (TypeError, ValueError):
+        logger.warning("Failed to parse Agent backend usage metadata: %s", usage, exc_info=True)
+        return None
+
+
 def publish_text_answer(
     *,
     queue_manager: AppQueueManager,
     model_name: str,
     answer: str,
     user_query: str | None = None,
+    usage: LLMUsage | None = None,
 ) -> None:
     """Publish a complete assistant answer as one chunk + message-end.
 
@@ -99,6 +112,7 @@ def publish_text_answer(
         model_name=model_name,
         answer=answer,
         user_query=user_query,
+        usage=usage,
     )
 
 
@@ -127,6 +141,7 @@ def publish_message_end(
     model_name: str,
     answer: str,
     user_query: str | None = None,
+    usage: LLMUsage | None = None,
 ) -> None:
     """Publish the terminal assistant result without emitting another delta."""
     prompt_messages = _prompt_messages_from_query(user_query)
@@ -136,11 +151,44 @@ def publish_message_end(
                 model=model_name,
                 prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(content=answer),
-                usage=LLMUsage.empty_usage(),
+                usage=usage or LLMUsage.empty_usage(),
             ),
         ),
         PublishFrom.APPLICATION_MANAGER,
     )
+
+
+class _TextDeltaDebouncer:
+    """Batch assistant text deltas on stream-event boundaries for final SSE output."""
+
+    def __init__(self, *, debounce_seconds: float) -> None:
+        self._debounce_seconds = debounce_seconds
+        self._parts: list[str] = []
+        self._first_pending_at: float | None = None
+
+    def push(self, delta: str) -> str | None:
+        if not delta:
+            return None
+        if self._debounce_seconds <= 0:
+            return delta
+
+        now = time.monotonic()
+        if not self._parts:
+            self._first_pending_at = now
+        self._parts.append(delta)
+
+        if self._first_pending_at is not None and now - self._first_pending_at >= self._debounce_seconds:
+            return self.flush()
+        return None
+
+    def flush(self) -> str | None:
+        if not self._parts:
+            return None
+
+        text = "".join(self._parts)
+        self._parts = []
+        self._first_pending_at = None
+        return text
 
 
 class _AgentProcessRecorder:
@@ -324,14 +372,14 @@ class _AgentProcessRecorder:
         row = MessageAgentThought(
             message_id=self._message_id,
             message_chain_id=None,
-            thought=thought,
-            tool=tool,
+            thought=thought or "",
+            tool=tool or "",
             tool_labels_str=_tool_labels(tool),
             tool_meta_str="{}",
-            tool_input=tool_input,
-            observation=None,
+            tool_input=tool_input or "",
+            observation="",
             tool_process_data=None,
-            message=None,
+            message="",
             message_token=0,
             message_unit_price=Decimal(0),
             message_price_unit=Decimal("0.001"),
@@ -430,11 +478,13 @@ class AgentAppRunner:
         agent_backend_client: AgentBackendRunClient,
         event_adapter: AgentBackendRunEventAdapter,
         session_store: AgentAppRuntimeSessionStore,
+        text_delta_debounce_seconds: float,
     ) -> None:
         self._request_builder = request_builder
         self._agent_backend_client = agent_backend_client
         self._event_adapter = event_adapter
         self._session_store = session_store
+        self._text_delta_debounce_seconds = text_delta_debounce_seconds
 
     def run(
         self,
@@ -512,6 +562,7 @@ class AgentAppRunner:
             answer=answer,
             query=query,
             streamed_answer=streamed_answer,
+            usage=_llm_usage_from_agent_backend(terminal.usage),
         )
         self._save_session(
             scope=scope,
@@ -724,19 +775,39 @@ class AgentAppRunner:
         model_name: str,
         query: str | None,
     ):
+        """Consume backend events while preserving raw recorder granularity.
+
+        Process events are recorded immediately for observability. Only the
+        final assistant text deltas sent through the EasyUI queue are debounced,
+        with flushes happening on later stream events or terminal boundaries.
+        """
         terminal = None
         streamed_answer_parts: list[str] = []
+        text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
         process_recorder = _AgentProcessRecorder(
             dify_context=dify_context,
             message_id=message_id,
             queue_manager=queue_manager,
         )
+
+        def flush_pending_text() -> None:
+            pending_text = text_delta_debouncer.flush()
+            if pending_text:
+                publish_text_delta(
+                    queue_manager=queue_manager,
+                    model_name=model_name,
+                    delta=pending_text,
+                    user_query=query,
+                )
+
         for public_event in self._agent_backend_client.stream_events(run_id):
             if queue_manager.is_stopped():
+                flush_pending_text()
                 self._cancel_run(run_id)
                 raise GenerateTaskStoppedError()
             for internal_event in self._event_adapter.adapt(public_event):
                 if queue_manager.is_stopped():
+                    flush_pending_text()
                     self._cancel_run(run_id)
                     raise GenerateTaskStoppedError()
                 if internal_event.type in (
@@ -758,18 +829,22 @@ class AgentAppRunner:
                         text_delta = self._extract_stream_text_delta(internal_event)
                         if text_delta:
                             streamed_answer_parts.append(text_delta)
-                            publish_text_delta(
-                                queue_manager=queue_manager,
-                                model_name=model_name,
-                                delta=text_delta,
-                                user_query=query,
-                            )
+                            debounced_delta = text_delta_debouncer.push(text_delta)
+                            if debounced_delta:
+                                publish_text_delta(
+                                    queue_manager=queue_manager,
+                                    model_name=model_name,
+                                    delta=debounced_delta,
+                                    user_query=query,
+                                )
                         continue
                     continue
+                flush_pending_text()
                 terminal = internal_event
                 break
             if terminal is not None:
                 break
+        flush_pending_text()
         return terminal, "".join(streamed_answer_parts)
 
     def _cancel_run(self, run_id: str) -> None:
@@ -793,10 +868,20 @@ class AgentAppRunner:
         answer: str,
         query: str | None,
         streamed_answer: str,
+        usage: LLMUsage | None,
     ) -> None:
         """Finish a successful streamed turn without duplicating the final text."""
+        if not answer and streamed_answer:
+            answer = streamed_answer
+
         if not streamed_answer:
-            self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, query=query)
+            publish_text_answer(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                answer=answer,
+                user_query=query,
+                usage=usage,
+            )
             return
 
         if answer.startswith(streamed_answer):
@@ -812,7 +897,13 @@ class AgentAppRunner:
                 "using terminal output for message persistence."
             )
 
-        publish_message_end(queue_manager=queue_manager, model_name=model_name, answer=answer, user_query=query)
+        publish_message_end(
+            queue_manager=queue_manager,
+            model_name=model_name,
+            answer=answer,
+            user_query=query,
+            usage=usage,
+        )
 
     def _save_session(
         self,
@@ -852,6 +943,8 @@ class AgentAppRunner:
         configured the value is a JSON object, which we serialize so the chat
         message always has a string body.
         """
+        if output is None:
+            return ""
         if isinstance(output, str):
             return output
         if isinstance(output, dict):

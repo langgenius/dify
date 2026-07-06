@@ -9,7 +9,7 @@ const Loading = () => {
       <CheckboxSkeleton
         className="shrink-0"
       />
-      <div className="hover-bg-components-panel-on-panel-item-bg relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
+      <div className="relative grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs">
         <Placeholder
           wrapClassName="w-full"
         />

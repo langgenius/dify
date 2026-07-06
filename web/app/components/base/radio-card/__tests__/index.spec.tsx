@@ -1,8 +1,27 @@
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import RadioCard from '../index'
+
+type ExampleMode = 'standard' | 'advanced'
+
+function RadioCardTypeExamples() {
+  return (
+    <RadioGroup<ExampleMode> value="standard" onValueChange={() => {}}>
+      <RadioCard<ExampleMode>
+        value="advanced"
+        icon={<span>i</span>}
+        title="Advanced"
+        description="Typed option"
+      />
+      {/* @ts-expect-error RadioCard values should stay within the selected RadioGroup value type */}
+      <RadioCard<ExampleMode> value="invalid" icon={<span>i</span>} title="Invalid" description="Invalid option" />
+    </RadioGroup>
+  )
+}
+
+void RadioCardTypeExamples
 
 function renderSelectableCard({
   selected = false,

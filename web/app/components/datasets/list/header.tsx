@@ -67,7 +67,7 @@ const DatasetListHeader = ({
           {canConnectExternalDataset && (
             <button
               type="button"
-              className="flex items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover"
+              className="flex h-6 items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary hover:bg-state-base-hover"
               onClick={onExternalApiClick}
             >
               <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0" />

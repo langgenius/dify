@@ -7,6 +7,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useClipboard } from 'foxact/use-clipboard'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type AccessSurfaceCardProps = {
@@ -44,6 +45,7 @@ export function AccessSurfaceCard({
 }: AccessSurfaceCardProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const titleId = useId()
   const { copied, copy } = useClipboard({
     timeout: 2000,
     onCopyError: () => {
@@ -61,14 +63,14 @@ export function AccessSurfaceCard({
   }
 
   return (
-    <article className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs">
+    <article aria-labelledby={titleId} className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs">
       <div className="px-4 pt-4 pb-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="flex min-w-48 flex-1 items-center gap-2">
             <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-lg', iconClassName)}>
               <span aria-hidden className={cn(icon, 'size-4')} />
             </span>
-            <h3 className="truncate system-md-semibold text-text-secondary">
+            <h3 id={titleId} className="truncate system-md-semibold text-text-secondary">
               {title}
             </h3>
             {badge}

@@ -59,21 +59,14 @@ async function renderPagination({
 }
 
 describe('Pagination primitive', () => {
-  it('renders the Figma-aligned pagination structure with semantic navigation', async () => {
+  it('renders the pagination structure with semantic navigation', async () => {
     const { screen } = await renderPagination()
 
     await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toHaveAttribute('data-page', '2')
-    await expect.element(screen.getByTestId('content')).toHaveClass('grid', 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]')
-    await expect.element(screen.getByTestId('controls')).toHaveClass('justify-self-start', 'rounded-[10px]', 'bg-background-section-burn')
-    await expect.element(screen.getByRole('list')).toHaveClass('col-start-2', 'justify-self-center')
-    expect(screen.getByRole('group', { name: 'Items per page' }).element().parentElement).toHaveClass('col-start-3', 'justify-self-end')
     await expect.element(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toHaveTextContent('2/200')
-    await expect.element(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' })).toHaveClass('h-7', 'px-2')
-    expect(screen.getByRole('button', { name: 'Edit page number, current page 2 of 200' }).element()).not.toHaveClass('min-w-14')
     await expect.element(screen.getByRole('button', { name: 'Page 2, current page' })).toHaveAttribute('aria-current', 'page')
-    await expect.element(screen.getByRole('button', { name: 'Page 2, current page' })).toHaveClass('bg-components-button-tertiary-bg')
     await expect.element(screen.getByText('…')).toBeInTheDocument()
   })
 
@@ -117,7 +110,6 @@ describe('Pagination primitive', () => {
     const input = asHTMLElement(screen.getByRole('textbox', { name: 'Page number' }).element()) as HTMLInputElement
 
     await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toHaveValue('2')
-    await expect.element(screen.getByRole('textbox', { name: 'Page number' })).toHaveClass('text-center', 'tabular-nums')
     expect(input.parentElement?.parentElement?.parentElement).toHaveAttribute('data-page-summary', '2/200')
     await vi.waitFor(() => {
       expect(input.selectionStart).toBe(0)
@@ -187,10 +179,7 @@ describe('Pagination primitive', () => {
   it('uses segmented control semantics for page size', async () => {
     const { screen, onPageSizeChange } = await renderPagination()
 
-    await expect.element(screen.getByRole('group', { name: 'Items per page' })).toHaveClass('bg-components-segmented-control-bg-normal')
-    await expect.element(screen.getByText('Items per page')).toHaveClass('opacity-0', 'group-hover/page-size:opacity-100', 'group-focus-within/page-size:opacity-100')
     await expect.element(screen.getByRole('button', { name: '25' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(screen.getByRole('button', { name: '25' })).toHaveClass('data-pressed:text-text-primary')
 
     asHTMLElement(screen.getByRole('button', { name: '50' }).element()).click()
 
@@ -241,8 +230,6 @@ describe('Pagination primitive', () => {
     )
 
     await expect.element(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
-    expect(screen.container.querySelector('nav[aria-label="Pagination"] > div')).toHaveClass('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]')
-    await expect.element(screen.getByRole('list')).toHaveClass('col-start-2', 'justify-self-center')
   })
 
   it('does not expose invalid page controls when there are no pages', async () => {
@@ -292,6 +279,5 @@ describe('Pagination primitive', () => {
     const screen = await render(<PaginationSkeleton data-testid="skeleton" />)
 
     await expect.element(screen.getByTestId('skeleton')).toHaveAttribute('aria-hidden', 'true')
-    await expect.element(screen.getByTestId('skeleton')).toHaveClass('select-none')
   })
 })

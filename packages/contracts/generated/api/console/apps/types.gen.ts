@@ -45,7 +45,7 @@ export type AppDetailWithSite = {
   permission_keys?: Array<string>
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -329,14 +329,18 @@ export type AnnotationReplyPayload = {
 }
 
 export type AnnotationJobStatusResponse = {
-  error_msg?: string | null
-  job_id?: string | null
-  job_status?: string | null
-  record_count?: number | null
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+}
+
+export type AnnotationJobStatusDetailResponse = {
+  error_msg?: string
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
 }
 
 export type AnnotationSettingResponse = {
-  embedding_model?: AnnotationEmbeddingModelResponse | null
+  embedding_model?: AnnotationSettingEmbeddingModelResponse | null
   enabled: boolean
   id?: string | null
   score_threshold?: number | null
@@ -370,6 +374,13 @@ export type Annotation = {
   hit_count?: number | null
   id: string
   question?: string | null
+}
+
+export type AnnotationBatchImportResponse = {
+  error_msg?: string | null
+  job_id?: string | null
+  job_status?: string | null
+  record_count?: number | null
 }
 
 export type AnnotationCountResponse = {
@@ -417,7 +428,7 @@ export type AppDetail = {
   name: string
   permission_keys?: Array<string>
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -429,10 +440,10 @@ export type AudioTranscriptResponse = {
 }
 
 export type ConversationWithSummaryPagination = {
-  has_next: boolean
-  items: Array<ConversationWithSummary>
+  data: Array<ConversationWithSummary>
+  has_more: boolean
+  limit: number
   page: number
-  per_page: number
   total: number
 }
 
@@ -467,20 +478,20 @@ export type SimpleResultResponse = {
 }
 
 export type ConversationPagination = {
-  has_next: boolean
-  items: Array<Conversation>
+  data: Array<Conversation>
+  has_more: boolean
+  limit: number
   page: number
-  per_page: number
   total: number
 }
 
 export type ConversationMessageDetail = {
   created_at?: number | null
-  first_message?: MessageDetail | null
   from_account_id?: string | null
   from_end_user_id?: string | null
   from_source: string
   id: string
+  message?: MessageDetail | null
   model_config?: ModelConfig | null
   status: string
 }
@@ -526,6 +537,16 @@ export type CopyAppPayload = {
   name?: string | null
 }
 
+export type AppImportResponse = {
+  app_id?: string | null
+  app_mode?: string | null
+  current_dsl_version: string
+  error?: string
+  id: string
+  imported_dsl_version?: string
+  status: ImportStatus
+}
+
 export type AppExportResponse = {
   data: string
 }
@@ -545,16 +566,16 @@ export type AppIconPayload = {
 }
 
 export type MessageDetailResponse = {
-  agent_thoughts?: Array<AgentThought>
+  agent_thoughts: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
-  answer_tokens?: number | null
+  answer_tokens: number
   conversation_id: string
   created_at?: number | null
   error?: string | null
   extra_contents?: Array<HumanInputContent>
-  feedbacks?: Array<Feedback>
+  feedbacks: Array<Feedback>
   from_account_id?: string | null
   from_end_user_id?: string | null
   from_source: string
@@ -562,12 +583,12 @@ export type MessageDetailResponse = {
   inputs: {
     [key: string]: JsonValue
   }
-  message?: JsonValue | null
-  message_files?: Array<MessageFile>
-  message_tokens?: number | null
-  metadata?: JsonValue | null
+  message: JsonValue
+  message_files: Array<MessageFile>
+  message_tokens: number
+  metadata: JsonValue
   parent_message_id?: string | null
-  provider_response_latency?: number | null
+  provider_response_latency: number
   query: string
   status: string
   workflow_run_id?: string | null
@@ -726,14 +747,10 @@ export type TextToSpeechPayload = {
   voice?: string | null
 }
 
-export type AudioBinaryResponse = Blob | File
-
-export type TextToSpeechVoiceListResponse = Array<{
-  [key: string]: unknown
-}>
+export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
 export type AppTraceResponse = {
-  enabled: boolean
+  enabled?: boolean
   tracing_provider?: string | null
 }
 
@@ -809,7 +826,7 @@ export type WorkflowRunPaginationResponse = {
 
 export type WorkflowRunDetailResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
@@ -856,8 +873,7 @@ export type WorkflowAgentSandboxUploadPayload = {
 }
 
 export type SandboxUploadResponse = {
-  file: SandboxToolFileResponse
-  path: string
+  url: string
 }
 
 export type WorkflowCommentBasicList = {
@@ -877,7 +893,7 @@ export type WorkflowCommentCreate = {
 }
 
 export type WorkflowCommentMentionUsersPayload = {
-  users: Array<AccountWithRole>
+  users: Array<AccountWithRoleResponse>
 }
 
 export type WorkflowCommentDetail = {
@@ -965,7 +981,7 @@ export type DefaultBlockConfigResponse = {
 export type WorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
-  created_by?: SimpleAccount | null
+  created_by?: SimpleAccountResponse | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
   features: {
     [key: string]: unknown
@@ -980,7 +996,7 @@ export type WorkflowResponse = {
   rag_pipeline_variables: Array<PipelineVariableResponse>
   tool_published: boolean
   updated_at: number
-  updated_by?: SimpleAccount | null
+  updated_by?: SimpleAccountResponse | null
   version: string
 }
 
@@ -1107,7 +1123,7 @@ export type AgentComposerValidateResponse = {
 
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
@@ -1343,17 +1359,6 @@ export type Tag = {
   type: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -1366,7 +1371,7 @@ export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 
 
 export type PluginDependency = {
   current_identifier?: string | null
-  type: Type
+  type: PluginDependencyType
   value: Github | Marketplace | Package
 }
 
@@ -1378,7 +1383,7 @@ export type WorkflowOnlineUsersByApp = {
 export type AdvancedChatWorkflowRunForListResponse = {
   conversation_id?: string | null
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -1390,6 +1395,17 @@ export type AdvancedChatWorkflowRunForListResponse = {
   total_tokens?: number | null
   version?: string | null
 }
+
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
 
 export type AgentConfigVersionResponse = {
   id: string
@@ -1534,7 +1550,7 @@ export type CliToolSuggestion = {
   name: string
 }
 
-export type AnnotationEmbeddingModelResponse = {
+export type AnnotationSettingEmbeddingModelResponse = {
   embedding_model_name?: string | null
   embedding_provider_name?: string | null
 }
@@ -1565,7 +1581,7 @@ export type ConversationWithSummary = {
   read_at?: number | null
   status: string
   status_count?: StatusCount | null
-  summary_or_query: string
+  summary: string
   updated_at?: number | null
   user_feedback_stats?: FeedbackStat | null
 }
@@ -1579,13 +1595,13 @@ export type Conversation = {
   admin_feedback_stats?: FeedbackStat | null
   annotation?: ConversationAnnotation | null
   created_at?: number | null
-  first_message?: SimpleMessageDetail | null
   from_account_id?: string | null
   from_account_name?: string | null
   from_end_user_id?: string | null
   from_end_user_session_id?: string | null
   from_source: string
   id: string
+  message?: SimpleMessageDetail | null
   model_config?: SimpleModelConfig | null
   read_at?: number | null
   status: string
@@ -1597,6 +1613,7 @@ export type MessageDetail = {
   agent_thoughts: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
+  answer: string
   answer_tokens: number
   conversation_id: string
   created_at?: number | null
@@ -1611,12 +1628,11 @@ export type MessageDetail = {
   }
   message: JsonValue
   message_files: Array<MessageFile>
-  message_metadata_dict: JsonValue
   message_tokens: number
+  metadata: JsonValue
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
-  re_sign_file_url_answer: string
   status: string
   workflow_run_id?: string | null
 }
@@ -1715,10 +1731,10 @@ export type DailyMessageStatisticItem = {
 }
 
 export type DailyTokenCostStatisticItem = {
-  currency: string
+  currency?: string | null
   date: string
-  token_count: number
-  total_price: string | number
+  token_count?: number | null
+  total_price?: string | null
 }
 
 export type TokensPerSecondStatisticItem = {
@@ -1731,9 +1747,14 @@ export type UserSatisfactionRateStatisticItem = {
   rate: number
 }
 
+export type TextToSpeechVoiceResponse = {
+  name: string
+  value: string
+}
+
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
@@ -1744,7 +1765,7 @@ export type WorkflowAppLogPartialResponse = {
 
 export type WorkflowArchivedLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   id: string
   trigger_metadata?: unknown
@@ -1753,7 +1774,7 @@ export type WorkflowArchivedLogPartialResponse = {
 
 export type WorkflowRunForListResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -1765,7 +1786,7 @@ export type WorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1783,11 +1804,6 @@ export type SandboxFileEntryResponse = {
   name: string
   size?: number | null
   type: 'dir' | 'file' | 'other' | 'symlink'
-}
-
-export type SandboxToolFileResponse = {
-  reference: string
-  transfer_method?: 'tool_file'
 }
 
 export type WorkflowCommentBasic = {
@@ -1808,7 +1824,7 @@ export type WorkflowCommentBasic = {
   updated_at?: number | null
 }
 
-export type AccountWithRole = {
+export type AccountWithRoleResponse = {
   avatar?: string | null
   readonly avatar_url: string | null
   created_at?: number | null
@@ -2156,7 +2172,7 @@ export type WorkflowDraftVariableWithoutValue = {
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
-  model?: JsonValue | null
+  model?: unknown | null
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
@@ -2164,7 +2180,7 @@ export type ModelConfigPartial = {
 
 export type LlmMode = 'chat' | 'completion'
 
-export type Type = 'github' | 'marketplace' | 'package'
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
   github_plugin_unique_identifier: string
@@ -2214,7 +2230,7 @@ export type EnvSuggestion = {
 }
 
 export type SimpleModelConfig = {
-  model_dict?: JsonValue | null
+  model?: JsonValue | null
   pre_prompt?: string | null
 }
 
@@ -2232,6 +2248,12 @@ export type SimpleMessageDetail = {
   }
   message: string
   query: string
+}
+
+export type SimpleAccount = {
+  email: string
+  id: string
+  name: string
 }
 
 export type HumanInputFormDefinition = {
@@ -2340,6 +2362,7 @@ export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'work
 export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
@@ -2599,6 +2622,16 @@ export type WorkflowFileUploadPreviewConfigPayload = {
   mode?: string | null
 }
 
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
+
 export type AgentFeatureToggleConfig = {
   enabled?: boolean
   [key: string]: unknown
@@ -2613,7 +2646,7 @@ export type AgentSensitiveWordAvoidanceFeatureConfig = {
 
 export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
   enabled?: boolean
-  model?: AgentSoulModelConfig | null
+  model?: AgentSuggestedQuestionsAfterAnswerModelConfig | null
   prompt?: string | null
   [key: string]: unknown
 }
@@ -2845,11 +2878,30 @@ export type FileListInputConfig = {
   type?: 'file-list'
 }
 
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
 export type AgentModerationProviderConfig = {
   api_based_extension_id?: string | null
   inputs_config?: AgentModerationIoConfig | null
   keywords?: string | null
   outputs_config?: AgentModerationIoConfig | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
   [key: string]: unknown
 }
 
@@ -2903,10 +2955,6 @@ export type StringListSource = {
   type: ValueSourceType
   value?: Array<string>
 }
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AgentModerationIoConfig = {
   enabled?: boolean
@@ -3003,7 +3051,7 @@ export type AppDetailWithSiteWritable = {
   permission_keys?: Array<string>
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -3017,7 +3065,7 @@ export type WorkflowCommentBasicListWritable = {
 }
 
 export type WorkflowCommentMentionUsersPayloadWritable = {
-  users: Array<AccountWithRoleWritable>
+  users: Array<AccountWithRoleResponseWritable>
 }
 
 export type WorkflowCommentDetailWritable = {
@@ -3110,7 +3158,7 @@ export type WorkflowCommentBasicWritable = {
   updated_at?: number | null
 }
 
-export type AccountWithRoleWritable = {
+export type AccountWithRoleResponseWritable = {
   avatar?: string | null
   created_at?: number | null
   email: string
@@ -4035,7 +4083,7 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationJobStatusDetailResponse
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse
@@ -4159,7 +4207,7 @@ export type PostAppsByAppIdAnnotationsBatchImportErrors = {
 }
 
 export type PostAppsByAppIdAnnotationsBatchImportResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationBatchImportResponse
 }
 
 export type PostAppsByAppIdAnnotationsBatchImportResponse
@@ -4180,7 +4228,7 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
 }
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationJobStatusDetailResponse
 }
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse
@@ -4546,7 +4594,9 @@ export type PostAppsByAppIdCompletionMessagesErrors = {
 }
 
 export type PostAppsByAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdCompletionMessagesResponse
@@ -4623,6 +4673,7 @@ export type PostAppsByAppIdCopyErrors = {
 
 export type PostAppsByAppIdCopyResponses = {
   201: AppDetailWithSite
+  202: AppImportResponse
 }
 
 export type PostAppsByAppIdCopyResponse
@@ -5119,7 +5170,9 @@ export type PostAppsByAppIdTextToAudioErrors = {
 }
 
 export type PostAppsByAppIdTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdTextToAudioResponse

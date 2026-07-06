@@ -55,6 +55,13 @@ type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
+type UnhandledEventError = {
+  conversationId?: string
+  errorCode?: string
+  errorMessage: string
+  messageId?: string
+}
+type IOnUnhandledEvent = (event: Record<string, unknown>) => UnhandledEventError | void
 
 type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => void
 type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
@@ -103,6 +110,7 @@ export type IOtherOptions = {
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
+  onUnhandledEvent?: IOnUnhandledEvent
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
 
@@ -227,6 +235,7 @@ export const handleStream = (
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
   onDataSourceNodeError?: IOnDataSourceNodeError,
   onReasoning?: IOnReasoning,
+  onUnhandledEvent?: IOnUnhandledEvent,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -391,6 +400,18 @@ export const handleStream = (
               onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
             }
             else {
+              const unhandledEventError = onUnhandledEvent?.(bufferObj)
+              if (unhandledEventError) {
+                onData('', false, {
+                  conversationId: unhandledEventError.conversationId,
+                  messageId: unhandledEventError.messageId ?? '',
+                  errorMessage: unhandledEventError.errorMessage,
+                  errorCode: unhandledEventError.errorCode,
+                })
+                hasError = true
+                onCompleted?.(true, unhandledEventError.errorMessage)
+                return
+              }
               console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
             }
           }
@@ -513,6 +534,7 @@ export const ssePost = async (
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
+    onUnhandledEvent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -622,6 +644,7 @@ export const ssePost = async (
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
         onReasoning,
+        onUnhandledEvent,
       )
     })
     .catch((e) => {
@@ -673,6 +696,7 @@ export const sseGet = async (
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
+    onUnhandledEvent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -775,6 +799,7 @@ export const sseGet = async (
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
         onReasoning,
+        onUnhandledEvent,
       )
     })
     .catch((e) => {

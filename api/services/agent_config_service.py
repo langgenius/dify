@@ -496,13 +496,16 @@ class AgentConfigService:
                 user_id=user_id,
             )
             self._require_writable(target, surface=surface)
-            skill_ref, _package = self._skill_normalizer.normalize(
-                content=content,
-                filename=filename,
-                requested_name=None,
-                tenant_id=tenant_id,
-                user_id=user_id,
-            )
+            try:
+                skill_ref, _package = self._skill_normalizer.normalize(
+                    content=content,
+                    filename=filename,
+                    requested_name=None,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                )
+            except SkillPackageError as exc:
+                raise AgentConfigServiceError(exc.code, exc.message, status_code=exc.status_code) from exc
             agent_soul = target.agent_soul.model_copy(deep=True)
             existing = {item.name: item for item in agent_soul.config_skills}
             order = [item.name for item in agent_soul.config_skills]

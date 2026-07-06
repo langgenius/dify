@@ -557,7 +557,7 @@ describe('List', () => {
       expect(createMenuHighlightPart?.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
     })
 
-    it('should render search before the right aligned actions', () => {
+    it('should render filters and search before the right aligned actions', () => {
       renderList()
 
       const creatorsButton = screen.getByRole('button', { name: 'Creators' })
@@ -567,9 +567,9 @@ describe('List', () => {
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
       expect(snippetsLink).toHaveAttribute('href', '/snippets')
-      expect(creatorsButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(searchInput.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(sortButton.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
 

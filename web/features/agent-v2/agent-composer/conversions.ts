@@ -171,11 +171,22 @@ const toToolRuntimeParameters = (settings: Record<string, unknown> | undefined) 
 
 const getDifyToolActionId = (tool: AgentSoulDifyToolConfig) => `${tool.provider_id ?? tool.provider ?? tool.plugin_id ?? 'provider'}:${tool.tool_name ?? tool.name ?? 'tool'}`
 
-const toCredentialVariant = (credentialType: AgentSoulDifyToolConfig['credential_type']) => {
+const toCredentialVariant = (tool: AgentSoulDifyToolConfig) => {
+  const credentialType = tool.credential_type
+
   if (credentialType === 'api-key')
     return 'authorized' as const
 
+  if (credentialType === 'oauth2')
+    return tool.credential_ref?.id ? 'authorized' as const : 'unauthorized' as const
+
   if (credentialType === 'unauthorized')
+    return 'unauthorized' as const
+
+  if (tool.credential_ref?.id)
+    return 'authorized' as const
+
+  if (credentialType === 'api-key' || credentialType === 'oauth2')
     return 'unauthorized' as const
 
   return 'none' as const
@@ -216,13 +227,13 @@ const toProviderToolFormState = (config?: AgentSoulConfig): {
       kind: 'provider',
       iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
       providerType: tool.provider_type,
-      allowDelete: tool.credential_type === 'api-key' || tool.credential_type === 'unauthorized',
+      allowDelete: tool.credential_type === 'api-key' || tool.credential_type === 'oauth2' || tool.credential_type === 'unauthorized',
       credentialId: tool.credential_ref?.id ?? undefined,
-      credentialKey: tool.credential_type === 'api-key'
+      credentialKey: tool.credential_type === 'api-key' || tool.credential_type === 'oauth2'
         ? 'agentDetail.configure.tools.credential.authOne'
         : undefined,
       credentialType: tool.credential_type,
-      credentialVariant: toCredentialVariant(tool.credential_type),
+      credentialVariant: toCredentialVariant(tool),
       actions: [action],
     })
   }
@@ -240,6 +251,10 @@ const toDifyToolConfigs = (
   if (tool.kind !== 'provider')
     return []
 
+  const credentialType = tool.credentialId
+    ? tool.credentialType ?? 'api-key'
+    : 'unauthorized'
+
   return tool.actions.map(action => ({
     enabled: true,
     provider: tool.name,
@@ -247,7 +262,7 @@ const toDifyToolConfigs = (
     provider_type: tool.providerType ?? 'builtin',
     tool_name: action.toolName,
     runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
-    credential_type: tool.credentialType ?? (tool.credentialVariant === 'authorized' ? 'api-key' as const : 'unauthorized' as const),
+    credential_type: credentialType,
     credential_ref: tool.credentialId
       ? {
           id: tool.credentialId,
@@ -535,7 +550,7 @@ export const formStateToAgentSoulConfig = ({
     env: toEnvConfig(formState.envVariables),
     config_skills: toConfigSkillConfigs(formState.skills, baseConfig),
     config_files: toConfigFileConfigs(formState.files, baseConfig),
-    config_note: baseConfig?.config_note ?? '',
+    config_note: formState.configNote,
   }
 }
 
@@ -547,6 +562,7 @@ export const agentSoulConfigToFormState = (
 
   return {
     ...baseDraft,
+    configNote: config?.config_note ?? '',
     prompt: config?.prompt?.system_prompt ?? '',
     model: toDraftModel(config),
     appFeatures: config?.app_features,

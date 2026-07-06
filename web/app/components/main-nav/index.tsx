@@ -75,11 +75,11 @@ export function MainNav({
   return (
     <aside
       className={cn(
-        'relative flex h-full w-60 shrink-0 flex-col overflow-hidden bg-background-body transition-all',
+        'relative flex h-full w-62 shrink-0 flex-col overflow-hidden bg-background-body p-1 transition-all',
         className,
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 w-60 flex-1 flex-col overflow-hidden">
         <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
           {renderLogo()}
           <MainNavSearchButton />

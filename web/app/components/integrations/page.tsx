@@ -44,9 +44,9 @@ const headerDescriptionDocPaths: Partial<Record<IntegrationSection, string>> = {
   'custom-tool': '/use-dify/workspace/tools#custom-tool',
   'workflow-tool': '/use-dify/workspace/tools#workflow-tool',
   'mcp': '/use-dify/build/mcp',
-  'custom-endpoint': '/use-dify/workspace/api-extension/api-extension',
+  'custom-endpoint': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
   'trigger': '/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin',
-  'extension': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
+  'extension': '/use-dify/workspace/api-extension/api-extension',
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
 }
 

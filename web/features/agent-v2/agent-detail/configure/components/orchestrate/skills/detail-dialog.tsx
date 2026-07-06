@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DialogCloseButton,
   DialogContent,
@@ -26,6 +27,11 @@ type AgentSkillDetailSection = {
 export type AgentSkillDetail = {
   description: string
   fileCount?: number
+  fileListHeader?: ReactNode
+  fileListLoading?: boolean
+  fileListPanelClassName?: string
+  fileListTreeClassName?: string
+  fileListTreeListClassName?: string
   fileListTitle?: string
   files: AgentSkillFileNode[]
   folderOpenState?: (context: { file: AgentSkillFileNode, depth: number }) => boolean
@@ -41,6 +47,8 @@ export type AgentSkillDetail = {
     isLoading?: boolean
   }
   onFolderOpenChange?: (context: { file: AgentSkillFileNode, depth: number, open: boolean }) => void
+  onFolderDoubleClick?: (context: { file: AgentSkillFileNode, depth: number }) => void
+  onDownloadFile?: () => void
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: (context: { file: AgentSkillFileNode, depth: number }) => ReactNode
   selectedFileId?: string
@@ -50,48 +58,75 @@ export type AgentSkillDetail = {
 const keepSkillFoldersClosed = () => false
 
 function AgentSkillFileList({
+  fileListHeader,
+  fileListLoading,
+  fileListTreeClassName,
+  fileListTreeListClassName,
   fileListTitle,
   files,
   folderOpenState,
   onFolderOpenChange,
+  onFolderDoubleClick,
   onSelectFile,
   renderFolderSuffix,
   selectedFileId,
 }: {
+  fileListHeader?: ReactNode
+  fileListLoading?: boolean
+  fileListTreeClassName?: string
+  fileListTreeListClassName?: string
   fileListTitle?: string
   files: AgentSkillFileNode[]
   folderOpenState?: AgentSkillDetail['folderOpenState']
   onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
+  onFolderDoubleClick?: AgentSkillDetail['onFolderDoubleClick']
   onSelectFile?: (file: AgentSkillFileNode) => void
   renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
 }) {
   const { t } = useTranslation('agentV2')
 
+  if (fileListLoading) {
+    return (
+      <div className={cn('flex h-full flex-col bg-background-section', fileListTreeClassName)}>
+        {fileListHeader ?? (
+          <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
+            {fileListTitle ?? t('agentDetail.configure.skills.detail.files')}
+          </h3>
+        )}
+        <div className="flex min-h-0 flex-1 items-center justify-center">
+          <Loading type="area" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <AgentFileTree
       files={files}
       selectedFileId={selectedFileId}
       labelledBy="agent-skill-detail-files-heading"
-      className="h-full bg-background-section p-1"
+      className={cn('h-full bg-background-section p-1', fileListTreeClassName)}
+      listClassName={fileListTreeListClassName}
       scrollAreaClassName="flex-1"
       folderOpenStrategy={keepSkillFoldersClosed}
       folderOpenState={folderOpenState}
       onFolderOpenChange={onFolderOpenChange}
+      onFolderDoubleClick={onFolderDoubleClick}
       renderFile={onSelectFile
-        ? ({ file, selected, children }) => (
-            <FileTreeFile selected={selected} onClick={() => onSelectFile(file)}>
+        ? ({ depth, file, selected, children }) => (
+            <FileTreeFile level={depth} selected={selected} onClick={() => onSelectFile(file)}>
               {children}
             </FileTreeFile>
           )
         : undefined}
       renderFolderSuffix={renderFolderSuffix}
       header={(
-        <>
+        fileListHeader ?? (
           <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
             {fileListTitle ?? t('agentDetail.configure.skills.detail.files')}
           </h3>
-        </>
+        )
       )}
     />
   )
@@ -176,29 +211,25 @@ function AgentFilePreviewContent({
   }
 
   if (binary) {
-    if (downloadUrl) {
-      return (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 px-4">
-          <span className="system-sm-regular text-text-tertiary">
-            {t('agentDetail.configure.files.preview.unsupported')}
-          </span>
-          <a
-            href={downloadUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span aria-hidden className="i-ri-download-2-line size-4 shrink-0" />
-            <span className="shrink-0">{tCommon('operation.download')}</span>
-          </a>
-        </div>
-      )
-    }
-
     return (
-      <p className="px-4 system-sm-regular text-text-tertiary">
-        {t('agentDetail.configure.files.preview.empty')}
-      </p>
+      <div className="flex min-w-0 flex-wrap items-center gap-2 px-4">
+        <span className="system-sm-regular text-text-tertiary">
+          {t('agentDetail.configure.files.preview.unsupported')}
+        </span>
+        <a
+          href={downloadUrl || '#'}
+          onClick={(event) => {
+            if (!downloadUrl)
+              event.preventDefault()
+          }}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md px-2 py-1 system-sm-medium text-text-accent outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          <span aria-hidden className="i-ri-download-2-line size-4 shrink-0" />
+          <span className="shrink-0">{tCommon('operation.download')}</span>
+        </a>
+      </div>
     )
   }
 
@@ -210,19 +241,27 @@ function AgentFilePreviewContent({
     )
   }
 
-  const lines = content.split('\n')
+  const lines = content.split('\n').map((line, index) => ({
+    content: line,
+    key: `${index}:${line}`,
+    lineNumber: String(index + 1).padStart(2, '0'),
+  }))
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-auto px-2 pb-4">
-      <pre
-        aria-hidden="true"
-        className="m-0 w-7 shrink-0 pr-2 text-right font-mono text-[13px] leading-[22px] text-text-quaternary select-none"
-      >
-        {lines.map((_, index) => String(index + 1).padStart(2, '0')).join('\n')}
-      </pre>
-      <pre className="m-0 min-w-max flex-1 font-mono text-[13px] leading-[22px] whitespace-pre text-text-primary">
-        {content}
-      </pre>
+    <div className="min-h-0 flex-1 overflow-auto px-2 pb-4 font-mono text-[13px] leading-[22px]">
+      {lines.map(line => (
+        <div key={line.key} className="flex min-w-0 items-start">
+          <span
+            aria-hidden="true"
+            className="w-7 shrink-0 pr-2 text-right text-text-quaternary select-none"
+          >
+            {line.lineNumber}
+          </span>
+          <code className="block min-w-0 flex-1 [overflow-wrap:anywhere] break-words whitespace-pre-wrap text-text-primary">
+            {line.content}
+          </code>
+        </div>
+      ))}
     </div>
   )
 }
@@ -235,11 +274,12 @@ export function AgentSkillDetailDialog({
   detail: AgentSkillDetail
 }) {
   const { t } = useTranslation('agentV2')
+  const { t: tCommon } = useTranslation('common')
   const previewTitle = detail.filePreview?.fileName
 
   return (
     <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed" className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0">
-      <div className="flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section">
+      <div className={cn('flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section', detail.fileListPanelClassName)}>
         <DialogDescription className="sr-only">
           {detail.description}
         </DialogDescription>
@@ -248,10 +288,15 @@ export function AgentSkillDetailDialog({
         </DialogTitle>
         <div className="min-h-0 w-full">
           <AgentSkillFileList
+            fileListHeader={detail.fileListHeader}
+            fileListLoading={detail.fileListLoading}
+            fileListTreeClassName={detail.fileListTreeClassName}
+            fileListTreeListClassName={detail.fileListTreeListClassName}
             fileListTitle={detail.fileListTitle}
             files={detail.files}
             folderOpenState={detail.folderOpenState}
             onFolderOpenChange={detail.onFolderOpenChange}
+            onFolderDoubleClick={detail.onFolderDoubleClick}
             selectedFileId={detail.selectedFileId}
             onSelectFile={detail.onSelectFile}
             renderFolderSuffix={detail.renderFolderSuffix}
@@ -267,7 +312,19 @@ export function AgentSkillDetailDialog({
               </h2>
             )}
           </div>
-          <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
+          <div className="flex shrink-0 items-center gap-1">
+            {detail.onDownloadFile && previewTitle && (
+              <button
+                type="button"
+                aria-label={`${tCommon('operation.download')} ${previewTitle}`}
+                onClick={detail.onDownloadFile}
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              >
+                <span aria-hidden className="i-ri-download-line size-4" />
+              </button>
+            )}
+            <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
+          </div>
         </div>
         <ScrollArea
           className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"

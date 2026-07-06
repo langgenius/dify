@@ -500,6 +500,13 @@ export const zMessageMoreLikeThisQuery = z.object({
 })
 
 /**
+ * PassportAccessTokenResponse
+ */
+export const zPassportAccessTokenResponse = z.object({
+  access_token: z.string(),
+})
+
+/**
  * PassportQuery
  */
 export const zPassportQuery = z.object({
@@ -1180,7 +1187,7 @@ export const zGetPassportQuery = z.object({
 /**
  * Passport retrieved successfully
  */
-export const zGetPassportResponse = zAccessTokenData
+export const zGetPassportResponse = zPassportAccessTokenResponse
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 

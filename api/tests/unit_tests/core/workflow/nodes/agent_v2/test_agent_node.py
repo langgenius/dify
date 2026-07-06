@@ -2,7 +2,6 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
-import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
@@ -27,12 +26,12 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentRuntimeSessionStore,
     WorkflowAgentSessionScope,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import GraphInitParams
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
-from graphon.nodes.human_input.entities import UserActionConfig
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -49,13 +48,6 @@ class FakeCredentialsProvider:
         assert provider_name == "openai"
         assert model_name == "gpt-test"
         return {"api_key": "secret-key"}
-
-
-@pytest.fixture(autouse=True)
-def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
-    )
 
 
 def _restored_file(*, transfer_method: FileTransferMethod, reference: str) -> File:
@@ -281,7 +273,8 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert agent_log["agent_backend"]["run_id"] == "fake-run-1"
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
-    assert result.inputs["agent_backend_request"]["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
+    assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
 
 
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
@@ -510,7 +503,7 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)
 
     # ENG-636: the PAUSED scenario emits a dify.ask_human deferred call, so the
-    # node now builds a HITL form and pauses with HumanInputRequired. Stub the
+    # node now builds a HITL form and pauses with HitlRequired. Stub the
     # form repository so the unit test stays DB-free.
     fake_repo = MagicMock()
     fake_repo.create_form.return_value = MagicMock(id="form-1")
@@ -520,8 +513,8 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
 
     assert len(events) == 1
     assert isinstance(events[0], PauseRequestedEvent)
-    assert isinstance(events[0].reason, HumanInputRequired)
-    assert events[0].reason.form_id == "form-1"
+    assert isinstance(events[0].reason, HitlRequired)
+    assert events[0].reason.session_id == "form-1"
     assert events[0].reason.node_id == "agent-node"
     fake_repo.create_form.assert_called_once()
     assert store.saved
@@ -585,7 +578,7 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
         form_id="form-1",
         form_content="Approve?",
         inputs=[],
-        actions=[UserActionConfig(id="ok", title="OK")],
+        actions=[],
         node_id="agent-node",
         node_title="Budget review",
     )
@@ -601,7 +594,7 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
 
     assert len(events) == 1
     assert isinstance(events[0], PauseRequestedEvent)
-    assert isinstance(events[0].reason, HumanInputRequired)
+    assert isinstance(events[0].reason, HitlRequired)
     assert client.request is None  # no second Agent run was created
 
 

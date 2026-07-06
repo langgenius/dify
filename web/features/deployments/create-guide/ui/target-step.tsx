@@ -3,8 +3,7 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
@@ -119,9 +118,10 @@ function EnvironmentOptionRow({ environment }: {
   const summary = environment.description.trim() || `${t(`mode.${environment.mode}`)} · ${t(`backend.${environment.backend}`)}`
 
   return (
-    <RadioRoot<string>
+    <RadioItem<string>
       value={environment.id}
-      variant="unstyled"
+      nativeButton
+      render={<button type="button" />}
       className={cn(
         'group flex cursor-pointer items-center gap-3 rounded-xl border p-3 outline-hidden',
         'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
@@ -138,7 +138,7 @@ function EnvironmentOptionRow({ environment }: {
           </span>
         </TitleTooltip>
       </span>
-    </RadioRoot>
+    </RadioItem>
   )
 }
 

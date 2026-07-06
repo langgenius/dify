@@ -29,21 +29,6 @@ type Story = StoryObj<typeof meta>
 
 const verticalContentStyle = { minWidth: 0 } satisfies React.CSSProperties
 
-const appRows = [
-  { name: 'Invoice Copilot', meta: 'Pinned', icon: 'i-ri-file-list-3-line', selected: true, pinned: true },
-  { name: 'RAG Ops Console', meta: 'Ops', icon: 'i-ri-database-2-line', selected: false, pinned: true },
-  { name: 'Knowledge Studio', meta: 'Docs', icon: 'i-ri-book-open-line', selected: false, pinned: true },
-  { name: 'Workflow Studio', meta: 'Build', icon: 'i-ri-flow-chart', selected: false, pinned: true },
-  { name: 'Agent Playground', meta: 'Lab', icon: 'i-ri-robot-2-line', selected: false, pinned: false },
-  { name: 'Sales Briefing', meta: 'Team', icon: 'i-ri-presentation-line', selected: false, pinned: false },
-  { name: 'Support Triage', meta: 'Queue', icon: 'i-ri-customer-service-2-line', selected: false, pinned: false },
-  { name: 'Legal Review', meta: 'Beta', icon: 'i-ri-scales-3-line', selected: false, pinned: false },
-  { name: 'Release Watcher', meta: 'Feed', icon: 'i-ri-rocket-line', selected: false, pinned: false },
-  { name: 'Security Radar', meta: 'Risk', icon: 'i-ri-shield-check-line', selected: false, pinned: false },
-  { name: 'Partner Portal', meta: 'Ext', icon: 'i-ri-handshake-line', selected: false, pinned: false },
-  { name: 'QA Replays', meta: 'Debug', icon: 'i-ri-replay-line', selected: false, pinned: false },
-] as const
-
 const articleParagraphs = [
   'Vernacular architecture is building done outside any academic tradition, and without professional guidance. It is not a particular architectural movement or style, but rather a broad category, encompassing a wide range and variety of building types, with differing methods of construction, from around the world, both historical and extant and classical and modern.',
   'This type of architecture usually serves immediate, local needs, is constrained by the materials available in its particular region, and reflects local traditions and cultural practices. The study of vernacular architecture does not examine formally schooled architects, but instead the design skills and tradition of local builders.',
@@ -291,64 +276,4 @@ export const BothAxes: Story = {
       </ScrollAreaRoot>
     </StorySection>
   ),
-}
-
-export const AppSidebar: Story = {
-  render: () => {
-    const pinnedCount = appRows.filter(row => row.pinned).length
-
-    return (
-      <StorySection
-        eyebrow="Application"
-        title="Main navigation list"
-        description="A Dify-like sidebar keeps business UI outside the primitive while preserving the same Root, Viewport, Content, Scrollbar anatomy."
-      >
-        <div className="w-full max-w-70 rounded-xl bg-background-default-subtle p-3">
-          <div className="mb-4 flex h-8 items-center gap-2 rounded-lg bg-state-base-active px-2 text-text-accent">
-            <span className="i-ri-apps-fill size-4 shrink-0" aria-hidden />
-            <span className="min-w-0 truncate system-sm-semibold">Explore</span>
-          </div>
-          <div className="mb-1.5 flex items-center justify-between px-2">
-            <span className="system-xs-medium-uppercase text-text-tertiary">Web apps</span>
-            <span className="system-xs-medium text-text-quaternary">{appRows.length}</span>
-          </div>
-          <ScrollAreaRoot className="relative h-76 min-w-0">
-            <ScrollAreaViewport aria-label="Web apps" role="region" className="h-full max-h-full max-w-full rounded-lg bg-transparent">
-              <VerticalContent className="space-y-0.5 pr-3">
-                {appRows.map((row, index) => (
-                  <div key={row.name} className="space-y-0.5">
-                    <button
-                      type="button"
-                      className={cn(
-                        'flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-lg px-2 text-left transition-colors outline-none focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-solid focus-visible:outline-state-accent-solid',
-                        row.selected
-                          ? 'bg-state-base-active text-components-menu-item-text-active'
-                          : 'text-components-menu-item-text hover:bg-state-base-hover hover:text-components-menu-item-text-hover',
-                      )}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-components-icon-bg-blue-solid text-components-avatar-shape-fill-stop-100">
-                          <span aria-hidden className={cn(row.icon, 'size-3.5')} />
-                        </span>
-                        <span className="min-w-0 truncate system-sm-regular">{row.name}</span>
-                      </span>
-                      <span className="shrink-0 rounded-md border border-divider-subtle bg-components-panel-bg-alt px-1.5 py-0.5 system-2xs-medium-uppercase text-text-quaternary">
-                        {row.meta}
-                      </span>
-                    </button>
-                    {index === pinnedCount - 1 && index !== appRows.length - 1 && (
-                      <div className="my-1 h-px bg-divider-subtle" />
-                    )}
-                  </div>
-                ))}
-              </VerticalContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
-        </div>
-      </StorySection>
-    )
-  },
 }

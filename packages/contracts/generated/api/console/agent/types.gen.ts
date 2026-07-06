@@ -18,7 +18,7 @@ export type AgentAppCreatePayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name: string
-  role: string
+  role?: string | null
 }
 
 export type AgentAppDetailWithSite = {
@@ -52,7 +52,7 @@ export type AgentAppDetailWithSite = {
   role?: string | null
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -74,7 +74,7 @@ export type AgentAppUpdatePayload = {
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
-  role: string
+  role?: string | null
   use_icon_as_answer_icon?: boolean | null
 }
 
@@ -120,12 +120,8 @@ export type AgentSimpleResultResponse = {
 }
 
 export type AgentBuildDraftResponse = {
-  agent_soul: {
-    [key: string]: unknown
-  }
-  draft: {
-    [key: string]: unknown
-  }
+  agent_soul: AgentSoulConfig
+  draft: AgentConfigDraftSummaryResponse
   variant: string
 }
 
@@ -378,16 +374,16 @@ export type AgentLogMessageListResponse = {
 }
 
 export type MessageDetailResponse = {
-  agent_thoughts?: Array<AgentThought>
+  agent_thoughts: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
-  answer_tokens?: number | null
+  answer_tokens: number
   conversation_id: string
   created_at?: number | null
   error?: string | null
   extra_contents?: Array<HumanInputContent>
-  feedbacks?: Array<Feedback>
+  feedbacks: Array<Feedback>
   from_account_id?: string | null
   from_end_user_id?: string | null
   from_source: string
@@ -395,12 +391,12 @@ export type MessageDetailResponse = {
   inputs: {
     [key: string]: JsonValue
   }
-  message?: JsonValue | null
-  message_files?: Array<MessageFile>
-  message_tokens?: number | null
-  metadata?: JsonValue | null
+  message: JsonValue
+  message_files: Array<MessageFile>
+  message_tokens: number
+  metadata: JsonValue
   parent_message_id?: string | null
-  provider_response_latency?: number | null
+  provider_response_latency: number
   query: string
   status: string
   workflow_run_id?: string | null
@@ -411,18 +407,19 @@ export type AgentPublishPayload = {
 }
 
 export type AgentPublishResponse = {
-  active_config_snapshot?: {
-    [key: string]: unknown
-  } | null
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   active_config_snapshot_id: string
-  draft?: {
-    [key: string]: unknown
-  } | null
+  draft?: AgentConfigDraftSummaryResponse | null
   result: string
 }
 
 export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
+}
+
+export type SandboxInfoResponse = {
+  session_id: string
+  workspace_cwd: string
 }
 
 export type SandboxListResponse = {
@@ -445,8 +442,7 @@ export type AgentSandboxUploadPayload = {
 }
 
 export type SandboxUploadResponse = {
-  file: SandboxToolFileResponse
-  path: string
+  url: string
 }
 
 export type AgentSkillUploadResponse = {
@@ -578,17 +574,6 @@ export type Tag = {
   type: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -650,6 +635,18 @@ export type AgentSoulConfig = {
   tools?: AgentSoulToolsConfig
 }
 
+export type AgentConfigDraftSummaryResponse = {
+  account_id?: string | null
+  agent_id: string
+  base_snapshot_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  draft_type: AgentConfigDraftType
+  id: string
+  updated_at?: number | null
+  updated_by?: string | null
+}
+
 export type ComposerBindingPayload = {
   agent_id?: string | null
   binding_type: 'inline_agent' | 'roster_agent'
@@ -709,18 +706,6 @@ export type AgentComposerAgentResponse = {
   scope: AgentScope
   source?: AgentSource | null
   status: AgentStatus
-}
-
-export type AgentConfigDraftSummaryResponse = {
-  account_id?: string | null
-  agent_id: string
-  base_snapshot_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  draft_type: AgentConfigDraftType
-  id: string
-  updated_at?: number | null
-  updated_by?: string | null
 }
 
 export type ComposerValidationFindingsResponse = {
@@ -860,7 +845,7 @@ export type AgentSensitiveWordAvoidanceFeatureConfig = {
 
 export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
   enabled?: boolean
-  model?: AgentSoulModelConfig | null
+  model?: AgentSuggestedQuestionsAfterAnswerModelConfig | null
   prompt?: string | null
   [key: string]: unknown
 }
@@ -979,6 +964,17 @@ export type Feedback = {
   rating: string
 }
 
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+
 export type MessageFile = {
   belongs_to?: string | null
   filename: string
@@ -1009,11 +1005,6 @@ export type SandboxFileEntryResponse = {
   name: string
   size?: number | null
   type: 'dir' | 'file' | 'other' | 'symlink'
-}
-
-export type SandboxToolFileResponse = {
-  reference: string
-  transfer_method?: 'tool_file'
 }
 
 export type SkillManifest = {
@@ -1081,7 +1072,7 @@ export type AgentConfigRevisionResponse = {
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
-  model?: JsonValue | null
+  model?: unknown | null
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
@@ -1119,6 +1110,7 @@ export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'work
 export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
@@ -1202,6 +1194,8 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
+export type AgentConfigDraftType = 'debug_build' | 'draft'
+
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
@@ -1268,8 +1262,6 @@ export type WorkflowPreviousNodeOutputRef = {
   [key: string]: unknown
 }
 
-export type AgentConfigDraftType = 'debug_build' | 'draft'
-
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
 export type AgentCliToolConfig = {
@@ -1327,6 +1319,16 @@ export type AgentModerationProviderConfig = {
   inputs_config?: AgentModerationIoConfig | null
   keywords?: string | null
   outputs_config?: AgentModerationIoConfig | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
   [key: string]: unknown
 }
 
@@ -1420,6 +1422,16 @@ export type AgentConfigRevisionOperation
     | 'save_new_agent'
     | 'save_new_version'
     | 'save_to_roster'
+
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
 
 export type AgentSecretRefConfig = {
   credential_id?: string | null
@@ -1672,6 +1684,15 @@ export type FormInputConfig
 
 export type JsonValue2 = unknown
 
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
 export type AgentKnowledgeDatasetConfig = {
   description?: string | null
   id?: string | null
@@ -1794,10 +1815,6 @@ export type StringListSource = {
   value?: Array<string>
 }
 
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
-
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
     | '<'
@@ -1862,7 +1879,7 @@ export type AgentAppDetailWithSiteWritable = {
   role?: string | null
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -2983,6 +3000,24 @@ export type GetAgentByAgentIdReferencingWorkflowsResponses = {
 
 export type GetAgentByAgentIdReferencingWorkflowsResponse
   = GetAgentByAgentIdReferencingWorkflowsResponses[keyof GetAgentByAgentIdReferencingWorkflowsResponses]
+
+export type GetAgentByAgentIdSandboxData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    conversation_id: string
+  }
+  url: '/agent/{agent_id}/sandbox'
+}
+
+export type GetAgentByAgentIdSandboxResponses = {
+  200: SandboxInfoResponse
+}
+
+export type GetAgentByAgentIdSandboxResponse
+  = GetAgentByAgentIdSandboxResponses[keyof GetAgentByAgentIdSandboxResponses]
 
 export type GetAgentByAgentIdSandboxFilesData = {
   body?: never

@@ -5,6 +5,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { pluginInstallLimit } from '@/app/components/plugins/install-plugin/hooks/use-install-plugin-limit'
+import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 
@@ -154,11 +155,11 @@ export function useInstallMultiState({
         const pluginInfo = (pluginId ? pluginById.get(pluginId) : undefined) || payloads[requestIndex]?.plugin
 
         if (pluginInfo) {
-          pluginMap.set(request.dslIndex, {
+          pluginMap.set(request.dslIndex, getFormattedPlugin({
             ...pluginInfo,
             from: request.dependency.type,
             version: pluginInfo.version || pluginInfo.latest_version,
-          })
+          }))
         }
         else { errorSet.add(request.dslIndex) }
       })

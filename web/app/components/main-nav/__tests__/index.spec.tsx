@@ -510,7 +510,11 @@ describe('MainNav', () => {
   it('aligns the global navigation spacing with the main sidebar design', async () => {
     mockInstalledApps = [createInstalledApp()]
 
-    renderMainNav()
+    const { container } = renderMainNav()
+
+    const mainNav = container.querySelector('aside')
+    expect(mainNav).toHaveClass('w-62', 'p-1')
+    expect(mainNav?.firstElementChild).toHaveClass('w-60')
 
     const logoLink = screen.getByLabelText('Dify')
     expect(logoLink).not.toHaveClass('px-2')
@@ -524,6 +528,8 @@ describe('MainNav', () => {
     expect(webAppsButton.parentElement).toHaveClass('py-1', 'pr-2', 'pl-2')
 
     const helpButton = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    expect(helpButton.parentElement?.parentElement).toHaveClass('w-60')
+    expect(helpButton.parentElement?.parentElement).not.toHaveClass('w-full')
     expect(helpButton.parentElement).toHaveClass('shrink-0', 'rounded-full', 'p-1')
   })
 
@@ -983,7 +989,8 @@ describe('MainNav', () => {
     })
 
     expect(screen.queryByText('Alpha App')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Beta Tool' })).toHaveAttribute('href', '/installed/installed-2')
+    expect(screen.getByText('Beta Tool')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' })).toHaveAttribute('href', '/installed/installed-2')
   })
 
   it('renders web app skeleton rows while installed apps are loading', () => {

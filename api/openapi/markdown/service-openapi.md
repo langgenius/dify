@@ -1046,12 +1046,12 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Streaming response with node execution events. | **text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Dataset not found. |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Streaming response with node execution events. |
+| 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - dataset API access or workspace access denied |
+| 404 | `not_found` : Dataset not found. |
 
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Run Pipeline**
@@ -2960,7 +2960,7 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | [ [DatasourceCredentialInfoResponse](#datasourcecredentialinforesponse) ] |  | Yes |
+| credentials | [ [DatasourceCredentialInfoResponse](#datasourcecredentialinforesponse) ] |  | No |
 | datasource_type | string |  | No |
 | node_id | string |  | No |
 | plugin_id | string |  | No |
@@ -3937,7 +3937,7 @@ Model class for provider with models response.
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
-#### SimpleAccount
+#### SimpleAccountResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -4148,7 +4148,7 @@ in form definiton, or a variable while the workflow is running.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | created_from | string |  | No |

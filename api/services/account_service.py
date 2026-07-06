@@ -38,6 +38,8 @@ from models.account import (
     Tenant,
     TenantAccountJoin,
     TenantAccountRole,
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
@@ -1257,13 +1259,13 @@ class TenantService:
         session.add(tenant)
         session.commit()
 
-        for category in TenantPluginAutoUpgradeStrategy.PluginCategory:
+        for category in TenantPluginAutoUpgradeCategory:
             plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
                 tenant_id=tenant.id,
                 category=category,
                 strategy_setting=PluginAutoUpgradeService.default_strategy_setting_for_category(category),
                 upgrade_time_of_day=PluginAutoUpgradeService.default_upgrade_time_of_day(tenant.id),
-                upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
                 exclude_plugins=[],
                 include_plugins=[],
             )

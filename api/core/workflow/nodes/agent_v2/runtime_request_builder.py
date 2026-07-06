@@ -48,7 +48,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -206,17 +206,14 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        config_layer_config: DifyConfigLayerConfig | None = None
-        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
-        if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            config_layer_config, config_warnings = build_config_layer_config(
-                agent_soul,
-                agent_id=context.agent.id,
-                config_version_id=context.snapshot.id,
-                config_version_kind="snapshot",
-            )
-            append_runtime_warnings(metadata, config_warnings)
-            soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
+        config_layer_config, config_warnings = build_config_layer_config(
+            agent_soul,
+            agent_id=context.agent.id,
+            config_version_id=context.snapshot.id,
+            config_version_kind="snapshot",
+        )
+        append_runtime_warnings(metadata, config_warnings)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
@@ -357,16 +354,21 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> str:
         lines: list[str] = []
         query = get_system_text(context.variable_pool, SystemVariableKey.QUERY)
+        uploaded_files = self._summarize_uploaded_workflow_files(context.variable_pool)
         resolved_outputs = self._resolve_previous_node_outputs(
             context.variable_pool,
             node_job.previous_node_output_refs,
         )
-        if not query and not resolved_outputs:
+        if not query and uploaded_files is None and not resolved_outputs:
             return ""
 
         lines.append("Workflow context loaded for this run:")
         if query:
             lines.append(f"- User query: {query}")
+
+        if uploaded_files is not None:
+            lines.append("- Uploaded workflow files:")
+            lines.append(f"  - sys.files: {uploaded_files}")
 
         if resolved_outputs:
             lines.append("- Previous node outputs:")
@@ -375,6 +377,14 @@ class WorkflowAgentRuntimeRequestBuilder:
 
         lines.append("The above workflow context is run-specific. Do not treat it as Agent Soul or persistent memory.")
         return "\n".join(lines)
+
+    def _summarize_uploaded_workflow_files(self, variable_pool: VariablePoolReader) -> str | None:
+        files = get_system_value(variable_pool, SystemVariableKey.FILES)
+        if files is None:
+            return None
+        if isinstance(files, list | tuple) and not files:
+            return None
+        return self._summarize_value(files)
 
     def _build_workflow_task_prompt(
         self,
@@ -717,7 +727,7 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
             for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools if _cli_tool_enabled(item))
             if tool is not None
         ],
-        env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
+        env=_shell_env_vars(agent_soul.env.variables, agent_soul.env.secret_refs),
         secret_refs=[
             secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
         ],
@@ -864,8 +874,13 @@ def build_config_layer_config(
     agent_id: str | None = None,
     config_version_id: str | None = None,
     config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
-) -> tuple[DifyConfigLayerConfig | None, list[dict[str, str]]]:
-    """Derive prompt-mentioned eager-pull names from Agent Soul."""
+) -> tuple[DifyConfigLayerConfig, list[dict[str, str]]]:
+    """Build the always-present Agent config layer from Agent Soul state.
+
+    The ``dify.config`` layer must exist for every Agent v2 runtime request so
+    the backend can expose the config CLI/help surface even when the current
+    Agent Soul has no config assets, note, or prompt mentions.
+    """
 
     ordered_mentions = list(
         dict.fromkeys(
@@ -874,14 +889,6 @@ def build_config_layer_config(
             if mention.kind in {MentionKind.SKILL, MentionKind.FILE} and mention.ref_id
         )
     )
-    if (
-        not agent_soul.config_skills
-        and not agent_soul.config_files
-        and not agent_soul.config_note
-        and not ordered_mentions
-    ):
-        return None, []
-
     skill_names = {skill.name for skill in agent_soul.config_skills}
     file_names = {file_ref.name for file_ref in agent_soul.config_files}
     warnings: list[dict[str, str]] = []
@@ -968,11 +975,7 @@ def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
     if not commands and not isinstance(name, str):
         return None
     tool_env = data.get("env") if isinstance(data.get("env"), Mapping) else {}
-    env = [
-        env_var
-        for env_var in (_shell_env_var(item) for item in _env_entries(tool_env, "variables"))
-        if env_var is not None
-    ]
+    env = _shell_env_vars(_env_entries(tool_env, "variables"), _env_entries(tool_env, "secret_refs"))
     secret_refs = [
         secret_ref
         for secret_ref in (_shell_secret_ref(item) for item in _env_entries(tool_env, "secret_refs"))
@@ -995,6 +998,12 @@ def _env_entries(env: object, key: str) -> list[object]:
     return entries
 
 
+def _shell_env_vars(variables: Sequence[object], secret_refs: Sequence[object]) -> list[DifyShellEnvVarConfig]:
+    env_vars = [_shell_env_var(item) for item in variables]
+    secret_env_vars = [_shell_env_var(item) for item in secret_refs if _has_secret_value(item)]
+    return [env for env in [*env_vars, *secret_env_vars] if env is not None]
+
+
 def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
     data = _plain_mapping(item)
     name = _name_from_mapping(data)
@@ -1011,13 +1020,15 @@ def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
     name = _name_from_mapping(data)
     if name is None:
         return None
-    ref = (
-        data.get("ref")
-        or data.get("value")
-        or data.get("id")
-        or data.get("credential_id")
-        or data.get("provider_credential_id")
-    )
+    # Inline Composer values are passed as env vars because the agent-backend
+    # secret ref schema only accepts short backend-managed reference IDs.
+    if _has_secret_value(item):
+        return None
+    ref = data.get("ref") or data.get("credential_id") or data.get("provider_credential_id")
+    if ref is None:
+        ref = data.get("id")
+    if ref is None:
+        return None
     return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
 
 
@@ -1027,6 +1038,12 @@ def _plain_mapping(item: object) -> dict[str, Any]:
     if isinstance(item, Mapping):
         return dict(item)
     return {}
+
+
+def _has_secret_value(item: object) -> bool:
+    data = _plain_mapping(item)
+    value = data.get("value")
+    return isinstance(value, str) and bool(value)
 
 
 def _name_from_mapping(item: Mapping[str, Any]) -> str | None:
