@@ -2,7 +2,7 @@ import type { AddOAuthButtonProps } from '@/app/components/plugins/plugin-auth/t
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -507,6 +507,30 @@ describe('AgentTools', () => {
       expect(baseElement.querySelector('[style*="duckduckgo.svg"]')).toBeInTheDocument()
       expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
       expect(screen.getByText('Search Query')).toBeInTheDocument()
+    })
+
+    it('should close provider tool settings when the configured action leaves the draft', async () => {
+      const user = userEvent.setup()
+      toolProviderState.builtInTools = [duckDuckGoProvider]
+      const { store } = renderAgentToolsWithStore(agentToolsDraft)
+
+      await user.click(screen.getByRole('button', {
+        name: 'DuckDuckGo',
+      }))
+      await user.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"DuckDuckGo Search"}',
+      }))
+
+      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+
+      act(() => {
+        store.set(agentComposerDraftAtom, {
+          ...agentToolsDraft,
+          tools: [],
+        })
+      })
+
+      expect(screen.queryByTestId('tool-setting-form')).not.toBeInTheDocument()
     })
   })
 })
