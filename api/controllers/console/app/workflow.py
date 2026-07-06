@@ -1681,7 +1681,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
 
         node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
         if not node_config:
-            raise ValueError("Node data not found for node %s", node_id)
+            raise ValueError(f"Node data not found for node {node_id}")
         node_type: NodeType = draft_workflow.get_node_type_from_node_config(node_config)
         event: TriggerDebugEvent | None = None
         # for schedule trigger, when run single node, just execute directly

@@ -211,7 +211,7 @@ def create_event_poller(
 ) -> TriggerDebugEventPoller:
     node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
     if not node_config:
-        raise ValueError("Node data not found for node %s", node_id)
+        raise ValueError(f"Node data not found for node {node_id}")
     node_type = draft_workflow.get_node_type_from_node_config(node_config)
     if node_type == TRIGGER_PLUGIN_NODE_TYPE:
         return PluginTriggerDebugEventPoller(
@@ -225,7 +225,7 @@ def create_event_poller(
         return ScheduleTriggerDebugEventPoller(
             tenant_id=tenant_id, user_id=user_id, app_id=app_id, node_config=node_config, node_id=node_id
         )
-    raise ValueError("unable to create event poller for node type %s", node_type)
+    raise ValueError(f"unable to create event poller for node type {node_type}")
 
 
 def select_trigger_debug_events(
@@ -235,7 +235,7 @@ def select_trigger_debug_events(
     for node_id in node_ids:
         node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
         if not node_config:
-            raise ValueError("Node data not found for node %s", node_id)
+            raise ValueError(f"Node data not found for node {node_id}")
         poller: TriggerDebugEventPoller = create_event_poller(
             draft_workflow=draft_workflow,
             tenant_id=app_model.tenant_id,

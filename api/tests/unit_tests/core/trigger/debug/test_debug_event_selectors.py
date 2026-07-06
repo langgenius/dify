@@ -240,15 +240,23 @@ class TestCreateEventPoller:
         wf.get_node_config_by_id.return_value = {"data": {}}
         wf.get_node_type_from_node_config.return_value = BuiltinNodeTypes.START
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unable to create event poller for node type") as exc_info:
             create_event_poller(wf, "t1", "u1", "a1", "n1")
+
+        rendered = str(exc_info.value)
+        assert "%s" not in rendered
+        assert len(exc_info.value.args) == 1
 
     def test_raises_when_node_config_missing(self):
         wf = MagicMock()
         wf.get_node_config_by_id.return_value = None
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Node data not found for node n1") as exc_info:
             create_event_poller(wf, "t1", "u1", "a1", "n1")
+
+        rendered = str(exc_info.value)
+        assert "%s" not in rendered
+        assert len(exc_info.value.args) == 1
 
 
 class TestSelectTriggerDebugEvents:
@@ -280,3 +288,17 @@ class TestSelectTriggerDebugEvents:
             result = select_trigger_debug_events(wf, app_model, "u1", ["n1"])
 
             assert result is None
+
+    def test_raises_when_node_config_missing(self):
+        wf = MagicMock()
+        wf.get_node_config_by_id.return_value = None
+        app_model = MagicMock()
+        app_model.tenant_id = "t1"
+        app_model.id = "a1"
+
+        with pytest.raises(ValueError, match="Node data not found for node n1") as exc_info:
+            select_trigger_debug_events(wf, app_model, "u1", ["n1"])
+
+        rendered = str(exc_info.value)
+        assert "%s" not in rendered
+        assert len(exc_info.value.args) == 1
