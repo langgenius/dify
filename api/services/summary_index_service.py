@@ -1,5 +1,6 @@
 """Summary index service for generating and managing document segment summaries."""
 
+from sqlalchemy import update
 import logging
 import time
 import uuid
@@ -911,12 +912,11 @@ class SummaryIndexService:
 
             # Disable summary records (don't delete)
             now = naive_utc_now()
-            for summary in summaries:
-                summary.enabled = False
-                summary.disabled_at = now
-                summary.disabled_by = disabled_by
-                session.add(summary)
-
+            session.execute(
+                update(DocumentSegmentSummary)
+                .where(DocumentSegmentSummary.id.in_(s.id for s in summaries))
+                .values(enabled=False, disabled_at=now, disabled_by=disabled_by)
+            )
             session.commit()
             logger.info("Disabled %s summary records for dataset %s", len(summaries), dataset.id)
 
