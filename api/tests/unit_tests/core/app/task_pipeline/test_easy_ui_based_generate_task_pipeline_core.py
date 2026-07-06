@@ -1280,7 +1280,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         usage_metadata = cast(dict[str, object], response.metadata["usage"])
         assert usage_metadata["prompt_tokens"] == 1
 
-    def test_record_files_returns_none_when_message_has_no_files(self, monkeypatch: pytest.MonkeyPatch):
+    def test_record_files_returns_empty_list_when_message_has_no_files(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
         pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -1316,7 +1316,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         response = pipeline._message_end_to_stream_response()
 
-        assert response.files is None
+        assert response.files == []
 
     def test_record_files_handles_local_fallback_and_tool_url_variants(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
