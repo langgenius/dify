@@ -721,6 +721,58 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert response is not None
         assert response.id == "thought"
 
+    def test_agent_thought_to_stream_response_normalizes_null_display_fields(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+
+        agent_thought = _agent_thought()
+        agent_thought.thought = None
+        agent_thought.observation = None
+        agent_thought.tool = None
+        agent_thought.tool_input = None
+        agent_thought.message_files = None
+
+        class _Session:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def scalar(self, *args, **kwargs):
+                return agent_thought
+
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.Session",
+            _Session,
+        )
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db",
+            _FakeDb(),
+        )
+
+        response = pipeline._agent_thought_to_stream_response(QueueAgentThoughtEvent(agent_thought_id="thought"))
+
+        assert response is not None
+        assert response.thought == ""
+        assert response.observation == ""
+        assert response.tool == ""
+        assert response.tool_input == ""
+        assert response.model_dump(mode="json")["message_files"] == []
+
     def test_process_routes_to_stream_and_starts_conversation_name_generation(self):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()

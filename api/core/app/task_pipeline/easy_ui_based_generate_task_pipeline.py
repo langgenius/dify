@@ -528,11 +528,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 task_id=self._application_generate_entity.task_id,
                 id=agent_thought.id,
                 position=agent_thought.position,
-                thought=agent_thought.thought,
-                observation=agent_thought.observation,
-                tool=agent_thought.tool,
+                thought=agent_thought.thought or "",
+                observation=agent_thought.observation or "",
+                tool=agent_thought.tool or "",
                 tool_labels=agent_thought.tool_labels,
-                tool_input=agent_thought.tool_input,
+                tool_input=agent_thought.tool_input or "",
                 message_files=agent_thought.files,
             )
 
