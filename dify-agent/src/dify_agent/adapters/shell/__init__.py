@@ -4,8 +4,6 @@ Keep this package root light so importing shell protocols does not eagerly
 require ``pydantic_settings`` or shellctl runtime dependencies.
 """
 
-from importlib import import_module
-
 from dify_agent.adapters.shell.protocols import (
     CompleteShellCommandResult,
     ShellCommandProtocol,
@@ -20,11 +18,21 @@ from dify_agent.adapters.shell.protocols import (
 
 
 def __getattr__(name: str) -> object:
-    if name in {"DEFAULT_SHELL_PROVIDER", "ShellAdapterSettings"}:
-        return getattr(import_module("dify_agent.adapters.shell.config"), name)
+    if name == "DEFAULT_SHELL_PROVIDER":
+        from dify_agent.adapters.shell.config import DEFAULT_SHELL_PROVIDER
+
+        return DEFAULT_SHELL_PROVIDER
+    if name == "ShellAdapterSettings":
+        from dify_agent.adapters.shell.config import ShellAdapterSettings
+
+        return ShellAdapterSettings
     if name == "create_shell_provider":
-        return getattr(import_module("dify_agent.adapters.shell.factory"), name)
+        from dify_agent.adapters.shell.factory import create_shell_provider
+
+        return create_shell_provider
     if name == "shellctl":
+        from importlib import import_module
+
         return import_module("dify_agent.adapters.shell.shellctl")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
