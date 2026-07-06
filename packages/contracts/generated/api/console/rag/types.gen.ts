@@ -327,8 +327,6 @@ export type Parser = {
   }
 }
 
-export type DataSourceContentPreviewResponse = unknown
-
 export type PublishedWorkflowRunPayload = {
   datasource_info_list: Array<{
     [key: string]: unknown
@@ -1329,7 +1327,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses
   = {
-    200: DataSourceContentPreviewResponse
+    200: {
+      [key: string]: unknown
+    }
   }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse

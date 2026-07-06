@@ -200,11 +200,6 @@ export const zParser = z.object({
 })
 
 /**
- * DataSourceContentPreviewResponse
- */
-export const zDataSourceContentPreviewResponse = z.unknown()
-
-/**
  * PublishedWorkflowRunPayload
  */
 export const zPublishedWorkflowRunPayload = z.object({
@@ -1179,7 +1174,7 @@ export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNod
  * Success
  */
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse
-  = zDataSourceContentPreviewResponse
+  = z.record(z.string(), z.unknown())
 
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody
   = zDatasourceNodeRunPayload

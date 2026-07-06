@@ -1046,12 +1046,12 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Streaming response with node execution events. | **text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Dataset not found. |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Streaming response with node execution events. |
+| 401 | Unauthorized - invalid API token |
+| 403 | Forbidden - dataset API access or workspace access denied |
+| 404 | `not_found` : Dataset not found. |
 
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Run Pipeline**
@@ -2960,7 +2960,7 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | [ [DatasourceCredentialInfoResponse](#datasourcecredentialinforesponse) ] |  | Yes |
+| credentials | [ [DatasourceCredentialInfoResponse](#datasourcecredentialinforesponse) ] |  | No |
 | datasource_type | string |  | No |
 | node_id | string |  | No |
 | plugin_id | string |  | No |
