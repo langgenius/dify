@@ -55,6 +55,4 @@ def test_published_agent_app_parameters_use_soul_file_upload(monkeypatch):
         "image": {"enabled": True},
         "number_limits": 2,
     }
-    assert parameters["user_input_form"] == [
-        {"text-input": {"label": "topic", "variable": "topic", "required": True}}
-    ]
+    assert parameters["user_input_form"] == [{"text-input": {"label": "topic", "variable": "topic", "required": True}}]
