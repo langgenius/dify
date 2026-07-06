@@ -87,10 +87,6 @@ export type EducationActivatePayload = {
   token: string
 }
 
-export type EducationActivateResponse = {
-  [key: string]: unknown
-}
-
 export type EducationAutocompleteResponse = {
   curr_page?: number | null
   data?: Array<string>
@@ -301,7 +297,9 @@ export type PostAccountEducationData = {
 }
 
 export type PostAccountEducationResponses = {
-  200: EducationActivateResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAccountEducationResponse

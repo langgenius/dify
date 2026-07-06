@@ -130,7 +130,7 @@ class TestMemberInviteEmailApi:
         features.workspace_members.is_available.return_value = True
 
         payload = {
-            "emails": ["a@test.com"],
+            "emails": ["A@TEST.com", "a@test.com"],
             "role": "normal",
             "language": "en-US",
         }
@@ -138,8 +138,10 @@ class TestMemberInviteEmailApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
-            patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1) as mock_count,
+            patch(
+                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
+            ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
@@ -148,6 +150,10 @@ class TestMemberInviteEmailApi:
 
         assert status == 201
         assert result["result"] == "success"
+        assert result["invitation_results"][0]["email"] == "a@test.com"
+        mock_count.assert_not_called()
+        mock_invite.assert_called_once()
+        assert mock_invite.call_args.kwargs["email"] == "a@test.com"
 
     def test_invite_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()

@@ -42,6 +42,7 @@ def runner(mocker: MockerFixture):
     application_generate_entity.invoke_from = "test"
 
     app_config = MagicMock()
+    app_config.app_id = "app"
     app_config.agent = MagicMock()
     app_config.agent.max_iteration = 1
     app_config.prompt_template.simple_prompt_template = "Hello {{name}}"
@@ -341,6 +342,7 @@ class TestRun:
         )
 
         results = list(runner.run(runner.session, message, "query", {}))
+        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
         assert results[-1].delta.message.content == ""
 
     def test_run_usage_missing_key_branch(self, runner: DummyRunner, mocker: MockerFixture):

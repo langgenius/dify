@@ -135,7 +135,7 @@ export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlQuery = z.o
 })
 
 /**
- * Authorization URL retrieved successfully
+ * Datasource OAuth authorization URL generated successfully
  */
 export const zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse
   = zPluginOAuthAuthorizationUrlResponse

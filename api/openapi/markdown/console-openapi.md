@@ -141,9 +141,9 @@ Get account avatar url
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -1411,7 +1411,7 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceListResponse](#workspacelistresponse)<br> |
+| 200 | Success | **application/json**: [WorkspacePaginationResponse](#workspacepaginationresponse)<br> |
 
 ### [GET] /api-based-extension
 Get all API-based extensions for current tenant
@@ -5106,14 +5106,14 @@ Refresh MCP server configuration and regenerate server code
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DatasourceCredentialsResponse](#datasourcecredentialsresponse)<br> |
+| 200 | Default datasource credentials retrieved successfully | **application/json**: [DatasourceProviderAuthListResponse](#datasourceproviderauthlistresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/list
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DatasourceCredentialsResponse](#datasourcecredentialsresponse)<br> |
+| 200 | Datasource credentials retrieved successfully | **application/json**: [DatasourceProviderAuthListResponse](#datasourceproviderauthlistresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/{provider_id}
 #### Parameters
@@ -5126,7 +5126,7 @@ Refresh MCP server configuration and regenerate server code
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DatasourceCredentialsResponse](#datasourcecredentialsresponse)<br> |
+| 200 | Datasource credentials retrieved successfully | **application/json**: [DatasourceCredentialListResponse](#datasourcecredentiallistresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}
 #### Parameters
@@ -5145,7 +5145,7 @@ Refresh MCP server configuration and regenerate server code
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Datasource credential created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [DELETE] /auth/plugin/datasource/{provider_id}/custom-client
 #### Parameters
@@ -5177,7 +5177,7 @@ Refresh MCP server configuration and regenerate server code
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Datasource OAuth custom client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/default
 #### Parameters
@@ -5234,7 +5234,7 @@ Refresh MCP server configuration and regenerate server code
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 201 | Datasource credential updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/update-name
 #### Parameters
@@ -7638,9 +7638,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 302 | Redirect to OAuth callback page |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/get-authorization-url
 #### Parameters
@@ -7654,7 +7654,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Authorization URL retrieved successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
+| 200 | Datasource OAuth authorization URL generated successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/authorization-url
 #### Parameters
@@ -8477,9 +8477,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DataSourceContentPreviewResponse](#datasourcecontentpreviewresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run
 **Run rag pipeline datasource**
@@ -8617,6 +8617,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 401 | Unauthorized | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
 
 ### [POST] /remote-files/upload
 #### Request Body
@@ -9432,9 +9433,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
 #### Parameters
@@ -9451,9 +9452,9 @@ Bedrock retrieval test (internal use only)
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /trial-apps/{app_id}/datasets
 #### Parameters
@@ -9568,9 +9569,9 @@ Returns the site configuration for the application including theme, icons, and t
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /trial-apps/{app_id}/workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -9983,7 +9984,7 @@ Create a new plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint created successfully | **application/json**: [EndpointCreateResponse](#endpointcreateresponse)<br> |
+| 200 | Endpoint created successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### ~~[POST] /workspaces/current/endpoints/create~~
@@ -10002,7 +10003,7 @@ Deprecated legacy alias for creating a plugin endpoint. Use POST /workspaces/cur
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint created successfully | **application/json**: [EndpointCreateResponse](#endpointcreateresponse)<br> |
+| 200 | Endpoint created successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### ~~[POST] /workspaces/current/endpoints/delete~~
@@ -10021,7 +10022,7 @@ Deprecated legacy alias for deleting a plugin endpoint. Use DELETE /workspaces/c
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint deleted successfully | **application/json**: [EndpointDeleteResponse](#endpointdeleteresponse)<br> |
+| 200 | Endpoint deleted successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [POST] /workspaces/current/endpoints/disable
@@ -10037,7 +10038,7 @@ Disable a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint disabled successfully | **application/json**: [EndpointDisableResponse](#endpointdisableresponse)<br> |
+| 200 | Endpoint disabled successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [POST] /workspaces/current/endpoints/enable
@@ -10053,7 +10054,7 @@ Enable a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint enabled successfully | **application/json**: [EndpointEnableResponse](#endpointenableresponse)<br> |
+| 200 | Endpoint enabled successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [GET] /workspaces/current/endpoints/list
@@ -10087,7 +10088,7 @@ List endpoints for a specific plugin
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginEndpointListResponse](#pluginendpointlistresponse)<br> |
+| 200 | Success | **application/json**: [EndpointListResponse](#endpointlistresponse)<br> |
 
 ### ~~[POST] /workspaces/current/endpoints/update~~
 
@@ -10105,7 +10106,7 @@ Deprecated legacy alias for updating a plugin endpoint. Use PATCH /workspaces/cu
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint updated successfully | **application/json**: [EndpointUpdateResponse](#endpointupdateresponse)<br> |
+| 200 | Endpoint updated successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [DELETE] /workspaces/current/endpoints/{id}
@@ -10121,7 +10122,7 @@ Delete a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint deleted successfully | **application/json**: [EndpointDeleteResponse](#endpointdeleteresponse)<br> |
+| 200 | Endpoint deleted successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [PATCH] /workspaces/current/endpoints/{id}
@@ -10143,7 +10144,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint updated successfully | **application/json**: [EndpointUpdateResponse](#endpointupdateresponse)<br> |
+| 200 | Endpoint updated successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [GET] /workspaces/current/members
@@ -10203,7 +10204,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MemberActionTenantResponse](#memberactiontenantresponse)<br> |
+| 200 | Success | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
 
 ### [POST] /workspaces/current/members/{member_id}/owner-transfer
 #### Parameters
@@ -12471,9 +12472,15 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
+| 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
 
 ### [POST] /workspaces/custom-config/webapp-logo/upload
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -12491,7 +12498,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
+| 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
 
 ### [POST] /workspaces/switch
 #### Request Body
@@ -16125,12 +16132,6 @@ Model class for provider custom model configuration.
 | ---- | ---- | ----------- | -------- |
 | info_list | [InfoList](#infolist) |  | Yes |
 
-#### DataSourceContentPreviewResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DataSourceContentPreviewResponse |  |  |  |
-
 #### DataSourceIntegrateIconResponse
 
 | Name | Type | Description | Required |
@@ -16651,32 +16652,43 @@ Model class for provider custom model configuration.
 | ---- | ---- | ----------- | -------- |
 | credential_id | string |  | Yes |
 
+#### DatasourceCredentialListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | [ [DatasourceCredentialResponse](#datasourcecredentialresponse) ] |  | Yes |
+
 #### DatasourceCredentialPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | object |  | Yes |
+| credentials | object | Plugin-defined credential parameters. The schema is declared by the datasource provider. | Yes |
 | name | string |  | No |
+
+#### DatasourceCredentialResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar_url | string |  | Yes |
+| credential | object | Obfuscated plugin-defined credential parameters from the datasource provider. | Yes |
+| id | string |  | Yes |
+| is_default | boolean |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
 
 #### DatasourceCredentialUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_id | string |  | Yes |
-| credentials | object |  | No |
+| credentials | object | Plugin-defined credential parameters. The schema is declared by the datasource provider. | No |
 | name | string |  | No |
-
-#### DatasourceCredentialsResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result |  |  | Yes |
 
 #### DatasourceCustomClientPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| client_params | object |  | No |
+| client_params | object | Plugin-defined OAuth client parameters. The schema is declared by the datasource provider. | No |
 | enable_oauth_custom_client | boolean |  | No |
 
 #### DatasourceDefaultPayload
@@ -16708,6 +16720,39 @@ Model class for provider custom model configuration.
 | error | string | Error message from OAuth provider | No |
 | state | string | OAuth state parameter | No |
 
+#### DatasourceOAuthSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
+| is_oauth_custom_client_enabled | boolean |  | Yes |
+| is_system_oauth_params_exists | boolean |  | Yes |
+| oauth_custom_client_params | object | Masked plugin-defined OAuth client parameters, when configured for the tenant. | Yes |
+| redirect_uri | string |  | Yes |
+
+#### DatasourceProviderAuthListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | [ [DatasourceProviderAuthResponse](#datasourceproviderauthresponse) ] |  | Yes |
+
+#### DatasourceProviderAuthResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string |  | Yes |
+| credential_schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
+| credentials_list | [ [DatasourceCredentialResponse](#datasourcecredentialresponse) ] |  | Yes |
+| description | [I18nObject](#i18nobject) |  | Yes |
+| icon | string |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| name | string |  | Yes |
+| oauth_schema | [DatasourceOAuthSchemaResponse](#datasourceoauthschemaresponse) |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| provider | string |  | Yes |
+
 #### DatasourceUpdateNamePayload
 
 | Name | Type | Description | Required |
@@ -16723,12 +16768,6 @@ Model class for provider custom model configuration.
 | datasource_type | string |  | Yes |
 | start_node_id | string |  | Yes |
 | start_node_title | string |  | Yes |
-
-#### DebugPermission
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DebugPermission | string |  |  |
 
 #### DeclaredArrayItem
 
@@ -17056,12 +17095,6 @@ Request payload for bulk downloading documents as a zip archive.
 | role | string |  | Yes |
 | token | string |  | Yes |
 
-#### EducationActivateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| EducationActivateResponse | object |  |  |
-
 #### EducationAutocompleteQuery
 
 | Name | Type | Description | Required |
@@ -17171,29 +17204,13 @@ Request payload for bulk downloading documents as a zip archive.
 | plugin_unique_identifier | string |  | Yes |
 | settings | object |  | Yes |
 
-#### EndpointCreateResponse
+#### EndpointDeclarationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
-
-#### EndpointDeleteResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
-
-#### EndpointDisableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
-
-#### EndpointEnableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
+| hidden | boolean |  | No |
+| method | string |  | Yes |
+| path | string |  | Yes |
 
 #### EndpointIdPayload
 
@@ -17209,6 +17226,23 @@ Request payload for bulk downloading documents as a zip archive.
 | page_size | integer |  | Yes |
 | plugin_id | string |  | Yes |
 
+#### EndpointListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| declaration | [EndpointProviderDeclarationResponse](#endpointproviderdeclarationresponse) |  | No |
+| enabled | boolean |  | Yes |
+| expired_at | dateTime |  | Yes |
+| hook_id | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| plugin_id | string |  | Yes |
+| settings | object |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| url | string |  | Yes |
+
 #### EndpointListQuery
 
 | Name | Type | Description | Required |
@@ -17220,7 +17254,59 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| endpoints | [ object ] | Endpoint information | Yes |
+| endpoints | [ [EndpointListItemResponse](#endpointlistitemresponse) ] | Endpoint information | Yes |
+
+#### EndpointProviderConfigI18nResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| en_US | string |  | Yes |
+| ja_JP | string |  | No |
+| pt_BR | string |  | No |
+| zh_Hans | string |  | No |
+
+#### EndpointProviderConfigOptionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [EndpointProviderConfigI18nResponse](#endpointproviderconfigi18nresponse) |  | Yes |
+| value | string |  | Yes |
+
+#### EndpointProviderConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [EndpointProviderConfigI18nResponse](#endpointproviderconfigi18nresponse) |  | No |
+| label | [EndpointProviderConfigI18nResponse](#endpointproviderconfigi18nresponse) |  | No |
+| multiple | boolean |  | No |
+| name | string |  | Yes |
+| options | [ [EndpointProviderConfigOptionResponse](#endpointproviderconfigoptionresponse) ] |  | No |
+| placeholder | [EndpointProviderConfigI18nResponse](#endpointproviderconfigi18nresponse) |  | No |
+| required | boolean |  | No |
+| scope | [EndpointProviderConfigScope](#endpointproviderconfigscope) |  | No |
+| type | [ProviderConfigType](#providerconfigtype) |  | Yes |
+| url | string |  | No |
+
+#### EndpointProviderConfigScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndpointProviderConfigScope | string |  |  |
+
+#### EndpointProviderDeclarationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| endpoints | [ [EndpointDeclarationResponse](#endpointdeclarationresponse) ] |  | No |
+| settings | [ [EndpointProviderConfigResponse](#endpointproviderconfigresponse) ] |  | No |
+
+#### EndpointSettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| settings | object |  | Yes |
 
 #### EndpointUpdatePayload
 
@@ -17228,12 +17314,6 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 | settings | object |  | Yes |
-
-#### EndpointUpdateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
 
 #### EnvSuggestion
 
@@ -18032,12 +18112,6 @@ Input field definition for snippet parameters.
 | required | boolean |  | No |
 | type | string |  | No |
 
-#### InstallPermission
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InstallPermission | string |  |  |
-
 #### InstalledAppCreatePayload
 
 | Name | Type | Description | Required |
@@ -18343,7 +18417,7 @@ Enum class for large language model mode.
 | marketplace_plugin_unique_identifier | string |  | Yes |
 | version | string |  | No |
 
-#### MemberActionTenantResponse
+#### MemberActionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -19114,13 +19188,13 @@ Enum class for parameter type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_upgrade | [PluginAutoUpgradeSettingsPayload](#pluginautoupgradesettingspayload) |  | Yes |
-| category | [PluginCategory](#plugincategory) |  | Yes |
+| category | [TenantPluginAutoUpgradeCategory](#tenantpluginautoupgradecategory) |  | Yes |
 
 #### ParserAutoUpgradeFetch
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| category | [PluginCategory](#plugincategory) |  | Yes |
+| category | [TenantPluginAutoUpgradeCategory](#tenantpluginautoupgradecategory) |  | Yes |
 
 #### ParserCreateCredential
 
@@ -19218,7 +19292,7 @@ Enum class for parameter type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| category | [PluginCategory](#plugincategory) |  | Yes |
+| category | [TenantPluginAutoUpgradeCategory](#tenantpluginautoupgradecategory) |  | Yes |
 | plugin_id | string |  | Yes |
 
 #### ParserGetCredentials
@@ -19306,8 +19380,8 @@ Enum class for parameter type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_permission | [DebugPermission](#debugpermission) |  | No |
-| install_permission | [InstallPermission](#installpermission) |  | No |
+| debug_permission | [TenantPluginDebugPermission](#tenantplugindebugpermission) |  | No |
+| install_permission | [TenantPluginInstallPermission](#tenantplugininstallpermission) |  | No |
 
 #### ParserPluginIdentifierQuery
 
@@ -19516,7 +19590,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_upgrade | [PluginAutoUpgradeSettingsResponseModel](#pluginautoupgradesettingsresponsemodel) |  | Yes |
-| category | [PluginCategory](#plugincategory) |  | Yes |
+| category | [TenantPluginAutoUpgradeCategory](#tenantpluginautoupgradecategory) |  | Yes |
 
 #### PluginAutoUpgradeSettingsPayload
 
@@ -19524,8 +19598,8 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | exclude_plugins | [ string ] |  | No |
 | include_plugins | [ string ] |  | No |
-| strategy_setting | [StrategySetting](#strategysetting) |  | No |
-| upgrade_mode | [UpgradeMode](#upgrademode) |  | No |
+| strategy_setting | [TenantPluginAutoUpgradeStrategySetting](#tenantpluginautoupgradestrategysetting) |  | No |
+| upgrade_mode | [TenantPluginAutoUpgradeMode](#tenantpluginautoupgrademode) |  | No |
 | upgrade_time_of_day | integer |  | No |
 
 #### PluginAutoUpgradeSettingsResponseModel
@@ -19534,8 +19608,8 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | exclude_plugins | [ string ] |  | Yes |
 | include_plugins | [ string ] |  | Yes |
-| strategy_setting | [StrategySetting](#strategysetting) |  | Yes |
-| upgrade_mode | [UpgradeMode](#upgrademode) |  | Yes |
+| strategy_setting | [TenantPluginAutoUpgradeStrategySetting](#tenantpluginautoupgradestrategysetting) |  | Yes |
+| upgrade_mode | [TenantPluginAutoUpgradeMode](#tenantpluginautoupgrademode) |  | Yes |
 | upgrade_time_of_day | integer |  | Yes |
 
 #### PluginCategory
@@ -19657,20 +19731,20 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | current_identifier | string |  | No |
-| type | [Type](#type) |  | Yes |
+| type | [PluginDependencyType](#plugindependencytype) |  | Yes |
 | value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+
+#### PluginDependencyType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginDependencyType | string |  |  |
 
 #### PluginDynamicOptionsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | options |  |  | Yes |
-
-#### PluginEndpointListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| endpoints | [ object ] | Endpoint information | Yes |
 
 #### PluginInstallationItemResponse
 
@@ -19752,7 +19826,13 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| type | [core__plugin__entities__parameters__PluginParameterAutoGenerate__Type](#core__plugin__entities__parameters__pluginparameterautogenerate__type) |  | Yes |
+| type | [PluginParameterAutoGenerateType](#pluginparameterautogeneratetype) |  | Yes |
+
+#### PluginParameterAutoGenerateType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginParameterAutoGenerateType | string |  |  |
 
 #### PluginParameterOption
 
@@ -19772,15 +19852,15 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_permission | [DebugPermission](#debugpermission) |  | Yes |
-| install_permission | [InstallPermission](#installpermission) |  | Yes |
+| debug_permission | [TenantPluginDebugPermission](#tenantplugindebugpermission) |  | Yes |
+| install_permission | [TenantPluginInstallPermission](#tenantplugininstallpermission) |  | Yes |
 
 #### PluginPermissionSettingsPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_permission | [DebugPermission](#debugpermission) |  | No |
-| install_permission | [InstallPermission](#installpermission) |  | No |
+| debug_permission | [TenantPluginDebugPermission](#tenantplugindebugpermission) |  | No |
+| install_permission | [TenantPluginInstallPermission](#tenantplugininstallpermission) |  | No |
 
 #### PluginReadmeResponse
 
@@ -19862,8 +19942,14 @@ Model class for common provider settings like credentials
 | placeholder | [I18nObject](#i18nobject) |  | No |
 | required | boolean |  | No |
 | scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
-| type | [core__entities__provider_entities__BasicProviderConfig__Type](#core__entities__provider_entities__basicproviderconfig__type) | The type of the credentials | Yes |
+| type | [ProviderConfigType](#providerconfigtype) | The type of the credentials | Yes |
 | url | string |  | No |
+
+#### ProviderConfigType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderConfigType | string |  |  |
 
 #### ProviderCredentialResponse
 
@@ -21020,12 +21106,6 @@ Query parameters for listing snippet published workflows.
 | paused | integer |  | Yes |
 | success | integer |  | Yes |
 
-#### StrategySetting
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| StrategySetting | string |  |  |
-
 #### StringListSource
 
 | Name | Type | Description | Required |
@@ -21279,6 +21359,36 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | workspaces | [ [TenantListItemResponse](#tenantlistitemresponse) ] |  | Yes |
+
+#### TenantPluginAutoUpgradeCategory
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginAutoUpgradeCategory | string |  |  |
+
+#### TenantPluginAutoUpgradeMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginAutoUpgradeMode | string |  |  |
+
+#### TenantPluginAutoUpgradeStrategySetting
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginAutoUpgradeStrategySetting | string |  |  |
+
+#### TenantPluginDebugPermission
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginDebugPermission | string |  |  |
+
+#### TenantPluginInstallPermission
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginInstallPermission | string |  |  |
 
 #### TextContentResponse
 
@@ -21786,12 +21896,6 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | TriggerSubscriptionListResponse | array |  |  |
 
-#### Type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| Type | string |  |  |
-
 #### UnaddedModelConfiguration
 
 Model class for provider unadded model configuration.
@@ -21831,12 +21935,6 @@ Payload for updating a snippet.
 | description | string |  | No |
 | icon_info | [IconInfo](#iconinfo) |  | No |
 | name | string |  | No |
-
-#### UpgradeMode
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| UpgradeMode | string |  |  |
 
 #### UploadConfig
 
@@ -22968,7 +23066,13 @@ Workflow tool configuration
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 
-#### WorkspaceListResponse
+#### WorkspaceLogoUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+
+#### WorkspacePaginationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -22977,19 +23081,6 @@ Workflow tool configuration
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
-
-#### WorkspaceLogoUploadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-
-#### WorkspaceMutationResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
-| tenant | [TenantInfoResponse](#tenantinforesponse) |  | Yes |
 
 #### WorkspacePermissionResponse
 
@@ -23004,6 +23095,13 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | permission_keys | [ string ] |  | No |
+
+#### WorkspaceTenantResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+| tenant | [TenantInfoResponse](#tenantinforesponse) |  | Yes |
 
 #### _AccessControlLanguageQuery
 
@@ -23072,18 +23170,6 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
-
-#### core__entities__provider_entities__BasicProviderConfig__Type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| core__entities__provider_entities__BasicProviderConfig__Type | string |  |  |
-
-#### core__plugin__entities__parameters__PluginParameterAutoGenerate__Type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| core__plugin__entities__parameters__PluginParameterAutoGenerate__Type | string |  |  |
 
 #### core__tools__entities__common_entities__I18nObject
 

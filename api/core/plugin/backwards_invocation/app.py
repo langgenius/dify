@@ -78,7 +78,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         if not user_id:
             user = EndUserService.get_or_create_end_user(app)
         else:
-            user = cls._get_user(user_id, app)
+            try:
+                user = cls._get_user(user_id, app)
+            except ValueError:
+                # Plugins such as WeCom Bot pass external sender IDs rather than EndUser UUIDs.
+                user = EndUserService.get_or_create_end_user(app, user_id=user_id)
 
         conversation_id = conversation_id or ""
 
@@ -232,6 +236,13 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 EndUser.app_id == app.id,
             )
             user = session.scalar(stmt)
+            if not user:
+                stmt = select(EndUser).where(
+                    EndUser.session_id == user_id,
+                    EndUser.tenant_id == app.tenant_id,
+                    EndUser.app_id == app.id,
+                )
+                user = session.scalar(stmt)
             if not user:
                 stmt = select(Account).where(
                     Account.id == user_id,
