@@ -721,9 +721,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert response is not None
         assert response.id == "thought"
 
-    def test_agent_thought_to_stream_response_normalizes_null_display_fields(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_agent_thought_to_stream_response_normalizes_null_display_fields(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
 
