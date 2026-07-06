@@ -316,17 +316,19 @@ export function AgentSkillDetailDialog({
               </h2>
             )}
           </div>
-          {detail.onDownloadFile && previewTitle && (
-            <button
-              type="button"
-              aria-label={`${tCommon('operation.download')} ${previewTitle}`}
-              onClick={detail.onDownloadFile}
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            >
-              <span aria-hidden className="i-ri-download-line size-4" />
-            </button>
-          )}
-          <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
+          <div className="flex shrink-0 items-center gap-1">
+            {detail.onDownloadFile && previewTitle && (
+              <button
+                type="button"
+                aria-label={`${tCommon('operation.download')} ${previewTitle}`}
+                onClick={detail.onDownloadFile}
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              >
+                <span aria-hidden className="i-ri-download-line size-4" />
+              </button>
+            )}
+            <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
+          </div>
         </div>
         <ScrollArea
           className="relative min-h-0 flex-1 overflow-hidden has-[>_:first-child:focus-visible]:outline-2 has-[>_:first-child:focus-visible]:outline-offset-0 has-[>_:first-child:focus-visible]:outline-state-accent-solid"
