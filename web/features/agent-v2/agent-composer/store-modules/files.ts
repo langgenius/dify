@@ -23,7 +23,7 @@ export const agentComposerFilesAtom = atom<AgentFileNode[], [DraftFieldUpdate<Ag
   },
 )
 
-export const removeAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode[] => files.flatMap((file) => {
+const removeAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode[] => files.flatMap((file) => {
   if (file.id === fileId)
     return []
 
