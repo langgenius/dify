@@ -276,7 +276,6 @@ class TestPluginModelRuntime:
             tools=None,
             stop=None,
             stream=False,
-            app_id=None,
         )
 
     def test_invoke_llm_forwards_string_app_id_from_request_metadata(self) -> None:
@@ -330,7 +329,7 @@ class TestPluginModelRuntime:
         )
 
         assert result is client.invoke_llm.return_value
-        assert client.invoke_llm.call_args.kwargs["app_id"] is None
+        assert "app_id" not in client.invoke_llm.call_args.kwargs
 
     def test_invoke_llm_returns_plugin_stream_directly(self) -> None:
         client = Mock(spec=PluginModelClient)
@@ -362,7 +361,6 @@ class TestPluginModelRuntime:
             tools=None,
             stop=["END"],
             stream=True,
-            app_id=None,
         )
 
     def test_start_llm_polling_resolves_plugin_fields(self) -> None:
