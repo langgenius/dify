@@ -24,6 +24,7 @@ from core.trigger.constants import (
     TRIGGER_SCHEDULE_NODE_TYPE,
     TRIGGER_WEBHOOK_NODE_TYPE,
 )
+from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
@@ -41,7 +42,7 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
-from services.errors.app import WorkflowNotFoundError
+from services.errors.app import WorkflowAgentNodeDslExportUnsupportedError, WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -563,6 +564,11 @@ class AppDslService:
             raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
+        if any(WorkflowAgentNodeValidator.iter_agent_v2_nodes(workflow_dict.get("graph", {}))):
+            raise WorkflowAgentNodeDslExportUnsupportedError(
+                "Workflow DSL export does not support Agent nodes yet. Remove Agent nodes before exporting."
+            )
+
         # TODO: refactor: we need a better way to filter workspace related data from nodes
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             node_data = node.get("data", {})
