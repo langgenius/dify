@@ -1,7 +1,8 @@
-from typing import Any, cast
+from typing import Any
 
 from sqlalchemy import select
 
+from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from extensions.ext_database import db
@@ -15,7 +16,6 @@ def get_published_agent_app_feature_dict_and_user_input_form(
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Return public Agent App parameters backed by the published Agent Soul."""
     app_model_config = app_model.app_model_config
-    features_dict = cast(dict[str, Any], app_model_config.to_dict()) if app_model_config is not None else {}
 
     agent_id = app_model.bound_agent_id
     if not agent_id:
@@ -48,4 +48,5 @@ def get_published_agent_app_feature_dict_and_user_input_form(
         raise AgentAppGeneratorError("Agent published version not found")
 
     agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+    features_dict = merge_agent_app_features(agent_soul=agent_soul, app_model_config=app_model_config)
     return features_dict, agent_app_variables_to_user_input_form(agent_soul.app_variables)
