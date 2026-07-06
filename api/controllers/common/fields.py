@@ -8,6 +8,7 @@ from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from models.model import IconType
 
+type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
 type JSONObject = dict[str, Any]
 
 
@@ -21,6 +22,10 @@ class SystemParameters(BaseModel):
 
 class SimpleResultResponse(ResponseModel):
     result: str
+
+
+class GeneratedAppResponse(RootModel[JSONValue]):
+    root: JSONValue
 
 
 class EventStreamResponse(RootModel[str]):

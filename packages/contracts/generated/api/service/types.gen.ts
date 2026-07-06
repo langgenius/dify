@@ -852,6 +852,8 @@ export type FormInputConfig
     type: 'file-list'
   } & FileListInputConfig)
 
+export type GeneratedAppResponse = JsonValue
+
 export type HitTestingChildChunk = {
   content: string
   id: string
@@ -1013,7 +1015,16 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue = unknown
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
 
 export type JsonValueType = unknown
 
@@ -1679,6 +1690,8 @@ export type WorkflowRunResponse = {
   total_tokens?: number | null
   workflow_id: string
 }
+
+export type GeneratedAppResponseWritable = JsonValue
 
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: never
@@ -3260,9 +3273,7 @@ export type PostDatasetsByDatasetIdPipelineRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponse
@@ -3676,9 +3687,7 @@ export type PostWorkflowsRunErrors = {
 }
 
 export type PostWorkflowsRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -3748,9 +3757,7 @@ export type PostWorkflowsByWorkflowIdRunErrors = {
 }
 
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsByWorkflowIdRunResponse
