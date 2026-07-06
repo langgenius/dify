@@ -124,6 +124,7 @@ Use only the current Build chat message history to identify changes that need to
 validate old config unless the message history already shows that the old config is invalid.
 
 Only update the build-draft config note when the current Build chat contains durable context that later runs need.
+Write the config note in the language used by the message history.
 Do not create, update, delete, inspect, or fill gaps in other Agent config resources, including config files, config
 skills, config env, tools, models, knowledge, or prompt settings.
 
