@@ -3,6 +3,7 @@ import type { ModelProvider } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { Trans, useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { PluginSource } from '@/app/components/plugins/types'
 import { IS_CLOUD_EDITION } from '@/config'
 import InstallFromMarketplace from './install-from-marketplace'
 import ProviderAddedCard from './provider-added-card'
@@ -21,6 +22,7 @@ type ModelProviderPageBodyProps = {
   enableMarketplace: boolean
   searchText: string
   pluginDetailMap: Map<string, PluginDetail>
+  onOpenMarketplace?: () => void
 }
 
 function ModelProviderCardSkeleton() {
@@ -79,6 +81,7 @@ function EmptyProviderState({
                   marketplace: (
                     <a
                       href="#model-provider-marketplace"
+                      aria-label={t('marketplace.difyMarketplace', { ns: 'plugin' })}
                       className="system-xs-medium text-text-accent hover:underline"
                     />
                   ),
@@ -97,21 +100,40 @@ type ProviderCardListProps = {
   notConfigured?: boolean
 }
 
+function isDebuggingProvider(provider: ModelProvider, pluginDetailMap: Map<string, PluginDetail>) {
+  return pluginDetailMap.get(providerToPluginId(provider.provider))?.source === PluginSource.debugging
+}
+
 function ProviderCardList({
   providers,
   pluginDetailMap,
   notConfigured,
 }: ProviderCardListProps) {
+  const sortedProviders = [...providers]
+    .sort((a, b) => {
+      const aIsDebuggingPlugin = isDebuggingProvider(a, pluginDetailMap)
+      const bIsDebuggingPlugin = isDebuggingProvider(b, pluginDetailMap)
+
+      if (aIsDebuggingPlugin === bIsDebuggingPlugin)
+        return 0
+
+      return aIsDebuggingPlugin ? -1 : 1
+    })
+
   return (
     <div className="relative flex flex-col gap-2">
-      {providers.map(provider => (
-        <ProviderAddedCard
-          key={provider.provider}
-          notConfigured={notConfigured}
-          provider={provider}
-          pluginDetail={pluginDetailMap.get(providerToPluginId(provider.provider))}
-        />
-      ))}
+      {sortedProviders.map((provider) => {
+        const pluginDetail = pluginDetailMap.get(providerToPluginId(provider.provider))
+
+        return (
+          <ProviderAddedCard
+            key={provider.provider}
+            notConfigured={notConfigured}
+            provider={provider}
+            pluginDetail={pluginDetail}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -128,6 +150,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   enableMarketplace,
   searchText,
   pluginDetailMap,
+  onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
 
@@ -154,8 +177,8 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
         <div className="flex flex-col gap-2 pt-2">
           <div className="flex h-5 items-center system-md-semibold text-text-primary">{t('modelProvider.toBeConfigured', { ns: 'common' })}</div>
           <ProviderCardList
-            notConfigured
             providers={filteredNotConfiguredProviders}
+            notConfigured
             pluginDetailMap={pluginDetailMap}
           />
         </div>
@@ -165,6 +188,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
           <InstallFromMarketplace
             providers={providers}
             searchText={searchText}
+            onOpenMarketplace={onOpenMarketplace}
           />
         </div>
       )}

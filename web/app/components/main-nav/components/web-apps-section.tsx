@@ -26,8 +26,10 @@ import Divider from '@/app/components/base/divider'
 import { SearchInput } from '@/app/components/base/search-input'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import AppNavItem from '@/app/components/explore/sidebar/app-nav-item'
+import { useAppContext } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
+import { hasPermission } from '@/utils/permission'
 
 const appNavItemHeight = 32
 const appNavItemGap = 2
@@ -72,7 +74,7 @@ type WebAppListRow
     kind: 'separator'
   }
 
-const WebAppsSection = () => {
+const WebAppsSectionContent = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -146,8 +148,8 @@ const WebAppsSection = () => {
     <AppNavItem
       key={id}
       variant="mainNav"
-      isMobile={false}
       name={app.name}
+      ariaLabel={t('mainNav.webApps.openApp', { ns: 'common', name: app.name })}
       icon_type={app.icon_type}
       icon={app.icon}
       icon_background={app.icon_background}
@@ -210,6 +212,7 @@ const WebAppsSection = () => {
             value={searchText}
             onValueChange={setSearchText}
             placeholder={t('mainNav.webApps.searchPlaceholder', { ns: 'common' })}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- The field is mounted after an explicit search action.
             autoFocus
           />
         </div>
@@ -268,7 +271,7 @@ const WebAppsSection = () => {
               )}
             </ScrollAreaContent>
           </ScrollAreaViewport>
-          <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+          <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
         </ScrollAreaRoot>
@@ -295,6 +298,16 @@ const WebAppsSection = () => {
       </AlertDialog>
     </div>
   )
+}
+
+const WebAppsSection = () => {
+  const { workspacePermissionKeys } = useAppContext()
+  const canAccessAppLibrary = hasPermission(workspacePermissionKeys, 'app_library.access')
+
+  if (!canAccessAppLibrary)
+    return null
+
+  return <WebAppsSectionContent />
 }
 
 export default WebAppsSection

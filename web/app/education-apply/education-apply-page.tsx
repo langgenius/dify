@@ -8,12 +8,11 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useEducationDiscount } from '@/app/components/billing/hooks/use-education-discount'
 import { Plan } from '@/app/components/billing/type'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
+import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
@@ -27,6 +26,7 @@ import {
   useEducationAdd,
   useInvalidateEducationStatus,
 } from '@/service/use-education'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import DifyLogo from '../components/base/logo/dify-logo'
 import AppliedEducationContent from './applied-education-content'
 import RoleSelector from './role-selector'
@@ -52,7 +52,7 @@ const EducationApplyAgeContent = () => {
     mutateAsync: educationAdd,
   } = useEducationAdd({ onSuccess: noop })
   const { onPlanInfoChanged, isEducationAccount, plan } = useProviderContext()
-  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
+  const { currentWorkspace, workspacePermissionKeys } = useAppContext()
   const updateEducationStatus = useInvalidateEducationStatus()
   const docLink = useDocLink()
   const { handleEducationDiscount } = useEducationDiscount()
@@ -60,12 +60,13 @@ const EducationApplyAgeContent = () => {
   const openAsyncWindow = useAsyncWindowOpen()
   const queryClient = useQueryClient()
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
-  const setEducationVerifying = useSetLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, { raw: true })
+  const setEducationVerifying = useSetEducationVerifying()
 
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
+  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
   const appliedEducationCase = (() => {
-    if (!isCurrentWorkspaceManager)
+    if (!canManageBilling)
       return AppliedEducationCase.noPaymentPermission
 
     if (plan.type === Plan.sandbox)
@@ -97,7 +98,7 @@ const EducationApplyAgeContent = () => {
     setIsOpeningBillingPortal(true)
     try {
       await openAsyncWindow(async () => {
-        const res = await consoleClient.billing.invoices()
+        const res = await consoleClient.billing.invoices.get()
         if (res.url)
           return res.url
 

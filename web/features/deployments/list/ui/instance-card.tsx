@@ -8,9 +8,9 @@ import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { DeploymentActionsMenu } from '../../components/deployment-actions'
 import { CreateReleaseControl } from '../../create-release'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
+import { DeploymentActionsMenu } from '../../deployment-actions'
 import {
   DeploymentAccessLinks,
   DeploymentStatusContent,
@@ -55,8 +55,7 @@ export function InstanceCard({ summary }: {
       className="group relative col-span-1 inline-flex min-h-40 min-w-0 cursor-default flex-col rounded-xl border border-solid border-components-card-border bg-components-card-bg shadow-xs transition-[border-color,box-shadow] duration-200 ease-in-out hover:border-components-panel-border-subtle hover:shadow-md"
     >
       <DeploymentActionsMenu
-        appInstanceId={appInstanceId}
-        appName={appName}
+        appInstance={appInstance}
         placement="bottom-end"
         sideOffset={4}
         className="pointer-events-none absolute top-3 right-3 z-10 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100"

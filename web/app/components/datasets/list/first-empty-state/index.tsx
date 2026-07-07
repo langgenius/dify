@@ -13,38 +13,54 @@ type EmptyCreateAction = {
   description: string
 }
 
-function DatasetFirstEmptyState() {
+type DatasetFirstEmptyStateProps = {
+  canConnectExternalDataset: boolean
+  canCreateDataset: boolean
+}
+
+function DatasetFirstEmptyState({
+  canConnectExternalDataset,
+  canCreateDataset,
+}: DatasetFirstEmptyStateProps) {
   const { t } = useTranslation()
 
-  const actions: EmptyCreateAction[] = [
-    {
-      badge: t('firstEmpty.recommended', { ns: 'dataset' }),
-      href: '/datasets/create',
-      icon: <span aria-hidden className="i-ri-add-line size-4" />,
-      id: 'create',
-      title: t('firstEmpty.createTitle', { ns: 'dataset' }),
-      description: t('firstEmpty.createDescription', { ns: 'dataset' }),
-    },
-    {
-      href: '/datasets/create-from-pipeline',
-      icon: <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4" />,
-      id: 'pipeline',
-      title: t('firstEmpty.pipelineTitle', { ns: 'dataset' }),
-      description: t('firstEmpty.pipelineDescription', { ns: 'dataset' }),
-    },
-    {
-      href: '/datasets/connect',
-      icon: <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4" />,
-      id: 'connect',
-      title: t('connectDataset', { ns: 'dataset' }),
-      description: t('firstEmpty.connectDescription', { ns: 'dataset' }),
-    },
-  ]
+  const createActions: EmptyCreateAction[] = canCreateDataset
+    ? [
+        {
+          badge: t('firstEmpty.recommended', { ns: 'dataset' }),
+          href: '/datasets/create',
+          icon: <span aria-hidden className="i-ri-add-line size-4" />,
+          id: 'create',
+          title: t('firstEmpty.createTitle', { ns: 'dataset' }),
+          description: t('firstEmpty.createDescription', { ns: 'dataset' }),
+        },
+        {
+          href: '/datasets/create-from-pipeline',
+          icon: <span aria-hidden className="i-custom-vender-pipeline-pipeline-line size-4" />,
+          id: 'pipeline',
+          title: t('firstEmpty.pipelineTitle', { ns: 'dataset' }),
+          description: t('firstEmpty.pipelineDescription', { ns: 'dataset' }),
+        },
+      ]
+    : []
+  const connectAction: EmptyCreateAction | undefined = canConnectExternalDataset
+    ? {
+        href: '/datasets/connect',
+        icon: <span aria-hidden className="i-custom-vender-solid-development-api-connection-mod size-4" />,
+        id: 'connect',
+        title: t('connectDataset', { ns: 'dataset' }),
+        description: t('firstEmpty.connectDescription', { ns: 'dataset' }),
+      }
+    : undefined
+  const hasActions = createActions.length > 0 || !!connectAction
+
+  if (!hasActions)
+    return null
 
   return (
     <div className="flex grow flex-col overflow-hidden">
       <div className="relative min-h-[520px] flex-1 overflow-hidden">
-        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-1 grid-rows-4 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="pointer-events-none absolute inset-x-8 inset-y-2 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
           {EMPTY_PLACEHOLDER_CARD_IDS.map(id => (
             <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
           ))}
@@ -63,31 +79,37 @@ function DatasetFirstEmptyState() {
               </h2>
             </div>
             <div className="flex w-full flex-col gap-2 pb-8">
-              <div className="flex flex-col gap-2">
-                {actions.slice(0, 2).map(action => (
-                  <FirstEmptyActionCard
-                    key={action.id}
-                    badge={action.badge}
-                    description={action.description}
-                    href={action.href}
-                    icon={action.icon}
-                    title={action.title}
-                    visualStyle="list"
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-2 text-text-tertiary">
-                <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
-                <span className="system-xs-medium-uppercase uppercase">{t('firstEmpty.or', { ns: 'dataset' })}</span>
-                <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
-              </div>
-              <FirstEmptyActionCard
-                description={actions[2]!.description}
-                href={actions[2]!.href}
-                icon={actions[2]!.icon}
-                title={actions[2]!.title}
-                visualStyle="list"
-              />
+              {createActions.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {createActions.map(action => (
+                    <FirstEmptyActionCard
+                      key={action.id}
+                      badge={action.badge}
+                      description={action.description}
+                      href={action.href}
+                      icon={action.icon}
+                      title={action.title}
+                      visualStyle="list"
+                    />
+                  ))}
+                </div>
+              )}
+              {createActions.length > 0 && connectAction && (
+                <div className="flex items-center gap-2 text-text-tertiary">
+                  <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
+                  <span className="system-xs-medium-uppercase uppercase">{t('firstEmpty.or', { ns: 'dataset' })}</span>
+                  <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
+                </div>
+              )}
+              {connectAction && (
+                <FirstEmptyActionCard
+                  description={connectAction.description}
+                  href={connectAction.href}
+                  icon={connectAction.icon}
+                  title={connectAction.title}
+                  visualStyle="list"
+                />
+              )}
             </div>
           </div>
         </section>

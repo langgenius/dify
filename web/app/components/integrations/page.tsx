@@ -43,9 +43,9 @@ const headerDescriptionDocPaths: Partial<Record<IntegrationSection, string>> = {
   'custom-tool': '/use-dify/workspace/tools#custom-tool',
   'workflow-tool': '/use-dify/workspace/tools#workflow-tool',
   'mcp': '/use-dify/build/mcp',
-  'custom-endpoint': '/use-dify/workspace/api-extension/api-extension',
+  'custom-endpoint': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
   'trigger': '/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin',
-  'extension': '/develop-plugin/dev-guides-and-walkthroughs/endpoint',
+  'extension': '/use-dify/workspace/api-extension/api-extension',
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
 }
 
@@ -105,16 +105,19 @@ export default function IntegrationsPage({
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
   const {
-    canManagement,
     canDebugger,
+    canInstallPlugin,
+    canDeletePlugin,
+    canUpdatePlugin,
     handlePermissionChange,
     isPluginCategory,
+    isReferenceSettingLoading,
     permission,
     showPermissionQuickPanel,
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const showInstallAction = canManagement
+  const showInstallAction = canInstallPlugin
   const showUtilityActions = canDebugger || showPermissionQuickPanel
   const {
     activeItem,
@@ -160,7 +163,7 @@ export default function IntegrationsPage({
       return
     }
 
-    window.open(getMarketplaceUrl(marketplaceUrlPath), '_blank', 'noopener,noreferrer')
+    window.open(getMarketplaceUrl(marketplaceUrlPath, undefined, { source: window.location.origin }), '_blank', 'noopener,noreferrer')
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
@@ -217,7 +220,7 @@ export default function IntegrationsPage({
           </div>
           {showInstallAction && (
             <IntegrationSidebarActions
-              canManagement={canManagement}
+              canManagement={canInstallPlugin}
               installContextCategory={getPluginCategoryBySection(section)}
               onSwitchToMarketplace={handleSwitchToMarketplace}
             />
@@ -281,7 +284,10 @@ export default function IntegrationsPage({
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canManagement}
+                  canInstallPlugin={canInstallPlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
+                  canUpdatePlugin={canUpdatePlugin}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </div>
@@ -293,7 +299,6 @@ export default function IntegrationsPage({
                 slotClassNames={{
                   viewport: 'overscroll-contain',
                   content: 'min-h-full',
-                  scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
                 }}
               >
                 <IntegrationSectionRenderer
@@ -304,7 +309,10 @@ export default function IntegrationsPage({
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canManagement}
+                  canInstallPlugin={canInstallPlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  isInstallPermissionLoading={isReferenceSettingLoading}
+                  canUpdatePlugin={canUpdatePlugin}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </ScrollArea>

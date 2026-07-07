@@ -7,7 +7,8 @@ import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly, useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
+import { isAgentV2NodeData, needsInlineAgentBindingCreation } from '@/app/components/workflow/nodes/agent-v2/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { API_PREFIX } from '@/config'
@@ -16,11 +17,10 @@ import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 
-export const useNodesSyncDraft = () => {
+const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
-  const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -34,10 +34,26 @@ export const useNodesSyncDraft = () => {
       transform,
     } = store.getState()
     const allNodes = getNodes()
-    const nodes = allNodes.filter(node => !node.data?._isTempNode && node.data?.type !== BlockEnum.StartPlaceholder)
+    const nodes = allNodes.filter((node) => {
+      if (node.data?.type === BlockEnum.StartPlaceholder)
+        return false
+
+      if (!node.data?._isTempNode)
+        return true
+
+      return isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data)
+    })
     const skippedNodeIds = new Set(
       allNodes
-        .filter(node => node.data?._isTempNode || node.data?.type === BlockEnum.StartPlaceholder)
+        .filter((node) => {
+          if (node.data?.type === BlockEnum.StartPlaceholder)
+            return true
+
+          if (!node.data?._isTempNode)
+            return false
+
+          return !(isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
+        })
         .map(node => node.id),
     )
     const [x, y, zoom] = transform
@@ -160,12 +176,17 @@ export const useNodesSyncDraft = () => {
       setDraftUpdatedAt(res.updated_at)
       callback?.onSuccess?.()
     }
-    catch (error: any) {
-      if (error && error.json && !error.bodyUsed) {
-        error.json().then((err: any) => {
+    catch (error: unknown) {
+      const responseError = error as { bodyUsed?: boolean, json?: () => Promise<{ code?: string }> }
+      if (responseError.json && !responseError.bodyUsed) {
+        try {
+          const err = await responseError.json()
           if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
             handleRefreshWorkflowDraft(true)
-        })
+        }
+        catch {
+          // Non-JSON upstream errors should not surface as unhandled promise rejections.
+        }
       }
       callback?.onError?.()
     }
@@ -180,4 +201,16 @@ export const useNodesSyncDraft = () => {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
   }
+}
+
+export const useNodesSyncDraftByCanEdit = (canEdit: boolean) => {
+  const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(canEdit)
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
+}
+
+export const useNodesSyncDraft = () => {
+  const { getNodesReadOnly } = useNodesReadOnly()
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
 }

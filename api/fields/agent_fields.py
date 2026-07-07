@@ -1,11 +1,12 @@
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Literal
 
 from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from models.agent import (
+    AgentConfigDraftType,
     AgentConfigRevisionOperation,
     AgentIconType,
     AgentKind,
@@ -16,10 +17,8 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentCliToolConfig,
-    AgentFileRefConfig,
     AgentHumanContactConfig,
     AgentKnowledgeDatasetConfig,
-    AgentSkillRefConfig,
     AgentSoulConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
@@ -36,11 +35,29 @@ from services.entities.agent_entities import (
 class AgentConfigSnapshotSummaryResponse(ResponseModel):
     id: str
     agent_id: str | None = None
+    # User-facing version number among visible published versions.
     version: int
+    # Alias for the user-facing version number; kept explicit for clients that
+    # want to distinguish it from the immutable snapshot sequence.
+    display_version: int | None = None
+    # Immutable snapshot sequence number used internally for audit/history.
+    snapshot_version: int | None = None
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None
     created_at: int | None = None
+
+
+class AgentConfigDraftSummaryResponse(ResponseModel):
+    id: str
+    agent_id: str
+    draft_type: AgentConfigDraftType
+    account_id: str | None = None
+    base_snapshot_id: str | None = None
+    created_by: str | None = None
+    updated_by: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 class AgentPublishedReferenceResponse(ResponseModel):
@@ -68,6 +85,8 @@ class AgentRosterResponse(ResponseModel):
     scope: AgentScope
     source: AgentSource
     app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
     workflow_id: str | None = None
     workflow_node_id: str | None = None
     active_config_snapshot_id: str | None = None
@@ -285,12 +304,27 @@ class AgentConfigSnapshotListResponse(ResponseModel):
     data: list[AgentConfigSnapshotSummaryResponse]
 
 
+class AgentConfigSnapshotRestoreResponse(ResponseModel):
+    result: Literal["success"]
+    active_config_snapshot_id: str
+    draft_config_id: str | None = None
+    restored_version_id: str | None = None
+
+
 class AgentComposerAgentResponse(ResponseModel):
     id: str
     name: str
     description: str
+    role: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
     scope: AgentScope
+    source: AgentSource | None = None
     status: AgentStatus
+    app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
     active_config_snapshot_id: str | None = None
 
 
@@ -334,6 +368,12 @@ class WorkflowAgentComposerResponse(ResponseModel):
     impact_summary: AgentComposerImpactResponse | None = None
     validation: "ComposerValidationFindingsResponse | None" = None
     app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
+    chat_endpoint: str | None = None
+    debug_conversation_id: str | None = None
+    debug_conversation_has_messages: bool = False
+    debug_conversation_message_count: int = 0
     workflow_id: str | None = None
     node_id: str | None = None
 
@@ -341,10 +381,15 @@ class WorkflowAgentComposerResponse(ResponseModel):
 class AgentAppComposerResponse(ResponseModel):
     variant: Literal[ComposerVariant.AGENT_APP]
     agent: AgentComposerAgentResponse
-    active_config_snapshot: AgentConfigSnapshotSummaryResponse
+    active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    draft: AgentConfigDraftSummaryResponse | None = None
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]
     validation: "ComposerValidationFindingsResponse | None" = None
+    app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
+    chat_endpoint: str | None = None
 
 
 class ComposerValidationWarningResponse(ResponseModel):
@@ -385,31 +430,28 @@ class AgentComposerDifyToolCandidateResponse(ResponseModel):
     tools_count: int | None = None
 
 
-class AgentComposerSkillCandidateResponse(AgentSkillRefConfig):
-    kind: Literal["skill"] = "skill"
-
-
-class AgentComposerFileCandidateResponse(AgentFileRefConfig):
-    kind: Literal["file"] = "file"
-
-
-AgentComposerSkillFileCandidateResponse = Annotated[
-    AgentComposerSkillCandidateResponse | AgentComposerFileCandidateResponse,
-    Field(discriminator="kind"),
-]
-
-
 class AgentComposerNodeJobCandidatesResponse(ResponseModel):
     previous_node_outputs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declare_output_types: list[DeclaredOutputType] = Field(default_factory=list)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
 
 
+class AgentComposerKnowledgeDatasetCandidateResponse(AgentKnowledgeDatasetConfig):
+    missing: bool = False
+
+
+class AgentComposerKnowledgeSetCandidateResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None = None
+    datasets: list[AgentComposerKnowledgeDatasetCandidateResponse] = Field(default_factory=list)
+    missing_dataset_ids: list[str] = Field(default_factory=list)
+
+
 class AgentComposerSoulCandidatesResponse(ResponseModel):
-    skills_files: list[AgentComposerSkillFileCandidateResponse] = Field(default_factory=list)
     dify_tools: list[AgentComposerDifyToolCandidateResponse] = Field(default_factory=list)
     cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
-    knowledge_datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
+    knowledge_sets: list[AgentComposerKnowledgeSetCandidateResponse] = Field(default_factory=list)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
 
 

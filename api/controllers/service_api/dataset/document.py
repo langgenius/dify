@@ -9,11 +9,11 @@ import json
 from collections.abc import Mapping
 from contextlib import ExitStack
 from copy import deepcopy
-from typing import Any, Literal, Self, override
+from typing import Annotated, Any, Literal, Self, override
 from uuid import UUID
 
 from flask import request, send_file
-from pydantic import BaseModel, Field, GetJsonSchemaHandler, field_validator, model_validator
+from pydantic import BaseModel, Field, GetJsonSchemaHandler, WithJsonSchema, field_validator, model_validator
 from sqlalchemy import desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -59,10 +59,13 @@ from fields.document_fields import (
 )
 from libs.helper import dump_response
 from libs.login import current_user
+from libs.pagination import paginate_query
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
+    DocForm,
+    IndexingTechnique,
     KnowledgeConfig,
     ProcessRule,
     RetrievalModel,
@@ -72,16 +75,44 @@ from services.summary_index_service import SummaryIndexService
 
 
 class DocumentTextCreatePayload(BaseModel):
-    name: str
-    text: str
-    process_rule: ProcessRule | None = None
-    original_document_id: str | None = None
-    doc_form: str = Field(default="text_model")
-    doc_language: str = Field(default="English")
-    indexing_technique: str | None = None
-    retrieval_model: RetrievalModel | None = None
-    embedding_model: str | None = None
-    embedding_model_provider: str | None = None
+    name: str = Field(description="Document name.")
+    text: str = Field(description="Document text content.")
+    process_rule: ProcessRule | None = Field(default=None, description="Processing rules for chunking.")
+    original_document_id: str | None = Field(default=None, description="Original document ID for replacement.")
+    doc_form: DocForm = Field(
+        default="text_model",
+        description=(
+            "`text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, "
+            "`qa_model` for question-answer pair extraction."
+        ),
+    )
+    doc_language: str = Field(default="English", description="Language of the document for processing optimization.")
+    indexing_technique: IndexingTechnique = Field(
+        default=None,
+        description=(
+            "`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. "
+            "Required when adding the first document to a knowledge base; subsequent documents inherit the "
+            "knowledge base's indexing technique if omitted."
+        ),
+    )
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
 
     @field_validator("doc_form")
     @classmethod
@@ -92,12 +123,21 @@ class DocumentTextCreatePayload(BaseModel):
 
 
 class DocumentTextUpdate(BaseModel):
-    name: str | None = None
-    text: str | None = None
-    process_rule: ProcessRule | None = None
-    doc_form: str = "text_model"
-    doc_language: str = "English"
-    retrieval_model: RetrievalModel | None = None
+    name: str | None = Field(default=None, description="Document name. Required when `text` is provided.")
+    text: str | None = Field(default=None, description="Document text content.")
+    process_rule: ProcessRule | None = Field(default=None, description="Processing rules for chunking.")
+    doc_form: DocForm = Field(
+        default="text_model",
+        description=(
+            "`text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, "
+            "`qa_model` for question-answer pair extraction."
+        ),
+    )
+    doc_language: str = Field(default="English", description="Language of the document for processing optimization.")
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
 
     @field_validator("doc_form")
     @classmethod
@@ -119,7 +159,7 @@ class DocumentTextUpdate(BaseModel):
         text_branch_properties["name"] = _non_null_property_schema(properties.get("name"))
 
         no_text_branch_properties = deepcopy(properties)
-        no_text_branch_properties["text"] = {"type": "null"}
+        no_text_branch_properties["text"] = {"description": "Document text content.", "type": "null"}
 
         return {
             **schema,
@@ -161,19 +201,41 @@ def _non_null_property_schema(property_schema: object) -> dict[str, Any]:
     return deepcopy(property_schema)
 
 
+DocumentDisplayStatus = Annotated[
+    str | None,
+    WithJsonSchema(
+        {
+            "anyOf": [
+                {
+                    "enum": ["queuing", "indexing", "paused", "error", "available", "disabled", "archived"],
+                    "type": "string",
+                },
+                {"type": "null"},
+            ]
+        }
+    ),
+]
+
+
 class DocumentListQuery(BaseModel):
-    page: int = Field(default=1, description="Page number")
-    limit: int = Field(default=20, description="Number of items per page")
-    keyword: str | None = Field(default=None, description="Search keyword")
-    status: str | None = Field(default=None, description="Document status filter")
+    page: int = Field(default=1, description="Page number to retrieve.")
+    limit: int = Field(default=20, description="Number of items per page. Server caps at `100`.")
+    keyword: str | None = Field(default=None, description="Search keyword to filter by document name.")
+    status: DocumentDisplayStatus = Field(default=None, description="Filter by display status.")
 
 
 class DocumentGetQuery(BaseModel):
-    metadata: Literal["all", "only", "without"] = Field(default="all", description="Metadata response mode")
+    metadata: Literal["all", "only", "without"] = Field(
+        default="all",
+        description=(
+            "`all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and "
+            "`doc_metadata`. `without` returns all fields except `doc_metadata`."
+        ),
+    )
 
 
 DOCUMENT_CREATE_BY_FILE_PARAMS = {
-    "dataset_id": "Dataset ID",
+    "dataset_id": "Knowledge base ID.",
     "file": {
         "in": "formData",
         "type": "file",
@@ -184,23 +246,32 @@ DOCUMENT_CREATE_BY_FILE_PARAMS = {
         "in": "formData",
         "type": "string",
         "required": False,
-        "description": "Optional JSON string with document creation settings.",
+        "description": (
+            "JSON string containing configuration. Accepts the same fields as "
+            "[Create Document by Text](/api-reference/documents/create-document-by-text) (`indexing_technique`, "
+            "`doc_form`, `doc_language`, `process_rule`, `retrieval_model`, `embedding_model`, "
+            "`embedding_model_provider`) except `name` and `text`."
+        ),
     },
 }
 DOCUMENT_UPDATE_BY_FILE_PARAMS = {
-    "dataset_id": "Dataset ID",
-    "document_id": "Document ID",
+    "dataset_id": "Knowledge base ID.",
+    "document_id": "Document ID.",
     "file": {
         "in": "formData",
         "type": "file",
         "required": False,
-        "description": "Replacement document file.",
+        "description": "Replacement document file to upload.",
     },
     "data": {
         "in": "formData",
         "type": "string",
         "required": False,
-        "description": "Optional JSON string with document update settings.",
+        "description": (
+            "JSON string containing document update settings such as `doc_form`, `doc_language`, `process_rule`, "
+            "`retrieval_model`, `embedding_model`, and `embedding_model_provider`. `name` and `text` are not used "
+            "for file updates."
+        ),
     },
 }
 
@@ -330,6 +401,7 @@ def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[
             account=current_user,
             dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
             created_from="api",
+            session=db.session,
         )
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
@@ -389,6 +461,7 @@ def _update_document_by_text(tenant_id: str, dataset_id: UUID, document_id: UUID
             account=current_user,
             dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
             created_from="api",
+            session=db.session,
         )
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
@@ -422,7 +495,7 @@ class DocumentAddByTextApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
     @service_api_ns.doc("create_document_by_text")
     @service_api_ns.doc(description="Create a new document by providing text content")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Document created successfully",
@@ -454,7 +527,7 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
             "Use /datasets/{dataset_id}/document/create-by-text instead."
         )
     )
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Document created successfully",
@@ -499,7 +572,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
     @service_api_ns.doc("update_document_by_text")
     @service_api_ns.doc(description="Update an existing document by providing text content")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "document_id": "Document ID."})
     @service_api_ns.doc(
         responses={
             200: "Document updated successfully",
@@ -530,7 +603,7 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
             "Use /datasets/{dataset_id}/documents/{document_id}/update-by-text instead."
         )
     )
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "document_id": "Document ID."})
     @service_api_ns.doc(
         responses={
             200: "Document updated successfully",
@@ -686,6 +759,7 @@ class DocumentAddByFileApi(DatasetApiResource):
                 account=dataset.created_by_account,
                 dataset_process_rule=dataset_process_rule,
                 created_from="api",
+                session=db.session,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -762,6 +836,7 @@ def _update_document_by_file(tenant_id: str, dataset_id: UUID, document_id: UUID
             account=dataset.created_by_account,
             dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
             created_from="api",
+            session=db.session,
         )
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description)
@@ -839,7 +914,7 @@ class DocumentListApi(DatasetApiResource):
     )
     @service_api_ns.doc("list_documents")
     @service_api_ns.doc(description="List all documents in a dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", **query_params_from_model(DocumentListQuery)})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", **query_params_from_model(DocumentListQuery)})
     @service_api_ns.doc(
         responses={
             200: "Documents retrieved successfully",
@@ -871,8 +946,8 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        paginated_documents = db.paginate(
-            select=query, page=query_params.page, per_page=query_params.limit, max_per_page=100, error_out=False
+        paginated_documents = paginate_query(
+            query, page=query_params.page, per_page=query_params.limit, max_per_page=100
         )
         documents = paginated_documents.items
 
@@ -913,7 +988,7 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[DocumentBatchDownloadZipPayload.__name__])
     @service_api_ns.doc("download_documents_as_zip")
     @service_api_ns.doc(description="Download selected uploaded documents as a single ZIP archive")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "ZIP archive generated successfully",
@@ -932,6 +1007,7 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
             document_ids=[str(document_id) for document_id in payload.document_ids],
             tenant_id=str(tenant_id),
             current_user=current_user,
+            session=db.session,
         )
 
         with ExitStack() as stack:
@@ -965,7 +1041,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_document_indexing_status")
     @service_api_ns.doc(description="Get indexing status for documents in a batch")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "batch": "Batch ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "batch": "Batch ID."})
     @service_api_ns.doc(
         responses={
             200: "Indexing status retrieved successfully",
@@ -988,7 +1064,7 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
         # get documents
-        documents = DocumentService.get_batch_documents(dataset_id_str, batch)
+        documents = DocumentService.get_batch_documents(dataset_id_str, batch, db.session)
         if not documents:
             raise NotFound("Documents not found.")
         documents_status = []
@@ -1047,7 +1123,7 @@ class DocumentDownloadApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_document_download_url")
     @service_api_ns.doc(description="Get a signed download URL for a document's original uploaded file")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "document_id": "Document ID."})
     @service_api_ns.doc(
         responses={
             200: "Download URL generated successfully",
@@ -1064,7 +1140,7 @@ class DocumentDownloadApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def get(self, tenant_id, dataset_id: UUID, document_id: UUID):
         dataset = self.get_dataset(str(dataset_id), str(tenant_id))
-        document = DocumentService.get_document(dataset.id, str(document_id))
+        document = DocumentService.get_document(dataset.id, str(document_id), session=db.session)
 
         if not document:
             raise NotFound("Document not found.")
@@ -1072,7 +1148,7 @@ class DocumentDownloadApi(DatasetApiResource):
         if document.tenant_id != str(tenant_id):
             raise Forbidden("No permission.")
 
-        return {"url": DocumentService.get_document_download_url(document)}
+        return {"url": DocumentService.get_document_download_url(document, db.session)}
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
@@ -1099,7 +1175,7 @@ class DocumentApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_document")
     @service_api_ns.doc(description="Get a specific document by ID")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "document_id": "Document ID."})
     @service_api_ns.doc(params=query_params_from_model(DocumentGetQuery))
     @service_api_ns.doc(
         responses={
@@ -1120,7 +1196,7 @@ class DocumentApi(DatasetApiResource):
 
         dataset = self.get_dataset(dataset_id_str, tenant_id)
 
-        document = DocumentService.get_document(dataset.id, document_id_str)
+        document = DocumentService.get_document(dataset.id, document_id_str, session=db.session)
 
         if not document:
             raise NotFound("Document not found.")
@@ -1145,7 +1221,7 @@ class DocumentApi(DatasetApiResource):
         if metadata == "only":
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
-            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, db.session)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
@@ -1180,7 +1256,7 @@ class DocumentApi(DatasetApiResource):
                 "need_summary": document.need_summary if document.need_summary is not None else False,
             }
         else:
-            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str)
+            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, db.session)
             document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
@@ -1251,7 +1327,7 @@ class DocumentApi(DatasetApiResource):
     )
     @service_api_ns.doc("delete_document")
     @service_api_ns.doc(description="Delete a document")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "document_id": "Document ID."})
     @service_api_ns.doc(
         responses={
             204: "Document deleted successfully",
@@ -1275,7 +1351,7 @@ class DocumentApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
-        document = DocumentService.get_document(dataset.id, document_id_str)
+        document = DocumentService.get_document(dataset.id, document_id_str, session=db.session)
 
         # 404 if document not found
         if document is None:
@@ -1287,7 +1363,7 @@ class DocumentApi(DatasetApiResource):
 
         try:
             # delete document
-            DocumentService.delete_document(document)
+            DocumentService.delete_document(document, db.session)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 

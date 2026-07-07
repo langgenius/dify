@@ -116,7 +116,7 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
 ## Using Dify
 
 - **Cloud <br/>**
-  We host a [Dify Cloud](https://dify.ai) service for anyone to try with zero setup. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls in the sandbox plan.
+  We host a [Dify Cloud](https://dify.ai) service for anyone to try with zero setup. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls in the sandbox plan. If you run into issues with Dify Cloud, [contact our Cloud support team](mailto:cloud@dify.ai?subject=%5BGitHub%5DDify%20Cloud%20Support).
 
 - **Self-hosting Dify Community Edition<br/>**
   Quickly get Dify running in your environment with this [starter guide](#quick-start).

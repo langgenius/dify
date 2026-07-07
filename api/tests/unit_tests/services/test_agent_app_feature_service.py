@@ -12,7 +12,6 @@ from typing import Any
 
 import pytest
 
-from services import agent_app_feature_service as svc_mod
 from services.agent_app_feature_service import AgentAppFeatureConfigService
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -89,9 +88,8 @@ class _FakeWriteSession:
 
 
 class TestUpdateFeatures:
-    def test_persists_new_app_model_config_version(self, monkeypatch):
+    def test_persists_new_app_model_config_version(self):
         session = _FakeWriteSession()
-        monkeypatch.setattr(svc_mod.db, "session", session)
         app_model = SimpleNamespace(
             tenant_id=TENANT_ID, id="app-1", app_model_config_id=None, updated_by=None, updated_at=None
         )
@@ -101,6 +99,7 @@ class TestUpdateFeatures:
             app_model=app_model,  # type: ignore[arg-type]
             account=account,  # type: ignore[arg-type]
             config={"opening_statement": "Hi!", "suggested_questions_after_answer": {"enabled": True}},
+            session=session,
         )
 
         # New row carries the features but no Soul-owned model/prompt/agent_mode.

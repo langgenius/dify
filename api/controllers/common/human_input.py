@@ -35,7 +35,12 @@ class HumanInputFormSubmitPayload(BaseModel):
         ),
         examples=[HUMAN_INPUT_FORM_INPUT_EXAMPLE],
     )
-    action: str
+    action: str = Field(
+        description=(
+            "ID of the action button the recipient selected. Must match one of the `id` values from the form's "
+            "`user_actions` list."
+        )
+    )
 
 
 def stringify_form_default_values(values: dict[str, object]) -> dict[str, str]:

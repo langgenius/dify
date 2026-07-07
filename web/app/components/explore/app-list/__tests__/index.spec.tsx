@@ -9,11 +9,18 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
-import { useMembers } from '@/service/use-common'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
-import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/atoms'
+import { AppACLPermission } from '@/utils/permission'
+import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../../learn-dify/storage'
 import AppList from '../index'
+
+type MockAppContext = {
+  userProfile: { id: string }
+  workspacePermissionKeys: string[]
+}
+
+const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
 
 let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
 let mockLearnDifyApps: App[] = []
@@ -27,6 +34,23 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
+const toastMocks = vi.hoisted(() => {
+  const record = vi.fn()
+  const api = Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })), {
+    success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
+    error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
+    warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
+    info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { record, api }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMocks.api,
+}))
 
 vi.mock('@/service/use-explore', () => ({
   useLearnDifyAppList: () => ({
@@ -53,7 +77,7 @@ vi.mock('@/service/client', () => ({
       },
     },
     apps: {
-      list: {
+      get: {
         queryOptions: (options: {
           input?: { query?: { limit?: number } }
           select?: (response: {
@@ -67,7 +91,7 @@ vi.mock('@/service/client', () => ({
           const limit = options.input?.query?.limit ?? mockWorkspaceApps.length
           if (mockWorkspaceAppsLoading) {
             return {
-              queryKey: ['console', 'apps', 'list', options],
+              queryKey: ['console', 'apps', 'get', options],
               queryFn: () => new Promise(() => {}),
               select: options.select,
             }
@@ -80,7 +104,7 @@ vi.mock('@/service/client', () => ({
             total: mockWorkspaceApps.length,
           }
           return {
-            queryKey: ['console', 'apps', 'list', options],
+            queryKey: ['console', 'apps', 'get', options],
             queryFn: () => Promise.resolve(response),
             initialData: response,
             select: options.select,
@@ -90,21 +114,22 @@ vi.mock('@/service/client', () => ({
     },
     explore: {
       apps: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', 'get', input],
+        },
       },
       banners: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', 'get', input],
+        },
       },
     },
   },
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
-}))
-
-vi.mock('@/service/use-common', () => ({
-  useMembers: vi.fn(),
+  useAppContext: mockUseAppContext,
+  useSelector: <T,>(selector: (state: MockAppContext) => T): T => selector(mockUseAppContext()),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -239,6 +264,7 @@ const createWorkspaceApp = (overrides: Partial<WorkspaceApp> = {}): WorkspaceApp
   api_base_url: overrides.api_base_url ?? '',
   tags: overrides.tags ?? [],
   access_mode: overrides.access_mode,
+  permission_keys: overrides.permission_keys,
 } as WorkspaceApp)
 
 const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
@@ -255,26 +281,22 @@ const createBanner = (overrides: Partial<BannerType> = {}): BannerType => ({
   created_at: overrides.created_at ?? '2024-01-01T00:00:00Z',
 })
 
-const mockMemberRole = (hasEditPermission: boolean) => {
+const mockAppCreatePermission = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
-    isCurrentWorkspaceEditor: hasEditPermission,
-  })
-  ;(useMembers as Mock).mockReturnValue({
-    data: {
-      accounts: [{ id: 'user-1', role: hasEditPermission ? 'admin' : 'normal' }],
-    },
+    workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
   })
 }
 
 type RenderOptions = {
   enableExploreBanner?: boolean
+  enableLearnApp?: boolean
   isCloudEdition?: boolean
 }
 
 const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
-const exploreBannersQueryKey = ['console', 'explore', 'banners', localeInput, 'en']
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
+const exploreBannersQueryKey = ['console', 'explore', 'banners', 'get', localeInput, 'en']
 
 const renderAppList = (
   hasEditPermission = false,
@@ -283,9 +305,12 @@ const renderAppList = (
   options: RenderOptions = {},
 ) => {
   mockConfig.isCloudEdition = options.isCloudEdition ?? false
-  mockMemberRole(hasEditPermission)
+  mockAppCreatePermission(hasEditPermission)
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
-    systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
+    systemFeatures: {
+      enable_explore_banner: options.enableExploreBanner ?? false,
+      enable_learn_app: options.enableLearnApp ?? true,
+    },
   })
   if (!mockIsLoading && !mockIsError && mockExploreData)
     queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
@@ -436,7 +461,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
       mockWorkspaceApps = [
-        createWorkspaceApp({ id: 'app-1', name: 'Email Reply', author_name: 'Evan' }),
+        createWorkspaceApp({ id: 'app-1', name: 'Email Reply', author_name: 'Evan', permission_keys: [AppACLPermission.Monitor] }),
         createWorkspaceApp({ id: 'app-2', name: 'Feature Copilot', author_name: 'Maggie' }),
         createWorkspaceApp({ id: 'app-3', name: 'Book Translation', author_name: 'Alex' }),
         createWorkspaceApp({ id: 'app-4', name: 'Logo Design', author_name: 'Taylor' }),
@@ -463,6 +488,36 @@ describe('AppList', () => {
       expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(8)
       expect(screen.getByRole('link', { name: /Email Reply/ })).toHaveAttribute('href', '/app/app-1/overview')
       expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
+    })
+
+    it('should render preview-only continue work app as a dimmed card and warn on click', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockWorkspaceApps = [
+        createWorkspaceApp({
+          id: 'preview-app',
+          name: 'Preview Only App',
+          author_name: 'Readonly Author',
+          permission_keys: [AppACLPermission.Preview],
+        }),
+      ]
+
+      renderAppList()
+
+      const card = screen.getByRole('button', { name: 'Preview Only App' })
+      expect(card).toHaveClass('opacity-60')
+      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('link', { name: /Preview Only App/ })).not.toBeInTheDocument()
+      expect(screen.getByText('Readonly Author')).toBeInTheDocument()
+
+      fireEvent.click(card)
+
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'app.noAccessResourcePermission',
+      })
     })
 
     it('should hide continue work when there are no workspace apps', () => {
@@ -493,6 +548,18 @@ describe('AppList', () => {
       expect(screen.queryByText('Then try this')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow')).not.toBeInTheDocument()
       expect(screen.queryByText('3 min')).not.toBeInTheDocument()
+    })
+
+    it('should hide learn dify templates when learn app is disabled', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, undefined, { enableLearnApp: false })
+
+      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Learn Workflow Basics')).not.toBeInTheDocument()
     })
 
     it('should collapse learn dify and persist hidden state when hide is clicked', async () => {
@@ -529,6 +596,18 @@ describe('AppList', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    })
+
+    it('should hide categories without apps even when the API returns them', () => {
+      mockExploreData = {
+        categories: ['Writing', 'c'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, { category: 'c' })
+
+      expect(screen.queryByRole('radio', { name: 'c' })).not.toBeInTheDocument()
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
     })
 
     it('should keep selected category when clearing search text', async () => {

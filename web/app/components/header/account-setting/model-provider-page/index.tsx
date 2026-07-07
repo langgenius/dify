@@ -3,18 +3,18 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
-import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { consoleQuery } from '@/service/client'
+import { useInstalledPluginList } from '@/service/use-plugins'
 import UpdateSettingDialog from '../update-setting-dialog'
 import {
   CustomConfigurationStatusEnum,
@@ -25,12 +25,12 @@ import {
 } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
 import SystemModelSelector from './system-model-selector'
-import { providerToPluginId } from './utils'
 
 type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
 
 type Props = Readonly<{
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  onOpenMarketplace?: () => void
   onSearchTextChange?: (value: string) => void
   searchText: string
   stickyToolbar?: boolean
@@ -41,6 +41,7 @@ const FixedModelProvider = ['langgenius/openai/openai', 'langgenius/anthropic/an
 
 const ModelProviderPage = ({
   layout,
+  onOpenMarketplace,
   onSearchTextChange,
   searchText,
   stickyToolbar,
@@ -49,31 +50,50 @@ const ModelProviderPage = ({
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
   const {
-    canSetPermissions,
-  } = useCanSetPluginSettings()
+    canSetPluginPreferences,
+  } = usePluginSettingsAccess()
   const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
   const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
   const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
-  const { modelProviders: providers, isLoadingModelProviders } = useProviderContext()
+  const { modelProviders: providers, isLoadingModelProviders, refreshModelProviders } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  const allPluginIds = useMemo(() => {
-    return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
-  }, [providers])
-  const { data: installedPlugins } = useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
-    input: { body: { plugin_ids: allPluginIds } },
-    enabled: allPluginIds.length > 0,
-    staleTime: 0,
-  }))
-  const enrichedPlugins = usePluginsWithLatestVersion(installedPlugins?.plugins)
+  const { data: installedModelPlugins } = useInstalledPluginList(false, 100, {
+    category: PluginCategoryEnum.model,
+  })
+  const enrichedPlugins = usePluginsWithLatestVersion(installedModelPlugins?.plugins)
   const pluginDetailMap = useMemo(() => {
     const map = new Map<string, PluginDetail>()
-    for (const plugin of enrichedPlugins)
-      map.set(plugin.plugin_id, plugin)
+    for (const plugin of enrichedPlugins) {
+      const existingPlugin = map.get(plugin.plugin_id)
+      if (!existingPlugin || plugin.source === PluginSource.debugging)
+        map.set(plugin.plugin_id, plugin)
+    }
     return map
   }, [enrichedPlugins])
+  const debuggingModelPluginKey = useMemo(() => {
+    const debuggingModelPluginIds = enrichedPlugins
+      .filter(plugin => plugin.source === PluginSource.debugging)
+      .map(plugin => `${plugin.plugin_id}:${plugin.plugin_unique_identifier}`)
+      .sort()
+
+    return debuggingModelPluginIds.join(',')
+  }, [enrichedPlugins])
+  const refreshedDebuggingModelPluginKeyRef = useRef('')
+  useEffect(() => {
+    if (!debuggingModelPluginKey) {
+      refreshedDebuggingModelPluginKeyRef.current = ''
+      return
+    }
+
+    if (refreshedDebuggingModelPluginKeyRef.current === debuggingModelPluginKey)
+      return
+
+    refreshedDebuggingModelPluginKeyRef.current = debuggingModelPluginKey
+    refreshModelProviders?.()
+  }, [debuggingModelPluginKey, refreshModelProviders])
   const enableMarketplace = systemFeatures.enable_marketplace
   const isDefaultModelLoading = isTextGenerationDefaultModelLoading
     || isEmbeddingsDefaultModelLoading
@@ -139,6 +159,7 @@ const ModelProviderPage = ({
       ttsDefaultModel={ttsDefaultModel}
       isLoading={isDefaultModelLoading}
       hideProviderSettingsFooter={hideSystemModelSelectorProviderSettingsFooter}
+      onOpenMarketplace={onOpenMarketplace}
     />
   )
 
@@ -188,7 +209,7 @@ const ModelProviderPage = ({
               </div>
             )
           : systemModelSelector('h-8 px-3 system-sm-medium')}
-        {canSetPermissions && (
+        {canSetPluginPreferences && (
           <UpdateSettingDialog
             category={PluginCategoryEnum.model}
           />
@@ -210,6 +231,7 @@ const ModelProviderPage = ({
       enableMarketplace={enableMarketplace}
       searchText={searchText}
       pluginDetailMap={pluginDetailMap}
+      onOpenMarketplace={onOpenMarketplace}
     />
   )
 

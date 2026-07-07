@@ -54,7 +54,7 @@ class TestPipelineTemplateListApi:
                 return_value=templates,
             ),
         ):
-            response, status = method(api, str(uuid4()))
+            response, status = method(api, MagicMock(), str(uuid4()))
 
         assert status == 200
         assert response == {
@@ -100,7 +100,7 @@ class TestPipelineTemplateDetailApi:
                 return_value=service,
             ),
         ):
-            response, status = method(api, "tpl-1")
+            response, status = method(api, MagicMock(), "tpl-1")
 
         assert status == 200
         assert response == {**template, "created_by": None}
@@ -120,7 +120,7 @@ class TestPipelineTemplateDetailApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "non-existent-id")
+                method(api, MagicMock(), "non-existent-id")
 
     def test_get_returns_404_for_customized_type_not_found(self, app: Flask) -> None:
         api = PipelineTemplateDetailApi()
@@ -137,7 +137,7 @@ class TestPipelineTemplateDetailApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, "non-existent-id")
+                method(api, MagicMock(), "non-existent-id")
 
 
 class TestCustomizedPipelineTemplateApi:

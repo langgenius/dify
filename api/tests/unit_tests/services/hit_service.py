@@ -147,8 +147,7 @@ class TestHitTestingServiceRetrieve:
         Provides a mocked database session for testing database operations
         like adding and committing DatasetQuery records.
         """
-        with patch("services.hit_testing_service.db.session", autospec=True) as mock_db:
-            yield mock_db
+        return MagicMock()
 
     def test_retrieve_success_with_default_retrieval_model(self, mock_db_session):
         """
@@ -186,7 +185,9 @@ class TestHitTestingServiceRetrieve:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+            result = HitTestingService.retrieve(
+                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+            )
 
             # Assert
             assert result["query"]["content"] == query
@@ -232,7 +233,9 @@ class TestHitTestingServiceRetrieve:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+            result = HitTestingService.retrieve(
+                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+            )
 
             # Assert
             assert result["query"]["content"] == query
@@ -257,9 +260,11 @@ class TestHitTestingServiceRetrieve:
         retrieval_model = {
             "metadata_filtering_conditions": {
                 "conditions": [
-                    {"field": "category", "operator": "is", "value": "test"},
+                    {"name": "category", "comparison_operator": "is", "value": "test"},
                 ],
             },
+            "reranking_enable": False,
+            "score_threshold_enabled": False,
         }
         external_retrieval_model = {}
 
@@ -286,7 +291,9 @@ class TestHitTestingServiceRetrieve:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+            result = HitTestingService.retrieve(
+                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+            )
 
             # Assert
             assert result["query"]["content"] == query
@@ -308,9 +315,11 @@ class TestHitTestingServiceRetrieve:
         retrieval_model = {
             "metadata_filtering_conditions": {
                 "conditions": [
-                    {"field": "category", "operator": "is", "value": "test"},
+                    {"name": "category", "comparison_operator": "is", "value": "test"},
                 ],
             },
+            "reranking_enable": False,
+            "score_threshold_enabled": False,
         }
         external_retrieval_model = {}
 
@@ -327,7 +336,9 @@ class TestHitTestingServiceRetrieve:
             mock_format.return_value = []
 
             # Act
-            result = HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+            result = HitTestingService.retrieve(
+                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+            )
 
             # Assert
             assert result["query"]["content"] == query
@@ -344,6 +355,8 @@ class TestHitTestingServiceRetrieve:
         dataset_retrieval_model = {
             "search_method": RetrievalMethod.HYBRID_SEARCH,
             "top_k": 3,
+            "reranking_enable": False,
+            "score_threshold_enabled": False,
         }
         dataset = HitTestingTestDataFactory.create_dataset_mock(retrieval_model=dataset_retrieval_model)
         account = HitTestingTestDataFactory.create_user_mock()
@@ -366,7 +379,9 @@ class TestHitTestingServiceRetrieve:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.retrieve(dataset, query, account, retrieval_model, external_retrieval_model)
+            result = HitTestingService.retrieve(
+                mock_db_session, dataset, query, account, retrieval_model, external_retrieval_model
+            )
 
             # Assert
             assert result["query"]["content"] == query
@@ -391,8 +406,7 @@ class TestHitTestingServiceExternalRetrieve:
         Provides a mocked database session for testing database operations
         like adding and committing DatasetQuery records.
         """
-        with patch("services.hit_testing_service.db.session", autospec=True) as mock_db:
-            yield mock_db
+        return MagicMock()
 
     def test_external_retrieve_success(self, mock_db_session):
         """
@@ -424,7 +438,7 @@ class TestHitTestingServiceExternalRetrieve:
 
             # Act
             result = HitTestingService.external_retrieve(
-                dataset, query, account, external_retrieval_model, metadata_filtering_conditions
+                mock_db_session, dataset, query, account, external_retrieval_model, metadata_filtering_conditions
             )
 
             # Assert
@@ -455,7 +469,7 @@ class TestHitTestingServiceExternalRetrieve:
 
         # Act
         result = HitTestingService.external_retrieve(
-            dataset, query, account, external_retrieval_model, metadata_filtering_conditions
+            mock_db_session, dataset, query, account, external_retrieval_model, metadata_filtering_conditions
         )
 
         # Assert
@@ -490,7 +504,7 @@ class TestHitTestingServiceExternalRetrieve:
 
             # Act
             result = HitTestingService.external_retrieve(
-                dataset, query, account, external_retrieval_model, metadata_filtering_conditions
+                mock_db_session, dataset, query, account, external_retrieval_model, metadata_filtering_conditions
             )
 
             # Assert
@@ -524,7 +538,7 @@ class TestHitTestingServiceExternalRetrieve:
 
             # Act
             result = HitTestingService.external_retrieve(
-                dataset, query, account, external_retrieval_model, metadata_filtering_conditions
+                mock_db_session, dataset, query, account, external_retrieval_model, metadata_filtering_conditions
             )
 
             # Assert
@@ -565,7 +579,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.compact_retrieve_response(query, documents)
+            result = HitTestingService.compact_retrieve_response(MagicMock(), query, documents)
 
             # Assert
             assert result["query"]["content"] == query
@@ -591,7 +605,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = []
 
             # Act
-            result = HitTestingService.compact_retrieve_response(query, documents)
+            result = HitTestingService.compact_retrieve_response(MagicMock(), query, documents)
 
             # Assert
             assert result["query"]["content"] == query
@@ -708,7 +722,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": ""}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_none_query(self):
@@ -721,7 +735,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": None}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_too_long_query(self):
@@ -734,7 +748,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         args = {"query": "a" * 251}
 
         # Act & Assert
-        with pytest.raises(ValueError, match="Query is required and cannot exceed 250 characters"):
+        with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_exactly_250_characters(self):

@@ -7,7 +7,6 @@ import { StarredAppCard } from './starred-app-card'
 
 type StarredAppListProps = {
   apps: App[]
-  isCurrentWorkspaceEditor: boolean
   onRefresh?: () => void
 }
 
@@ -23,7 +22,6 @@ function SectionDivider({ label }: { label: string }) {
 
 export function StarredAppList({
   apps,
-  isCurrentWorkspaceEditor,
   onRefresh,
 }: StarredAppListProps) {
   const { t } = useTranslation()
@@ -39,7 +37,6 @@ export function StarredAppList({
           <StarredAppCard
             key={app.id}
             app={app}
-            isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
             onRefresh={onRefresh}
           />
         ))}

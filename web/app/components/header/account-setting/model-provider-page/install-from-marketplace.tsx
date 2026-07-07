@@ -10,6 +10,7 @@ import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import Link from '@/next/link'
@@ -18,15 +19,18 @@ import {
 } from './hooks'
 
 type InstallFromMarketplaceProps = {
+  onOpenMarketplace?: () => void
   providers: ModelProvider[]
   searchText: string
 }
 const InstallFromMarketplace = ({
+  onOpenMarketplace,
   providers,
   searchText,
 }: InstallFromMarketplaceProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
   const {
     plugins: allPlugins,
@@ -55,15 +59,28 @@ const InstallFromMarketplace = ({
         </button>
         <div className="flex items-center gap-1">
           <span className="system-sm-regular text-text-tertiary">{t('modelProvider.discoverMore', { ns: 'common' })}</span>
-          <Link
-            target="_blank"
-            rel="noopener noreferrer"
-            href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
-            className="inline-flex items-center system-sm-medium text-text-accent"
-          >
-            {t('marketplace.difyMarketplace', { ns: 'plugin' })}
-            <span className="i-ri-arrow-right-up-line size-4" />
-          </Link>
+          {onOpenMarketplace
+            ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center border-0 bg-transparent p-0 system-sm-medium text-text-accent"
+                  onClick={onOpenMarketplace}
+                >
+                  {t('marketplace.difyMarketplace', { ns: 'plugin' })}
+                  <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+                </button>
+              )
+            : (
+                <Link
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href={getMarketplaceCategoryUrl(PluginCategoryEnum.model, { theme })}
+                  className="inline-flex items-center system-sm-medium text-text-accent"
+                >
+                  {t('marketplace.difyMarketplace', { ns: 'plugin' })}
+                  <span className="i-ri-arrow-right-up-line size-4" aria-hidden="true" />
+                </Link>
+              )}
         </div>
       </div>
       {!collapse && isAllPluginsLoading && <Loading type="area" />}
@@ -73,7 +90,7 @@ const InstallFromMarketplace = ({
             marketplaceCollections={[]}
             marketplaceCollectionPluginsMap={{}}
             plugins={allPlugins}
-            showInstallButton
+            showInstallButton={canInstallPlugin}
             cardContainerClassName="grid grid-cols-3 gap-2"
             cardRender={cardRender}
             emptyClassName="h-auto"

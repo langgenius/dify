@@ -85,6 +85,7 @@ def _published_app_filter():
 class InstalledAppInfoResponse(ResponseModel):
     id: str
     name: str | None = None
+    description: str | None = None
     mode: str | None = None
     icon_type: str | None = None
     icon: str | None = None
@@ -123,6 +124,7 @@ class InstalledAppResponse(ResponseModel):
         return {
             "id": _safe_primitive(getattr(value, "id", "")) or "",
             "name": _safe_primitive(getattr(value, "name", None)),
+            "description": _safe_primitive(getattr(value, "description", None)),
             "mode": _safe_primitive(getattr(value, "mode", None)),
             "icon_type": _safe_primitive(getattr(value, "icon_type", None)),
             "icon": _safe_primitive(getattr(value, "icon", None)),
@@ -145,11 +147,15 @@ register_schema_models(
     InstalledAppCreatePayload,
     InstalledAppUpdatePayload,
     InstalledAppsListQuery,
+)
+register_response_schema_models(
+    console_ns,
     InstalledAppInfoResponse,
     InstalledAppResponse,
     InstalledAppListResponse,
+    SimpleMessageResponse,
+    SimpleResultMessageResponse,
 )
-register_response_schema_models(console_ns, SimpleMessageResponse, SimpleResultMessageResponse)
 
 
 @console_ns.route("/installed-apps")
@@ -175,7 +181,7 @@ class InstalledAppsListApi(Resource):
 
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
-        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
+        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant, session=db.session)
         installed_app_list: list[dict[str, Any]] = []
         for installed_app, app_model in installed_apps:
             installed_app_list.append(

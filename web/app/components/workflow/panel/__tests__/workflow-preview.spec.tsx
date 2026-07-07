@@ -71,6 +71,12 @@ vi.mock('@/app/components/workflow/run/tracing-panel', () => ({
   default: ({ list }: { list: unknown[] }) => <div data-testid="tracing-panel">{list.length}</div>,
 }))
 
+vi.mock('@/app/components/base/chat/chat/answer/reasoning-panel', () => ({
+  default: ({ content, done }: { content: Record<string, string>, done: boolean }) => (
+    <div data-testid="reasoning-panel" data-done={String(done)}>{Object.keys(content).join(',')}</div>
+  ),
+}))
+
 vi.mock('@/app/components/workflow/panel/inputs-panel', () => ({
   default: ({ onRun }: { onRun: () => void }) => (
     <button type="button" onClick={onRun}>
@@ -339,6 +345,80 @@ describe('WorkflowPreview', () => {
     await user.click(screen.getByText('runLog.result'))
     await user.click(screen.getByRole('button', { name: 'open-detail' }))
     expect(screen.getByTestId('result-panel')).toBeInTheDocument()
+  })
+
+  it('should render a single merged reasoning panel above the result on the result tab', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
+      <WorkflowPreview />,
+      {
+        initialStoreState: {
+          workflowRunningData: {
+            ...createWorkflowRunningData({
+              result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
+            }),
+            resultText: '',
+            reasoningContent: { 'llm-1': 'thinking a', 'llm-2': 'thinking b' },
+          } as NonNullable<Shape['workflowRunningData']>,
+        },
+      },
+    )
+
+    await user.click(screen.getByText('runLog.result'))
+
+    // one panel that carries both nodes' reasoning; still running → timer keeps ticking
+    const panels = screen.getAllByTestId('reasoning-panel')
+    expect(panels).toHaveLength(1)
+    expect(panels[0]).toHaveTextContent('llm-1,llm-2')
+    expect(panels[0]).toHaveAttribute('data-done', 'false')
+  })
+
+  it('should mark reasoning done once the answer starts streaming while still running', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
+      <WorkflowPreview />,
+      {
+        initialStoreState: {
+          workflowRunningData: {
+            ...createWorkflowRunningData({
+              result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
+            }),
+            resultText: 'the answer',
+            reasoningContent: { 'llm-1': 'thinking a' },
+          } as NonNullable<Shape['workflowRunningData']>,
+        },
+      },
+    )
+
+    await user.click(screen.getByText('runLog.result'))
+
+    // answer-started (resultText non-empty) freezes the timer even though the run is still Running
+    expect(screen.getByTestId('reasoning-panel')).toHaveAttribute('data-done', 'true')
+  })
+
+  it('should not render a reasoning panel when there is no reasoning content', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
+      <WorkflowPreview />,
+      {
+        initialStoreState: {
+          workflowRunningData: {
+            ...createWorkflowRunningData({
+              result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
+            }),
+            resultText: '',
+            reasoningContent: { llm: '' },
+          } as NonNullable<Shape['workflowRunningData']>,
+        },
+      },
+    )
+
+    await user.click(screen.getByText('runLog.result'))
+
+    expect(screen.queryByTestId('reasoning-panel')).not.toBeInTheDocument()
   })
 
   it('should switch to the tracing tab when result panel requests it', async () => {

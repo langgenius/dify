@@ -1,18 +1,25 @@
-"""Agent App runner: drive one conversation turn through the dify-agent backend.
+"""Agent App runner: drive Agent backend turns for both chat and finalize flows.
 
 Unlike the legacy ``AgentChatAppRunner`` (which runs an in-process ReAct loop),
-this runner delegates to the Agent backend: build the run request from the
-Agent Soul + conversation, create the run, consume its event stream, and
-republish the assistant answer as chat queue events so the existing
-EasyUI chat task pipeline persists the message and streams SSE. The conversation
-``session_snapshot`` is saved on success for multi-turn continuity (S3).
+this runner delegates to the Agent backend and supports two execution modes.
+
+- Normal chat turns build the run request from the Agent Soul + conversation,
+  consume backend stream events, republish the assistant answer through the
+  existing EasyUI chat task pipeline, and save the conversation
+  ``session_snapshot`` on success for multi-turn continuity (S3).
+- Stateless build-finalize turns reuse any prior conversation snapshot only to
+  construct the backend request, wait synchronously for backend completion, and
+  intentionally do not persist Dify-side chat records or runtime-session state.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+import time
+from collections.abc import Mapping
+from decimal import Decimal
+from typing import Any, Literal
 
 from dify_agent.layers.ask_human import AskHumanToolArgs
 from dify_agent.protocol import DeferredToolResultsPayload
@@ -28,6 +35,7 @@ from clients.agent_backend import (
     AgentBackendStreamInternalEvent,
     extract_runtime_layer_specs,
 )
+from configs import dify_config
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequest,
@@ -41,15 +49,25 @@ from core.app.apps.agent_app.session_store import (
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext
-from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
+from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from models.agent_config_entities import AgentSoulConfig
+from models.enums import CreatorUserRole
+from models.model import MessageAgentThought
 
 logger = logging.getLogger(__name__)
+
+
+class _DefaultSessionScopeSnapshotId:
+    pass
+
+
+_DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
 
 
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
@@ -58,12 +76,23 @@ def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
     return [UserPromptMessage(content=user_query)]
 
 
+def _llm_usage_from_agent_backend(usage: Mapping[str, Any] | None) -> LLMUsage | None:
+    if usage is None:
+        return None
+    try:
+        return LLMUsage.from_metadata(usage)
+    except (TypeError, ValueError):
+        logger.warning("Failed to parse Agent backend usage metadata: %s", usage, exc_info=True)
+        return None
+
+
 def publish_text_answer(
     *,
     queue_manager: AppQueueManager,
     model_name: str,
     answer: str,
     user_query: str | None = None,
+    usage: LLMUsage | None = None,
 ) -> None:
     """Publish a complete assistant answer as one chunk + message-end.
 
@@ -83,6 +112,7 @@ def publish_text_answer(
         model_name=model_name,
         answer=answer,
         user_query=user_query,
+        usage=usage,
     )
 
 
@@ -111,6 +141,7 @@ def publish_message_end(
     model_name: str,
     answer: str,
     user_query: str | None = None,
+    usage: LLMUsage | None = None,
 ) -> None:
     """Publish the terminal assistant result without emitting another delta."""
     prompt_messages = _prompt_messages_from_query(user_query)
@@ -120,11 +151,321 @@ def publish_message_end(
                 model=model_name,
                 prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(content=answer),
-                usage=LLMUsage.empty_usage(),
+                usage=usage or LLMUsage.empty_usage(),
             ),
         ),
         PublishFrom.APPLICATION_MANAGER,
     )
+
+
+class _TextDeltaDebouncer:
+    """Batch assistant text deltas on stream-event boundaries for final SSE output."""
+
+    def __init__(self, *, debounce_seconds: float) -> None:
+        self._debounce_seconds = debounce_seconds
+        self._parts: list[str] = []
+        self._first_pending_at: float | None = None
+
+    def push(self, delta: str) -> str | None:
+        if not delta:
+            return None
+        if self._debounce_seconds <= 0:
+            return delta
+
+        now = time.monotonic()
+        if not self._parts:
+            self._first_pending_at = now
+        self._parts.append(delta)
+
+        if self._first_pending_at is not None and now - self._first_pending_at >= self._debounce_seconds:
+            return self.flush()
+        return None
+
+    def flush(self) -> str | None:
+        if not self._parts:
+            return None
+
+        text = "".join(self._parts)
+        self._parts = []
+        self._first_pending_at = None
+        return text
+
+
+class _AgentProcessRecorder:
+    """Persist Agent v2 thinking/tool process events through the legacy thought model."""
+
+    def __init__(
+        self,
+        *,
+        dify_context: DifyRunContext,
+        message_id: str,
+        queue_manager: AppQueueManager,
+    ) -> None:
+        self._dify_context = dify_context
+        self._message_id = message_id
+        self._queue_manager = queue_manager
+        self._next_position = 1
+        self._thinking_by_index: dict[int, str] = {}
+        self._tool_by_index: dict[int, str] = {}
+        self._tool_by_call_id: dict[str, str] = {}
+        self._open_tool_by_name: dict[str, set[str]] = {}
+
+    def handle_stream_event(self, event: AgentBackendStreamInternalEvent) -> None:
+        data = event.data
+        if not isinstance(data, dict):
+            return
+
+        event_kind = data.get("event_kind")
+        if event_kind == "part_delta":
+            self._handle_part_delta(data)
+        elif event_kind == "part_start":
+            self._handle_part(data)
+        elif event_kind in {"function_tool_call", "output_tool_call"}:
+            self._handle_tool_call_event(data)
+        elif event_kind in {"function_tool_result", "output_tool_result"}:
+            self._handle_tool_result_event(data)
+
+    def _handle_part_delta(self, data: dict[str, Any]) -> None:
+        delta = data.get("delta")
+        if not isinstance(delta, dict):
+            return
+
+        index = _event_index(data)
+        delta_kind = delta.get("part_delta_kind")
+        if delta_kind == "thinking":
+            content_delta = delta.get("content_delta")
+            if isinstance(content_delta, str) and content_delta:
+                self._append_thinking(index, content_delta)
+            return
+
+        if delta_kind == "tool_call":
+            self._record_tool_call_delta(index, delta)
+
+    def _handle_part(self, data: dict[str, Any]) -> None:
+        part = data.get("part")
+        if not isinstance(part, dict):
+            return
+
+        index = _event_index(data)
+        part_kind = part.get("part_kind")
+        if part_kind == "thinking":
+            content = part.get("content")
+            if isinstance(content, str) and content:
+                self._append_thinking(index, content)
+            return
+
+        if part_kind in {"tool-call", "builtin-tool-call"}:
+            self._record_tool_call_part(index, part)
+            return
+
+        if part_kind in {"tool-return", "builtin-tool-return"}:
+            self._record_tool_return_part(part)
+
+    def _handle_tool_call_event(self, data: dict[str, Any]) -> None:
+        part = data.get("part")
+        if isinstance(part, dict):
+            self._record_tool_call_part(_event_index(data), part)
+
+    def _handle_tool_result_event(self, data: dict[str, Any]) -> None:
+        part = data.get("part") or data.get("result")
+        if isinstance(part, dict):
+            self._record_tool_return_part(part)
+            return
+
+        content = data.get("content")
+        if content is not None:
+            self._record_tool_observation(
+                tool_call_id=_string_or_none(data.get("tool_call_id")),
+                tool_name=_string_or_none(data.get("tool_name")),
+                observation=content,
+            )
+
+    def _append_thinking(self, index: int, content_delta: str) -> None:
+        thought_id = self._thinking_by_index.get(index)
+        if thought_id is None:
+            thought_id = self._create_thought(thought=content_delta)
+            self._thinking_by_index[index] = thought_id
+            return
+        self._update_thought(thought_id, thought_delta=content_delta)
+
+    def _record_tool_call_delta(self, index: int, delta: dict[str, Any]) -> None:
+        tool_call_id = _string_or_none(delta.get("tool_call_id"))
+        tool_name = _string_or_none(delta.get("tool_name_delta"))
+        args_delta = delta.get("args_delta")
+        thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
+        if thought_id is None:
+            thought_id = self._create_thought(tool=tool_name, tool_input=_json_or_text(args_delta))
+            self._remember_tool_thought(
+                index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id
+            )
+            return
+
+        self._update_thought(
+            thought_id,
+            tool=tool_name,
+            tool_input_delta=_json_or_text(args_delta),
+        )
+
+    def _record_tool_call_part(self, index: int, part: dict[str, Any]) -> None:
+        tool_call_id = _string_or_none(part.get("tool_call_id"))
+        tool_name = _string_or_none(part.get("tool_name"))
+        thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
+        if thought_id is None:
+            thought_id = self._create_thought(tool=tool_name, tool_input=_json_or_text(part.get("args")))
+            self._remember_tool_thought(
+                index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id
+            )
+            return
+
+        self._update_thought(
+            thought_id,
+            tool=tool_name,
+            tool_input=_json_or_text(part.get("args")),
+        )
+
+    def _record_tool_return_part(self, part: dict[str, Any]) -> None:
+        tool_call_id = _string_or_none(part.get("tool_call_id"))
+        tool_name = _string_or_none(part.get("tool_name"))
+        content = part.get("content")
+        if content is None:
+            content = part
+        self._record_tool_observation(tool_call_id=tool_call_id, tool_name=tool_name, observation=content)
+
+    def _record_tool_observation(self, *, tool_call_id: str | None, tool_name: str | None, observation: Any) -> None:
+        thought_id = self._lookup_observation_thought(tool_call_id=tool_call_id, tool_name=tool_name)
+        if thought_id is None:
+            thought_id = self._create_thought(tool=tool_name)
+        else:
+            self._mark_tool_observed(thought_id)
+        self._update_thought(thought_id, observation=_json_or_text(observation))
+
+    def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
+        if tool_call_id and tool_call_id in self._tool_by_call_id:
+            return self._tool_by_call_id[tool_call_id]
+        return self._tool_by_index.get(index)
+
+    def _remember_tool_thought(
+        self, *, index: int, tool_call_id: str | None, tool_name: str | None, thought_id: str
+    ) -> None:
+        self._tool_by_index[index] = thought_id
+        if tool_call_id:
+            self._tool_by_call_id[tool_call_id] = thought_id
+        if tool_name:
+            self._open_tool_by_name.setdefault(tool_name, set()).add(thought_id)
+
+    def _lookup_observation_thought(self, *, tool_call_id: str | None, tool_name: str | None) -> str | None:
+        if tool_call_id:
+            return self._tool_by_call_id.get(tool_call_id)
+        if tool_name:
+            open_thought_ids = self._open_tool_by_name.get(tool_name, set())
+            if len(open_thought_ids) == 1:
+                return next(iter(open_thought_ids))
+        return None
+
+    def _mark_tool_observed(self, thought_id: str) -> None:
+        for open_thought_ids in self._open_tool_by_name.values():
+            open_thought_ids.discard(thought_id)
+
+    def _create_thought(
+        self, *, thought: str | None = None, tool: str | None = None, tool_input: str | None = None
+    ) -> str:
+        row = MessageAgentThought(
+            message_id=self._message_id,
+            message_chain_id=None,
+            thought=thought or "",
+            tool=tool or "",
+            tool_labels_str=_tool_labels(tool),
+            tool_meta_str="{}",
+            tool_input=tool_input or "",
+            observation="",
+            tool_process_data=None,
+            message="",
+            message_token=0,
+            message_unit_price=Decimal(0),
+            message_price_unit=Decimal("0.001"),
+            message_files="",
+            answer="",
+            answer_token=0,
+            answer_unit_price=Decimal(0),
+            answer_price_unit=Decimal("0.001"),
+            tokens=0,
+            total_price=Decimal(0),
+            position=self._next_position,
+            currency="USD",
+            latency=0,
+            created_by_role=self._created_by_role(),
+            created_by=self._dify_context.user_id,
+        )
+        self._next_position += 1
+        db.session.add(row)
+        db.session.commit()
+        thought_id = str(row.id)
+        self._queue_manager.publish(
+            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
+        )
+        return thought_id
+
+    def _update_thought(
+        self,
+        thought_id: str,
+        *,
+        thought_delta: str | None = None,
+        tool: str | None = None,
+        tool_input: str | None = None,
+        tool_input_delta: str | None = None,
+        observation: str | None = None,
+    ) -> None:
+        row = db.session.get(MessageAgentThought, thought_id)
+        if row is None:
+            return
+
+        if thought_delta:
+            row.thought = f"{row.thought or ''}{thought_delta}"
+        if tool:
+            row.tool = tool
+            row.tool_labels_str = _tool_labels(tool)
+        if tool_input is not None:
+            row.tool_input = tool_input
+        if tool_input_delta:
+            row.tool_input = f"{row.tool_input or ''}{tool_input_delta}"
+        if observation is not None:
+            row.observation = observation
+
+        db.session.commit()
+        self._queue_manager.publish(
+            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
+        )
+
+    def _created_by_role(self) -> CreatorUserRole:
+        if self._dify_context.invoke_from.runs_as_account():
+            return CreatorUserRole.ACCOUNT
+        return CreatorUserRole.END_USER
+
+
+def _event_index(data: dict[str, Any]) -> int:
+    index = data.get("index")
+    return index if isinstance(index, int) else -1
+
+
+def _string_or_none(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _json_or_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False)
+    except Exception:
+        return str(value)
+
+
+def _tool_labels(tool: str | None) -> str:
+    if not tool:
+        return "{}"
+    return json.dumps({tool: {"en_US": tool, "zh_Hans": tool}}, ensure_ascii=False)
 
 
 class AgentAppRunner:
@@ -137,11 +478,13 @@ class AgentAppRunner:
         agent_backend_client: AgentBackendRunClient,
         event_adapter: AgentBackendRunEventAdapter,
         session_store: AgentAppRuntimeSessionStore,
+        text_delta_debounce_seconds: float,
     ) -> None:
         self._request_builder = request_builder
         self._agent_backend_client = agent_backend_client
         self._event_adapter = event_adapter
         self._session_store = session_store
+        self._text_delta_debounce_seconds = text_delta_debounce_seconds
 
     def run(
         self,
@@ -149,45 +492,43 @@ class AgentAppRunner:
         dify_context: DifyRunContext,
         agent_id: str,
         agent_config_snapshot_id: str,
+        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
         agent_soul: AgentSoulConfig,
         conversation_id: str,
         query: str,
         message_id: str,
         model_name: str,
         queue_manager: AppQueueManager,
+        session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
     ) -> None:
-        scope = AgentAppSessionScope(
-            tenant_id=dify_context.tenant_id,
-            app_id=dify_context.app_id,
-            conversation_id=conversation_id,
+        scope = self._build_session_scope(
+            dify_context=dify_context,
             agent_id=agent_id,
             agent_config_snapshot_id=agent_config_snapshot_id,
+            conversation_id=conversation_id,
+            session_scope_snapshot_id=session_scope_snapshot_id,
         )
         # ENG-638: if a prior turn paused on ask_human and the form is now answered,
         # resume by threading the human's reply into this run as deferred_tool_results.
         stored = self._session_store.load_active_session(scope)
-        session_snapshot = stored.session_snapshot if stored is not None else None
-        deferred_tool_results = self._resolve_pending_ask_human(
-            stored=stored, dify_context=dify_context, message_id=message_id
-        )
-
-        runtime = self._request_builder.build(
-            AgentAppRuntimeBuildContext(
-                dify_context=dify_context,
-                agent_id=agent_id,
-                agent_config_snapshot_id=agent_config_snapshot_id,
-                agent_soul=agent_soul,
-                conversation_id=conversation_id,
-                user_query=query,
-                idempotency_key=message_id,
-                session_snapshot=session_snapshot,
-                deferred_tool_results=deferred_tool_results,
-            )
+        runtime = self._build_runtime(
+            dify_context=dify_context,
+            agent_id=agent_id,
+            agent_config_snapshot_id=agent_config_snapshot_id,
+            agent_config_version_kind=agent_config_version_kind,
+            agent_soul=agent_soul,
+            conversation_id=conversation_id,
+            query=query,
+            idempotency_key=message_id,
+            stored=stored,
+            message_id=message_id,
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
         terminal, streamed_answer = self._consume_stream(
             create_response.run_id,
+            dify_context=dify_context,
+            message_id=message_id,
             queue_manager=queue_manager,
             model_name=model_name,
             query=query,
@@ -221,12 +562,118 @@ class AgentAppRunner:
             answer=answer,
             query=query,
             streamed_answer=streamed_answer,
+            usage=_llm_usage_from_agent_backend(terminal.usage),
         )
         self._save_session(
             scope=scope,
             backend_run_id=terminal.run_id,
             snapshot=terminal.session_snapshot,
             runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
+        )
+
+    def run_stateless(
+        self,
+        *,
+        dify_context: DifyRunContext,
+        agent_id: str,
+        agent_config_snapshot_id: str,
+        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
+        agent_soul: AgentSoulConfig,
+        conversation_id: str,
+        query: str,
+        idempotency_key: str,
+        session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
+    ) -> None:
+        """Run the Agent backend without creating Dify chat message records.
+
+        This path is used by build-chat finalization: the API must trigger the
+        backend side effects in the existing conversation session, but it must
+        not persist a synthetic user/assistant turn, update API-side runtime
+        session rows, or set up HITL state that depends on one.
+        """
+        scope = self._build_session_scope(
+            dify_context=dify_context,
+            agent_id=agent_id,
+            agent_config_snapshot_id=agent_config_snapshot_id,
+            conversation_id=conversation_id,
+            session_scope_snapshot_id=session_scope_snapshot_id,
+        )
+        runtime = self._build_runtime(
+            dify_context=dify_context,
+            agent_id=agent_id,
+            agent_config_snapshot_id=agent_config_snapshot_id,
+            agent_config_version_kind=agent_config_version_kind,
+            agent_soul=agent_soul,
+            conversation_id=conversation_id,
+            query=query,
+            idempotency_key=idempotency_key,
+            stored=self._session_store.load_active_session(scope),
+            message_id=None,
+        )
+
+        create_response = self._agent_backend_client.create_run(runtime.request)
+        status = self._agent_backend_client.wait_run(
+            create_response.run_id,
+            timeout_seconds=dify_config.APP_MAX_EXECUTION_TIME,
+        )
+        if status.status != "succeeded":
+            error = getattr(status, "error", None) or f"Agent backend run ended with status {status.status}."
+            raise AgentBackendError(str(error))
+
+    def _build_session_scope(
+        self,
+        *,
+        dify_context: DifyRunContext,
+        agent_id: str,
+        agent_config_snapshot_id: str,
+        conversation_id: str,
+        session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId,
+    ) -> AgentAppSessionScope:
+        if isinstance(session_scope_snapshot_id, _DefaultSessionScopeSnapshotId):
+            effective_session_scope_snapshot_id: str | None = agent_config_snapshot_id
+        else:
+            effective_session_scope_snapshot_id = session_scope_snapshot_id
+        return AgentAppSessionScope(
+            tenant_id=dify_context.tenant_id,
+            app_id=dify_context.app_id,
+            conversation_id=conversation_id,
+            agent_id=agent_id,
+            agent_config_snapshot_id=effective_session_scope_snapshot_id,
+        )
+
+    def _build_runtime(
+        self,
+        *,
+        dify_context: DifyRunContext,
+        agent_id: str,
+        agent_config_snapshot_id: str,
+        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"],
+        agent_soul: AgentSoulConfig,
+        conversation_id: str,
+        query: str,
+        idempotency_key: str,
+        stored: StoredAgentAppSession | None,
+        message_id: str | None,
+    ) -> AgentAppRuntimeRequest:
+        session_snapshot = stored.session_snapshot if stored is not None else None
+        deferred_tool_results = (
+            self._resolve_pending_ask_human(stored=stored, dify_context=dify_context, message_id=message_id)
+            if message_id is not None
+            else None
+        )
+        return self._request_builder.build(
+            AgentAppRuntimeBuildContext(
+                dify_context=dify_context,
+                agent_id=agent_id,
+                agent_config_snapshot_id=agent_config_snapshot_id,
+                agent_config_version_kind=agent_config_version_kind,
+                agent_soul=agent_soul,
+                conversation_id=conversation_id,
+                user_query=query,
+                idempotency_key=idempotency_key,
+                session_snapshot=session_snapshot,
+                deferred_tool_results=deferred_tool_results,
+            )
         )
 
     def _pause_for_ask_human(
@@ -322,18 +769,45 @@ class AgentAppRunner:
         self,
         run_id: str,
         *,
+        dify_context: DifyRunContext,
+        message_id: str,
         queue_manager: AppQueueManager,
         model_name: str,
         query: str | None,
     ):
+        """Consume backend events while preserving raw recorder granularity.
+
+        Process events are recorded immediately for observability. Only the
+        final assistant text deltas sent through the EasyUI queue are debounced,
+        with flushes happening on later stream events or terminal boundaries.
+        """
         terminal = None
         streamed_answer_parts: list[str] = []
+        text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
+        process_recorder = _AgentProcessRecorder(
+            dify_context=dify_context,
+            message_id=message_id,
+            queue_manager=queue_manager,
+        )
+
+        def flush_pending_text() -> None:
+            pending_text = text_delta_debouncer.flush()
+            if pending_text:
+                publish_text_delta(
+                    queue_manager=queue_manager,
+                    model_name=model_name,
+                    delta=pending_text,
+                    user_query=query,
+                )
+
         for public_event in self._agent_backend_client.stream_events(run_id):
             if queue_manager.is_stopped():
+                flush_pending_text()
                 self._cancel_run(run_id)
                 raise GenerateTaskStoppedError()
             for internal_event in self._event_adapter.adapt(public_event):
                 if queue_manager.is_stopped():
+                    flush_pending_text()
                     self._cancel_run(run_id)
                     raise GenerateTaskStoppedError()
                 if internal_event.type in (
@@ -341,21 +815,36 @@ class AgentAppRunner:
                     AgentBackendInternalEventType.STREAM_EVENT,
                 ):
                     if isinstance(internal_event, AgentBackendStreamInternalEvent):
+                        try:
+                            process_recorder.handle_stream_event(internal_event)
+                        except Exception:
+                            db.session.rollback()
+                            logger.warning(
+                                "Failed to persist Agent App process event: run_id=%s message_id=%s event_kind=%s",
+                                run_id,
+                                message_id,
+                                internal_event.event_kind,
+                                exc_info=True,
+                            )
                         text_delta = self._extract_stream_text_delta(internal_event)
                         if text_delta:
                             streamed_answer_parts.append(text_delta)
-                            publish_text_delta(
-                                queue_manager=queue_manager,
-                                model_name=model_name,
-                                delta=text_delta,
-                                user_query=query,
-                            )
+                            debounced_delta = text_delta_debouncer.push(text_delta)
+                            if debounced_delta:
+                                publish_text_delta(
+                                    queue_manager=queue_manager,
+                                    model_name=model_name,
+                                    delta=debounced_delta,
+                                    user_query=query,
+                                )
                         continue
                     continue
+                flush_pending_text()
                 terminal = internal_event
                 break
             if terminal is not None:
                 break
+        flush_pending_text()
         return terminal, "".join(streamed_answer_parts)
 
     def _cancel_run(self, run_id: str) -> None:
@@ -379,10 +868,20 @@ class AgentAppRunner:
         answer: str,
         query: str | None,
         streamed_answer: str,
+        usage: LLMUsage | None,
     ) -> None:
         """Finish a successful streamed turn without duplicating the final text."""
+        if not answer and streamed_answer:
+            answer = streamed_answer
+
         if not streamed_answer:
-            self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, query=query)
+            publish_text_answer(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                answer=answer,
+                user_query=query,
+                usage=usage,
+            )
             return
 
         if answer.startswith(streamed_answer):
@@ -398,7 +897,13 @@ class AgentAppRunner:
                 "using terminal output for message persistence."
             )
 
-        publish_message_end(queue_manager=queue_manager, model_name=model_name, answer=answer, user_query=query)
+        publish_message_end(
+            queue_manager=queue_manager,
+            model_name=model_name,
+            answer=answer,
+            user_query=query,
+            usage=usage,
+        )
 
     def _save_session(
         self,
@@ -438,6 +943,8 @@ class AgentAppRunner:
         configured the value is a JSON object, which we serialize so the chat
         message always has a string body.
         """
+        if output is None:
+            return ""
         if isinstance(output, str):
             return output
         if isinstance(output, dict):

@@ -101,10 +101,6 @@
       "types": "./src/radio/index.tsx",
       "import": "./src/radio/index.tsx"
     },
-    "./radio-group": {
-      "types": "./src/radio-group/index.tsx",
-      "import": "./src/radio-group/index.tsx"
-    },
     "./popover": {
       "types": "./src/popover/index.tsx",
       "import": "./src/popover/index.tsx"
@@ -193,6 +189,7 @@
     "@typescript/native-preview": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "class-variance-authority": "catalog:",
     "playwright": "catalog:",

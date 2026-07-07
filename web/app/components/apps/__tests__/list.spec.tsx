@@ -1,3 +1,4 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -45,15 +46,17 @@ vi.mock('@/service/client', () => ({
   },
   consoleQuery: {
     apps: {
-      list: {
+      get: {
         infiniteOptions: (options: unknown) => mockAppListInfiniteOptions(options),
       },
-      starredList: {
-        queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
+      starred: {
+        get: {
+          queryOptions: (options: unknown) => mockAppStarredListQueryOptions(options),
+        },
       },
     },
     tags: {
-      list: {
+      get: {
         queryOptions: (options: unknown) => options,
       },
     },
@@ -65,13 +68,22 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
+let mockWorkspacePermissionKeys = ['app.create_and_management']
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
-    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
     userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useSelector: (selector: (state: {
+    isCurrentWorkspaceDatasetOperator: boolean
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+  }) => unknown) => selector({
+    isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
+    userProfile: { id: 'creator-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -219,6 +231,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: (response: unknown) => response,
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -228,14 +241,6 @@ vi.mock('@/service/use-apps', () => ({
     isPending: false,
   }),
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
-  }
-})
 
 vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
@@ -323,10 +328,14 @@ beforeAll(() => {
 
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
-const renderList = (searchParams = '') => {
+type RenderListOptions = {
+  systemFeatures?: Partial<GetSystemFeaturesResponse>
+}
+
+const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
-    systemFeatures: { branding: { enabled: false } },
+    systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
   return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
 }
@@ -355,8 +364,8 @@ const openAppSortSelect = async (user = userEvent.setup()) => {
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDragging = false
     mockOnDSLFileDropped = null
     mockServiceState.error = null
@@ -420,15 +429,17 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
     })
 
-    it('should render sort filter before search and the snippets link', () => {
+    it('should render filters and search before the right aligned actions', () => {
       renderList()
 
-      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
+      const creatorsButton = screen.getByRole('button', { name: 'Creators' })
       const searchInput = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
+      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
       const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
       expect(snippetsLink).toHaveAttribute('href', '/snippets')
+      expect(creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -439,6 +450,17 @@ describe('List', () => {
 
       expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
+    })
+
+    it('should lay out app cards with auto-fill grid columns', () => {
+      renderList()
+
+      const grid = screen.getByTestId('app-card-app-1').parentElement
+
+      expect(grid).toHaveClass(
+        'grid',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+      )
     })
 
     it('should hide starred section when there are no starred apps', () => {
@@ -495,7 +517,7 @@ describe('List', () => {
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
-    it('should render drop DSL hint for editors', () => {
+    it('should render drop DSL hint when app creation permission is available', () => {
       renderList()
       expect(screen.getByText('app.newApp.dropDSLToCreateApp'))!.toBeInTheDocument()
     })
@@ -503,7 +525,7 @@ describe('List', () => {
     it('should render first empty state when there are no apps and no active filters', () => {
       mockAppData = { pages: [{ data: [], total: 0 }] }
 
-      renderList()
+      renderList('', { systemFeatures: { enable_learn_app: true } })
 
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
@@ -511,6 +533,33 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+    })
+
+    it('should lay out first empty state placeholder cards with auto-fill grid columns', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      const { container } = renderList()
+      const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none'))
+        .find(element => element.className.includes('grid-rows-4'))
+
+      if (!placeholderGrid)
+        throw new Error('Expected first empty state placeholder grid to render')
+
+      expect(placeholderGrid).toHaveClass(
+        'grid',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+        'grid-rows-4',
+      )
+      expect(placeholderGrid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4')
+    })
+
+    it('should hide learn dify in first empty state when learn app is disabled', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList('', { systemFeatures: { enable_learn_app: false } })
+
+      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
+      expect(screen.queryByText('app.firstEmpty.learnDifyTitle')).not.toBeInTheDocument()
     })
 
     it('should not render first empty state before the first app list page resolves', () => {
@@ -667,17 +716,6 @@ describe('List', () => {
         },
       })
     })
-
-    it('should remove legacy tagIDs from URL while preserving other filters', async () => {
-      renderList('?category=workflow&tagIDs=tag-1;tag-2&keywords=sales')
-
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith(
-          '/apps?category=workflow&keywords=sales',
-          { scroll: false },
-        )
-      })
-    })
   })
 
   describe('Tag Filter', () => {
@@ -742,8 +780,8 @@ describe('List', () => {
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
-    it('should not render create button for non-editors', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+    it('should not render create button without app creation permission', () => {
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
@@ -751,17 +789,17 @@ describe('List', () => {
     })
   })
 
-  describe('Non-Editor User', () => {
-    it('should not render new app card for non-editors', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+  describe('User Without App Creation Permission', () => {
+    it('should not render new app card without app creation permission', () => {
+      mockWorkspacePermissionKeys = []
 
       renderList()
 
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
     })
 
-    it('should not render drop DSL hint for non-editors', () => {
-      mockIsCurrentWorkspaceEditor.mockReturnValue(false)
+    it('should not render drop DSL hint without app creation permission', () => {
+      mockWorkspacePermissionKeys = []
 
       renderList()
 

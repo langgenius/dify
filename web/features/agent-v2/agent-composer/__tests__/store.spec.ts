@@ -1,10 +1,41 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import { createStore } from 'jotai'
 import { describe, expect, it } from 'vitest'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 import { defaultAgentSoulConfigFormState } from '../form-state'
+import {
+  agentComposerDraftAtom,
+  agentComposerOriginalConfigAtom,
+  agentComposerOriginalDraftAtom,
+  agentComposerPublishedDraftAtom,
+  rebaseAgentComposerDraftAtom,
+} from '../store'
 
 describe('agent composer store conversions', () => {
-  it('should hydrate editable form state from an AgentSoulConfig and preserve it in publish payload', () => {
+  it('rebases draft baselines through the composer state action', () => {
+    const store = createStore()
+    const nextDraft = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Build draft prompt',
+    }
+    const originalConfig = {
+      prompt: {
+        system_prompt: 'Build draft prompt',
+      },
+    } satisfies AgentSoulConfig
+
+    store.set(rebaseAgentComposerDraftAtom, {
+      draft: nextDraft,
+      originalConfig,
+    })
+
+    expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe('Build draft prompt')
+  })
+
+  it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
     const baseConfig: AgentSoulConfig = {
       app_features: {
         opening_statement: 'Hello',
@@ -22,53 +53,64 @@ describe('agent composer store conversions', () => {
             id: 'secret-1',
             key: 'OPENAI_API_KEY',
             ref: 'credential-1',
+            value: 'credential-1',
           },
         ],
       },
       knowledge: {
-        datasets: [
+        sets: [
           {
-            id: 'dataset-1',
+            id: 'support',
             name: 'Product Docs',
             description: 'Docs corpus',
+            datasets: [
+              {
+                id: 'dataset-1',
+                name: 'Product Docs',
+                description: 'Docs corpus',
+              },
+            ],
+            query: {
+              mode: 'user_query',
+              value: 'release notes',
+            },
+            retrieval: {
+              mode: 'multiple',
+              top_k: 8,
+              score_threshold: 0.72,
+              reranking_enable: false,
+            },
           },
         ],
-        query_config: {
-          query: 'release notes',
-          score_threshold: 0.72,
-          score_threshold_enabled: true,
-          top_k: 8,
-        },
-        query_mode: 'user_query',
       },
+      config_skills: [
+        {
+          name: 'Tender Analyzer',
+          description: 'Parses RFPs.',
+          file_id: 'tool-file-1',
+          file_kind: 'tool_file',
+        },
+      ],
+      config_files: [
+        {
+          file_id: 'drive-file-1',
+          file_kind: 'upload_file',
+          name: 'sample.pdf',
+          mime_type: 'application/pdf',
+        },
+      ],
+      config_note: 'Read the proposal first.',
       model: {
         model: 'gpt-4.1',
         model_provider: 'openai',
+        model_settings: {
+          temperature: 0.2,
+          max_tokens: 1024,
+        },
         plugin_id: 'openai',
       },
       prompt: {
         system_prompt: 'Be precise.',
-      },
-      skills_files: {
-        files: [
-          {
-            id: 'file-1',
-            name: 'guide.md',
-            type: 'markdown',
-          },
-        ],
-        skills: [
-          {
-            id: 'skill-1',
-            file_id: 'archive-file-1',
-            full_archive_file_id: 'archive-file-1',
-            full_archive_key: 'research-skill/.DIFY-SKILL-FULL.zip',
-            name: 'Research Skill',
-            path: 'research-skill',
-            skill_md_file_id: 'skill-md-file-1',
-            skill_md_key: 'research-skill/SKILL.md',
-          },
-        ],
       },
       tools: {
         cli_tools: [
@@ -115,31 +157,16 @@ describe('agent composer store conversions', () => {
       prompt: 'Be precise.',
       model: {
         model: 'gpt-4.1',
+        model_settings: {
+          temperature: 0.2,
+          max_tokens: 1024,
+        },
         provider: 'openai',
         plugin_id: 'openai',
       },
-      skills: [
-        {
-          fileId: 'archive-file-1',
-          fullArchiveFileId: 'archive-file-1',
-          fullArchiveKey: 'research-skill/.DIFY-SKILL-FULL.zip',
-          id: 'skill-1',
-          name: 'Research Skill',
-          path: 'research-skill',
-          skillMdFileId: 'skill-md-file-1',
-          skillMdKey: 'research-skill/SKILL.md',
-        },
-      ],
-      files: [
-        {
-          id: 'file-1',
-          name: 'guide.md',
-          icon: 'markdown',
-        },
-      ],
       knowledgeRetrievals: [
         expect.objectContaining({
-          id: 'dataset-1',
+          id: 'support',
           name: 'Product Docs',
           queryMode: 'custom',
           customQuery: 'release notes',
@@ -155,6 +182,24 @@ describe('agent composer store conversions', () => {
           key: 'OPENAI_API_KEY',
           masked: true,
           scope: 'secret',
+          value: 'credential-1',
+        }),
+      ],
+      skills: [
+        expect.objectContaining({
+          id: 'Tender Analyzer',
+          description: 'Parses RFPs.',
+          fileId: 'tool-file-1',
+          name: 'Tender Analyzer',
+        }),
+      ],
+      files: [
+        expect.objectContaining({
+          configName: 'sample.pdf',
+          icon: 'pdf',
+          id: 'sample.pdf',
+          name: 'sample.pdf',
+          fileId: 'drive-file-1',
         }),
       ],
     })
@@ -179,7 +224,34 @@ describe('agent composer store conversions', () => {
       used_in_agent_nodes: true,
     })
 
-    expect(publishConfig.skills_files).toMatchObject(baseConfig.skills_files!)
+    expect(publishConfig).not.toHaveProperty('skills_files')
+    expect(publishConfig).not.toHaveProperty('files')
+    expect(publishConfig.config_skills).toEqual([
+      {
+        name: 'Tender Analyzer',
+        description: 'Parses RFPs.',
+        file_id: 'tool-file-1',
+        file_kind: 'tool_file',
+        size: undefined,
+        hash: undefined,
+        mime_type: undefined,
+      },
+    ])
+    expect(publishConfig.config_files).toEqual([
+      {
+        name: 'sample.pdf',
+        file_id: 'drive-file-1',
+        file_kind: 'upload_file',
+        size: undefined,
+        hash: undefined,
+        mime_type: 'application/pdf',
+      },
+    ])
+    expect(publishConfig.config_note).toBe('Read the proposal first.')
+    expect(publishConfig.model?.model_settings).toEqual({
+      temperature: 0.2,
+      max_tokens: 1024,
+    })
     expect(publishConfig.tools?.dify_tools).toEqual([
       expect.objectContaining({
         provider: 'DuckDuckGo',
@@ -204,20 +276,30 @@ describe('agent composer store conversions', () => {
       }),
     ])
     expect(publishConfig.knowledge).toMatchObject({
-      datasets: [
+      sets: [
         {
-          id: 'dataset-1',
+          id: 'support',
           name: 'Product Docs',
           description: 'Docs corpus',
+          datasets: [
+            {
+              id: 'dataset-1',
+              name: 'Product Docs',
+              description: 'Docs corpus',
+            },
+          ],
+          query: {
+            mode: 'user_query',
+            value: 'release notes',
+          },
+          retrieval: {
+            mode: 'multiple',
+            top_k: 8,
+            score_threshold: 0.72,
+            reranking_enable: false,
+          },
         },
       ],
-      query_config: {
-        query: 'release notes',
-        score_threshold: 0.72,
-        score_threshold_enabled: true,
-        top_k: 8,
-      },
-      query_mode: 'user_query',
     })
     expect(publishConfig.env).toMatchObject({
       variables: [
@@ -229,10 +311,34 @@ describe('agent composer store conversions', () => {
       secret_refs: [
         expect.objectContaining({
           key: 'OPENAI_API_KEY',
-          ref: 'secret-1',
+          value: 'credential-1',
         }),
       ],
     })
+  })
+
+  it('should hydrate legacy secret refs from ref when value is absent', () => {
+    const formState = agentSoulConfigToFormState({
+      env: {
+        secret_refs: [
+          {
+            id: 'secret-1',
+            key: 'OPENAI_API_KEY',
+            ref: 'credential-legacy',
+          },
+        ],
+      },
+    })
+
+    expect(formState.envVariables).toEqual([
+      {
+        id: 'secret-1',
+        key: 'OPENAI_API_KEY',
+        masked: true,
+        scope: 'secret',
+        value: 'credential-legacy',
+      },
+    ])
   })
 
   it('should keep unauthorized credential type when no-auth tool settings change', () => {
@@ -276,6 +382,121 @@ describe('agent composer store conversions', () => {
     ])
   })
 
+  it('should preserve oauth2 credential references when saving tool config', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+            credential_ref: {
+              id: 'credential-oauth',
+              provider: 'google',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: 'credential-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'oauth2',
+        credential_ref: {
+          id: 'credential-oauth',
+          provider: 'google',
+          type: 'provider',
+        },
+      }),
+    ])
+  })
+
+  it('should hydrate oauth tool authorization state from credential refs', () => {
+    const formState = agentSoulConfigToFormState({
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+          {
+            provider: 'slack',
+            provider_id: 'slack',
+            provider_type: 'builtin',
+            tool_name: 'post_message',
+            credential_type: 'oauth2',
+            credential_ref: {
+              id: 'slack-oauth',
+              provider: 'slack',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'google',
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+      expect.objectContaining({
+        id: 'slack',
+        credentialId: 'slack-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      }),
+    ])
+  })
+
+  it('should not save credentialed tool config without a credential reference', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: undefined,
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'unauthorized',
+        credential_ref: undefined,
+      }),
+    ])
+  })
+
   it('should derive model plugin_id from the selected provider when publishing', () => {
     const publishConfig = formStateToAgentSoulConfig({
       baseConfig: {
@@ -299,21 +520,232 @@ describe('agent composer store conversions', () => {
     })
   })
 
-  it('should not hydrate a knowledge retrieval row when the config has no datasets', () => {
+  it('should not hydrate a knowledge retrieval row when the config has no sets', () => {
     const formState = agentSoulConfigToFormState({
       knowledge: {
-        datasets: [],
-        query_config: {
-          top_k: 4,
-        },
-        query_mode: 'generated_query',
+        sets: [],
       },
     })
 
     expect(formState.knowledgeRetrievals).toEqual([])
   })
 
-  it('should omit incomplete environment variables from the publish payload', () => {
+  it('should keep explicitly cleared selected datasets instead of falling back to dataset refs', () => {
+    const publishConfig = formStateToAgentSoulConfig({
+      formState: {
+        ...defaultAgentSoulConfigFormState,
+        knowledgeRetrievals: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            selectedDatasets: [],
+            datasetRefs: [
+              {
+                id: 'dataset-stale',
+                name: 'Stale Docs',
+                description: 'Should stay cleared',
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    expect(publishConfig.knowledge).toMatchObject({
+      sets: [
+        {
+          id: 'retrieval-1',
+          datasets: [],
+        },
+      ],
+    })
+  })
+
+  it('should round-trip single retrieval model config', () => {
+    const baseConfig: AgentSoulConfig = {
+      knowledge: {
+        sets: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasets: [{ id: 'dataset-1', name: 'Docs' }],
+            query: { mode: 'generated_query' },
+            retrieval: {
+              mode: 'single',
+              model: {
+                provider: 'langgenius/openai/openai',
+                name: 'gpt-4.1',
+                mode: 'chat',
+                completion_params: { temperature: 0.1 },
+              },
+            },
+          },
+        ],
+      },
+    }
+
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.knowledgeRetrievals).toEqual([
+      expect.objectContaining({
+        id: 'retrieval-1',
+        retrievalMode: 'single',
+        singleRetrievalConfig: {
+          model: {
+            provider: 'langgenius/openai/openai',
+            name: 'gpt-4.1',
+            mode: 'chat',
+            completion_params: { temperature: 0.1 },
+          },
+        },
+      }),
+    ])
+    expect(publishConfig.knowledge).toMatchObject({
+      sets: [
+        {
+          id: 'retrieval-1',
+          retrieval: {
+            mode: 'single',
+            model: {
+              provider: 'langgenius/openai/openai',
+              name: 'gpt-4.1',
+              mode: 'chat',
+              completion_params: { temperature: 0.1 },
+            },
+          },
+        },
+      ],
+    })
+  })
+
+  it('should round-trip automatic metadata filtering model config', () => {
+    const baseConfig: AgentSoulConfig = {
+      knowledge: {
+        sets: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasets: [{ id: 'dataset-1', name: 'Docs' }],
+            query: { mode: 'generated_query' },
+            retrieval: { mode: 'multiple', top_k: 4 },
+            metadata_filtering: {
+              mode: 'automatic',
+              model_config: {
+                provider: 'langgenius/openai/openai',
+                name: 'gpt-4.1-mini',
+                mode: 'chat',
+                completion_params: { temperature: 0.2 },
+              },
+            },
+          },
+        ],
+      },
+    }
+
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.knowledgeRetrievals).toEqual([
+      expect.objectContaining({
+        id: 'retrieval-1',
+        metadataFilterMode: 'automatic',
+        metadataModelConfig: {
+          provider: 'langgenius/openai/openai',
+          name: 'gpt-4.1-mini',
+          mode: 'chat',
+          completion_params: { temperature: 0.2 },
+        },
+      }),
+    ])
+    expect(publishConfig.knowledge).toMatchObject({
+      sets: [
+        {
+          id: 'retrieval-1',
+          metadata_filtering: {
+            mode: 'automatic',
+            model_config: {
+              provider: 'langgenius/openai/openai',
+              name: 'gpt-4.1-mini',
+              mode: 'chat',
+              completion_params: { temperature: 0.2 },
+            },
+          },
+        },
+      ],
+    })
+  })
+
+  it('should round-trip manual metadata filtering conditions', () => {
+    const baseConfig: AgentSoulConfig = {
+      knowledge: {
+        sets: [
+          {
+            id: 'retrieval-1',
+            name: 'Docs Search',
+            datasets: [{ id: 'dataset-1', name: 'Docs' }],
+            query: { mode: 'generated_query' },
+            retrieval: { mode: 'multiple', top_k: 4 },
+            metadata_filtering: {
+              mode: 'manual',
+              conditions: {
+                logical_operator: 'and',
+                conditions: [
+                  {
+                    name: 'language',
+                    comparison_operator: 'is',
+                    value: 'en',
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    }
+
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.knowledgeRetrievals).toEqual([
+      expect.objectContaining({
+        id: 'retrieval-1',
+        metadataFilterMode: 'manual',
+        metadataFilteringConditions: {
+          logical_operator: 'and',
+          conditions: [
+            {
+              name: 'language',
+              comparison_operator: 'is',
+              value: 'en',
+            },
+          ],
+        },
+      }),
+    ])
+    expect(publishConfig.knowledge).toMatchObject({
+      sets: [
+        {
+          id: 'retrieval-1',
+          metadata_filtering: {
+            mode: 'manual',
+            conditions: {
+              logical_operator: 'and',
+              conditions: [
+                {
+                  name: 'language',
+                  comparison_operator: 'is',
+                  value: 'en',
+                },
+              ],
+            },
+          },
+        },
+      ],
+    })
+  })
+
+  it('should omit incomplete environment variables from the config snapshot', () => {
     const publishConfig = formStateToAgentSoulConfig({
       formState: {
         ...defaultAgentSoulConfigFormState,
@@ -419,7 +851,7 @@ describe('agent composer store conversions', () => {
           id: 'valid-secret',
           key: 'OPENAI_API_KEY',
           name: 'OPENAI_API_KEY',
-          ref: 'valid-secret',
+          value: '********',
           variable: 'OPENAI_API_KEY',
         },
       ],

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -18,8 +18,11 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -76,15 +79,33 @@ class WorkflowDraftVariableUpdatePayload(BaseModel):
     value: Any | None = Field(default=None, description="Variable value")
 
 
+class WorkflowVariableItemPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    id: str | None = None
+    name: str | None = None
+    value_type: str | None = None
+    value: Any | None = None
+    description: str | None = None
+
+
+class ConversationVariableItemPayload(WorkflowVariableItemPayload):
+    pass
+
+
+class EnvironmentVariableItemPayload(WorkflowVariableItemPayload):
+    pass
+
+
 class ConversationVariableUpdatePayload(BaseModel):
-    conversation_variables: list[dict[str, Any]] = Field(
+    conversation_variables: list[ConversationVariableItemPayload] = Field(
         ...,
         description="Conversation variables for the draft workflow",
     )
 
 
 class EnvironmentVariableUpdatePayload(BaseModel):
-    environment_variables: list[dict[str, Any]] = Field(
+    environment_variables: list[EnvironmentVariableItemPayload] = Field(
         ...,
         description="Environment variables for the draft workflow",
     )
@@ -111,7 +132,9 @@ register_schema_models(
     console_ns,
     WorkflowDraftVariableListQuery,
     WorkflowDraftVariableUpdatePayload,
+    ConversationVariableItemPayload,
     ConversationVariableUpdatePayload,
+    EnvironmentVariableItemPayload,
     EnvironmentVariableUpdatePayload,
 )
 register_response_schema_models(console_ns, SimpleResultResponse, EnvironmentVariableListResponse)
@@ -283,6 +306,7 @@ def _api_prerequisite[T, **P, R](
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
     @wraps(f)
@@ -304,6 +328,7 @@ class WorkflowVariableCollectionApi(Resource):
     )
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_without_value_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App):
         """
         Get draft workflow
@@ -368,6 +393,7 @@ class NodeVariableCollectionApi(Resource):
     @console_ns.response(200, "Node variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App, node_id: str):
         validate_node_id(node_id)
         with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
@@ -402,6 +428,7 @@ class VariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App, variable_id: UUID):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
@@ -574,6 +601,7 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
@@ -599,14 +627,17 @@ class ConversationVariableCollectionApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model(mode=AppMode.ADVANCED_CHAT)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
+    @get_app_model(mode=AppMode.ADVANCED_CHAT)
     def post(self, current_user: Account, app_model: App):
         payload = ConversationVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
 
-        conversation_variables_list = payload.conversation_variables
+        conversation_variables_list = [
+            variable.model_dump(mode="json", exclude_unset=True) for variable in payload.conversation_variables
+        ]
         conversation_variables = [
             variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
         ]
@@ -628,6 +659,7 @@ class SystemVariableCollectionApi(Resource):
     @console_ns.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
     @marshal_with(workflow_draft_variable_list_model)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, current_user: Account, app_model: App):
         return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID, current_user.id)
 
@@ -644,6 +676,7 @@ class EnvironmentVariableCollectionApi(Resource):
     )
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, _current_user: Account, app_model: App):
         """
         Get draft workflow
@@ -688,14 +721,17 @@ class EnvironmentVariableCollectionApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def post(self, current_user: Account, app_model: App):
         payload = EnvironmentVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
 
-        environment_variables_list = payload.environment_variables
+        environment_variables_list = [
+            variable.model_dump(mode="json", exclude_unset=True) for variable in payload.environment_variables
+        ]
         environment_variables = [
             variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
         ]

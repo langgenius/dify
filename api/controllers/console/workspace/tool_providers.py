@@ -11,12 +11,20 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse, RedirectResponse, SimpleResultResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     enterprise_license_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -369,6 +377,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):
@@ -411,6 +420,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -440,16 +450,17 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     def get(self, tenant_id: str, user: Account, provider: str):
         # Optional list of credential IDs to include even if visibility would hide them
         # (used when a workflow/agent node still references another member's only_me credential).
-        include_credential_ids = request.args.getlist("include_credential_ids") or [
-            s for s in (request.args.get("include_credential_ids") or "").split(",") if s
-        ]
+        query = query_params_from_request(
+            BuiltinCredentialListQuery,
+            list_fields=("include_credential_ids",),
+        )
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credentials(
                 tenant_id=tenant_id,
                 provider_name=provider,
                 user=user,
-                include_credential_ids=include_credential_ids or None,
+                include_credential_ids=query.include_credential_ids or None,
             )
         )
 
@@ -471,6 +482,7 @@ class ToolApiProviderAddApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -540,6 +552,7 @@ class ToolApiProviderUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -568,6 +581,7 @@ class ToolApiProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -659,6 +673,7 @@ class ToolWorkflowProviderCreateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -686,6 +701,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -713,6 +729,7 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.TOOL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -858,6 +875,7 @@ class ToolPluginOAuthApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
@@ -959,6 +977,7 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider: str):
@@ -975,6 +994,7 @@ class ToolOAuthCustomClient(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):
@@ -1035,16 +1055,17 @@ class ToolBuiltinProviderGetCredentialInfoApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, user: Account, provider: str):
-        include_credential_ids = request.args.getlist("include_credential_ids") or [
-            s for s in (request.args.get("include_credential_ids") or "").split(",") if s
-        ]
+        query = query_params_from_request(
+            BuiltinCredentialListQuery,
+            list_fields=("include_credential_ids",),
+        )
 
         return jsonable_encoder(
             BuiltinToolManageService.get_builtin_tool_provider_credential_info(
                 tenant_id=tenant_id,
                 provider=provider,
                 user=user,
-                include_credential_ids=include_credential_ids or None,
+                include_credential_ids=query.include_credential_ids or None,
             )
         )
 
@@ -1056,6 +1077,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, user: Account):
@@ -1111,6 +1133,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def put(self, current_tenant_id: str):
         payload = MCPProviderUpdatePayload.model_validate(console_ns.payload or {})
@@ -1164,6 +1187,7 @@ class ToolProviderMCPApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def delete(self, current_tenant_id: str):
         payload = MCPProviderDeletePayload.model_validate(console_ns.payload or {})
@@ -1182,6 +1206,7 @@ class ToolMCPAuthApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def post(self, tenant_id: str):
         payload = MCPAuthPayload.model_validate(console_ns.payload or {})
@@ -1286,6 +1311,7 @@ class ToolMCPUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.MCP_MANAGE, resource_required=False)
     @with_current_tenant_id
     def get(self, tenant_id: str, provider_id: str):
         with sessionmaker(db.engine).begin() as session:

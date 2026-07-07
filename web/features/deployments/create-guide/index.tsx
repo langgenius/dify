@@ -17,7 +17,7 @@ export function CreateDeploymentGuide() {
         backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
         className="top-4 bottom-4 h-auto max-h-none w-[min(calc(100vw-2rem),1120px)] max-w-none translate-y-0 overflow-hidden border-effects-highlight bg-background-default-subtle p-0"
       >
-        <main className="relative flex h-full min-w-0 grow flex-col overflow-hidden">
+        <div className="relative flex h-full min-w-0 grow flex-col overflow-hidden">
           <Link
             href="/deployments"
             aria-label={t('createGuide.nav.back')}
@@ -28,7 +28,7 @@ export function CreateDeploymentGuide() {
           <CreateDeploymentGuideProvider>
             <CreateDeploymentGuideShell />
           </CreateDeploymentGuideProvider>
-        </main>
+        </div>
       </DialogContent>
     </Dialog>
   )

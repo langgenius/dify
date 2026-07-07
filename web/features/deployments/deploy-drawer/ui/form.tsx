@@ -6,14 +6,12 @@ import type {
   Release,
 } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { useQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
-import { EnvVarBindingsPanel } from '../../components/env-var-bindings'
+import { EnvVarBindingsPanel } from '../../shared/components/env-var-bindings'
 import { isAvailableDeploymentTarget } from '../../shared/domain/runtime-status'
-import { canAttemptDeployAtom, canSubmitDeployAtom, closeDeployDrawerAtom, deployBindingSlotsAtom, deployEnvVarSlotsAtom, deployEnvVarValuesAtom, deployHasBindingOptionsErrorAtom, deployHasSelectedEnvironmentAtom, deployIsBindingOptionsLoadingAtom, deployReadyFormConfigAtom, deployReadyFormLocalAtoms, deployReleaseSubmissionAtom, deploySelectedBindingsAtom, deployShowValidationErrorsAtom, deployTargetReleaseIdAtom, isDeployReleaseSubmittingAtom, selectDeployBindingAtom, setDeployEnvVarAtom, showDeployValidationErrorsAtom } from '../state'
+import { canAttemptDeployAtom, canSubmitDeployAtom, closeDeployDrawerAtom, deployBindingSlotsAtom, deployEnvVarSlotsAtom, deployEnvVarValuesAtom, deployFormAppInstanceIdAtom, deployHasBindingOptionsErrorAtom, deployHasSelectedEnvironmentAtom, deployIsBindingOptionsLoadingAtom, deployReadyFormConfigAtom, deployReadyFormLocalAtoms, deployReleaseSubmissionAtom, deploySelectedBindingsAtom, deployShowValidationErrorsAtom, deployTargetReleaseIdAtom, isDeployReleaseSubmittingAtom, releaseDeploymentViewQueryAtom, selectDeployBindingAtom, setDeployEnvVarAtom, showDeployValidationErrorsAtom } from '../state'
 import {
   currentReleaseIdForEnvironment,
   selectableDeployReleases,
@@ -199,17 +197,13 @@ function DeployReadyForm(config: DeployReadyFormProps) {
   )
 }
 
-export function DeployForm({
+function DeployFormContent({
   appInstanceId,
   lockedEnvId,
   presetReleaseId,
 }: DeployFormProps) {
   const { t } = useTranslation('deployments')
-  const releaseDeploymentViewQuery = useQuery(consoleQuery.enterprise.releaseService.computeReleaseDeploymentView.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-  }))
+  const releaseDeploymentViewQuery = useAtomValue(releaseDeploymentViewQueryAtom)
 
   if (releaseDeploymentViewQuery.isLoading) {
     return <DeployFormSkeleton />
@@ -265,5 +259,19 @@ export function DeployForm({
       key={formKey}
       {...readyFormConfig}
     />
+  )
+}
+
+export function DeployForm(props: DeployFormProps) {
+  return (
+    <ScopeProvider
+      key={props.appInstanceId}
+      atoms={[
+        [deployFormAppInstanceIdAtom, props.appInstanceId],
+      ]}
+      name="DeployForm"
+    >
+      <DeployFormContent {...props} />
+    </ScopeProvider>
   )
 }

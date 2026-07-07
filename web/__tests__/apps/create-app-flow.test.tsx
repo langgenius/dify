@@ -21,6 +21,7 @@ import { AppModeEnum } from '@/types/app'
 let mockIsCurrentWorkspaceEditor = true
 let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 let mockSystemFeatures = {
   branding: { enabled: false },
   webapp_auth: { enabled: false },
@@ -51,6 +52,12 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -97,6 +104,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: <T,>(response: T) => response,
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -261,6 +269,7 @@ describe('Create App Flow', () => {
     mockIsCurrentWorkspaceEditor = true
     mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -282,8 +291,9 @@ describe('Create App Flow', () => {
       expect(screen.getByText('app.importDSL')).toBeInTheDocument()
     })
 
-    it('should not render the create menu when user is not an editor', () => {
+    it('should render disabled the create menu when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       renderList()
 
       expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()

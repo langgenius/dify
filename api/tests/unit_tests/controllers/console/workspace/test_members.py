@@ -1,4 +1,6 @@
 from contextlib import nullcontext
+from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,12 +27,6 @@ from controllers.console.workspace.members import (
 from services.errors.account import AccountAlreadyInTenantError
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
-
-
 class TestMemberListApi:
     def test_get_success(self, app: Flask):
         api = MemberListApi()
@@ -43,8 +39,8 @@ class TestMemberListApi:
         member.name = "Member"
         member.email = "member@test.com"
         member.avatar = "avatar.png"
-        member.role = "admin"
-        member.status = "active"
+        member.current_role = SimpleNamespace(value="admin")
+        member.status = SimpleNamespace(value="active")
         members = [member]
 
         with (
@@ -55,6 +51,53 @@ class TestMemberListApi:
 
         assert status == 200
         assert len(result["accounts"]) == 1
+        assert result["accounts"][0]["role"] == "admin"
+        assert result["accounts"][0]["roles"] == [{"id": "admin", "name": "admin"}]
+
+    def test_get_with_rbac_enabled_fetches_roles_in_batch(self, app):
+        api = MemberListApi()
+        method = unwrap(api.get)
+
+        tenant = MagicMock(id="tenant-1")
+        user = MagicMock(id="acct-1", current_tenant=tenant)
+        member = SimpleNamespace(
+            id="m1",
+            name="Member",
+            email="member@test.com",
+            avatar=None,
+            last_login_at=1,
+            last_active_at=2,
+            created_at=3,
+            current_role=SimpleNamespace(value="editor"),
+            status=SimpleNamespace(value="active"),
+        )
+        role_item = SimpleNamespace(
+            account_id="m1",
+            roles=[
+                SimpleNamespace(id="workspace.owner", name="Owner"),
+                SimpleNamespace(id="workspace.editor", name="Editor"),
+            ],
+        )
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.members.current_account_with_tenant", return_value=(user, "tenant-1")),
+            patch("controllers.console.workspace.members.dify_config.RBAC_ENABLED", True),
+            patch("controllers.console.workspace.members.TenantService.get_tenant_members", return_value=[member]),
+            patch(
+                "controllers.console.workspace.members.enterprise_rbac_service.RBACService.MemberRoles.batch_get",
+                return_value=[role_item],
+            ) as mock_batch_get,
+        ):
+            result, status = method(api)
+
+        assert status == 200
+        assert result["accounts"][0]["role"] == "editor"
+        assert result["accounts"][0]["roles"] == [
+            {"id": "workspace.owner", "name": "Owner"},
+            {"id": "workspace.editor", "name": "Editor"},
+        ]
+        mock_batch_get.assert_called_once_with("tenant-1", "acct-1", ["m1"])
 
     def test_get_no_tenant(self, app: Flask):
         api = MemberListApi()
@@ -87,7 +130,7 @@ class TestMemberInviteEmailApi:
         features.workspace_members.is_available.return_value = True
 
         payload = {
-            "emails": ["a@test.com"],
+            "emails": ["A@TEST.com", "a@test.com"],
             "role": "normal",
             "language": "en-US",
         }
@@ -95,8 +138,10 @@ class TestMemberInviteEmailApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
-            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1),
-            patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
+            patch("controllers.console.workspace.members._count_new_member_invites", return_value=1) as mock_count,
+            patch(
+                "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
+            ) as mock_invite,
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
@@ -105,6 +150,10 @@ class TestMemberInviteEmailApi:
 
         assert status == 201
         assert result["result"] == "success"
+        assert result["invitation_results"][0]["email"] == "a@test.com"
+        mock_count.assert_not_called()
+        mock_invite.assert_called_once()
+        assert mock_invite.call_args.kwargs["email"] == "a@test.com"
 
     def test_invite_limit_exceeded(self, app: Flask):
         api = MemberInviteEmailApi()

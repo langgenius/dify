@@ -229,7 +229,7 @@ describe('Compliance', () => {
       })
     })
 
-    // isPending branches: spinner visible, disabled class, guard blocks second call
+    // isPending branches: spinner visible, loading button contract, guard blocks second call
     it('should show spinner and guard against duplicate download when isPending is true', async () => {
       // Arrange
       let resolveDownload: (value: { url: string }) => void
@@ -250,12 +250,12 @@ describe('Compliance', () => {
       expect(menuItem).not.toBeNull()
       fireEvent.click(menuItem!)
 
-      // Assert - button should become busy while mutation is pending
+      // Assert - button should enter the loading-disabled state while mutation is pending
       await waitFor(() => {
-        const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
-        expect(busyButton).not.toBeNull()
-        expectLoadingButton(busyButton)
-        expect(busyButton!.querySelector('.animate-spin')).not.toBeNull()
+        const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
+        expect(loadingButton).not.toBeNull()
+        expectLoadingButton(loadingButton)
+        expect(loadingButton!.querySelector('.animate-spin')).not.toBeNull()
       }, { timeout: 10000 })
 
       // Cleanup: resolve the pending promise
@@ -287,9 +287,9 @@ describe('Compliance', () => {
 
       // Wait for mutation to start and React to re-render (isPending=true)
       await waitFor(() => {
-        const busyButton = menuItem!.querySelector('button[aria-busy="true"]')
-        expect(busyButton).not.toBeNull()
-        expectLoadingButton(busyButton)
+        const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
+        expect(loadingButton).not.toBeNull()
+        expectLoadingButton(loadingButton)
         expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
       }, { timeout: 10000 })
 

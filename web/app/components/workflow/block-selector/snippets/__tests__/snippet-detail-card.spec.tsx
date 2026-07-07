@@ -31,6 +31,7 @@ const createSnippet = (overrides: Partial<PublishedSnippetListItem> = {}): Publi
   updated_at: 2,
   updated_by: 'user-1',
   ...overrides,
+  version: overrides.version ?? 1,
 })
 
 describe('SnippetDetailCard', () => {

@@ -1,8 +1,11 @@
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from './tag-combobox-item'
-import type { TagType } from '@/contract/console/tags'
 import { ComboboxEmpty, ComboboxInput, ComboboxInputGroup, ComboboxItem, ComboboxItemIndicator, ComboboxItemText, ComboboxList, ComboboxSeparator, useComboboxFilteredItems } from '@langgenius/dify-ui/combobox'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { hasPermission } from '@/utils/permission'
+import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'
 
 type TagSearchContentProps = {
@@ -11,6 +14,7 @@ type TagSearchContentProps = {
   onInputValueChange: (value: string) => void
   onOpenTagManagement?: () => void
   onClose?: () => void
+  canBindOrUnbindTags?: boolean
 }
 
 export const TagSearchContent = ({
@@ -19,8 +23,11 @@ export const TagSearchContent = ({
   onInputValueChange,
   onOpenTagManagement,
   onClose,
+  canBindOrUnbindTags = false,
 }: TagSearchContentProps) => {
   const { t } = useTranslation()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
   const filteredItems = useComboboxFilteredItems<TagComboboxItem>()
   const realItemCount = filteredItems.filter(tag => !isCreateTagOption(tag)).length
   const placeholder = t('tag.selectorPlaceholder', { ns: 'common' }) || ''
@@ -40,7 +47,7 @@ export const TagSearchContent = ({
             <button
               type="button"
               aria-label={t('operation.clear', { ns: 'common' })}
-              className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset"
+              className="mr-1.5 flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active"
               onClick={() => onInputValueChange('')}
               onPointerDown={event => event.preventDefault()}
             >
@@ -51,7 +58,7 @@ export const TagSearchContent = ({
       </div>
       <ComboboxList className="max-h-58">
         {(tag: TagComboboxItem) => {
-          if (isCreateTagOption(tag)) {
+          if (isCreateTagOption(tag) && canManageTags) {
             return (
               <Fragment key={tag.id}>
                 <ComboboxItem
@@ -71,7 +78,11 @@ export const TagSearchContent = ({
           }
 
           return (
-            <ComboboxItem key={tag.id} value={tag}>
+            <ComboboxItem
+              key={tag.id}
+              value={tag}
+              disabled={!canBindOrUnbindTags && !canManageTags}
+            >
               <ComboboxItemText title={tag.name}>{tag.name}</ComboboxItemText>
               <ComboboxItemIndicator />
             </ComboboxItem>
@@ -84,22 +95,26 @@ export const TagSearchContent = ({
           <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
         </div>
       </ComboboxEmpty>
-      <ComboboxSeparator />
-      <div className="p-1">
-        <button
-          type="button"
-          className="flex w-full cursor-pointer touch-manipulation items-center gap-x-1 rounded-lg px-2 py-1.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          onClick={() => {
-            onOpenTagManagement?.()
-            onClose?.()
-          }}
-        >
-          <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-4 text-text-tertiary" aria-hidden="true" />
-          <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
-            {t('tag.manageTags', { ns: 'common' })}
-          </span>
-        </button>
-      </div>
+      {canManageTags && (
+        <>
+          <ComboboxSeparator />
+          <div className="p-1">
+            <button
+              type="button"
+              className="flex w-full cursor-pointer touch-manipulation items-center gap-x-1 rounded-lg px-2 py-1.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              onClick={() => {
+                onOpenTagManagement?.()
+                onClose?.()
+              }}
+            >
+              <span className="i-custom-vender-line-financeAndECommerce-tag-01 size-4 text-text-tertiary" aria-hidden="true" />
+              <span className="min-w-0 grow truncate px-1 system-md-regular text-text-secondary">
+                {t('tag.manageTags', { ns: 'common' })}
+              </span>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

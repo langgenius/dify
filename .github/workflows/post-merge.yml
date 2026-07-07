@@ -1,0 +1,54 @@
+name: Post-Merge Checks
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: post-merge-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  check-changes:
+    name: Check Changed Files
+    runs-on: depot-ubuntu-24.04
+    outputs:
+      external-e2e-changed: ${{ steps.changes.outputs.external_e2e }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+        id: changes
+        with:
+          filters: |
+            external_e2e:
+              - 'e2e/features/agent-v2/**'
+              - 'e2e/scripts/**'
+              - 'e2e/support/**'
+              - '.github/workflows/post-merge.yml'
+              - '.github/workflows/web-e2e.yml'
+              - '.github/actions/setup-web/**'
+              - 'dify-agent/**'
+              - 'api/clients/agent_backend/**'
+              - 'api/core/app/apps/agent_app/**'
+              - 'api/core/workflow/nodes/agent_v2/**'
+              - 'api/controllers/console/agent/**'
+              - 'api/services/agent/**'
+              - 'api/core/plugin/**'
+              - 'api/services/plugin/**'
+              - 'api/core/tools/**'
+              - 'api/services/tools/**'
+              - 'web/features/agent-v2/**'
+              - 'web/app/(commonLayout)/roster/**'
+              - 'web/app/components/workflow/nodes/agent-v2/**'
+
+  external-e2e:
+    name: External Runtime E2E
+    needs: check-changes
+    if: needs.check-changes.outputs.external-e2e-changed == 'true'
+    uses: ./.github/workflows/web-e2e.yml
+    with:
+      run-external-runtime: true
+    secrets: inherit

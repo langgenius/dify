@@ -6,23 +6,36 @@ verb-based aliases stay available as deprecated resources so OpenAPI metadata
 marks only the legacy paths as deprecated.
 """
 
+from datetime import datetime
+from enum import StrEnum
+from http import HTTPStatus
 from typing import Any
 
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.schema import query_params_from_model, register_schema_models
+from controllers.common.fields import SuccessResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user_id,
 )
+from core.entities.parameter_entities import (
+    AppSelectorScope,
+    ModelSelectorScope,
+    ToolSelectorScope,
+)
+from core.entities.provider_entities import ProviderConfigType
 from core.plugin.impl.exc import PluginPermissionDeniedError
-from graphon.model_runtime.utils.encoders import jsonable_encoder
+from fields.base import ResponseModel
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
@@ -37,14 +50,17 @@ class EndpointIdPayload(BaseModel):
     endpoint_id: str
 
 
-class EndpointUpdatePayload(BaseModel):
+class EndpointSettingsPayload(BaseModel):
     settings: dict[str, Any]
     name: str = Field(min_length=1)
 
 
-class LegacyEndpointUpdatePayload(EndpointIdPayload):
-    settings: dict[str, Any]
-    name: str = Field(min_length=1)
+class EndpointUpdatePayload(EndpointSettingsPayload):
+    pass
+
+
+class LegacyEndpointUpdatePayload(EndpointIdPayload, EndpointSettingsPayload):
+    pass
 
 
 class EndpointListQuery(BaseModel):
@@ -56,98 +72,158 @@ class EndpointListForPluginQuery(EndpointListQuery):
     plugin_id: str
 
 
-class EndpointCreateResponse(BaseModel):
-    success: bool = Field(description="Operation success")
+class EndpointProviderConfigScope(StrEnum):
+    ALL = AppSelectorScope.ALL.value
+    CHAT = AppSelectorScope.CHAT.value
+    WORKFLOW = AppSelectorScope.WORKFLOW.value
+    COMPLETION = AppSelectorScope.COMPLETION.value
+    LLM = ModelSelectorScope.LLM.value
+    TEXT_EMBEDDING = ModelSelectorScope.TEXT_EMBEDDING.value
+    RERANK = ModelSelectorScope.RERANK.value
+    TTS = ModelSelectorScope.TTS.value
+    SPEECH2TEXT = ModelSelectorScope.SPEECH2TEXT.value
+    MODERATION = ModelSelectorScope.MODERATION.value
+    VISION = ModelSelectorScope.VISION.value
+    CUSTOM = ToolSelectorScope.CUSTOM.value
+    BUILTIN = ToolSelectorScope.BUILTIN.value
 
 
-class EndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(
-        description="Endpoint information",
-    )
+class EndpointProviderConfigI18nResponse(ResponseModel):
+    en_US: str
+    zh_Hans: str | None = None
+    pt_BR: str | None = None
+    ja_JP: str | None = None
 
 
-class PluginEndpointListResponse(BaseModel):
-    endpoints: list[dict[str, Any]] = Field(
-        description="Endpoint information",
-    )
+class EndpointProviderConfigOptionResponse(ResponseModel):
+    value: str
+    label: EndpointProviderConfigI18nResponse
 
 
-class EndpointDeleteResponse(BaseModel):
-    success: bool = Field(description="Operation success")
+class EndpointProviderConfigResponse(ResponseModel):
+    type: ProviderConfigType
+    name: str
+    scope: EndpointProviderConfigScope | None = None
+    required: bool = False
+    default: int | str | float | bool | None = None
+    options: list[EndpointProviderConfigOptionResponse] | None = None
+    multiple: bool = False
+    label: EndpointProviderConfigI18nResponse | None = None
+    help: EndpointProviderConfigI18nResponse | None = None
+    url: str | None = None
+    placeholder: EndpointProviderConfigI18nResponse | None = None
 
 
-class EndpointUpdateResponse(BaseModel):
-    success: bool = Field(description="Operation success")
+class EndpointDeclarationResponse(ResponseModel):
+    path: str
+    method: str
+    hidden: bool = False
 
 
-class EndpointEnableResponse(BaseModel):
-    success: bool = Field(description="Operation success")
+class EndpointProviderDeclarationResponse(ResponseModel):
+    settings: list[EndpointProviderConfigResponse] = Field(default_factory=list)
+    endpoints: list[EndpointDeclarationResponse] | None = Field(default_factory=list)
 
 
-class EndpointDisableResponse(BaseModel):
-    success: bool = Field(description="Operation success")
+class EndpointListItemResponse(ResponseModel):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    tenant_id: str
+    plugin_id: str
+    settings: dict[str, Any]
+    expired_at: datetime
+    declaration: EndpointProviderDeclarationResponse = Field(default_factory=EndpointProviderDeclarationResponse)
+    name: str
+    enabled: bool
+    url: str
+    hook_id: str
+
+
+class EndpointListResponse(ResponseModel):
+    endpoints: list[EndpointListItemResponse] = Field(description="Endpoint information")
 
 
 register_schema_models(
     console_ns,
     EndpointCreatePayload,
     EndpointIdPayload,
+    EndpointSettingsPayload,
     EndpointUpdatePayload,
     LegacyEndpointUpdatePayload,
     EndpointListQuery,
     EndpointListForPluginQuery,
-    EndpointCreateResponse,
+)
+register_response_schema_models(
+    console_ns,
+    SuccessResponse,
+    EndpointProviderConfigOptionResponse,
+    EndpointProviderConfigResponse,
+    EndpointDeclarationResponse,
+    EndpointProviderDeclarationResponse,
+    EndpointListItemResponse,
     EndpointListResponse,
-    PluginEndpointListResponse,
-    EndpointDeleteResponse,
-    EndpointUpdateResponse,
-    EndpointEnableResponse,
-    EndpointDisableResponse,
 )
 
 
-def _create_endpoint(tenant_id: str, user_id: str) -> dict[str, bool]:
+def _create_endpoint(tenant_id: str, user_id: str) -> bool:
     """Create a plugin endpoint for the injected workspace and user."""
     args = EndpointCreatePayload.model_validate(console_ns.payload)
 
     try:
-        return {
-            "success": EndpointService.create_endpoint(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                plugin_unique_identifier=args.plugin_unique_identifier,
-                name=args.name,
-                settings=args.settings,
-            )
-        }
+        return EndpointService.create_endpoint(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plugin_unique_identifier=args.plugin_unique_identifier,
+            name=args.name,
+            settings=args.settings,
+        )
     except PluginPermissionDeniedError as e:
         raise ValueError(e.description) from e
 
 
-def _update_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> dict[str, bool]:
+def _update_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> bool:
     """Update a plugin endpoint identified by the canonical path parameter."""
     args = EndpointUpdatePayload.model_validate(console_ns.payload)
 
-    return {
-        "success": EndpointService.update_endpoint(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            endpoint_id=endpoint_id,
-            name=args.name,
-            settings=args.settings,
-        )
-    }
+    return EndpointService.update_endpoint(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        endpoint_id=endpoint_id,
+        name=args.name,
+        settings=args.settings,
+    )
 
 
-def _delete_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> dict[str, bool]:
+def _legacy_update_endpoint(tenant_id: str, user_id: str) -> bool:
+    args = LegacyEndpointUpdatePayload.model_validate(console_ns.payload)
+    return EndpointService.update_endpoint(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        endpoint_id=args.endpoint_id,
+        name=args.name,
+        settings=args.settings,
+    )
+
+
+def _delete_endpoint(tenant_id: str, user_id: str, endpoint_id: str) -> bool:
     """Delete a plugin endpoint identified by the canonical path parameter."""
-    return {
-        "success": EndpointService.delete_endpoint(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            endpoint_id=endpoint_id,
-        )
-    }
+    return EndpointService.delete_endpoint(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        endpoint_id=endpoint_id,
+    )
+
+
+def _delete_endpoint_from_payload(tenant_id: str, user_id: str) -> bool:
+    args = EndpointIdPayload.model_validate(console_ns.payload)
+    return _delete_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id)
+
+
+def _set_endpoint_enabled(tenant_id: str, user_id: str, *, enabled: bool) -> bool:
+    args = EndpointIdPayload.model_validate(console_ns.payload)
+    action = EndpointService.enable_endpoint if enabled else EndpointService.disable_endpoint
+    return action(tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id)
 
 
 @console_ns.route("/workspaces/current/endpoints")
@@ -158,19 +234,20 @@ class EndpointCollectionApi(Resource):
     @console_ns.doc(description="Create a new plugin endpoint")
     @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint created successfully",
-        console_ns.models[EndpointCreateResponse.__name__],
+        console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        return _create_endpoint(tenant_id=tenant_id, user_id=user_id)
+        return SuccessResponse(success=_create_endpoint(tenant_id=tenant_id, user_id=user_id)).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/create")
@@ -186,19 +263,20 @@ class DeprecatedEndpointCreateApi(Resource):
     )
     @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint created successfully",
-        console_ns.models[EndpointCreateResponse.__name__],
+        console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        return _create_endpoint(tenant_id=tenant_id, user_id=user_id)
+        return SuccessResponse(success=_create_endpoint(tenant_id=tenant_id, user_id=user_id)).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/list")
@@ -207,7 +285,7 @@ class EndpointListApi(Resource):
     @console_ns.doc(description="List plugin endpoints with pagination")
     @console_ns.doc(params=query_params_from_model(EndpointListQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Success",
         console_ns.models[EndpointListResponse.__name__],
     )
@@ -219,19 +297,14 @@ class EndpointListApi(Resource):
     def get(self, tenant_id: str, user_id: str):
         args = EndpointListQuery.model_validate(request.args.to_dict(flat=True))
 
-        page = args.page
-        page_size = args.page_size
-
-        return jsonable_encoder(
-            {
-                "endpoints": EndpointService.list_endpoints(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    page=page,
-                    page_size=page_size,
-                )
-            }
+        endpoints = EndpointService.list_endpoints(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            page=args.page,
+            page_size=args.page_size,
         )
+
+        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/list/plugin")
@@ -240,9 +313,9 @@ class EndpointListForSinglePluginApi(Resource):
     @console_ns.doc(description="List endpoints for a specific plugin")
     @console_ns.doc(params=query_params_from_model(EndpointListForPluginQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Success",
-        console_ns.models[PluginEndpointListResponse.__name__],
+        console_ns.models[EndpointListResponse.__name__],
     )
     @setup_required
     @login_required
@@ -252,21 +325,15 @@ class EndpointListForSinglePluginApi(Resource):
     def get(self, tenant_id: str, user_id: str):
         args = EndpointListForPluginQuery.model_validate(request.args.to_dict(flat=True))
 
-        page = args.page
-        page_size = args.page_size
-        plugin_id = args.plugin_id
-
-        return jsonable_encoder(
-            {
-                "endpoints": EndpointService.list_endpoints_for_single_plugin(
-                    tenant_id=tenant_id,
-                    user_id=user_id,
-                    plugin_id=plugin_id,
-                    page=page,
-                    page_size=page_size,
-                )
-            }
+        endpoints = EndpointService.list_endpoints_for_single_plugin(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plugin_id=args.plugin_id,
+            page=args.page,
+            page_size=args.page_size,
         )
+
+        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/<string:id>")
@@ -277,38 +344,44 @@ class EndpointItemApi(Resource):
     @console_ns.doc(description="Delete a plugin endpoint")
     @console_ns.doc(params={"id": {"description": "Endpoint ID", "type": "string", "required": True}})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint deleted successfully",
-        console_ns.models[EndpointDeleteResponse.__name__],
+        console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def delete(self, tenant_id: str, user_id: str, id: str):
-        return _delete_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=id)
+        return SuccessResponse(
+            success=_delete_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=id)
+        ).model_dump(mode="json")
 
     @console_ns.doc("update_endpoint")
     @console_ns.doc(description="Update a plugin endpoint")
     @console_ns.expect(console_ns.models[EndpointUpdatePayload.__name__])
     @console_ns.doc(params={"id": {"description": "Endpoint ID", "type": "string", "required": True}})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint updated successfully",
-        console_ns.models[EndpointUpdateResponse.__name__],
+        console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def patch(self, tenant_id: str, user_id: str, id: str):
-        return _update_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=id)
+        return SuccessResponse(
+            success=_update_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=id)
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/delete")
@@ -325,20 +398,22 @@ class DeprecatedEndpointDeleteApi(Resource):
     )
     @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint deleted successfully",
-        console_ns.models[EndpointDeleteResponse.__name__],
+        console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        args = EndpointIdPayload.model_validate(console_ns.payload)
-        return _delete_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id)
+        return SuccessResponse(success=_delete_endpoint_from_payload(tenant_id=tenant_id, user_id=user_id)).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/workspaces/current/endpoints/update")
@@ -355,20 +430,22 @@ class DeprecatedEndpointUpdateApi(Resource):
     )
     @console_ns.expect(console_ns.models[LegacyEndpointUpdatePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint updated successfully",
-        console_ns.models[EndpointUpdateResponse.__name__],
+        console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        args = LegacyEndpointUpdatePayload.model_validate(console_ns.payload)
-        return _update_endpoint(tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id)
+        return SuccessResponse(success=_legacy_update_endpoint(tenant_id=tenant_id, user_id=user_id)).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/workspaces/current/endpoints/enable")
@@ -377,25 +454,22 @@ class EndpointEnableApi(Resource):
     @console_ns.doc(description="Enable a plugin endpoint")
     @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint enabled successfully",
-        console_ns.models[EndpointEnableResponse.__name__],
+        console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        args = EndpointIdPayload.model_validate(console_ns.payload)
-
-        return {
-            "success": EndpointService.enable_endpoint(
-                tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id
-            )
-        }
+        return SuccessResponse(
+            success=_set_endpoint_enabled(tenant_id=tenant_id, user_id=user_id, enabled=True)
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/disable")
@@ -404,22 +478,19 @@ class EndpointDisableApi(Resource):
     @console_ns.doc(description="Disable a plugin endpoint")
     @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint disabled successfully",
-        console_ns.models[EndpointDisableResponse.__name__],
+        console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_MODEL_CONFIG, resource_required=False)
     @account_initialization_required
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        args = EndpointIdPayload.model_validate(console_ns.payload)
-
-        return {
-            "success": EndpointService.disable_endpoint(
-                tenant_id=tenant_id, user_id=user_id, endpoint_id=args.endpoint_id
-            )
-        }
+        return SuccessResponse(
+            success=_set_endpoint_enabled(tenant_id=tenant_id, user_id=user_id, enabled=False)
+        ).model_dump(mode="json")

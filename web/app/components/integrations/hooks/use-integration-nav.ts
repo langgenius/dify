@@ -39,36 +39,43 @@ export function useIntegrationNav(section: IntegrationSection) {
     icon: 'i-custom-vender-integrations-api-extension',
     iconClassName: 'h-[13px] w-3.5',
   }), [t])
-  const toolItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
-    {
-      section: 'builtin',
-      label: t('toolsPage.toolPlugin', { ns: 'common' }),
-      icon: 'i-custom-vender-integrations-tools',
-      iconClassName: 'h-[14px] w-[12.5px]',
-      className: 'pl-8',
-    },
-    {
-      section: 'mcp',
-      label: 'MCP',
-      icon: 'i-custom-vender-integrations-mcp',
-      iconClassName: 'h-[14.5px] w-[13.5px]',
-      className: 'pl-8',
-    },
-    {
-      section: 'workflow-tool',
-      label: t('common.workflowAsTool', { ns: 'workflow' }),
-      icon: 'i-custom-vender-integrations-workflow-as-tool',
-      iconClassName: 'size-4',
-      className: 'pl-8',
-    },
-    {
-      section: 'custom-tool',
-      label: t('settings.swaggerAPIAsTool', { ns: 'common' }),
-      icon: 'i-custom-vender-integrations-custom-tool',
-      iconClassName: 'h-[14.5px] w-[12.5px]',
-      className: 'pl-8',
-    },
-  ], [t])
+  const toolItems = useMemo<IntegrationSidebarNavItemData[]>(() => {
+    const items: IntegrationSidebarNavItemData[] = [
+      {
+        section: 'builtin',
+        label: t('toolsPage.toolPlugin', { ns: 'common' }),
+        icon: 'i-custom-vender-integrations-tools',
+        iconClassName: 'h-[14px] w-[12.5px]',
+        className: 'pl-8',
+      },
+    ]
+
+    items.push(
+      {
+        section: 'mcp',
+        label: 'MCP',
+        icon: 'i-custom-vender-integrations-mcp',
+        iconClassName: 'h-[14.5px] w-[13.5px]',
+        className: 'pl-8',
+      },
+      {
+        section: 'workflow-tool',
+        label: t('common.workflowAsTool', { ns: 'workflow' }),
+        icon: 'i-custom-vender-integrations-workflow-as-tool',
+        iconClassName: 'size-4',
+        className: 'pl-8',
+      },
+      {
+        section: 'custom-tool',
+        label: t('settings.swaggerAPIAsTool', { ns: 'common' }),
+        icon: 'i-custom-vender-integrations-custom-tool',
+        iconClassName: 'h-[14.5px] w-[12.5px]',
+        className: 'pl-8',
+      },
+    )
+
+    return items
+  }, [t])
   const secondaryItems = useMemo<IntegrationSidebarNavItemData[]>(() => [
     {
       section: 'trigger',

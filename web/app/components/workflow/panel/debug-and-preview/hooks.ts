@@ -7,6 +7,7 @@ import type {
 } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { IOtherOptions } from '@/service/base'
+import type { ReasoningChunkResponse } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
@@ -60,17 +61,18 @@ export const useChat = (
 ) => {
   const { t } = useTranslation()
   const { handleRun } = useWorkflowRun()
-  const hasStopResponded = useRef(false)
+  const hasStopRespondedRef = useRef(false)
   const workflowStore = useWorkflowStore()
-  const conversationId = useRef('')
+  const conversationIdRef = useRef('')
   const taskIdRef = useRef('')
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
   const configsMap = useHooksStore(s => s.configsMap)
+  const canRun = useHooksStore(s => s.accessControl.canRun)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
-  const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const {
     setIterTimes,
@@ -188,7 +190,7 @@ export const useChat = (
   }, [produceChatTreeNode])
 
   const handleStop = useCallback(() => {
-    hasStopResponded.current = true
+    hasStopRespondedRef.current = true
     handleResponding(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
@@ -201,13 +203,13 @@ export const useChat = (
   }, [handleResponding, setIterTimes, setLoopTimes, stopChat])
 
   const handleRestart = useCallback(() => {
-    conversationId.current = ''
+    conversationIdRef.current = ''
     taskIdRef.current = ''
     handleStop()
     setIterTimes(DEFAULT_ITER_TIMES)
     setLoopTimes(DEFAULT_LOOP_TIMES)
     setChatTree([])
-    setSuggestQuestions([])
+    setSuggestedQuestions([])
   }, [
     handleStop,
     setIterTimes,
@@ -259,6 +261,9 @@ export const useChat = (
       onGetSuggestedQuestions,
     }: SendCallback,
   ) => {
+    if (canRun === false)
+      return false
+
     if (isRespondingRef.current) {
       toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
@@ -348,11 +353,27 @@ export const useChat = (
           }
 
           if (isFirstMessage && newConversationId)
-            conversationId.current = newConversationId
+            conversationIdRef.current = newConversationId
 
           taskIdRef.current = taskId
           if (messageId)
             responseItem.id = messageId
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
+        onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+          const { reasoning, node_id, is_final } = reasoningData
+          const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+          const key = node_id || '_'
+          if (reasoning)
+            reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+          if (is_final)
+            responseItem.reasoningFinished = true
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -382,17 +403,17 @@ export const useChat = (
               return
             }
 
-            if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+            if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
               try {
                 const { data }: any = await onGetSuggestedQuestions(
                   responseItem.id,
                   newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
                 )
-                setSuggestQuestions(data)
+                setSuggestedQuestions(data)
               }
               // eslint-disable-next-line unused-imports/no-unused-vars
               catch (error) {
-                setSuggestQuestions([])
+                setSuggestedQuestions([])
               }
             }
           }
@@ -418,7 +439,7 @@ export const useChat = (
         onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
           // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
           if (conversation_id) {
-            conversationId.current = conversation_id
+            conversationIdRef.current = conversation_id
           }
           if (message_id && !hasSetResponseId) {
             questionItem.id = `question-${message_id}`
@@ -429,7 +450,11 @@ export const useChat = (
 
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
             handleResponding(true)
-            responseItem.workflowProcess.status = WorkflowRunningStatus.Running
+            responseItem.workflowProcess = {
+              ...responseItem.workflowProcess,
+              status: WorkflowRunningStatus.Running,
+              error: undefined,
+            }
           }
           else {
             taskIdRef.current = task_id
@@ -447,7 +472,11 @@ export const useChat = (
           })
         },
         onWorkflowFinished: ({ data }) => {
-          responseItem.workflowProcess!.status = data.status as WorkflowRunningStatus
+          responseItem.workflowProcess = {
+            ...responseItem.workflowProcess!,
+            status: data.status as WorkflowRunningStatus,
+            error: data.error,
+          }
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -665,7 +694,7 @@ export const useChat = (
         },
       },
     )
-  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
+  }, [canRun, threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
 
   const handleSubmitHumanInputForm = async (formToken: string, formData: HumanInputFormSubmitData) => {
     await submitHumanInputForm(formToken, formData)
@@ -702,11 +731,23 @@ export const useChat = (
         })
 
         if (newConversationId)
-          conversationId.current = newConversationId
+          conversationIdRef.current = newConversationId
 
         if (taskId)
           taskIdRef.current = taskId
       },
+      onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+        const { message_id, reasoning, node_id, is_final } = reasoningData
+        updateChatTreeNode(message_id, (responseItem) => {
+          const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+          const key = node_id || '_'
+          if (reasoning)
+            reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+          if (is_final)
+            responseItem.reasoningFinished = true
+        })
+      },
+
       async onCompleted(hasError?: boolean) {
         const { workflowRunningData } = workflowStore.getState()
         handleResponding(false)
@@ -718,16 +759,16 @@ export const useChat = (
           if (hasError)
             return
 
-          if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+          if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
             try {
               const { data }: any = await onGetSuggestedQuestions(
                 messageId,
                 newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
               )
-              setSuggestQuestions(data)
+              setSuggestedQuestions(data)
             }
             catch {
-              setSuggestQuestions([])
+              setSuggestedQuestions([])
             }
           }
         }
@@ -749,10 +790,14 @@ export const useChat = (
       },
       onWorkflowStarted: ({ workflow_run_id, task_id }) => {
         handleResponding(true)
-        hasStopResponded.current = false
+        hasStopRespondedRef.current = false
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
-            responseItem.workflowProcess.status = WorkflowRunningStatus.Running
+            responseItem.workflowProcess = {
+              ...responseItem.workflowProcess,
+              status: WorkflowRunningStatus.Running,
+              error: undefined,
+            }
           }
           else {
             taskIdRef.current = task_id
@@ -766,8 +811,13 @@ export const useChat = (
       },
       onWorkflowFinished: ({ data: workflowFinishedData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
-          if (responseItem.workflowProcess)
-            responseItem.workflowProcess.status = workflowFinishedData.status as WorkflowRunningStatus
+          if (responseItem.workflowProcess) {
+            responseItem.workflowProcess = {
+              ...responseItem.workflowProcess,
+              status: workflowFinishedData.status as WorkflowRunningStatus,
+              error: workflowFinishedData.error,
+            }
+          }
         })
       },
       onIterationStart: ({ data: iterationStartedData }) => {
@@ -971,7 +1021,7 @@ export const useChat = (
   }, [handleResume])
 
   return {
-    conversationId: conversationId.current,
+    conversationId: conversationIdRef.current,
     chatList,
     setTargetMessageId,
     handleSwitchSibling,

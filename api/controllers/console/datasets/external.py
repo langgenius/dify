@@ -4,6 +4,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, RootModel
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -15,14 +16,19 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.app.wraps import with_session
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     dataset_detail_fields,
@@ -40,6 +46,7 @@ from fields.dataset_fields import (
 from libs.login import login_required
 from models import Account
 from services.dataset_service import DatasetService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import BedrockRetrievalSetting, ExternalDatasetTestService
@@ -202,7 +209,8 @@ class ExternalApiTemplateListApi(Resource):
     )
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account):
         payload = ExternalKnowledgeApiPayload.model_validate(console_ns.payload or {})
 
         ExternalDatasetService.validate_api_list(payload.settings)
@@ -213,7 +221,10 @@ class ExternalApiTemplateListApi(Resource):
 
         try:
             external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
-                tenant_id=current_tenant_id, user_id=current_user.id, args=payload.model_dump()
+                tenant_id=current_tenant_id,
+                user_id=current_user.id,
+                args=payload.model_dump(),
+                session=session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -236,10 +247,11 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, external_knowledge_api_id: UUID):
+    @with_session
+    def get(self, session: Session, current_tenant_id: str, external_knowledge_api_id: UUID):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
         external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-            external_knowledge_api_id_str, current_tenant_id
+            external_knowledge_api_id=external_knowledge_api_id_str, tenant_id=current_tenant_id, session=session
         )
         if external_knowledge_api is None:
             raise NotFound("API template not found.")
@@ -257,7 +269,8 @@ class ExternalApiTemplateApi(Resource):
     @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__])
     @with_current_user
     @with_current_tenant_id
-    def patch(self, current_tenant_id: str, current_user: Account, external_knowledge_api_id: UUID):
+    @with_session
+    def patch(self, session: Session, current_tenant_id: str, current_user: Account, external_knowledge_api_id: UUID):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         payload = ExternalKnowledgeApiPayload.model_validate(console_ns.payload or {})
@@ -268,6 +281,7 @@ class ExternalApiTemplateApi(Resource):
             user_id=current_user.id,
             external_knowledge_api_id=external_knowledge_api_id_str,
             args=payload.model_dump(),
+            session=session,
         )
 
         return external_knowledge_api.to_dict(), 200
@@ -278,13 +292,14 @@ class ExternalApiTemplateApi(Resource):
     @console_ns.response(204, "External knowledge API deleted successfully")
     @with_current_user
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, current_user: Account, external_knowledge_api_id: UUID):
+    @with_session
+    def delete(self, session: Session, current_tenant_id: str, current_user: Account, external_knowledge_api_id: UUID):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
-        ExternalDatasetService.delete_external_knowledge_api(current_tenant_id, external_knowledge_api_id_str)
+        ExternalDatasetService.delete_external_knowledge_api(session, current_tenant_id, external_knowledge_api_id_str)
         return "", 204
 
 
@@ -298,11 +313,14 @@ class ExternalApiUseCheckApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, external_knowledge_api_id: UUID):
+    @with_session
+    def get(self, session: Session, current_tenant_id: str, external_knowledge_api_id: UUID):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
 
         external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
-            external_knowledge_api_id_str, current_tenant_id
+            session,
+            external_knowledge_api_id_str,
+            current_tenant_id,
         )
         return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 
@@ -319,9 +337,11 @@ class ExternalDatasetCreateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EXTERNAL_CONNECT)
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, current_user: Account):
         # The role of the current user in the ta table must be admin, owner, or editor
         payload = ExternalDatasetCreatePayload.model_validate(console_ns.payload or {})
         args = payload.model_dump(exclude_none=True)
@@ -335,11 +355,21 @@ class ExternalDatasetCreateApi(Resource):
                 tenant_id=current_tenant_id,
                 user_id=current_user.id,
                 args=args,
+                session=session,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return marshal(dataset, dataset_detail_fields), 201
+        item = marshal(dataset, dataset_detail_fields)
+        dataset_id_str = item["id"]
+        permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
+            str(current_tenant_id),
+            current_user.id,
+            [dataset_id_str],
+        )
+        item["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
+
+        return item, 201
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
@@ -359,14 +389,16 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def post(self, current_user: Account, dataset_id: UUID):
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_PIPELINE_TEST)
+    @with_session
+    def post(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -375,6 +407,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
         try:
             response = HitTestingService.external_retrieve(
+                session=session,
                 dataset=dataset,
                 query=payload.query,
                 account=current_user,

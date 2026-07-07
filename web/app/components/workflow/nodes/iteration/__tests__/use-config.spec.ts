@@ -74,7 +74,7 @@ const createVar = (type: VarType, variable = 'test.variable'): Var => ({
 
 type SelectOption = {
   name: string
-  value: string | number
+  value: ErrorHandleMode
 }
 
 describe('iteration/use-config', () => {

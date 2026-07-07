@@ -31,8 +31,8 @@ logger = logging.getLogger(__name__)
 
 
 class FeedbackListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, description="Page number")
-    limit: int = Field(default=20, ge=1, le=101, description="Number of feedbacks per page")
+    page: int = Field(default=1, ge=1, description="Page number for pagination.")
+    limit: int = Field(default=20, ge=1, le=101, description="Number of records per page.")
 
 
 class AppFeedbackResponse(ResponseModel):
@@ -142,7 +142,7 @@ class MessageFeedbackApi(Resource):
     @service_api_ns.response(200, "Feedback submitted successfully", service_api_ns.models[ResultResponse.__name__])
     @service_api_ns.doc("create_message_feedback")
     @service_api_ns.doc(description="Submit feedback for a message")
-    @service_api_ns.doc(params={"message_id": "Message ID"})
+    @service_api_ns.doc(params={"message_id": "Message ID."})
     @service_api_ns.doc(
         responses={
             200: "Feedback submitted successfully",

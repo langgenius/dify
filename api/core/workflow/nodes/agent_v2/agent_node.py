@@ -25,12 +25,15 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.session_binding import default_session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.entities.pause_reason import HumanInputRequired, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -112,6 +115,16 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
     def populate_start_event(self, event) -> None:
         event.extras["agent_node"] = {"version": "2", "agent_node_kind": self.node_data.agent_node_kind}
 
+    @staticmethod
+    def _to_graph_pause_reason(reason: HumanInputRequired | SchedulingPause) -> HitlRequired | SchedulingPause:
+        if isinstance(reason, HumanInputRequired):
+            return HitlRequired(
+                session_id=default_session_binding.issue_session_id_for_form(form_id=reason.form_id),
+                node_id=reason.node_id,
+                node_title=reason.node_title,
+            )
+        return reason
+
     @override
     def _run(self) -> Generator[NodeEventBase, None, None]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
@@ -192,7 +205,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     node_id=self._node_id,
                 )
                 if resume_outcome is not None and resume_outcome.repause is not None:
-                    yield PauseRequestedEvent(reason=resume_outcome.repause)
+                    yield PauseRequestedEvent(reason=self._to_graph_pause_reason(resume_outcome.repause))
                     return
                 if (
                     resume_outcome is not None
@@ -294,7 +307,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 # form is built *before* the snapshot is saved so its id can be
                 # persisted as the pause correlation (ENG-637).
                 try:
-                    pause_reason: HumanInputRequired | SchedulingPause | None = build_ask_human_pause_reason(
+                    pause_request = build_ask_human_pause_reason(
                         deferred_tool_call=terminal_event.deferred_tool_call,
                         node_id=self._node_id,
                         default_node_title=bundle.agent.name or self._node_id,
@@ -320,9 +333,11 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 # deferred_tool_results from the submitted form.
                 pending_form_id: str | None = None
                 pending_tool_call_id: str | None = None
-                if isinstance(pause_reason, HumanInputRequired):
-                    pending_form_id = pause_reason.form_id
+                pause_reason: HumanInputRequired | SchedulingPause
+                if pause_request is not None:
+                    pending_form_id = pause_request.form_id
                     pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
+                    pause_reason = pause_request
                 else:
                     pause_reason = SchedulingPause(
                         message=terminal_event.message
@@ -337,7 +352,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     pending_form_id=pending_form_id,
                     pending_tool_call_id=pending_tool_call_id,
                 )
-                yield PauseRequestedEvent(reason=pause_reason)
+                yield PauseRequestedEvent(reason=self._to_graph_pause_reason(pause_reason))
                 return
 
             # Non-success terminal (failed / cancelled) skips per-output
@@ -688,5 +703,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         node_id: str,
         node_data: DifyAgentNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        del graph_config, node_id, node_data
-        return {}
+        """Reuse frontend workflow-marker parsing for graph variable loading.
+
+        This follows the same marker parser used by publish sync and runtime
+        request building, including reserved-prefix exclusion.
+        """
+        del graph_config
+
+        agent_task = (
+            node_data.get("agent_task") if isinstance(node_data, Mapping) else getattr(node_data, "agent_task", None)
+        )
+        if not isinstance(agent_task, str):
+            return {}
+
+        return {
+            f"{node_id}.{'.'.join(selector)}": list(selector)
+            for selector in extract_workflow_node_output_selectors(agent_task)
+        }

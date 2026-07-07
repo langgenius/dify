@@ -29,7 +29,7 @@ def _execution_context() -> DifyExecutionContextLayerConfig:
 def test_create_agent_stub_app_exposes_same_stub_routes_as_module_app() -> None:
     stub_app_module = importlib.import_module("dify_agent.agent_stub.server.app")
     settings = ServerSettings(
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
     )
 
@@ -60,10 +60,10 @@ def test_create_agent_stub_app_can_serve_requests() -> None:
 
 def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests(monkeypatch) -> None:
     settings = ServerSettings(
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
@@ -94,10 +94,10 @@ def test_create_agent_stub_app_wires_configured_file_handler_for_upload_requests
 
 def test_create_agent_stub_app_wires_configured_drive_handler_for_manifest_requests(monkeypatch) -> None:
     settings = ServerSettings(
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None

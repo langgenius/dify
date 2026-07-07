@@ -20,8 +20,11 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.login import current_account_with_tenant
 from models.model import InstalledApp
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -98,8 +101,23 @@ class ChatTextApi(InstalledAppResource):
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
+            message_ref = None
+            if message_id:
+                current_user, _ = current_account_with_tenant()
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    account_id=current_user.id,
+                )
 
-            response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
+            response = AudioService.transcript_tts(
+                app_model=app_model,
+                session=db.session,
+                text=text,
+                voice=voice,
+                message_ref=message_ref,
+            )
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")

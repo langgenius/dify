@@ -15,6 +15,13 @@ import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { useMembers } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
 
+type MockAppContext = {
+  userProfile: { id: string }
+  workspacePermissionKeys: string[]
+}
+
+const mockUseAppContext = vi.hoisted(() => vi.fn<() => MockAppContext>())
+
 const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
 let mockTabValue = allCategoriesEn
 const mockSetTab = vi.fn()
@@ -69,7 +76,7 @@ vi.mock('@/service/client', () => ({
       },
     },
     apps: {
-      list: {
+      get: {
         queryOptions: (options: {
           input?: { query?: { limit?: number } }
           select?: (response: {
@@ -89,7 +96,7 @@ vi.mock('@/service/client', () => ({
             total: 0,
           }
           return {
-            queryKey: ['console', 'apps', 'list', options.input],
+            queryKey: ['console', 'apps', 'get', options.input],
             queryFn: () => Promise.resolve(response),
             initialData: response,
             select: options.select,
@@ -99,17 +106,22 @@ vi.mock('@/service/client', () => ({
     },
     explore: {
       apps: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'apps', 'get', input],
+        },
       },
       banners: {
-        queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', input],
+        get: {
+          queryKey: ({ input }: { input?: unknown } = {}) => ['console', 'explore', 'banners', 'get', input],
+        },
       },
     },
   },
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: vi.fn(),
+  useAppContext: mockUseAppContext,
+  useSelector: <T,>(selector: (state: MockAppContext) => T): T => selector(mockUseAppContext()),
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -188,6 +200,7 @@ const createApp = (overrides: Partial<App> = {}): App => ({
 const mockMemberRole = (hasEditPermission: boolean) => {
   ;(useAppContext as Mock).mockReturnValue({
     userProfile: { id: 'user-1' },
+    workspacePermissionKeys: hasEditPermission ? ['app.create_and_management'] : [],
   })
   ;(useMembers as Mock).mockReturnValue({
     data: {
@@ -197,7 +210,7 @@ const mockMemberRole = (hasEditPermission: boolean) => {
 }
 
 const localeInput = { query: { language: 'en' } }
-const exploreAppListQueryKey = ['console', 'explore', 'apps', localeInput, 'en']
+const exploreAppListQueryKey = ['console', 'explore', 'apps', 'get', localeInput, 'en']
 const homeContinueWorkAppsInput = {
   query: {
     page: 1,
@@ -208,7 +221,7 @@ const homeContinueWorkAppsInput = {
 
 const createHomeQueryClient = () => {
   const queryClient = createTestQueryClient()
-  queryClient.setQueryData(['console', 'apps', 'list', homeContinueWorkAppsInput], {
+  queryClient.setQueryData(['console', 'apps', 'get', homeContinueWorkAppsInput], {
     data: [],
     has_more: false,
     limit: 8,

@@ -5,9 +5,9 @@ from datetime import datetime
 from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
-from flask_sqlalchemy.pagination import Pagination
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
@@ -23,11 +23,14 @@ from graphon.model_runtime.entities.model_entities import ModelPropertyKey, Mode
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
+from libs.pagination import PaginatedResult, paginate_query
 from models import Account, AppStar
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
+from services.agent.errors import AgentNameConflictError
 from services.billing_service import BillingService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
@@ -48,6 +51,8 @@ class AppListBaseParams(BaseModel):
     tag_ids: list[str] | None = None
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
+    accessible_app_ids: list[str] | None = None
+    include_own_apps: bool = False
 
 
 class AppListParams(AppListBaseParams):
@@ -91,6 +96,17 @@ class AppService:
             filters.append(App.mode == AppMode.AGENT_CHAT)
         elif params.mode == "agent":
             filters.append(App.mode == AppMode.AGENT)
+            filters.append(
+                sa.exists()
+                .where(
+                    Agent.tenant_id == tenant_id,
+                    Agent.app_id == App.id,
+                    Agent.scope == AgentScope.ROSTER,
+                    Agent.source == AgentSource.AGENT_APP,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+                .correlate(App)
+            )
         elif params.mode == "all":
             filters.append(App.mode != AppMode.AGENT)
 
@@ -106,6 +122,11 @@ class AppService:
 
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
+        elif params.accessible_app_ids is not None:
+            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
+            if params.include_own_apps:
+                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
+            filters.append(accessible_filter)
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
@@ -199,7 +220,7 @@ class AppService:
 
     def get_paginate_apps(
         self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
-    ) -> Pagination | None:
+    ) -> PaginatedResult | None:
         """
         Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
@@ -213,11 +234,10 @@ class AppService:
 
         order_by = self._build_app_list_order_by(params.sort_by)
 
-        app_models = db.paginate(
+        app_models = paginate_query(
             sa.select(App).where(*filters).order_by(order_by),
             page=params.page,
             per_page=params.limit,
-            error_out=False,
         )
 
         app_ids = [str(app.id) for app in app_models.items]
@@ -234,7 +254,7 @@ class AppService:
 
     def get_paginate_starred_apps(
         self, user_id: str, tenant_id: str, params: StarredAppListParams, session: scoped_session
-    ) -> Pagination | None:
+    ) -> PaginatedResult | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.
         """
@@ -243,7 +263,7 @@ class AppService:
             return None
 
         order_by = self._build_app_list_order_by(params.sort_by)
-        app_models = db.paginate(
+        app_models = paginate_query(
             sa.select(App)
             .join(
                 AppStar,
@@ -257,7 +277,6 @@ class AppService:
             .order_by(order_by),
             page=params.page,
             per_page=params.limit,
-            error_out=False,
         )
 
         for app in app_models.items:
@@ -375,6 +394,7 @@ class AppService:
         app.api_rpm = params.api_rpm
         app.max_active_requests = params.max_active_requests
         app.created_by = account.id
+        app.maintainer = account.id
         app.updated_by = account.id
 
         db.session.add(app)
@@ -426,6 +446,12 @@ class AppService:
         db.session.commit()
 
         app_was_created.send(app, account=account)
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            account.id,
+            enterprise_rbac_service.RBACResourceType.APP,
+            app.id,
+        )
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
@@ -578,6 +604,16 @@ class AppService:
         if updated_at is not None:
             agent.updated_at = updated_at
 
+    @staticmethod
+    def _commit_app_identity_update(app: App) -> None:
+        try:
+            db.session.commit()
+        except IntegrityError as exc:
+            db.session.rollback()
+            if app.mode == AppMode.AGENT:
+                raise AgentNameConflictError() from exc
+            raise
+
     def update_app(self, app: App, args: ArgsDict) -> App:
         """
         Update app
@@ -614,7 +650,7 @@ class AppService:
             account_id=current_user.id,
             updated_at=app.updated_at,
         )
-        db.session.commit()
+        self._commit_app_identity_update(app)
 
         app_was_updated.send(app)
 
@@ -637,7 +673,7 @@ class AppService:
             account_id=current_user.id,
             updated_at=app.updated_at,
         )
-        db.session.commit()
+        self._commit_app_identity_update(app)
 
         app_was_updated.send(app)
 

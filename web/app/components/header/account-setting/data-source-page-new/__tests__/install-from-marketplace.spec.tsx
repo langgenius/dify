@@ -58,6 +58,12 @@ vi.mock('../hooks', () => ({
   useMarketplaceAllPlugins: vi.fn(),
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canInstallPlugin: true,
+  }),
+}))
+
 describe('InstallFromMarketplace Component', () => {
   const mockProviders: DataSourceAuth[] = [
     {
@@ -173,6 +179,23 @@ describe('InstallFromMarketplace Component', () => {
 
       // Assert
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    })
+
+    it('should use the marketplace callback action when provided', () => {
+      // Arrange
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: mockPlugins,
+        isLoading: false,
+      })
+      const onOpenMarketplace = vi.fn()
+      render(<InstallFromMarketplace providers={mockProviders} searchText="" onOpenMarketplace={onOpenMarketplace} />)
+
+      // Act
+      fireEvent.click(screen.getByRole('button', { name: 'plugin.marketplace.difyMarketplace' }))
+
+      // Assert
+      expect(onOpenMarketplace).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole('link', { name: 'plugin.marketplace.difyMarketplace' })).not.toBeInTheDocument()
     })
   })
 })

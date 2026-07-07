@@ -50,6 +50,7 @@ import {
   generateNewNode,
   genNewNodeTitleFromOld,
   getNestedNodePosition,
+  getNodeCatalogType,
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getNodesWithSameDefaultDataType,
@@ -87,14 +88,27 @@ const ENTRY_NODE_WRAPPER_OFFSET = {
   y: 21, // Adjusted based on visual testing feedback
 } as const
 
-function needsPendingInlineAgentBinding(defaultValue?: BlockDefaultValue) {
-  if (!defaultValue || !('agent_binding' in defaultValue))
+function needsPendingInlineAgentBinding(defaultValue?: unknown) {
+  if (!defaultValue || typeof defaultValue !== 'object' || !('agent_binding' in defaultValue))
     return false
 
-  const binding = defaultValue.agent_binding
+  const binding = (defaultValue as {
+    agent_binding?: {
+      agent_id?: string
+      binding_type?: string
+      current_snapshot_id?: string
+    }
+  }).agent_binding
 
-  return binding.binding_type === 'inline_agent'
+  return binding?.binding_type === 'inline_agent'
     && (!binding.agent_id || !binding.current_snapshot_id)
+}
+
+function agentV2NodeDefaultsNeedInlineBinding(defaultValue?: unknown, pluginDefaultValue?: unknown) {
+  return needsPendingInlineAgentBinding({
+    ...(defaultValue && typeof defaultValue === 'object' ? defaultValue : {}),
+    ...(pluginDefaultValue && typeof pluginDefaultValue === 'object' ? pluginDefaultValue : {}),
+  })
 }
 
 const pruneClipboardNodesWithFilteredAncestors = (
@@ -192,6 +206,8 @@ export const useNodesInteractions = () => {
   const createInlineAgentBindingForNode = useCallback((nodeId: string, options?: {
     onError?: () => void
   }) => {
+    workflowStore.getState().setOpenInlineAgentPanelNodeId(nodeId)
+    handleSyncWorkflowDraft(true, true)
     createInlineAgentBinding(nodeId, {
       onError: () => {
         options?.onError?.()
@@ -207,7 +223,6 @@ export const useNodesInteractions = () => {
             delete node.data._isTempNode
           }
         }))
-        workflowStore.getState().setOpenInlineAgentPanelNodeId(nodeId)
         handleSyncWorkflowDraft(true, true)
       },
     })
@@ -747,7 +762,7 @@ export const useNodesInteractions = () => {
         return
 
       if (
-        nodesMetaDataMap?.[currentNode.data.type as BlockEnum]?.metaData
+        nodesMetaDataMap?.[getNodeCatalogType(currentNode.data)]?.metaData
           .isUndeletable
       ) {
         return
@@ -924,7 +939,8 @@ export const useNodesInteractions = () => {
         return
       const { defaultValue } = nodeMetaData
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
-      const shouldCreateInlineAgentBinding = nodeType === BlockEnum.AgentV2 && needsPendingInlineAgentBinding(pluginDefaultValue)
+      const shouldCreateInlineAgentBinding = nodeType === BlockEnum.AgentV2
+        && agentV2NodeDefaultsNeedInlineBinding(defaultValue, pluginDefaultValue)
       const { newNode, newIterationStartNode, newLoopStartNode }
         = generateNewNode({
           type: getNodeCustomTypeByNodeDataType(nodeType),
@@ -1504,7 +1520,8 @@ export const useNodesInteractions = () => {
         return
       const { defaultValue } = nodeMetaData
       const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, nodeType, defaultValue)
-      const shouldCreateInlineAgentBinding = nodeType === BlockEnum.AgentV2 && needsPendingInlineAgentBinding(pluginDefaultValue)
+      const shouldCreateInlineAgentBinding = nodeType === BlockEnum.AgentV2
+        && agentV2NodeDefaultsNeedInlineBinding(defaultValue, pluginDefaultValue)
       const {
         newNode: newCurrentNode,
         newIterationStartNode,
@@ -1791,7 +1808,7 @@ export const useNodesInteractions = () => {
     if (node.type === CUSTOM_NOTE_NODE)
       return true
 
-    const nodeMeta = nodesMetaDataMap?.[isAgentV2NodeData(node.data) ? BlockEnum.AgentV2 : node.data.type as BlockEnum]
+    const nodeMeta = nodesMetaDataMap?.[getNodeCatalogType(node.data)]
     if (!nodeMeta)
       return false
 
@@ -1803,7 +1820,7 @@ export const useNodesInteractions = () => {
     if (node.type === CUSTOM_NOTE_NODE)
       return {}
 
-    const nodeMeta = nodesMetaDataMap?.[isAgentV2NodeData(node.data) ? BlockEnum.AgentV2 : node.data.type as BlockEnum]
+    const nodeMeta = nodesMetaDataMap?.[getNodeCatalogType(node.data)]
     return nodeMeta?.defaultValue
   }, [nodesMetaDataMap])
 

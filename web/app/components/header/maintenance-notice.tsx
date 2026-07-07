@@ -1,15 +1,25 @@
-import { useLocalStorage } from 'foxact/use-local-storage'
+'use client'
+
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { env } from '@/env'
 import { NOTICE_I18N } from '@/i18n-config/language'
+import { useHideMaintenanceNotice } from './storage'
 
-const MaintenanceNotice = () => {
+function MaintenanceNotice() {
+  if (!env.NEXT_PUBLIC_MAINTENANCE_NOTICE)
+    return null
+
+  return <MaintenanceNoticeContent />
+}
+
+function MaintenanceNoticeContent() {
   const { t } = useTranslation()
   const locale = useLanguage()
 
-  const [hiddenNoticeValue, setHiddenNoticeValue] = useLocalStorage<string>('hide-maintenance-notice', '0', { raw: true })
+  const [hiddenNoticeValue, setHiddenNoticeValue] = useHideMaintenanceNotice()
   const hiddenNotice = hiddenNoticeValue === '1'
   const [closedInSession, setClosedInSession] = useState(false)
   const showNotice = !hiddenNotice && !closedInSession

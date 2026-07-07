@@ -5,9 +5,10 @@ import { WorkflowReferencesTable } from '../workflow-references-table'
 
 const mocks = vi.hoisted(() => ({
   queryFn: vi.fn(),
-  queryOptions: vi.fn((input: unknown) => ({
+  queryOptions: vi.fn(({ enabled = true, input }: { enabled?: boolean, input: unknown }) => ({
     queryKey: ['agent-referencing-workflows', input],
     queryFn: () => mocks.queryFn(input),
+    enabled,
   })),
 }))
 
@@ -31,7 +32,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-const renderTable = () => {
+const renderTable = ({ enabled }: { enabled?: boolean } = {}) => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -42,7 +43,7 @@ const renderTable = () => {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <WorkflowReferencesTable agentId="agent-1" />
+      <WorkflowReferencesTable agentId="agent-1" enabled={enabled} />
     </QueryClientProvider>,
   )
 
@@ -67,8 +68,26 @@ describe('WorkflowReferencesTable', () => {
               agent_id: 'agent-1',
             },
           },
+          enabled: true,
         })
       })
+    })
+
+    it('should not fetch workflow references when disabled', async () => {
+      renderTable({ enabled: false })
+
+      await waitFor(() => {
+        expect(mocks.queryOptions).toHaveBeenCalledWith({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+            },
+          },
+          enabled: false,
+        })
+      })
+      expect(mocks.queryFn).not.toHaveBeenCalled()
+      expect(screen.queryByText('agentV2.agentDetail.access.workflow.loading')).not.toBeInTheDocument()
     })
   })
 
@@ -97,8 +116,10 @@ describe('WorkflowReferencesTable', () => {
       expect(screen.getByText('v3')).toBeInTheDocument()
       expect(screen.getByText('agentV2.agentDetail.access.workflow.nodeCount:{"count":2}')).toBeInTheDocument()
       expect(screen.getByText('formatted-1781660000')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'agentV2.agentDetail.access.workflow.openInStudioFor:{"name":"Support Workflow"}' }))
-        .toHaveAttribute('href', '/app/workflow-app-id/workflow')
+      const studioLink = screen.getByRole('link', { name: 'agentV2.agentDetail.access.workflow.openInStudioFor:{"name":"Support Workflow"}' })
+      expect(studioLink).toHaveAttribute('href', '/app/workflow-app-id/workflow')
+      expect(studioLink).toHaveAttribute('target', '_blank')
+      expect(studioLink).toHaveAttribute('rel', 'noopener noreferrer')
     })
 
     it('should render an empty state when the agent has no workflow references', async () => {

@@ -1,5 +1,5 @@
+import type { SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import type { useMarketplace } from '../hooks'
-import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import { render, screen } from '@testing-library/react'
@@ -15,6 +15,10 @@ const { mockRouterPush } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
 }))
 
+const { mockCanInstallPlugin } = vi.hoisted(() => ({
+  mockCanInstallPlugin: vi.fn(() => true),
+}))
+
 const listRenderSpy = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
   default: (props: {
@@ -28,6 +32,12 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
     listRenderSpy(props)
     return <div data-testid="marketplace-list" />
   },
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canInstallPlugin: mockCanInstallPlugin(),
+  }),
 }))
 
 const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
@@ -108,6 +118,7 @@ const createMarketplaceContext = (overrides: Partial<ReturnType<typeof useMarket
 describe('Marketplace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCanInstallPlugin.mockReturnValue(true)
   })
 
   // Rendering the marketplace panel based on loading and visibility state.
@@ -152,6 +163,28 @@ describe('Marketplace', () => {
         cardContainerClassName: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3',
         onCollectionMoreClick: expect.any(Function),
         showInstallButton: true,
+      }))
+    })
+
+    it('should hide install actions when plugin install permission is missing', () => {
+      mockCanInstallPlugin.mockReturnValue(false)
+      const marketplaceContext = createMarketplaceContext({
+        isLoading: false,
+        plugins: [createPlugin()],
+      })
+
+      render(
+        <Marketplace
+          searchPluginText=""
+          filterPluginTags={[]}
+          isMarketplaceArrowVisible={false}
+          showMarketplacePanel={vi.fn()}
+          marketplaceContext={marketplaceContext}
+        />,
+      )
+
+      expect(listRenderSpy).toHaveBeenCalledWith(expect.objectContaining({
+        showInstallButton: false,
       }))
     })
   })

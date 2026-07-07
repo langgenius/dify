@@ -29,13 +29,13 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.workflow.human_input_policy import HumanInputSurface
+from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
+from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.enums import FormInputType
+from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, HumanInputRequired
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
-from graphon.nodes.human_input.enums import FormInputType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.enums import CreatorUserRole
@@ -115,7 +115,7 @@ def _build_advanced_chat_paused_blocking_response() -> AdvancedChatPausedBlockin
         paused_nodes=["node-1"],
         reasons=[
             {
-                "type": PauseReasonType.HUMAN_INPUT_REQUIRED,
+                "type": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
                 "form_id": "form-1",
                 "expiration_time": 100,
             }
@@ -358,6 +358,7 @@ class TestHitlServiceApi:
         user.id = "user-id"
 
         result = AppGenerateService.generate(
+            session=Mock(),
             app_model=app_model,
             user=user,
             args={"workflow_id": None, "query": "hi", "inputs": {}},
@@ -383,7 +384,7 @@ class TestHitlServiceApi:
         assert response["event"] == "workflow_paused"
         assert response["workflow_run_id"] == "run-1"
         assert response["answer"] == "partial"
-        assert response["data"]["reasons"][0]["type"] == PauseReasonType.HUMAN_INPUT_REQUIRED
+        assert response["data"]["reasons"][0]["type"] == DifyHITLEventType.HUMAN_INPUT_REQUIRED
         assert response["data"]["reasons"][0]["expiration_time"] == 100
         assert "human_input_forms" not in response["data"]
 
@@ -475,7 +476,7 @@ class TestHitlServiceApi:
                     outputs={},
                     reasons=[
                         {
-                            "type": PauseReasonType.HUMAN_INPUT_REQUIRED,
+                            "type": DifyHITLEventType.HUMAN_INPUT_REQUIRED.value,
                             "form_id": "form-1",
                             "node_id": "node-1",
                             "expiration_time": 123,
@@ -592,8 +593,10 @@ class TestHitlServiceApi:
         monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
         monkeypatch.setattr(
             workflow_response_converter,
-            "load_form_tokens_by_form_id",
-            lambda form_ids, session=None, surface=None: {"form-1": "token"},
+            "load_form_dispositions_by_form_id",
+            lambda form_ids, session=None, surface=None: {
+                "form-1": FormDisposition(form_token="token", approval_channels=[])
+            },
         )
 
         reason = HumanInputRequired(
@@ -652,8 +655,10 @@ class TestHitlServiceApi:
         snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
         resumption_context = _build_resumption_context("task-ctx")
         monkeypatch.setattr(
-            "services.workflow_event_snapshot_service.load_form_tokens_by_form_id",
-            lambda form_ids, session=None, surface=None: {"form-1": "wtok"},
+            "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",
+            lambda form_ids, session=None, surface=None: {
+                "form-1": FormDisposition(form_token="wtok", approval_channels=[])
+            },
         )
 
         class _SessionContext:

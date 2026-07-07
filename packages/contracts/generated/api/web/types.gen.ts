@@ -80,6 +80,7 @@ export type AppSiteResponse = {
   icon_background?: string | null
   icon_type?: string | null
   icon_url?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
   show_workflow_steps?: boolean | null
@@ -421,6 +422,10 @@ export type Parameters = {
   user_input_form: Array<JsonObject>
 }
 
+export type PassportAccessTokenResponse = {
+  access_token: string
+}
+
 export type PassportQuery = {
   user_id?: string | null
 }
@@ -556,6 +561,7 @@ export type SystemFeatureModel = {
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_explore_banner: boolean
+  enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_trial_app: boolean
@@ -566,6 +572,7 @@ export type SystemFeatureModel = {
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel
+  rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
   webapp_auth: WebAppAuthModel
@@ -640,7 +647,10 @@ export type WebMessageListItem = {
 
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
@@ -1276,7 +1286,7 @@ export type GetPassportErrors = {
 }
 
 export type GetPassportResponses = {
-  200: AccessTokenData
+  200: PassportAccessTokenResponse
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]

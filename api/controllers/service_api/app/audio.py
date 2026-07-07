@@ -23,8 +23,10 @@ from controllers.service_api.app.error import (
 from controllers.service_api.schema import binary_response, expect_with_user, multipart_file_params
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import App, EndUser
+from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -64,7 +66,16 @@ class AudioApi(Resource):
     )
     @service_api_ns.doc("audio_to_text")
     @service_api_ns.doc(description="Convert audio to text using speech-to-text")
-    @service_api_ns.doc(consumes=["multipart/form-data"], params=multipart_file_params(include_user=True))
+    @service_api_ns.doc(
+        consumes=["multipart/form-data"],
+        params=multipart_file_params(
+            include_user=True,
+            file_description=(
+                "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
+                "`audio/wav`, and `audio/amr`. File size limit is `30 MB`."
+            ),
+        ),
+    )
     @service_api_ns.doc(
         responses={
             200: "Audio successfully transcribed",
@@ -167,8 +178,21 @@ class TextApi(Resource):
             message_id = payload.message_id
             text = payload.text
             voice = payload.voice
+            message_ref = None
+            if message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    end_user_id=end_user.id,
+                )
             response = AudioService.transcript_tts(
-                app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
+                app_model=app_model,
+                session=db.session,
+                text=text,
+                voice=voice,
+                end_user=end_user.external_user_id,
+                message_ref=message_ref,
             )
 
             return response

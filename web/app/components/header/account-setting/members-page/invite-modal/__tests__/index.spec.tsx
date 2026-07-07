@@ -1,10 +1,13 @@
 import type { InvitationResponse } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { inviteMember } from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import InviteModal from '../index'
 
 const { mockToastError } = vi.hoisted(() => ({
@@ -18,6 +21,7 @@ vi.mock('@/context/provider-context', () => ({
   })),
 }))
 vi.mock('@/service/common')
+vi.mock('@/service/access-control/use-workspace-roles')
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
@@ -47,8 +51,63 @@ describe('InviteModal', () => {
   const mockOnSend = vi.fn()
   const mockRefreshLicenseLimit = vi.fn()
 
+  const createQueryClient = () => new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: Infinity,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
+
+    vi.mocked(useWorkspaceRoleList).mockReturnValue({
+      data: {
+        pages: [{
+          data: [
+            {
+              id: 'admin',
+              tenant_id: 'tenant-id',
+              type: 'workspace',
+              category: 'global_system_default',
+              name: 'Admin',
+              description: 'Can manage workspace settings',
+              is_builtin: true,
+              permission_keys: [],
+              role_tag: '',
+            },
+            {
+              id: 'normal',
+              tenant_id: 'tenant-id',
+              type: 'workspace',
+              category: 'global_system_default',
+              name: 'Normal',
+              description: 'Can use apps',
+              is_builtin: true,
+              permission_keys: [],
+              role_tag: '',
+            },
+          ],
+          pagination: {
+            total_count: 2,
+            per_page: 20,
+            current_page: 1,
+            total_pages: 1,
+          },
+        }],
+        pageParams: [1],
+      },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    } as unknown as ReturnType<typeof useWorkspaceRoleList>)
 
     vi.mocked(useProviderContextSelector).mockImplementation(selector => selector({
       licenseLimit: { workspace_members: { size: 5, limit: 10 } },
@@ -56,11 +115,20 @@ describe('InviteModal', () => {
     } as unknown as Parameters<typeof selector>[0]))
   })
 
-  const renderModal = (isEmailSetup = true) => render(
-    <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />,
-  )
+  const renderModal = (isEmailSetup = true, queryClient = createQueryClient()) => ({
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <InviteModal isEmailSetup={isEmailSetup} onCancel={mockOnCancel} onSend={mockOnSend} />
+      </QueryClientProvider>,
+    ),
+  })
   const fillEmails = (value: string) => {
     fireEvent.change(screen.getByTestId('mock-email-input'), { target: { value } })
+  }
+  const selectAdminRole = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: /members\.selectRole/i }))
+    await user.click(screen.getByRole('menuitemradio', { name: /Admin/i }))
   }
 
   it('should render invite modal content', async () => {
@@ -76,9 +144,14 @@ describe('InviteModal', () => {
     expect(await screen.findByText(/members\.emailNotSetup$/i)).toBeInTheDocument()
   })
 
-  it('should enable send button after entering an email', async () => {
+  it('should enable send button after entering an email and selecting a role', async () => {
     renderModal()
     fillEmails('user@example.com')
+
+    expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeDisabled()
+
+    const user = userEvent.setup()
+    await selectAdminRole(user)
 
     expect(screen.getByRole('button', { name: /members\.sendInvite/i })).toBeEnabled()
   })
@@ -90,6 +163,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -109,6 +183,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -116,6 +191,52 @@ describe('InviteModal', () => {
       expect(mockRefreshLicenseLimit).toHaveBeenCalled()
       expect(mockOnCancel).toHaveBeenCalled()
       expect(mockOnSend).toHaveBeenCalled()
+    })
+  })
+
+  it('should submit the selected workspace role id', async () => {
+    const user = userEvent.setup()
+    vi.mocked(inviteMember).mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+    } as InvitationResponse)
+
+    renderModal()
+
+    fillEmails('user@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(inviteMember).toHaveBeenCalledWith({
+        url: '/workspaces/current/members/invite-email',
+        body: {
+          emails: ['user@example.com'],
+          role: 'admin',
+          language: 'en-US',
+        },
+      })
+    })
+  })
+
+  it('should invalidate members after successful submission', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    const membersQueryKey = [...commonQueryKeys.members, 'en-US']
+    queryClient.setQueryData(membersQueryKey, { accounts: [] })
+    vi.mocked(inviteMember).mockResolvedValue({
+      result: 'success',
+      invitation_results: [],
+    } as InvitationResponse)
+
+    renderModal(true, queryClient)
+
+    fillEmails('user@example.com')
+    await selectAdminRole(user)
+    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
+
+    await waitFor(() => {
+      expect(queryClient.getQueryState(membersQueryKey)?.isInvalidated).toBe(true)
     })
   })
 
@@ -147,6 +268,7 @@ describe('InviteModal', () => {
 
     // Use an email that passes basic validation but fails our strict regex (needs 2+ char TLD)
     fillEmails('invalid@email.c')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     expect(toast.error).toHaveBeenCalledWith('common.members.emailInvalid')
@@ -200,6 +322,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
     await waitFor(() => {
@@ -235,6 +358,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
 
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
 
@@ -283,6 +407,7 @@ describe('InviteModal', () => {
     renderModal()
 
     fillEmails('user@example.com')
+    await selectAdminRole(user)
 
     const sendBtn = screen.getByRole('button', { name: /members\.sendInvite/i })
 

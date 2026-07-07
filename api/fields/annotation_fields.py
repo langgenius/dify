@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field, field_validator
 
@@ -27,6 +28,15 @@ class AnnotationList(ResponseModel):
     limit: int
     total: int
     page: int
+
+
+class AnnotationJobStatusResponse(ResponseModel):
+    job_id: str
+    job_status: Literal["waiting", "processing", "completed", "error"] | str
+
+
+class AnnotationJobStatusDetailResponse(AnnotationJobStatusResponse):
+    error_msg: str = ""
 
 
 class AnnotationExportList(ResponseModel):

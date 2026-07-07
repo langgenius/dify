@@ -14,12 +14,16 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
 from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.workflow_run_fields import (
@@ -30,7 +34,6 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
 )
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
@@ -155,6 +158,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def get(self, app_model: App):
         """
@@ -193,6 +197,7 @@ class WorkflowRunExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model()
     def get(self, app_model: App, run_id: UUID):
         tenant_id = app_model.tenant_id
@@ -251,6 +256,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT])
     def get(self, app_model: App):
         """
@@ -291,6 +297,7 @@ class WorkflowRunListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
@@ -332,6 +339,7 @@ class WorkflowRunCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App):
         """
@@ -372,6 +380,7 @@ class WorkflowRunDetailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, run_id: UUID):
         """
@@ -401,8 +410,9 @@ class WorkflowRunNodeExecutionListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, current_user: Account, app_model: App, run_id: UUID):
         """
         Get workflow run node execution list

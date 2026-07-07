@@ -6,7 +6,7 @@ from uuid import UUID
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, ValidationError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
@@ -26,10 +26,14 @@ from controllers.console.app.workflow import (
     WorkflowPaginationResponse,
     WorkflowResponse,
 )
+from controllers.console.app.wraps import with_session
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -61,6 +65,7 @@ from services.rag_pipeline.pipeline_generate_service import PipelineGenerateServ
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -186,6 +191,7 @@ class DraftRagPipelineApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def get(self, pipeline: Pipeline):
         """
         Get draft rag pipeline's workflow
@@ -206,6 +212,7 @@ class DraftRagPipelineApi(Resource):
     @with_current_user
     @get_rag_pipeline
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @console_ns.expect(console_ns.models[DraftWorkflowSyncPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[RagPipelineWorkflowSyncResponse.__name__])
     def post(self, current_user: Account, pipeline: Pipeline):
@@ -266,6 +273,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
     @with_current_user
     @get_rag_pipeline
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
         """
         Run draft workflow iteration node
@@ -298,6 +306,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
     def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
@@ -332,9 +341,11 @@ class DraftRagPipelineRunApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
-    def post(self, current_user: Account, pipeline: Pipeline):
+    @with_session
+    def post(self, session: Session, current_user: Account, pipeline: Pipeline):
         """
         Run draft workflow
         """
@@ -343,6 +354,7 @@ class DraftRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                session=session,
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
@@ -363,9 +375,11 @@ class PublishedRagPipelineRunApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
-    def post(self, current_user: Account, pipeline: Pipeline):
+    @with_session
+    def post(self, session: Session, current_user: Account, pipeline: Pipeline):
         """
         Run published workflow
         """
@@ -375,6 +389,7 @@ class PublishedRagPipelineRunApi(Resource):
 
         try:
             response = PipelineGenerateService.generate(
+                session=session,
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
@@ -395,6 +410,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
     def post(self, current_user: Account, pipeline: Pipeline, node_id: str):
@@ -426,6 +442,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @account_initialization_required
     @with_current_user
     @get_rag_pipeline
@@ -462,6 +479,7 @@ class RagPipelineDraftNodeRunApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @account_initialization_required
     @with_current_user
     @get_rag_pipeline
@@ -491,6 +509,7 @@ class RagPipelineTaskStopApi(Resource):
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @account_initialization_required
     @with_current_user
     @get_rag_pipeline
@@ -514,6 +533,7 @@ class PublishedRagPipelineApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @get_rag_pipeline
     def get(self, pipeline: Pipeline):
         """
@@ -537,6 +557,7 @@ class PublishedRagPipelineApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
     def post(self, current_user: Account, pipeline: Pipeline):
@@ -571,6 +592,7 @@ class DefaultRagPipelineBlockConfigsApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @get_rag_pipeline
     def get(self, pipeline: Pipeline):
         """
@@ -593,6 +615,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @get_rag_pipeline
     def get(self, pipeline: Pipeline, block_type: str):
         """
@@ -625,6 +648,7 @@ class PublishedAllRagPipelineApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
     def get(self, current_user: Account, pipeline: Pipeline):
@@ -670,6 +694,7 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
     def post(self, current_user: Account, pipeline: Pipeline, workflow_id: str):
@@ -704,6 +729,7 @@ class RagPipelineByIdApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
     @get_rag_pipeline
     @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
@@ -718,15 +744,15 @@ class RagPipelineByIdApi(Resource):
             return {"message": "No valid fields to update"}, 400
 
         rag_pipeline_service = RagPipelineService()
+        workflow_ref = WorkflowRefService.create_pipeline_workflow_ref(pipeline, workflow_id)
 
         # Create a session and manage the transaction
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = rag_pipeline_service.update_workflow(
                 session=session,
-                workflow_id=workflow_id,
-                tenant_id=pipeline.tenant_id,
                 account_id=current_user.id,
                 data=update_data,
+                workflow_ref=workflow_ref,
             )
 
             if not workflow:
@@ -739,6 +765,7 @@ class RagPipelineByIdApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @get_rag_pipeline
     def delete(self, pipeline: Pipeline, workflow_id: str):
         """
@@ -748,13 +775,13 @@ class RagPipelineByIdApi(Resource):
             abort(400, description=f"Cannot delete workflow that is currently in use by pipeline '{pipeline.id}'")
 
         workflow_service = WorkflowService()
+        workflow_ref = WorkflowRefService.create_pipeline_workflow_ref(pipeline, workflow_id)
 
         with sessionmaker(db.engine).begin() as session:
             try:
                 workflow_service.delete_workflow(
                     session=session,
-                    workflow_id=workflow_id,
-                    tenant_id=pipeline.tenant_id,
+                    workflow_ref=workflow_ref,
                 )
             except WorkflowInUseError as e:
                 abort(400, description=str(e))
@@ -775,6 +802,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def get(self, pipeline: Pipeline):
         """
         Get second step parameters of rag pipeline
@@ -797,6 +825,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def get(self, pipeline: Pipeline):
         """
         Get first step parameters of rag pipeline
@@ -819,6 +848,7 @@ class DraftRagPipelineFirstStepApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def get(self, pipeline: Pipeline):
         """
         Get first step parameters of rag pipeline
@@ -841,6 +871,7 @@ class DraftRagPipelineSecondStepApi(Resource):
     @account_initialization_required
     @get_rag_pipeline
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def get(self, pipeline: Pipeline):
         """
         Get second step parameters of rag pipeline
@@ -988,13 +1019,14 @@ class RagPipelineTransformApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    def post(self, current_user: Account, dataset_id: UUID):
+    @with_session
+    def post(self, session: Session, current_user: Account, dataset_id: UUID):
         if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
         dataset_id_str = str(dataset_id)
         rag_pipeline_transform_service = RagPipelineTransformService()
-        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str, db.session)
+        result = rag_pipeline_transform_service.transform_dataset(dataset_id_str, session)
         return result
 
 
@@ -1012,6 +1044,7 @@ class RagPipelineDatasourceVariableApi(Resource):
     @with_current_user
     @get_rag_pipeline
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     def post(self, current_user: Account, pipeline: Pipeline):
         """
         Set datasource variables

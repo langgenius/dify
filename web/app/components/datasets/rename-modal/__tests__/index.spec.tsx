@@ -34,6 +34,35 @@ vi.mock('../../../base/app-icon', () => ({
   ),
 }))
 
+vi.mock('@/app/components/base/app-icon-picker', () => ({
+  default: ({
+    onOpenChange,
+    onSelect,
+  }: {
+    onOpenChange: (open: boolean) => void
+    onSelect: (payload: { type: 'emoji', icon: string, background: string }) => void
+  }) => {
+    let selectedBackground = '#FFEAD5'
+    return (
+      <div>
+        <input placeholder="Search emojis..." />
+        <button type="button" aria-label="#E4FBCC" onClick={() => { selectedBackground = '#E4FBCC' }} />
+        <button type="button" aria-label="#E0F2FE" onClick={() => { selectedBackground = '#E0F2FE' }} />
+        <button
+          type="button"
+          onClick={() => {
+            onSelect({ type: 'emoji', icon: '📊', background: selectedBackground })
+            onOpenChange(false)
+          }}
+        >
+          iconPicker.ok
+        </button>
+        <button type="button" onClick={() => onOpenChange(false)}>iconPicker.cancel</button>
+      </div>
+    )
+  },
+}))
+
 // The mock returns 'ns.key' format, e.g., 'common.operation.cancel'
 
 describe('RenameDatasetModal', () => {

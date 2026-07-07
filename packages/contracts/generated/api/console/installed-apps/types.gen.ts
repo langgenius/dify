@@ -31,6 +31,7 @@ export type AudioTranscriptResponse = {
 
 export type ChatMessagePayload = {
   conversation_id?: string | null
+  draft_type?: 'debug_build' | 'draft'
   files?: Array<unknown> | null
   inputs: {
     [key: string]: unknown
@@ -43,8 +44,6 @@ export type ChatMessagePayload = {
   response_mode?: 'blocking' | 'streaming'
   retriever_from?: string
 }
-
-export type GeneratedAppResponse = JsonValue
 
 export type SimpleResultResponse = {
   result: string
@@ -98,8 +97,8 @@ export type ResultResponse = {
   result: string
 }
 
-export type MessageInfiniteScrollPagination = {
-  data: Array<MessageListItem>
+export type ExploreMessageInfiniteScrollPagination = {
+  data: Array<ExploreMessageListItem>
   has_more: boolean
   limit: number
 }
@@ -116,7 +115,11 @@ export type SuggestedQuestionsResponse = {
 
 export type ExploreAppMetaResponse = {
   tool_icons?: {
-    [key: string]: unknown
+    [key: string]:
+      | string
+      | {
+        [key: string]: unknown
+      }
   }
 }
 
@@ -156,7 +159,10 @@ export type AudioBinaryResponse = Blob | File
 
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
@@ -184,7 +190,7 @@ export type JsonValue
     | Array<unknown>
     | null
 
-export type MessageListItem = {
+export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
   conversation_id: string
@@ -197,6 +203,7 @@ export type MessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
+  metadata?: JsonValueType | null
   parent_message_id?: string | null
   query: string
   retriever_resources: Array<RetrieverResource>
@@ -228,9 +235,11 @@ export type SavedMessageItem = {
 }
 
 export type InstalledAppInfoResponse = {
+  description?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  readonly icon_url: string | null
   id: string
   mode?: string | null
   name?: string | null
@@ -242,7 +251,6 @@ export type AgentThought = {
   created_at?: number | null
   files: Array<string>
   id: string
-  message_chain_id?: string | null
   message_id: string
   observation?: string | null
   position: number
@@ -397,6 +405,31 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type ValueSourceType = 'constant' | 'variable'
 
+export type InstalledAppListResponseWritable = {
+  installed_apps: Array<InstalledAppResponseWritable>
+}
+
+export type InstalledAppResponseWritable = {
+  app: InstalledAppInfoResponseWritable
+  app_owner_tenant_id: string
+  editable: boolean
+  id: string
+  is_pinned: boolean
+  last_used_at?: number | null
+  uninstallable: boolean
+}
+
+export type InstalledAppInfoResponseWritable = {
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  mode?: string | null
+  name?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
 export type GetInstalledAppsData = {
   body?: never
   path?: never
@@ -483,7 +516,9 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponse
@@ -516,7 +551,9 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponse
@@ -641,7 +678,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesResponses = {
-  200: MessageInfiniteScrollPagination
+  200: ExploreMessageInfiniteScrollPagination
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesResponse
@@ -677,7 +714,9 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData 
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
@@ -810,7 +849,9 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponse

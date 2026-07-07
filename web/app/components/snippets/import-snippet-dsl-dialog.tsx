@@ -19,11 +19,13 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import {
   useConfirmSnippetImportMutation,
   useImportSnippetDSLMutation,
 } from '@/service/use-snippets'
+import { canCreateAndModifySnippets } from './utils/permission'
 
 type ImportSnippetDSLDialogProps = {
   isOpen: boolean
@@ -105,6 +107,8 @@ function ImportSnippetDSLDialog({
 }: ImportSnippetDSLDialogProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const importSnippetMutation = useImportSnippetDSLMutation()
   const confirmSnippetImportMutation = useConfirmSnippetImportMutation()
   const [currentTab, setCurrentTab] = useState<ImportSnippetDSLDialogTab>(ImportSnippetDSLDialogTab.FromFile)
@@ -162,6 +166,9 @@ function ImportSnippetDSLDialog({
   }, [handleImportSuccess])
 
   const handleImport = useCallback(async () => {
+    if (!canCreateAndModifySnippet)
+      return
+
     try {
       const response = await importSnippetMutation.mutateAsync({
         mode: currentTab === ImportSnippetDSLDialogTab.FromFile ? 'yaml-content' : 'yaml-url',
@@ -175,10 +182,10 @@ function ImportSnippetDSLDialog({
       if (error instanceof Error && error.message)
         toast.error(error.message)
     }
-  }, [currentTab, dslUrl, fileContent, handleImportResponse, importSnippetMutation])
+  }, [canCreateAndModifySnippet, currentTab, dslUrl, fileContent, handleImportResponse, importSnippetMutation])
 
   const handleConfirmImport: MouseEventHandler = useCallback(async () => {
-    if (!importId)
+    if (!canCreateAndModifySnippet || !importId)
       return
 
     try {
@@ -189,7 +196,7 @@ function ImportSnippetDSLDialog({
       if (error instanceof Error && error.message)
         toast.error(error.message)
     }
-  }, [confirmSnippetImportMutation, handleImportResponse, importId])
+  }, [canCreateAndModifySnippet, confirmSnippetImportMutation, handleImportResponse, importId])
 
   const tabs = useMemo(() => [
     {
@@ -204,6 +211,7 @@ function ImportSnippetDSLDialog({
 
   const isSubmitting = importSnippetMutation.isPending || confirmSnippetImportMutation.isPending
   const importDisabled = isSubmitting
+    || !canCreateAndModifySnippet
     || (currentTab === ImportSnippetDSLDialogTab.FromFile && !currentFile)
     || (currentTab === ImportSnippetDSLDialogTab.FromUrl && !dslUrl.trim())
 
@@ -277,7 +285,7 @@ function ImportSnippetDSLDialog({
       {showConfirmModal && (
         <SnippetDSLConfirmDialog
           versions={versions}
-          confirmDisabled={confirmSnippetImportMutation.isPending}
+          confirmDisabled={confirmSnippetImportMutation.isPending || !canCreateAndModifySnippet}
           onCancel={() => setShowConfirmModal(false)}
           onConfirm={handleConfirmImport}
         />

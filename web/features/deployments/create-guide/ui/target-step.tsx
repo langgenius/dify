@@ -3,41 +3,46 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
-  EnvVarBindingsPanel,
-} from '@/features/deployments/components/env-var-bindings'
+  envVarValuesAtom,
+  isCreatingReleaseOnlyAtom,
+  isSubmittingDeploymentGuideAtom,
+  selectedEnvironmentIdAtom,
+  stepAtom,
+} from '@/features/deployments/create-guide/state/primitives'
 import {
-  RuntimeCredentialBindingsPanel,
-} from '@/features/deployments/components/runtime-credential-bindings'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
+  deployableEnvironmentsQueryAtom,
+  deploymentOptionsQueryAtom,
+  unsupportedDslNodesAtom,
+} from '@/features/deployments/create-guide/state/queries'
+import {
+  createDeploymentGuideSubmissionAtom,
+  CreateDeploymentGuideSubmissionBlockedError,
+} from '@/features/deployments/create-guide/state/submission'
 import {
   canDeployAtom,
   canSkipDeploymentAtom,
-  createDeploymentGuideSubmissionAtom,
-  CreateDeploymentGuideSubmissionBlockedError,
   deployableEnvironmentsAtom,
-  deployableEnvironmentsQueryAtom,
-  deploymentOptionsQueryAtom,
   deploymentTargetBindingSelectionsAtom,
   deploymentTargetBindingSlotsAtom,
   deploymentTargetEnvVarSlotsAtom,
   effectiveSelectedEnvironmentIdAtom,
-  envVarValuesAtom,
-  isCreatingReleaseOnlyAtom,
-  isSubmittingDeploymentGuideAtom,
   selectBindingAtom,
-  selectedEnvironmentIdAtom,
   setEnvVarAtom,
-  stepAtom,
-  unsupportedDslNodesAtom,
-} from '@/features/deployments/create-guide/state'
+} from '@/features/deployments/create-guide/state/target'
+import {
+  EnvVarBindingsPanel,
+} from '@/features/deployments/shared/components/env-var-bindings'
+import {
+  RuntimeCredentialBindingsPanel,
+} from '@/features/deployments/shared/components/runtime-credential-bindings'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
+import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
 import { deploymentErrorMessage } from '@/features/deployments/shared/domain/error'
 import { useRouter } from '@/next/navigation'
 import { StepShell } from './layout'
@@ -113,9 +118,10 @@ function EnvironmentOptionRow({ environment }: {
   const summary = environment.description.trim() || `${t(`mode.${environment.mode}`)} · ${t(`backend.${environment.backend}`)}`
 
   return (
-    <RadioRoot<string>
+    <RadioItem<string>
       value={environment.id}
-      variant="unstyled"
+      nativeButton
+      render={<button type="button" />}
       className={cn(
         'group flex cursor-pointer items-center gap-3 rounded-xl border p-3 outline-hidden',
         'border-components-option-card-option-border bg-components-option-card-option-bg hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs',
@@ -132,7 +138,7 @@ function EnvironmentOptionRow({ environment }: {
           </span>
         </TitleTooltip>
       </span>
-    </RadioRoot>
+    </RadioItem>
   )
 }
 

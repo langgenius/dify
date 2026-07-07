@@ -30,18 +30,28 @@ from services.conversation_service import ConversationService
 
 
 class ConversationListQuery(BaseModel):
-    last_id: UUIDStrOrEmpty | None = Field(default=None, description="Last conversation ID for pagination")
-    limit: int = Field(default=20, ge=1, le=100, description="Number of conversations to return")
+    last_id: UUIDStrOrEmpty | None = Field(
+        default=None,
+        description="The ID of the last record on the current page. Used to fetch the next page.",
+    )
+    limit: int = Field(default=20, ge=1, le=100, description="Number of records to return.")
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
-        default="-updated_at", description="Sort order for conversations"
+        default="-updated_at",
+        description="Sorting field. Use the `-` prefix for descending order.",
     )
 
 
 class ConversationVariablesQuery(BaseModel):
-    last_id: UUIDStrOrEmpty | None = Field(default=None, description="Last variable ID for pagination")
-    limit: int = Field(default=20, ge=1, le=100, description="Number of variables to return")
+    last_id: UUIDStrOrEmpty | None = Field(
+        default=None,
+        description="The ID of the last record on the current page. Used to fetch the next page.",
+    )
+    limit: int = Field(default=20, ge=1, le=100, description="Number of records to return.")
     variable_name: str | None = Field(
-        default=None, description="Filter variables by name", min_length=1, max_length=255
+        default=None,
+        description="Filter variables by a specific name.",
+        min_length=1,
+        max_length=255,
     )
 
     @field_validator("variable_name", mode="before")
@@ -69,7 +79,7 @@ class ConversationVariablesQuery(BaseModel):
 
 
 class ConversationVariableUpdatePayload(BaseModel):
-    value: Any
+    value: Any = Field(description="The new value for the variable. Must match the variable's expected type.")
 
 
 class ConversationVariableResponse(ResponseModel):
@@ -221,7 +231,7 @@ class ConversationDetailApi(Resource):
     @expect_user_json(service_api_ns)
     @service_api_ns.doc("delete_conversation")
     @service_api_ns.doc(description="Delete a specific conversation")
-    @service_api_ns.doc(params={"c_id": "Conversation ID"})
+    @service_api_ns.doc(params={"c_id": "Conversation ID."})
     @service_api_ns.doc(
         responses={
             204: "Conversation deleted successfully",
@@ -263,7 +273,7 @@ class ConversationRenameApi(Resource):
     @expect_with_user(service_api_ns, ConversationRenamePayload)
     @service_api_ns.doc("rename_conversation")
     @service_api_ns.doc(description="Rename a conversation or auto-generate a name")
-    @service_api_ns.doc(params={"c_id": "Conversation ID"})
+    @service_api_ns.doc(params={"c_id": "Conversation ID."})
     @service_api_ns.doc(
         responses={
             200: "Conversation renamed successfully",
@@ -315,7 +325,7 @@ class ConversationVariablesApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
     @service_api_ns.doc("list_conversation_variables")
     @service_api_ns.doc(description="List all variables for a conversation")
-    @service_api_ns.doc(params={"c_id": "Conversation ID"})
+    @service_api_ns.doc(params={"c_id": "Conversation ID."})
     @service_api_ns.doc(
         responses={
             200: "Variables retrieved successfully",
@@ -375,7 +385,7 @@ class ConversationVariableDetailApi(Resource):
     @expect_with_user(service_api_ns, ConversationVariableUpdatePayload)
     @service_api_ns.doc("update_conversation_variable")
     @service_api_ns.doc(description="Update a conversation variable's value")
-    @service_api_ns.doc(params={"c_id": "Conversation ID", "variable_id": "Variable ID"})
+    @service_api_ns.doc(params={"c_id": "Conversation ID.", "variable_id": "Variable ID."})
     @service_api_ns.doc(
         responses={
             200: "Variable updated successfully",

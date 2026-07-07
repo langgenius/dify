@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from extensions.ext_database import db
 from libs.login import current_user
 from models.account import Tenant
+from models.enums import EndUserType
 from models.model import DefaultEndUserSessionID, EndUser
 
 
@@ -75,7 +76,7 @@ def get_user(tenant_id: str, user_id: str | None) -> EndUser:
             if not user_model:
                 user_model = EndUser(
                     tenant_id=tenant_id,
-                    type="service_api",
+                    type=EndUserType.SERVICE_API,
                     is_anonymous=is_anonymous,
                     session_id=user_id,
                 )

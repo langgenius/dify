@@ -3,12 +3,14 @@ from typing import Any, cast
 from flask_restx import Resource
 from pydantic import Field
 
+from controllers.common.agent_app_parameters import get_published_agent_app_feature_dict_and_user_input_form
 from controllers.common.fields import Parameters
 from controllers.common.schema import register_response_schema_models
 from controllers.service_api import service_api_ns
-from controllers.service_api.app.error import AppUnavailableError
+from controllers.service_api.app.error import AgentNotPublishedError, AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from fields.base import ResponseModel
 from models.model import App, AppMode
 from services.app_service import AppService
@@ -27,6 +29,15 @@ class AppMetaResponse(ResponseModel):
 
 
 register_response_schema_models(service_api_ns, Parameters, AppMetaResponse, AppInfoResponse)
+
+
+def _get_agent_app_feature_dict_and_user_input_form(app_model: App) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    try:
+        return get_published_agent_app_feature_dict_and_user_input_form(app_model)
+    except AgentAppNotPublishedError:
+        raise AgentNotPublishedError()
+    except AgentAppGeneratorError:
+        raise AppUnavailableError()
 
 
 @service_api_ns.route("/parameters")
@@ -61,12 +72,16 @@ class AppParameterApi(Resource):
 
         Returns the input form parameters and configuration for the application.
         """
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        features_dict: dict[str, Any]
+        user_input_form: list[dict[str, Any]]
+        if app_model.mode == AppMode.AGENT:
+            features_dict, user_input_form = _get_agent_app_feature_dict_and_user_input_form(app_model)
+        elif app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()
 
-            features_dict: dict[str, Any] = workflow.features_dict
+            features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config

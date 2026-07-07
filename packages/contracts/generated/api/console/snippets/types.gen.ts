@@ -16,7 +16,7 @@ export type SimpleResultResponse = {
 
 export type WorkflowRunDetailResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
@@ -37,9 +37,9 @@ export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
 
-export type WorkflowPaginationResponse = {
+export type SnippetWorkflowPaginationResponse = {
   has_more: boolean
-  items: Array<WorkflowResponse>
+  items: Array<SnippetWorkflowResponse>
   limit: number
   page: number
 }
@@ -51,7 +51,7 @@ export type DefaultBlockConfigsResponse = Array<{
 export type SnippetWorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
-  created_by?: SimpleAccount | null
+  created_by?: SimpleAccountResponse | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
   features: {
     [key: string]: unknown
@@ -69,7 +69,7 @@ export type SnippetWorkflowResponse = {
   rag_pipeline_variables: Array<PipelineVariableResponse>
   tool_published: boolean
   updated_at: number
-  updated_by?: SimpleAccount | null
+  updated_by?: SimpleAccountResponse | null
   version: string
 }
 
@@ -120,7 +120,7 @@ export type SnippetLoopNodeRunPayload = {
 
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
@@ -208,9 +208,14 @@ export type WorkflowPublishResponse = {
   result: string
 }
 
+export type WorkflowUpdatePayload = {
+  marked_comment?: string | null
+  marked_name?: string | null
+}
+
 export type WorkflowRunForListResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -222,7 +227,7 @@ export type WorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -233,28 +238,6 @@ export type SimpleEndUser = {
   is_anonymous: boolean
   session_id?: string | null
   type: string
-}
-
-export type WorkflowResponse = {
-  conversation_variables: Array<WorkflowConversationVariableResponse>
-  created_at: number
-  created_by?: SimpleAccount | null
-  environment_variables: Array<WorkflowEnvironmentVariableResponse>
-  features: {
-    [key: string]: unknown
-  }
-  graph: {
-    [key: string]: unknown
-  }
-  hash: string
-  id: string
-  marked_comment: string
-  marked_name: string
-  rag_pipeline_variables: Array<PipelineVariableResponse>
-  tool_published: boolean
-  updated_at: number
-  updated_by?: SimpleAccount | null
-  version: string
 }
 
 export type WorkflowConversationVariableResponse = {
@@ -417,7 +400,7 @@ export type GetSnippetsBySnippetIdWorkflowsData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsResponses = {
-  200: WorkflowPaginationResponse
+  200: SnippetWorkflowPaginationResponse
 }
 
 export type GetSnippetsBySnippetIdWorkflowsResponse
@@ -844,6 +827,28 @@ export type PostSnippetsBySnippetIdWorkflowsPublishResponses = {
 
 export type PostSnippetsBySnippetIdWorkflowsPublishResponse
   = PostSnippetsBySnippetIdWorkflowsPublishResponses[keyof PostSnippetsBySnippetIdWorkflowsPublishResponses]
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
+  body: WorkflowUpdatePayload
+  path: {
+    snippet_id: string
+    workflow_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/{workflow_id}'
+}
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses = {
+  200: SnippetWorkflowResponse
+}
+
+export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse
+  = PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses[keyof PatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponses]
 
 export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreData = {
   body?: never

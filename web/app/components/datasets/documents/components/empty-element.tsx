@@ -12,7 +12,7 @@ type EmptyElementProps = {
   type?: 'upload' | 'sync'
 }
 
-const EmptyElement: FC<EmptyElementProps> = ({ canAdd = true, onClick, type = 'upload' }) => {
+const EmptyElement: FC<EmptyElementProps> = ({ canAdd = false, onClick, type = 'upload' }) => {
   const { t } = useTranslation()
   return (
     <div className={s.emptyWrapper}>

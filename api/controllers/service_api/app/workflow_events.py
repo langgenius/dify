@@ -32,9 +32,25 @@ from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 
 class WorkflowEventsQuery(BaseModel):
-    user: str = Field(..., description="End user identifier")
-    include_state_snapshot: bool = Field(default=False, description="Replay from persisted state snapshot")
-    continue_on_pause: bool = Field(default=False, description="Keep the stream open across workflow_paused events")
+    user: str = Field(
+        ...,
+        description="End-user identifier that originally triggered the run. Must match the creator of the run.",
+    )
+    include_state_snapshot: bool = Field(
+        default=False,
+        description=(
+            "When `true`, replay from the persisted state snapshot to include a status summary of already-executed "
+            "nodes before streaming new events."
+        ),
+    )
+    continue_on_pause: bool = Field(
+        default=False,
+        description=(
+            "Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when "
+            "the workflow has more than one Human Input node in sequence. By default, the stream closes after the "
+            "first pause."
+        ),
+    )
 
 
 register_schema_models(service_api_ns, WorkflowEventsQuery)
@@ -65,7 +81,7 @@ class WorkflowEventsApi(Resource):
     @event_stream_response(service_api_ns)
     @service_api_ns.doc("get_workflow_events")
     @service_api_ns.doc(description="Get workflow execution events stream after resume")
-    @service_api_ns.doc(params={"task_id": "Workflow run ID"})
+    @service_api_ns.doc(params={"task_id": "Workflow run ID returned by the original workflow run request."})
     @service_api_ns.doc(params=query_params_from_model(WorkflowEventsQuery))
     @service_api_ns.doc(
         responses={

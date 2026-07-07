@@ -5,7 +5,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
-import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
@@ -18,6 +18,7 @@ import InstallFromMarketplace from './install-from-marketplace'
 
 type DataSourcePageProps = {
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  onOpenMarketplace?: () => void
   stickyToolbar?: boolean
 }
 
@@ -53,14 +54,15 @@ function DataSourceListSkeleton() {
 
 const DataSourcePage = ({
   layout,
+  onOpenMarketplace,
   stickyToolbar,
 }: DataSourcePageProps) => {
   const { t } = useTranslation()
   const renderI18nObject = useRenderI18nObject()
   const [searchText, setSearchText] = useState('')
   const {
-    canSetPermissions,
-  } = useCanSetPluginSettings()
+    canSetPluginPreferences,
+  } = usePluginSettingsAccess()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -111,7 +113,7 @@ const DataSourcePage = ({
         value={searchText}
         onValueChange={setSearchText}
       />
-      {canSetPermissions && (
+      {canSetPluginPreferences && (
         <UpdateSettingDialog
           category={PluginCategoryEnum.datasource}
         />
@@ -164,6 +166,7 @@ const DataSourcePage = ({
           <InstallFromMarketplace
             providers={dataSources}
             searchText={searchText}
+            onOpenMarketplace={onOpenMarketplace}
           />
         )
       }

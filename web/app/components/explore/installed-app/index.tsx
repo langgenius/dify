@@ -7,7 +7,7 @@ import Loading from '@/app/components/base/loading'
 import TextGenerationApp from '@/app/components/share/text-generation'
 import { useWebAppStore } from '@/context/web-app-context'
 import dynamic from '@/next/dynamic'
-import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams, useGetInstalledApps } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import AppUnavailable from '../../base/app-unavailable'
@@ -55,6 +55,7 @@ const InstalledApp = ({
         app_id: id,
         site: {
           title: app.name,
+          description: app.description,
           icon_type: app.icon_type,
           icon: app.icon,
           icon_background: app.icon_background,

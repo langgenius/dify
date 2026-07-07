@@ -1,8 +1,9 @@
-import type { ReactNode, RefObject } from 'react'
+import type { ReactElement, ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   Drawer,
   DrawerCloseButton,
@@ -12,6 +13,12 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import {
   Popover,
@@ -76,7 +83,7 @@ function InlineSetupAvatar({
 }) {
   return (
     <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full bg-background-default-burn', className)}>
-      <span aria-hidden className="i-custom-vender-agent-v2-robot-3 size-5 text-text-tertiary" />
+      <span aria-hidden className="i-custom-vender-agent-v2-configure h-3.5 w-3 text-text-tertiary" />
     </span>
   )
 }
@@ -84,26 +91,37 @@ function InlineSetupAvatar({
 function AgentRosterDrawer({
   agent,
   children,
+  isInlineSetup = false,
   mode = 'detail',
   open,
   portalContainerRef,
+  showAccessIcon = true,
   showConsoleLink = true,
   showDetailActions = true,
+  isCopyPending = false,
+  onMakeCopy,
+  onSaveInlineToRoster,
   onClose,
 }: {
   agent: AgentRosterDisplayData
   children?: ReactNode
+  isInlineSetup?: boolean
+  isCopyPending?: boolean
   mode?: AgentRosterDrawerMode
   open: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
+  showAccessIcon?: boolean
   showConsoleLink?: boolean
   showDetailActions?: boolean
+  onMakeCopy?: () => void
+  onSaveInlineToRoster?: () => void
   onClose: () => void
 }) {
   const { t } = useTranslation()
   const isSetup = mode === 'setup'
-  const title = isSetup ? t(`${i18nPrefix}.roster.inlineSetup.title`, { ns: 'workflow' }) : agent.name
+  const title = isInlineSetup ? t(`${i18nPrefix}.roster.inlineSetup.name`, { ns: 'workflow' }) : agent.name
   const description = isSetup ? t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' }) : agent.role
+  const showInlineActions = isInlineSetup && !!onSaveInlineToRoster
 
   return (
     <Drawer
@@ -137,14 +155,16 @@ function AgentRosterDrawer({
                 )}
               >
                 <div className="flex min-w-0 items-start justify-between">
-                  <div className={cn('flex min-w-0 flex-1', isSetup ? 'min-w-px flex-col' : 'h-10 items-center gap-2 px-0.5 py-0.5')}>
-                    {!isSetup && <AgentRosterAvatar agent={agent} size="md" className="size-9" />}
+                  <div className={cn('flex min-w-0 flex-1', isSetup ? 'min-w-px items-center gap-2' : 'h-10 items-center gap-2 px-0.5 py-0.5')}>
+                    {isInlineSetup
+                      ? <InlineSetupAvatar className="size-9" />
+                      : <AgentRosterAvatar agent={agent} size="md" className="size-9" />}
                     <div className={cn('flex min-w-0 flex-1 flex-col', isSetup ? '' : 'gap-0.5 py-px')}>
                       <div className="flex min-w-0 items-center gap-1">
                         <DrawerTitle className={cn('truncate', isSetup ? 'system-xl-semibold text-text-primary' : 'system-sm-medium text-text-secondary')}>
                           {title}
                         </DrawerTitle>
-                        {!isSetup && <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />}
+                        {!isSetup && showAccessIcon && <span aria-hidden className="i-ri-lock-line size-3 shrink-0 text-text-tertiary" />}
                       </div>
                       {description && (
                         <p className={cn(isSetup ? 'min-w-full' : 'truncate', 'system-xs-regular text-text-tertiary')}>
@@ -154,16 +174,27 @@ function AgentRosterDrawer({
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1 py-1">
-                    <button
-                      type="button"
-                      aria-label={t(`${i18nPrefix}.roster.more`, { ns: 'workflow' })}
-                      className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    >
-                      <span aria-hidden className="i-ri-more-fill size-4" />
-                    </button>
-                    <div className="flex h-3.5 items-start px-1">
-                      <div className="h-full w-px bg-divider-regular" />
-                    </div>
+                    {showInlineActions && (
+                      <>
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger
+                            aria-label={t(`${i18nPrefix}.roster.more`, { ns: 'workflow' })}
+                            className="flex size-6 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+                          >
+                            <span aria-hidden className="i-ri-more-fill size-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44 w-max">
+                            <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
+                              <span aria-hidden className="i-ri-inbox-archive-line size-4 shrink-0 text-text-tertiary" />
+                              <span>{t('roster.saveToRoster', { ns: 'agentV2' })}</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <div className="flex h-3.5 items-start px-1">
+                          <div className="h-full w-px bg-divider-regular" />
+                        </div>
+                      </>
+                    )}
                     <DrawerCloseButton
                       aria-label={t('operation.close', { ns: 'common' })}
                       className="size-6 rounded-md"
@@ -175,6 +206,8 @@ function AgentRosterDrawer({
                     {showConsoleLink && (
                       <Link
                         href={getAgentDetailPath(agent.id, 'configure')}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex h-8 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-[13px] leading-4 font-medium whitespace-nowrap text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                       >
                         <span aria-hidden className="i-ri-external-link-line size-4 shrink-0" />
@@ -187,6 +220,8 @@ function AgentRosterDrawer({
                       variant="secondary"
                       size="medium"
                       className="min-w-0 flex-1 gap-1.5 px-3"
+                      loading={isCopyPending}
+                      onClick={onMakeCopy}
                     >
                       <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
                       <span className="truncate">
@@ -211,11 +246,47 @@ function AgentRosterDrawer({
   )
 }
 
+function AgentRosterInlineConfigureDialog({
+  agent,
+  children,
+  open,
+  trigger,
+  onOpenChange,
+}: {
+  agent: AgentRosterDisplayData
+  children?: ReactNode
+  open: boolean
+  trigger: ReactElement
+  onOpenChange: (open: boolean) => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      disablePointerDismissal
+    >
+      <DialogTrigger render={trigger} />
+      <DialogContent className="h-[min(760px,calc(100dvh-32px))] w-[min(1120px,calc(100vw-32px))] max-w-none overflow-hidden p-0">
+        <DialogTitle className="sr-only">
+          {agent.name}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {t(`${i18nPrefix}.roster.inlineSetup.description`, { ns: 'workflow' })}
+        </DialogDescription>
+        {children ?? <div className="h-full min-h-80 bg-components-panel-bg" />}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function AgentRosterField({
   agent,
   agentId,
   canOpenPanel = true,
   isPanelOpen,
+  isPanelCopyPending = false,
   isPending = false,
   isLoading = false,
   isInlineSetup = false,
@@ -224,12 +295,16 @@ export function AgentRosterField({
   showPanelDetailActions = true,
   portalContainerRef,
   onChange,
+  onMakeCopy,
   onPanelOpenChange,
+  onSaveInlineToRoster,
+  onStartFromScratch,
 }: {
   agent?: AgentRosterDisplayData
   agentId?: string
   canOpenPanel?: boolean
   isPanelOpen?: boolean
+  isPanelCopyPending?: boolean
   isLoading?: boolean
   isInlineSetup?: boolean
   isPending?: boolean
@@ -238,7 +313,10 @@ export function AgentRosterField({
   showPanelDetailActions?: boolean
   portalContainerRef: RefObject<HTMLDivElement | null>
   onChange: (agent: AgentRosterNodeData) => void
+  onMakeCopy?: () => void
   onPanelOpenChange?: (open: boolean) => void
+  onSaveInlineToRoster?: () => void
+  onStartFromScratch?: () => void
 }) {
   const { t } = useTranslation()
   const [localPanelOpen, setLocalPanelOpen] = useState(false)
@@ -274,6 +352,20 @@ export function AgentRosterField({
         <span className="h-2 w-16 rounded-xs bg-text-quaternary/15" />
       </span>
     </>
+  )
+  const renderPanelTrigger = (name: string, onClick?: () => void) => (
+    <button
+      type="button"
+      aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name })}
+      aria-busy={isLoading || undefined}
+      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      onClick={onClick}
+    >
+      {isLoading ? loadingContent : agentContent}
+      <span className="flex shrink-0 items-center text-text-tertiary">
+        <span aria-hidden className="i-ri-arrow-right-line size-4" />
+      </span>
+    </button>
   )
 
   return (
@@ -315,6 +407,12 @@ export function AgentRosterField({
                 setIsSelectorOpen(false)
                 onChange(nextAgent)
               }}
+              onStartFromScratch={onStartFromScratch
+                ? () => {
+                    setIsSelectorOpen(false)
+                    onStartFromScratch()
+                  }
+                : undefined}
             />
           </PopoverContent>
         </Popover>
@@ -324,28 +422,36 @@ export function AgentRosterField({
             canOpenPanel
               ? (
                   <>
-                    <button
-                      type="button"
-                      aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: isInlineSetup ? inlineSetupName : agent.name })}
-                      aria-busy={isLoading || undefined}
-                      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                      onClick={() => setPanelOpen(true)}
-                    >
-                      {isLoading ? loadingContent : agentContent}
-                      <span className="flex shrink-0 items-center text-text-tertiary">
-                        <span aria-hidden className="i-ri-arrow-right-line size-4" />
-                      </span>
-                    </button>
-                    <AgentRosterDrawer
-                      agent={agent}
-                      mode={panelMode}
-                      open={panelOpen}
-                      portalContainerRef={portalContainerRef}
-                      showDetailActions={showPanelDetailActions}
-                      onClose={() => setPanelOpen(false)}
-                    >
-                      {panelBody}
-                    </AgentRosterDrawer>
+                    {isInlineSetup
+                      ? (
+                          <AgentRosterInlineConfigureDialog
+                            agent={agent}
+                            open={panelOpen}
+                            trigger={renderPanelTrigger(inlineSetupName)}
+                            onOpenChange={setPanelOpen}
+                          >
+                            {panelBody}
+                          </AgentRosterInlineConfigureDialog>
+                        )
+                      : (
+                          <>
+                            {renderPanelTrigger(agent.name, () => setPanelOpen(true))}
+                            <AgentRosterDrawer
+                              agent={agent}
+                              mode={panelMode}
+                              open={panelOpen}
+                              portalContainerRef={portalContainerRef}
+                              showAccessIcon
+                              showDetailActions={showPanelDetailActions}
+                              isCopyPending={isPanelCopyPending}
+                              onMakeCopy={onMakeCopy}
+                              onSaveInlineToRoster={onSaveInlineToRoster}
+                              onClose={() => setPanelOpen(false)}
+                            >
+                              {panelBody}
+                            </AgentRosterDrawer>
+                          </>
+                        )}
                   </>
                 )
               : (

@@ -5,6 +5,7 @@ import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features
 import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import AppCard from '../app-card'
 
@@ -12,11 +13,11 @@ const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: { webapp_auth: { enabled: true } },
 })
 
-const mockFetchAppDetailDirect = vi.fn()
 const mockPush = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockOnChangeStatus = vi.fn()
 const mockOnGenerateCode = vi.fn()
+const mockFetchAppDetail = vi.fn()
 
 let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string, variables?: Array<Record<string, unknown>> } }> } } | null = null
 let mockAccessSubjects: { groups?: unknown[], members?: unknown[] } = { groups: [], members: [] }
@@ -27,16 +28,6 @@ vi.mock('react-i18next', () => ({
     t: (key: string) => key,
   }),
   Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
-    langGeniusVersionInfo: {
-      current_env: 'TESTING',
-    },
-  }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -63,14 +54,14 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useAppWhiteListSubjects: () => ({
     data: mockAccessSubjects,
   }),
 }))
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
 vi.mock('@/app/components/develop/secret-key/secret-key-button', () => ({
@@ -89,14 +80,19 @@ vi.mock('../customize', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => isShow ? <button data-testid="customize-modal" onClick={onClose}>customize-modal</button> : null,
 }))
 
-vi.mock('../../app-access-control', () => ({
-  AccessControl: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
+vi.mock('../../app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
     <div data-testid="access-control-modal">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 const mockWindowOpen = vi.fn()
 Object.defineProperty(window, 'open', {
@@ -113,6 +109,7 @@ describe('AppCard', () => {
     icon: 'app-icon',
     icon_background: '#fff',
     api_base_url: 'https://api.example.com',
+    permission_keys: [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion],
     site: {
       app_base_url: 'https://example.com',
       access_token: 'access-token',
@@ -138,10 +135,14 @@ describe('AppCard', () => {
       groups: [],
       members: [],
     }
-    mockFetchAppDetailDirect.mockResolvedValue({
+    mockFetchAppDetail.mockResolvedValue({
       id: 'app-1',
       access_mode: AccessMode.PUBLIC,
-    })
+      site: {
+        app_base_url: 'https://example.com',
+        access_token: 'access-token',
+      },
+    } as AppDetailResponse)
   })
 
   it('should open the published webapp when launch is clicked', () => {
@@ -344,6 +345,21 @@ describe('AppCard', () => {
     expect(screen.getByText('publishApp.notSet')).toBeInTheDocument()
   })
 
+  it('should hide the access-control section when release permission is missing', () => {
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          permission_keys: [AppACLPermission.Edit],
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    expect(screen.queryByText('publishApp.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('publishApp.notSet')).not.toBeInTheDocument()
+  })
+
   it('should hide the address and operation sections for unpublished workflows', () => {
     mockWorkflow = null
 
@@ -400,13 +416,14 @@ describe('AppCard', () => {
   })
 
   it('should refresh app detail after confirming access control changes', async () => {
-    render(
+    const { queryClient } = render(
       <AppCard
         appInfo={appInfo}
         onChangeStatus={mockOnChangeStatus}
         onGenerateCode={mockOnGenerateCode}
       />,
     )
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
 
     fireEvent.click(screen.getByText('publishApp.notSet'))
     expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
@@ -414,12 +431,14 @@ describe('AppCard', () => {
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetAppDetail).toHaveBeenCalledWith({
-        id: 'app-1',
-        access_mode: AccessMode.PUBLIC,
-      })
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
+    expect(setQueryDataSpy).toHaveBeenCalledWith(['apps', 'detail', 'app-1'], expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
+    expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
   })
 
   it('should surface the learn-more tooltip action for workflows without a start node', () => {
@@ -472,7 +491,7 @@ describe('AppCard', () => {
 
   it('should report refresh failures from access control updates', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
-    mockFetchAppDetailDirect.mockRejectedValueOnce(new Error('refresh failed'))
+    mockFetchAppDetail.mockRejectedValueOnce(new Error('refresh failed'))
 
     render(
       <AppCard

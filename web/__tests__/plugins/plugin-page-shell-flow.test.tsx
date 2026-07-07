@@ -6,6 +6,9 @@ import PluginPage from '@/app/components/plugins/plugin-page'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
 const mockFetchManifestFromMarketPlace = vi.fn()
+const { mockRouterReplace } = vi.hoisted(() => ({
+  mockRouterReplace: vi.fn(),
+}))
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -26,6 +29,12 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockRouterReplace,
+  }),
+}))
+
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
@@ -34,6 +43,14 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: false,
     isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_version: '1.0.0',
+    },
+    workspacePermissionKeys: [
+      'plugin.install',
+      'plugin.delete',
+      'plugin.plugin_preferences',
+    ],
   }),
 }))
 

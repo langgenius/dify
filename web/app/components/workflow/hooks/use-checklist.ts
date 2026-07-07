@@ -31,6 +31,7 @@ import { useEdges, useStoreApi } from 'reactflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { normalizeModelProviderModelsResponse } from '@/app/components/header/account-setting/model-provider-page/utils'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { MAX_TREE_DEPTH } from '@/config'
 import { useGetLanguage } from '@/context/i18n'
@@ -66,6 +67,7 @@ import {
 import { BlockEnum } from '../types'
 import {
   getDataSourceCheckParams,
+  getNodeCatalogType,
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
@@ -97,10 +99,6 @@ const withFlowType = (moreDataForCheckValid: CheckValidExtraData, flowType?: Flo
     ...(moreDataForCheckValid ?? {}),
     flowType,
   }
-}
-
-const getNodeMetaType = (data: CommonNodeType) => {
-  return isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
@@ -188,11 +186,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
   }, [nodes])
   const knowledgeBaseProviderModelMap = useQueries({
     queries: knowledgeBaseEmbeddingProviders.map(provider =>
-      consoleQuery.modelProviders.models.queryOptions({
+      consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
         input: { params: { provider } },
         enabled: !!provider,
         refetchOnWindowFocus: false,
-        select: response => response.data,
+        select: normalizeModelProviderModelsResponse,
       }),
     ),
     combine: (results) => {
@@ -272,7 +270,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
-        const validator = nodesExtraData?.[getNodeMetaType(node!.data) as BlockEnum]?.checkValid
+        const validator = nodesExtraData?.[getNodeCatalogType(node!.data)]?.checkValid
         const isPluginMissing = isNodePluginMissing(node!.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
 
         const errorMessages: string[] = []
@@ -470,13 +468,13 @@ export const useChecklistBeforePublish = () => {
       await Promise.all(knowledgeBaseEmbeddingProviders.map(async (provider) => {
         try {
           const modelList = await queryClient.fetchQuery(
-            consoleQuery.modelProviders.models.queryOptions({
+            consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryOptions({
               input: { params: { provider } },
             }),
           )
 
           if (modelList.data)
-            modelMap[provider] = modelList.data
+            modelMap[provider] = normalizeModelProviderModelsResponse(modelList)
         }
         catch {
         }
@@ -556,7 +554,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![getNodeMetaType(node!.data) as BlockEnum].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
+      const { errorMessage } = nodesExtraData![getNodeCatalogType(node!.data)].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
 
       if (errorMessage) {
         toast.error(`[${node!.data.title}] ${errorMessage}`)

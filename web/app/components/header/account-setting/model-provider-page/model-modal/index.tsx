@@ -41,7 +41,7 @@ import {
   useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import { useAppContext } from '@/context/app-context'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import {
   ConfigurationMethodEnum,
@@ -106,7 +106,7 @@ const ModelModal: FC<ModelModalProps> = ({
     available_credentials,
   } = credentialData as any
 
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const { t } = useTranslation()
   const language = useLanguage()
   const {
@@ -120,14 +120,21 @@ const ModelModal: FC<ModelModalProps> = ({
   const formRef2 = useRef<FormRefObject>(null)
   const isEditMode = !!credential && !!Object.keys(formSchemasValue || {}).filter((key) => {
     return key !== '__model_name' && key !== '__model_type' && !!formValues[key]
-  }).length && isCurrentWorkspaceManager
+  }).length && canManageCredential
 
   const handleSave = useCallback(async () => {
     if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential && !selectedCredential?.addNewCredential) {
+      if (!canUseCredential)
+        return
+
       handleActiveCredential(selectedCredential, model)
       onCancel()
       return
     }
+
+    const canSubmitCredentialForm = credential ? canManageCredential : canCreateCredential
+    if (!canSubmitCredentialForm)
+      return
 
     let modelNameAndTypeIsCheckValidated = true
     let modelNameAndTypeValues: Record<string, any> = {}
@@ -140,17 +147,22 @@ const ModelModal: FC<ModelModalProps> = ({
       modelNameAndTypeValues = formResult.values
     }
 
-    if (mode === ModelModalModeEnum.configModelCredential && model) {
-      modelNameAndTypeValues = {
-        __model_name: model.model,
-        __model_type: model.model_type,
-      }
-    }
+    if (
+      mode === ModelModalModeEnum.configModelCredential
+      || (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential)
+    ) {
+      const modelContext = model ?? (currentCustomConfigurationModelFixedFields
+        ? {
+            model: currentCustomConfigurationModelFixedFields.__model_name,
+            model_type: currentCustomConfigurationModelFixedFields.__model_type,
+          }
+        : undefined)
+      if (!modelContext)
+        return
 
-    if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential && model) {
       modelNameAndTypeValues = {
-        __model_name: model.model,
-        __model_type: model.model_type,
+        __model_name: modelContext.model,
+        __model_type: modelContext.model_type,
       }
     }
     const {
@@ -171,7 +183,13 @@ const ModelModal: FC<ModelModalProps> = ({
       __authorization_name__,
       ...rest
     } = values
-    if (__model_name && __model_type) {
+    const shouldSaveModelCredential = mode === ModelModalModeEnum.configCustomModel
+      || mode === ModelModalModeEnum.configModelCredential
+      || (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential)
+    if (shouldSaveModelCredential) {
+      if (!__model_name || !__model_type)
+        return
+
       await handleSaveCredential({
         credential_id: credential?.credential_id,
         credentials: rest,
@@ -188,7 +206,7 @@ const ModelModal: FC<ModelModalProps> = ({
       })
     }
     onSave(values)
-  }, [handleSaveCredential, credential?.credential_id, model, onSave, mode, selectedCredential, handleActiveCredential])
+  }, [mode, selectedCredential, model, currentCustomConfigurationModelFixedFields, canUseCredential, canCreateCredential, canManageCredential, onSave, handleActiveCredential, onCancel, handleSaveCredential, credential])
 
   const modalTitle = useMemo(() => {
     let label = t('modelProvider.auth.apiKeyModal.title', { ns: 'common' })
@@ -266,11 +284,14 @@ const ModelModal: FC<ModelModalProps> = ({
       return t('operation.add', { ns: 'common' })
     return t('operation.save', { ns: 'common' })
   }, [mode, t])
+  const canSaveCredentialChange = mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential && !selectedCredential.addNewCredential
+    ? canUseCredential
+    : credential ? canManageCredential : canCreateCredential
 
   const handleDeleteCredential = useCallback(() => {
     handleConfirmDelete()
     onCancel()
-  }, [handleConfirmDelete])
+  }, [handleConfirmDelete, onCancel])
 
   const handleModelNameAndTypeChange = useCallback((field: string, value: any) => {
     const {
@@ -327,7 +348,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 onSelect={setSelectedCredential}
                 selectedCredential={selectedCredential}
                 disabled={isLoading}
-                notAllowAddNewCredential={notAllowCustomCredential}
+                notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
               />
             )
           }
@@ -402,7 +423,7 @@ const ModelModal: FC<ModelModalProps> = ({
             <Button
               variant="primary"
               onClick={handleSave}
-              disabled={isLoading || doingAction}
+              disabled={isLoading || doingAction || !canSaveCredentialChange}
             >
               {saveButtonText}
             </Button>

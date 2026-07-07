@@ -3,12 +3,14 @@
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useLearnDifyAppList } from '@/service/use-explore'
-import { useLearnDifyVisibleValue, useSetLearnDifyHidden } from './atoms'
 import LearnDifyItem from './item'
+import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from './storage'
 
 type LearnDifyProps = {
   canCreate?: boolean
@@ -115,7 +117,7 @@ const LearnDifyContent = ({
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5">
           {visibleItems.map(item => (
             <LearnDifyItem
               key={item.app_id}
@@ -132,16 +134,21 @@ const LearnDifyContent = ({
 }
 
 const DismissibleLearnDify = (props: LearnDifyProps) => {
-  const visible = useLearnDifyVisibleValue()
+  const hidden = useLearnDifyHiddenValue()
   const setHidden = useSetLearnDifyHidden()
 
-  if (!visible)
+  if (hidden)
     return null
 
   return <LearnDifyContent {...props} onHide={() => setHidden(true)} />
 }
 
 const LearnDify = (props: LearnDifyProps) => {
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+
+  if (!systemFeatures.enable_learn_app)
+    return null
+
   if (props.dismissible === false)
     return <LearnDifyContent {...props} />
 

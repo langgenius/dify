@@ -1,7 +1,6 @@
-import { render, screen } from '@testing-library/react'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { retrievalIcon } from '../../../create/icons'
-import RetrievalMethodInfo, { getIcon } from '../index'
+import { getIcon } from '../index'
 
 // Mock icons
 vi.mock('../../../create/icons', () => ({
@@ -13,70 +12,8 @@ vi.mock('../../../create/icons', () => ({
 }))
 
 describe('RetrievalMethodInfo', () => {
-  const defaultConfig = {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_model: {
-      reranking_provider_name: 'test-provider',
-      reranking_model_name: 'test-model',
-    },
-    top_k: 5,
-    score_threshold_enabled: true,
-    score_threshold: 0.8,
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
-  })
-
-  it('should render correctly with full config', () => {
-    const { container } = render(<RetrievalMethodInfo value={defaultConfig} />)
-
-    // Check Title & Description (mocked i18n returns key prefixed with ns)
-    expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
-    expect(screen.getByText('dataset.retrieval.semantic_search.description')).toBeInTheDocument()
-
-    // Check Icon
-    const icon = container.querySelector('img')
-    expect(icon).toHaveAttribute('src', 'vector-icon.png')
-
-    // Check Config Details
-    expect(screen.getByText('test-model')).toBeInTheDocument() // Rerank model
-    expect(screen.getByText('5')).toBeInTheDocument() // Top K
-    expect(screen.getByText('0.8')).toBeInTheDocument() // Score threshold
-  })
-
-  it('should not render reranking model if missing', () => {
-    const configWithoutRerank = {
-      ...defaultConfig,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-    }
-
-    render(<RetrievalMethodInfo value={configWithoutRerank} />)
-
-    expect(screen.queryByText('test-model')).not.toBeInTheDocument()
-    // Other fields should still be there
-    expect(screen.getByText('5')).toBeInTheDocument()
-  })
-
-  it('should handle different retrieval methods', () => {
-    // Test Hybrid
-    const hybridConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.hybrid }
-    const { container, unmount } = render(<RetrievalMethodInfo value={hybridConfig} />)
-
-    expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
-    expect(container.querySelector('img')).toHaveAttribute('src', 'hybrid-icon.png')
-
-    unmount()
-
-    // Test FullText
-    const fullTextConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.fullText }
-    const { container: fullTextContainer } = render(<RetrievalMethodInfo value={fullTextConfig} />)
-    expect(screen.getByText('dataset.retrieval.full_text_search.title')).toBeInTheDocument()
-    expect(fullTextContainer.querySelector('img')).toHaveAttribute('src', 'fulltext-icon.png')
   })
 
   describe('getIcon utility', () => {
@@ -93,34 +30,5 @@ describe('RetrievalMethodInfo', () => {
       const unknownType = 'unknown_method' as RETRIEVE_METHOD
       expect(getIcon(unknownType)).toBe(retrievalIcon.vector)
     })
-  })
-
-  it('should not render score threshold if disabled', () => {
-    const configWithoutScoreThreshold = {
-      ...defaultConfig,
-      score_threshold_enabled: false,
-      score_threshold: 0,
-    }
-
-    render(<RetrievalMethodInfo value={configWithoutScoreThreshold} />)
-
-    // score_threshold is still rendered but may be undefined
-    expect(screen.queryByText('0.8')).not.toBeInTheDocument()
-  })
-
-  it('should render correctly with invertedIndex search method', () => {
-    const invertedIndexConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.invertedIndex }
-    const { container } = render(<RetrievalMethodInfo value={invertedIndexConfig} />)
-
-    // invertedIndex uses vector icon
-    expect(container.querySelector('img')).toHaveAttribute('src', 'vector-icon.png')
-  })
-
-  it('should render correctly with keywordSearch search method', () => {
-    const keywordSearchConfig = { ...defaultConfig, search_method: RETRIEVE_METHOD.keywordSearch }
-    const { container } = render(<RetrievalMethodInfo value={keywordSearchConfig} />)
-
-    // keywordSearch uses vector icon
-    expect(container.querySelector('img')).toHaveAttribute('src', 'vector-icon.png')
   })
 })

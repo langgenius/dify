@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentRosterListItem } from './components/agent-roster-list'
+import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { RosterFilterValue } from './components/roster-filter'
 import {
   ScrollAreaContent,
@@ -12,20 +12,26 @@ import {
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
+import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { AgentRosterList } from './components/agent-roster-list'
-import { ROSTER_FILTER_VALUES } from './components/roster-filter'
 import { RosterToolbar } from './components/roster-toolbar'
+import {
+  rosterCreatedByMeQueryParser,
+  rosterFilterQueryParser,
+  rosterKeywordQueryParser,
+  rosterQueryParamNames,
+  rosterSortByQueryParser,
+} from './query-params'
 
 const ROSTER_PAGE_SIZE = 30
-const isAgentPublished = (agent: AgentRosterListItem) => agent.active_config_is_published === true
-const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-util-colors-blue-brand-blue-brand-500 data-disabled:opacity-100'
+const isAgentPublished = (agent: AgentAppPartial) => agent.active_config_is_published === true
+const rosterTabClassName = 'pt-0 pb-2 system-xl-semibold data-active:border-transparent data-disabled:opacity-100'
 
 const getFilteredRosterItems = (
-  agents: AgentRosterListItem[],
+  agents: AgentAppPartial[],
   filter: RosterFilterValue,
 ) => {
   if (filter === 'published')
@@ -40,18 +46,17 @@ const getFilteredRosterItems = (
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [keyword, setKeyword] = useQueryState('keyword', parseAsString.withDefault('').withOptions({
-    limitUrlUpdates: debounce(300),
-  }))
-  const [rosterFilter, setRosterFilter] = useQueryState(
-    'filter',
-    parseAsStringLiteral(ROSTER_FILTER_VALUES).withDefault('all'),
-  )
+  const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
+  const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
+  const [createdByMe] = useQueryState(rosterQueryParamNames.createdByMe, rosterCreatedByMeQueryParser)
+  const [sortBy] = useQueryState(rosterQueryParamNames.sortBy, rosterSortByQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
 
   const rosterQueryInput = {
     limit: ROSTER_PAGE_SIZE,
+    sort_by: sortBy,
     ...(debouncedKeyword ? { name: debouncedKeyword } : {}),
+    ...(createdByMe ? { is_created_by_me: true } : {}),
   }
 
   const {
@@ -76,7 +81,7 @@ export default function RosterPage() {
     }),
   })
 
-  const rosterItems: AgentRosterListItem[] = rosterPages?.pages.flatMap(page => page.data) ?? []
+  const rosterItems: AgentAppPartial[] = rosterPages?.pages.flatMap(page => page.data) ?? []
   const publishedAgents = rosterItems.filter(isAgentPublished).length
   const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
@@ -84,7 +89,7 @@ export default function RosterPage() {
   useDocumentTitle(tCommon('menus.roster'))
 
   return (
-    <main className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
+    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <Tabs defaultValue="agent" className="flex min-h-0 flex-1 flex-col">
         <div className="h-25.5 shrink-0 bg-background-body px-8 pt-4 pb-4">
           <div className="flex min-w-0 items-center justify-between gap-4">
@@ -109,14 +114,6 @@ export default function RosterPage() {
           <div className="mt-3.5">
             <RosterToolbar
               draftAgents={draftAgents}
-              filter={rosterFilter}
-              keyword={keyword}
-              onFilterChange={(value) => {
-                void setRosterFilter(value)
-              }}
-              onKeywordChange={(value) => {
-                void setKeyword(value)
-              }}
               publishedAgents={publishedAgents}
             />
           </div>
@@ -139,12 +136,12 @@ export default function RosterPage() {
                 />
               </ScrollAreaContent>
             </ScrollAreaViewport>
-            <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+            <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
           </ScrollAreaRoot>
         </TabsPanel>
       </Tabs>
-    </main>
+    </div>
   )
 }

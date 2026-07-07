@@ -512,7 +512,7 @@ def test_receive_loop_http_error_unknown_id(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_validation_error_notification(streams, caplog):
+def test_receive_loop_validation_error_notification(streams, caplog: pytest.LogCaptureFixture):
     with caplog.at_level(logging.WARNING, logger="core.mcp.session.base_session"):
         read_stream, write_stream = streams
         session = MockSession(read_stream, write_stream, ReceiveRequest, RootModel[MockNotification])
@@ -570,7 +570,7 @@ def test_session_exit_timeout(streams):
 
 
 @pytest.mark.timeout(10)
-def test_receive_loop_fatal_exception(streams, caplog):
+def test_receive_loop_fatal_exception(streams, caplog: pytest.LogCaptureFixture):
     read_stream, write_stream = streams
     session = MockSession(read_stream, write_stream, ReceiveRequest, ReceiveNotification)
 

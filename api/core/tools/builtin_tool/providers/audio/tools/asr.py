@@ -2,6 +2,8 @@ import io
 from collections.abc import Generator
 from typing import Any, override
 
+from sqlalchemy.orm import Session
+
 from core.model_manager import ModelManager
 from core.plugin.entities.parameters import PluginParameterOption
 from core.tools.builtin_tool.tool import BuiltinTool
@@ -17,6 +19,7 @@ class ASRTool(BuiltinTool):
     @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,

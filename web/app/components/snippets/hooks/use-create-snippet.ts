@@ -2,18 +2,25 @@ import type { CreateSnippetDialogPayload } from '@/app/components/snippets/creat
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
+import { canCreateAndModifySnippets } from '../utils/permission'
 
 export const useCreateSnippet = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const createSnippetMutation = useCreateSnippetMutation()
   const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
   const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
+  const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
 
   const handleOpenCreateSnippetDialog = () => {
+    if (!canCreateAndModifySnippet)
+      return
+
     setIsCreateSnippetDialogOpen(true)
   }
 
@@ -27,20 +34,23 @@ export const useCreateSnippet = () => {
     graph,
     input_fields,
   }: CreateSnippetDialogPayload) => {
+    if (!canCreateAndModifySnippet)
+      return
+
     setIsCreatingSnippet(true)
 
     try {
       const createPayload = {
         name,
-        description: description || undefined,
+        description,
         graph,
         input_fields,
       }
       const snippet = await createSnippetMutation.mutateAsync({
         body: createPayload,
       })
-      await consoleClient.snippets.syncDraftWorkflow({
-        params: { snippetId: snippet.id },
+      await consoleClient.snippets.bySnippetId.workflows.draft.post({
+        params: { snippet_id: snippet.id },
         body: {
           graph: createPayload.graph,
           input_fields: createPayload.input_fields,
@@ -60,6 +70,7 @@ export const useCreateSnippet = () => {
   }
 
   return {
+    canCreateAndModifySnippet,
     createSnippetMutation,
     handleCloseCreateSnippetDialog,
     handleCreateSnippet,

@@ -20,6 +20,7 @@ import { AppModeEnum } from '@/types/app'
 let mockIsCurrentWorkspaceEditor = true
 let mockIsCurrentWorkspaceDatasetOperator = false
 let mockIsLoadingCurrentWorkspace = false
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 let mockSystemFeatures = {
   branding: { enabled: false },
@@ -65,6 +66,12 @@ vi.mock('@/context/app-context', () => ({
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator,
     isLoadingCurrentWorkspace: mockIsLoadingCurrentWorkspace,
     userProfile: { id: 'member-1' },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingCurrentWorkspace,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -122,6 +129,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 })
 
 vi.mock('@/service/use-apps', () => ({
+  normalizeAppPagination: <T,>(response: T) => response,
   useDeleteAppMutation: () => ({
     mutateAsync: vi.fn(),
     isPending: false,
@@ -215,6 +223,7 @@ describe('App List Browsing Flow', () => {
     mockIsCurrentWorkspaceEditor = true
     mockIsCurrentWorkspaceDatasetOperator = false
     mockIsLoadingCurrentWorkspace = false
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSystemFeatures = {
       branding: { enabled: false },
       webapp_auth: { enabled: false },
@@ -303,8 +312,9 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeInTheDocument()
     })
 
-    it('should hide the create menu when user is not a workspace editor', () => {
+    it('should hide the create menu when user lacks app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       mockPages = [createPage([
         createMockApp({ name: 'Test App' }),
       ])]
@@ -312,6 +322,9 @@ describe('App List Browsing Flow', () => {
       renderList()
 
       expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.newApp.startFromBlank' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.newApp.startFromTemplate' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.importDSL' })).not.toBeInTheDocument()
     })
   })
 
@@ -346,8 +359,9 @@ describe('App List Browsing Flow', () => {
       expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
 
-    it('should hide drag-drop hint for non-editors', () => {
+    it('should hide drag-drop hint without app creation permission', () => {
       mockIsCurrentWorkspaceEditor = false
+      mockWorkspacePermissionKeys = []
       mockPages = [createPage([createMockApp()])]
       renderList()
 

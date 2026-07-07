@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Annotated, Any, Final, Literal
+from typing import Annotated, Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
+from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
 from core.workflow.file_reference import is_canonical_file_reference
-from graphon.file import FileTransferMethod
+from graphon.file import FileTransferMethod, FileType
 
 
 class AgentKnowledgeQueryMode(StrEnum):
@@ -108,6 +109,7 @@ class OutputErrorStrategy(StrEnum):
 
 # JSON-schema-friendly name pattern. Stage 4 §3.1 / §10.1.
 _OUTPUT_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_CONFIG_SKILL_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 JsonPrimitive = str | int | float | bool | None
 RuntimeParameterValue = JsonPrimitive | list[str] | list[int] | list[float] | list[bool]
@@ -161,6 +163,68 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     manifest_files: list[str] | None = None
 
 
+class AgentSoulFilesConfig(BaseModel):
+    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
+    files: list[AgentFileRefConfig] = Field(default_factory=list)
+
+
+def validate_config_name(name: str) -> str:
+    normalized = name.strip()
+    if not normalized:
+        raise ValueError("config asset name must not be blank")
+    if normalized in {".", ".."}:
+        raise ValueError("config asset name must not be '.' or '..'")
+    if "/" in normalized or "\\" in normalized:
+        raise ValueError("config asset name must be a single path segment")
+    if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
+        raise ValueError("config asset name must not contain control characters")
+    return normalized
+
+
+def validate_config_skill_name(name: str) -> str:
+    normalized = validate_config_name(name)
+    if _CONFIG_SKILL_NAME_PATTERN.fullmatch(normalized) is None:
+        raise ValueError(f"config skill name {normalized!r} must match {_CONFIG_SKILL_NAME_PATTERN.pattern}")
+    return normalized
+
+
+class AgentConfigFileRefConfig(BaseModel):
+    """Stable Agent Soul reference to one config file payload."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    file_kind: Literal["upload_file", "tool_file"]
+    file_id: str = Field(min_length=1, max_length=255)
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        return validate_config_name(value)
+
+
+class AgentConfigSkillRefConfig(BaseModel):
+    """Stable Agent Soul reference to one normalized skill archive."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    description: str = ""
+    file_kind: Literal["tool_file"] = "tool_file"
+    file_id: str = Field(min_length=1, max_length=255)
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = "application/zip"
+
+    @field_validator("name")
+    @classmethod
+    def _validate_name(cls, value: str) -> str:
+        return validate_config_skill_name(value)
+
+
 class AgentPermissionConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -186,9 +250,10 @@ class AgentSecretRefConfig(AgentFlexibleConfig):
     env_name: str | None = Field(default=None, max_length=255)
     variable: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
-    # UI-facing selected secret reference. This is a credential/ref id, not the
-    # plaintext secret value; runtime maps it to the shell-layer ``ref``.
-    value: str | None = Field(default=None, max_length=255)
+    # User-provided secret value. Long API tokens are valid here; runtime maps
+    # this field into a shell env var, while ref/id/credential_id fields keep the
+    # backend-managed secret reference path.
+    value: str | None = None
     id: str | None = Field(default=None, max_length=255)
     ref: str | None = Field(default=None, max_length=255)
     credential_id: str | None = Field(default=None, max_length=255)
@@ -236,17 +301,143 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     inferred_from: str | None = Field(default=None, max_length=255)
 
 
-class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):
+class AgentKnowledgeDatasetConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
     description: str | None = None
 
 
-class AgentKnowledgeQueryConfig(AgentFlexibleConfig):
-    query: str | None = None
+class AgentKnowledgeQueryConfig(BaseModel):
+    """Per-set query policy for Agent v2 knowledge retrieval.
+
+    Agent v2 stores knowledge as explicit ``knowledge.sets`` rather than the
+    legacy flat ``datasets`` / ``query_mode`` / ``query_config`` shape. Each
+    set owns its own query policy. Mode-dependent completeness, such as
+    requiring ``value`` for ``user_query``, is enforced by composer publish
+    validation so draft saves can persist partially configured knowledge sets.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: AgentKnowledgeQueryMode
+    value: str | None = None
+
+
+class AgentKnowledgeModelConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    mode: str = Field(min_length=1, max_length=64)
+    completion_params: dict[str, Any] = Field(default_factory=dict)
+
+
+class AgentKnowledgeRerankingModelConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(min_length=1, max_length=255)
+    model: str = Field(min_length=1, max_length=255)
+
+
+class AgentKnowledgeWeightedScoreConfig(AgentFlexibleConfig):
+    weight_type: str | None = Field(default=None, max_length=64)
+    vector_setting: dict[str, Any] | None = None
+    keyword_setting: dict[str, Any] | None = None
+
+
+class AgentKnowledgeRetrievalConfig(BaseModel):
+    """Per-set retrieval policy for Agent v2 knowledge retrieval.
+
+    Retrieval settings now live on each knowledge set instead of one shared
+    flat config. Mode-dependent completeness, such as requiring ``top_k`` for
+    ``multiple`` or a model for ``single``, is enforced by composer publish
+    validation so draft saves can persist partially configured knowledge sets.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["single", "multiple"]
     top_k: int | None = Field(default=None, ge=1)
     score_threshold: float | None = Field(default=None, ge=0, le=1)
-    score_threshold_enabled: bool | None = None
+    reranking_mode: str = "reranking_model"
+    reranking_enable: bool = True
+    reranking_model: AgentKnowledgeRerankingModelConfig | None = None
+    weights: AgentKnowledgeWeightedScoreConfig | None = None
+    model: AgentKnowledgeModelConfig | None = None
+
+
+class AgentKnowledgeMetadataCondition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    comparison_operator: SupportedComparisonOperator
+    value: ConditionValue = None
+
+
+class AgentKnowledgeMetadataConditions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    logical_operator: Literal["and", "or"] = "and"
+    conditions: list[AgentKnowledgeMetadataCondition] = Field(default_factory=list)
+
+
+class AgentKnowledgeMetadataFilteringConfig(BaseModel):
+    """Per-set metadata filtering policy.
+
+    The Python attribute uses ``metadata_model_config`` for clarity because the
+    model belongs to metadata filtering specifically, while the external API and
+    generated schema keep the historical ``model_config`` field name via alias.
+    Mode-dependent completeness is enforced by composer publish validation so
+    draft saves can persist partially configured metadata filters.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    mode: Literal["disabled", "automatic", "manual"] = "disabled"
+    # Internal name is explicit; wire format remains ``model_config``.
+    metadata_model_config: AgentKnowledgeModelConfig | None = Field(default=None, alias="model_config")
+    conditions: AgentKnowledgeMetadataConditions | None = None
+
+
+class AgentKnowledgeSetConfig(BaseModel):
+    """One explicit knowledge set in Agent v2.
+
+    ``knowledge.sets`` replaces the old flat knowledge config. Each set owns
+    its datasets plus query, retrieval, and metadata policies. An individual
+    set must contain at least one dataset id even though the overall knowledge
+    section may be empty, which is how callers express "no knowledge layer".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    datasets: list[AgentKnowledgeDatasetConfig]
+    query: AgentKnowledgeQueryConfig
+    retrieval: AgentKnowledgeRetrievalConfig
+    metadata_filtering: AgentKnowledgeMetadataFilteringConfig = Field(
+        default_factory=AgentKnowledgeMetadataFilteringConfig
+    )
+
+    @field_validator("id", "name")
+    @classmethod
+    def validate_non_blank_identity(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("knowledge set id and name must not be blank")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_datasets(self) -> Self:
+        dataset_ids = [(dataset.id or "").strip() for dataset in self.datasets]
+        if not dataset_ids or any(not dataset_id for dataset_id in dataset_ids):
+            raise ValueError("knowledge set requires at least one dataset id")
+        if len(dataset_ids) != len(set(dataset_ids)):
+            raise ValueError("knowledge set dataset ids must be unique")
+        return self
 
 
 class AgentHumanContactConfig(AgentFlexibleConfig):
@@ -307,9 +498,18 @@ class AgentTextToSpeechFeatureConfig(AgentFeatureToggleConfig):
     autoPlay: str | None = None
 
 
+class AgentSuggestedQuestionsAfterAnswerModelConfig(AgentFlexibleConfig):
+    """Legacy Chat App model config used only for follow-up question generation."""
+
+    provider: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    mode: str | None = Field(default=None, max_length=64)
+    completion_params: dict[str, Any] | None = None
+
+
 class AgentSuggestedQuestionsAfterAnswerFeatureConfig(AgentFeatureToggleConfig):
     prompt: str | None = None
-    model: AgentSoulModelConfig | None = None
+    model: AgentSuggestedQuestionsAfterAnswerModelConfig | None = None
 
 
 class AgentModerationIOConfig(AgentFlexibleConfig):
@@ -329,6 +529,23 @@ class AgentSensitiveWordAvoidanceFeatureConfig(AgentFeatureToggleConfig):
     config: AgentModerationProviderConfig | None = None
 
 
+class AgentFileUploadImageFeatureConfig(AgentFeatureToggleConfig):
+    enabled: bool = True
+
+
+class AgentFileUploadFeatureConfig(AgentFeatureToggleConfig):
+    enabled: bool = True
+    allowed_file_extensions: list[str] = Field(default_factory=lambda: ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"])
+    allowed_file_types: list[FileType] = Field(
+        default_factory=lambda: [FileType.DOCUMENT, FileType.IMAGE, FileType.AUDIO, FileType.VIDEO]
+    )
+    allowed_file_upload_methods: list[FileTransferMethod] = Field(
+        default_factory=lambda: [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]
+    )
+    image: AgentFileUploadImageFeatureConfig = Field(default_factory=AgentFileUploadImageFeatureConfig)
+    number_limits: int = 3
+
+
 class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
     opening_statement: str | None = None
     suggested_questions: list[str] | None = None
@@ -337,6 +554,7 @@ class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
     text_to_speech: AgentTextToSpeechFeatureConfig | None = None
     retriever_resource: AgentFeatureToggleConfig | None = None
     sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = None
+    file_upload: AgentFileUploadFeatureConfig = Field(default_factory=AgentFileUploadFeatureConfig)
 
 
 class WorkflowPreviousNodeOutputRef(AgentFlexibleConfig):
@@ -361,11 +579,6 @@ class AgentSoulPromptConfig(BaseModel):
     system_prompt: str = ""
 
 
-class AgentSoulSkillsFilesConfig(BaseModel):
-    files: list[AgentFileRefConfig] = Field(default_factory=list)
-    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
-
-
 class AgentSoulDifyToolCredentialRef(BaseModel):
     """Reference to a stored Dify Plugin Tool credential.
 
@@ -382,12 +595,15 @@ class AgentSoulDifyToolCredentialRef(BaseModel):
 
 
 class AgentSoulDifyToolConfig(BaseModel):
-    """One Dify Plugin Tool configured on Agent Soul.
+    """One Dify tool configured on Agent Soul.
 
     The API backend prepares this persisted product shape into
-    ``DifyPluginToolConfig`` before sending a run request to Agent backend.
-    ``provider_id`` keeps compatibility with existing Agent tool config payloads;
-    new callers should send ``plugin_id`` + ``provider`` when available.
+    either ``DifyPluginToolConfig`` or ``DifyCoreToolConfig`` before sending a
+    run request to Agent backend. ``plugin`` providers keep the direct
+    ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
+    ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
+    keeps compatibility with existing Agent tool config payloads; new callers
+    should send ``plugin_id`` + ``provider`` when available.
     """
 
     # ``extra="ignore"`` (not ``"allow"``) so historical Agent Soul payloads
@@ -397,10 +613,10 @@ class AgentSoulDifyToolConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     enabled: bool = True
-    # Dify Plugin Tools live behind the ``PLUGIN`` provider type. ``BUILT_IN`` /
-    # ``WORKFLOW`` / ``API`` providers are not exposed to the Agent backend in
-    # this layer — keep the default narrow so a missing field surfaces as
-    # ``agent_tool_declaration_not_found`` against the correct provider table.
+    # ``plugin`` remains the default for legacy Agent Soul payloads. The runtime
+    # now also accepts ``builtin`` / ``api`` / ``workflow`` / ``mcp`` here and
+    # routes them through ``dify.core.tools``; keeping the default narrow still
+    # makes a missing field resolve against the plugin provider table.
     provider_type: str = "plugin"
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
@@ -458,9 +674,28 @@ class AgentSoulToolsConfig(BaseModel):
 
 
 class AgentSoulKnowledgeConfig(BaseModel):
-    datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
-    query_mode: AgentKnowledgeQueryMode | None = None
-    query_config: AgentKnowledgeQueryConfig = Field(default_factory=AgentKnowledgeQueryConfig)
+    """Top-level Agent v2 knowledge config.
+
+    Agent v2 models knowledge as explicit sets instead of one flat
+    ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
+    list means no knowledge layer should be emitted at runtime, while set-name
+    uniqueness stays case-insensitive because runtime selection addresses sets
+    by name.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    sets: list[AgentKnowledgeSetConfig] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_unique_sets(self) -> Self:
+        set_ids = [item.id.strip() for item in self.sets]
+        if len(set_ids) != len(set(set_ids)):
+            raise ValueError("knowledge set ids must be unique")
+        set_names = [item.name.strip().lower() for item in self.sets]
+        if len(set_names) != len(set(set_names)):
+            raise ValueError("knowledge set names must be unique")
+        return self
 
 
 class AgentSoulHumanConfig(BaseModel):
@@ -514,11 +749,14 @@ class AgentSoulConfig(BaseModel):
 
     schema_version: int = 1
     prompt: AgentSoulPromptConfig = Field(default_factory=AgentSoulPromptConfig)
-    skills_files: AgentSoulSkillsFilesConfig = Field(default_factory=AgentSoulSkillsFilesConfig)
     tools: AgentSoulToolsConfig = Field(default_factory=AgentSoulToolsConfig)
     knowledge: AgentSoulKnowledgeConfig = Field(default_factory=AgentSoulKnowledgeConfig)
     human: AgentSoulHumanConfig = Field(default_factory=AgentSoulHumanConfig)
     env: AgentSoulEnvConfig = Field(default_factory=AgentSoulEnvConfig)
+    config_skills: list[AgentConfigSkillRefConfig] = Field(default_factory=list)
+    config_files: list[AgentConfigFileRefConfig] = Field(default_factory=list)
+    config_note: str = ""
+    files: AgentSoulFilesConfig = Field(default_factory=AgentSoulFilesConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
     model: AgentSoulModelConfig | None = None

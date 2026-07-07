@@ -2,11 +2,11 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
 } from '@testing-library/react'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { AppModeEnum } from '@/types/app'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'
@@ -29,6 +29,8 @@ const hotkeyMocks = vi.hoisted(() => ({
 }))
 let mockPlanUsage = 0
 let mockPlanTotal = 10
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
+const mockUserProfile = { id: 'user-1' }
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -86,6 +88,8 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: true,
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -125,6 +129,7 @@ describe('CreateFromDSLModal', () => {
     hotkeyMocks.handlers.clear()
     mockPlanUsage = 0
     mockPlanTotal = 10
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     localStorage.clear()
 
     class MockFileReader {
@@ -208,6 +213,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-1',
       app_mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -244,9 +250,47 @@ describe('CreateFromDSLModal', () => {
     expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('app-1')
     expect(mockGetRedirection).toHaveBeenCalledWith(
-      true,
-      { id: 'app-1', mode: 'chat' },
+      { id: 'app-1', mode: 'chat', permission_keys: ['app.acl.view_layout'] },
       mockPush,
+      {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      },
+    )
+  })
+
+  it('should pass creator context when import response has no permission keys', async () => {
+    mockImportDSL.mockResolvedValue({
+      id: 'import-no-permissions',
+      status: DSLImportStatus.COMPLETED,
+      app_id: 'app-no-permissions',
+      app_mode: AppModeEnum.WORKFLOW,
+    })
+
+    render(
+      <CreateFromDSLModal
+        show
+        onClose={vi.fn()}
+        activeTab={CreateFromDSLModalTab.FROM_URL}
+        dslUrl="https://example.com/app.yml"
+      />,
+    )
+
+    await act(async () => {
+      fireEvent.click(getCreateButton())
+    })
+
+    expect(mockGetRedirection).toHaveBeenCalledWith(
+      { id: 'app-no-permissions', mode: AppModeEnum.WORKFLOW, permission_keys: undefined },
+      mockPush,
+      {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      },
     )
   })
 
@@ -256,6 +300,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED_WITH_WARNINGS,
       app_id: 'app-2',
       app_mode: AppModeEnum.CHAT,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -322,6 +367,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-3',
       app_mode: AppModeEnum.WORKFLOW,
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(
@@ -360,6 +406,16 @@ describe('CreateFromDSLModal', () => {
       source: 'studio_upload',
       appMode: AppModeEnum.WORKFLOW,
     })
+    expect(mockGetRedirection).toHaveBeenCalledWith(
+      { id: 'app-3', mode: AppModeEnum.WORKFLOW, permission_keys: ['app.acl.view_layout'] },
+      mockPush,
+      {
+        currentUserId: 'user-1',
+        resourceMaintainer: 'user-1',
+        workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: false,
+      },
+    )
   })
 
   it('should close the DSL mismatch modal when dialog requests close', async () => {
@@ -450,6 +506,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus
       app_id: string
       app_mode: string
+      permission_keys?: string[]
     }) => void
     mockImportDSL.mockImplementationOnce(
       () =>
@@ -478,6 +535,7 @@ describe('CreateFromDSLModal', () => {
         status: DSLImportStatus.COMPLETED,
         app_id: 'app-1',
         app_mode: AppModeEnum.CHAT,
+        permission_keys: ['app.acl.view_layout'],
       })
     })
 
@@ -498,6 +556,7 @@ describe('CreateFromDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       app_id: 'app-shortcut',
       app_mode: 'chat',
+      permission_keys: ['app.acl.view_layout'],
     })
 
     render(

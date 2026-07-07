@@ -17,16 +17,19 @@ from pydantic import BaseModel, Field
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
 from events.app_event import app_model_config_was_updated
-from libs.helper import dump_response
+from extensions.ext_database import db
 from libs.login import login_required
 from models import Account
 from models.agent_config_entities import (
@@ -78,19 +81,21 @@ class AgentAppFeatureConfigResource(Resource):
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         args = AgentAppFeaturesPayload.model_validate(console_ns.payload or {})
 
         new_app_model_config = AgentAppFeatureConfigService.update_features(
             app_model=app_model,
             account=current_user,
             config=args.model_dump(exclude_none=True),
+            session=db.session,
         )
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)
 
-        return dump_response(SimpleResultResponse, {"result": "success"})
+        return SimpleResultResponse(result="success").model_dump(mode="json")
