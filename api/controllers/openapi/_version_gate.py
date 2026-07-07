@@ -4,8 +4,6 @@ difyctl and the ``/openapi/v1`` surface ship in lockstep. A breaking path change
 (resource-oriented paths) means an outdated difyctl would call removed paths and
 get a bare 404; this gate returns ``426 Upgrade Required`` with an upgrade hint
 instead.
-
-Design record: dify-todo/inprogress/difyctl/openapi/version.md
 """
 
 from __future__ import annotations

@@ -54,8 +54,7 @@ dependencies = [
 
 [tool.dify]
 # Oldest difyctl served on /openapi/v1. Bump in lockstep with breaking /openapi/v1
-# changes (paired with difyctl's own version + its compat.minDify). See
-# dify-todo/inprogress/difyctl/openapi/version.md.
+# changes (paired with difyctl's own version + its compat.minDify).
 min_difyctl_version = "0.2.0"
 
 [tool.setuptools]
