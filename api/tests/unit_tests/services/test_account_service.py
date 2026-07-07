@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import event, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -21,6 +22,7 @@ from models.account import (
 )
 from models.dataset import Dataset
 from models.model import App, DifySetup
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -33,33 +35,33 @@ from services.errors.account import (
 
 
 class TestAccountAssociatedDataFactory:
-    """Factory class for creating test data and mock objects for account service tests."""
+    """Factory class for creating test data for account service tests."""
 
     @staticmethod
     def create_account_mock(
         account_id: str = "user-123",
         email: str = "test@example.com",
         name: str = "Test User",
-        status: str = "active",
+        status: str | AccountStatus = AccountStatus.ACTIVE,
         password: str = "hashed_password",
         password_salt: str = "salt",
         interface_language: str = "en-US",
         interface_theme: str = "light",
         timezone: str = "UTC",
         **kwargs,
-    ) -> MagicMock:
-        """Create a mock account with specified attributes."""
-        account = MagicMock(spec=Account)
+    ) -> Account:
+        """Create a real Account ORM object with specified attributes."""
+        account = Account(
+            email=email,
+            name=name,
+            password=password,
+            password_salt=password_salt,
+            interface_language=interface_language,
+            interface_theme=interface_theme,
+            timezone=timezone,
+            status=AccountStatus(status),
+        )
         account.id = account_id
-        account.email = email
-        account.name = name
-        account.status = status
-        account.password = password
-        account.password_salt = password_salt
-        account.interface_language = interface_language
-        account.interface_theme = interface_theme
-        account.timezone = timezone
-        # Set last_active_at to a datetime object that's older than 10 minutes
         account.last_active_at = datetime.now() - timedelta(minutes=15)
         account.initialized_at = None
         for key, value in kwargs.items():
@@ -130,6 +132,21 @@ class TestAccountService:
             yield session
 
     @pytest.fixture
+    def sqlite_session(self, sqlite_engine) -> Iterator[Session]:
+        """SQLite session with the account/workspace tables registration invite flows touch."""
+        tables = [
+            model.metadata.tables[model.__tablename__]
+            for model in (
+                Account,
+                Tenant,
+                TenantAccountJoin,
+            )
+        ]
+        Account.metadata.create_all(sqlite_engine, tables=tables)
+        with Session(sqlite_engine, expire_on_commit=False) as session:
+            yield session
+
+    @pytest.fixture
     def mock_password_dependencies(self):
         """Mock setup for password-related functions."""
         with (
@@ -161,6 +178,28 @@ class TestAccountService:
         """Helper method to verify that specific exception is raised."""
         with pytest.raises(exception_type):
             callable_func(*args, **kwargs)
+
+    def _create_tenant_with_inviter(
+        self,
+        sqlite_session: Session,
+        *,
+        tenant_name: str = "Test Workspace",
+        inviter_id: str = "inviter-123",
+    ) -> tuple[Tenant, Account]:
+        """Create a tenant and owner inviter so invite permission checks use real SQLite rows."""
+        tenant = Tenant(name=tenant_name)
+        inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id=inviter_id, name="Inviter")
+        sqlite_session.add(tenant)
+        sqlite_session.flush()
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=inviter.id,
+                role=TenantAccountRole.OWNER,
+            )
+        )
+        sqlite_session.commit()
+        return tenant, inviter
 
     # ==================== Authentication Tests ====================
 
@@ -1739,11 +1778,7 @@ class TestRegisterService:
         self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
     ):
         """Test inviting a new member who doesn't have an account."""
-        # Setup test data
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-456"
-        mock_tenant.name = "Test Workspace"
-        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        tenant, inviter = self._create_tenant_with_inviter(sqlite_session)
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
@@ -1757,9 +1792,7 @@ class TestRegisterService:
             with patch("services.account_service.RegisterService.register") as mock_register:
                 mock_register.return_value = mock_new_account
 
-                # Mock TenantService methods
                 with (
-                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
                     patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                     patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
                     patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
@@ -1768,11 +1801,11 @@ class TestRegisterService:
 
                     # Execute test
                     result = RegisterService.invite_new_member(
-                        tenant=mock_tenant,
+                        tenant=tenant,
                         email="newuser@example.com",
                         language="en-US",
                         role="normal",
-                        inviter=mock_inviter,
+                        inviter=inviter,
                         session=sqlite_session,
                     )
 
@@ -1786,15 +1819,14 @@ class TestRegisterService:
                         is_setup=True,
                         session=sqlite_session,
                     )
-                    mock_lookup.assert_called_once_with("newuser@example.com", session=sqlite_session)
+                    mock_lookup.assert_called_once()
+                    assert mock_lookup.call_args.args[1] == "newuser@example.com"
 
     def test_invite_new_member_normalizes_new_account_email(
         self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
     ):
         """Ensure inviting with mixed-case email normalizes before registering."""
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-456"
-        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        tenant, inviter = self._create_tenant_with_inviter(sqlite_session)
         mixed_email = "Invitee@Example.com"
 
         with (
@@ -1808,7 +1840,6 @@ class TestRegisterService:
             with patch("services.account_service.RegisterService.register") as mock_register:
                 mock_register.return_value = mock_new_account
                 with (
-                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
                     patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                     patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
                     patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
@@ -1816,11 +1847,11 @@ class TestRegisterService:
                     mock_generate_token.return_value = "invite-token-abc"
 
                     RegisterService.invite_new_member(
-                        tenant=mock_tenant,
+                        tenant=tenant,
                         email=mixed_email,
                         language="en-US",
                         role="normal",
-                        inviter=mock_inviter,
+                        inviter=inviter,
                         session=sqlite_session,
                     )
 
@@ -1832,18 +1863,12 @@ class TestRegisterService:
                         is_setup=True,
                         session=sqlite_session,
                     )
-                    mock_lookup.assert_called_once_with(mixed_email, session=sqlite_session)
-                    mock_check_permission.assert_called_once_with(
-                        mock_tenant,
-                        mock_inviter,
-                        None,
-                        "add",
-                        session=sqlite_session,
-                    )
-                    mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "normal")
-                    mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id, session=sqlite_session)
+                    mock_lookup.assert_called_once()
+                    assert mock_lookup.call_args.args[1] == mixed_email
+                    mock_create_member.assert_called_once_with(tenant, mock_new_account, sqlite_session, "normal")
+                    mock_switch_tenant.assert_called_once_with(mock_new_account, tenant.id, session=sqlite_session)
                     mock_generate_token.assert_called_once_with(
-                        mock_tenant, mock_new_account, "normal", requires_setup=True
+                        tenant, mock_new_account, "normal", requires_setup=True
                     )
                     mock_task_dependencies.delay.assert_called_once()
 
@@ -1851,11 +1876,7 @@ class TestRegisterService:
         self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
     ):
         """Test inviting a pending account that is not in the tenant yet."""
-        # Setup test data
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-456"
-        mock_tenant.name = "Test Workspace"
-        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        tenant, inviter = self._create_tenant_with_inviter(sqlite_session)
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="existing-user-456", email="existing@example.com", status="pending"
         )
@@ -1865,9 +1886,7 @@ class TestRegisterService:
         ):
             mock_lookup.return_value = mock_existing_account
 
-            # Mock TenantService methods
             with (
-                patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
             ):
@@ -1875,31 +1894,29 @@ class TestRegisterService:
 
                 # Execute test
                 result = RegisterService.invite_new_member(
-                    tenant=mock_tenant,
+                    tenant=tenant,
                     email="existing@example.com",
                     language="en-US",
                     role="normal",
-                    inviter=mock_inviter,
+                    inviter=inviter,
                     session=sqlite_session,
                 )
 
                 # Verify results
                 assert result == "invite-token-123"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, sqlite_session, "normal")
+                mock_create_member.assert_called_once_with(tenant, mock_existing_account, sqlite_session, "normal")
                 mock_generate_token.assert_called_once_with(
-                    mock_tenant, mock_existing_account, "normal", requires_setup=True
+                    tenant, mock_existing_account, "normal", requires_setup=True
                 )
                 mock_task_dependencies.delay.assert_called_once()
-                mock_lookup.assert_called_once_with("existing@example.com", session=sqlite_session)
+                mock_lookup.assert_called_once()
+                assert mock_lookup.call_args.args[1] == "existing@example.com"
 
     def test_invite_existing_active_account_requires_acceptance_before_joining(
         self, sqlite_session: Session, mock_redis_dependencies, mock_task_dependencies
     ):
         """Existing active accounts outside the tenant receive an invite without immediate membership."""
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-456"
-        mock_tenant.name = "Test Workspace"
-        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        tenant, inviter = self._create_tenant_with_inviter(sqlite_session)
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="existing-user-456", email="existing@example.com", status="active"
         )
@@ -1908,69 +1925,54 @@ class TestRegisterService:
             mock_lookup.return_value = mock_existing_account
 
             with (
-                patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
             ):
                 mock_generate_token.return_value = "invite-token-123"
 
                 result = RegisterService.invite_new_member(
-                    tenant=mock_tenant,
+                    tenant=tenant,
                     email="existing@example.com",
                     language="en-US",
                     role="admin",
-                    inviter=mock_inviter,
+                    inviter=inviter,
                     session=sqlite_session,
                 )
 
                 assert result == "invite-token-123"
-                mock_check_permission.assert_called_once_with(
-                    mock_tenant,
-                    mock_inviter,
-                    mock_existing_account,
-                    "add",
-                    session=sqlite_session,
-                )
                 mock_create_member.assert_not_called()
                 mock_generate_token.assert_called_once_with(
-                    mock_tenant, mock_existing_account, "admin", requires_setup=False
+                    tenant, mock_existing_account, "admin", requires_setup=False
                 )
                 mock_task_dependencies.delay.assert_called_once()
 
     def test_invite_new_member_already_in_tenant(self, sqlite_session: Session, mock_redis_dependencies):
         """Test inviting a member who is already in the tenant."""
-        # Setup test data
-        mock_tenant = MagicMock()
-        mock_tenant.id = "tenant-456"
-        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        tenant, inviter = self._create_tenant_with_inviter(sqlite_session)
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="existing-user-456", email="existing@example.com", status="active"
         )
 
         sqlite_session.add(
             TenantAccountJoin(
-                tenant_id=mock_tenant.id,
+                tenant_id=tenant.id,
                 account_id=mock_existing_account.id,
                 role=TenantAccountRole.NORMAL,
             )
         )
         sqlite_session.commit()
 
-        # Mock TenantService methods
-        with (
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
-        ):
+        with patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup:
             mock_lookup.return_value = mock_existing_account
             # Execute test and verify exception
             self._assert_exception_raised(
                 AccountAlreadyInTenantError,
                 RegisterService.invite_new_member,
-                tenant=mock_tenant,
+                tenant=tenant,
                 email="existing@example.com",
                 language="en-US",
                 role="normal",
-                inviter=mock_inviter,
+                inviter=inviter,
                 session=sqlite_session,
             )
             mock_lookup.assert_called_once()
