@@ -636,7 +636,7 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should insert references after prompt add actions create skills, files, or knowledge retrievals', () => {
-      const onSelect = vi.fn()
+      const onInsertToken = vi.fn()
       const categories = [
         { key: 'skills' as const, label: 'Skills', icon: 'i-ri-box-3-line' },
         { key: 'files' as const, label: 'Files', icon: 'i-ri-file-line' },
@@ -650,17 +650,17 @@ describe('AgentPromptEditor', () => {
           categories={categories}
           skills={[]}
           files={[]}
-          tools={[]}
+          configuredTools={[]}
           onAddProviderTools={vi.fn()}
           onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One' })}
-          retrievals={[]}
+          knowledgeRetrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
-          onSelect={onSelect}
+          onInsertToken={onInsertToken}
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
+      expect(onInsertToken).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -668,17 +668,17 @@ describe('AgentPromptEditor', () => {
           categories={categories}
           skills={[]}
           files={[]}
-          tools={[]}
+          configuredTools={[]}
           onAddProviderTools={vi.fn()}
           onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown', configName: 'Guide.md' })}
-          retrievals={[]}
+          knowledgeRetrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
-          onSelect={onSelect}
+          onInsertToken={onInsertToken}
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§file:Guide.md:Guide.md§]')
+      expect(onInsertToken).toHaveBeenCalledWith('[§file:Guide.md:Guide.md§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -686,17 +686,17 @@ describe('AgentPromptEditor', () => {
           categories={categories}
           skills={[]}
           files={[]}
-          tools={[]}
+          configuredTools={[]}
           onAddProviderTools={vi.fn()}
           onAddKnowledge={options => options?.onAdded?.({ id: 'retrieval-1', name: 'Retrieval One', queryMode: 'agent' })}
-          retrievals={[]}
+          knowledgeRetrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
-          onSelect={onSelect}
+          onInsertToken={onInsertToken}
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.knowledgeRetrieval\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§knowledge:retrieval-1:Retrieval One§]')
+      expect(onInsertToken).toHaveBeenCalledWith('[§knowledge:retrieval-1:Retrieval One§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -704,13 +704,13 @@ describe('AgentPromptEditor', () => {
           categories={categories}
           skills={[]}
           files={[]}
-          tools={[]}
+          configuredTools={[]}
           onAddProviderTools={vi.fn()}
           onAddCliTool={options => options?.onAdded?.({ id: 'cli-1', kind: 'cli', name: 'Lark CLI' })}
-          retrievals={[]}
+          knowledgeRetrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
-          onSelect={onSelect}
+          onInsertToken={onInsertToken}
         />,
       )
       expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i })).not.toBeInTheDocument()

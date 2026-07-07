@@ -40,16 +40,16 @@ type AgentPromptSlashMenuProps = {
   categories: SlashMenuCategory[]
   skills: AgentSkill[]
   files: AgentFileNode[]
-  tools: AgentTool[]
+  configuredTools: AgentTool[]
   onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onAddCliTool?: AgentOrchestrateAddAction
   onAddFile?: AgentOrchestrateAddAction
   onAddKnowledge?: AgentOrchestrateAddAction
   onAddSkill?: AgentOrchestrateAddAction
-  retrievals: AgentKnowledgeRetrievalItem[]
+  knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   onBack: () => void
   onOpenCategory: (view: Exclude<SlashMenuView, 'main'>) => void
-  onSelect: (token: string) => void
+  onInsertToken: (token: string) => void
 }
 
 const agentPromptSlashMenuItemProps = {
@@ -85,16 +85,16 @@ export function AgentPromptSlashMenu({
   categories,
   skills,
   files,
-  tools,
+  configuredTools,
   onAddProviderTools,
   onAddCliTool,
   onAddFile,
   onAddKnowledge,
   onAddSkill,
-  retrievals,
+  knowledgeRetrievals,
   onBack,
   onOpenCategory,
-  onSelect,
+  onInsertToken,
 }: AgentPromptSlashMenuProps) {
   const { t } = useTranslation('agentV2')
   const title = categories.find(category => category.key === view)?.label
@@ -103,7 +103,7 @@ export function AgentPromptSlashMenu({
       onAddSkill?.({
         onAdded: (item) => {
           if (isPromptReferenceItem(item))
-            onSelect(createConfigReferenceToken('skill', item.id, item.name))
+            onInsertToken(createConfigReferenceToken('skill', item.id, item.name))
         },
       })
       return
@@ -113,7 +113,7 @@ export function AgentPromptSlashMenu({
       onAddFile?.({
         onAdded: (item) => {
           if (isAgentFileNode(item))
-            onSelect(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
+            onInsertToken(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
         },
       })
       return
@@ -123,7 +123,7 @@ export function AgentPromptSlashMenu({
       onAddKnowledge?.({
         onAdded: (item) => {
           if (isKnowledgeRetrievalItem(item))
-            onSelect(createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)))
+            onInsertToken(createReferenceToken('knowledge', item.id, getKnowledgeRetrievalName(item, t)))
         },
       })
     }
@@ -166,20 +166,20 @@ export function AgentPromptSlashMenu({
           <span className="min-w-0 flex-1 truncate system-xs-medium-uppercase">{title}</span>
         </button>
         {view === 'skills' && (
-          <AgentPromptSkillRows skills={skills} onSelect={onSelect} />
+          <AgentPromptSkillRows skills={skills} onInsertToken={onInsertToken} />
         )}
         {view === 'files' && (
-          <AgentPromptFileRows files={files} onSelect={onSelect} />
+          <AgentPromptFileRows files={files} onInsertToken={onInsertToken} />
         )}
         {view === 'tools' && (
           <AgentPromptToolRows
-            configuredTools={tools}
+            configuredTools={configuredTools}
             onAddProviderTools={onAddProviderTools}
-            onSelect={onSelect}
+            onInsertToken={onInsertToken}
           />
         )}
         {view === 'knowledge' && (
-          <AgentPromptKnowledgeRows retrievals={retrievals} onSelect={onSelect} />
+          <AgentPromptKnowledgeRows knowledgeRetrievals={knowledgeRetrievals} onInsertToken={onInsertToken} />
         )}
       </div>
       {view === 'tools'
@@ -190,7 +190,7 @@ export function AgentPromptSlashMenu({
                     onAddCliTool?.({
                       onAdded: (item) => {
                         if (isCliToolItem(item))
-                          onSelect(createReferenceToken('cli_tool', item.id, item.name))
+                          onInsertToken(createReferenceToken('cli_tool', item.id, item.name))
                       },
                     })
                   }
@@ -234,10 +234,10 @@ function AgentPromptSlashPanel({
 
 function AgentPromptSkillRows({
   skills,
-  onSelect,
+  onInsertToken,
 }: {
   skills: AgentSkill[]
-  onSelect: (token: string) => void
+  onInsertToken: (token: string) => void
 }) {
   return (
     <>
@@ -246,7 +246,7 @@ function AgentPromptSkillRows({
           key={skill.id}
           icon="i-ri-box-3-line"
           label={skill.name}
-          onClick={() => onSelect(createConfigReferenceToken('skill', skill.id, skill.name))}
+          onClick={() => onInsertToken(createConfigReferenceToken('skill', skill.id, skill.name))}
         />
       ))}
     </>
@@ -256,11 +256,11 @@ function AgentPromptSkillRows({
 function AgentPromptFileRows({
   files,
   depth = 0,
-  onSelect,
+  onInsertToken,
 }: {
   files: AgentFileNode[]
   depth?: number
-  onSelect: (token: string) => void
+  onInsertToken: (token: string) => void
 }) {
   return (
     <>
@@ -273,11 +273,11 @@ function AgentPromptFileRows({
             hasChildren={!!file.children?.length}
             onClick={() => {
               if (!file.children?.length)
-                onSelect(createConfigReferenceToken('file', file.configName ?? file.id, file.name))
+                onInsertToken(createConfigReferenceToken('file', file.configName ?? file.id, file.name))
             }}
           />
           {!!file.children?.length && (
-            <AgentPromptFileRows files={file.children} depth={depth + 1} onSelect={onSelect} />
+            <AgentPromptFileRows files={file.children} depth={depth + 1} onInsertToken={onInsertToken} />
           )}
         </div>
       ))}
@@ -288,11 +288,11 @@ function AgentPromptFileRows({
 function AgentPromptToolRows({
   configuredTools,
   onAddProviderTools,
-  onSelect,
+  onInsertToken,
 }: {
   configuredTools: AgentTool[]
   onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
-  onSelect: (token: string) => void
+  onInsertToken: (token: string) => void
 }) {
   const { t } = useTranslation('agentV2')
   const language = useGetLanguage()
@@ -355,14 +355,14 @@ function AgentPromptToolRows({
   const handleSelectProvider = (provider: ToolWithProvider) => {
     const { icon, iconDark } = getProviderIcons(provider)
     selectTools(provider.tools.map(tool => toToolDefaultValue(provider, tool, language, icon, iconDark)))
-    onSelect(createReferenceToken('tool', `${provider.id}/*`, getProviderLabel(provider, language)))
+    onInsertToken(createReferenceToken('tool', `${provider.id}/*`, getProviderLabel(provider, language)))
   }
 
   const handleSelectTool = (provider: ToolWithProvider, tool: Tool) => {
     const { icon, iconDark } = getProviderIcons(provider)
     const selectedTool = toToolDefaultValue(provider, tool, language, icon, iconDark)
     selectTools([selectedTool])
-    onSelect(createReferenceToken('tool', `${provider.id}/${tool.name}`, selectedTool.tool_label))
+    onInsertToken(createReferenceToken('tool', `${provider.id}/${tool.name}`, selectedTool.tool_label))
   }
 
   return (
@@ -389,7 +389,7 @@ function AgentPromptToolRows({
               <AgentPromptCliToolRow
                 key={tool.id}
                 tool={tool}
-                onClick={() => onSelect(createReferenceToken('cli_tool', tool.id, tool.name))}
+                onClick={() => onInsertToken(createReferenceToken('cli_tool', tool.id, tool.name))}
               />
             ))
           : availableProviders.filter(provider => provider.tools.length > 0).map(provider => (
@@ -672,22 +672,22 @@ function AgentPromptCliToolRow({
 }
 
 function AgentPromptKnowledgeRows({
-  retrievals,
-  onSelect,
+  knowledgeRetrievals,
+  onInsertToken,
 }: {
-  retrievals: AgentKnowledgeRetrievalItem[]
-  onSelect: (token: string) => void
+  knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
+  onInsertToken: (token: string) => void
 }) {
   const { t } = useTranslation('agentV2')
 
   return (
     <>
-      {retrievals.map(retrieval => (
+      {knowledgeRetrievals.map(retrieval => (
         <AgentPromptSubmenuRow
           key={retrieval.id}
           icon="i-ri-book-open-line"
           label={getKnowledgeRetrievalName(retrieval, t)}
-          onClick={() => onSelect(createReferenceToken('knowledge', retrieval.id, getKnowledgeRetrievalName(retrieval, t)))}
+          onClick={() => onInsertToken(createReferenceToken('knowledge', retrieval.id, getKnowledgeRetrievalName(retrieval, t)))}
         />
       ))}
     </>

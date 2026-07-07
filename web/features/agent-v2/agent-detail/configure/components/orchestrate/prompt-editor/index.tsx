@@ -1028,16 +1028,16 @@ export function AgentPromptEditor() {
             categories={slashMenuCategories}
             skills={skills}
             files={files}
-            tools={tools}
+            configuredTools={tools}
             onAddProviderTools={addProviderTools}
-            onAddCliTool={ENABLE_AGENT_CLI_TOOLS ? addActions.cli : undefined}
+            onAddCliTool={addActions.cli}
             onAddFile={addActions.files}
             onAddKnowledge={addActions.knowledge}
             onAddSkill={addActions.skills}
-            retrievals={retrievals}
+            knowledgeRetrievals={retrievals}
             onBack={returnToSlashMenuMain}
             onOpenCategory={handleOpenSlashMenuCategory}
-            onSelect={handleSlashSelect}
+            onInsertToken={handleSlashSelect}
           />
         </div>
       )
