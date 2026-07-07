@@ -288,7 +288,7 @@ Then('I should see the Agent v2 configure workspace', async function (this: Dify
 
   await expect(page.getByRole('region', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible()
-  await expect(page.getByRole('group', { name: agentName })).toBeVisible()
+  await expect(page.getByText(agentName, { exact: true })).toBeVisible()
 })
 
 Then(

@@ -215,11 +215,7 @@ export function AgentDetailSection({
               />
             </span>
           </div>
-          <div
-            role="group"
-            aria-label={agent?.name ?? t('agentDetail.title')}
-            className={cn('flex h-10 min-w-0 flex-1 items-center gap-2', !expand && 'hidden')}
-          >
+          <div className={cn('flex h-10 min-w-0 flex-1 items-center gap-2', !expand && 'hidden')}>
             <div className="flex min-w-0 flex-1 flex-col justify-center">
               <div className="truncate system-md-semibold text-text-secondary">
                 {agent?.name ?? t('agentDetail.title')}

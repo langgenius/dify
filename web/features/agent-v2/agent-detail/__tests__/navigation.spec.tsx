@@ -104,7 +104,6 @@ describe('AgentDetailSection', () => {
 
     expect(agentName).toBeInTheDocument()
     expect(screen.getByText('Research Assistant')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Research Agent' })).toBeInTheDocument()
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
     expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
     expect(container.querySelector('em-emoji')).toHaveAttribute('id', '🧪')
