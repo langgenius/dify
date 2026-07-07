@@ -192,7 +192,12 @@ class _TextDeltaDebouncer:
 
 
 class _AgentProcessRecorder:
-    """Persist Agent v2 thinking/tool process events through the legacy thought model."""
+    """Persist Agent v2 thinking/tool process events through the legacy thought model.
+
+    Thinking rows expose snapshot updates for one contiguous thinking segment. A
+    tool event closes the currently open thinking segment so later thinking starts
+    a fresh row instead of replaying text that was already streamed before the tool.
+    """
 
     def __init__(
         self,
@@ -289,6 +294,7 @@ class _AgentProcessRecorder:
         self._update_thought(thought_id, thought_delta=content_delta)
 
     def _record_tool_call_delta(self, index: int, delta: dict[str, Any]) -> None:
+        self._close_thinking_segments()
         tool_call_id = _string_or_none(delta.get("tool_call_id"))
         tool_name = _string_or_none(delta.get("tool_name_delta"))
         args_delta = delta.get("args_delta")
@@ -307,6 +313,7 @@ class _AgentProcessRecorder:
         )
 
     def _record_tool_call_part(self, index: int, part: dict[str, Any]) -> None:
+        self._close_thinking_segments()
         tool_call_id = _string_or_none(part.get("tool_call_id"))
         tool_name = _string_or_none(part.get("tool_name"))
         thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
@@ -324,6 +331,7 @@ class _AgentProcessRecorder:
         )
 
     def _record_tool_return_part(self, part: dict[str, Any]) -> None:
+        self._close_thinking_segments()
         tool_call_id = _string_or_none(part.get("tool_call_id"))
         tool_name = _string_or_none(part.get("tool_name"))
         content = part.get("content")
@@ -332,6 +340,7 @@ class _AgentProcessRecorder:
         self._record_tool_observation(tool_call_id=tool_call_id, tool_name=tool_name, observation=content)
 
     def _record_tool_observation(self, *, tool_call_id: str | None, tool_name: str | None, observation: Any) -> None:
+        self._close_thinking_segments()
         thought_id = self._lookup_observation_thought(tool_call_id=tool_call_id, tool_name=tool_name)
         if thought_id is None:
             thought_id = self._create_thought(tool=tool_name)
@@ -365,6 +374,9 @@ class _AgentProcessRecorder:
     def _mark_tool_observed(self, thought_id: str) -> None:
         for open_thought_ids in self._open_tool_by_name.values():
             open_thought_ids.discard(thought_id)
+
+    def _close_thinking_segments(self) -> None:
+        self._thinking_by_index.clear()
 
     def _create_thought(
         self, *, thought: str | None = None, tool: str | None = None, tool_input: str | None = None
