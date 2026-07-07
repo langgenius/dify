@@ -134,6 +134,7 @@ If the first line is a shebang, the shell layer executes the script directly.
 Tips:
 
 - When using Python, prefer a uv script with a PEP 723 dependency header.
+- If you need MCP, install the MCP server in the shell environment and start that server when you use it.
 
   Example:
 
