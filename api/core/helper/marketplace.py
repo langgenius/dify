@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Sequence
+from typing import Any
 from urllib.parse import urlencode
 
 import httpx
@@ -21,7 +22,7 @@ def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
     return f"{marketplace_api_url / 'api/v1/plugins/download'}?{query}"
 
 
-def download_plugin_pkg(plugin_unique_identifier: str):
+def download_plugin_pkg(plugin_unique_identifier: str) -> bytes:
     return download_with_size_limit(get_plugin_pkg_url(plugin_unique_identifier), dify_config.PLUGIN_MAX_PACKAGE_SIZE)
 
 
@@ -41,7 +42,7 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
     return [MarketplacePluginDeclaration.model_validate(plugin) for plugin in response.json()["data"]["plugins"]]
 
 
-def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
+def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict[str, Any]]:
     if not plugin_ids:
         return []
 
@@ -55,10 +56,19 @@ def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
     response.raise_for_status()
 
     data = response.json()
-    return data.get("data", {}).get("plugins", [])
+    plugins = data.get("data", {}).get("plugins", [])
+    if not isinstance(plugins, list):
+        raise ValueError("Marketplace did not return a valid plugins list")
+
+    result: list[dict[str, Any]] = []
+    for plugin in plugins:
+        if not isinstance(plugin, dict) or not all(isinstance(key, str) for key in plugin):
+            raise ValueError("Marketplace did not return a valid plugins list")
+        result.append(plugin)
+    return result
 
 
-def record_install_plugin_event(plugin_unique_identifier: str):
+def record_install_plugin_event(plugin_unique_identifier: str) -> None:
     url = str(marketplace_api_url / "api/v1/stats/plugins/install_count")
     response = httpx.post(url, json={"unique_identifier": plugin_unique_identifier}, timeout=MARKETPLACE_TIMEOUT)
     response.raise_for_status()
