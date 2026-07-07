@@ -128,6 +128,9 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
     assert layer.runtime_state.pulled_file_outputs == {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
     assert "dify-agent config note push --help" in layer.runtime_state.config_cli_help
     assert layer.runtime_state.push_spec_json_schema == ""
+    suffix_prompt = layer.build_suffix_prompt()
+    assert suffix_prompt.index("Agent config CLI help:") < suffix_prompt.index("dify-agent file download")
+    assert "dify-agent file download --mapping '<mapping-json>'" in suffix_prompt
 
 
 @pytest.mark.anyio
