@@ -16,13 +16,22 @@ const mocks = vi.hoisted(() => ({
   sandboxInfoQueryOptions: vi.fn(),
   sandboxFilesQueryOptions: vi.fn(),
   sandboxFileReadQueryOptions: vi.fn(),
+  sandboxFileUploadMutationFn: vi.fn(async (_input: unknown) => ({
+    path: '~/workspace/notes.md',
+    file: {
+      transfer_method: 'tool_file',
+      reference: 'dify-file-ref:file-1',
+    },
+  })),
   workflowSandboxFilesQueryOptions: vi.fn(),
   workflowSandboxFileReadQueryOptions: vi.fn(),
-  downloadBlob: vi.fn(),
-}))
-
-vi.mock('@/utils/download', () => ({
-  downloadBlob: mocks.downloadBlob,
+  workflowSandboxFileUploadMutationFn: vi.fn(async (_input: unknown) => ({
+    path: '~/workspace/notes.md',
+    file: {
+      transfer_method: 'tool_file',
+      reference: 'dify-file-ref:file-1',
+    },
+  })),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -40,6 +49,11 @@ vi.mock('@/service/client', () => ({
             read: {
               get: {
                 queryOptions: mocks.sandboxFileReadQueryOptions,
+              },
+            },
+            upload: {
+              post: {
+                mutationOptions: () => ({ mutationFn: mocks.sandboxFileUploadMutationFn }),
               },
             },
           },
@@ -60,6 +74,11 @@ vi.mock('@/service/client', () => ({
                     read: {
                       get: {
                         queryOptions: mocks.workflowSandboxFileReadQueryOptions,
+                      },
+                    },
+                    upload: {
+                      post: {
+                        mutationOptions: () => ({ mutationFn: mocks.workflowSandboxFileUploadMutationFn }),
                       },
                     },
                   },
@@ -126,7 +145,7 @@ describe('AgentWorkingDirectoryPanel', () => {
     }))
   })
 
-  it('should download the selected working directory file from the preview header action', async () => {
+  it('should upload the selected working directory file from the preview header download action', async () => {
     const user = userEvent.setup()
     renderWorkingDirectoryPanel()
 
@@ -136,24 +155,39 @@ describe('AgentWorkingDirectoryPanel', () => {
     }))
 
     await waitFor(() => {
-      expect(mocks.downloadBlob).toHaveBeenCalledWith({
-        data: expect.any(Blob),
-        fileName: 'notes.md',
+      expect(mocks.sandboxFileUploadMutationFn).toHaveBeenCalled()
+      expect(mocks.sandboxFileUploadMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          conversation_id: 'conversation-1',
+          path: '~/workspace/notes.md',
+        },
       })
     })
-    const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
-    await expect(blob.text()).resolves.toBe('Content for ~/workspace/notes.md')
   })
 
-  it('should show an unsupported preview download placeholder for binary working directory files', async () => {
+  it('should upload binary working directory files from the unsupported preview download link', async () => {
     const user = userEvent.setup()
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('chart.png'))
 
     expect(await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.operation\.download/i })).toHaveAttribute('href', '#')
-    expect(screen.queryByRole('button', { name: /common\.operation\.download.*chart\.png/i })).not.toBeInTheDocument()
-    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('link', { name: /common\.operation\.download/i }))
+
+    await waitFor(() => {
+      expect(mocks.sandboxFileUploadMutationFn).toHaveBeenCalled()
+      expect(mocks.sandboxFileUploadMutationFn.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          conversation_id: 'conversation-1',
+          path: '~/workspace/chart.png',
+        },
+      })
+    })
   })
 })

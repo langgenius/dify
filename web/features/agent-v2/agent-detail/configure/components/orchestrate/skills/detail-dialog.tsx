@@ -168,6 +168,7 @@ function AgentFilePreviewContent({
   isError,
   isImage,
   isLoading,
+  onDownloadFile,
 }: {
   binary?: boolean
   content?: string
@@ -178,6 +179,7 @@ function AgentFilePreviewContent({
   isError?: boolean
   isImage?: boolean
   isLoading?: boolean
+  onDownloadFile?: () => void
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -219,8 +221,10 @@ function AgentFilePreviewContent({
         <a
           href={downloadUrl || '#'}
           onClick={(event) => {
-            if (!downloadUrl)
+            if (!downloadUrl) {
               event.preventDefault()
+              onDownloadFile?.()
+            }
           }}
           target="_blank"
           rel="noreferrer"
@@ -345,6 +349,7 @@ export function AgentSkillDetailDialog({
               isError={detail.filePreview.isError}
               isImage={detail.filePreview.isImage}
               isLoading={detail.filePreview.isLoading}
+              onDownloadFile={detail.onDownloadFile}
             />
           )}
           {detail.sections.map(section => (
