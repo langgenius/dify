@@ -28,6 +28,12 @@ vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => mockAppContextState)
+})
+
 // Mock external api panel context
 const mockSetShowExternalApiPanel = vi.fn()
 vi.mock('@/context/external-api-panel-context', () => ({
@@ -423,6 +429,12 @@ describe('List', () => {
     })
 
     it('should not show ExternalAPIPanel without dataset.external.connect even when panel state is open', async () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: true,
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: true,
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      }
       vi.doMock('@/context/app-context', () => ({
         useAppContext: () => ({
           currentWorkspace: { role: 'admin' },
@@ -489,6 +501,12 @@ describe('List', () => {
     })
 
     it('should not show include all checkbox when not workspace owner', async () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: true,
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: false,
+        workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+      }
       vi.doMock('@/context/app-context', () => ({
         useAppContext: () => ({
           currentWorkspace: { role: 'editor' },

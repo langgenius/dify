@@ -47,6 +47,17 @@ vi.mock('@/context/app-context', () => ({
   },
 }))
 
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => ({
+    userProfile: mockUserProfile,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }), () => ({
+    isRbacEnabled: false,
+  }))
+})
+
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
   name: 'Test Dataset',

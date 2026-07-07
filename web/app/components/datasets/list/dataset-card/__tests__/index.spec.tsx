@@ -53,6 +53,12 @@ vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => mockAppContextState)
+})
+
 vi.mock('../hooks/use-dataset-card-state', () => ({
   useDatasetCardState: () => ({
     modalState: {
@@ -94,7 +100,9 @@ vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
     <div
       data-testid="tag-area"
       data-can-bind-or-unbind-tags={String(Boolean(canBindOrUnbindTags))}
+      role="presentation"
       onClick={onClick}
+      onKeyDown={() => undefined}
     />
   ),
 }))

@@ -4,16 +4,25 @@ import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features
 import { DatasetPermission } from '@/models/datasets'
 import PermissionSelector from '../index'
 
-// Mock app-context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
     id: 'user-1',
     name: 'Current User',
     email: 'current@example.com',
     avatar_url: '',
     role: 'owner',
-  }),
+  },
 }))
+
+let mockIsRbacEnabled = false
+
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
 
 describe('PermissionSelector', () => {
   const mockMemberList: Member[] = [
@@ -33,6 +42,7 @@ describe('PermissionSelector', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsRbacEnabled = false
   })
 
   describe('Rendering', () => {
@@ -409,6 +419,8 @@ describe('PermissionSelector', () => {
     })
 
     it('should show access config hint and remain closed when RBAC is enabled', () => {
+      mockIsRbacEnabled = true
+
       renderWithSystemFeatures(<PermissionSelector {...defaultProps} />, {
         systemFeatures: {
           rbac_enabled: true,

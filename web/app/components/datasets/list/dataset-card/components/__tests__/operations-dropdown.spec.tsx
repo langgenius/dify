@@ -24,6 +24,14 @@ vi.mock('@/context/app-context', () => ({
   useSelector: vi.fn((selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState)),
 }))
 
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => mockAppContextState, () => ({
+    isRbacEnabled: mockIsRbacEnabled,
+  }))
+})
+
 describe('OperationsDropdown', () => {
   const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
     id: 'dataset-1',

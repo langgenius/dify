@@ -15,6 +15,14 @@ vi.mock('@/context/app-context', () => ({
     selector({ workspacePermissionKeys: mockWorkspacePermissionKeys }),
 }))
 
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }))
+})
+
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),

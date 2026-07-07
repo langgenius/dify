@@ -1,10 +1,17 @@
 'use client'
 
 import type { PermissionKey } from '@/models/access-control'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import {
+  currentWorkspaceAtom,
+  currentWorkspaceLoadingAtom,
+  systemFeaturesAtom,
+  userProfileAtom,
+  workspacePermissionKeysAtom,
+  workspacePermissionKeysLoadingAtom,
+  workspaceRoleFlagsAtom,
+} from '@/context/app-context-state'
 import { getDatasetACLCapabilities, hasPermission } from '@/utils/permission'
 
 type DatasetAccessResource = {
@@ -13,27 +20,27 @@ type DatasetAccessResource = {
 }
 
 export const useDatasetRbacEnabled = () => {
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const systemFeatures = useAtomValue(systemFeaturesAtom)
 
   return systemFeatures.rbac_enabled
 }
 
 const useDatasetPermissionContext = () => {
-  const currentUserId = useAppContextSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys ?? [])
+  const currentUser = useAtomValue(userProfileAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   return {
-    currentUserId,
+    currentUserId: currentUser.id,
     workspacePermissionKeys,
   }
 }
 
 export const useDatasetWorkspaceAccess = () => {
-  const currentWorkspaceId = useAppContextSelector(state => state.currentWorkspace?.id ?? '')
-  const isCurrentWorkspaceOwner = useAppContextSelector(state => state.isCurrentWorkspaceOwner ?? false)
-  const isLoadingCurrentWorkspace = useAppContextSelector(state => state.isLoadingCurrentWorkspace ?? false)
-  const isLoadingWorkspacePermissionKeys = useAppContextSelector(state => state.isLoadingWorkspacePermissionKeys ?? false)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys ?? [])
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
+  const roleFlags = useAtomValue(workspaceRoleFlagsAtom)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
+  const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
@@ -41,8 +48,8 @@ export const useDatasetWorkspaceAccess = () => {
   const canManageDatasetApiKeys = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
   return {
-    currentWorkspaceId,
-    isCurrentWorkspaceOwner,
+    currentWorkspaceId: currentWorkspace.id,
+    isCurrentWorkspaceOwner: roleFlags.isCurrentWorkspaceOwner,
     isLoadingCurrentWorkspace,
     isLoadingWorkspacePermissionKeys,
     isLoadingAccess: isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys,
@@ -55,7 +62,7 @@ export const useDatasetWorkspaceAccess = () => {
 }
 
 export const useDatasetCurrentUser = () => {
-  return useAppContextSelector(state => state.userProfile)
+  return useAtomValue(userProfileAtom)
 }
 
 export const useDatasetACLCapabilities = (

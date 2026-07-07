@@ -55,6 +55,15 @@ vi.mock('@/context/app-context', () => ({
     }),
 }))
 
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => ({
+    userProfile: { id: 'test-user' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+
 // Mock document service hooks
 const mockInvalidDocumentList = vi.fn()
 const mockInvalidDocumentDetail = vi.fn()

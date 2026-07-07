@@ -19,16 +19,28 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-// Mock app-context
-vi.mock('@/context/app-context', () => ({
-  useSelector: () => ({
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: {
     id: 'user-1',
     name: 'Current User',
     email: 'current@example.com',
     avatar_url: '',
     role: 'owner',
-  }),
+  },
 }))
+
+// Mock app-context
+vi.mock('@/context/app-context', () => ({
+  useSelector: () => mockAppContextState.userProfile,
+}))
+
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => mockAppContextState, () => ({
+    isRbacEnabled: false,
+  }))
+})
 
 // Mock image uploader hooks for AppIconPicker
 vi.mock('@/app/components/base/image-uploader/hooks', () => ({

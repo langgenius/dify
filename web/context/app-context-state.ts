@@ -8,6 +8,7 @@ import { atom } from 'jotai'
 import { atomWithQuery, atomWithSuspenseQuery, queryClientAtom } from 'jotai-tanstack-query'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { defaultSystemFeatures } from '@/features/system-features/config'
 import { workspacePermissionKeysQueryOptions } from '@/service/access-control/use-permission-keys'
 import { consoleQuery } from '@/service/client'
 import { langGeniusVersionQueryOptions } from '@/service/lang-genius-version'
@@ -15,7 +16,7 @@ import {
   initialLangGeniusVersionInfo,
   initialWorkspaceInfo,
   userProfilePlaceholder,
-} from './app-context'
+} from './app-context-defaults'
 import {
   emptyWorkspacePermissionKeys,
   getLangGeniusVersionInfo,
@@ -28,6 +29,12 @@ type SuspenseQueryResult<T> = Omit<DefinedQueryObserverResult<T>, 'isPlaceholder
 const accountProfileQueryAtom = atomWithSuspenseQuery(() => userProfileQueryOptions())
 
 const systemFeaturesQueryAtom = atomWithSuspenseQuery(() => systemFeaturesQueryOptions())
+
+export const systemFeaturesAtom = atom((get): GetSystemFeaturesResponse => {
+  const systemFeaturesQuery = get(systemFeaturesQueryAtom) as SuspenseQueryResult<GetSystemFeaturesResponse>
+
+  return systemFeaturesQuery.data ?? defaultSystemFeatures
+})
 
 export const userProfileAtom = atom((get): GetAccountProfileResponse => {
   const accountProfileQuery = get(accountProfileQueryAtom) as SuspenseQueryResult<UserProfileWithMeta>

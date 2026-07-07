@@ -42,6 +42,15 @@ vi.mock('@/context/app-context', () => ({
     }),
 }))
 
+vi.mock('@/app/components/datasets/hooks/use-dataset-access', async () => {
+  const { createDatasetAccessHookMock } = await import('@/app/components/datasets/hooks/__tests__/mock-dataset-access')
+
+  return createDatasetAccessHookMock(() => ({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: ['dataset.create_and_management'],
+  }))
+})
+
 vi.mock('@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata', () => ({
   default: () => ({
     isShowEditModal: false,
