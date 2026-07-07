@@ -752,7 +752,7 @@ export default function StepByStepTourMount({
   )
 
   return (
-    <div className={className}>
+    <div className={cn('relative', className)}>
       {visible && !allTasksCompleted && activeTask && activeGuide && activeTargetElement && (
         <StepByStepTourCoachmark
           guide={{
@@ -777,7 +777,7 @@ export default function StepByStepTourMount({
       )}
       {visible && (!allTasksCompleted || completionPromptVisible) && (
         <Popover open={expanded}>
-          <div ref={anchorRef} aria-hidden="true" className="h-0 w-0" />
+          <div ref={anchorRef} aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" />
           {minimized && floatingChecklist}
           <PopoverContent
             placement="top-start"
@@ -791,7 +791,7 @@ export default function StepByStepTourMount({
                 fallbackAxisSide: 'none',
               },
             }}
-            popupClassName="max-h-[calc(100vh-16px)] overflow-y-auto rounded-none border-0 bg-transparent p-0 shadow-none"
+            popupClassName="overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none"
           >
             {floatingChecklist}
           </PopoverContent>

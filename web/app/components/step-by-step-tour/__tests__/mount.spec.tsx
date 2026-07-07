@@ -294,7 +294,7 @@ vi.mock('react-i18next', async () => {
       'common.stepByStepTour.guides.studio.withApps.create.title': 'Create a new app',
       'common.stepByStepTour.guides.studio.withApps.manage.description': 'Tap any app to open its orchestration page — edit prompts, models, and logic, or manage its settings from there.',
       'common.stepByStepTour.guides.studio.withApps.manage.title': 'Open and manage each app',
-      'common.stepByStepTour.skip': 'Skip',
+      'common.stepByStepTour.skip': 'Skip tour',
       'common.stepByStepTour.skipRecovery.dismiss': 'Got it',
       'common.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
       'common.stepByStepTour.skipRecovery.message': 'Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.',
@@ -484,7 +484,7 @@ describe('StepByStepTourMount', () => {
   it('hides the checklist and shows a dismissible recovery hint after Skip', async () => {
     renderStepByStepTourMount()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Skip' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Skip tour' }))
 
     await waitFor(() => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
@@ -621,17 +621,24 @@ describe('StepByStepTourMount', () => {
       skipped: false,
     })
 
-    renderStepByStepTourMount()
+    const { container } = renderStepByStepTourMount()
 
     const checklist = await screen.findByRole('region', { name: 'Get to know Dify' })
+    const anchor = container.querySelector('[aria-hidden="true"].pointer-events-none.absolute.inset-0')
     const popoverPopup = checklist.parentElement
     const popoverPositioner = popoverPopup?.parentElement
 
+    expect(anchor).toHaveClass('h-full', 'w-full')
     expect(checklist.closest('[data-base-ui-portal]')).toBeInTheDocument()
     expect(popoverPositioner).toHaveClass('z-50')
     expect(popoverPositioner).toHaveAttribute('data-side', 'top')
     expect(popoverPositioner).toHaveAttribute('data-align', 'start')
-    expect(popoverPopup).toHaveClass('max-h-[calc(100vh-16px)]', 'overflow-y-auto')
+    expect(popoverPopup).toHaveClass('overflow-visible', 'bg-transparent', 'shadow-none')
+    expect(checklist).toHaveClass('max-h-[calc(100vh-16px)]', 'overflow-y-auto')
+    expect(checklist).toHaveClass('bg-white/95', 'bg-clip-padding', 'backdrop-blur-[10px]', 'border-[#101828]/8')
+    expect(screen.getByRole('button', { name: 'Skip tour' })).toHaveClass('h-6', 'px-1.5')
+    expect(screen.getByRole('button', { name: 'Minimize tour' }).querySelector('span[aria-hidden="true"]'))
+      .toHaveClass('i-ri-arrow-left-down-line', 'size-4')
   })
 
   it('starts the integration guide instead of immediately completing the task', async () => {
@@ -1041,7 +1048,7 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByRole('region', { name: 'Browse Learn Dify' })).toBeInTheDocument()
       expect(screen.getByText('You can review lessons and see how Dify works here. Creating an app from a lesson requires a workspace where you have create permission, or help from an admin.')).toBeInTheDocument()
       expect(screen.getByText('1 of 1')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument()
       await waitFor(() => {
         const state = mockStepByStepTour.observedState
@@ -1087,7 +1094,7 @@ describe('StepByStepTourMount', () => {
       expect(await screen.findByText('Pick a lesson to see how it works.')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Show me' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Got it' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Skip' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Skip tour' })).not.toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
       expect(document.body.querySelectorAll('[data-step-by-step-tour-blocker]')).toHaveLength(4)
 
@@ -1218,7 +1225,7 @@ describe('StepByStepTourMount', () => {
         expect(document.body.querySelector('[data-step-by-step-tour-backdrop]')).toBeInTheDocument()
       })
       expect(document.body.querySelectorAll('[data-step-by-step-tour-blocker]')).toHaveLength(0)
-      expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
@@ -2080,10 +2087,10 @@ describe('StepByStepTourMount', () => {
 
       expect(await screen.findByRole('region', { name: 'Tool Plugin' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Got it' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Skip tour' })).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'Learn more' })).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Skip tour' }))
 
       await waitFor(() => {
         const state = mockStepByStepTour.observedState

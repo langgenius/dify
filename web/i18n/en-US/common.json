@@ -597,7 +597,7 @@
   "stepByStepTour.minimize": "Minimize",
   "stepByStepTour.progressAriaValueText": "{{completed}} of {{total}} steps completed",
   "stepByStepTour.restore": "Open step-by-step tour",
-  "stepByStepTour.skip": "Skip",
+  "stepByStepTour.skip": "Skip tour",
   "stepByStepTour.skipRecovery.dismiss": "Got it",
   "stepByStepTour.skipRecovery.label": "Step-by-step Tour recovery tip",
   "stepByStepTour.skipRecovery.message": "Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.",

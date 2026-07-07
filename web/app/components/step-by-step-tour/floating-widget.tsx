@@ -72,7 +72,7 @@ export function FloatingChecklist({
     <section
       aria-label={title}
       className={cn(
-        'flex w-[320px] max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[5px]',
+        'flex max-h-[calc(100vh-16px)] w-[320px] max-w-[calc(100vw-16px)] flex-col overflow-y-auto rounded-2xl border-[0.5px] border-[#101828]/8 bg-white/95 bg-clip-padding shadow-[0_8px_8px_-4px_rgba(9,9,11,0.03),0_20px_24px_-4px_rgba(9,9,11,0.08)] backdrop-blur-[10px]',
         className,
       )}
     >
@@ -94,7 +94,7 @@ export function FloatingChecklist({
                 aria-label={minimizeLabel}
                 onClick={onMinimize}
               >
-                <span aria-hidden className="i-ri-collapse-diagonal-2-line size-3.5" />
+                <span aria-hidden className="i-ri-arrow-left-down-line size-4" />
               </Button>
             </>
           )}

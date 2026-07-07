@@ -162,7 +162,7 @@ vi.mock('react-i18next', async () => {
     ...createReactI18nextMock({
       'common.stepByStepTour.title': 'Get to know Dify',
       'common.stepByStepTour.duration': 'A quick tour — about 5 minutes',
-      'common.stepByStepTour.skip': 'Skip',
+      'common.stepByStepTour.skip': 'Skip tour',
       'common.stepByStepTour.minimize': 'Minimize tour',
       'common.stepByStepTour.restore': 'Open step-by-step tour',
       'common.stepByStepTour.learnMore': 'Learn more',
@@ -531,6 +531,19 @@ describe('MainNav', () => {
     expect(helpButton.parentElement?.parentElement).toHaveClass('w-60')
     expect(helpButton.parentElement?.parentElement).not.toHaveClass('w-full')
     expect(helpButton.parentElement).toHaveClass('shrink-0', 'rounded-full', 'p-1')
+  })
+
+  it('places the step-by-step tour entry above the profile footer without a local z-index override', async () => {
+    mockStepByStepTour.setUiState({ minimized: true })
+
+    renderMainNav()
+
+    const tourButton = await screen.findByRole('button', { name: 'Open step-by-step tour' })
+    const tourMount = tourButton.closest('.absolute')
+
+    expect(tourMount).toHaveClass('absolute', '-top-7', 'left-2.5', 'h-8', 'w-[183px]', 'overflow-visible')
+    expect(tourMount).not.toHaveClass('z-40', 'z-50')
+    expect(tourMount?.parentElement).toHaveClass('relative', 'w-60', 'shrink-0')
   })
 
   it('keeps the global navigation account section expanded on home routes', () => {
