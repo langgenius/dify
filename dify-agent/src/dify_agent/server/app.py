@@ -59,18 +59,18 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
     agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
     agent_stub_drive_request_handler = resolved_settings.create_agent_stub_drive_request_handler()
+    shell_provider = resolved_settings.build_shell_provider()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
         inner_api_url=resolved_settings.inner_api_url,
         inner_api_key=resolved_settings.inner_api_key or "",
-        shellctl_entrypoint=resolved_settings.shellctl_entrypoint,
-        shellctl_auth_token=resolved_settings.shellctl_auth_token,
+        shell_provider=shell_provider,
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
     )
     sandbox_file_service = (
-        SandboxFileService(layer_providers=layer_providers) if resolved_settings.shellctl_entrypoint else None
+        SandboxFileService(layer_providers=layer_providers) if shell_provider is not None else None
     )
     state: dict[str, object] = {}
 

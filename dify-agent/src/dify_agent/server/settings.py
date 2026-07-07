@@ -12,10 +12,13 @@ live here under the ``DIFY_AGENT_...`` environment-variable namespace.
 
 import httpx
 
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from pydantic import AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+if TYPE_CHECKING:
+    from dify_agent.adapters.shell.protocols import ShellProviderProtocol
 
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url, parse_agent_stub_endpoint
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
@@ -38,8 +41,11 @@ class ServerSettings(BaseSettings):
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"
     inner_api_key: str | None = None
+    shell_provider: Literal["shellctl", "enterprise"] = "shellctl"
     shellctl_entrypoint: str | None = None
     shellctl_auth_token: str | None = None
+    enterprise_sandbox_gateway_endpoint: str | None = None
+    enterprise_sandbox_gateway_auth_token: str | None = None
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
     server_secret_key: str | None = None
@@ -130,6 +136,27 @@ class ServerSettings(BaseSettings):
             if not parse_agent_stub_endpoint(self.agent_stub_api_base_url).is_grpc:
                 raise ValueError("DIFY_AGENT_STUB_GRPC_BIND_ADDRESS requires a grpc:// DIFY_AGENT_STUB_API_BASE_URL.")
         return self
+
+    def build_shell_provider(self) -> "ShellProviderProtocol | None":
+        from dify_agent.adapters.shell.config import ShellAdapterSettings
+        from dify_agent.adapters.shell.factory import create_shell_provider
+
+        match self.shell_provider:
+            case "shellctl":
+                if not self.shellctl_entrypoint:
+                    return None
+            case "enterprise":
+                if not self.enterprise_sandbox_gateway_endpoint:
+                    return None
+        return create_shell_provider(
+            ShellAdapterSettings(
+                shell_provider=self.shell_provider,
+                shellctl_entrypoint=self.shellctl_entrypoint,
+                shellctl_auth_token=self.shellctl_auth_token,
+                enterprise_sandbox_gateway_endpoint=self.enterprise_sandbox_gateway_endpoint,
+                enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
+            )
+        )
 
     def create_agent_stub_token_codec(self) -> AgentStubTokenCodec | None:
         """Return the Agent Stub token codec when the server secret is configured."""

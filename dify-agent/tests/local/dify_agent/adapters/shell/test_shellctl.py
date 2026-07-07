@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from dify_agent.adapters.shell import shellctl
 from dify_agent.adapters.shell.config import ShellAdapterSettings
@@ -108,15 +109,13 @@ def _provider(client: FakeShellctlClient) -> ShellctlProvider:
 
 
 def test_factory_unknown_provider_raises() -> None:
-    settings = ShellAdapterSettings(shell_provider="nope")
-    with pytest.raises(ValueError, match="Unknown shell provider"):
-        create_shell_provider(settings)
+    with pytest.raises(ValidationError):
+        ShellAdapterSettings(shell_provider="nope")  # type: ignore[arg-type]
 
 
 def test_factory_shellctl_requires_entrypoint() -> None:
-    settings = ShellAdapterSettings(shell_provider="shellctl", shellctl_entrypoint=None)
-    with pytest.raises(ValueError, match="DIFY_AGENT_SHELLCTL_ENTRYPOINT"):
-        create_shell_provider(settings)
+    with pytest.raises(ValidationError, match="shellctl_entrypoint is required"):
+        ShellAdapterSettings(shell_provider="shellctl", shellctl_entrypoint=None)
 
 
 def test_factory_builds_shellctl_provider_from_settings() -> None:
