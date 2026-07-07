@@ -238,7 +238,9 @@ class TestAgentAppRuntimeRequestBuilder:
         result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="draft"))
 
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        execution_context = next(layer for layer in result.request.composition.layers if layer.name == "execution_context")
+        execution_context = next(
+            layer for layer in result.request.composition.layers if layer.name == "execution_context"
+        )
         config_layer = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
 
         assert prompt_layer.config.prefix == "You are Iris."

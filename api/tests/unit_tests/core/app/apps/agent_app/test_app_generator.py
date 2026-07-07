@@ -172,9 +172,7 @@ class TestGenerateSuccess:
 
         assert generate_entity.call_args.kwargs["agent_runtime_exit_intent"] == "delete"
 
-    def test_generate_falls_back_to_suspend_for_invalid_internal_exit_intent(
-        self, generator, mocker: MockerFixture
-    ):
+    def test_generate_falls_back_to_suspend_for_invalid_internal_exit_intent(self, generator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         user = DummyAccount("user")
 
