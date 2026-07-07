@@ -57,7 +57,6 @@ class TestBuildForAgentApp:
             "llm",
         ]
         assert "workflow_node_job_prompt" not in names
-        assert request.purpose == "agent_app"
         # Agent App keeps layers alive across turns by default.
         assert request.on_exit.default.value == "suspend"
 
@@ -187,7 +186,6 @@ class TestAgentAppRuntimeRequestBuilder:
         result = builder.build(_ctx(_soul_with_model()))
 
         req = result.request
-        assert req.purpose == "agent_app"
         names = [layer.name for layer in req.composition.layers]
         assert names == [
             "agent_soul_prompt",

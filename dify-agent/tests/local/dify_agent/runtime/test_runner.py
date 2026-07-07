@@ -196,6 +196,44 @@ def _request(
     )
 
 
+def _lifecycle_only_request(
+    *,
+    on_exit: LayerExitSignals | None = None,
+    session_snapshot: CompositorSessionSnapshot | None = None,
+    deferred_tool_results: DeferredToolResultsPayload | None = None,
+) -> CreateRunRequest:
+    snapshot = session_snapshot or CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(name="prompt", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+            LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+        ]
+    )
+    return CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
+                ),
+            ]
+        ),
+        session_snapshot=snapshot,
+        deferred_tool_results=deferred_tool_results,
+        on_exit=on_exit or LayerExitSignals(default=ExitIntent.DELETE),
+    )
+
+
 def _recursive_output_schema() -> dict[str, object]:
     return {
         "type": "object",
@@ -902,9 +940,15 @@ def test_runner_passes_dynamic_dify_plugin_tools_to_agent(monkeypatch: pytest.Mo
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
-    async def fake_get_tools(self: DifyPluginToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+    async def fake_get_tools(
+        self: DifyPluginToolsLayer,
+        *,
+        http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
+    ) -> list[Tool[object]]:
         assert self.config.tools[0].tool_name == "web_search"
         assert http_client.is_closed is False
+        assert dify_api_http_client.is_closed is False
         return [Tool(plugin_tool, name="web_search")]
 
     class FakeResult:
@@ -1218,8 +1262,14 @@ def test_runner_rejects_duplicate_tool_names_across_dynamic_tool_layers(
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
-    async def fake_get_tools(_self: DifyPluginToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+    async def fake_get_tools(
+        _self: DifyPluginToolsLayer,
+        *,
+        http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
+    ) -> list[Tool[object]]:
         assert http_client.is_closed is False
+        assert dify_api_http_client.is_closed is False
         return [Tool(duplicate_tool, name="shared_tool")]
 
     def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> object:
@@ -1336,8 +1386,14 @@ def test_runner_rejects_duplicate_tool_names_between_static_and_dynamic_tools(
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
-    async def fake_get_tools(_self: DifyPluginToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+    async def fake_get_tools(
+        _self: DifyPluginToolsLayer,
+        *,
+        http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
+    ) -> list[Tool[object]]:
         assert http_client.is_closed is False
+        assert dify_api_http_client.is_closed is False
         return [Tool(dynamic_duplicate_tool, name="web_search")]
 
     def fake_create_agent(model: object, *, tools: list[Tool[object]], output_type: object) -> object:
@@ -1440,8 +1496,14 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
         assert http_client.is_closed is False
         return TestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
 
-    async def fake_get_tools(_self: DifyPluginToolsLayer, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
+    async def fake_get_tools(
+        _self: DifyPluginToolsLayer,
+        *,
+        http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
+    ) -> list[Tool[object]]:
         assert http_client.is_closed is False
+        assert dify_api_http_client.is_closed is False
 
         async def duplicate_shell_run() -> str:
             return "tool"
@@ -1483,16 +1545,22 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                     type="plain.prompt",
                     config=PromptLayerConfig(prefix="system", user="hello"),
                 ),
-                RunLayerSpec(name="shell", type=DIFY_SHELL_LAYER_TYPE_ID, config=DifyShellLayerConfig()),
                 RunLayerSpec(
                     name="execution_context",
                     type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
                     config=DifyExecutionContextLayerConfig(
                         tenant_id="tenant-1",
+                        agent_id="agent-1",
                         user_from="account",
                         agent_mode="workflow_run",
                         invoke_from="service-api",
                     ),
+                ),
+                RunLayerSpec(
+                    name="shell",
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyShellLayerConfig(),
                 ),
                 RunLayerSpec(
                     name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -1758,6 +1826,112 @@ def test_runner_applies_on_exit_overrides_to_success_snapshot(monkeypatch: pytes
         "execution_context": LifecycleState.SUSPENDED,
         DIFY_AGENT_MODEL_LAYER_ID: LifecycleState.CLOSED,
     }
+
+
+def test_runner_lifecycle_only_cleanup_succeeds_without_model_and_emits_no_pydantic_ai_events() -> None:
+    request = _lifecycle_only_request()
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-lifecycle-only",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    events = sink.events["run-lifecycle-only"]
+    assert [event.type for event in events] == ["run_started", "run_succeeded"]
+    terminal = events[-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert terminal.data.output is None
+    assert terminal.data.usage is None
+    assert {layer.name: layer.lifecycle_state for layer in terminal.data.session_snapshot.layers} == {
+        "prompt": LifecycleState.CLOSED,
+        "execution_context": LifecycleState.CLOSED,
+    }
+
+
+def test_runner_lifecycle_only_requires_session_snapshot() -> None:
+    request = _request(llm_layer_name="not-llm")
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(AgentRunValidationError, match="session_snapshot"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-lifecycle-only-missing-snapshot",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-lifecycle-only-missing-snapshot"]] == ["run_started", "run_failed"]
+    assert sink.statuses["run-lifecycle-only-missing-snapshot"] == "failed"
+
+
+def test_runner_lifecycle_only_rejects_deferred_tool_results() -> None:
+    request = _lifecycle_only_request(
+        deferred_tool_results=DeferredToolResultsPayload.model_validate({"calls": {"tool-call-1": {"ok": True}}})
+    )
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(AgentRunValidationError, match="Deferred tool results"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-lifecycle-only-deferred-results",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-lifecycle-only-deferred-results"]] == [
+        "run_started",
+        "run_failed",
+    ]
+    assert sink.statuses["run-lifecycle-only-deferred-results"] == "failed"
+
+
+def test_runner_lifecycle_only_exit_hook_failure_emits_run_failed_not_validation_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = _lifecycle_only_request()
+    sink = InMemoryRunEventSink()
+
+    def _explode(_run: object, _signals: LayerExitSignals) -> None:
+        raise RuntimeError("delete hook failed")
+
+    monkeypatch.setattr("dify_agent.runtime.runner.apply_layer_exit_signals", _explode)
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="delete hook failed"):
+                await AgentRunRunner(
+                    sink=sink,
+                    request=request,
+                    run_id="run-lifecycle-only-exit-hook-failure",
+                    plugin_daemon_http_client=client,
+                    dify_api_http_client=client,
+                ).run()
+
+    asyncio.run(scenario())
+
+    assert [event.type for event in sink.events["run-lifecycle-only-exit-hook-failure"]] == [
+        "run_started",
+        "run_failed",
+    ]
+    assert sink.statuses["run-lifecycle-only-exit-hook-failure"] == "failed"
 
 
 def test_runner_passes_output_layer_spec_to_agent_and_serializes_structured_result(
@@ -2363,13 +2537,39 @@ def test_runner_fails_blank_string_user_prompt_list() -> None:
     assert sink.statuses["run-3"] == "failed"
 
 
-def test_runner_requires_llm_layer_id() -> None:
-    request = _request(llm_layer_name="not-llm")
+def test_runner_rejects_reserved_llm_layer_name_with_wrong_type() -> None:
+    request = CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="prompt",
+                    type="plain.prompt",
+                    config=PromptLayerConfig(prefix="system", user="hello"),
+                ),
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_mode="workflow_run",
+                        invoke_from="service-api",
+                    ),
+                ),
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    type="plain.prompt",
+                    config=PromptLayerConfig(user="not an llm"),
+                ),
+            ]
+        ),
+        on_exit=LayerExitSignals(),
+    )
     sink = InMemoryRunEventSink()
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="llm"):
+            with pytest.raises(AgentRunValidationError, match="DifyPluginLLMLayer"):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,

@@ -30,6 +30,7 @@ from clients.agent_backend import (
     AgentBackendStreamInternalEvent,
     extract_runtime_layer_specs,
 )
+from clients.agent_backend.session_cleanup import AgentBackendSessionCleanupPayload
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequest,
@@ -53,6 +54,7 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
 from models.model import MessageAgentThought
+from tasks.agent_backend_session_cleanup_task import cleanup_conversation_agent_runtime_session
 
 logger = logging.getLogger(__name__)
 
@@ -569,6 +571,7 @@ class AgentAppRunner:
 
         answer = self._extract_answer(terminal.output)
         if preserve_session:
+            superseded_sessions = self._load_superseded_sessions(scope=scope)
             self._publish_terminal_answer(
                 queue_manager=queue_manager,
                 model_name=model_name,
@@ -577,12 +580,14 @@ class AgentAppRunner:
                 streamed_answer=streamed_answer,
                 usage=_llm_usage_from_agent_backend(terminal.usage),
             )
-            self._save_session(
+            session_saved = self._save_session(
                 scope=scope,
                 backend_run_id=terminal.run_id,
                 snapshot=terminal.session_snapshot,
                 runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
             )
+            if session_saved:
+                self._cleanup_superseded_sessions(superseded_sessions)
         else:
             # The backend has already accepted a terminal success with
             # delete-on-exit semantics. Local publish/persistence errors must
@@ -896,7 +901,7 @@ class AgentAppRunner:
         runtime_layer_specs: Any,
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
-    ) -> None:
+    ) -> bool:
         try:
             self._session_store.save_active_snapshot(
                 scope=scope,
@@ -906,6 +911,7 @@ class AgentAppRunner:
                 pending_form_id=pending_form_id,
                 pending_tool_call_id=pending_tool_call_id,
             )
+            return True
         except Exception:
             logger.warning(
                 "Failed to persist Agent App conversation session snapshot: "
@@ -916,6 +922,63 @@ class AgentAppRunner:
                 scope.agent_id,
                 exc_info=True,
             )
+            return False
+
+    def _load_superseded_sessions(self, *, scope: AgentAppSessionScope) -> list[StoredAgentAppSession]:
+        try:
+            stored_sessions = self._session_store.list_active_sessions_for_conversation(
+                tenant_id=scope.tenant_id,
+                app_id=scope.app_id,
+                conversation_id=scope.conversation_id,
+            )
+        except Exception:
+            logger.warning(
+                "Failed to load existing Agent App conversation sessions before snapshot save: "
+                "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s",
+                scope.tenant_id,
+                scope.app_id,
+                scope.conversation_id,
+                scope.agent_id,
+                exc_info=True,
+            )
+            return []
+
+        return [stored for stored in stored_sessions if stored.scope != scope]
+
+    def _cleanup_superseded_sessions(self, stored_sessions: list[StoredAgentAppSession]) -> None:
+        for stored_session in stored_sessions:
+            try:
+                if stored_session.runtime_layer_specs:
+                    payload = AgentBackendSessionCleanupPayload(
+                        session_snapshot=stored_session.session_snapshot,
+                        runtime_layer_specs=stored_session.runtime_layer_specs,
+                        idempotency_key=(
+                            f"{stored_session.scope.tenant_id}:{stored_session.scope.app_id}:"
+                            f"{stored_session.scope.conversation_id}:{stored_session.scope.agent_id}:"
+                            f"{stored_session.scope.agent_config_snapshot_id or 'no-config'}:"
+                            f"superseded-session-cleanup:{stored_session.backend_run_id or 'no-run'}"
+                        ),
+                        metadata={
+                            "tenant_id": stored_session.scope.tenant_id,
+                            "app_id": stored_session.scope.app_id,
+                            "conversation_id": stored_session.scope.conversation_id,
+                            "agent_id": stored_session.scope.agent_id,
+                            "agent_config_snapshot_id": stored_session.scope.agent_config_snapshot_id,
+                            "previous_agent_backend_run_id": stored_session.backend_run_id,
+                        },
+                    )
+                    cleanup_conversation_agent_runtime_session.delay(payload.model_dump(mode="json"))
+            except Exception:
+                logger.warning(
+                    "Failed to enqueue Agent backend cleanup for superseded Agent App session: "
+                    "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
+                    stored_session.scope.tenant_id,
+                    stored_session.scope.app_id,
+                    stored_session.scope.conversation_id,
+                    stored_session.scope.agent_id,
+                    stored_session.backend_run_id,
+                    exc_info=True,
+                )
 
     def _mark_session_cleaned(
         self,

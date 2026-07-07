@@ -498,6 +498,37 @@ def test_agent_node_failed_run_without_session_store_skips_mark_cleaned():
     assert "session_snapshot_cleaned_on_failure" not in agent_backend
 
 
+def test_agent_node_failed_run_enqueues_backend_cleanup_before_local_retirement(monkeypatch):
+    store = FakeSessionStore()
+    store.loaded_session = StoredWorkflowAgentSession(
+        scope=_pending_session(CompositorSessionSnapshot(layers=[])).scope,
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        backend_run_id="stored-run-1",
+        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+    )
+    queued_payloads: list[dict[str, object]] = []
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.agent_node.cleanup_workflow_agent_runtime_session.delay",
+        lambda payload: queued_payloads.append(payload),
+    )
+
+    events = list(_node(scenario=FakeAgentBackendScenario.FAILED, session_store=store)._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert store.cleaned[0][1] == "fake-run-1"
+    assert store.cleaned[0][0].workflow_run_id == "workflow-run-1"
+    assert store.cleaned[0][0].node_id == "agent-node"
+    assert len(queued_payloads) == 1
+    assert (
+        queued_payloads[0]["idempotency_key"]
+        == "tenant-1:workflow-run-1:agent-node:binding-1:workflow-agent-failure-cleanup:stored-run-1:fake-run-1"
+    )
+    assert queued_payloads[0]["metadata"]["previous_agent_backend_run_id"] == "stored-run-1"
+    assert queued_payloads[0]["metadata"]["failed_agent_backend_run_id"] == "fake-run-1"
+
+
 def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     store = FakeSessionStore()
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)

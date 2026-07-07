@@ -309,9 +309,11 @@ class _FakeSessionStore:
         self,
         loaded: CompositorSessionSnapshot | None = None,
         loaded_session: StoredAgentAppSession | None = None,
+        listed_sessions: list[StoredAgentAppSession] | None = None,
     ) -> None:
         self.loaded = loaded
         self._loaded_session = loaded_session
+        self._listed_sessions = list(listed_sessions or [])
         self.loaded_scopes: list[AgentAppSessionScope] = []
         self.saved: list[
             tuple[
@@ -336,6 +338,14 @@ class _FakeSessionStore:
         if self.loaded is None:
             return None
         return StoredAgentAppSession(scope=scope, session_snapshot=self.loaded, backend_run_id=None)
+
+    def list_active_sessions_for_conversation(
+        self, *, tenant_id: str, app_id: str, conversation_id: str
+    ) -> list[StoredAgentAppSession]:
+        assert tenant_id == "tenant-1"
+        assert app_id == "app-1"
+        assert conversation_id == "conv-1"
+        return list(self._listed_sessions)
 
     def save_active_snapshot(
         self,
@@ -468,6 +478,78 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert pending_form_id is None
     assert pending_tool_call_id is None
     assert store.cleaned == []
+
+
+def test_successful_turn_enqueues_cleanup_for_superseded_sessions_after_saving_snapshot(monkeypatch):
+    superseded = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-2",
+            agent_config_snapshot_id="snap-2",
+        ),
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        backend_run_id="run-old",
+        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+    )
+    current_scope_session = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snap-1",
+        ),
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        backend_run_id="run-current",
+        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+    )
+    store = _FakeSessionStore(listed_sessions=[current_scope_session, superseded])
+    client = FakeAgentBackendRunClient()
+    qm = _FakeQueueManager()
+    cleanup_delay = MagicMock()
+    monkeypatch.setattr(app_runner_module.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
+
+    _run(_runner(client, store), qm)
+
+    assert store.saved
+    cleanup_delay.assert_called_once()
+    payload = cleanup_delay.call_args.args[0]
+    assert payload["metadata"]["conversation_id"] == "conv-1"
+    assert payload["metadata"]["agent_id"] == "agent-2"
+    assert payload["metadata"]["previous_agent_backend_run_id"] == "run-old"
+    assert (
+        payload["idempotency_key"]
+        == "tenant-1:app-1:conv-1:agent-2:snap-2:superseded-session-cleanup:run-old"
+    )
+
+
+def test_superseded_session_cleanup_enqueue_failure_does_not_fail_turn(monkeypatch):
+    superseded = StoredAgentAppSession(
+        scope=AgentAppSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            conversation_id="conv-1",
+            agent_id="agent-2",
+            agent_config_snapshot_id="snap-2",
+        ),
+        session_snapshot=CompositorSessionSnapshot(layers=[]),
+        backend_run_id="run-old",
+        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
+    )
+    store = _FakeSessionStore(listed_sessions=[superseded])
+    client = FakeAgentBackendRunClient()
+    qm = _FakeQueueManager()
+    cleanup_delay = MagicMock(side_effect=RuntimeError("queue down"))
+    monkeypatch.setattr(app_runner_module.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
+
+    _run(_runner(client, store), qm)
+
+    cleanup_delay.assert_called_once()
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "hello agent"
 
 
 def test_delete_on_exit_turn_marks_session_cleaned_without_saving_snapshot():

@@ -47,7 +47,6 @@ from dify_agent.protocol import (
     LayerExitSignals,
     RunComposition,
     RunLayerSpec,
-    RunPurpose,
     RuntimeLayerSpec,
 )
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
@@ -204,7 +203,6 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     user_prompt: str
     agent_soul_prompt: str | None = None
     agent_config_version_kind: AgentConfigVersionKind = "snapshot"
-    purpose: RunPurpose = "workflow_node"
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
@@ -254,7 +252,6 @@ class AgentBackendAgentAppRunInput(BaseModel):
     user_prompt: str
     agent_soul_prompt: str | None = None
     agent_config_version_kind: AgentConfigVersionKind = "snapshot"
-    purpose: RunPurpose = "agent_app"
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
@@ -465,7 +462,6 @@ class AgentBackendRunRequestBuilder:
 
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
-            purpose=run_input.purpose,
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,
@@ -513,7 +509,6 @@ class AgentBackendRunRequestBuilder:
         filtered_snapshot = _filter_snapshot_to_specs(session_snapshot, runtime_layer_specs)
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
-            purpose="workflow_node",
             idempotency_key=idempotency_key,
             metadata=request_metadata,
             session_snapshot=filtered_snapshot,
@@ -699,7 +694,6 @@ class AgentBackendRunRequestBuilder:
 
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
-            purpose=run_input.purpose,
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
             session_snapshot=run_input.session_snapshot,

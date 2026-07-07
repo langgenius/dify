@@ -24,10 +24,13 @@ whether each active layer is suspended or deleted when the run exits, with
 suspend as the default so successful terminal events can include resumable
 snapshots. Successful runs always publish the resumable Agenton session snapshot
 on the terminal ``run_succeeded`` event together with exactly one of the final
-JSON-safe ``output`` or a deferred external ``deferred_tool_call`` payload. That
-lets consumers treat terminal success events as complete run summaries without a
-separate pause protocol. Session snapshots carry only layer lifecycle/runtime
-state in compositor order; they do not persist output-layer config. Resumed
+JSON-safe ``output`` or a deferred external ``deferred_tool_call`` payload. A
+lifecycle-only run may also succeed with ``output = null`` and ``usage = null``
+when the composition intentionally omits the reserved model layer and only
+replays layer enter/exit work from a supplied snapshot. That lets consumers
+treat terminal success events as complete run summaries without a separate pause
+protocol. Session snapshots carry only layer lifecycle/runtime state in
+compositor order; they do not persist output-layer config. Resumed
 structured-output runs therefore must resubmit the same ``output`` layer in
 ``composition.layers[]`` so snapshot layer name/order still matches the
 composition and the runtime can rebuild the same structured output contract.
@@ -50,7 +53,6 @@ DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
 RunStatus = Literal["running", "succeeded", "failed", "cancelled"]
-RunPurpose = Literal["workflow_node", "single_step", "agent_app", "babysit", "fasten_preview"]
 RunEventType = Literal[
     "run_started",
     "pydantic_ai_event",
@@ -136,7 +138,6 @@ class CreateRunRequest(BaseModel):
     """
 
     composition: RunComposition
-    purpose: RunPurpose = "workflow_node"
     idempotency_key: str | None = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: CompositorSessionSnapshot | None = None
@@ -402,7 +403,6 @@ __all__ = [
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
-    "RunPurpose",
     "RunStartedEvent",
     "RunStatus",
     "RunStatusResponse",

@@ -101,6 +101,7 @@ def test_create_run_request_rejects_old_compositor_payload_and_model_layer_id_is
 
 def test_protocol_package_no_longer_exports_execution_context_dto() -> None:
     assert not hasattr(protocol_exports, "ExecutionContext")
+    assert not hasattr(protocol_exports, "RunPurpose")
 
 
 def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_graph_config() -> None:
@@ -131,7 +132,6 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         }
     )
     request = CreateRunRequest(
-        purpose="workflow_node",
         idempotency_key="workflow-run-1:node-execution-1",
         metadata={"source": "unit_test"},
         composition=RunComposition(
@@ -177,7 +177,6 @@ def test_create_run_request_accepts_dto_first_public_composition_and_normalizes_
         "invoke_from": "service-api",
         "trace_id": "trace-1",
     }
-    assert payload["purpose"] == "workflow_node"
     assert payload["idempotency_key"] == "workflow-run-1:node-execution-1"
     assert payload["metadata"] == {"source": "unit_test"}
     assert payload["composition"]["layers"][0]["config"] == {"prefix": "system", "user": "hello", "suffix": []}
@@ -452,6 +451,16 @@ def test_create_run_request_rejects_removed_top_level_execution_context() -> Non
                     "agent_mode": "workflow_run",
                     "invoke_from": "service-api",
                 },
+            }
+        )
+
+
+def test_create_run_request_rejects_removed_top_level_purpose() -> None:
+    with pytest.raises(ValidationError):
+        _ = CreateRunRequest.model_validate(
+            {
+                "composition": {"layers": []},
+                "purpose": "session_cleanup",
             }
         )
 
