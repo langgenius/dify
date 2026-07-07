@@ -126,6 +126,7 @@ def add_document_to_index_task(dataset_document_id: str):
                 try:
                     SummaryIndexService.enable_summaries_for_segments(
                         dataset=dataset,
+                        session=session,
                         segment_ids=segment_ids_list,
                     )
                 except Exception as e:

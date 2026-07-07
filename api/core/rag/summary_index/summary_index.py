@@ -78,7 +78,9 @@ class SummaryIndex:
                     if segment is None:
                         return
                     try:
-                        SummaryIndexService.generate_and_vectorize_summary(segment, dataset, summary_index_setting)
+                        SummaryIndexService.generate_and_vectorize_summary(
+                            segment, dataset, summary_index_setting, session=session
+                        )
                     except Exception:
                         logger.exception(
                             "Failed to generate summary for segment %s",

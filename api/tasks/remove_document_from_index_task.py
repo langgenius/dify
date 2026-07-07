@@ -55,6 +55,7 @@ def remove_document_from_index_task(document_id: str):
                 try:
                     SummaryIndexService.disable_summaries_for_segments(
                         dataset=dataset,
+                        session=session,
                         segment_ids=segment_ids_list,
                         disabled_by=document.disabled_by,
                     )

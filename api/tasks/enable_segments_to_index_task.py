@@ -113,6 +113,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
             try:
                 SummaryIndexService.enable_summaries_for_segments(
                     dataset=dataset,
+                    session=session,
                     segment_ids=segment_ids_list,
                 )
             except Exception as e:

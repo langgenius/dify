@@ -223,7 +223,7 @@ class SummaryIndexService:
         summary_record: DocumentSegmentSummary,
         segment: DocumentSegment,
         dataset: Dataset,
-        session: Session | None = None,
+        session: Session | scoped_session | None = None,
     ) -> None:
         """
         Vectorize summary and store in vector database.
@@ -714,6 +714,7 @@ class SummaryIndexService:
         segment: DocumentSegment,
         dataset: Dataset,
         summary_index_setting: SummaryIndexSettingDict,
+        session: Session | scoped_session | None = None,
     ) -> DocumentSegmentSummary:
         """
         Generate summary for a segment and vectorize it.
@@ -724,6 +725,8 @@ class SummaryIndexService:
             segment: DocumentSegment to generate summary for
             dataset: Dataset containing the segment
             summary_index_setting: Summary index configuration
+            session: Optional caller session kept for API compatibility with task/wrapper callsites. Summary writes
+                still use short service-owned transactions so external LLM/vector calls do not share dirty state.
 
         Returns:
             Created DocumentSegmentSummary instance
@@ -776,6 +779,7 @@ class SummaryIndexService:
         dataset: Dataset,
         document: DatasetDocument,
         summary_index_setting: SummaryIndexSettingDict,
+        session: Session | scoped_session | None = None,
         segment_ids: list[str] | None = None,
         only_parent_chunks: bool = False,
     ) -> list[DocumentSegmentSummary]:
@@ -786,6 +790,8 @@ class SummaryIndexService:
             dataset: Dataset containing the document
             document: DatasetDocument to generate summaries for
             summary_index_setting: Summary index configuration
+            session: Optional caller session used for segment lookup. Summary record writes are still committed in
+                short service-owned transactions.
             segment_ids: Optional list of specific segment IDs to process
             only_parent_chunks: If True, only process parent chunks (for parent-child mode)
 
@@ -818,7 +824,7 @@ class SummaryIndexService:
             only_parent_chunks,
         )
 
-        with session_factory.create_session() as session:
+        def _load_segments(query_session: Session | scoped_session) -> list[DocumentSegment]:
             # Query segments (only enabled segments)
             stmt = select(DocumentSegment).where(
                 DocumentSegment.dataset_id == dataset.id,
@@ -830,60 +836,67 @@ class SummaryIndexService:
             if segment_ids:
                 stmt = stmt.where(DocumentSegment.id.in_(segment_ids))
 
-            segments = list(session.scalars(stmt).all())
+            return list(query_session.scalars(stmt).all())
 
-            if not segments:
-                logger.info("No segments found for document %s", document.id)
-                return []
+        if session is None:
+            with session_factory.create_session() as query_session:
+                segments = _load_segments(query_session)
+        else:
+            segments = _load_segments(session)
 
-            # Batch create summary records with "not_started" status before processing
-            # This ensures all records exist upfront, allowing status tracking
-            SummaryIndexService.batch_create_summary_records(
-                segments=segments,
-                dataset=dataset,
-                status=SummaryStatus.NOT_STARTED,
-            )
+        if not segments:
+            logger.info("No segments found for document %s", document.id)
+            return []
 
-            summary_records = []
+        # Batch create summary records with "not_started" status before processing
+        # This ensures all records exist upfront, allowing status tracking
+        SummaryIndexService.batch_create_summary_records(
+            segments=segments,
+            dataset=dataset,
+            status=SummaryStatus.NOT_STARTED,
+        )
 
-            for segment in segments:
-                # For parent-child mode, only process parent chunks
-                # In parent-child mode, all DocumentSegments are parent chunks,
-                # so we process all of them. Child chunks are stored in ChildChunk table
-                # and are not DocumentSegments, so they won't be in the segments list.
-                # This check is mainly for clarity and future-proofing.
-                if only_parent_chunks:
-                    # In parent-child mode, all segments in the query are parent chunks
-                    # Child chunks are not DocumentSegments, so they won't appear here
-                    # We can process all segments
-                    pass
+        summary_records = []
 
-                try:
-                    summary_record = SummaryIndexService.generate_and_vectorize_summary(
-                        segment, dataset, summary_index_setting
-                    )
-                    summary_records.append(summary_record)
-                except Exception as e:
-                    logger.exception("Failed to generate summary for segment %s", segment.id)
-                    # Update summary record with error status
-                    SummaryIndexService.update_summary_record_error(
-                        segment=segment,
-                        dataset=dataset,
-                        error=str(e),
-                    )
-                    # Continue with other segments
-                    continue
+        for segment in segments:
+            # For parent-child mode, only process parent chunks
+            # In parent-child mode, all DocumentSegments are parent chunks,
+            # so we process all of them. Child chunks are stored in ChildChunk table
+            # and are not DocumentSegments, so they won't be in the segments list.
+            # This check is mainly for clarity and future-proofing.
+            if only_parent_chunks:
+                # In parent-child mode, all segments in the query are parent chunks
+                # Child chunks are not DocumentSegments, so they won't appear here
+                # We can process all segments
+                pass
 
-            logger.info(
-                "Completed summary generation for document %s: %s summaries generated and vectorized",
-                document.id,
-                len(summary_records),
-            )
-            return summary_records
+            try:
+                summary_record = SummaryIndexService.generate_and_vectorize_summary(
+                    segment, dataset, summary_index_setting, session=session
+                )
+                summary_records.append(summary_record)
+            except Exception as e:
+                logger.exception("Failed to generate summary for segment %s", segment.id)
+                # Update summary record with error status
+                SummaryIndexService.update_summary_record_error(
+                    segment=segment,
+                    dataset=dataset,
+                    error=str(e),
+                )
+                # Continue with other segments
+                continue
+
+        logger.info(
+            "Completed summary generation for document %s: %s summaries generated and vectorized",
+            document.id,
+            len(summary_records),
+        )
+        return summary_records
 
     @staticmethod
     def disable_summaries_for_segments(
         dataset: Dataset,
+        session: Session | scoped_session | None = None,
         segment_ids: list[str] | None = None,
         disabled_by: str | None = None,
     ) -> None:
@@ -893,12 +906,13 @@ class SummaryIndexService:
 
         Args:
             dataset: Dataset containing the segments
+            session: Optional caller session. When provided, it is used for the summary row query/update.
             segment_ids: List of segment IDs to disable summaries for. If None, disable all.
             disabled_by: User ID who disabled the summaries
         """
         from libs.datetime_utils import naive_utc_now
 
-        with session_factory.create_session() as session:
+        def _disable_with_session(write_session: Session | scoped_session) -> None:
             stmt = select(DocumentSegmentSummary).where(
                 DocumentSegmentSummary.dataset_id == dataset.id,
                 DocumentSegmentSummary.enabled.is_(True),  # Only disable enabled summaries
@@ -907,7 +921,7 @@ class SummaryIndexService:
             if segment_ids:
                 stmt = stmt.where(DocumentSegmentSummary.chunk_id.in_(segment_ids))
 
-            summaries = session.scalars(stmt).all()
+            summaries = write_session.scalars(stmt).all()
 
             if not summaries:
                 return
@@ -935,14 +949,21 @@ class SummaryIndexService:
                 summary.enabled = False
                 summary.disabled_at = now
                 summary.disabled_by = disabled_by
-                session.add(summary)
+                write_session.add(summary)
 
-            session.commit()
+            write_session.commit()
             logger.info("Disabled %s summary records for dataset %s", len(summaries), dataset.id)
+
+        if session is None:
+            with session_factory.create_session() as write_session:
+                _disable_with_session(write_session)
+        else:
+            _disable_with_session(session)
 
     @staticmethod
     def enable_summaries_for_segments(
         dataset: Dataset,
+        session: Session | scoped_session | None = None,
         segment_ids: list[str] | None = None,
     ) -> None:
         """
@@ -955,6 +976,8 @@ class SummaryIndexService:
 
         Args:
             dataset: Dataset containing the segments
+            session: Optional caller session used for candidate lookup. Vectorization and final enable writes remain
+                short-scoped to avoid sharing dirty state with external vector calls.
             segment_ids: List of segment IDs to enable summaries for. If None, enable all.
         """
         # Only enable summary index for high_quality indexing technique
@@ -962,7 +985,8 @@ class SummaryIndexService:
             return
 
         summary_segment_pairs: list[tuple[DocumentSegmentSummary, DocumentSegment]] = []
-        with session_factory.create_session() as session:
+
+        def _collect_candidates(query_session: Session | scoped_session) -> None:
             stmt = select(DocumentSegmentSummary).where(
                 DocumentSegmentSummary.dataset_id == dataset.id,
                 DocumentSegmentSummary.enabled.is_(False),  # Only enable disabled summaries
@@ -971,7 +995,7 @@ class SummaryIndexService:
             if segment_ids:
                 stmt = stmt.where(DocumentSegmentSummary.chunk_id.in_(segment_ids))
 
-            summaries = session.scalars(stmt).all()
+            summaries = query_session.scalars(stmt).all()
 
             if not summaries:
                 return
@@ -986,7 +1010,7 @@ class SummaryIndexService:
             # Re-vectorize and re-add to vector database
             for summary in summaries:
                 # Get the original segment
-                segment = session.scalar(
+                segment = query_session.scalar(
                     select(DocumentSegment)
                     .where(
                         DocumentSegment.id == summary.chunk_id,
@@ -1004,6 +1028,12 @@ class SummaryIndexService:
                     continue
 
                 summary_segment_pairs.append((summary, segment))
+
+        if session is None:
+            with session_factory.create_session() as query_session:
+                _collect_candidates(query_session)
+        else:
+            _collect_candidates(session)
 
         enabled_count = 0
         for summary, segment in summary_segment_pairs:
