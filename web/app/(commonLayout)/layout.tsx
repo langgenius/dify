@@ -6,6 +6,7 @@ import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
 import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
 import { GotoAnything } from '@/app/components/goto-anything'
+import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import MainNavLayout from '@/app/components/main-nav/layout'
 import { NextRouteStateBridge } from '@/app/components/next-route-state'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
@@ -21,34 +22,37 @@ import { RoleRouteGuard } from './role-route-guard'
 
 export default async function Layout({ children }: { children: ReactNode }) {
   return (
-    <>
+    <React.Fragment>
       <GoogleAnalyticsScripts />
       <AmplitudeProvider />
       <OAuthRegistrationAnalytics />
       <EducationVerifyActionRecorder />
       <CommonLayoutHydrationBoundary>
         <NextRouteStateBridge>
-          <AppContextProvider>
-            <EventEmitterContextProvider>
-              <ProviderContextProvider>
-                <ModalContextProvider>
-                  <MainNavLayout>
-                    <RoleRouteGuard>
-                      {children}
-                    </RoleRouteGuard>
-                  </MainNavLayout>
-                  <InSiteMessageNotification />
-                  <PartnerStack />
-                  <ReadmePanel />
-                  <GotoAnything />
-                  <WorkflowGeneratorMount />
-                </ModalContextProvider>
-              </ProviderContextProvider>
-            </EventEmitterContextProvider>
-          </AppContextProvider>
+          <div className="flex h-full flex-col overflow-hidden">
+            <MaintenanceNotice />
+            <AppContextProvider>
+              <EventEmitterContextProvider>
+                <ProviderContextProvider>
+                  <ModalContextProvider>
+                    <MainNavLayout>
+                      <RoleRouteGuard>
+                        {children}
+                      </RoleRouteGuard>
+                    </MainNavLayout>
+                    <InSiteMessageNotification />
+                    <PartnerStack />
+                    <ReadmePanel />
+                    <GotoAnything />
+                    <WorkflowGeneratorMount />
+                  </ModalContextProvider>
+                </ProviderContextProvider>
+              </EventEmitterContextProvider>
+            </AppContextProvider>
+          </div>
         </NextRouteStateBridge>
       </CommonLayoutHydrationBoundary>
       <Zendesk />
-    </>
+    </React.Fragment>
   )
 }
