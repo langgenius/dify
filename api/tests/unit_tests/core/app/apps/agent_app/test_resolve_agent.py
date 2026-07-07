@@ -97,10 +97,33 @@ class TestResolveAgent:
         assert config_version_kind == "snapshot"
         assert soul.model is not None
 
-    def test_unpublished_agent_raises_before_model_resolution(self, monkeypatch: pytest.MonkeyPatch):
+    def test_unpublished_draft_still_resolves_active_snapshot(self, monkeypatch: pytest.MonkeyPatch):
         bound_agent = SimpleNamespace(
             id="agent-1",
             active_config_snapshot_id="snap-1",
+            active_config_is_published=False,
+        )
+        inner_agent = SimpleNamespace(id="agent-1")
+        snapshot = _snapshot()
+        _patch_session(monkeypatch, [bound_agent, inner_agent, snapshot])
+        app_model = SimpleNamespace(id="app-1", tenant_id="t1")
+
+        agent, config_id, config_version_kind, soul = AgentAppGenerator()._resolve_agent(
+            app_model,
+            invoke_from=InvokeFrom.WEB_APP,
+            draft_type=None,
+            user=SimpleNamespace(id="user-1"),
+        )  # type: ignore[arg-type]
+
+        assert agent is bound_agent
+        assert config_id == snapshot.id
+        assert config_version_kind == "snapshot"
+        assert soul.prompt.system_prompt == "You are Iris."
+
+    def test_agent_without_active_snapshot_raises_before_model_resolution(self, monkeypatch: pytest.MonkeyPatch):
+        bound_agent = SimpleNamespace(
+            id="agent-1",
+            active_config_snapshot_id=None,
             active_config_is_published=False,
         )
         _patch_session(monkeypatch, [bound_agent])

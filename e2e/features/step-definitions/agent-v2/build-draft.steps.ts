@@ -254,9 +254,8 @@ Then('I should see the Agent v2 Build mode confirmation state', async function (
   const page = this.getPage()
 
   await expect(page.getByText('Build mode', { exact: true })).toBeVisible()
-  await expect(
-    page.getByText('You\'re in build mode. Shape this setup through the chat on the right, then Apply.'),
-  ).toBeVisible()
+  await expect(page.getByText('Configure can only be updated by the agent in this mode.')).toBeVisible()
+  await expect(page.getByText('Shape this setup through the chat on the right, then Apply.')).toBeVisible()
 })
 
 Then('Agent v2 Build chat should be blocked until a model is configured', async function (this: DifyWorld) {
