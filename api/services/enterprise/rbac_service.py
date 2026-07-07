@@ -364,7 +364,6 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
-    "workspace.member.manage",
     "api_extension.manage",
     "plugin.install",
     "credential.use",
