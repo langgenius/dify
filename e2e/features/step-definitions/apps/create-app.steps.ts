@@ -2,13 +2,14 @@ import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { openBlankAppCreation } from '../../../support/apps'
+import { createE2EResourceName } from '../../../support/naming'
 
 When('I start creating a blank app', async function (this: DifyWorld) {
   await openBlankAppCreation(this.getPage())
 })
 
 When('I enter a unique E2E app name', async function (this: DifyWorld) {
-  const appName = `E2E App ${Date.now()}`
+  const appName = createE2EResourceName('App')
   this.lastCreatedAppName = appName
   await this.getPage().getByPlaceholder('Give your app a name').fill(appName)
 })

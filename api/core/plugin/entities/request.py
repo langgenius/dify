@@ -230,6 +230,7 @@ class RequestRequestUploadFile(BaseModel):
 
     filename: str
     mimetype: str
+    conversation_id: str | None = None
 
 
 class RequestDownloadFileMapping(BaseModel):

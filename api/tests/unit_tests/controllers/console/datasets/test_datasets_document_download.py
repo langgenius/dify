@@ -107,7 +107,7 @@ def _wire_common_success_mocks(
     import services.dataset_service as dataset_service_module
 
     # Return a dataset object and allow permission checks to pass.
-    monkeypatch.setattr(module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1"))
+    monkeypatch.setattr(module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1"))
     monkeypatch.setattr(module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None)
 
     # Return a document that will be validated inside DocumentResource.get_document.
@@ -150,7 +150,7 @@ def test_batch_download_zip_returns_send_file(
     """Ensure batch ZIP download returns a zip attachment via `send_file`."""
 
     monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
+        datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1")
     )
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
@@ -218,7 +218,7 @@ def test_batch_download_zip_response_is_openable_zip(
 
     # Arrange: same controller mocks as the lightweight send_file test, but we keep the real `send_file`.
     monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
+        datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1")
     )
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None
@@ -284,7 +284,7 @@ def test_batch_download_zip_rejects_non_upload_file_document(
     """Ensure batch ZIP download rejects non upload-file documents."""
 
     monkeypatch.setattr(
-        datasets_document_module.DatasetService, "get_dataset", lambda _dataset_id: SimpleNamespace(id="ds-1")
+        datasets_document_module.DatasetService, "get_dataset", lambda *_args, **_kwargs: SimpleNamespace(id="ds-1")
     )
     monkeypatch.setattr(
         datasets_document_module.DatasetService, "check_dataset_permission", lambda *_args, **_kwargs: None

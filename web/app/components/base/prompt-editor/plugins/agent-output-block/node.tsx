@@ -16,6 +16,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
   __isEditing: boolean
   __outputs: DeclaredOutputConfig[]
   __onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
+  __onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 
   static override getType(): string {
     return 'agent-output-block'
@@ -28,6 +29,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
       node.__isEditing,
       node.__outputs,
       node.__onChange,
+      node.__onEdit,
       node.__key,
     )
   }
@@ -42,6 +44,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
     isEditing = false,
     outputs: DeclaredOutputConfig[] = [],
     onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void,
+    onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void,
     key?: NodeKey,
   ) {
     super(key)
@@ -51,6 +54,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
     this.__isEditing = isEditing
     this.__outputs = outputs
     this.__onChange = onChange
+    this.__onEdit = onEdit
   }
 
   override createDOM(): HTMLElement {
@@ -72,6 +76,7 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
         isEditing={this.isEditing()}
         outputs={this.getOutputs()}
         onChange={this.getOnChange()}
+        onEdit={this.getOnEdit()}
       />
     )
   }
@@ -109,6 +114,10 @@ export class AgentOutputBlockNode extends DecoratorNode<React.JSX.Element> {
     return this.getLatest().__onChange
   }
 
+  getOnEdit(): ((name: string, outputType: AgentOutputTypeOptionValue) => void) | undefined {
+    return this.getLatest().__onEdit
+  }
+
   override getTextContent(): string {
     return getAgentOutputToken(this.getName())
   }
@@ -120,8 +129,9 @@ export function $createAgentOutputBlockNode(
   isEditing = false,
   outputs: DeclaredOutputConfig[] = [],
   onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void,
+  onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void,
 ): AgentOutputBlockNode {
-  return new AgentOutputBlockNode(name, outputType, isEditing, outputs, onChange)
+  return new AgentOutputBlockNode(name, outputType, isEditing, outputs, onChange, onEdit)
 }
 
 export function $isAgentOutputBlockNode(

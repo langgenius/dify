@@ -2,13 +2,16 @@ import logging
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
+    AgentNotPublishedError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -20,6 +23,7 @@ from controllers.web.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -107,7 +111,8 @@ class CompletionApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
@@ -119,7 +124,12 @@ class CompletionApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -130,6 +140,8 @@ class CompletionApi(WebApiResource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except AgentAppNotPublishedError:
+            raise AgentNotPublishedError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -191,7 +203,8 @@ class ChatApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
-    def post(self, app_model: App, end_user: EndUser):
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
@@ -210,7 +223,12 @@ class ChatApi(WebApiResource):
                 )
 
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -221,6 +239,8 @@ class ChatApi(WebApiResource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
+        except AgentAppNotPublishedError:
+            raise AgentNotPublishedError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

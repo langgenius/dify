@@ -128,7 +128,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should ignore legacy admin permission for managers without plugin keys', () => {
+    it('should allow debug for managers with legacy admin permission when RBAC is disabled', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
@@ -146,10 +146,10 @@ describe('useReferenceSetting Hook', () => {
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       expect(result.current.canManagement).toBe(false)
-      expect(result.current.canDebugger).toBe(false)
+      expect(result.current.canDebugger).toBe(true)
     })
 
-    it('should ignore legacy admin permission for owners without plugin keys', () => {
+    it('should allow debug for owners with legacy admin permission when RBAC is disabled', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
@@ -167,7 +167,30 @@ describe('useReferenceSetting Hook', () => {
       const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       expect(result.current.canManagement).toBe(false)
-      expect(result.current.canDebugger).toBe(false)
+      expect(result.current.canDebugger).toBe(true)
+    })
+
+    it('should allow debug for normal users when legacy debug permission is everyone and RBAC is disabled', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install'],
+      } as ReturnType<typeof useAppContext>)
+
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.everyone,
+          debug_permission: PermissionType.everyone,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: false },
+      })
+
+      expect(result.current.canDebugPlugin).toBe(true)
+      expect(result.current.canDebugger).toBe(true)
     })
 
     it('should use plugin keys even when legacy admin permission is configured and RBAC is enabled', () => {
@@ -345,6 +368,35 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.referenceSetting).toBeUndefined()
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
+    })
+
+    it('should keep permission state loading while workspace permission keys are loading', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isLoadingWorkspacePermissionKeys: true,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: [] as string[],
+      } as ReturnType<typeof useAppContext>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.isPermissionLoading).toBe(true)
+      expect(result.current.canInstallPlugin).toBe(false)
+    })
+
+    it('should keep permission state loading while current workspace is loading', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isLoadingCurrentWorkspace: true,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install'],
+      } as ReturnType<typeof useAppContext>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect(result.current.isPermissionLoading).toBe(true)
     })
   })
 

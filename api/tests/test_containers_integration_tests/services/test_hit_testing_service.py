@@ -258,6 +258,7 @@ class TestHitTestingService:
         assert response.query.content == 'test "query"'
         assert response.records[0].content == "ext content"
         mock_ext_retrieve.assert_called_once_with(
+            session=db_session_with_containers,
             dataset_id=dataset.id,
             query='test \\"query\\"',
             external_retrieval_model={"model": "test"},

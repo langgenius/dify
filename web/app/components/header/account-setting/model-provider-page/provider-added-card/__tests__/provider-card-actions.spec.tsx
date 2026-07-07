@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginSource } from '@/app/components/plugins/types'
 import ProviderCardActions from '../provider-card-actions'
 
@@ -31,6 +32,13 @@ let mockHeaderState = {
   isFromGitHub: false,
 }
 
+const render = (ui: ReactElement) =>
+  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
+
+const openActionsMenu = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))
+}
+
 vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/hooks', () => ({
   useDetailHeaderState: () => mockHeaderState,
   usePluginOperations: () => ({
@@ -52,22 +60,6 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/detail-header/components',
       data-is-downgrade={String(isDowngrade)}
       data-auto-upgrade={String(isAutoUpgradeEnabled)}
     />
-  ),
-}))
-
-vi.mock('@/app/components/plugins/plugin-detail-panel/operation-dropdown', () => ({
-  default: ({ detailUrl, onInfo, onCheckVersion, onRemove, destructiveRemove }: {
-    detailUrl: string
-    onInfo: () => void
-    onCheckVersion: () => void
-    onRemove: () => void
-    destructiveRemove?: boolean
-  }) => (
-    <div data-testid="operation-dropdown" data-detail-url={detailUrl} data-destructive-remove={String(Boolean(destructiveRemove))}>
-      <button type="button" onClick={onInfo}>info</button>
-      <button type="button" onClick={onCheckVersion}>check version</button>
-      <button type="button" onClick={onRemove}>remove</button>
-    </div>
   ),
 }))
 
@@ -166,6 +158,15 @@ describe('ProviderCardActions', () => {
     expect(mockHandleUpdate).toHaveBeenCalledWith(true)
   })
 
+  it('should show a compact debug badge after the version for debugging plugins', () => {
+    render(<ProviderCardActions detail={createDetail({ source: PluginSource.debugging })} />)
+
+    const version = screen.getByText('1.0.0')
+    const debugBadge = screen.getByText('appDebug.operation.debugConfig')
+
+    expect(version.compareDocumentPosition(debugBadge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('should trigger the latest marketplace update when clicking the update button', () => {
     render(<ProviderCardActions detail={createDetail()} />)
 
@@ -185,27 +186,19 @@ describe('ProviderCardActions', () => {
       language: 'en-US',
       theme: 'light',
     })
-    expect(screen.getByTestId('operation-dropdown')).toHaveAttribute(
-      'data-detail-url',
+    openActionsMenu()
+    expect(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' })).toHaveAttribute(
+      'href',
       'https://marketplace.example.com/plugins/langgenius/provider-plugin',
     )
   })
 
-  it('should request destructive remove styling for the operation dropdown', () => {
+  it('should relay the marketplace remove action', () => {
     render(<ProviderCardActions detail={createDetail()} />)
 
-    expect(screen.getByTestId('operation-dropdown')).toHaveAttribute('data-destructive-remove', 'true')
-  })
+    openActionsMenu()
+    fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
 
-  it('should relay operation dropdown actions', () => {
-    render(<ProviderCardActions detail={createDetail()} />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'info' }))
-    fireEvent.click(screen.getByRole('button', { name: 'check version' }))
-    fireEvent.click(screen.getByRole('button', { name: 'remove' }))
-
-    expect(mockShowPluginInfo).toHaveBeenCalledTimes(1)
-    expect(mockHandleUpdate).toHaveBeenCalledTimes(1)
     expect(mockShowDeleteConfirm).toHaveBeenCalledTimes(1)
   })
 
@@ -230,15 +223,45 @@ describe('ProviderCardActions', () => {
     )
 
     expect(screen.getByTestId('plugin-version-picker')).toHaveAttribute('data-disabled', 'true')
-    expect(screen.getByTestId('operation-dropdown')).toHaveAttribute(
-      'data-detail-url',
-      'https://github.com/langgenius/provider-plugin',
-    )
+    openActionsMenu()
+    expect(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' })).toHaveAttribute('href', 'https://github.com/langgenius/provider-plugin')
 
     fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.update' }))
 
     expect(mockSetTargetVersion).not.toHaveBeenCalled()
     expect(mockHandleUpdate).toHaveBeenCalledWith()
+  })
+
+  it('should relay GitHub operation dropdown actions', () => {
+    mockHeaderState = {
+      ...mockHeaderState,
+      hasNewVersion: false,
+      isFromMarketplace: false,
+      isFromGitHub: true,
+    }
+
+    render(
+      <ProviderCardActions detail={createDetail({
+        source: PluginSource.github,
+        meta: {
+          repo: 'langgenius/provider-plugin',
+          version: '1.0.0',
+          package: 'provider-plugin.difypkg',
+        },
+      })}
+      />,
+    )
+
+    openActionsMenu()
+    fireEvent.click(screen.getByText('plugin.detailPanel.operation.info'))
+    openActionsMenu()
+    fireEvent.click(screen.getByText('plugin.detailPanel.operation.checkUpdate'))
+    openActionsMenu()
+    fireEvent.click(screen.getByText('plugin.detailPanel.operation.remove'))
+
+    expect(mockShowPluginInfo).toHaveBeenCalledTimes(1)
+    expect(mockHandleUpdate).toHaveBeenCalledTimes(1)
+    expect(mockShowDeleteConfirm).toHaveBeenCalledTimes(1)
   })
 
   it('should fall back to the detail name when declaration metadata is missing', () => {
@@ -266,7 +289,8 @@ describe('ProviderCardActions', () => {
       />,
     )
 
-    expect(screen.getByTestId('operation-dropdown')).toHaveAttribute('data-detail-url', '')
+    openActionsMenu()
+    expect(screen.getByRole('menuitem', { name: 'plugin.detailPanel.operation.viewDetail' })).toHaveAttribute('href', '')
 
     rerender(
       <ProviderCardActions
@@ -276,6 +300,7 @@ describe('ProviderCardActions', () => {
       />,
     )
 
-    expect(screen.getByTestId('operation-dropdown')).toHaveAttribute('data-detail-url', '')
+    openActionsMenu()
+    expect(screen.queryByText('plugin.detailPanel.operation.viewDetail')).not.toBeInTheDocument()
   })
 })

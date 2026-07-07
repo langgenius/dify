@@ -398,6 +398,7 @@ export const zMemberRoleUpdatePayload = z.object({
  * OpenApiErrorCode
  */
 export const zOpenApiErrorCode = z.enum([
+  'agent_not_published',
   'app_unavailable',
   'bad_gateway',
   'bad_request',
@@ -448,6 +449,27 @@ export const zPermittedExternalAppsListResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * PluginDependencyType
+ */
+export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
+
+/**
+ * PluginDependency
+ */
+export const zPluginDependency = z.object({
+  current_identifier: z.string().nullish(),
+  type: zPluginDependencyType,
+  value: z.union([zGithub, zMarketplace, zPackage]),
+})
+
+/**
+ * CheckDependenciesResult
+ */
+export const zCheckDependenciesResult = z.object({
+  leaked_dependencies: z.array(zPluginDependency).optional(),
 })
 
 /**
@@ -565,27 +587,6 @@ export const zPermittedExternalAppsListQuery = z.object({
  */
 export const zTaskStopResponse = z.object({
   result: z.literal('success'),
-})
-
-/**
- * Type
- */
-export const zType = z.enum(['github', 'marketplace', 'package'])
-
-/**
- * PluginDependency
- */
-export const zPluginDependency = z.object({
-  current_identifier: z.string().nullish(),
-  type: zType,
-  value: z.union([zGithub, zMarketplace, zPackage]),
-})
-
-/**
- * CheckDependenciesResult
- */
-export const zCheckDependenciesResult = z.object({
-  leaked_dependencies: z.array(zPluginDependency).optional(),
 })
 
 /**

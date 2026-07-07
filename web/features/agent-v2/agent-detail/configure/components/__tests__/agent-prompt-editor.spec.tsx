@@ -15,6 +15,43 @@ import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockCopy = vi.hoisted(() => vi.fn())
 const mockReset = vi.hoisted(() => vi.fn())
+const mockUseClipboard = vi.hoisted(() => vi.fn())
+const mockConfigFiles = vi.hoisted(() => ({
+  current: [] as Array<{
+    id: string
+    name: string
+    driveKey?: string
+    children?: Array<{
+      id: string
+      name: string
+      driveKey?: string
+    }>
+  }>,
+}))
+const mockLexical = vi.hoisted(() => ({
+  selection: null as null | {
+    __range: true
+    isCollapsed: () => boolean
+    anchor: {
+      getNode: () => {
+        __text: true
+        getKey: () => string
+        getTextContent: () => string
+        getTextContentSize: () => number
+        select: (anchorOffset: number, focusOffset: number) => void
+      }
+      offset: number
+    }
+  },
+  rootChildren: [] as Array<{
+    __text: true
+    getKey: () => string
+    getTextContent: () => string
+    getTextContentSize: () => number
+    select: (anchorOffset: number, focusOffset: number) => void
+  }>,
+  rootSelectEnd: vi.fn(),
+}))
 const mockBuiltInTools = vi.hoisted(() => [
   {
     id: 'duckduckgo',
@@ -61,9 +98,35 @@ vi.mock('@/app/components/base/prompt-editor', () => ({
     return (
       <div>
         <div role="textbox" aria-label={String(props.placeholder)} />
+        {props.children}
       </div>
     )
   },
+}))
+
+vi.mock('@lexical/react/LexicalComposerContext', () => ({
+  useLexicalComposerContext: () => [{
+    focus: (callback: () => void) => callback(),
+    getEditorState: () => ({
+      read: (callback: () => void) => callback(),
+    }),
+    registerCommand: () => vi.fn(),
+    registerUpdateListener: () => vi.fn(),
+    update: (callback: () => void) => callback(),
+  }],
+}))
+
+vi.mock('lexical', () => ({
+  $getRoot: () => ({
+    getChildren: () => mockLexical.rootChildren,
+    selectEnd: mockLexical.rootSelectEnd,
+  }),
+  $getSelection: () => mockLexical.selection,
+  $isElementNode: (node: { __element?: boolean } | null | undefined) => !!node?.__element,
+  $isRangeSelection: (selection: { __range?: boolean } | null | undefined) => !!selection?.__range,
+  $isTextNode: (node: { __text?: boolean } | null | undefined) => !!node?.__text,
+  COMMAND_PRIORITY_LOW: 1,
+  SELECTION_CHANGE_COMMAND: Symbol('selection-change-command'),
 }))
 
 vi.mock('@/app/components/base/infotip', () => ({
@@ -71,11 +134,7 @@ vi.mock('@/app/components/base/infotip', () => ({
 }))
 
 vi.mock('foxact/use-clipboard', () => ({
-  useClipboard: () => ({
-    copied: false,
-    copy: mockCopy,
-    reset: mockReset,
-  }),
+  useClipboard: mockUseClipboard,
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -100,17 +159,17 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('../orchestrate/drive-context', () => ({
-  useAgentDriveSkills: () => ({
+vi.mock('../orchestrate/config-context', () => ({
+  useAgentConfigSkills: () => ({
     skills: [
       {
-        id: 'playwright/SKILL.md',
+        id: 'playwright',
         name: 'Playwright',
-        skillMdKey: 'playwright/SKILL.md',
+        skillMdKey: 'skills/playwright/SKILL.md',
       },
     ],
   }),
-  useAgentDriveFiles: () => ({ files: [] }),
+  useAgentConfigFiles: () => ({ files: mockConfigFiles.current }),
 }))
 
 const duckDuckGoSearchAction = {
@@ -171,16 +230,45 @@ const renderAgentPromptEditor = (
 describe('AgentPromptEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfigFiles.current = []
+    mockLexical.selection = null
+    mockLexical.rootChildren = []
+    mockLexical.rootSelectEnd.mockClear()
+    mockUseClipboard.mockReturnValue({
+      copied: false,
+      copy: mockCopy,
+      reset: mockReset,
+    })
   })
 
   // Prompt actions should expose the designed copy control and copy the current draft prompt.
   describe('Prompt Actions', () => {
+    it('should label the editable prompt with the visible prompt heading', () => {
+      renderAgentPromptEditor('Review these tenders')
+
+      expect(mockPromptEditor).toHaveBeenCalledWith(expect.objectContaining({
+        'aria-labelledby': 'agent-configure-prompt-label',
+      }))
+    })
+
     it('should copy the current prompt when the copy button is clicked', () => {
       renderAgentPromptEditor('Review these tenders')
 
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
 
       expect(mockCopy).toHaveBeenCalledWith('Review these tenders')
+    })
+
+    it('should let clipboard timeout restore the copied state instead of resetting on mouse leave', () => {
+      renderAgentPromptEditor('Review these tenders')
+
+      expect(mockUseClipboard).toHaveBeenCalledWith(expect.objectContaining({
+        timeout: 2000,
+      }))
+
+      fireEvent.mouseLeave(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
+
+      expect(mockReset).not.toHaveBeenCalled()
     })
 
     it('should update knowledge reference labels when the retrieval title changes', () => {
@@ -269,6 +357,40 @@ describe('AgentPromptEditor', () => {
 
       expect(container.querySelector('.i-ri-terminal-box-line')).not.toBeInTheDocument()
     })
+
+    it('should warn only for prompt references missing from the current configuration', () => {
+      mockConfigFiles.current = [{
+        id: 'folder',
+        name: 'Folder',
+        children: [{
+          id: 'file-1',
+          name: 'Spec.md',
+          driveKey: 'drive/spec.md',
+        }],
+      }]
+      renderAgentPromptEditor('Review these tenders', {
+        knowledgeRetrievals: [{ id: 'retrieval-1', name: 'Release Notes' }],
+        tools: [
+          duckDuckGoProviderTool,
+          { id: 'cli-1', kind: 'cli', name: 'Lark CLI' },
+        ],
+      })
+
+      const promptEditorProps = mockPromptEditor.mock.calls.at(-1)?.[0] as PromptEditorProps
+      const getWarning = promptEditorProps.rosterReferenceBlock?.getWarning
+      expect(getWarning).toBeDefined()
+
+      expect(getWarning?.({ kind: 'skill', id: 'skills%2Fplaywright%2FSKILL.md', label: 'Playwright' })).toBeUndefined()
+      expect(getWarning?.({ kind: 'file', id: 'drive%2Fspec.md', label: 'Spec.md' })).toBeUndefined()
+      expect(getWarning?.({ kind: 'knowledge', id: 'retrieval-1', label: 'Release Notes' })).toBeUndefined()
+      expect(getWarning?.({ kind: 'tool', id: 'duckduckgo/ddg_search', label: 'DuckDuckGo Search' })).toBeUndefined()
+      expect(getWarning?.({ kind: 'tool-all', id: 'duckduckgo/*', label: 'DuckDuckGo' })).toBeUndefined()
+
+      expect(getWarning?.({ kind: 'skill', id: 'missing-skill', label: 'Missing Skill' })).toContain('agentDetail.configure.prompt.referenceMissing')
+      expect(getWarning?.({ kind: 'file', id: 'missing-file', label: 'Missing File' })).toContain('agentDetail.configure.prompt.referenceMissing')
+      expect(getWarning?.({ kind: 'knowledge', id: 'missing-retrieval', label: 'Missing Retrieval' })).toContain('agentDetail.configure.prompt.referenceMissing')
+      expect(getWarning?.({ kind: 'tool', id: 'missing/action', label: 'Missing Tool' })).toContain('agentDetail.configure.prompt.referenceMissing')
+    })
   })
 
   // Prompt slash commands should use the Agent Roster category menu and replace it with submenus.
@@ -293,9 +415,38 @@ describe('AgentPromptEditor', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
 
-      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright%2FSKILL.md:Playwright§]')
+      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
+      })
+    })
+
+    it('should replace the slash at the current lexical selection instead of appending', async () => {
+      const textNode = {
+        __text: true as const,
+        getKey: () => 'text-node',
+        getTextContent: () => 'Review / now',
+        getTextContentSize: () => 'Review / now'.length,
+        select: vi.fn(),
+      }
+      mockLexical.rootChildren = [textNode]
+      mockLexical.selection = {
+        __range: true,
+        isCollapsed: () => true,
+        anchor: {
+          getNode: () => textNode,
+          offset: 'Review /'.length,
+        },
+      }
+      const { store } = renderAgentPromptEditor('Review / now')
+
+      fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
+      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i }))
+      fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
+
+      expect(store.get(agentComposerPromptAtom)).toBe('Review [§skill:playwright:Playwright§] now')
+      await waitFor(() => {
+        expect(mockLexical.rootSelectEnd).toHaveBeenCalled()
       })
     })
 
@@ -329,8 +480,8 @@ describe('AgentPromptEditor', () => {
           skills={[]}
           files={[]}
           tools={[]}
-          onToolsChange={vi.fn()}
-          onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One', skillMdKey: 'skills/skill-1/SKILL.md' })}
+          onAddProviderTools={vi.fn()}
+          onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One' })}
           retrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
@@ -338,7 +489,7 @@ describe('AgentPromptEditor', () => {
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§skill:skills%2Fskill-1%2FSKILL.md:Skill One§]')
+      expect(onSelect).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -347,8 +498,8 @@ describe('AgentPromptEditor', () => {
           skills={[]}
           files={[]}
           tools={[]}
-          onToolsChange={vi.fn()}
-          onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown', driveKey: 'files/Guide.md' })}
+          onAddProviderTools={vi.fn()}
+          onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown', configName: 'Guide.md' })}
           retrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
@@ -356,7 +507,7 @@ describe('AgentPromptEditor', () => {
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§file:files%2FGuide.md:Guide.md§]')
+      expect(onSelect).toHaveBeenCalledWith('[§file:Guide.md:Guide.md§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -365,7 +516,7 @@ describe('AgentPromptEditor', () => {
           skills={[]}
           files={[]}
           tools={[]}
-          onToolsChange={vi.fn()}
+          onAddProviderTools={vi.fn()}
           onAddKnowledge={options => options?.onAdded?.({ id: 'retrieval-1', name: 'Retrieval One', queryMode: 'agent' })}
           retrievals={[]}
           onBack={vi.fn()}
@@ -383,7 +534,7 @@ describe('AgentPromptEditor', () => {
           skills={[]}
           files={[]}
           tools={[]}
-          onToolsChange={vi.fn()}
+          onAddProviderTools={vi.fn()}
           onAddCliTool={options => options?.onAdded?.({ id: 'cli-1', kind: 'cli', name: 'Lark CLI' })}
           retrievals={[]}
           onBack={vi.fn()}

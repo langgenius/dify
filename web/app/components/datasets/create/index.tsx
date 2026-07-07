@@ -131,9 +131,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
 
   return (
-    <div className="flex flex-col overflow-hidden bg-components-panel-bg" style={{ height: 'calc(100vh - 56px)' }}>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-components-panel-bg">
       <TopBar activeIndex={step - 1} datasetId={datasetId} />
-      <div style={{ height: 'calc(100% - 52px)' }}>
+      <div className="min-h-0 flex-1">
         {
           isLoadingAuthedDataSourceList && (
             <Loading type="app" />

@@ -18,9 +18,17 @@ const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { prov
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    modelProviders: {
-      models: {
-        queryOptions: (options: { input: { params: { provider: string } }, enabled?: boolean }) => mockQueryOptions(options),
+    workspaces: {
+      current: {
+        modelProviders: {
+          byProvider: {
+            models: {
+              get: {
+                queryOptions: (options: { input: { params: { provider: string } }, enabled?: boolean }) => mockQueryOptions(options),
+              },
+            },
+          },
+        },
       },
     },
   },
@@ -94,6 +102,25 @@ const ExternalExpandControls = () => {
   )
 }
 
+const modelProviderModelsResponse = {
+  data: [{
+    model: 'gpt-4',
+    label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' },
+    model_type: 'llm',
+    features: [],
+    fetch_from: 'predefined-model',
+    status: 'active',
+    model_properties: {},
+    load_balancing_enabled: false,
+    provider: {
+      provider: 'langgenius/openai/openai',
+      label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+      supported_model_types: ['llm'],
+      tenant_id: 'tenant-id',
+    },
+  }],
+}
+
 describe('ProviderAddedCard', () => {
   const mockProvider = {
     provider: 'langgenius/openai/openai',
@@ -115,7 +142,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should open, refresh and collapse model list', async () => {
-    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(<ProviderAddedCard provider={mockProvider} />)
 
     const showModelsBtn = screen.getByRole('button', { name: /modelProvider\.showModels/i })
@@ -172,7 +199,7 @@ describe('ProviderAddedCard', () => {
   })
 
   it('should only react to external expansion for the matching provider', async () => {
-    mockFetchModelProviderModels.mockResolvedValue({ data: [{ model: 'gpt-4' }] })
+    mockFetchModelProviderModels.mockResolvedValue(modelProviderModelsResponse)
     renderWithQueryClient(
       <>
         <ProviderAddedCard provider={mockProvider} />

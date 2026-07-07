@@ -1,13 +1,28 @@
+from collections.abc import Iterator
 from types import SimpleNamespace
 from typing import cast
+from uuid import uuid4
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import create_engine, func, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.dataset import Pipeline
+from models.dataset import Document, Pipeline
+from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import Account, App, EndUser
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
+
+
+@pytest.fixture
+def document_session() -> Iterator[Session]:
+    engine = create_engine("sqlite:///:memory:")
+    Document.__table__.create(engine)
+    session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+    with session_factory() as session:
+        yield session
+    engine.dispose()
 
 
 def test_get_max_active_requests_uses_smallest_non_zero_limit(mocker: MockerFixture) -> None:
@@ -63,6 +78,7 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
 
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
     update_status_mock = mocker.patch.object(PipelineGenerateService, "update_document_status")
+    session = mocker.Mock()
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
     generator_instance = generator_cls.return_value
@@ -70,6 +86,7 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
     generator_cls.convert_to_event_stream.return_value = "stream-events"
 
     result = PipelineGenerateService.generate(
+        session=session,
         pipeline=pipeline,
         user=user,
         args=args,
@@ -78,42 +95,40 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker: Mocke
     )
 
     assert result == "stream-events"
-    update_status_mock.assert_called_once_with("doc-1")
+    update_status_mock.assert_called_once_with("doc-1", session)
 
 
-def test_update_document_status_updates_existing_document(mocker: MockerFixture) -> None:
-    document = SimpleNamespace(indexing_status="completed")
-
-    session_mock = mocker.Mock()
-    session_mock.get.return_value = document
-    add_mock = session_mock.add
-    commit_mock = session_mock.commit
-    mocker.patch(
-        "services.rag_pipeline.pipeline_generate_service.db",
-        new=SimpleNamespace(session=session_mock),
+def test_update_document_status_updates_existing_document(document_session: Session) -> None:
+    session = document_session
+    document_id = str(uuid4())
+    document = Document(
+        id=document_id,
+        tenant_id=str(uuid4()),
+        dataset_id=str(uuid4()),
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch-1",
+        name="Doc",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=str(uuid4()),
+        indexing_status=IndexingStatus.COMPLETED,
     )
+    session.add(document)
+    session.commit()
 
-    PipelineGenerateService.update_document_status("doc-1")
+    PipelineGenerateService.update_document_status(document_id, session)
 
-    assert document.indexing_status == "waiting"
-    add_mock.assert_called_once_with(document)
-    commit_mock.assert_called_once()
+    updated_document = session.get(Document, document_id)
+    assert updated_document is not None
+    assert updated_document.indexing_status == IndexingStatus.WAITING
 
 
-def test_update_document_status_skips_when_document_missing(mocker: MockerFixture) -> None:
-    session_mock = mocker.Mock()
-    session_mock.get.return_value = None
-    add_mock = session_mock.add
-    commit_mock = session_mock.commit
-    mocker.patch(
-        "services.rag_pipeline.pipeline_generate_service.db",
-        new=SimpleNamespace(session=session_mock),
-    )
+def test_update_document_status_skips_when_document_missing(document_session: Session) -> None:
+    session = document_session
 
-    PipelineGenerateService.update_document_status("missing")
+    PipelineGenerateService.update_document_status(str(uuid4()), session)
 
-    add_mock.assert_not_called()
-    commit_mock.assert_not_called()
+    assert session.scalar(select(func.count()).select_from(Document)) == 0
 
 
 # --- generate_single_iteration ---

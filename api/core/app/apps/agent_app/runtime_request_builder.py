@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import (
@@ -29,22 +29,24 @@ from clients.agent_backend import (
     redact_for_agent_backend_log,
 )
 from configs import dify_config
-from core.app.entities.app_invoke_entities import DifyRunContext
-from core.workflow.nodes.agent_v2.plugin_tools_builder import (
-    WorkflowAgentPluginToolsBuilder,
-    WorkflowAgentPluginToolsBuildError,
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.workflow.nodes.agent_v2.dify_tools_builder import (
+    WorkflowAgentDifyToolLayersBuilder,
+    WorkflowAgentDifyToolsBuilder,
+    WorkflowAgentDifyToolsBuildError,
+    WorkflowAgentToolLayers,
 )
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
     build_ask_human_layer_config,
-    build_drive_aware_soul_mention_resolver,
-    build_drive_layer_config,
+    build_config_aware_soul_mention_resolver,
+    build_config_layer_config,
     build_knowledge_layer_config,
     build_shell_layer_config,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
-from services.agent.prompt_mentions import build_soul_mention_resolver, expand_prompt_mentions
+from services.agent.prompt_mentions import expand_prompt_mentions
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -68,6 +70,7 @@ class AgentAppRuntimeBuildContext:
     conversation_id: str
     user_query: str
     idempotency_key: str
+    agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
     deferred_tool_results: DeferredToolResultsPayload | None = None
@@ -88,11 +91,11 @@ class AgentAppRuntimeRequestBuilder:
         *,
         credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
-        plugin_tools_builder: WorkflowAgentPluginToolsBuilder | None = None,
+        dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
     ) -> None:
         self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
-        self._plugin_tools_builder = plugin_tools_builder or WorkflowAgentPluginToolsBuilder()
+        self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
     def build(self, context: AgentAppRuntimeBuildContext) -> AgentAppRuntimeRequest:
         agent_soul = context.agent_soul
@@ -105,38 +108,30 @@ class AgentAppRuntimeRequestBuilder:
         metadata = self._build_metadata(context)
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
-            tools_layer = self._plugin_tools_builder.build(
+            tool_layers = self._build_tool_layers(
                 tenant_id=context.dify_context.tenant_id,
                 app_id=context.dify_context.app_id,
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
                 invoke_from=context.dify_context.invoke_from,
             )
-        except WorkflowAgentPluginToolsBuildError as error:
+        except WorkflowAgentDifyToolsBuildError as error:
             raise AgentAppRuntimeRequestBuildError(error.error_code, str(error)) from error
-        if tools_layer is not None or agent_soul.tools.cli_tools:
+        if tool_layers.plugin_tools is not None or tool_layers.core_tools is not None or agent_soul.tools.cli_tools:
             metadata["agent_tools"] = {
-                "dify_tool_count": len(tools_layer.tools) if tools_layer is not None else 0,
-                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools]
-                if tools_layer is not None
-                else [],
+                "dify_tool_count": len(tool_layers.exposed_tool_names()),
+                "dify_tool_names": tool_layers.exposed_tool_names(),
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        drive_config = None
-        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
-        if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            drive_config, drive_warnings = build_drive_layer_config(
-                agent_soul,
-                tenant_id=context.dify_context.tenant_id,
-                agent_id=context.agent_id,
-            )
-            append_runtime_warnings(metadata, drive_warnings)
-            soul_prompt_resolver = build_drive_aware_soul_mention_resolver(
-                agent_soul,
-                tenant_id=context.dify_context.tenant_id,
-                agent_id=context.agent_id,
-            )
+        config_layer_config, config_warnings = build_config_layer_config(
+            agent_soul,
+            agent_id=context.agent_id,
+            config_version_id=context.agent_config_snapshot_id,
+            config_version_kind=context.agent_config_version_kind,
+        )
+        append_runtime_warnings(metadata, config_warnings)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
         request = self._request_builder.build_for_agent_app(
@@ -158,6 +153,7 @@ class AgentAppRuntimeRequestBuilder:
                     conversation_id=context.conversation_id,
                     agent_id=context.agent_id,
                     agent_config_version_id=context.agent_config_snapshot_id,
+                    agent_config_version_kind=context.agent_config_version_kind,
                     # Agent Files §1.3: real Dify access context + agent run mode.
                     user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
@@ -168,9 +164,10 @@ class AgentAppRuntimeRequestBuilder:
                 agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
                 or None,
                 user_prompt=context.user_query,
-                tools=tools_layer,
+                tools=tool_layers.plugin_tools,
+                core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
-                drive_config=drive_config,
+                config_layer_config=config_layer_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
@@ -182,6 +179,26 @@ class AgentAppRuntimeRequestBuilder:
         )
         redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
         return AgentAppRuntimeRequest(request=request, redacted_request=redacted, metadata=metadata)
+
+    def _build_tool_layers(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None,
+        tools: AgentSoulToolsConfig,
+        invoke_from: InvokeFrom,
+    ) -> WorkflowAgentToolLayers:
+        # Production Agent App runs intentionally keep existing plugin configs
+        # on the direct `dify.plugin.tools` route. This builder emits plugin
+        # tools directly and non-plugin Dify tools through `dify.core.tools`.
+        return self._dify_tools_builder.build_layers(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            tools=tools,
+            invoke_from=invoke_from,
+        )
 
     @staticmethod
     def _build_metadata(context: AgentAppRuntimeBuildContext) -> dict[str, Any]:

@@ -1,0 +1,3 @@
+Update only the Agent instructions.
+After applying, every response should briefly mention E2E_BUILD_DRAFT_PASS.
+Do not add files, skills, tools, knowledge, environment variables, or other capabilities.

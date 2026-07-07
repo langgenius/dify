@@ -283,9 +283,9 @@ export const useInsertSnippet = () => {
 
   const handleInsertSnippet = useCallback(async (snippetId: string, insertPayload?: SnippetInsertPayload) => {
     try {
-      const workflow = await queryClient.fetchQuery(consoleQuery.snippets.publishedWorkflow.queryOptions({
+      const workflow = await queryClient.fetchQuery(consoleQuery.snippets.bySnippetId.workflows.publish.get.queryOptions({
         input: {
-          params: { snippetId },
+          params: { snippet_id: snippetId },
         },
       }))
       const { nodes: snippetNodes, edges: snippetEdges } = getSnippetGraph(workflow.graph)

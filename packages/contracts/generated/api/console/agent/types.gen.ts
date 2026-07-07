@@ -18,7 +18,7 @@ export type AgentAppCreatePayload = {
   icon_background?: string | null
   icon_type?: IconType | null
   name: string
-  role: string
+  role?: string | null
 }
 
 export type AgentAppDetailWithSite = {
@@ -30,7 +30,9 @@ export type AgentAppDetailWithSite = {
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  debug_conversation_has_messages?: boolean
   debug_conversation_id?: string | null
+  debug_conversation_message_count?: number
   deleted_tools?: Array<DeletedTool>
   description?: string | null
   enable_api: boolean
@@ -50,7 +52,7 @@ export type AgentAppDetailWithSite = {
   role?: string | null
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -72,7 +74,7 @@ export type AgentAppUpdatePayload = {
   icon_type?: IconType | null
   max_active_requests?: number | null
   name: string
-  role: string
+  role?: string | null
   use_icon_as_answer_icon?: boolean | null
 }
 
@@ -109,17 +111,17 @@ export type ApiKeyItem = {
   type: string
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type AgentSimpleResultResponse = {
   result: string
 }
 
 export type AgentBuildDraftResponse = {
-  agent_soul: {
-    [key: string]: unknown
-  }
-  draft: {
-    [key: string]: unknown
-  }
+  agent_soul: AgentSoulConfig
+  draft: AgentConfigDraftSummaryResponse
   variant: string
 }
 
@@ -162,10 +164,6 @@ export type SuggestedQuestionsResponse = {
   data: Array<string>
 }
 
-export type SimpleResultResponse = {
-  result: string
-}
-
 export type AgentAppComposerResponse = {
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   agent: AgentComposerAgentResponse
@@ -195,6 +193,82 @@ export type AgentComposerValidateResponse = {
   warnings?: Array<ComposerValidationWarningResponse>
 }
 
+export type AgentConfigFileListResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  items?: Array<AgentConfigFileItemResponse>
+}
+
+export type AgentConfigFileUploadPayload = {
+  upload_file_id: string
+}
+
+export type AgentConfigFileUploadResponse = {
+  config_version: AgentConfigVersionResponse
+  file: AgentConfigFileItemResponse
+}
+
+export type AgentConfigDeleteResponse = {
+  removed_names?: Array<string>
+  result: 'success'
+}
+
+export type AgentConfigDownloadResponse = {
+  url: string
+}
+
+export type AgentConfigFilePreviewResponse = {
+  binary: boolean
+  name: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigManifestResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  env_keys?: Array<string>
+  files?: AgentConfigFileItemsResponse
+  note?: string
+  skills?: AgentConfigSkillItemsResponse
+}
+
+export type AgentConfigSkillListResponse = {
+  agent_id: string
+  config_version: AgentConfigVersionResponse
+  items?: Array<AgentConfigSkillItemResponse>
+}
+
+export type AgentConfigSkillUploadResponse = {
+  config_version: AgentConfigVersionResponse
+  skill: AgentConfigSkillItemResponse
+}
+
+export type AgentConfigSkillFilePreviewResponse = {
+  binary: boolean
+  path: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillInspectResponse = {
+  description?: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }> | null
+  files?: Array<AgentConfigSkillFileResponse>
+  hash?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  size?: number | null
+  skill_md: AgentConfigSkillMarkdownResponse
+  source: 'config_skill_zip'
+  warnings?: Array<string>
+}
+
 export type AgentAppCopyPayload = {
   description?: string | null
   icon?: string | null
@@ -205,7 +279,9 @@ export type AgentAppCopyPayload = {
 }
 
 export type AgentDebugConversationRefreshResponse = {
+  debug_conversation_has_messages?: boolean
   debug_conversation_id: string
+  debug_conversation_message_count?: number
 }
 
 export type AgentDriveListResponse = {
@@ -298,16 +374,16 @@ export type AgentLogMessageListResponse = {
 }
 
 export type MessageDetailResponse = {
-  agent_thoughts?: Array<AgentThought>
+  agent_thoughts: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
-  answer_tokens?: number | null
+  answer_tokens: number
   conversation_id: string
   created_at?: number | null
   error?: string | null
   extra_contents?: Array<HumanInputContent>
-  feedbacks?: Array<Feedback>
+  feedbacks: Array<Feedback>
   from_account_id?: string | null
   from_end_user_id?: string | null
   from_source: string
@@ -315,12 +391,12 @@ export type MessageDetailResponse = {
   inputs: {
     [key: string]: JsonValue
   }
-  message?: JsonValue | null
-  message_files?: Array<MessageFile>
-  message_tokens?: number | null
-  metadata?: JsonValue | null
+  message: JsonValue
+  message_files: Array<MessageFile>
+  message_tokens: number
+  metadata: JsonValue
   parent_message_id?: string | null
-  provider_response_latency?: number | null
+  provider_response_latency: number
   query: string
   status: string
   workflow_run_id?: string | null
@@ -331,18 +407,19 @@ export type AgentPublishPayload = {
 }
 
 export type AgentPublishResponse = {
-  active_config_snapshot?: {
-    [key: string]: unknown
-  } | null
+  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   active_config_snapshot_id: string
-  draft?: {
-    [key: string]: unknown
-  } | null
+  draft?: AgentConfigDraftSummaryResponse | null
   result: string
 }
 
 export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
+}
+
+export type SandboxInfoResponse = {
+  session_id: string
+  workspace_cwd: string
 }
 
 export type SandboxListResponse = {
@@ -365,8 +442,7 @@ export type AgentSandboxUploadPayload = {
 }
 
 export type SandboxUploadResponse = {
-  file: SandboxToolFileResponse
-  path: string
+  url: string
 }
 
 export type AgentSkillUploadResponse = {
@@ -498,17 +574,6 @@ export type Tag = {
   type: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -554,6 +619,9 @@ export type AgentInviteOptionResponse = {
 export type AgentSoulConfig = {
   app_features?: AgentSoulAppFeaturesConfig
   app_variables?: Array<AppVariableConfig>
+  config_files?: Array<AgentConfigFileRefConfig>
+  config_note?: string
+  config_skills?: Array<AgentConfigSkillRefConfig>
   env?: AgentSoulEnvConfig
   files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
@@ -565,6 +633,18 @@ export type AgentSoulConfig = {
   sandbox?: AgentSoulSandboxConfig
   schema_version?: number
   tools?: AgentSoulToolsConfig
+}
+
+export type AgentConfigDraftSummaryResponse = {
+  account_id?: string | null
+  agent_id: string
+  base_snapshot_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  draft_type: AgentConfigDraftType
+  id: string
+  updated_at?: number | null
+  updated_by?: string | null
 }
 
 export type ComposerBindingPayload = {
@@ -628,18 +708,6 @@ export type AgentComposerAgentResponse = {
   status: AgentStatus
 }
 
-export type AgentConfigDraftSummaryResponse = {
-  account_id?: string | null
-  agent_id: string
-  base_snapshot_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  draft_type: AgentConfigDraftType
-  id: string
-  updated_at?: number | null
-  updated_by?: string | null
-}
-
 export type ComposerValidationFindingsResponse = {
   knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
   warnings?: Array<ComposerValidationWarningResponse>
@@ -673,6 +741,55 @@ export type ComposerValidationWarningResponse = {
   kind?: string | null
   message?: string | null
   surface?: string | null
+}
+
+export type AgentConfigVersionResponse = {
+  id: string
+  kind: 'build_draft' | 'draft' | 'snapshot'
+  writable: boolean
+}
+
+export type AgentConfigFileItemResponse = {
+  file_id?: string | null
+  hash?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigFileItemsResponse = {
+  items?: Array<AgentConfigFileItemResponse>
+}
+
+export type AgentConfigSkillItemsResponse = {
+  items?: Array<AgentConfigSkillItemResponse>
+}
+
+export type AgentConfigSkillItemResponse = {
+  description?: string
+  file_id?: string | null
+  hash?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillFileResponse = {
+  downloadable: boolean
+  name: string
+  path: string
+  previewable: boolean
+  type: 'directory' | 'file'
+}
+
+export type AgentConfigSkillMarkdownResponse = {
+  binary: false
+  path: 'SKILL.md'
+  size?: number | null
+  text: string
+  truncated: boolean
 }
 
 export type AgentDriveItemResponse = {
@@ -728,7 +845,7 @@ export type AgentSensitiveWordAvoidanceFeatureConfig = {
 
 export type AgentSuggestedQuestionsAfterAnswerFeatureConfig = {
   enabled?: boolean
-  model?: AgentSoulModelConfig | null
+  model?: AgentSuggestedQuestionsAfterAnswerModelConfig | null
   prompt?: string | null
   [key: string]: unknown
 }
@@ -847,6 +964,17 @@ export type Feedback = {
   rating: string
 }
 
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+
 export type MessageFile = {
   belongs_to?: string | null
   filename: string
@@ -877,11 +1005,6 @@ export type SandboxFileEntryResponse = {
   name: string
   size?: number | null
   type: 'dir' | 'file' | 'other' | 'symlink'
-}
-
-export type SandboxToolFileResponse = {
-  reference: string
-  transfer_method?: 'tool_file'
 }
 
 export type SkillManifest = {
@@ -949,7 +1072,7 @@ export type AgentConfigRevisionResponse = {
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
-  model?: JsonValue | null
+  model?: unknown | null
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
@@ -987,6 +1110,7 @@ export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'work
 export type AgentStatus = 'active' | 'archived'
 
 export type AgentSoulAppFeaturesConfig = {
+  file_upload?: AgentFileUploadFeatureConfig
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
@@ -1002,6 +1126,25 @@ export type AppVariableConfig = {
   name: string
   required?: boolean
   type: string
+}
+
+export type AgentConfigFileRefConfig = {
+  file_id: string
+  file_kind: 'tool_file' | 'upload_file'
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillRefConfig = {
+  description?: string
+  file_id: string
+  file_kind?: 'tool_file'
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  size?: number | null
 }
 
 export type AgentSoulEnvConfig = {
@@ -1050,6 +1193,8 @@ export type AgentSoulToolsConfig = {
   cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
+
+export type AgentConfigDraftType = 'debug_build' | 'draft'
 
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
@@ -1117,8 +1262,6 @@ export type WorkflowPreviousNodeOutputRef = {
   [key: string]: unknown
 }
 
-export type AgentConfigDraftType = 'debug_build' | 'draft'
-
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
 export type AgentCliToolConfig = {
@@ -1176,6 +1319,16 @@ export type AgentModerationProviderConfig = {
   inputs_config?: AgentModerationIoConfig | null
   keywords?: string | null
   outputs_config?: AgentModerationIoConfig | null
+  [key: string]: unknown
+}
+
+export type AgentSuggestedQuestionsAfterAnswerModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  } | null
+  mode?: string | null
+  name: string
+  provider: string
   [key: string]: unknown
 }
 
@@ -1269,6 +1422,16 @@ export type AgentConfigRevisionOperation
     | 'save_new_agent'
     | 'save_new_version'
     | 'save_to_roster'
+
+export type AgentFileUploadFeatureConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  enabled?: boolean
+  image?: AgentFileUploadImageFeatureConfig
+  number_limits?: number
+  [key: string]: unknown
+}
 
 export type AgentSecretRefConfig = {
   credential_id?: string | null
@@ -1521,6 +1684,15 @@ export type FormInputConfig
 
 export type JsonValue2 = unknown
 
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type AgentFileUploadImageFeatureConfig = {
+  enabled?: boolean
+  [key: string]: unknown
+}
+
 export type AgentKnowledgeDatasetConfig = {
   description?: string | null
   id?: string | null
@@ -1643,10 +1815,6 @@ export type StringListSource = {
   value?: Array<string>
 }
 
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
-
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
     | '<'
@@ -1690,7 +1858,9 @@ export type AgentAppDetailWithSiteWritable = {
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  debug_conversation_has_messages?: boolean
   debug_conversation_id?: string | null
+  debug_conversation_message_count?: number
   deleted_tools?: Array<DeletedTool>
   description?: string | null
   enable_api: boolean
@@ -1709,7 +1879,7 @@ export type AgentAppDetailWithSiteWritable = {
   role?: string | null
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -1989,6 +2159,27 @@ export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponses = {
 export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponse
   = DeleteAgentByAgentIdApiKeysByApiKeyIdResponses[keyof DeleteAgentByAgentIdApiKeysByApiKeyIdResponses]
 
+export type PostAgentByAgentIdBuildChatFinalizeData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/build-chat/finalize'
+}
+
+export type PostAgentByAgentIdBuildChatFinalizeErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type PostAgentByAgentIdBuildChatFinalizeResponses = {
+  200: SimpleResultResponse
+}
+
+export type PostAgentByAgentIdBuildChatFinalizeResponse
+  = PostAgentByAgentIdBuildChatFinalizeResponses[keyof PostAgentByAgentIdBuildChatFinalizeResponses]
+
 export type DeleteAgentByAgentIdBuildDraftData = {
   body?: never
   path: {
@@ -2194,6 +2385,284 @@ export type PostAgentByAgentIdComposerValidateResponses = {
 
 export type PostAgentByAgentIdComposerValidateResponse
   = PostAgentByAgentIdComposerValidateResponses[keyof PostAgentByAgentIdComposerValidateResponses]
+
+export type GetAgentByAgentIdConfigFilesData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files'
+}
+
+export type GetAgentByAgentIdConfigFilesResponses = {
+  200: AgentConfigFileListResponse
+}
+
+export type GetAgentByAgentIdConfigFilesResponse
+  = GetAgentByAgentIdConfigFilesResponses[keyof GetAgentByAgentIdConfigFilesResponses]
+
+export type PostAgentByAgentIdConfigFilesData = {
+  body: AgentConfigFileUploadPayload
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files'
+}
+
+export type PostAgentByAgentIdConfigFilesResponses = {
+  201: AgentConfigFileUploadResponse
+}
+
+export type PostAgentByAgentIdConfigFilesResponse
+  = PostAgentByAgentIdConfigFilesResponses[keyof PostAgentByAgentIdConfigFilesResponses]
+
+export type DeleteAgentByAgentIdConfigFilesByNameData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files/{name}'
+}
+
+export type DeleteAgentByAgentIdConfigFilesByNameResponses = {
+  200: AgentConfigDeleteResponse
+}
+
+export type DeleteAgentByAgentIdConfigFilesByNameResponse
+  = DeleteAgentByAgentIdConfigFilesByNameResponses[keyof DeleteAgentByAgentIdConfigFilesByNameResponses]
+
+export type GetAgentByAgentIdConfigFilesByNameDownloadData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files/{name}/download'
+}
+
+export type GetAgentByAgentIdConfigFilesByNameDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetAgentByAgentIdConfigFilesByNameDownloadResponse
+  = GetAgentByAgentIdConfigFilesByNameDownloadResponses[keyof GetAgentByAgentIdConfigFilesByNameDownloadResponses]
+
+export type GetAgentByAgentIdConfigFilesByNamePreviewData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files/{name}/preview'
+}
+
+export type GetAgentByAgentIdConfigFilesByNamePreviewResponses = {
+  200: AgentConfigFilePreviewResponse
+}
+
+export type GetAgentByAgentIdConfigFilesByNamePreviewResponse
+  = GetAgentByAgentIdConfigFilesByNamePreviewResponses[keyof GetAgentByAgentIdConfigFilesByNamePreviewResponses]
+
+export type GetAgentByAgentIdConfigManifestData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/manifest'
+}
+
+export type GetAgentByAgentIdConfigManifestResponses = {
+  200: AgentConfigManifestResponse
+}
+
+export type GetAgentByAgentIdConfigManifestResponse
+  = GetAgentByAgentIdConfigManifestResponses[keyof GetAgentByAgentIdConfigManifestResponses]
+
+export type GetAgentByAgentIdConfigSkillsData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills'
+}
+
+export type GetAgentByAgentIdConfigSkillsResponses = {
+  200: AgentConfigSkillListResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsResponse
+  = GetAgentByAgentIdConfigSkillsResponses[keyof GetAgentByAgentIdConfigSkillsResponses]
+
+export type PostAgentByAgentIdConfigSkillsUploadData = {
+  body: {
+    file: Blob | File
+  }
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills/upload'
+}
+
+export type PostAgentByAgentIdConfigSkillsUploadResponses = {
+  201: AgentConfigSkillUploadResponse
+}
+
+export type PostAgentByAgentIdConfigSkillsUploadResponse
+  = PostAgentByAgentIdConfigSkillsUploadResponses[keyof PostAgentByAgentIdConfigSkillsUploadResponses]
+
+export type DeleteAgentByAgentIdConfigSkillsByNameData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills/{name}'
+}
+
+export type DeleteAgentByAgentIdConfigSkillsByNameResponses = {
+  200: AgentConfigDeleteResponse
+}
+
+export type DeleteAgentByAgentIdConfigSkillsByNameResponse
+  = DeleteAgentByAgentIdConfigSkillsByNameResponses[keyof DeleteAgentByAgentIdConfigSkillsByNameResponses]
+
+export type GetAgentByAgentIdConfigSkillsByNameDownloadData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills/{name}/download'
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameDownloadResponse
+  = GetAgentByAgentIdConfigSkillsByNameDownloadResponses[keyof GetAgentByAgentIdConfigSkillsByNameDownloadResponses]
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/config/skills/{name}/files/content'
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentResponse
+  = GetAgentByAgentIdConfigSkillsByNameFilesContentResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesContentResponses]
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query: {
+    draft_type?: 'debug_build' | 'draft'
+    path: string
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills/{name}/files/download'
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses = {
+  200: AgentConfigDownloadResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse
+  = GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses]
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query: {
+    draft_type?: 'debug_build' | 'draft'
+    path: string
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills/{name}/files/preview'
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses = {
+  200: AgentConfigSkillFilePreviewResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse
+  = GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses]
+
+export type GetAgentByAgentIdConfigSkillsByNameInspectData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills/{name}/inspect'
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameInspectResponses = {
+  200: AgentConfigSkillInspectResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameInspectResponse
+  = GetAgentByAgentIdConfigSkillsByNameInspectResponses[keyof GetAgentByAgentIdConfigSkillsByNameInspectResponses]
 
 export type PostAgentByAgentIdCopyData = {
   body: AgentAppCopyPayload
@@ -2531,6 +3000,24 @@ export type GetAgentByAgentIdReferencingWorkflowsResponses = {
 
 export type GetAgentByAgentIdReferencingWorkflowsResponse
   = GetAgentByAgentIdReferencingWorkflowsResponses[keyof GetAgentByAgentIdReferencingWorkflowsResponses]
+
+export type GetAgentByAgentIdSandboxData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query: {
+    conversation_id: string
+  }
+  url: '/agent/{agent_id}/sandbox'
+}
+
+export type GetAgentByAgentIdSandboxResponses = {
+  200: SandboxInfoResponse
+}
+
+export type GetAgentByAgentIdSandboxResponse
+  = GetAgentByAgentIdSandboxResponses[keyof GetAgentByAgentIdSandboxResponses]
 
 export type GetAgentByAgentIdSandboxFilesData = {
   body?: never

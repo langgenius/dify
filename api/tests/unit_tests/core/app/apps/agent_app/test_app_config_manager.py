@@ -65,6 +65,36 @@ def test_missing_soul_model_leaves_no_model_key():
     d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), None)
     assert "model" not in d
     assert d["pre_prompt"] == ""
+    assert d["file_upload"] == {
+        "allowed_file_extensions": ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"],
+        "allowed_file_types": ["document", "image", "audio", "video"],
+        "allowed_file_upload_methods": ["local_file", "remote_url"],
+        "enabled": True,
+        "image": {"enabled": True},
+        "number_limits": 3,
+    }
+
+
+def test_soul_file_upload_overrides_legacy_app_model_config():
+    fake_amc = SimpleNamespace(
+        to_dict=lambda: {
+            "file_upload": {
+                "enabled": False,
+                "image": {"enabled": False},
+            },
+        }
+    )
+
+    d = AgentAppConfigManager._synthesize_config_dict(AgentSoulConfig(), fake_amc)  # type: ignore[arg-type]
+
+    assert d["file_upload"] == {
+        "allowed_file_extensions": ["JPG", "JPEG", "PNG", "GIF", "WEBP", "SVG"],
+        "allowed_file_types": ["document", "image", "audio", "video"],
+        "allowed_file_upload_methods": ["local_file", "remote_url"],
+        "enabled": True,
+        "image": {"enabled": True},
+        "number_limits": 3,
+    }
 
 
 def test_prompt_type_defaults_to_simple():

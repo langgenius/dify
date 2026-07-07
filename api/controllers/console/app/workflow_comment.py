@@ -189,14 +189,14 @@ class WorkflowCommentReplyUpdate(ResponseModel):
 
 register_schema_models(
     console_ns,
-    AccountWithRole,
-    WorkflowCommentMentionUsersPayload,
     WorkflowCommentCreatePayload,
     WorkflowCommentUpdatePayload,
     WorkflowCommentReplyPayload,
 )
 register_response_schema_models(
     console_ns,
+    AccountWithRole,
+    WorkflowCommentMentionUsersPayload,
     WorkflowCommentAccount,
     WorkflowCommentReply,
     WorkflowCommentMention,
