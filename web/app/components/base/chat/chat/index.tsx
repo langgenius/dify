@@ -256,6 +256,7 @@ const Chat: FC<ChatProps> = ({
   }, [handleWindowResize, sidebarCollapseState])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
+  const shouldApplyFooterClassName = hasTryToAsk || !noChatInput || !noStopResponding
 
   return (
     <ChatContextProvider
@@ -327,16 +328,19 @@ const Chat: FC<ChatProps> = ({
         </div>
         <div
           data-testid="chat-footer"
-          className={`absolute bottom-0 z-10 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={cn(
+            'pointer-events-none absolute bottom-0 z-10 flex justify-center bg-chat-input-mask',
+            shouldApplyFooterClassName && chatFooterClassName,
+          )}
           ref={chatFooterRef}
         >
           <div
             ref={chatFooterInnerRef}
-            className={cn('relative', chatFooterInnerClassName, isTryApp && 'px-0')}
+            className={cn('pointer-events-none relative', chatFooterInnerClassName, isTryApp && 'px-0')}
           >
             {
               !noStopResponding && isResponding && (
-                <div data-testid="stop-responding-container" className="mb-2 flex justify-center">
+                <div data-testid="stop-responding-container" className="pointer-events-auto mb-2 flex justify-center">
                   <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
                     <div className="i-custom-vender-solid-mediaAndDevices-stop-circle mr-[5px] h-3.5 w-3.5" />
                     <span className="text-xs font-normal">{t('operation.stopResponding', { ns: 'appDebug' })}</span>
@@ -346,31 +350,35 @@ const Chat: FC<ChatProps> = ({
             }
             {
               hasTryToAsk && (
-                <TryToAsk
-                  suggestedQuestions={suggestedQuestions}
-                  onSend={onSend}
-                />
+                <div className="pointer-events-auto">
+                  <TryToAsk
+                    suggestedQuestions={suggestedQuestions}
+                    onSend={onSend}
+                  />
+                </div>
               )
             }
             {
               !noChatInput && (
-                <ChatInputArea
-                  botName={appData?.site?.title || 'Bot'}
-                  disabled={inputDisabled}
-                  showFeatureBar={showFeatureBar}
-                  showFileUpload={showFileUpload}
-                  featureBarDisabled={isResponding}
-                  onFeatureBarClick={onFeatureBarClick}
-                  visionConfig={config?.file_upload}
-                  speechToTextConfig={config?.speech_to_text}
-                  onSend={onSend}
-                  inputs={inputs}
-                  inputsForm={inputsForm}
-                  theme={themeBuilder?.theme}
-                  isResponding={isResponding}
-                  readonly={readonly}
-                  sendOnEnter={sendOnEnter}
-                />
+                <div className="pointer-events-auto">
+                  <ChatInputArea
+                    botName={appData?.site?.title || 'Bot'}
+                    disabled={inputDisabled}
+                    showFeatureBar={showFeatureBar}
+                    showFileUpload={showFileUpload}
+                    featureBarDisabled={isResponding}
+                    onFeatureBarClick={onFeatureBarClick}
+                    visionConfig={config?.file_upload}
+                    speechToTextConfig={config?.speech_to_text}
+                    onSend={onSend}
+                    inputs={inputs}
+                    inputsForm={inputsForm}
+                    theme={themeBuilder?.theme}
+                    isResponding={isResponding}
+                    readonly={readonly}
+                    sendOnEnter={sendOnEnter}
+                  />
+                </div>
               )
             }
           </div>
