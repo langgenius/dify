@@ -31,6 +31,7 @@ from controllers.console.wraps import (
 )
 from core.db.session_factory import session_factory
 from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration
+from core.helper.ssrf_proxy import is_safe_external_url
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
@@ -58,14 +59,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_valid_url(url: str) -> bool:
-    if not url:
-        return False
-
-    try:
-        parsed = urlparse(url)
-        return all([parsed.scheme, parsed.netloc]) and parsed.scheme in ["http", "https"]
-    except (ValueError, TypeError):
-        return False
+    return is_safe_external_url(url)
 
 
 class ToolProviderListQuery(BaseModel):
