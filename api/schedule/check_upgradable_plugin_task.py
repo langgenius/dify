@@ -6,7 +6,6 @@ import click
 from sqlalchemy import select
 
 import app
-from core.db.session_factory import session_factory
 from core.helper.marketplace import fetch_global_plugin_manifest
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginAutoUpgradeStrategySetting
