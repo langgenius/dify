@@ -1,18 +1,23 @@
 import { MeterIndicator, MeterLabel, MeterRoot, MeterTrack } from '@langgenius/dify-ui/meter'
 import { Trans, useTranslation } from 'react-i18next'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContextSelector } from '@/context/modal-context'
 import { formatNumber } from '@/utils/format'
 import { useTrialCredits } from '../use-trial-credits'
 
 type CreditsExhaustedAlertProps = {
   hasApiKeyFallback: boolean
+  credits?: number
+  totalCredits?: number
 }
 
-export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExhaustedAlertProps) {
+export default function CreditsExhaustedAlert({ hasApiKeyFallback, credits: creditsOverride, totalCredits: totalCreditsOverride }: CreditsExhaustedAlertProps) {
   const { t } = useTranslation()
   const setShowPricingModal = useModalContextSelector(s => s.setShowPricingModal)
-  const { credits, totalCredits } = useTrialCredits()
+  const trialCredits = useTrialCredits()
+  const credits = creditsOverride ?? trialCredits.credits
+  const totalCredits = totalCreditsOverride ?? trialCredits.totalCredits
 
   const titleKey = hasApiKeyFallback
     ? 'modelProvider.card.creditsExhaustedFallback'
@@ -37,13 +42,15 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             i18nKey={descriptionKey}
             ns="common"
             components={{
-              upgradeLink: (
-                <button
-                  type="button"
-                  className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
-                  onClick={() => setShowPricingModal()}
-                />
-              ),
+              upgradeLink: IS_CLOUD_EDITION
+                ? (
+                    <button
+                      type="button"
+                      className="cursor-pointer border-0 bg-transparent p-0 text-left system-xs-medium text-text-accent"
+                      onClick={() => setShowPricingModal()}
+                    />
+                  )
+                : <span />,
             }}
           />
         </div>
@@ -54,7 +61,8 @@ export default function CreditsExhaustedAlert({ hasApiKeyFallback }: CreditsExha
             {t('modelProvider.card.usageLabel', { ns: 'common' })}
           </MeterLabel>
           <div className="flex items-center gap-0.5 system-xs-regular text-text-tertiary">
-            <CreditsCoin className="h-3 w-3" />
+            {/* eslint-disable-next-line hyoban/prefer-tailwind-icons -- This generated icon class is not available to Tailwind. */}
+            <CreditsCoin className="size-3" />
             <span>
               {formatNumber(usedCredits)}
               /

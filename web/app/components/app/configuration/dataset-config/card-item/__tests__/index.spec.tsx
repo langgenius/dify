@@ -230,8 +230,12 @@ describe('dataset-config/card-item', () => {
     expect(screen.getByText('Mock settings modal'))!.toBeInTheDocument()
 
     const overlay = [...document.querySelectorAll('[class]')]
-      .find(element => element.className.toString().includes('bg-black/30'))
+      .find(element =>
+        element instanceof HTMLElement
+        && element.classList.contains('bg-background-overlay')
+        && !element.classList.contains('bg-transparent'),
+      )
 
-    expect(overlay)!.toBeInTheDocument()
+    expect(overlay).toBeInTheDocument()
   })
 })

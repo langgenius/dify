@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import Mock, patch
 
 import pytest
@@ -11,7 +12,7 @@ class TestWorkflowCollaborationService:
     def service(self) -> tuple[WorkflowCollaborationService, Mock, Mock]:
         repository = Mock(spec=WorkflowCollaborationRepository)
         socketio = Mock()
-        return WorkflowCollaborationService(repository, socketio), repository, socketio
+        return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
 
     def test_authorize_and_join_workflow_room_returns_leader_status(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
@@ -36,6 +37,10 @@ class TestWorkflowCollaborationService:
         # Assert
         assert result == ("u-1", True)
         repository.set_session_info.assert_called_once()
+        session_info = repository.set_session_info.call_args.args[1]
+        assert session_info["server_id"] == "server-1"
+        repository.refresh_server_heartbeat.assert_called_once_with("server-1")
+        socketio.start_background_task.assert_called_once()
         socketio.enter_room.assert_called_once_with("sid-1", "wf-1")
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
 
@@ -427,16 +432,20 @@ class TestWorkflowCollaborationService:
         repository.delete_leader.assert_not_called()
 
     def test_broadcast_leader_change_logs_emit_errors(
-        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+        self,
+        service: tuple[WorkflowCollaborationService, Mock, Mock],
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         collaboration_service, repository, socketio = service
         repository.get_session_sids.return_value = ["sid-1", "sid-2"]
         socketio.emit.side_effect = [RuntimeError("boom"), None]
 
-        with patch("services.workflow_collaboration_service.logging.exception") as exception_mock:
+        with caplog.at_level(logging.ERROR):
             collaboration_service.broadcast_leader_change("wf-1", "sid-2")
 
-        assert exception_mock.call_count == 1
+        error_records = [record for record in caplog.records if record.levelno == logging.ERROR]
+        assert len(error_records) == 1
+        assert "Failed to emit leader status to session sid-1" in error_records[0].getMessage()
 
     def test_broadcast_online_users_sorts_and_emits(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]
@@ -586,23 +595,47 @@ class TestWorkflowCollaborationService:
 
     def test_is_session_active_guard_branches(self, service: tuple[WorkflowCollaborationService, Mock, Mock]) -> None:
         collaboration_service, repository, socketio = service
-        socketio.manager.is_connected.return_value = True
+        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-1"}
         repository.session_exists.return_value = True
-        repository.sid_mapping_exists.return_value = True
 
         assert collaboration_service.is_session_active("wf-1", "") is False
 
         socketio.manager.is_connected.return_value = False
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
 
+        socketio.manager.is_connected.return_value = True
+        assert collaboration_service.is_session_active("wf-1", "sid-1") is True
+
         socketio.manager.is_connected.side_effect = AttributeError("missing manager")
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
         socketio.manager.is_connected.side_effect = None
 
-        socketio.manager.is_connected.return_value = True
         repository.session_exists.return_value = False
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
 
         repository.session_exists.return_value = True
-        repository.sid_mapping_exists.return_value = False
+        repository.get_sid_mapping.return_value = None
         assert collaboration_service.is_session_active("wf-1", "sid-1") is False
+
+    def test_is_session_active_accepts_remote_session_with_live_server(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        collaboration_service, repository, socketio = service
+        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-2"}
+        repository.session_exists.return_value = True
+        repository.server_heartbeat_exists.return_value = True
+        socketio.manager.is_connected.return_value = False
+
+        assert collaboration_service.is_session_active("wf-1", "sid-remote") is True
+        repository.server_heartbeat_exists.assert_called_once_with("server-2")
+
+    def test_is_session_active_rejects_remote_session_with_dead_server(
+        self, service: tuple[WorkflowCollaborationService, Mock, Mock]
+    ) -> None:
+        collaboration_service, repository, socketio = service
+        repository.get_sid_mapping.return_value = {"workflow_id": "wf-1", "user_id": "u-1", "server_id": "server-2"}
+        repository.session_exists.return_value = True
+        repository.server_heartbeat_exists.return_value = False
+        socketio.manager.is_connected.return_value = False
+
+        assert collaboration_service.is_session_active("wf-1", "sid-remote") is False

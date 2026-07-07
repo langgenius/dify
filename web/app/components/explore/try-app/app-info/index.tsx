@@ -9,13 +9,13 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import useGetRequirements from './use-get-requirements'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
-  category?: string
+  categories?: string[]
   className?: string
   onCreate: () => void
-}
+}>
 
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
 const requirementIconSize = 20
@@ -52,12 +52,13 @@ const RequirementIcon: FC<RequirementIconProps> = ({ iconUrl }) => {
 const AppInfo: FC<Props> = ({
   appId,
   className,
-  category,
+  categories,
   appDetail,
   onCreate,
 }) => {
   const { t } = useTranslation()
   const mode = appDetail?.mode
+  const visibleCategories = Array.from(new Set(categories?.filter(Boolean) ?? []))
   const { requirements } = useGetRequirements({ appDetail, appId })
   return (
     <div className={cn('flex h-full flex-col px-4 pt-2', className)}>
@@ -67,18 +68,18 @@ const AppInfo: FC<Props> = ({
           <AppIcon
             size="large"
             iconType={appDetail.site.icon_type}
-            icon={appDetail.site.icon}
-            background={appDetail.site.icon_background}
-            imageUrl={appDetail.site.icon_url}
+            icon={appDetail.site.icon ?? undefined}
+            background={appDetail.site.icon_background ?? undefined}
+            imageUrl={appDetail.site.icon_url ?? undefined}
           />
           <AppTypeIcon
             wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm"
-            className="h-3 w-3"
+            className="size-3"
             type={mode}
           />
         </div>
         <div className="w-0 grow py-px">
-          <div className="flex items-center text-sm leading-5 font-semibold text-text-secondary">
+          <div className="flex items-center text-sm/5 font-semibold text-text-secondary">
             <div className="truncate" title={appDetail.name}>{appDetail.name}</div>
           </div>
           <div className="flex items-center text-[10px] leading-[18px] font-medium text-text-tertiary">
@@ -98,10 +99,19 @@ const AppInfo: FC<Props> = ({
         <span className="truncate">{t('tryApp.createFromSampleApp', { ns: 'explore' })}</span>
       </Button>
 
-      {category && (
+      {visibleCategories.length > 0 && (
         <div className="mt-6 shrink-0">
           <div className={headerClassName}>{t('tryApp.category', { ns: 'explore' })}</div>
-          <div className="system-md-regular text-text-secondary">{category}</div>
+          <div className="flex flex-wrap gap-1.5">
+            {visibleCategories.map(category => (
+              <span
+                key={category}
+                className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-2 py-0.5 system-xs-medium text-text-secondary shadow-xs"
+              >
+                {category}
+              </span>
+            ))}
+          </div>
         </div>
       )}
       {requirements.length > 0 && (

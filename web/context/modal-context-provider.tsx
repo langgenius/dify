@@ -4,22 +4,22 @@ import type { ReactNode, SetStateAction } from 'react'
 import type { ModalState, ModelModalType } from './modal-context'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import type { SettingsTab } from '@/app/components/header/account-setting/constants'
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
-import type { ApiBasedExtension, ExternalDataTool } from '@/models/common'
+import type { ExternalDataTool } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-
   DEFAULT_ACCOUNT_SETTING_TAB,
-  isValidAccountSettingTab,
+  isIntegrationSettingTab,
+  isUserSettingTab,
+  isValidSettingsTab,
+  isWorkspaceSettingTab,
 } from '@/app/components/header/account-setting/constants'
-import {
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
-} from '@/app/education-apply/constants'
+import { useSetEducationVerifying } from '@/app/education-apply/storage'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -35,7 +35,7 @@ import {
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
 })
-const ApiBasedExtensionModal = dynamic(() => import('@/app/components/header/account-setting/api-based-extension-page/modal'), {
+const IntegrationsSettingModal = dynamic(() => import('@/app/components/tools/integrations-setting-modal'), {
   ssr: false,
 })
 const ModerationSettingModal = dynamic(() => import('@/app/components/base/features/new-feature-panel/moderation/moderation-setting-modal'), {
@@ -83,13 +83,14 @@ export const ModalContextProvider = ({
   const [showPricingModal, setPricingModalOpen] = usePricingModal()
   const [urlAccountModalState, setUrlAccountModalState] = useAccountSettingModal()
 
-  const accountSettingCallbacksRef = useRef<Omit<ModalState<AccountSettingTab>, 'payload'> | null>(null)
-  const accountSettingTab = urlAccountModalState.isOpen
-    ? (isValidAccountSettingTab(urlAccountModalState.payload)
+  const accountSettingCallbacksRef = useRef<Omit<ModalState<SettingsTab>, 'payload'> | null>(null)
+  const settingsTab = urlAccountModalState.isOpen
+    ? (isValidSettingsTab(urlAccountModalState.payload)
         ? urlAccountModalState.payload
         : DEFAULT_ACCOUNT_SETTING_TAB)
     : null
-  const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
+  const accountSettingModalTab = isWorkspaceSettingTab(settingsTab) || isUserSettingTab(settingsTab) ? settingsTab : null
+  const integrationSettingModalSection = isIntegrationSettingTab(settingsTab) ? settingsTab : null
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
@@ -103,26 +104,23 @@ export const ModalContextProvider = ({
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
   const { currentWorkspace } = useAppContext()
+  const setEducationVerifying = useSetEducationVerifying()
 
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
-    const educationVerifying = localStorage.getItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-
-    if (educationVerifying === 'yes')
-      localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-
+    setEducationVerifying(educationVerifying => educationVerifying === 'yes' ? null : educationVerifying)
     accountSettingCallbacksRef.current?.onCancelCallback?.()
     accountSettingCallbacksRef.current = null
     setUrlAccountModalState(null)
   }
 
-  const handleAccountSettingTabChange = useCallback((tab: AccountSettingTab) => {
+  const handleAccountSettingTabChange = useCallback((tab: SettingsTab) => {
     setUrlAccountModalState({ payload: tab })
   }, [setUrlAccountModalState])
 
-  const setShowAccountSettingModal = useCallback((next: SetStateAction<ModalState<AccountSettingTab> | null>) => {
-    const currentState = accountSettingTab
-      ? { payload: accountSettingTab, ...accountSettingCallbacksRef.current }
+  const setShowAccountSettingModal = useCallback((next: SetStateAction<ModalState<SettingsTab> | null>) => {
+    const currentState = settingsTab
+      ? { payload: settingsTab, ...accountSettingCallbacksRef.current }
       : null
     const resolvedState = typeof next === 'function' ? next(currentState) : next
     if (!resolvedState) {
@@ -133,7 +131,7 @@ export const ModalContextProvider = ({
     const { payload, ...callbacks } = resolvedState
     accountSettingCallbacksRef.current = callbacks
     setUrlAccountModalState({ payload })
-  }, [accountSettingTab, setUrlAccountModalState])
+  }, [settingsTab, setUrlAccountModalState])
 
   useEffect(() => {
     if (!urlAccountModalState.isOpen)
@@ -169,13 +167,13 @@ export const ModalContextProvider = ({
       showModelModal.onCancelCallback()
   }, [showModelModal])
 
-  const handleSaveModelModal = useCallback((formValues?: Record<string, any>) => {
+  const handleSaveModelModal = useCallback((formValues?: Record<string, unknown>) => {
     if (showModelModal?.onSaveCallback)
       showModelModal.onSaveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
   }, [showModelModal])
 
-  const handleRemoveModelModal = useCallback((formValues?: Record<string, any>) => {
+  const handleRemoveModelModal = useCallback((formValues?: Record<string, unknown>) => {
     if (showModelModal?.onRemoveCallback)
       showModelModal.onRemoveCallback(showModelModal.payload, formValues)
     setShowModelModal(null)
@@ -204,12 +202,6 @@ export const ModalContextProvider = ({
     if (showOpeningModal?.onCancelCallback)
       showOpeningModal.onCancelCallback()
   }, [showOpeningModal])
-
-  const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtension) => {
-    if (showApiBasedExtensionModal?.onSaveCallback)
-      showApiBasedExtensionModal.onSaveCallback(newApiBasedExtension)
-    setShowApiBasedExtensionModal(null)
-  }
 
   const handleSaveModeration = (newModerationConfig: ModerationConfig) => {
     if (showModerationSettingModal?.onSaveCallback)
@@ -246,7 +238,6 @@ export const ModalContextProvider = ({
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
-      setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
       setShowExternalDataToolModal,
       setShowPricingModal: handleShowPricingModal,
@@ -263,24 +254,25 @@ export const ModalContextProvider = ({
       <>
         {children}
         {
-          accountSettingTab && (
+          accountSettingModalTab && (
             <AccountSetting
-              activeTab={accountSettingTab}
+              activeTab={accountSettingModalTab}
               onCancelAction={handleCancelAccountSettingModal}
               onTabChangeAction={handleAccountSettingTabChange}
             />
           )
         }
-
         {
-          !!showApiBasedExtensionModal && (
-            <ApiBasedExtensionModal
-              data={showApiBasedExtensionModal.payload}
-              onCancel={() => setShowApiBasedExtensionModal(null)}
-              onSave={handleSaveApiBasedExtension}
+          integrationSettingModalSection && (
+            <IntegrationsSettingModal
+              section={integrationSettingModalSection}
+              source={accountSettingCallbacksRef.current?.source}
+              onCancel={handleCancelAccountSettingModal}
+              onSectionChange={section => setUrlAccountModalState({ payload: section })}
             />
           )
         }
+
         {
           !!showModerationSettingModal && (
             <ModerationSettingModal
@@ -369,7 +361,7 @@ export const ModalContextProvider = ({
               }}
               onSave={() => {
                 setShowUpdatePluginModal(null)
-                showUpdatePluginModal.onSaveCallback?.({} as any)
+                showUpdatePluginModal.onSaveCallback?.()
               }}
             />
           )

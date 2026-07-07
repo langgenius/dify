@@ -131,7 +131,7 @@ describe('SVGRenderer', () => {
 
       expect(screen.getByAltText('Preview'))!.toBeInTheDocument()
 
-      await user.click(screen.getByTestId('image-preview-close-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       await waitFor(() => {
         expect(screen.queryByAltText('Preview')).not.toBeInTheDocument()

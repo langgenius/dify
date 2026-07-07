@@ -44,7 +44,10 @@ def runtime(monkeypatch) -> DifyToolNodeRuntime:
         invoke_from="debugger",
         call_depth=0,
     )
-    return DifyToolNodeRuntime(init_params.run_context)
+    session_maker = MagicMock()
+    session_maker.begin.return_value.__enter__.return_value = MagicMock(name="session")
+    session_maker.begin.return_value.__exit__.return_value = None
+    return DifyToolNodeRuntime(init_params.run_context, session_maker=session_maker)
 
 
 def _build_tool_node_data() -> ToolNodeData:
@@ -106,6 +109,7 @@ def test_invoke_creates_callback_and_converts_messages(runtime: DifyToolNodeRunt
 
     callback = generic_invoke_mock.call_args.kwargs["workflow_tool_callback"]
     assert isinstance(callback, DifyWorkflowCallbackHandler)
+    assert generic_invoke_mock.call_args.kwargs["session"] is not None
     assert generic_invoke_mock.call_args.kwargs["conversation_id"] == "conversation-id"
 
     transform_kwargs = transform_tool_messages.call_args.kwargs
@@ -117,11 +121,13 @@ def test_invoke_maps_plugin_errors_to_graph_errors(runtime: DifyToolNodeRuntime)
 
     with patch.object(ToolEngine, "generic_invoke", side_effect=invoke_error):
         with pytest.raises(ToolRuntimeInvocationError, match="An error occurred in the provider"):
-            runtime.invoke(
-                tool_runtime=ToolRuntimeHandle(raw=MagicMock()),
-                tool_parameters={},
-                workflow_call_depth=0,
-                provider_name="provider",
+            list(
+                runtime.invoke(
+                    tool_runtime=ToolRuntimeHandle(raw=MagicMock()),
+                    tool_parameters={},
+                    workflow_call_depth=0,
+                    provider_name="provider",
+                )
             )
 
 
@@ -145,6 +151,107 @@ def test_get_runtime_converts_graph_provider_type_for_tool_manager(runtime: Dify
     assert not hasattr(tool_runtime, "conversation_id")
     workflow_tool = runtime_mock.call_args.args[3]
     assert workflow_tool.provider_type == CoreToolProviderType.BUILT_IN
+
+
+def test_get_runtime_stores_parent_trace_context_for_workflow_tools(
+    runtime: DifyToolNodeRuntime,
+) -> None:
+    variable_pool: VariablePool = build_test_variable_pool(
+        variables=build_system_variables(
+            conversation_id="conversation-id",
+            workflow_execution_id="workflow-run-id",
+        )
+    )
+    workflow_runtime = MagicMock()
+    workflow_runtime.runtime.runtime_parameters = {}
+    node_data = ToolNodeData.model_validate(
+        {
+            "type": "tool",
+            "title": "Tool",
+            "provider_id": "provider",
+            "provider_type": ToolProviderType.WORKFLOW,
+            "provider_name": "provider",
+            "tool_name": "lookup",
+            "tool_label": "Lookup",
+            "tool_configurations": {},
+            "tool_parameters": {},
+        }
+    )
+
+    with patch.object(ToolManager, "get_workflow_tool_runtime", return_value=workflow_runtime):
+        tool_runtime = runtime.get_runtime(
+            node_id="node-id",
+            node_data=node_data,
+            variable_pool=variable_pool,
+            node_execution_id="node-execution-id",
+        )
+
+    assert tool_runtime.raw.parent_trace_context.model_dump() == {
+        "parent_workflow_run_id": "workflow-run-id",
+        "parent_node_execution_id": "node-execution-id",
+    }
+    assert workflow_runtime.runtime.runtime_parameters == {}
+
+
+def test_get_runtime_stores_trace_session_id_for_workflow_tools(
+    runtime: DifyToolNodeRuntime,
+) -> None:
+    variable_pool: VariablePool = build_test_variable_pool(
+        variables=build_system_variables(
+            conversation_id="conversation-id",
+            workflow_execution_id="workflow-run-id",
+        )
+    )
+    workflow_runtime = MagicMock()
+    workflow_runtime.runtime.runtime_parameters = {}
+    runtime._run_context.trace_session_id = "session-1"
+    node_data = ToolNodeData.model_validate(
+        {
+            "type": "tool",
+            "title": "Tool",
+            "provider_id": "provider",
+            "provider_type": ToolProviderType.WORKFLOW,
+            "provider_name": "provider",
+            "tool_name": "lookup",
+            "tool_label": "Lookup",
+            "tool_configurations": {},
+            "tool_parameters": {},
+        }
+    )
+
+    with patch.object(ToolManager, "get_workflow_tool_runtime", return_value=workflow_runtime):
+        tool_runtime = runtime.get_runtime(
+            node_id="node-id",
+            node_data=node_data,
+            variable_pool=variable_pool,
+            node_execution_id="node-execution-id",
+        )
+
+    assert tool_runtime.raw.trace_session_id == "session-1"
+    assert workflow_runtime.runtime.runtime_parameters == {}
+
+
+def test_get_runtime_leaves_non_workflow_tool_runtime_parameters_unchanged(
+    runtime: DifyToolNodeRuntime,
+) -> None:
+    variable_pool: VariablePool = build_test_variable_pool(
+        variables=build_system_variables(
+            conversation_id="conversation-id",
+            workflow_execution_id="workflow-run-id",
+        )
+    )
+    builtin_runtime = MagicMock()
+    builtin_runtime.runtime.runtime_parameters = {}
+
+    with patch.object(ToolManager, "get_workflow_tool_runtime", return_value=builtin_runtime):
+        runtime.get_runtime(
+            node_id="node-id",
+            node_data=_build_tool_node_data(),
+            variable_pool=variable_pool,
+            node_execution_id="node-execution-id",
+        )
+
+    assert builtin_runtime.runtime.runtime_parameters == {}
 
 
 def test_get_runtime_parameters_reads_required_flags(runtime: DifyToolNodeRuntime) -> None:

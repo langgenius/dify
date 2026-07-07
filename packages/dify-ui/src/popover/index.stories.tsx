@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
 import { Button } from '@langgenius/dify-ui/button'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Popover,
   PopoverClose,
@@ -10,8 +10,9 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '.'
+import { Kbd, KbdGroup } from '../kbd'
 
-const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
+const triggerButtonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const meta = {
   title: 'Base/UI/Popover',
@@ -46,11 +47,10 @@ export const Default: Story = {
           <PopoverDescription className="text-xs text-text-secondary">
             Press
             {' '}
-            <kbd className="rounded bg-background-default-subtle px-1 py-0.5 font-mono text-[11px]">⌘</kbd>
-            {' '}
-            +
-            {' '}
-            <kbd className="rounded bg-background-default-subtle px-1 py-0.5 font-mono text-[11px]">K</kbd>
+            <KbdGroup>
+              <Kbd>⌘</Kbd>
+              <Kbd>K</Kbd>
+            </KbdGroup>
             {' '}
             to open the command palette anywhere in the app.
           </PopoverDescription>
@@ -81,7 +81,7 @@ export const WithActions: Story = {
           <input
             type="email"
             placeholder="teammate@example.com"
-            className="h-8 rounded-md border-[0.5px] border-components-input-border-active bg-components-input-bg-normal px-2 text-sm text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder focus:border-components-input-border-hover"
+            className="h-8 rounded-md border border-transparent bg-components-input-bg-normal px-2 text-sm text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
           />
           <div className="flex items-center justify-end gap-2">
             <PopoverClose
@@ -127,9 +127,9 @@ export const Infotip: Story = {
           closeDelay={200}
           aria-label="Set which resource to use first when running models."
           render={(
-            <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center">
+            <button type="button" className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid">
               <span aria-hidden className="i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" />
-            </span>
+            </button>
           )}
         />
         <PopoverContent
@@ -159,7 +159,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<Placement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
@@ -169,7 +169,7 @@ const PlacementsDemo = () => {
             key={value}
             type="button"
             onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary ${
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
               placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >
@@ -208,7 +208,7 @@ export const Placements: Story = {
 }
 
 const ControlledDemo = () => {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = React.useState(false)
 
   return (
     <div className="flex items-center gap-3">

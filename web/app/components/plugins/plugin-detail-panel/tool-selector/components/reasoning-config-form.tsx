@@ -7,7 +7,9 @@ import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowRightUpLine,
   RiBracesLine,
@@ -15,12 +17,11 @@ import {
 import { useBoolean } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
-import Tooltip from '@/app/components/base/tooltip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
@@ -44,14 +45,14 @@ import SchemaModal from './schema-modal'
 
 export type ReasoningConfigValue = ReasoningConfigValueShape
 
-type Props = {
+type Props = Readonly<{
   value: ReasoningConfigValue
   onChange: (val: ReasoningConfigValue) => void
   schemas: ToolFormSchema[]
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId: string
-}
+}>
 
 const ReasoningConfigForm: React.FC<Props> = ({
   value,
@@ -126,17 +127,16 @@ const ReasoningConfigForm: React.FC<Props> = ({
     } = schema
     const auto = value[variable]?.auto
     const fieldTitle = getFieldTitle(label, language)
-    const tooltipContent = (tooltip && (
-      <Tooltip
-        popupContent={(
-          <div className="w-[200px]">
-            {tooltip[language] || tooltip.en_US}
-          </div>
-        )}
-        triggerClassName="ml-0.5 w-4 h-4"
-        asChild={false}
-      />
-    ))
+    const tooltipText = tooltip?.[language] || tooltip?.en_US
+    const tooltipContent = tooltipText && (
+      <Infotip
+        aria-label={tooltipText}
+        className="ml-0.5 size-4"
+        popupClassName="w-[200px]"
+      >
+        {tooltipText}
+      </Infotip>
+    )
     const varInput = value[variable]!.value
     const {
       isString,
@@ -156,12 +156,16 @@ const ReasoningConfigForm: React.FC<Props> = ({
       language,
       schema,
     })
+    const selectValue = typeof varInput?.value === 'string' ? varInput.value : null
+    const selectedOption = isSelect && options
+      ? pickerProps.selectItems.find(item => item.value === selectValue) ?? null
+      : null
 
     return (
       <div key={variable} className="space-y-0.5">
         <div className="flex items-center justify-between py-2 system-sm-semibold text-text-secondary">
           <div className="flex items-center">
-            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')} title={fieldTitle}>{fieldTitle}</span>
+            <span className={cn('max-w-[140px] truncate code-sm-semibold text-text-secondary')}>{fieldTitle}</span>
             {required && (
               <span className="ml-1 text-red-500">*</span>
             )}
@@ -169,20 +173,22 @@ const ReasoningConfigForm: React.FC<Props> = ({
             <span className="mx-1 system-xs-regular text-text-quaternary">·</span>
             <span className="system-xs-regular text-text-tertiary">{resolveTargetVarType(type)}</span>
             {isShowJSONEditor && (
-              <Tooltip
-                popupContent={(
-                  <div className="system-xs-medium text-text-secondary">
-                    {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
-                  </div>
-                )}
-                asChild={false}
-              >
-                <div
-                  className="ml-0.5 cursor-pointer rounded-sm p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
-                  onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
-                >
-                  <RiBracesLine className="size-3.5" />
-                </div>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <button
+                      type="button"
+                      aria-label={t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                      className="ml-0.5 cursor-pointer rounded-sm border-0 bg-transparent p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+                      onClick={() => showSchema(input_schema as SchemaRoot, fieldTitle!)}
+                    >
+                      <RiBracesLine className="size-3.5" />
+                    </button>
+                  )}
+                />
+                <TooltipContent className="system-xs-medium text-text-secondary">
+                  {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                </TooltipContent>
               </Tooltip>
             )}
 
@@ -225,13 +231,26 @@ const ReasoningConfigForm: React.FC<Props> = ({
               />
             )}
             {isSelect && options && (
-              <SimpleSelect
-                wrapperClassName="h-8 grow"
-                defaultValue={varInput?.value as string | number | undefined}
-                items={pickerProps.selectItems}
-                onSelect={item => handleValueChange(variable, type)(item.value as string)}
-                placeholder={placeholder?.[language] || placeholder?.en_US}
-              />
+              <Select<string>
+                value={selectedOption?.value ?? null}
+                onValueChange={(value) => {
+                  if (value == null || value === '')
+                    return
+                  handleValueChange(variable, type)(value)
+                }}
+              >
+                <SelectTrigger className="h-8 grow">
+                  {selectedOption?.name ?? placeholder?.[language] ?? placeholder?.en_US}
+                </SelectTrigger>
+                <SelectContent>
+                  {pickerProps.selectItems.map(item => (
+                    <SelectItem key={item.value} value={item.value}>
+                      <SelectItemText>{item.name}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             {isShowJSONEditor && isConstant && (
               <div className="mt-1 w-full">
@@ -268,7 +287,6 @@ const ReasoningConfigForm: React.FC<Props> = ({
             )}
             {showVariableSelector && (
               <VarReferencePicker
-                zIndex={1001}
                 className="h-8 grow"
                 readonly={false}
                 isShowNodeName
@@ -290,7 +308,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             className="inline-flex items-center text-xs text-text-accent"
           >
             {t('howToGet', { ns: 'tools' })}
-            <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+            <RiArrowRightUpLine className="ml-1 size-3" />
           </a>
         )}
       </div>

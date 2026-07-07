@@ -10,6 +10,7 @@ describe('AccessControlDialog', () => {
     )
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveClass('custom-dialog')
     expect(screen.getByText('Dialog Content')).toBeInTheDocument()
   })
 
@@ -21,8 +22,7 @@ describe('AccessControlDialog', () => {
       </AccessControlDialog>,
     )
 
-    const closeButton = document.body.querySelector('div.absolute.right-5.top-5') as HTMLElement
-    fireEvent.click(closeButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalledTimes(1)

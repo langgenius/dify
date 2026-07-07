@@ -15,13 +15,14 @@ permissions:
 jobs:
   python-style:
     name: Python Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Check changed files
         id: changed-files
@@ -29,11 +30,13 @@ jobs:
         with:
           files: |
             api/**
+            scripts/check_no_new_getattr.py
+            scripts/ast_grep_rules/no_new_getattr.yml
             .github/workflows/style.yml
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: false
           python-version: "3.12"
@@ -47,8 +50,26 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: uv run --directory api --dev lint-imports
 
+      - name: Run Response Contract Linter
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
+
+      - name: Fetch merge target ref for getattr guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+
+      - name: Bind merge target branch for getattr guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: git show-ref --verify --quiet refs/heads/main || git branch main origin/main
+
+      - name: Run No New Getattr Guard
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: uv run --project api python scripts/check_no_new_getattr.py --mode ci --merge-target main
+
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          PYREFLY_OUTPUT_FORMAT: github
         run: make type-check-core
 
       - name: Dotenv check
@@ -57,7 +78,7 @@ jobs:
 
   web-style:
     name: Web Style
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     defaults:
       run:
         working-directory: ./web
@@ -67,7 +88,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -83,8 +104,60 @@ jobs:
             package.json
             pnpm-lock.yaml
             pnpm-workspace.yaml
-            .npmrc
             .nvmrc
+            .github/workflows/style.yml
+            .github/actions/setup-web/**
+
+      - name: Setup web environment
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: ./.github/actions/setup-web
+
+      - name: Web tsslint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: vp run lint:tss
+
+      - name: Web dead code check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run knip
+
+      - name: Web dead code check production
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run knip:production
+
+      - name: Web production unused declarations check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run knip:production-unused-check
+
+  ts-common-style:
+    name: TS Common
+    runs-on: depot-ubuntu-24.04
+    permissions:
+      checks: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            web/**
+            cli/**
+            e2e/**
+            sdks/nodejs-client/**
+            packages/**
+            package.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
+            .nvmrc
+            eslint.config.mjs
             .github/workflows/style.yml
             .github/actions/setup-web/**
 
@@ -95,47 +168,35 @@ jobs:
       - name: Restore ESLint cache
         if: steps.changed-files.outputs.any_changed == 'true'
         id: eslint-cache-restore
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .eslintcache
           key: ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-eslint-${{ hashFiles('pnpm-lock.yaml', 'eslint.config.mjs', 'web/eslint.config.mjs', 'web/eslint.constants.mjs', 'web/plugins/eslint/**') }}-
 
-      - name: Web style check
+      - name: Style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: .
         run: vp run lint:ci
 
-      - name: Web tsslint
+      - name: Type check
         if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: vp run lint:tss
-
-      - name: Web type check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: .
         run: vp run type-check
-
-      - name: Web dead code check
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: vp run knip
 
       - name: Save ESLint cache
         if: steps.changed-files.outputs.any_changed == 'true' && success() && steps.eslint-cache-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .eslintcache
           key: ${{ steps.eslint-cache-restore.outputs.cache-primary-key }}
 
   superlinter:
     name: SuperLinter
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -153,7 +214,7 @@ jobs:
             .editorconfig
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@9e863354e3ff62e0727d37183162c4a88873df41 # v8.6.0
+        uses: super-linter/super-linter/slim@4ce20838b8ab83717e78138c5b3a1407148e0918 # v8.7.0
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning

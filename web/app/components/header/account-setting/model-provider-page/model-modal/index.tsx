@@ -41,7 +41,7 @@ import {
   useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import { useAppContext } from '@/context/app-context'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import {
   ConfigurationMethodEnum,
@@ -106,7 +106,7 @@ const ModelModal: FC<ModelModalProps> = ({
     available_credentials,
   } = credentialData as any
 
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const { t } = useTranslation()
   const language = useLanguage()
   const {
@@ -120,14 +120,21 @@ const ModelModal: FC<ModelModalProps> = ({
   const formRef2 = useRef<FormRefObject>(null)
   const isEditMode = !!credential && !!Object.keys(formSchemasValue || {}).filter((key) => {
     return key !== '__model_name' && key !== '__model_type' && !!formValues[key]
-  }).length && isCurrentWorkspaceManager
+  }).length && canManageCredential
 
   const handleSave = useCallback(async () => {
     if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential && !selectedCredential?.addNewCredential) {
+      if (!canUseCredential)
+        return
+
       handleActiveCredential(selectedCredential, model)
       onCancel()
       return
     }
+
+    const canSubmitCredentialForm = credential ? canManageCredential : canCreateCredential
+    if (!canSubmitCredentialForm)
+      return
 
     let modelNameAndTypeIsCheckValidated = true
     let modelNameAndTypeValues: Record<string, any> = {}
@@ -140,17 +147,22 @@ const ModelModal: FC<ModelModalProps> = ({
       modelNameAndTypeValues = formResult.values
     }
 
-    if (mode === ModelModalModeEnum.configModelCredential && model) {
-      modelNameAndTypeValues = {
-        __model_name: model.model,
-        __model_type: model.model_type,
-      }
-    }
+    if (
+      mode === ModelModalModeEnum.configModelCredential
+      || (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential)
+    ) {
+      const modelContext = model ?? (currentCustomConfigurationModelFixedFields
+        ? {
+            model: currentCustomConfigurationModelFixedFields.__model_name,
+            model_type: currentCustomConfigurationModelFixedFields.__model_type,
+          }
+        : undefined)
+      if (!modelContext)
+        return
 
-    if (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential && model) {
       modelNameAndTypeValues = {
-        __model_name: model.model,
-        __model_type: model.model_type,
+        __model_name: modelContext.model,
+        __model_type: modelContext.model_type,
       }
     }
     const {
@@ -171,7 +183,13 @@ const ModelModal: FC<ModelModalProps> = ({
       __authorization_name__,
       ...rest
     } = values
-    if (__model_name && __model_type) {
+    const shouldSaveModelCredential = mode === ModelModalModeEnum.configCustomModel
+      || mode === ModelModalModeEnum.configModelCredential
+      || (mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential?.addNewCredential)
+    if (shouldSaveModelCredential) {
+      if (!__model_name || !__model_type)
+        return
+
       await handleSaveCredential({
         credential_id: credential?.credential_id,
         credentials: rest,
@@ -188,7 +206,7 @@ const ModelModal: FC<ModelModalProps> = ({
       })
     }
     onSave(values)
-  }, [handleSaveCredential, credential?.credential_id, model, onSave, mode, selectedCredential, handleActiveCredential])
+  }, [mode, selectedCredential, model, currentCustomConfigurationModelFixedFields, canUseCredential, canCreateCredential, canManageCredential, onSave, handleActiveCredential, onCancel, handleSaveCredential, credential])
 
   const modalTitle = useMemo(() => {
     let label = t('modelProvider.auth.apiKeyModal.title', { ns: 'common' })
@@ -226,7 +244,7 @@ const ModelModal: FC<ModelModalProps> = ({
       return (
         <div className="mt-2 flex items-center">
           <ModelIcon
-            className="mr-2 h-4 w-4 shrink-0"
+            className="mr-2 size-4 shrink-0"
             provider={provider}
           />
           <div className="mr-1 system-md-regular text-text-secondary">{renderI18nObject(provider.label)}</div>
@@ -237,7 +255,7 @@ const ModelModal: FC<ModelModalProps> = ({
       return (
         <div className="mt-2 flex items-center">
           <ModelIcon
-            className="mr-2 h-4 w-4 shrink-0"
+            className="mr-2 size-4 shrink-0"
             provider={provider}
             modelName={model.model}
           />
@@ -266,11 +284,14 @@ const ModelModal: FC<ModelModalProps> = ({
       return t('operation.add', { ns: 'common' })
     return t('operation.save', { ns: 'common' })
   }, [mode, t])
+  const canSaveCredentialChange = mode === ModelModalModeEnum.addCustomModelToModelList && selectedCredential && !selectedCredential.addNewCredential
+    ? canUseCredential
+    : credential ? canManageCredential : canCreateCredential
 
   const handleDeleteCredential = useCallback(() => {
     handleConfirmDelete()
     onCancel()
-  }, [handleConfirmDelete])
+  }, [handleConfirmDelete, onCancel])
 
   const handleModelNameAndTypeChange = useCallback((field: string, value: any) => {
     const {
@@ -295,15 +316,15 @@ const ModelModal: FC<ModelModalProps> = ({
     <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[640px] max-w-[640px] overflow-hidden p-0"
+        className="flex w-[640px] max-w-[640px] flex-col overflow-hidden p-0"
       >
-        <DialogCloseButton className="top-5 right-5 h-8 w-8" />
-        <div className="p-6 pb-3">
+        <DialogCloseButton className="top-5 right-5 size-8" />
+        <div className="shrink-0 p-6 pb-3">
           {modalTitle}
           {modalDesc}
           {modalModel}
         </div>
-        <div className="max-h-[calc(100vh-320px)] overflow-y-auto px-6 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
           {
             mode === ModelModalModeEnum.configCustomModel && (
               <AuthForm
@@ -327,7 +348,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 onSelect={setSelectedCredential}
                 selectedCredential={selectedCredential}
                 disabled={isLoading}
-                notAllowAddNewCredential={notAllowCustomCredential}
+                notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
               />
             )
           }
@@ -365,7 +386,7 @@ const ModelModal: FC<ModelModalProps> = ({
             )
           }
         </div>
-        <div className="flex justify-between p-6 pt-5">
+        <div className="flex shrink-0 justify-between p-6 pt-5">
           {
             (provider.help && (provider.help.title || provider.help.url))
               ? (
@@ -402,7 +423,7 @@ const ModelModal: FC<ModelModalProps> = ({
             <Button
               variant="primary"
               onClick={handleSave}
-              disabled={isLoading || doingAction}
+              disabled={isLoading || doingAction || !canSaveCredentialChange}
             >
               {saveButtonText}
             </Button>
@@ -410,9 +431,9 @@ const ModelModal: FC<ModelModalProps> = ({
         </div>
         {
           (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.configProviderCredential) && (
-            <div className="border-t-[0.5px] border-t-divider-regular">
+            <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
               <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-                <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
+                <Lock01 className="mr-1 size-3 text-text-tertiary" />
                 {t('modelProvider.encrypted.front', { ns: 'common' })}
                 <a
                   className="mx-1 text-text-accent"

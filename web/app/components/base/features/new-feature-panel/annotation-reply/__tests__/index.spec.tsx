@@ -175,6 +175,22 @@ describe('AnnotationReply', () => {
     expect(screen.getByText('text-embedding-ada-002')).toBeInTheDocument()
   })
 
+  it('should show zero score threshold when enabled', () => {
+    renderWithProvider({}, {
+      annotationReply: {
+        enabled: true,
+        score_threshold: 0,
+        embedding_model: {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'text-embedding-ada-002',
+        },
+      },
+    })
+
+    expect(screen.getByText('0')).toBeInTheDocument()
+    expect(screen.getByText('text-embedding-ada-002')).toBeInTheDocument()
+  })
+
   it('should show dash when score threshold is not set', () => {
     renderWithProvider({}, {
       annotationReply: {

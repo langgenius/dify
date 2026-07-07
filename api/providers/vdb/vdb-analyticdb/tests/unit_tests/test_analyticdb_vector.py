@@ -83,7 +83,7 @@ def test_get_type_is_analyticdb():
     assert vector.get_type() == "analyticdb"
 
 
-def test_factory_builds_openapi_config_when_host_is_missing(monkeypatch):
+def test_factory_builds_openapi_config_when_host_is_missing(monkeypatch: pytest.MonkeyPatch):
     factory = AnalyticdbVectorFactory()
     dataset = SimpleNamespace(id="dataset-1", index_struct_dict=None, index_struct=None)
 
@@ -109,7 +109,7 @@ def test_factory_builds_openapi_config_when_host_is_missing(monkeypatch):
     assert dataset.index_struct is not None
 
 
-def test_factory_builds_sql_config_when_host_is_present(monkeypatch):
+def test_factory_builds_sql_config_when_host_is_present(monkeypatch: pytest.MonkeyPatch):
     factory = AnalyticdbVectorFactory()
     dataset = SimpleNamespace(
         id="dataset-2", index_struct_dict={"vector_store": {"class_prefix": "EXISTING"}}, index_struct=None

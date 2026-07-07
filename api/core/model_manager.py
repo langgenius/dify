@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
+from copy import deepcopy
 from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload
 
 from configs import dify_config
@@ -36,11 +37,13 @@ class ModelInstance:
     Model instance class.
     """
 
-    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str):
+    def __init__(self, provider_model_bundle: ProviderModelBundle, model: str, credentials: dict | None = None) -> None:
         self.provider_model_bundle = provider_model_bundle
         self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
-        self.credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+        if credentials is None:
+            credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
+        self.credentials = credentials
         # Runtime LLM invocation fields.
         self.parameters: Mapping[str, Any] = {}
         self.stop: Sequence[str] = ()
@@ -121,6 +124,7 @@ class ModelInstance:
         stop: list[str] | None = None,
         stream: Literal[True] = True,
         callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> Generator: ...
 
     @overload
@@ -132,6 +136,7 @@ class ModelInstance:
         stop: list[str] | None = None,
         stream: Literal[False] = False,
         callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> LLMResult: ...
 
     @overload
@@ -143,6 +148,7 @@ class ModelInstance:
         stop: list[str] | None = None,
         stream: bool = True,
         callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> Union[LLMResult, Generator]: ...
 
     def invoke_llm(
@@ -153,6 +159,7 @@ class ModelInstance:
         stop: Sequence[str] | None = None,
         stream: bool = True,
         callbacks: list[Callback] | None = None,
+        request_metadata: Mapping[str, object] | None = None,
     ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -163,6 +170,7 @@ class ModelInstance:
         :param stop: stop words
         :param stream: is stream response
         :param callbacks: callbacks
+        :param request_metadata: optional request metadata
         :return: full response or stream response chunk generator result
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
@@ -179,6 +187,7 @@ class ModelInstance:
                 stop=list(stop) if stop else None,
                 stream=stream,
                 callbacks=callbacks,
+                request_metadata=request_metadata,
             ),
         )
 
@@ -388,10 +397,10 @@ class ModelInstance:
 
             # Additional policy compliance check as fallback (in case fetch_next didn't catch it)
             try:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
                 if lb_config.credential_id:
-                    check_credential_policy_compliance(
+                    runtime_check_credential_policy_compliance(
                         credential_id=lb_config.credential_id,
                         provider=self.provider,
                         credential_type=PluginCredentialType.MODEL,
@@ -434,8 +443,30 @@ class ModelInstance:
 
 
 class ModelManager:
-    def __init__(self, provider_manager: ProviderManager):
+    """Resolves :class:`ModelInstance` objects for a tenant and provider.
+
+    When ``enable_credentials_cache`` is ``True``, resolved credentials for each
+    ``(tenant_id, provider, model_type, model)`` are stored in
+    ``_credentials_cache`` and reused. That can return **stale** credentials after
+    API keys or provider settings change, so a manager constructed with
+    ``enable_credentials_cache=True`` should not be kept for the lifetime of a
+    process or shared across unrelated work. Prefer a new manager per request,
+    workflow run, or similar bounded scope.
+
+    The default is ``enable_credentials_cache=False``; in that mode the internal
+    credential cache is not populated, and each ``get_model_instance`` call
+    loads credentials from the current provider configuration.
+    """
+
+    def __init__(
+        self,
+        provider_manager: ProviderManager,
+        *,
+        enable_credentials_cache: bool = False,
+    ) -> None:
         self._provider_manager = provider_manager
+        self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
+        self._enable_credentials_cache = enable_credentials_cache
 
     @classmethod
     def for_tenant(cls, tenant_id: str, user_id: str | None = None) -> "ModelManager":
@@ -463,8 +494,19 @@ class ModelManager:
             tenant_id=tenant_id, provider=provider, model_type=model_type
         )
 
-        model_instance = ModelInstance(provider_model_bundle, model)
-        return model_instance
+        cred_cache_key = (tenant_id, provider, model_type.value, model)
+
+        if cred_cache_key in self._credentials_cache:
+            return ModelInstance(
+                provider_model_bundle,
+                model,
+                deepcopy(self._credentials_cache[cred_cache_key]),
+            )
+
+        ret = ModelInstance(provider_model_bundle, model)
+        if self._enable_credentials_cache:
+            self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
+        return ret
 
     def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
         """
@@ -594,10 +636,10 @@ class LBModelManager:
 
             # Check policy compliance for the selected configuration
             try:
-                from core.helper.credential_utils import check_credential_policy_compliance
+                from core.helper.credential_utils import runtime_check_credential_policy_compliance
 
                 if config.credential_id:
-                    check_credential_policy_compliance(
+                    runtime_check_credential_policy_compliance(
                         credential_id=config.credential_id,
                         provider=self._provider,
                         credential_type=PluginCredentialType.MODEL,

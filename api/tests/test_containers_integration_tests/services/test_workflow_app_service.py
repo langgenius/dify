@@ -12,12 +12,12 @@ from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
 from models import EndUser, Workflow, WorkflowAppLog, WorkflowArchiveLog, WorkflowRun
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import AppTriggerType, CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowAppLogCreatedFrom
 from services.account_service import AccountService, TenantService
 
 # Delay import of AppService to avoid circular dependency
-# from services.app_service import AppService
+# from services.app_service import AppService, CreateAppParams
 from services.workflow_app_service import LogView, WorkflowAppService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -78,24 +78,25 @@ class TestWorkflowAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
-        # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "workflow",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        # Create app with realistic data
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -126,8 +127,9 @@ class TestWorkflowAppService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         return tenant, account
@@ -146,20 +148,20 @@ class TestWorkflowAppService:
         """
         fake = Faker()
 
-        # Create app with realistic data
-        app_args = {
-            "name": fake.company(),
-            "description": fake.text(max_nb_chars=100),
-            "mode": "workflow",
-            "icon_type": "emoji",
-            "icon": "🤖",
-            "icon_background": "#FF6B6B",
-            "api_rph": 100,
-            "api_rpm": 10,
-        }
-
         # Import here to avoid circular dependency
-        from services.app_service import AppService
+        from services.app_service import AppService, CreateAppParams
+
+        # Create app with realistic data
+        app_args = CreateAppParams(
+            name=fake.company(),
+            description=fake.text(max_nb_chars=100),
+            mode="workflow",
+            icon_type="emoji",
+            icon="🤖",
+            icon_background="#FF6B6B",
+            api_rph=100,
+            api_rpm=10,
+        )
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -821,7 +823,7 @@ class TestWorkflowAppService:
             id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="web",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id="test_session_123",
             created_at=datetime.now(UTC),
@@ -1530,7 +1532,7 @@ class TestWorkflowAppService:
         assert result_cross_tenant["total"] == 0
 
     def test_get_paginate_workflow_app_logs_raises_when_account_filter_email_not_found(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
@@ -1543,7 +1545,7 @@ class TestWorkflowAppService:
             )
 
     def test_get_paginate_workflow_app_logs_filters_by_account(
-        self, db_session_with_containers, mock_external_service_dependencies
+        self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
@@ -1558,14 +1560,16 @@ class TestWorkflowAppService:
         assert result["total"] >= 0
         assert isinstance(result["data"], list)
 
-    def test_get_paginate_workflow_archive_logs(self, db_session_with_containers, mock_external_service_dependencies):
+    def test_get_paginate_workflow_archive_logs(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
         service = WorkflowAppService()
 
         end_user = EndUser(
             tenant_id=app.tenant_id,
             app_id=app.id,
-            type="browser",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id="session-1",
         )

@@ -157,7 +157,7 @@ describe('VarReferencePicker branches', () => {
       value: ['node-a', 'answer'],
     })
 
-    fireEvent.click(screen.getByTestId('var-reference-picker-clear'))
+    fireEvent.click(screen.getByRole('button', { name: /Clear|operation.clear/ }))
 
     expect(onChange).toHaveBeenCalledWith([], VarKindType.variable)
   })

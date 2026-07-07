@@ -3,8 +3,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "check": "vp check --fix",
     "e2e": "tsx ./scripts/run-cucumber.ts",
+    "e2e:external": "tsx ./scripts/run-external-runtime.ts",
+    "e2e:external:prepare": "tsx ./scripts/prepare-external-runtime.ts",
     "e2e:full": "tsx ./scripts/run-cucumber.ts --full",
     "e2e:full:headed": "tsx ./scripts/run-cucumber.ts --full --headed",
     "e2e:headed": "tsx ./scripts/run-cucumber.ts --headed",
@@ -12,16 +13,21 @@
     "e2e:middleware:down": "tsx ./scripts/setup.ts middleware-down",
     "e2e:middleware:up": "tsx ./scripts/setup.ts middleware-up",
     "e2e:reset": "tsx ./scripts/setup.ts reset",
-    "type-check": "tsc"
+    "seed": "tsx ./scripts/seed.ts",
+    "type-check": "tsgo"
   },
   "devDependencies": {
     "@cucumber/cucumber": "catalog:",
+    "@dify/contracts": "workspace:*",
     "@dify/tsconfig": "workspace:*",
     "@playwright/test": "catalog:",
+    "@t3-oss/env-core": "catalog:",
     "@types/node": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "zod": "catalog:"
   }
 }

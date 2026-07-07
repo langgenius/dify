@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
 import { cn } from '../cn'
@@ -27,7 +27,7 @@ export const PreviewCardTrigger = BasePreviewCard.Trigger
 export const createPreviewCardHandle = BasePreviewCard.createHandle
 
 type PreviewCardContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -62,7 +62,7 @@ export function PreviewCardContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-1002 outline-hidden', className)}
+        className={cn('z-50 outline-hidden', className)}
         {...positionerProps}
       >
         <BasePreviewCard.Popup

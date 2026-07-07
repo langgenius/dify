@@ -1,12 +1,13 @@
 import type { FC } from 'react'
 import type { IterationNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { ErrorHandleMode } from '@/app/components/workflow/types'
 import { MAX_PARALLEL_LIMIT } from '@/config'
@@ -22,6 +23,8 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
+  const maxParallelismLabel = t(`${i18nPrefix}.MaxParallelismTitle`, { ns: 'workflow' })
+  const errorResponseMethodLabel = t(`${i18nPrefix}.errorResponseMethod`, { ns: 'workflow' })
   const responseMethod = [
     {
       value: ErrorHandleMode.Terminated,
@@ -49,9 +52,10 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     changeParallelNums,
     changeFlattenOutput,
   } = useConfig(id, data)
+  const selectedResponseMethod = responseMethod.find(item => item.value === inputs.error_handle_mode)
 
   return (
-    <div className="pt-2 pb-2">
+    <div className="py-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
           title={t(`${i18nPrefix}.input`, { ns: 'workflow' })}
@@ -98,18 +102,19 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       {
         inputs.is_parallel && (
           <div className="px-4 pb-2">
-            <Field title={t(`${i18nPrefix}.MaxParallelismTitle`, { ns: 'workflow' })} isSubTitle tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.MaxParallelismDesc`, { ns: 'workflow' })}</div>}>
-              <div className="row flex">
-                <Input type="number" wrapperClassName="w-18 mr-4 " max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
+            <Field title={maxParallelismLabel} isSubTitle tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.MaxParallelismDesc`, { ns: 'workflow' })}</div>}>
+              <FieldsetRoot className="row flex">
+                <FieldsetLegend className="sr-only">{maxParallelismLabel}</FieldsetLegend>
+                <Input aria-label={maxParallelismLabel} type="number" wrapperClassName="w-18 mr-4" max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
                 <Slider
                   value={inputs.parallel_nums}
                   onValueChange={changeParallelNums}
                   max={MAX_PARALLEL_LIMIT}
                   min={MIN_ITERATION_PARALLEL_NUM}
                   className="mt-4 flex-1 shrink-0"
-                  aria-label={t(`${i18nPrefix}.MaxParallelismTitle`, { ns: 'workflow' })}
+                  aria-label={maxParallelismLabel}
                 />
-              </div>
+              </FieldsetRoot>
 
             </Field>
           </div>
@@ -118,8 +123,30 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       <Split />
 
       <div className="px-4 py-2">
-        <Field title={t(`${i18nPrefix}.errorResponseMethod`, { ns: 'workflow' })}>
-          <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false} />
+        <Field title={errorResponseMethodLabel}>
+          <Select<ErrorHandleMode>
+            value={selectedResponseMethod?.value ?? null}
+            onValueChange={(nextValue) => {
+              if (nextValue == null)
+                return
+              const nextItem = responseMethod.find(item => item.value === nextValue)
+              if (nextItem)
+                changeErrorResponseMode(nextItem)
+            }}
+          >
+            <SelectLabel className="sr-only">{errorResponseMethodLabel}</SelectLabel>
+            <SelectTrigger className="w-full">
+              {selectedResponseMethod?.name ?? t('placeholder.select', { ns: 'common' })}
+            </SelectTrigger>
+            <SelectContent>
+              {responseMethod.map(item => (
+                <SelectItem key={item.value} value={item.value}>
+                  <SelectItemText>{item.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
       </div>
 

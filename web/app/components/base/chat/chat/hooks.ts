@@ -12,6 +12,7 @@ import type {
   IOnDataMoreInfo,
   IOtherOptions,
 } from '@/service/base'
+import type { ReasoningChunkResponse } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -26,10 +27,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
@@ -48,8 +51,14 @@ type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
   onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
-  onConversationComplete?: (conversationId: string) => void
+  onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
+  onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
+  onSendSettled?: (hasError?: boolean) => void
   isPublicAPI?: boolean
+}
+
+type UseChatOptions = {
+  timezone?: string
 }
 
 export const useChat = (
@@ -62,10 +71,13 @@ export const useChat = (
   stopChat?: (taskId: string) => void,
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
+  initialConversationId?: string,
+  options: UseChatOptions = {},
 ) => {
   const { t } = useTranslation()
-  const { formatTime } = useTimestamp()
-  const conversationIdRef = useRef('')
+  const { formatTime } = useTimestamp({ timezone: options.timezone })
+  const conversationIdRef = useRef(initialConversationId ?? '')
+  const initialConversationIdRef = useRef(initialConversationId ?? '')
   const hasStopRespondedRef = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
@@ -143,6 +155,12 @@ export const useChat = (
     }
   }, [])
 
+  useEffect(() => {
+    initialConversationIdRef.current = initialConversationId ?? ''
+    if (initialConversationId && !conversationIdRef.current)
+      conversationIdRef.current = initialConversationId
+  }, [initialConversationId])
+
   /** Find the target node by bfs and then operate on it */
   const produceChatTreeNode = useCallback((targetId: string, operation: (node: ChatItemInTree) => void) => {
     return produce(chatTreeRef.current, (draft) => {
@@ -201,7 +219,7 @@ export const useChat = (
   }, [stopChat, handleResponding])
 
   const handleRestart = useCallback((cb?: any) => {
-    conversationIdRef.current = ''
+    conversationIdRef.current = initialConversationIdRef.current
     taskIdRef.current = ''
     handleStop()
     setChatTree([])
@@ -217,7 +235,7 @@ export const useChat = (
       ttsIsPublic = true
     }
     else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
+      if (isInstalledAppPath(pathname))
         ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
@@ -240,10 +258,19 @@ export const useChat = (
     {
       onGetSuggestedQuestions,
       onConversationComplete,
+      onSendSettled,
       isPublicAPI,
     }: SendCallback,
   ) => {
     const getOrCreatePlayer = createAudioPlayerManager()
+    let hasSettled = false
+    const settleSend = (hasError?: boolean) => {
+      if (hasSettled)
+        return
+
+      hasSettled = true
+      onSendSettled?.(hasError)
+    }
     // Re-subscribe to workflow events for the specific message
     const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
 
@@ -273,27 +300,42 @@ export const useChat = (
         if (taskId)
           taskIdRef.current = taskId
       },
+      onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+        const { message_id, reasoning, node_id, is_final } = reasoningData
+        updateChatTreeNode(message_id, (responseItem) => {
+          const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+          const key = node_id || '_'
+          if (reasoning)
+            reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+          if (is_final)
+            responseItem.reasoningFinished = true
+        })
+      },
       async onCompleted(hasError?: boolean) {
         handleResponding(false)
 
-        if (hasError)
-          return
+        try {
+          if (hasError)
+            return
 
-        if (onConversationComplete)
-          onConversationComplete(conversationIdRef.current)
+          if (onConversationComplete)
+            onConversationComplete(conversationIdRef.current, workflowRunId)
 
-        if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
-          try {
-            const { data }: any = await onGetSuggestedQuestions(
-              messageId,
-              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
-            )
-            setSuggestedQuestions(data)
+          if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
+            try {
+              const { data }: any = await onGetSuggestedQuestions(
+                messageId,
+                newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+              )
+              setSuggestedQuestions(data)
+            }
+            catch {
+              setSuggestedQuestions([])
+            }
           }
-          // eslint-disable-next-line unused-imports/no-unused-vars
-          catch (e) {
-            setSuggestedQuestions([])
-          }
+        }
+        finally {
+          settleSend(hasError)
         }
       },
       onFile(file) {
@@ -377,13 +419,18 @@ export const useChat = (
       },
       onError() {
         handleResponding(false)
+        settleSend(true)
       },
       onWorkflowStarted: ({ workflow_run_id, task_id }) => {
         handleResponding(true)
         hasStopRespondedRef.current = false
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
-            responseItem.workflowProcess.status = WorkflowRunningStatus.Running
+            responseItem.workflowProcess = {
+              ...responseItem.workflowProcess,
+              status: WorkflowRunningStatus.Running,
+              error: undefined,
+            }
           }
           else {
             taskIdRef.current = task_id
@@ -397,8 +444,13 @@ export const useChat = (
       },
       onWorkflowFinished: ({ data: workflowFinishedData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
-          if (responseItem.workflowProcess)
-            responseItem.workflowProcess.status = workflowFinishedData.status as WorkflowRunningStatus
+          if (responseItem.workflowProcess) {
+            responseItem.workflowProcess = {
+              ...responseItem.workflowProcess,
+              status: workflowFinishedData.status as WorkflowRunningStatus,
+              error: workflowFinishedData.error,
+            }
+          }
         })
       },
       onIterationStart: ({ data: iterationStartedData }) => {
@@ -538,16 +590,20 @@ export const useChat = (
       },
       onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
+          let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
-            if (currentFormIndex > -1)
+            if (currentFormIndex > -1) {
+              requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
               responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+            }
           }
+          const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(humanInputFilledFormData, requiredFormData)
           if (!responseItem.humanInputFilledFormDataList) {
-            responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+            responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
           }
           else {
-            responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+            responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
           }
         })
       },
@@ -629,6 +685,8 @@ export const useChat = (
       onGetConversationMessages,
       onGetSuggestedQuestions,
       onConversationComplete,
+      onUnhandledEvent,
+      onSendSettled,
       isPublicAPI,
     }: SendCallback,
   ) => {
@@ -681,13 +739,14 @@ export const useChat = (
     handleResponding(true)
     hasStopRespondedRef.current = false
 
-    const { query, files, inputs, ...restData } = data
+    const { query, files, inputs, overrideInputsForm, ...restData } = data
+    const requestInputsForm = overrideInputsForm ?? formSettings?.inputsForm ?? []
     const bodyParams = {
       response_mode: 'streaming',
       conversation_id: conversationIdRef.current,
       files: getProcessedFiles(files || []),
       query,
-      inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
+      inputs: getProcessedInputs(inputs || {}, requestInputsForm),
       ...restData,
     }
     if (bodyParams?.files?.length) {
@@ -704,11 +763,20 @@ export const useChat = (
 
     let isAgentMode = false
     let hasSetResponseId = false
+    let hasSettled = false
+    const settleSend = (hasError?: boolean) => {
+      if (hasSettled)
+        return
+
+      hasSettled = true
+      onSendSettled?.(hasError)
+    }
 
     const getOrCreatePlayer = createAudioPlayerManager()
 
     const otherOptions: IOtherOptions = {
       isPublicAPI,
+      onUnhandledEvent,
       getAbortController: (abortController) => {
         workflowEventsAbortControllerRef.current = abortController
       },
@@ -743,65 +811,88 @@ export const useChat = (
           parentId: data.parent_message_id,
         })
       },
+      onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+        const { reasoning, node_id, is_final } = reasoningData
+        const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+        const key = node_id || '_'
+        if (reasoning)
+          reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+        if (is_final)
+          responseItem.reasoningFinished = true
+
+        updateCurrentQAOnTree({
+          placeholderQuestionId,
+          questionItem,
+          responseItem,
+          parentId: data.parent_message_id,
+        })
+      },
       async onCompleted(hasError?: boolean) {
         handleResponding(false)
 
-        if (hasError)
-          return
-
-        if (onConversationComplete)
-          onConversationComplete(conversationIdRef.current)
-
-        if (conversationIdRef.current && !hasStopRespondedRef.current && onGetConversationMessages) {
-          const { data }: any = await onGetConversationMessages(
-            conversationIdRef.current,
-            newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
-          )
-          const newResponseItem = data.find((item: any) => item.id === responseItem.id)
-          if (!newResponseItem)
+        try {
+          if (hasError)
             return
 
-          const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0 && newResponseItem.agent_thoughts[newResponseItem.agent_thoughts?.length - 1].thought === newResponseItem.answer
-          updateChatTreeNode(responseItem.id, {
-            content: isUseAgentThought ? '' : newResponseItem.answer,
-            log: [
-              ...newResponseItem.message,
-              ...(newResponseItem.message.at(-1).role !== 'assistant'
-                ? [
-                    {
-                      role: 'assistant',
-                      text: newResponseItem.answer,
-                      files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-                    },
-                  ]
-                : []),
-            ],
-            more: {
-              time: formatTime(newResponseItem.created_at, 'hh:mm A'),
-              tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,
-              latency: newResponseItem.provider_response_latency.toFixed(2),
-              tokens_per_second: newResponseItem.provider_response_latency > 0 ? (newResponseItem.answer_tokens / newResponseItem.provider_response_latency).toFixed(2) : undefined,
-            },
-            // for agent log
-            conversationId: conversationIdRef.current,
-            input: {
-              inputs: newResponseItem.inputs,
-              query: newResponseItem.query,
-            },
-          })
-        }
-        if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
-          try {
-            const { data }: any = await onGetSuggestedQuestions(
-              responseItem.id,
-              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+          let completedWorkflowRunId = responseItem.workflow_run_id
+
+          if (conversationIdRef.current && !hasStopRespondedRef.current && onGetConversationMessages) {
+            const { data }: any = await onGetConversationMessages(
+              conversationIdRef.current,
+              newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
             )
-            setSuggestedQuestions(data)
+            const newResponseItem = data.find((item: any) => item.id === responseItem.id)
+            completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
+            if (!newResponseItem)
+              return onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
+
+            const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0 && newResponseItem.agent_thoughts[newResponseItem.agent_thoughts?.length - 1].thought === newResponseItem.answer
+            updateChatTreeNode(responseItem.id, {
+              content: isUseAgentThought ? '' : newResponseItem.answer,
+              log: [
+                ...newResponseItem.message,
+                ...(newResponseItem.message.at(-1).role !== 'assistant'
+                  ? [
+                      {
+                        role: 'assistant',
+                        text: newResponseItem.answer,
+                        files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+                      },
+                    ]
+                  : []),
+              ],
+              more: {
+                time: formatTime(newResponseItem.created_at, 'hh:mm A'),
+                tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,
+                latency: newResponseItem.provider_response_latency.toFixed(2),
+                tokens_per_second: newResponseItem.provider_response_latency > 0 ? (newResponseItem.answer_tokens / newResponseItem.provider_response_latency).toFixed(2) : undefined,
+              },
+              // for agent log
+              conversationId: conversationIdRef.current,
+              input: {
+                inputs: newResponseItem.inputs,
+                query: newResponseItem.query,
+              },
+            })
           }
-          // eslint-disable-next-line unused-imports/no-unused-vars
-          catch (e) {
-            setSuggestedQuestions([])
+
+          onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
+
+          if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
+            try {
+              const { data }: any = await onGetSuggestedQuestions(
+                responseItem.id,
+                newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+              )
+              setSuggestedQuestions(data)
+            }
+            catch {
+              setSuggestedQuestions([])
+            }
           }
+        }
+        finally {
+          settleSend(hasError)
         }
       },
       onFile(file) {
@@ -909,6 +1000,7 @@ export const useChat = (
       },
       onError() {
         handleResponding(false)
+        settleSend(true)
         updateCurrentQAOnTree({
           placeholderQuestionId,
           questionItem,
@@ -929,7 +1021,11 @@ export const useChat = (
         }
 
         if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
-          responseItem.workflowProcess.status = WorkflowRunningStatus.Running
+          responseItem.workflowProcess = {
+            ...responseItem.workflowProcess,
+            status: WorkflowRunningStatus.Running,
+            error: undefined,
+          }
         }
         else {
           taskIdRef.current = task_id
@@ -949,7 +1045,11 @@ export const useChat = (
       onWorkflowFinished: ({ data: workflowFinishedData }) => {
         if (pausedStateRef.current)
           pausedStateRef.current = false
-        responseItem.workflowProcess!.status = workflowFinishedData.status as WorkflowRunningStatus
+        responseItem.workflowProcess = {
+          ...responseItem.workflowProcess!,
+          status: workflowFinishedData.status as WorkflowRunningStatus,
+          error: workflowFinishedData.error,
+        }
         updateCurrentQAOnTree({
           placeholderQuestionId,
           questionItem,
@@ -1108,15 +1208,20 @@ export const useChat = (
         }
       },
       onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+        let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
         if (responseItem.humanInputFormDataList?.length) {
           const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
-          responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+          if (currentFormIndex > -1) {
+            requiredFormData = responseItem.humanInputFormDataList[currentFormIndex]
+            responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+          }
         }
+        const enrichedHumanInputFilledFormData = enrichSubmittedHumanInputFormData(humanInputFilledFormData, requiredFormData)
         if (!responseItem.humanInputFilledFormDataList) {
-          responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+          responseItem.humanInputFilledFormDataList = [enrichedHumanInputFilledFormData]
         }
         else {
-          responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+          responseItem.humanInputFilledFormDataList.push(enrichedHumanInputFilledFormData)
         }
         updateCurrentQAOnTree({
           placeholderQuestionId,

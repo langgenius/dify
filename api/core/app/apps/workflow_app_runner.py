@@ -24,6 +24,7 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -33,12 +34,15 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities import RetrievalSourceMetadata
+from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
+from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -50,7 +54,6 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -74,6 +77,7 @@ from graphon.graph_events import (
     NodeRunLoopNextEvent,
     NodeRunLoopStartedEvent,
     NodeRunLoopSucceededEvent,
+    NodeRunReasoningChunkEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
@@ -104,7 +108,7 @@ class WorkflowBasedAppRunner:
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
-        if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+        if invoke_from.runs_as_account():
             return UserFrom.ACCOUNT
         return UserFrom.END_USER
 
@@ -118,6 +122,7 @@ class WorkflowBasedAppRunner:
         tenant_id: str = "",
         user_id: str = "",
         root_node_id: str | None = None,
+        trace_session_id: str | None = None,
     ) -> Graph:
         """
         Init graph
@@ -138,6 +143,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,
+            trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow_id,
@@ -171,6 +177,7 @@ class WorkflowBasedAppRunner:
         single_loop_run: Any | None = None,
         *,
         user_id: str,
+        trace_session_id: str | None = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -208,6 +215,7 @@ class WorkflowBasedAppRunner:
                 node_type_filter_key="iteration_id",
                 node_type_label="iteration",
                 user_id=user_id,
+                trace_session_id=trace_session_id,
             )
         elif single_loop_run:
             graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
@@ -218,6 +226,7 @@ class WorkflowBasedAppRunner:
                 node_type_filter_key="loop_id",
                 node_type_label="loop",
                 user_id=user_id,
+                trace_session_id=trace_session_id,
             )
         else:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
@@ -236,6 +245,7 @@ class WorkflowBasedAppRunner:
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
         user_id: str = "",
+        trace_session_id: str | None = None,
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
@@ -301,6 +311,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
@@ -399,278 +410,297 @@ class WorkflowBasedAppRunner:
         :param workflow_entry: workflow entry
         :param event: event
         """
-        if isinstance(event, GraphRunStartedEvent):
-            self._publish_event(QueueWorkflowStartedEvent(reason=event.reason))
-        elif isinstance(event, GraphRunSucceededEvent):
-            self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))
-        elif isinstance(event, GraphRunPartialSucceededEvent):
-            self._publish_event(
-                QueueWorkflowPartialSuccessEvent(outputs=event.outputs, exceptions_count=event.exceptions_count)
-            )
-        elif isinstance(event, GraphRunFailedEvent):
-            self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
-        elif isinstance(event, GraphRunAbortedEvent):
-            self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
-        elif isinstance(event, GraphRunPausedEvent):
-            runtime_state = workflow_entry.graph_engine.graph_runtime_state
-            paused_nodes = runtime_state.get_paused_nodes()
-            self._enqueue_human_input_notifications(event.reasons)
-            self._publish_event(
-                QueueWorkflowPausedEvent(
+        match event:
+            case GraphRunStartedEvent():
+                self._publish_event(QueueWorkflowStartedEvent(reason=event.reason))
+            case GraphRunSucceededEvent():
+                self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))
+            case GraphRunPartialSucceededEvent():
+                self._publish_event(
+                    QueueWorkflowPartialSuccessEvent(outputs=event.outputs, exceptions_count=event.exceptions_count)
+                )
+            case GraphRunFailedEvent():
+                self._publish_event(
+                    QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
+                )
+            case GraphRunAbortedEvent():
+                self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
+            case GraphRunPausedEvent():
+                runtime_state = workflow_entry.graph_engine.graph_runtime_state
+                paused_nodes = runtime_state.get_paused_nodes()
+                enriched_reasons = enrich_graph_pause_reasons(
                     reasons=event.reasons,
-                    outputs=event.outputs,
-                    paused_nodes=paused_nodes,
+                    form_repository=HumanInputFormSubmissionRepository(),
+                    variable_pool=runtime_state.variable_pool,
                 )
-            )
-        elif isinstance(event, NodeRunHumanInputFormFilledEvent):
-            self._publish_event(
-                QueueHumanInputFormFilledEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_title=event.node_title,
-                    rendered_content=event.rendered_content,
-                    action_id=event.action_id,
-                    action_text=event.action_text,
+                self._enqueue_human_input_notifications(enriched_reasons)
+                self._publish_event(
+                    QueueWorkflowPausedEvent(
+                        reasons=enriched_reasons,
+                        outputs=event.outputs,
+                        paused_nodes=paused_nodes,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunHumanInputFormTimeoutEvent):
-            self._publish_event(
-                QueueHumanInputFormTimeoutEvent(
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_title=event.node_title,
-                    expiration_time=event.expiration_time,
+            case NodeRunHumanInputFormFilledEvent():
+                self._publish_event(
+                    QueueHumanInputFormFilledEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        rendered_content=event.rendered_content,
+                        action_id=event.action_id,
+                        action_text=event.action_text,
+                        submitted_data=event.submitted_data,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunRetryEvent):
-            node_run_result = event.node_run_result
-            inputs = node_run_result.inputs
-            process_data = node_run_result.process_data
-            outputs = project_node_outputs_for_workflow_run(
-                node_type=event.node_type,
-                inputs=inputs,
-                outputs=node_run_result.outputs,
-            )
-            execution_metadata = node_run_result.metadata
-            self._publish_event(
-                QueueNodeRetryEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_title=event.node_title,
+            case NodeRunHumanInputFormTimeoutEvent():
+                self._publish_event(
+                    QueueHumanInputFormTimeoutEvent(
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        expiration_time=event.expiration_time,
+                    )
+                )
+            case NodeRunRetryEvent():
+                node_run_result = event.node_run_result
+                inputs = node_run_result.inputs
+                process_data = node_run_result.process_data
+                outputs = project_node_outputs_for_workflow_run(
                     node_type=event.node_type,
-                    start_at=event.start_at,
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
                     inputs=inputs,
-                    process_data=process_data,
-                    outputs=outputs,
-                    error=event.error,
-                    execution_metadata=execution_metadata,
-                    retry_index=event.retry_index,
-                    provider_type=event.provider_type,
-                    provider_id=event.provider_id,
+                    outputs=node_run_result.outputs,
                 )
-            )
-        elif isinstance(event, NodeRunStartedEvent):
-            self._publish_event(
-                QueueNodeStartedEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_title=event.node_title,
-                    node_type=event.node_type,
-                    start_at=event.start_at,
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
-                    agent_strategy=self._build_agent_strategy_info(event),
-                    provider_type=event.provider_type,
-                    provider_id=event.provider_id,
+                execution_metadata = node_run_result.metadata
+                self._publish_event(
+                    QueueNodeRetryEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_title=event.node_title,
+                        node_type=event.node_type,
+                        start_at=event.start_at,
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                        inputs=inputs,
+                        process_data=process_data,
+                        outputs=outputs,
+                        error=event.error,
+                        execution_metadata=execution_metadata,
+                        retry_index=event.retry_index,
+                        provider_type=event.provider_type,
+                        provider_id=event.provider_id,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunSucceededEvent):
-            node_run_result = event.node_run_result
-            inputs = node_run_result.inputs
-            process_data = node_run_result.process_data
-            outputs = project_node_outputs_for_workflow_run(
-                node_type=event.node_type,
-                inputs=inputs,
-                outputs=node_run_result.outputs,
-            )
-            execution_metadata = node_run_result.metadata
-            self._publish_event(
-                QueueNodeSucceededEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
+            case NodeRunStartedEvent():
+                self._publish_event(
+                    QueueNodeStartedEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_title=event.node_title,
+                        node_type=event.node_type,
+                        start_at=event.start_at,
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                        agent_strategy=self._build_agent_strategy_info(event),
+                        provider_type=event.provider_type,
+                        provider_id=event.provider_id,
+                    )
+                )
+            case NodeRunSucceededEvent():
+                node_run_result = event.node_run_result
+                inputs = node_run_result.inputs
+                process_data = node_run_result.process_data
+                outputs = project_node_outputs_for_workflow_run(
                     node_type=event.node_type,
-                    start_at=event.start_at,
-                    finished_at=event.finished_at,
                     inputs=inputs,
-                    process_data=process_data,
-                    outputs=outputs,
-                    execution_metadata=execution_metadata,
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
+                    outputs=node_run_result.outputs,
                 )
-            )
-        elif isinstance(event, NodeRunFailedEvent):
-            outputs = project_node_outputs_for_workflow_run(
-                node_type=event.node_type,
-                inputs=event.node_run_result.inputs,
-                outputs=event.node_run_result.outputs,
-            )
-            self._publish_event(
-                QueueNodeFailedEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
+                execution_metadata = node_run_result.metadata
+                self._publish_event(
+                    QueueNodeSucceededEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        start_at=event.start_at,
+                        finished_at=event.finished_at,
+                        inputs=inputs,
+                        process_data=process_data,
+                        outputs=outputs,
+                        execution_metadata=execution_metadata,
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
+                )
+            case NodeRunFailedEvent():
+                outputs = project_node_outputs_for_workflow_run(
                     node_type=event.node_type,
-                    start_at=event.start_at,
-                    finished_at=event.finished_at,
                     inputs=event.node_run_result.inputs,
-                    process_data=event.node_run_result.process_data,
-                    outputs=outputs,
-                    error=event.node_run_result.error or "Unknown error",
-                    execution_metadata=event.node_run_result.metadata,
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
+                    outputs=event.node_run_result.outputs,
                 )
-            )
-        elif isinstance(event, NodeRunExceptionEvent):
-            outputs = project_node_outputs_for_workflow_run(
-                node_type=event.node_type,
-                inputs=event.node_run_result.inputs,
-                outputs=event.node_run_result.outputs,
-            )
-            self._publish_event(
-                QueueNodeExceptionEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
+                self._publish_event(
+                    QueueNodeFailedEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        start_at=event.start_at,
+                        finished_at=event.finished_at,
+                        inputs=event.node_run_result.inputs,
+                        process_data=event.node_run_result.process_data,
+                        outputs=outputs,
+                        error=event.node_run_result.error or "Unknown error",
+                        execution_metadata=event.node_run_result.metadata,
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
+                )
+            case NodeRunExceptionEvent():
+                outputs = project_node_outputs_for_workflow_run(
                     node_type=event.node_type,
-                    start_at=event.start_at,
-                    finished_at=event.finished_at,
                     inputs=event.node_run_result.inputs,
-                    process_data=event.node_run_result.process_data,
-                    outputs=outputs,
-                    error=event.node_run_result.error or "Unknown error",
-                    execution_metadata=event.node_run_result.metadata,
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
+                    outputs=event.node_run_result.outputs,
                 )
-            )
-        elif isinstance(event, NodeRunStreamChunkEvent):
-            self._publish_event(
-                QueueTextChunkEvent(
-                    text=event.chunk,
-                    from_variable_selector=list(event.selector),
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
+                self._publish_event(
+                    QueueNodeExceptionEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        start_at=event.start_at,
+                        finished_at=event.finished_at,
+                        inputs=event.node_run_result.inputs,
+                        process_data=event.node_run_result.process_data,
+                        outputs=outputs,
+                        error=event.node_run_result.error or "Unknown error",
+                        execution_metadata=event.node_run_result.metadata,
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunRetrieverResourceEvent):
-            self._publish_event(
-                QueueRetrieverResourcesEvent(
-                    retriever_resources=[
-                        RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
-                    ],
-                    in_iteration_id=event.in_iteration_id,
-                    in_loop_id=event.in_loop_id,
+            case NodeRunStreamChunkEvent():
+                self._publish_event(
+                    QueueTextChunkEvent(
+                        text=event.chunk,
+                        from_variable_selector=list(event.selector),
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunAgentLogEvent):
-            self._publish_event(
-                QueueAgentLogEvent(
-                    id=event.message_id,
-                    label=event.label,
-                    node_execution_id=event.node_execution_id,
-                    parent_id=event.parent_id,
-                    error=event.error,
-                    status=event.status,
-                    data=event.data,
-                    metadata=event.metadata,
-                    node_id=event.node_id,
+            case NodeRunReasoningChunkEvent():
+                self._publish_event(
+                    QueueReasoningChunkEvent(
+                        reasoning=event.chunk,
+                        from_node_id=event.node_id,
+                        is_final=event.is_final,
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunIterationStartedEvent):
-            self._publish_event(
-                QueueIterationStartEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_title=event.node_title,
-                    start_at=event.start_at,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    inputs=event.inputs,
-                    metadata=event.metadata,
+            case NodeRunRetrieverResourceEvent():
+                self._publish_event(
+                    QueueRetrieverResourcesEvent(
+                        retriever_resources=[
+                            RetrievalSourceMetadata.model_validate(resource) for resource in event.retriever_resources
+                        ],
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunIterationNextEvent):
-            self._publish_event(
-                QueueIterationNextEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_title=event.node_title,
-                    index=event.index,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    output=event.pre_iteration_output,
+            case NodeRunAgentLogEvent():
+                self._publish_event(
+                    QueueAgentLogEvent(
+                        id=event.message_id,
+                        label=event.label,
+                        node_execution_id=event.node_execution_id,
+                        parent_id=event.parent_id,
+                        error=event.error,
+                        status=event.status,
+                        data=event.data,
+                        metadata=event.metadata,
+                        node_id=event.node_id,
+                    )
                 )
-            )
-        elif isinstance(event, (NodeRunIterationSucceededEvent | NodeRunIterationFailedEvent)):
-            self._publish_event(
-                QueueIterationCompletedEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_title=event.node_title,
-                    start_at=event.start_at,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    inputs=event.inputs,
-                    outputs=event.outputs,
-                    metadata=event.metadata,
-                    steps=event.steps,
-                    error=event.error if isinstance(event, NodeRunIterationFailedEvent) else None,
+            case NodeRunIterationStartedEvent():
+                self._publish_event(
+                    QueueIterationStartEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        start_at=event.start_at,
+                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        inputs=event.inputs,
+                        metadata=event.metadata,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunLoopStartedEvent):
-            self._publish_event(
-                QueueLoopStartEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_title=event.node_title,
-                    start_at=event.start_at,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    inputs=event.inputs,
-                    metadata=event.metadata,
+            case NodeRunIterationNextEvent():
+                self._publish_event(
+                    QueueIterationNextEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        index=event.index,
+                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        output=event.pre_iteration_output,
+                    )
                 )
-            )
-        elif isinstance(event, NodeRunLoopNextEvent):
-            self._publish_event(
-                QueueLoopNextEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_title=event.node_title,
-                    index=event.index,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    output=event.pre_loop_output,
+            case NodeRunIterationSucceededEvent() | NodeRunIterationFailedEvent():
+                self._publish_event(
+                    QueueIterationCompletedEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        start_at=event.start_at,
+                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        inputs=event.inputs,
+                        outputs=event.outputs,
+                        metadata=event.metadata,
+                        steps=event.steps,
+                        error=event.error if isinstance(event, NodeRunIterationFailedEvent) else None,
+                    )
                 )
-            )
-        elif isinstance(event, (NodeRunLoopSucceededEvent | NodeRunLoopFailedEvent)):
-            self._publish_event(
-                QueueLoopCompletedEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_title=event.node_title,
-                    start_at=event.start_at,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    inputs=event.inputs,
-                    outputs=event.outputs,
-                    metadata=event.metadata,
-                    steps=event.steps,
-                    error=event.error if isinstance(event, NodeRunLoopFailedEvent) else None,
+            case NodeRunLoopStartedEvent():
+                self._publish_event(
+                    QueueLoopStartEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        start_at=event.start_at,
+                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        inputs=event.inputs,
+                        metadata=event.metadata,
+                    )
                 )
-            )
+            case NodeRunLoopNextEvent():
+                self._publish_event(
+                    QueueLoopNextEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        index=event.index,
+                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        output=event.pre_loop_output,
+                    )
+                )
+            case NodeRunLoopSucceededEvent() | NodeRunLoopFailedEvent():
+                self._publish_event(
+                    QueueLoopCompletedEvent(
+                        node_execution_id=event.id,
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_title=event.node_title,
+                        start_at=event.start_at,
+                        node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                        inputs=event.inputs,
+                        outputs=event.outputs,
+                        metadata=event.metadata,
+                        steps=event.steps,
+                        error=event.error if isinstance(event, NodeRunLoopFailedEvent) else None,
+                    )
+                )
 
     def _enqueue_human_input_notifications(self, reasons: Sequence[object]) -> None:
         for reason in reasons:

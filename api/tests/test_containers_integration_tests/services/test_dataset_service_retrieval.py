@@ -16,6 +16,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from models import AccountStatus, CreatorUserRole, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -25,7 +26,7 @@ from models.dataset import (
     DatasetProcessRule,
     DatasetQuery,
 )
-from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode
+from models.enums import DatasetQuerySource, DataSourceType, ProcessRuleMode, TagType
 from models.model import Tag, TagBinding
 from services.dataset_service import DatasetService, DocumentService
 
@@ -42,11 +43,11 @@ class DatasetRetrievalTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         tenant = Tenant(
             name=f"tenant-{uuid4()}",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add_all([account, tenant])
         db_session_with_containers.flush()
@@ -72,7 +73,7 @@ class DatasetRetrievalTestDataFactory:
             email=f"{uuid4()}@example.com",
             name=f"user-{uuid4()}",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.flush()
@@ -105,6 +106,7 @@ class DatasetRetrievalTestDataFactory:
             data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=created_by,
+            maintainer=created_by,
             permission=permission,
             provider="vendor",
             retrieval_model={"top_k": 2},
@@ -130,7 +132,7 @@ class DatasetRetrievalTestDataFactory:
 
     @staticmethod
     def create_process_rule(
-        db_session_with_containers: Session, dataset_id: str, created_by: str, mode: str, rules: dict
+        db_session_with_containers: Session, dataset_id: str, created_by: str, mode: ProcessRuleMode, rules: dict
     ) -> DatasetProcessRule:
         """Create a dataset process rule."""
         process_rule = DatasetProcessRule(
@@ -153,7 +155,7 @@ class DatasetRetrievalTestDataFactory:
             content=content,
             source=DatasetQuerySource.APP,
             source_app_id=None,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=created_by,
         )
         db_session_with_containers.add(dataset_query)
@@ -176,7 +178,7 @@ class DatasetRetrievalTestDataFactory:
         """Create a knowledge tag and bind it to the target dataset."""
         tag = Tag(
             tenant_id=tenant_id,
-            type="knowledge",
+            type=TagType.KNOWLEDGE,
             name=f"tag-{uuid4()}",
             created_by=created_by,
         )
@@ -226,7 +228,7 @@ class TestDatasetServiceGetDatasets:
             )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id)
+        datasets, total = DatasetService.get_datasets(page, per_page, db_session_with_containers, tenant_id=tenant.id)
 
         # Assert
         assert len(datasets) == 5
@@ -256,7 +258,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, search=search)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, search=search
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -288,14 +292,26 @@ class TestDatasetServiceGetDatasets:
         tag_2 = DatasetRetrievalTestDataFactory.create_tag_binding(
             db_session_with_containers, tenant.id, account.id, dataset_2.id
         )
+        db_session_with_containers.add(
+            TagBinding(
+                tenant_id=tenant.id,
+                tag_id=tag_2.id,
+                target_id=dataset_1.id,
+                created_by=account.id,
+            )
+        )
+        db_session_with_containers.commit()
         tag_ids = [tag_1.id, tag_2.id]
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, tag_ids=tag_ids)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids
+        )
 
         # Assert
-        assert len(datasets) == 2
-        assert total == 2
+        assert len(datasets) == 1
+        assert total == 1
+        assert datasets[0].id == dataset_1.id
 
     def test_get_datasets_with_empty_tag_ids(self, db_session_with_containers: Session):
         """Test get_datasets with empty tag_ids skips tag filtering and returns all matching datasets."""
@@ -315,7 +331,9 @@ class TestDatasetServiceGetDatasets:
             )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, tag_ids=tag_ids)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, tag_ids=tag_ids
+        )
 
         # Assert
         # When tag_ids is empty, tag filtering is skipped, so normal query results are returned
@@ -345,7 +363,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant.id, user=None)
+        datasets, total = DatasetService.get_datasets(
+            page, per_page, db_session_with_containers, tenant_id=tenant.id, user=None
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -373,6 +393,7 @@ class TestDatasetServiceGetDatasets:
         datasets, total = DatasetService.get_datasets(
             page=1,
             per_page=20,
+            session=db_session_with_containers,
             tenant_id=tenant.id,
             user=owner,
             include_all=True,
@@ -397,7 +418,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -421,7 +444,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -448,7 +473,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=user)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=user
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -475,7 +502,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=operator)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=operator
+        )
 
         # Assert
         assert len(datasets) == 1
@@ -498,7 +527,9 @@ class TestDatasetServiceGetDatasets:
         )
 
         # Act
-        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant.id, user=operator)
+        datasets, total = DatasetService.get_datasets(
+            page=1, per_page=20, session=db_session_with_containers, tenant_id=tenant.id, user=operator
+        )
 
         # Assert
         assert datasets == []
@@ -517,7 +548,7 @@ class TestDatasetServiceGetDataset:
         )
 
         # Act
-        result = DatasetService.get_dataset(dataset.id)
+        result = DatasetService.get_dataset(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -529,7 +560,7 @@ class TestDatasetServiceGetDataset:
         dataset_id = str(uuid4())
 
         # Act
-        result = DatasetService.get_dataset(dataset_id)
+        result = DatasetService.get_dataset(dataset_id, session=db_session_with_containers)
 
         # Assert
         assert result is None
@@ -608,7 +639,7 @@ class TestDatasetServiceGetProcessRules:
         )
 
         # Act
-        result = DatasetService.get_process_rules(dataset.id)
+        result = DatasetService.get_process_rules(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result["mode"] == "custom"
@@ -623,7 +654,7 @@ class TestDatasetServiceGetProcessRules:
         )
 
         # Act
-        result = DatasetService.get_process_rules(dataset.id)
+        result = DatasetService.get_process_rules(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result["mode"] == DocumentService.DEFAULT_RULES["mode"]
@@ -693,7 +724,7 @@ class TestDatasetServiceGetRelatedApps:
             DatasetRetrievalTestDataFactory.create_app_dataset_join(db_session_with_containers, dataset.id)
 
         # Act
-        result = DatasetService.get_related_apps(dataset.id)
+        result = DatasetService.get_related_apps(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert len(result) == 2
@@ -708,7 +739,7 @@ class TestDatasetServiceGetRelatedApps:
         )
 
         # Act
-        result = DatasetService.get_related_apps(dataset.id)
+        result = DatasetService.get_related_apps(dataset.id, session=db_session_with_containers)
 
         # Assert
         assert result == []

@@ -19,12 +19,12 @@ const WorkflowPreviewCard = ({
     <div className="flex h-[320px] grow basis-1/2 flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border-subtle bg-background-default-burn">
       <div className="w-full border-b-[0.5px] border-divider-subtle p-4 pb-0">
         <div className="mb-2 flex items-center gap-3">
-          <div className={cn('inline-flex h-8 w-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-indigo-solid')}>
-            <span className="i-ri-exchange-2-fill h-4 w-4 text-components-avatar-shape-fill-stop-100" />
+          <div className={cn('inline-flex size-8 items-center justify-center rounded-lg border border-divider-regular', 'bg-components-icon-bg-indigo-solid')}>
+            <span className="i-ri-exchange-2-fill size-4 text-components-avatar-shape-fill-stop-100" />
           </div>
           <div className="grow system-md-semibold text-text-secondary">Workflow App</div>
           <div className="p-1.5">
-            <span className="i-ri-layout-left-2-line h-4 w-4 text-text-tertiary" />
+            <span className="i-ri-layout-left-2-line size-4 text-text-tertiary" />
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -44,7 +44,7 @@ const WorkflowPreviewCard = ({
             <div className="h-2 w-10 rounded-xs bg-text-quaternary opacity-20"></div>
           </Button>
           <Button variant="primary" size="small" disabled>
-            <span className="mr-1 i-ri-play-large-line h-4 w-4" />
+            <span className="mr-1 i-ri-play-large-line size-4" />
             <span>Execute</span>
           </Button>
         </div>

@@ -1,10 +1,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DatasetACLPermission } from '@/utils/permission'
 
 // --- All hoisted mock fns and state (accessible inside vi.mock factories) ---
 const mocks = vi.hoisted(() => {
   const state = {
-    dataset: { embedding_available: true } as Record<string, unknown> | null,
+    dataset: { embedding_available: true, permission_keys: ['dataset.acl.edit'] } as Record<string, unknown> | null,
     documentDetail: null as Record<string, unknown> | null,
     documentError: null as Error | null,
     documentMetadata: null as Record<string, unknown> | null,
@@ -114,24 +115,29 @@ vi.mock('../batch-modal', () => ({
 }))
 
 vi.mock('../document-title', () => ({
-  DocumentTitle: ({ name, extension }: { name?: string, extension?: string }) => (
-    <div data-testid="document-title" data-extension={extension}>{name}</div>
-  ),
+  DocumentTitle: ({
+    document,
+  }: {
+    document?: {
+      name?: string
+      data_source_detail_dict?: { upload_file?: { extension?: string } }
+      data_source_info?: { upload_file?: { extension?: string } }
+    } | null
+  }) => {
+    const extension = document?.data_source_detail_dict?.upload_file?.extension
+      ?? document?.data_source_info?.upload_file?.extension
+
+    return <div data-testid="document-title" data-extension={extension}>{document?.name}</div>
+  },
 }))
 
 vi.mock('../segment-add', () => ({
-  default: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
+  SegmentAdd: ({ showNewSegmentModal, showBatchModal, embedding }: { showNewSegmentModal?: () => void, showBatchModal?: () => void, embedding?: boolean }) => (
     <div data-testid="segment-add" data-embedding={embedding}>
       <button data-testid="new-segment-btn" onClick={showNewSegmentModal}>New Segment</button>
       <button data-testid="batch-btn" onClick={showBatchModal}>Batch Import</button>
     </div>
   ),
-  ProcessStatus: {
-    WAITING: 'waiting',
-    PROCESSING: 'processing',
-    ERROR: 'error',
-    COMPLETED: 'completed',
-  },
 }))
 
 vi.mock('../../components/operations', () => ({
@@ -151,8 +157,8 @@ vi.mock('../../status-item', () => ({
 }))
 
 vi.mock('@/app/components/datasets/metadata/metadata-document', () => ({
-  default: ({ datasetId, documentId }: { datasetId?: string, documentId?: string }) => (
-    <div data-testid="metadata" data-dataset-id={datasetId} data-document-id={documentId}>Metadata</div>
+  default: ({ datasetId, documentId, canEdit }: { datasetId?: string, documentId?: string, canEdit?: boolean }) => (
+    <div data-testid="metadata" data-dataset-id={datasetId} data-document-id={documentId} data-can-edit={String(canEdit)}>Metadata</div>
   ),
 }))
 
@@ -190,7 +196,7 @@ describe('DocumentDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    mocks.state.dataset = { embedding_available: true }
+    mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Edit] }
     mocks.state.documentDetail = createDocumentDetail()
     mocks.state.documentError = null
     mocks.state.documentMetadata = null
@@ -279,6 +285,12 @@ describe('DocumentDetail', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
       expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
     })
+
+    it('should hide SegmentAdd when dataset only has readonly ACL permission', () => {
+      mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Readonly] }
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+      expect(screen.queryByTestId('segment-add')).not.toBeInTheDocument()
+    })
   })
 
   describe('Metadata Panel', () => {
@@ -311,25 +323,33 @@ describe('DocumentDetail', () => {
       const metadata = screen.getByTestId('metadata')
       expect(metadata).toHaveAttribute('data-dataset-id', 'ds-1')
       expect(metadata).toHaveAttribute('data-document-id', 'doc-1')
+      expect(metadata).toHaveAttribute('data-can-edit', 'true')
+    })
+
+    it('should pass readonly ACL state to Metadata', () => {
+      mocks.state.dataset = { embedding_available: true, permission_keys: [DatasetACLPermission.Readonly] }
+      render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+
+      expect(screen.getByTestId('metadata')).toHaveAttribute('data-can-edit', 'false')
     })
   })
 
   describe('Navigation', () => {
     it('should navigate back when back button clicked', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('document-detail-back-button'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents')
     })
 
     it('should expose aria label for back button', () => {
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      expect(screen.getByTestId('document-detail-back-button')).toHaveAttribute('aria-label')
+      expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveAttribute('aria-label')
     })
 
     it('should preserve query params when navigating back', () => {
       mocks.state.searchParams = 'page=2&status=active'
       render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
-      fireEvent.click(screen.getByTestId('document-detail-back-button'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.back' }))
       expect(mocks.push).toHaveBeenCalledWith('/datasets/ds-1/documents?page=2&status=active')
     })
   })

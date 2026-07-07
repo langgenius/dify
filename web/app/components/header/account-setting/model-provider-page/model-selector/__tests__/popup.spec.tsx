@@ -1,7 +1,10 @@
 import type { ReactElement } from 'react'
 import type { Model, ModelItem, ModelProvider } from '../../declarations'
-import type { SystemFeatures } from '@/types/feature'
+import type { PopupProps } from '../popup'
+import { Combobox } from '@langgenius/dify-ui/combobox'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   ConfigurationMethodEnum,
@@ -18,6 +21,17 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
   }),
+}))
+
+const mockSearchParams = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}))
+vi.mock('@/next/navigation', () => ({
+  useSearchParams: () => mockSearchParams.current,
+}))
+
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({ canInstallPlugin: true }),
 }))
 
 const mockSupportFunctionCall = vi.hoisted(() => vi.fn())
@@ -55,18 +69,56 @@ vi.mock('../../hooks', async () => {
 })
 
 vi.mock('../popup-item', () => ({
-  default: ({ model }: { model: Model }) => <div>{model.provider}</div>,
+  default: ({ model }: { model: Model }) => (
+    <div>
+      <span>{model.provider}</span>
+      {model.models.map(modelItem => (
+        <span key={modelItem.model}>{modelItem.model}</span>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({ modelProviders: mockContextModelProviders.current }),
 }))
 
-const renderPopup = (ui: ReactElement) => renderWithSystemFeatures(ui, {
-  // The Popup component never inspects trial_models beyond passing them
-  // through, so an opaque string[] is enough; cast to satisfy the
-  // ModelProviderQuotaGetPaid[] declared on SystemFeatures.
-  systemFeatures: { trial_models: mockTrialModels.current as unknown as SystemFeatures['trial_models'] },
+type PopupTestProps = Omit<PopupProps, 'inputValue' | 'onInputValueChange'>
+
+function PopupHarness(props: PopupTestProps) {
+  const [inputValue, setInputValue] = useState('')
+
+  return (
+    <Combobox
+      filter={null}
+      inputValue={inputValue}
+      open
+      onInputValueChange={(newInputValue, details) => {
+        if (details.reason !== 'item-press')
+          setInputValue(newInputValue)
+      }}
+    >
+      <Popup
+        {...props}
+        inputValue={inputValue}
+        onInputValueChange={setInputValue}
+      />
+    </Combobox>
+  )
+}
+
+const renderPopup = (
+  ui: ReactElement<PopupTestProps>,
+  options: Parameters<typeof renderWithSystemFeatures>[1] = {},
+) => renderWithSystemFeatures(ui, {
+  ...options,
+  systemFeatures: options.systemFeatures === null
+    ? null
+    : {
+        enable_marketplace: true,
+        ...(options.systemFeatures ?? {}),
+      },
+  trialModels: options.trialModels ?? mockTrialModels.current,
 })
 
 const mockTrialCredits = vi.hoisted(() => ({
@@ -110,8 +162,9 @@ vi.mock('@/app/components/plugins/install-plugin/base/check-task-status', () => 
   default: () => ({ check: mockCheck }),
 }))
 
+const mockGetMarketplaceUrl = vi.hoisted(() => vi.fn(() => 'https://marketplace.example.com'))
 vi.mock('@/utils/var', () => ({
-  getMarketplaceUrl: vi.fn(() => 'https://marketplace.example.com'),
+  getMarketplaceUrl: mockGetMarketplaceUrl,
 }))
 
 vi.mock('../../utils', async () => {
@@ -177,6 +230,7 @@ describe('Popup', () => {
     mockMarketplacePlugins.isLoading = false
     mockContextModelProviders.current = []
     mockTrialModels.current = ['test-openai', 'test-anthropic']
+    mockSearchParams.current = new URLSearchParams()
     Object.assign(mockTrialCredits, {
       credits: 200,
       totalCredits: 200,
@@ -186,11 +240,12 @@ describe('Popup', () => {
     })
   })
 
-  it('should filter models by search and allow clearing search', () => {
-    const { container } = renderPopup(
-      <Popup
+  it('should filter models by search and allow clearing search without blurring the input', async () => {
+    const user = userEvent.setup()
+
+    renderPopup(
+      <PopupHarness
         modelList={[makeModel()]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -198,20 +253,523 @@ describe('Popup', () => {
     expect(screen.getByText('openai'))!.toBeInTheDocument()
 
     const input = screen.getByPlaceholderText('datasetSettings.form.searchModel')
-    fireEvent.change(input, { target: { value: 'not-found' } })
-    expect(screen.getByText('No model found for \u201Cnot-found\u201D'))!.toBeInTheDocument()
+    await user.click(input)
+    await user.keyboard('not-found')
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
 
-    const clearIcon = container.querySelector('.i-custom-vender-solid-general-x-circle')
-    expect(clearIcon)!.toBeInTheDocument()
-    fireEvent.click(clearIcon!)
+    const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+    expect(clearButton)!.toBeInTheDocument()
+    await user.click(clearButton)
+
     expect((input as HTMLInputElement).value).toBe('')
+    expect(input).toHaveFocus()
+  })
+
+  it('should show matching models when searching by model name with direct props', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            models: [makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } })],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } })],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'claude' } },
+    )
+
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.getByText('anthropic')).toBeInTheDocument()
+    expect(screen.getByText('claude-3')).toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText(/common\.modelProvider\.selector\.noModelFoundForSearch/)).not.toBeInTheDocument()
+  })
+
+  it('should show empty search placeholder when direct props have no provider or model match', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'mistral' } },
+    )
+
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+  })
+
+  it('should show all models of a provider when searching by provider label with direct props', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+              makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+            ],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [
+              makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4o'))!.toBeInTheDocument()
+    expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
+    expect(screen.queryByText('claude-3')).not.toBeInTheDocument()
+  })
+
+  it('should fuzzy match provider labels and keep all compatible provider models visible', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+              makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+            ],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [
+              makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'opnai' } },
+    )
+
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4o'))!.toBeInTheDocument()
+    expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
+  })
+
+  it('should match model labels without expanding unmatched provider models', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [
+              makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } }),
+              makeModelItem({ model: 'claude-instant', label: { en_US: 'Claude Instant', zh_Hans: 'Claude Instant' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'claude3' } },
+    )
+
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.getByText('anthropic'))!.toBeInTheDocument()
+    expect(screen.getByText('claude-3'))!.toBeInTheDocument()
+    expect(screen.queryByText('claude-instant')).not.toBeInTheDocument()
+  })
+
+  it('should match model names without separators', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'langgenius/openai/openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-5.4', label: { en_US: 'gpt-5.4', zh_Hans: 'gpt-5.4' } }),
+              makeModelItem({ model: 'gpt-5.4-2026-03-05', label: { en_US: 'gpt-5.4-2026-03-05', zh_Hans: 'gpt-5.4-2026-03-05' } }),
+              makeModelItem({ model: 'gpt-5.4-mini', label: { en_US: 'gpt-5.4-mini', zh_Hans: 'gpt-5.4-mini' } }),
+              makeModelItem({ model: 'gpt-5.4-nano', label: { en_US: 'gpt-5.4-nano', zh_Hans: 'gpt-5.4-nano' } }),
+              makeModelItem({ model: 'gpt-5.3-chat-latest', label: { en_US: 'gpt-5.3-chat-latest', zh_Hans: 'gpt-5.3-chat-latest' } }),
+              makeModelItem({ model: 'gpt-5.2', label: { en_US: 'gpt-5.2', zh_Hans: 'gpt-5.2' } }),
+              makeModelItem({ model: 'gpt-4.1', label: { en_US: 'gpt-4.1', zh_Hans: 'gpt-4.1' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'gpt5.4' } },
+    )
+
+    expect(screen.getByText('gpt-5.4'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-5.4-2026-03-05'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-5.4-mini'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-5.4-nano'))!.toBeInTheDocument()
+    expect(screen.queryByText('gpt-5.3-chat-latest')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-5.2')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4.1')).not.toBeInTheDocument()
+  })
+
+  it('should not fuzzy match unrelated providers that share the langgenius namespace', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'langgenius/openai/openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [makeModelItem({ model: 'gpt-5.4', label: { en_US: 'gpt-5.4', zh_Hans: 'gpt-5.4' } })],
+          }),
+          makeModel({
+            provider: 'langgenius/openrouter/openrouter',
+            label: { en_US: 'OpenRouter', zh_Hans: 'OpenRouter' },
+            models: [makeModelItem({ model: 'openrouter-model', label: { en_US: 'OpenRouter Model', zh_Hans: 'OpenRouter Model' } })],
+          }),
+          makeModel({
+            provider: 'langgenius/openai_api_compatible/openai_api_compatible',
+            label: { en_US: 'OpenAI-API-compatible', zh_Hans: 'OpenAI-API-compatible' },
+            models: [makeModelItem({ model: 'compatible-model', label: { en_US: 'Compatible Model', zh_Hans: 'Compatible Model' } })],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('langgenius/openai/openai'))!.toBeInTheDocument()
+    expect(screen.getByText('langgenius/openai_api_compatible/openai_api_compatible'))!.toBeInTheDocument()
+    expect(screen.queryByText('langgenius/openrouter/openrouter')).not.toBeInTheDocument()
+  })
+
+  it('should fuzzy match provider names without matching every langgenius provider', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'langgenius/zhipuai/zhipuai',
+            label: { en_US: 'ZHIPU AI', zh_Hans: '智谱 AI' },
+            models: [makeModelItem({ model: 'glm-4.7', label: { en_US: 'GLM-4.7', zh_Hans: 'GLM-4.7' } })],
+          }),
+          makeModel({
+            provider: 'langgenius/gemini/google',
+            label: { en_US: 'Gemini', zh_Hans: 'Gemini' },
+            models: [makeModelItem({ model: 'gemini-3-flash-preview', label: { en_US: 'gemini-3-flash-preview', zh_Hans: 'gemini-3-flash-preview' } })],
+          }),
+          makeModel({
+            provider: 'langgenius/tongyi/tongyi',
+            label: { en_US: 'Tongyi', zh_Hans: '通义' },
+            models: [makeModelItem({ model: 'qwen-plus', label: { en_US: 'qwen-plus', zh_Hans: 'qwen-plus' } })],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'gemni' } },
+    )
+
+    expect(screen.getByText('langgenius/gemini/google'))!.toBeInTheDocument()
+    expect(screen.queryByText('langgenius/zhipuai/zhipuai')).not.toBeInTheDocument()
+    expect(screen.queryByText('langgenius/tongyi/tongyi')).not.toBeInTheDocument()
+  })
+
+  it('should match by model provider key when direct props model label does not contain the search text', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'azure_openai',
+            label: { en_US: 'Azure', zh_Hans: 'Azure' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('azure_openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+  })
+
+  it('should still apply scope features when direct props match by provider label', () => {
+    mockSupportFunctionCall.mockReturnValue(false)
+
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', features: [ModelFeatureEnum.vision] }),
+              makeModelItem({ model: 'gpt-4-tool', features: [ModelFeatureEnum.toolCall] }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.toolCall]}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*openai/))!.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
+  })
+
+  it('should toggle incompatible models from the reveal action', async () => {
+    const user = userEvent.setup()
+
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            models: [
+              makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        modelPredicate={(_provider, modelItem) => modelItem.model !== 'gpt-4'}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('gpt-4o')).toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' }))
+
+    expect(screen.getByText('gpt-4o')).toBeInTheDocument()
+    expect(screen.getByText('gpt-4')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.modelProvider.selector.hideIncompatibleModels' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.modelProvider.selector.hideIncompatibleModels' }))
+
+    expect(screen.getByText('gpt-4o')).toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' })).toBeInTheDocument()
+  })
+
+  it('should show matching models when searching by model name', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            models: [makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } })],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } })],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'claude' } },
+    )
+
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.getByText('anthropic')).toBeInTheDocument()
+    expect(screen.getByText('claude-3')).toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*claude/)).not.toBeInTheDocument()
+  })
+
+  it('should show empty search placeholder when no provider or model name matches', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'mistral' } },
+    )
+
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch.*mistral/))!.toBeInTheDocument()
+    expect(screen.queryByText('openai')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+  })
+
+  it('should show all models of a provider when searching by provider label', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+              makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+            ],
+          }),
+          makeModel({
+            provider: 'anthropic',
+            label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' },
+            models: [
+              makeModelItem({ model: 'claude-3', label: { en_US: 'Claude 3', zh_Hans: 'Claude 3' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4o'))!.toBeInTheDocument()
+    expect(screen.queryByText('anthropic')).not.toBeInTheDocument()
+    expect(screen.queryByText('claude-3')).not.toBeInTheDocument()
+  })
+
+  it('should match by model provider key when model label does not contain the search text', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'azure_openai',
+            label: { en_US: 'Azure', zh_Hans: 'Azure' },
+            models: [
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText('azure_openai'))!.toBeInTheDocument()
+    expect(screen.getByText('gpt-4'))!.toBeInTheDocument()
+  })
+
+  it('should still apply scope features when matching by provider label', () => {
+    mockSupportFunctionCall.mockReturnValue(false)
+
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+            models: [
+              makeModelItem({ model: 'gpt-4', features: [ModelFeatureEnum.vision] }),
+              makeModelItem({ model: 'gpt-4-tool', features: [ModelFeatureEnum.toolCall] }),
+            ],
+          }),
+        ]}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.toolCall]}
+      />,
+    )
+
+    fireEvent.change(
+      screen.getByPlaceholderText('datasetSettings.form.searchModel'),
+      { target: { value: 'openai' } },
+    )
+
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
   })
 
   it('should not show compatible-only helper text when no scope features are applied', () => {
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[makeModel()]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -219,11 +777,10 @@ describe('Popup', () => {
     expect(screen.queryByText('common.modelProvider.selector.onlyCompatibleModelsShown')).not.toBeInTheDocument()
   })
 
-  it('should show compatible-only helper banner when scope features are applied', () => {
-    const { container } = renderPopup(
-      <Popup
+  it('should show compatible-only helper text when scope features are applied', () => {
+    renderPopup(
+      <PopupHarness
         modelList={[makeModel()]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
@@ -231,7 +788,25 @@ describe('Popup', () => {
 
     expect(screen.getByTestId('compatible-models-banner'))!.toBeInTheDocument()
     expect(screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'))!.toBeInTheDocument()
-    expect(container.querySelector('.i-ri-information-2-fill'))!.toBeInTheDocument()
+  })
+
+  it('should keep search and footer outside the scrollable model list', () => {
+    renderPopup(
+      <PopupHarness
+        modelList={[makeModel()]}
+        onHide={vi.fn()}
+        scopeFeatures={[ModelFeatureEnum.vision]}
+      />,
+    )
+
+    const scrollRegion = screen.getByRole('region', { name: 'common.modelProvider.models' })
+    const searchInput = screen.getByPlaceholderText('datasetSettings.form.searchModel')
+    const settingsButton = screen.getByRole('button', { name: /common\.modelProvider\.selector\.modelProviderSettings/ })
+
+    expect(scrollRegion)!.toBeInTheDocument()
+    expect(scrollRegion).not.toContainElement(searchInput)
+    expect(scrollRegion).not.toContainElement(settingsButton)
+    expect(scrollRegion).toContainElement(screen.getByTestId('compatible-models-banner'))
   })
 
   it('should filter by scope features including toolCall and non-toolCall checks', () => {
@@ -241,21 +816,19 @@ describe('Popup', () => {
 
     mockSupportFunctionCall.mockReturnValue(false)
     const { unmount } = renderPopup(
-      <Popup
+      <PopupHarness
         modelList={modelList}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('No model found for \u201C\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
 
     unmount()
     mockSupportFunctionCall.mockReturnValue(true)
     const { unmount: unmount2 } = renderPopup(
-      <Popup
+      <PopupHarness
         modelList={modelList}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.toolCall, ModelFeatureEnum.vision]}
       />,
@@ -264,9 +837,8 @@ describe('Popup', () => {
 
     unmount2()
     const { unmount: unmount3 } = renderPopup(
-      <Popup
+      <PopupHarness
         modelList={modelList}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
@@ -275,21 +847,20 @@ describe('Popup', () => {
 
     unmount3()
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[makeModel({ models: [makeModelItem({ features: undefined })] })]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
     )
-    expect(screen.getByText('No model found for \u201C\u201D'))!.toBeInTheDocument()
+    expect(screen.getByText(/common\.modelProvider\.selector\.noModelFoundForSearch/))!.toBeInTheDocument()
   })
 
   it('should match model labels from fallback languages when current language key is missing', () => {
     mockLanguage = 'fr_FR'
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[
           makeModel({
             models: [
@@ -299,7 +870,6 @@ describe('Popup', () => {
             ],
           }),
         ]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -328,9 +898,8 @@ describe('Popup', () => {
     ]
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[makeModel()]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -355,9 +924,8 @@ describe('Popup', () => {
     ]
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[makeModel()]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -385,9 +953,8 @@ describe('Popup', () => {
     ]
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[makeModel()]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -398,9 +965,8 @@ describe('Popup', () => {
   it('should open provider settings when clicking footer link', () => {
     const onHide = vi.fn()
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[makeModel()]}
-        onSelect={vi.fn()}
         onHide={onHide}
       />,
     )
@@ -413,12 +979,36 @@ describe('Popup', () => {
     })
   })
 
-  it('should show empty state when no providers are configured', () => {
+  it('should hide provider settings footer when current account settings tab is provider', () => {
+    mockSearchParams.current = new URLSearchParams('action=showSettings&tab=provider')
+
+    renderPopup(
+      <PopupHarness
+        modelList={[makeModel()]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('common.modelProvider.selector.modelProviderSettings')).not.toBeInTheDocument()
+  })
+
+  it('should hide provider settings footer when requested by the caller', () => {
+    renderPopup(
+      <PopupHarness
+        hideProviderSettingsFooter
+        modelList={[makeModel()]}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText('common.modelProvider.selector.modelProviderSettings')).not.toBeInTheDocument()
+  })
+
+  it('should open provider settings from empty state when no providers are configured', () => {
     const onHide = vi.fn()
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={onHide}
       />,
     )
@@ -433,13 +1023,28 @@ describe('Popup', () => {
     })
   })
 
+  it('should only close the empty state selector when current account settings tab is provider', () => {
+    mockSearchParams.current = new URLSearchParams('action=showSettings&tab=provider')
+    const onHide = vi.fn()
+    renderPopup(
+      <PopupHarness
+        modelList={[]}
+        onHide={onHide}
+      />,
+    )
+
+    fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
+
+    expect(onHide).toHaveBeenCalled()
+    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
+  })
+
   it('should render marketplace providers that are not installed', () => {
     mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -448,6 +1053,27 @@ describe('Popup', () => {
     expect(screen.getByText('TestAnthropic'))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.fromMarketplace/))!.toBeInTheDocument()
     expect(screen.getByText(/modelProvider\.selector\.discoverMoreInMarketplace/))!.toBeInTheDocument()
+    expect(mockGetMarketplaceUrl).toHaveBeenCalledWith('/plugins/model', expect.objectContaining({ theme: expect.any(String) }))
+  })
+
+  it('should hide marketplace providers when marketplace is disabled', () => {
+    mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
+
+    renderPopup(
+      <PopupHarness
+        modelList={[makeModel({ provider: 'test-openai' })]}
+        onHide={vi.fn()}
+      />,
+      {
+        systemFeatures: { enable_marketplace: false },
+      },
+    )
+
+    expect(screen.getByText('test-openai'))!.toBeInTheDocument()
+    expect(screen.queryByText('TestAnthropic')).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.selector\.fromMarketplace/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.selector\.discoverMoreInMarketplace/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/common\.modelProvider\.selector\.install/)).not.toBeInTheDocument()
   })
 
   it('should show installed marketplace providers without models when AI credits are available', () => {
@@ -459,9 +1085,8 @@ describe('Popup', () => {
     })]
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -484,9 +1109,8 @@ describe('Popup', () => {
     })]
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -498,9 +1122,8 @@ describe('Popup', () => {
 
   it('should toggle marketplace section collapse', () => {
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -523,9 +1146,8 @@ describe('Popup', () => {
     mockInstallMutateAsync.mockResolvedValue({ all_installed: true, task_id: 'task-1' })
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -546,9 +1168,8 @@ describe('Popup', () => {
     mockInstallMutateAsync.mockRejectedValue(new Error('Install failed'))
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -560,7 +1181,6 @@ describe('Popup', () => {
       expect(mockInstallMutateAsync).toHaveBeenCalled()
     })
 
-    // Should not crash, install buttons should still be available
     expect(screen.getAllByText(/common\.modelProvider\.selector\.install/).length).toBeGreaterThan(0)
   })
 
@@ -572,9 +1192,8 @@ describe('Popup', () => {
     mockCheck.mockResolvedValue(undefined)
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -598,9 +1217,8 @@ describe('Popup', () => {
     mockMarketplacePlugins.isLoading = true
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -616,9 +1234,8 @@ describe('Popup', () => {
     mockMarketplacePlugins.current = []
 
     renderPopup(
-      <Popup
+      <PopupHarness
         modelList={[]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )
@@ -632,13 +1249,12 @@ describe('Popup', () => {
 
   it('should sort the selected provider to the top when a default model is provided', () => {
     renderPopup(
-      <Popup
+      <PopupHarness
         defaultModel={{ provider: 'anthropic', model: 'claude-3' }}
         modelList={[
           makeModel({ provider: 'openai', label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' } }),
           makeModel({ provider: 'anthropic', label: { en_US: 'Anthropic', zh_Hans: 'Anthropic' } }),
         ]}
-        onSelect={vi.fn()}
         onHide={vi.fn()}
       />,
     )

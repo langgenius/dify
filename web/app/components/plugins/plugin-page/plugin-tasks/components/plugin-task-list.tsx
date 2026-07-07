@@ -1,6 +1,6 @@
-import type { FC } from 'react'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
+import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
 import { useGetLanguage } from '@/context/i18n'
 import ErrorPluginItem from './error-plugin-item'
@@ -16,7 +16,7 @@ type PluginTaskListProps = {
   onClearSingle: (taskId: string, pluginId: string) => void
 }
 
-const PluginTaskList: FC<PluginTaskListProps> = ({
+function PluginTaskList({
   runningPlugins,
   successPlugins,
   errorPlugins,
@@ -24,81 +24,103 @@ const PluginTaskList: FC<PluginTaskListProps> = ({
   onClearAll,
   onClearErrors,
   onClearSingle,
-}) => {
+}: PluginTaskListProps) {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const runningSectionTitle = t('task.runningPlugins', { ns: 'plugin' })
+  const successSectionTitle = t('task.successPlugins', { ns: 'plugin' })
+  const errorSectionTitle = t('task.errorPlugins', { ns: 'plugin' })
 
   return (
-    <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
-      {/* Running Plugins Section */}
-      {runningPlugins.length > 0 && (
-        <PluginSection
-          title={t('task.installing', { ns: 'plugin' })}
-          count={runningPlugins.length}
-          plugins={runningPlugins}
-          getIconUrl={getIconUrl}
-          language={language}
-          statusIcon={
-            <span className="i-ri-loader-2-line h-3.5 w-3.5 animate-spin text-text-accent" />
-          }
-          defaultStatusText={t('task.installingHint', { ns: 'plugin' })}
-        />
-      )}
+    <div
+      className="w-[360px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
+      data-testid="plugin-task-list"
+    >
+      <ScrollArea
+        className="max-h-[420px] overflow-hidden"
+        label={t('task.installing', { ns: 'plugin' })}
+        slotClassNames={{
+          viewport: 'max-h-[420px] overscroll-contain',
+          content: 'w-full! max-w-full! min-w-0! overflow-x-hidden! pr-3',
+        }}
+      >
+        {runningPlugins.length > 0 && (
+          <PluginSection
+            title={runningSectionTitle}
+            count={runningPlugins.length}
+            plugins={runningPlugins}
+            getIconUrl={getIconUrl}
+            language={language}
+            statusIcon={
+              <span className="i-ri-loader-2-line size-3.5 animate-spin text-text-accent" />
+            }
+            defaultStatusText={t('task.installingHint', { ns: 'plugin' })}
+          />
+        )}
 
-      {/* Success Plugins Section */}
-      {successPlugins.length > 0 && (
-        <PluginSection
-          title={t('task.installed', { ns: 'plugin' })}
-          count={successPlugins.length}
-          plugins={successPlugins}
-          getIconUrl={getIconUrl}
-          language={language}
-          statusIcon={
-            <span className="i-ri-checkbox-circle-fill h-3.5 w-3.5 text-text-success" />
-          }
-          defaultStatusText={t('task.installed', { ns: 'plugin' })}
-          statusClassName="text-text-success"
-          headerAction={(
-            <Button
-              className="shrink-0"
-              size="small"
-              variant="ghost"
-              onClick={onClearAll}
-            >
-              {t('task.clearAll', { ns: 'plugin' })}
-            </Button>
-          )}
-          onClearSingle={onClearSingle}
-        />
-      )}
+        {successPlugins.length > 0 && (
+          <PluginSection
+            title={successSectionTitle}
+            count={successPlugins.length}
+            plugins={successPlugins}
+            getIconUrl={getIconUrl}
+            language={language}
+            statusIcon={
+              <span className="i-ri-checkbox-circle-fill size-3.5 text-text-success" />
+            }
+            defaultStatusText={t('task.installed', { ns: 'plugin' })}
+            statusClassName="text-text-success"
+            headerAction={(
+              <Button
+                aria-label={`${successSectionTitle} ${t('task.clearAll', { ns: 'plugin' })}`}
+                className="shrink-0"
+                size="small"
+                variant="ghost"
+                onClick={onClearAll}
+              >
+                {t('task.clearAll', { ns: 'plugin' })}
+              </Button>
+            )}
+            onClearSingle={onClearSingle}
+          />
+        )}
 
-      {/* Error Plugins Section */}
-      {errorPlugins.length > 0 && (
-        <>
-          <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 system-sm-semibold-uppercase text-text-secondary">
-            {t('task.installedError', { ns: 'plugin', errorLength: errorPlugins.length })}
-            <Button
-              className="shrink-0"
-              size="small"
-              variant="ghost"
-              onClick={onClearErrors}
+        {errorPlugins.length > 0 && (
+          <>
+            <div className="sticky top-0 flex h-7 items-center justify-between px-2 pt-1 system-sm-semibold-uppercase text-text-secondary">
+              {errorSectionTitle}
+              {' '}
+              (
+              {errorPlugins.length}
+              )
+              <Button
+                aria-label={`${errorSectionTitle} ${t('task.clearAll', { ns: 'plugin' })}`}
+                className="shrink-0"
+                size="small"
+                variant="ghost"
+                onClick={onClearErrors}
+              >
+                {t('task.clearAll', { ns: 'plugin' })}
+              </Button>
+            </div>
+            <div
+              aria-label={errorSectionTitle}
+              className="w-full max-w-full min-w-0 overflow-hidden"
+              role="region"
             >
-              {t('task.clearAll', { ns: 'plugin' })}
-            </Button>
-          </div>
-          <div className="max-h-[300px] overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {errorPlugins.map(plugin => (
-              <ErrorPluginItem
-                key={plugin.plugin_unique_identifier}
-                plugin={plugin}
-                getIconUrl={getIconUrl}
-                language={language}
-                onClear={() => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)}
-              />
-            ))}
-          </div>
-        </>
-      )}
+              {errorPlugins.map(plugin => (
+                <ErrorPluginItem
+                  key={plugin.plugin_unique_identifier}
+                  plugin={plugin}
+                  getIconUrl={getIconUrl}
+                  language={language}
+                  onClear={() => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </ScrollArea>
     </div>
   )
 }

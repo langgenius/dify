@@ -13,7 +13,7 @@ concurrency:
 jobs:
   test:
     name: VDB Smoke Tests
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     strategy:
       matrix:
         python-version:
@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -33,7 +33,7 @@ jobs:
           remove_tool_cache: true
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
@@ -45,14 +45,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --project api --dev
 
-      - name: Set up dotenvs
-        run: |
-          cp docker/.env.example docker/.env
-          cp docker/middleware.env.example docker/middleware.env
-
-      - name: Expose Service Ports
-        run: sh .github/workflows/expose_service_ports.sh
-
 #      - name: Set up Vector Store (TiDB)
 #        uses: hoverkraft-tech/compose-action@v2.0.2
 #        with:
@@ -61,31 +53,14 @@ jobs:
 #            tidb
 #            tiflash
 
-      - name: Set up Vector Stores for Smoke Coverage
-        uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
-        with:
-          compose-file: |
-            docker/docker-compose.yaml
-          services: |
-            db_postgres
-            redis
-            weaviate
-            qdrant
-            pgvector
-            chroma
-
-      - name: setup test config
-        run: |
-          echo $(pwd)
-          ls -lah .
-          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
-
 #      - name: Check VDB Ready (TiDB)
 #        run: uv run --project api python api/providers/vdb/tidb-vector/tests/integration_tests/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: |
-          uv run --project api pytest --timeout "${PYTEST_TIMEOUT:-180}" \
+          uv run --project api pytest \
+            --start-vdb \
+            --timeout "${PYTEST_TIMEOUT:-180}" \
             api/providers/vdb/vdb-chroma/tests/integration_tests \
             api/providers/vdb/vdb-pgvector/tests/integration_tests \
             api/providers/vdb/vdb-qdrant/tests/integration_tests \

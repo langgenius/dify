@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.datasource.datasource_manager import DatasourceManager
@@ -36,23 +36,25 @@ class DatasourceNode(Node[DatasourceNodeData]):
     def __init__(
         self,
         node_id: str,
-        config: DatasourceNodeData,
+        data: DatasourceNodeData,
         *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
     ) -> None:
         super().__init__(
             node_id=node_id,
-            config=config,
+            data=data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
         self.datasource_manager = DatasourceManager
 
+    @override
     def populate_start_event(self, event) -> None:
         event.provider_id = f"{self.node_data.plugin_id}/{self.node_data.provider_name}"
         event.provider_type = self.node_data.provider_type
 
+    @override
     def _run(self) -> Generator:
         """
         Run the datasource node
@@ -183,6 +185,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
             )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,
@@ -219,5 +222,6 @@ class DatasourceNode(Node[DatasourceNodeData]):
         return result
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"

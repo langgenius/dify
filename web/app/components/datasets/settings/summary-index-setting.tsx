@@ -1,15 +1,14 @@
-import type { ChangeEvent } from 'react'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -53,9 +52,9 @@ const SummaryIndexSetting = ({
     })
   }, [onSummaryIndexSettingChange])
 
-  const handleSummaryIndexPromptChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleSummaryIndexPromptChange = useCallback((value: string) => {
     onSummaryIndexSettingChange?.({
-      summary_prompt: e.target.value,
+      summary_prompt: value,
     })
   }, [onSummaryIndexSettingChange])
 
@@ -65,16 +64,18 @@ const SummaryIndexSetting = ({
         <div className="flex h-6 items-center justify-between">
           <div className="flex items-center system-sm-semibold-uppercase text-text-secondary">
             {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
-            <Tooltip
-              triggerClassName="ml-1 h-4 w-4 shrink-0"
-              popupContent={t('form.summaryAutoGenTip', { ns: 'datasetSettings' })}
+            <Infotip
+              aria-label={t('form.summaryAutoGenTip', { ns: 'datasetSettings' })}
+              className="ml-1"
             >
-            </Tooltip>
+              {t('form.summaryAutoGenTip', { ns: 'datasetSettings' })}
+            </Infotip>
           </div>
           <Switch
             checked={summaryIndexSetting?.enable ?? false}
             onCheckedChange={handleSummaryIndexEnableChange}
             size="md"
+            disabled={readonly}
           />
         </div>
         {
@@ -94,8 +95,9 @@ const SummaryIndexSetting = ({
                 {t('form.summaryInstructions', { ns: 'datasetSettings' })}
               </div>
               <Textarea
+                aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                 value={summaryIndexSetting?.summary_prompt ?? ''}
-                onChange={handleSummaryIndexPromptChange}
+                onValueChange={handleSummaryIndexPromptChange}
                 disabled={readonly}
                 placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
               />
@@ -122,6 +124,7 @@ const SummaryIndexSetting = ({
                 checked={summaryIndexSetting?.enable ?? false}
                 onCheckedChange={handleSummaryIndexEnableChange}
                 size="md"
+                disabled={readonly}
               />
               {
                 summaryIndexSetting?.enable ? t('list.status.enabled', { ns: 'datasetDocuments' }) : t('list.status.disabled', { ns: 'datasetDocuments' })
@@ -165,8 +168,9 @@ const SummaryIndexSetting = ({
                 </div>
                 <div className="grow">
                   <Textarea
+                    aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                     value={summaryIndexSetting?.summary_prompt ?? ''}
-                    onChange={handleSummaryIndexPromptChange}
+                    onValueChange={handleSummaryIndexPromptChange}
                     disabled={readonly}
                     placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
                   />
@@ -187,6 +191,7 @@ const SummaryIndexSetting = ({
           checked={summaryIndexSetting?.enable ?? false}
           onCheckedChange={handleSummaryIndexEnableChange}
           size="md"
+          disabled={readonly}
         />
         <div className="system-sm-semibold text-text-secondary">
           {t('form.summaryAutoGen', { ns: 'datasetSettings' })}
@@ -213,8 +218,9 @@ const SummaryIndexSetting = ({
                 {t('form.summaryInstructions', { ns: 'datasetSettings' })}
               </div>
               <Textarea
+                aria-label={t('form.summaryInstructions', { ns: 'datasetSettings' })}
                 value={summaryIndexSetting?.summary_prompt ?? ''}
-                onChange={handleSummaryIndexPromptChange}
+                onValueChange={handleSummaryIndexPromptChange}
                 disabled={readonly}
                 placeholder={t('form.summaryInstructionsPlaceholder', { ns: 'datasetSettings' })}
               />

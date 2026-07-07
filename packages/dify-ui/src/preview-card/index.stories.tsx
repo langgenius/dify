@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -9,13 +9,13 @@ import {
 } from '.'
 
 const rowButtonClassName
-  = 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover'
+  = 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const triggerButtonClassName
-  = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs hover:bg-state-base-hover'
+  = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-1.5 text-sm text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 const inlineLinkClassName
-  = 'text-text-accent underline decoration-text-accent/60 decoration-1 underline-offset-2 outline-hidden hover:decoration-text-accent focus-visible:rounded-xs focus-visible:no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-text-accent data-[popup-open]:decoration-text-accent'
+  = 'text-text-accent underline decoration-text-accent/60 decoration-1 underline-offset-2 outline-hidden hover:decoration-text-accent focus-visible:rounded-xs focus-visible:no-underline focus-visible:ring-1 focus-visible:ring-components-input-border-active data-[popup-open]:decoration-text-accent'
 
 const meta = {
   title: 'Base/UI/PreviewCard',
@@ -144,7 +144,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<Placement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">
@@ -154,7 +154,7 @@ const PlacementsDemo = () => {
             key={value}
             type="button"
             onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary ${
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
               placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >

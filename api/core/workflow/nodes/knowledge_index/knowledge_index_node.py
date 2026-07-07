@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
@@ -32,21 +32,22 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
     def __init__(
         self,
         node_id: str,
-        config: KnowledgeIndexNodeData,
+        data: KnowledgeIndexNodeData,
         *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
     ) -> None:
         super().__init__(
             node_id=node_id,
-            config=config,
+            data=data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
         self.index_processor = IndexProcessor()
         self.summary_index_service = SummaryIndex()
 
-    def _run(self) -> NodeRunResult:  # type: ignore
+    @override
+    def _run(self) -> NodeRunResult:
         node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
 
@@ -145,6 +146,7 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         return rst
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 

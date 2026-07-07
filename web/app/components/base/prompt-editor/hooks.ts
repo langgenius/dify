@@ -110,9 +110,9 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
   return [ref, isSelected]
 }
 
-type UseTriggerHandler = () => [RefObject<HTMLDivElement | null>, boolean, Dispatch<SetStateAction<boolean>>]
-export const useTrigger: UseTriggerHandler = () => {
-  const triggerRef = useRef<HTMLDivElement>(null)
+type UseTriggerHandler = <T extends HTMLElement = HTMLDivElement>() => [RefObject<T | null>, boolean, Dispatch<SetStateAction<boolean>>]
+export const useTrigger: UseTriggerHandler = <T extends HTMLElement = HTMLDivElement>() => {
+  const triggerRef = useRef<T>(null)
   const [open, setOpen] = useState(false)
   const handleOpen = useCallback((e: MouseEvent) => {
     e.stopPropagation()
@@ -154,17 +154,18 @@ type TriggerFn = (
   text: string,
   editor: LexicalEditor,
 ) => MenuTextMatch | null
-const PUNCTUATION = '\\.,\\+\\*\\?\\$\\@\\|#{}\\(\\)\\^\\-\\[\\]\\\\/!%\'"~=<>_:;'
+const escapeForCharacterClass = (value: string) => value.replace(/[[\]\\^-]/g, '\\$&')
 export function useBasicTypeaheadTriggerMatch(
   trigger: string,
   { minLength = 1, maxLength = 75 }: { minLength?: number, maxLength?: number },
 ): TriggerFn {
   return useCallback(
     (text: string) => {
-      const validChars = `[${PUNCTUATION}\\s]`
+      const escapedTrigger = escapeForCharacterClass(trigger)
+      const validChars = `[^${escapedTrigger}\\n\\r]`
       const TypeaheadTriggerRegex = new RegExp(
         '(.*)('
-        + `[${trigger}]`
+        + `[${escapedTrigger}]`
         + `((?:${validChars}){0,${maxLength}})`
         + ')$',
       )

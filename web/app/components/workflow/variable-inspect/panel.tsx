@@ -163,7 +163,7 @@ const Panel: FC = () => {
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="h-4 w-4" />
+            <RiCloseLine className="size-4" />
           </ActionButton>
         </div>
         <div className="grow p-2">
@@ -181,7 +181,7 @@ const Panel: FC = () => {
         <div className="flex shrink-0 items-center justify-between pt-2 pr-2 pl-4">
           <div className="system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="h-4 w-4" />
+            <RiCloseLine className="size-4" />
           </ActionButton>
         </div>
         <div className="grow p-2">
@@ -194,7 +194,7 @@ const Panel: FC = () => {
   return (
     <div className={cn('relative flex h-full')}>
       {/* left */}
-      {bottomPanelWidth < 488 && showLeftPanel && <div className="absolute top-0 left-0 h-full w-full" onClick={() => setShowLeftPanel(false)}></div>}
+      {bottomPanelWidth < 488 && showLeftPanel && <div className="absolute top-0 left-0 size-full" onClick={() => setShowLeftPanel(false)}></div>}
       <div
         className={cn(
           'w-60 shrink-0 border-r border-divider-burn',

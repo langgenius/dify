@@ -1,4 +1,5 @@
 import type { LexicalCommand } from 'lexical'
+import type { CSSProperties } from 'react'
 import {
   autoUpdate,
   flip,
@@ -19,10 +20,13 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 import { createPortal } from 'react-dom'
 
 export const SHORTCUTS_EMPTY_CONTENT = 'shortcuts_empty_content'
+export type ShortcutPopupInsertHandler = <Payload>(command: LexicalCommand<Payload>, params: Payload) => void
+export type ShortcutPopupDisplayMode = 'selection' | 'workflow-panel-adjacent-center'
 
 // Hotkey can be:
 // - string: 'mod+/'
@@ -33,11 +37,86 @@ export type Hotkey = string | string[] | string[][] | ((e: KeyboardEvent) => boo
 
 type ShortcutPopupPluginProps = {
   hotkey?: Hotkey
-  children?: React.ReactNode | ((close: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void) => React.ReactNode)
+  children?: React.ReactNode | ((close: () => void, onInsert: ShortcutPopupInsertHandler) => React.ReactNode)
   className?: string
   container?: Element | null
+  displayMode?: ShortcutPopupDisplayMode
   onOpen?: () => void
   onClose?: () => void
+}
+
+const VIEWPORT_PADDING = 8
+const PANEL_GAP = 4
+const POPUP_MAX_WIDTH = 400
+
+type FixedPlacementState = {
+  right: number
+  top: number
+  availableWidth: number
+  availableHeight: number
+}
+
+function getWorkflowPanelAdjacentPlacement(): FixedPlacementState {
+  const rightPanel = document.querySelector('[data-workflow-right-panel]') as HTMLElement | null
+  const rightPanelRect = rightPanel?.getBoundingClientRect()
+  const rightBoundary = rightPanelRect && rightPanelRect.left > 0
+    ? rightPanelRect.left
+    : window.innerWidth
+  const topBoundary = rightPanelRect?.top ?? 56
+  const bottomBoundary = window.innerHeight - VIEWPORT_PADDING
+  const availableWidth = Math.max(0, rightBoundary - VIEWPORT_PADDING * 2)
+  const availableHeight = Math.max(0, bottomBoundary - topBoundary)
+
+  return {
+    right: Math.max(VIEWPORT_PADDING, window.innerWidth - rightBoundary + PANEL_GAP),
+    top: topBoundary + availableHeight / 2,
+    availableWidth,
+    availableHeight,
+  }
+}
+
+function getWorkflowPanelAdjacentPlacementSnapshot() {
+  /* v8 ignore next 2 -- server/non-browser fallback for a client-only positioning branch. @preserve */
+  if (typeof window === 'undefined' || typeof document === 'undefined')
+    return '0|0|0|0'
+
+  const placement = getWorkflowPanelAdjacentPlacement()
+  return [
+    placement.right,
+    placement.top,
+    placement.availableWidth,
+    placement.availableHeight,
+  ].join('|')
+}
+
+function parseWorkflowPanelAdjacentPlacement(snapshot: string): FixedPlacementState {
+  const [right = '0', top = '0', availableWidth = '0', availableHeight = '0'] = snapshot.split('|')
+  return {
+    right: Number(right),
+    top: Number(top),
+    availableWidth: Number(availableWidth),
+    availableHeight: Number(availableHeight),
+  }
+}
+
+function subscribeWorkflowPanelAdjacentPlacement(callback: () => void) {
+  /* v8 ignore next 2 -- server/non-browser fallback for a client-only positioning branch. @preserve */
+  if (typeof window === 'undefined' || typeof document === 'undefined')
+    return () => {}
+
+  window.addEventListener('resize', callback)
+
+  const rightPanel = document.querySelector('[data-workflow-right-panel]')
+  const resizeObserver = rightPanel && typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver(callback)
+    : null
+  if (rightPanel)
+    resizeObserver?.observe(rightPanel)
+
+  return () => {
+    window.removeEventListener('resize', callback)
+    resizeObserver?.disconnect()
+  }
 }
 
 const META_ALIASES = new Set(['meta', 'cmd', 'command'])
@@ -133,11 +212,17 @@ export default function ShortcutsPopupPlugin({
   children,
   className,
   container,
+  displayMode = 'selection',
   onOpen,
   onClose,
 }: ShortcutPopupPluginProps): React.ReactPortal | null {
   const [editor] = useLexicalComposerContext()
   const [open, setOpen] = useState(false)
+  const workflowPanelAdjacentPlacementSnapshot = useSyncExternalStore(
+    subscribeWorkflowPanelAdjacentPlacement,
+    getWorkflowPanelAdjacentPlacementSnapshot,
+    () => '0|0|0|0',
+  )
   const portalRef = useRef<HTMLDivElement | null>(null)
   const lastSelectionRef = useRef<Range | null>(null)
 
@@ -147,6 +232,7 @@ export default function ShortcutsPopupPlugin({
 
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
+    strategy: useContainer ? 'absolute' : 'fixed',
     middleware: [
       offset(0), // fix hide cursor
       shift({
@@ -157,9 +243,9 @@ export default function ShortcutsPopupPlugin({
       size({
         apply({ availableWidth, availableHeight, elements }) {
           Object.assign(elements.floating.style, {
-            maxWidth: `${Math.min(400, availableWidth)}px`,
-            maxHeight: `${Math.min(300, availableHeight)}px`,
-            overflow: 'auto',
+            '--shortcut-popup-max-width': `${Math.min(400, availableWidth)}px`,
+            '--shortcut-popup-max-height': `${Math.max(0, availableHeight)}px`,
+            'overflow': 'visible',
           })
         },
         padding: 8,
@@ -191,6 +277,12 @@ export default function ShortcutsPopupPlugin({
   }, [editor])
 
   const openPortal = useCallback(() => {
+    if (displayMode !== 'selection') {
+      setOpen(true)
+      onOpen?.()
+      return
+    }
+
     const domSelection = window.getSelection()
     let range: Range | null = null
     if (domSelection && domSelection.rangeCount > 0)
@@ -236,7 +328,7 @@ export default function ShortcutsPopupPlugin({
 
     setOpen(true)
     onOpen?.()
-  }, [onOpen])
+  }, [displayMode, editor, onOpen, refs])
 
   const closePortal = useCallback(() => {
     setOpen(false)
@@ -273,6 +365,9 @@ export default function ShortcutsPopupPlugin({
       /* v8 ignore next 2 -- outside-click listener can race with ref cleanup during close/unmount; null-ref path is a safety guard. @preserve */
       if (!portalRef.current)
         return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('[data-base-ui-portal]'))
+        return
       if (!portalRef.current.contains(e.target as Node))
         closePortal()
     }
@@ -280,7 +375,7 @@ export default function ShortcutsPopupPlugin({
     return () => document.removeEventListener('mousedown', onMouseDown, false)
   }, [open, closePortal])
 
-  const handleInsert = useCallback((command: LexicalCommand<unknown>, params: any) => {
+  const handleInsert = useCallback(<Payload,>(command: LexicalCommand<Payload>, params: Payload) => {
     editor.dispatchCommand(command, params)
     closePortal()
   }, [editor, closePortal])
@@ -288,23 +383,46 @@ export default function ShortcutsPopupPlugin({
   if (!open || !containerEl)
     return null
 
+  const isFixedPanelAdjacent = displayMode === 'workflow-panel-adjacent-center'
+  const fixedPlacementState = parseWorkflowPanelAdjacentPlacement(workflowPanelAdjacentPlacementSnapshot)
+  const fixedPanelAdjacentStyles: CSSProperties = isFixedPanelAdjacent
+    ? {
+        position: 'fixed',
+        right: fixedPlacementState.right,
+        top: fixedPlacementState.top,
+        transform: 'translateY(-50%)',
+        zIndex: 50,
+        overflow: 'visible',
+        visibility: 'visible',
+        ['--shortcut-popup-max-width' as string]: `${Math.min(POPUP_MAX_WIDTH, fixedPlacementState.availableWidth)}px`,
+        ['--shortcut-popup-max-height' as string]: `${fixedPlacementState.availableHeight}px`,
+      } as CSSProperties
+    : {}
+
   return createPortal(
     <div
+      data-testid="shortcuts-popup"
       ref={(node) => {
         portalRef.current = node
-        refs.setFloating(node)
+        if (!isFixedPanelAdjacent)
+          refs.setFloating(node)
       }}
       className={cn(
-        useContainer ? '' : 'z-999999',
         'absolute rounded-xl bg-components-panel-bg-blur shadow-lg',
         className,
       )}
-      style={{
-        ...floatingStyles,
-        visibility: isPositioned ? 'visible' : 'hidden',
-      }}
+      style={isFixedPanelAdjacent
+        ? fixedPanelAdjacentStyles
+        : {
+            ...floatingStyles,
+            zIndex: useContainer ? undefined : 50,
+            overflow: 'visible',
+            visibility: isPositioned ? 'visible' : 'hidden',
+          }}
     >
-      {typeof children === 'function' ? children(closePortal, handleInsert) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
+      <div className="max-h-(--shortcut-popup-max-height) max-w-(--shortcut-popup-max-width) overflow-hidden rounded-xl">
+        {typeof children === 'function' ? children(closePortal, handleInsert) : (children ?? SHORTCUTS_EMPTY_CONTENT)}
+      </div>
     </div>,
     containerEl,
   )

@@ -1,6 +1,8 @@
 import type { ComponentProps } from 'react'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AppSelectorValue } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
@@ -45,8 +47,8 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
-  default: ({ onSelect }: { onSelect: (value: string) => void }) => (
-    <button onClick={() => onSelect('app-1')}>app-selector</button>
+  AppSelector: ({ onSelect }: { onSelect: (value: AppSelectorValue) => void }) => (
+    <button onClick={() => onSelect({ app_id: 'app-1', inputs: {}, files: [] })}>app-selector</button>
   ),
 }))
 
@@ -194,7 +196,7 @@ describe('FormInputItem branches', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByRole('combobox'))
     expect(document.querySelector('img[src="/basic.svg"]')).toBeInTheDocument()
     fireEvent.click(screen.getByText('basic'))
 
@@ -206,7 +208,8 @@ describe('FormInputItem branches', () => {
     })
   })
 
-  it('should render static multi-select values and update selected labels', () => {
+  it('should render static multi-select values and update selected labels', async () => {
+    const user = userEvent.setup()
     const { onChange } = renderFormInputItem({
       schema: createSchema({
         multiple: true,
@@ -225,8 +228,8 @@ describe('FormInputItem branches', () => {
     })
 
     expect(screen.getByText('alpha')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button'))
-    fireEvent.click(screen.getByText('beta'))
+    await user.click(screen.getByRole('combobox', { name: 'alpha' }))
+    await user.click(await screen.findByRole('option', { name: 'beta' }))
 
     expect(onChange).toHaveBeenCalledWith({
       field: {
@@ -261,7 +264,10 @@ describe('FormInputItem branches', () => {
       expect(mockFetchDynamicOptions).toHaveBeenCalledTimes(1)
     })
 
-    fireEvent.click(screen.getByRole('button'))
+    await waitFor(() => {
+      expect(screen.getByRole('combobox')).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByRole('combobox'))
     expect(document.querySelector('img[src="/remote.svg"]')).toBeInTheDocument()
     fireEvent.click(screen.getByText('remote'))
 
@@ -317,9 +323,9 @@ describe('FormInputItem branches', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByRole('button')).not.toBeDisabled()
+      expect(screen.getByText('Select options').closest('button')).not.toBeDisabled()
     })
-    fireEvent.click(screen.getByRole('button'))
+    fireEvent.click(screen.getByText('Select options').closest('button') as HTMLButtonElement)
     fireEvent.click(screen.getByText('trigger-option'))
 
     expect(onChange).toHaveBeenCalledWith({
@@ -338,7 +344,11 @@ describe('FormInputItem branches', () => {
     expect(app.onChange).toHaveBeenCalledWith({
       field: {
         type: VarKindType.constant,
-        value: 'app-1',
+        value: {
+          app_id: 'app-1',
+          inputs: {},
+          files: [],
+        },
       },
     })
 

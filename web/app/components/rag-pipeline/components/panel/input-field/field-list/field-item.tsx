@@ -105,7 +105,7 @@ const FieldItem = ({
               {payload.required && (
                 <Badge>{t('nodes.start.required', { ns: 'workflow' })}</Badge>
               )}
-              <InputVarTypeIcon type={payload.type as unknown as InputVarType} className="h-3 w-3 text-text-tertiary" />
+              <InputVarTypeIcon type={payload.type as unknown as InputVarType} className="size-3 text-text-tertiary" />
             </div>
           )}
     </div>

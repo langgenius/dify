@@ -1,19 +1,19 @@
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import Input from '@/app/components/base/input'
-import { PortalSelect } from '@/app/components/base/select'
-import Textarea from '@/app/components/base/textarea'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useEmbeddedChatbotContext } from '../context'
 
-type Props = {
+type Props = Readonly<{
   showTip?: boolean
-}
+}>
 
 const InputsFormContent = ({ showTip }: Props) => {
   const { t } = useTranslation()
@@ -71,8 +71,9 @@ const InputsFormContent = ({ showTip }: Props) => {
           )}
           {form.type === InputVarType.paragraph && (
             <Textarea
+              aria-label={form.label}
               value={inputsFormValue?.[form.variable] || ''}
-              onChange={e => handleFormChange(form.variable, e.target.value)}
+              onValueChange={value => handleFormChange(form.variable, value)}
               placeholder={form.label}
             />
           )}
@@ -85,13 +86,22 @@ const InputsFormContent = ({ showTip }: Props) => {
             />
           )}
           {form.type === InputVarType.select && (
-            <PortalSelect
-              popupClassName="z-[60] w-[200px]"
-              value={inputsFormValue?.[form.variable] ?? form.default ?? ''}
-              items={form.options.map((option: string) => ({ value: option, name: option }))}
-              onSelect={item => handleFormChange(form.variable, item.value as string)}
-              placeholder={form.label}
-            />
+            <Select
+              value={(inputsFormValue?.[form.variable] ?? form.default ?? '') || null}
+              onValueChange={value => value && handleFormChange(form.variable, value)}
+            >
+              <SelectTrigger className="w-full">
+                {String(inputsFormValue?.[form.variable] ?? form.default ?? form.label)}
+              </SelectTrigger>
+              <SelectContent>
+                {form.options.map((option: string) => (
+                  <SelectItem key={option} value={option}>
+                    <SelectItemText>{option}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           {form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper

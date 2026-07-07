@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 
-@config '../tailwind.config.ts';
+@plugin '../src/plugins/icons.ts';
+
+@source '../src';
+@source '../.storybook';
 
 @import '../src/styles/styles.css';
 
@@ -13,7 +16,13 @@ html[data-theme='dark'] {
 }
 
 body {
+  position: relative;
   background: var(--color-components-panel-bg);
   color: var(--color-text-primary, #101828);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+#storybook-root,
+#storybook-docs {
+  isolation: isolate;
 }

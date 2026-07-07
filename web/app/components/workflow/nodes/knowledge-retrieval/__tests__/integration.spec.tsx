@@ -12,13 +12,16 @@ import {
   DatasetPermission,
   DataSourceType,
 } from '@/models/datasets'
+import { AccountProfileQueryProvider, createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import { DatasetsDetailContext } from '../../../datasets-detail-store/provider'
 import { createDatasetsDetailStore } from '../../../datasets-detail-store/store'
 import { BlockEnum, VarType } from '../../../types'
 import AddDataset from '../components/add-dataset'
 import DatasetItem from '../components/dataset-item'
 import DatasetList from '../components/dataset-list'
+import AddCondition from '../components/metadata/add-condition'
 import ConditionCommonVariableSelector from '../components/metadata/condition-list/condition-common-variable-selector'
 import ConditionDate from '../components/metadata/condition-list/condition-date'
 import ConditionItem from '../components/metadata/condition-list/condition-item'
@@ -56,6 +59,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   data_source_type: DataSourceType.FILE,
   indexing_technique: 'high_quality' as DataSet['indexing_technique'],
   created_by: 'user-1',
+  maintainer: 'user-1',
   updated_by: 'user-1',
   updated_at: 1690000000,
   app_count: 0,
@@ -126,8 +130,9 @@ const createCondition = (overrides: Partial<MetadataFilteringCondition> = {}): M
 })
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { userProfile: { id: string } }) => unknown) => selector({
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
     userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
   }),
   useAppContext: () => ({
     userProfile: {
@@ -137,6 +142,24 @@ vi.mock('@/context/app-context', () => ({
 }))
 
 vi.mock('@/utils/permission', () => ({
+  DatasetACLPermission: {
+    Readonly: 'dataset.acl.readonly',
+    Edit: 'dataset.acl.edit',
+    Use: 'dataset.acl.use',
+  },
+  getDatasetACLCapabilities: vi.fn(() => ({
+    canReadonly: false,
+    canEdit: true,
+    canImportExportDSL: false,
+    canPipelineTest: false,
+    canDocumentDownload: false,
+    canRetrievalRecall: false,
+    canUse: true,
+    canDeleteFile: false,
+    canPipelineRelease: false,
+    canDelete: false,
+    canAccessConfig: false,
+  })),
   hasEditPermissionForDataset: (
     userId: string,
     datasetConfig: { createdBy: string, partialMemberList: string[], permission: DatasetPermission },
@@ -285,6 +308,19 @@ describe('knowledge-retrieval path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockHasEditPermissionForDataset.mockReturnValue(true)
+    vi.mocked(getDatasetACLCapabilities).mockReturnValue({
+      canReadonly: false,
+      canEdit: true,
+      canImportExportDSL: false,
+      canPipelineTest: false,
+      canDocumentDownload: false,
+      canRetrievalRecall: false,
+      canUse: true,
+      canDeleteFile: false,
+      canPipelineRelease: false,
+      canDelete: false,
+      canAccessConfig: false,
+    })
   })
 
   describe('Dataset controls', () => {
@@ -299,7 +335,7 @@ describe('knowledge-retrieval path', () => {
         />,
       )
 
-      await user.click(screen.getByTestId('add-button'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.add workflow.nodes.knowledgeRetrieval.knowledge' }))
       await user.click(screen.getByText('select-dataset'))
 
       expect(onChange).toHaveBeenCalledWith([
@@ -370,6 +406,42 @@ describe('knowledge-retrieval path', () => {
 
       expect(onChange).toHaveBeenCalledWith([])
     })
+
+    it('should hide dataset settings when ACL does not grant edit even if legacy dataset permission allows it', () => {
+      const dataset = createDataset({
+        permission: DatasetPermission.allTeamMembers,
+        permission_keys: [DatasetACLPermission.Use],
+      })
+      mockHasEditPermissionForDataset.mockReturnValue(true)
+      vi.mocked(getDatasetACLCapabilities).mockReturnValue({
+        canReadonly: false,
+        canEdit: false,
+        canImportExportDSL: false,
+        canPipelineTest: false,
+        canDocumentDownload: false,
+        canRetrievalRecall: false,
+        canUse: true,
+        canDeleteFile: false,
+        canPipelineRelease: false,
+        canDelete: false,
+        canAccessConfig: false,
+      })
+
+      render(
+        <DatasetList
+          list={[dataset]}
+          onChange={vi.fn()}
+        />,
+      )
+
+      const datasetItem = getDatasetItem()
+
+      expect(within(datasetItem).queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
+      expect(getDatasetACLCapabilities).toHaveBeenCalledWith(dataset.permission_keys, expect.objectContaining({
+        currentUserId: 'user-1',
+        resourceMaintainer: dataset.maintainer,
+      }))
+    })
   })
 
   describe('Retrieval settings', () => {
@@ -426,7 +498,7 @@ describe('knowledge-retrieval path', () => {
       await user.click(screen.getByRole('button', { name: /workflow.nodes.knowledgeRetrieval.metadata.options.disabled.title/i }))
       await user.click(screen.getByText('workflow.nodes.knowledgeRetrieval.metadata.options.manual.title'))
 
-      expect(onSelect).toHaveBeenCalledWith(MetadataFilteringModeEnum.manual)
+      expect(onSelect.mock.calls[0]?.[0]).toBe(MetadataFilteringModeEnum.manual)
     })
 
     it('should remove stale metadata conditions and open the manual metadata panel', async () => {
@@ -460,6 +532,29 @@ describe('knowledge-retrieval path', () => {
       await user.click(screen.getByRole('button', { name: /workflow.nodes.knowledgeRetrieval.metadata.panel.conditions/i }))
 
       expect(screen.getByText('metadata-panel')).toBeInTheDocument()
+    })
+
+    it('should call handleAddCondition with the correct metadata item when clicking any part of the row', async () => {
+      const user = userEvent.setup()
+      const handleAddCondition = vi.fn()
+      const permissionMetadata = createMetadata({ id: 'meta-perm', name: 'permission', type: MetadataFilteringVariableType.string })
+      const topicMetadata = createMetadata({ id: 'meta-topic', name: 'topic', type: MetadataFilteringVariableType.string })
+
+      render(
+        <AddCondition
+          metadataList={[permissionMetadata, topicMetadata]}
+          handleAddCondition={handleAddCondition}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /workflow.nodes.knowledgeRetrieval.metadata.panel.add/i }))
+      await user.click(screen.getAllByText('string', { selector: 'div.shrink-0' })[0]!)
+
+      expect(handleAddCondition).toHaveBeenCalledTimes(1)
+      expect(handleAddCondition).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'meta-perm',
+        name: 'permission',
+      }))
     })
 
     it('should render automatic and manual metadata filter states', async () => {
@@ -559,30 +654,33 @@ describe('knowledge-retrieval path', () => {
       const onDateChange = vi.fn()
       const onRemoveCondition = vi.fn()
       const onUpdateCondition = vi.fn()
+      const queryClient = createAccountProfileQueryClient({ timezone: 'UTC' })
 
       const { container } = render(
-        <div>
-          <ConditionOperator
-            variableType={MetadataFilteringVariableType.string}
-            value={MetadataComparisonOperator.contains}
-            onSelect={onSelect}
-          />
-          <ConditionDate
-            value={1710000000}
-            onChange={onDateChange}
-          />
-          <ConditionItem
-            metadataList={[createMetadata()]}
-            condition={createCondition()}
-            onRemoveCondition={onRemoveCondition}
-            onUpdateCondition={onUpdateCondition}
-          />
-        </div>,
+        <AccountProfileQueryProvider queryClient={queryClient}>
+          <div>
+            <ConditionOperator
+              variableType={MetadataFilteringVariableType.string}
+              value={MetadataComparisonOperator.contains}
+              onSelect={onSelect}
+            />
+            <ConditionDate
+              value={1710000000}
+              onChange={onDateChange}
+            />
+            <ConditionItem
+              metadataList={[createMetadata()]}
+              condition={createCondition()}
+              onRemoveCondition={onRemoveCondition}
+              onUpdateCondition={onUpdateCondition}
+            />
+          </div>
+        </AccountProfileQueryProvider>,
       )
 
       await user.click(screen.getAllByRole('button', { name: /contains/i })[0]!)
       await user.click(screen.getByText('workflow.nodes.ifElse.comparisonOperator.is'))
-      await user.click(screen.getByText(/March 09 2024/).nextElementSibling as Element)
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
       fireEvent.change(screen.getByDisplayValue('agent'), { target: { value: 'updated-agent' } })
       fireEvent.click(container.querySelector('.ml-1.mt-1') as Element)
 
@@ -590,6 +688,24 @@ describe('knowledge-retrieval path', () => {
       expect(onDateChange).toHaveBeenCalledWith()
       expect(onUpdateCondition).toHaveBeenCalledWith('condition-1', expect.objectContaining({ value: 'updated-agent' }))
       expect(onRemoveCondition).toHaveBeenCalledWith('condition-1')
+    })
+
+    it('should resolve built-in metadata fields by name because their ids are shared', () => {
+      render(
+        <ConditionItem
+          metadataList={[
+            createMetadata({ id: 'built-in', name: 'document_name' }),
+            createMetadata({ id: 'built-in', name: 'uploader' }),
+          ]}
+          condition={createCondition({
+            metadata_id: 'built-in',
+            name: 'uploader',
+          })}
+        />,
+      )
+
+      expect(screen.getByText('uploader')).toBeInTheDocument()
+      expect(screen.queryByText('document_name')).not.toBeInTheDocument()
     })
   })
 

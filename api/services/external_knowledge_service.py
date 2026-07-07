@@ -5,13 +5,14 @@ from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
 from core.rag.entities import MetadataFilteringCondition
-from extensions.ext_database import db
 from graphon.nodes.http_request.exc import InvalidHttpMethodError
 from libs.datetime_utils import naive_utc_now
+from libs.pagination import paginate_query
 from models.dataset import (
     Dataset,
     ExternalKnowledgeApis,
@@ -22,6 +23,7 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
     ExternalKnowledgeApiSetting,
 )
 from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
 
 
 class ExternalDatasetService:
@@ -40,9 +42,7 @@ class ExternalDatasetService:
             escaped_search = escape_like_pattern(search)
             query = query.where(ExternalKnowledgeApis.name.ilike(f"%{escaped_search}%", escape="\\"))
 
-        external_knowledge_apis = db.paginate(
-            select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
-        )
+        external_knowledge_apis = paginate_query(query, page=page, per_page=per_page, max_per_page=100)
 
         return external_knowledge_apis.items, external_knowledge_apis.total
 
@@ -56,7 +56,9 @@ class ExternalDatasetService:
             raise ValueError("api_key is required")
 
     @staticmethod
-    def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict[str, Any]) -> ExternalKnowledgeApis:
+    def create_external_knowledge_api(
+        tenant_id: str, user_id: str, args: dict[str, Any], session: Session
+    ) -> ExternalKnowledgeApis:
         settings = args.get("settings")
         if settings is None:
             raise ValueError("settings is required")
@@ -70,8 +72,8 @@ class ExternalDatasetService:
             settings=json.dumps(args.get("settings"), ensure_ascii=False),
         )
 
-        db.session.add(external_knowledge_api)
-        db.session.commit()
+        session.add(external_knowledge_api)
+        session.commit()
         return external_knowledge_api
 
     @staticmethod
@@ -102,8 +104,10 @@ class ExternalDatasetService:
             raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
 
     @staticmethod
-    def get_external_knowledge_api(external_knowledge_api_id: str, tenant_id: str) -> ExternalKnowledgeApis:
-        external_knowledge_api: ExternalKnowledgeApis | None = db.session.scalar(
+    def get_external_knowledge_api(
+        session: Session, external_knowledge_api_id: str, tenant_id: str
+    ) -> ExternalKnowledgeApis:
+        external_knowledge_api: ExternalKnowledgeApis | None = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
             .limit(1)
@@ -113,8 +117,10 @@ class ExternalDatasetService:
         return external_knowledge_api
 
     @staticmethod
-    def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api: ExternalKnowledgeApis | None = db.session.scalar(
+    def update_external_knowledge_api(
+        session: Session, tenant_id: str, user_id: str, external_knowledge_api_id: str, args
+    ) -> ExternalKnowledgeApis:
+        external_knowledge_api: ExternalKnowledgeApis | None = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
             .limit(1)
@@ -130,13 +136,13 @@ class ExternalDatasetService:
         external_knowledge_api.settings = json.dumps(args.get("settings"), ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
         external_knowledge_api.updated_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         return external_knowledge_api
 
     @staticmethod
-    def delete_external_knowledge_api(tenant_id: str, external_knowledge_api_id: str):
-        external_knowledge_api = db.session.scalar(
+    def delete_external_knowledge_api(session: Session, tenant_id: str, external_knowledge_api_id: str):
+        external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
             .limit(1)
@@ -144,11 +150,13 @@ class ExternalDatasetService:
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
-        db.session.delete(external_knowledge_api)
-        db.session.commit()
+        session.delete(external_knowledge_api)
+        session.commit()
 
     @staticmethod
-    def external_knowledge_api_use_check(external_knowledge_api_id: str, tenant_id: str) -> tuple[bool, int]:
+    def external_knowledge_api_use_check(
+        session: Session, external_knowledge_api_id: str, tenant_id: str
+    ) -> tuple[bool, int]:
         """
         Return usage for an external knowledge API within a single tenant.
 
@@ -156,7 +164,7 @@ class ExternalDatasetService:
         same; otherwise the endpoint becomes a cross-tenant UUID oracle.
         """
         count = (
-            db.session.scalar(
+            session.scalar(
                 select(func.count(ExternalKnowledgeBindings.id)).where(
                     ExternalKnowledgeBindings.external_knowledge_api_id == external_knowledge_api_id,
                     ExternalKnowledgeBindings.tenant_id == tenant_id,
@@ -167,8 +175,10 @@ class ExternalDatasetService:
         return count > 0, count
 
     @staticmethod
-    def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
-        external_knowledge_binding: ExternalKnowledgeBindings | None = db.session.scalar(
+    def get_external_knowledge_binding_with_dataset_id(
+        session: Session, tenant_id: str, dataset_id: str
+    ) -> ExternalKnowledgeBindings:
+        external_knowledge_binding: ExternalKnowledgeBindings | None = session.scalar(
             select(ExternalKnowledgeBindings)
             .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
             .limit(1)
@@ -179,9 +189,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def document_create_args_validate(
-        tenant_id: str, external_knowledge_api_id: str, process_parameter: dict[str, Any]
+        session: Session, tenant_id: str, external_knowledge_api_id: str, process_parameter: dict[str, Any]
     ):
-        external_knowledge_api = db.session.scalar(
+        external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
             .limit(1)
@@ -254,13 +264,13 @@ class ExternalDatasetService:
         return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
-    def create_external_dataset(tenant_id: str, user_id: str, args: dict[str, Any]) -> Dataset:
+    def create_external_dataset(tenant_id: str, user_id: str, args: dict[str, Any], session: Session) -> Dataset:
         # check if dataset name already exists
-        if db.session.scalar(
+        if session.scalar(
             select(Dataset).where(Dataset.name == args.get("name"), Dataset.tenant_id == tenant_id).limit(1)
         ):
             raise DatasetNameDuplicateError(f"Dataset with name {args.get('name')} already exists.")
-        external_knowledge_api = db.session.scalar(
+        external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(
                 ExternalKnowledgeApis.id == args.get("external_knowledge_api_id"),
@@ -279,10 +289,11 @@ class ExternalDatasetService:
             provider="external",
             retrieval_model=args.get("external_retrieval_model"),
             created_by=user_id,
+            maintainer=user_id,
         )
 
-        db.session.add(dataset)
-        db.session.flush()
+        session.add(dataset)
+        session.flush()
         if args.get("external_knowledge_id") is None:
             raise ValueError("external_knowledge_id is required")
         if args.get("external_knowledge_api_id") is None:
@@ -295,29 +306,39 @@ class ExternalDatasetService:
             external_knowledge_id=args.get("external_knowledge_id") or "",
             created_by=user_id,
         )
-        db.session.add(external_knowledge_binding)
+        session.add(external_knowledge_binding)
 
-        db.session.commit()
+        session.commit()
 
         return dataset
 
     @staticmethod
     def fetch_external_knowledge_retrieval(
+        session: Session,
         tenant_id: str,
         dataset_id: str,
         query: str,
         external_retrieval_parameters: dict[str, Any],
         metadata_condition: MetadataFilteringCondition | None = None,
     ):
-        external_knowledge_binding = db.session.scalar(
+        """Fetch retrieval records from an external knowledge provider.
+
+        Success requires a tenant-scoped binding plus API template and a ``200``
+        response body shaped like ``{"records": [...]}``. All dependency
+        failures, non-200 responses, and malformed success payloads must be
+        normalized to ``ExternalKnowledgeRetrievalError`` so callers—especially
+        the inner knowledge retrieval API—can consistently expose
+        ``502 external_knowledge_failed``.
+        """
+        external_knowledge_binding = session.scalar(
             select(ExternalKnowledgeBindings)
             .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
             .limit(1)
         )
         if not external_knowledge_binding:
-            raise ValueError("external knowledge binding not found")
+            raise ExternalKnowledgeRetrievalError("external knowledge binding not found")
 
-        external_knowledge_api = db.session.scalar(
+        external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(
                 ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id,
@@ -326,7 +347,7 @@ class ExternalDatasetService:
             .limit(1)
         )
         if external_knowledge_api is None or external_knowledge_api.settings is None:
-            raise ValueError("external api template not found")
+            raise ExternalKnowledgeRetrievalError("external api template not found")
 
         settings = json.loads(external_knowledge_api.settings)
         headers = {"Content-Type": "application/json"}
@@ -344,16 +365,34 @@ class ExternalDatasetService:
             "metadata_condition": metadata_condition.model_dump() if metadata_condition else None,
         }
 
-        response = ExternalDatasetService.process_external_api(
-            ExternalKnowledgeApiSetting(
-                url=f"{settings.get('endpoint')}/retrieval",
-                request_method="post",
-                headers=headers,
-                params=request_params,
-            ),
-            None,
-        )
+        try:
+            response = ExternalDatasetService.process_external_api(
+                ExternalKnowledgeApiSetting(
+                    url=f"{settings.get('endpoint')}/retrieval",
+                    request_method="post",
+                    headers=headers,
+                    params=request_params,
+                ),
+                None,
+            )
+        except ExternalKnowledgeRetrievalError:
+            raise
+        except Exception as exc:
+            raise ExternalKnowledgeRetrievalError(str(exc)) from exc
+
         if response.status_code == 200:
-            return cast(list[Any], response.json().get("records", []))
+            try:
+                response_payload = response.json()
+            except Exception as exc:
+                raise ExternalKnowledgeRetrievalError("invalid external knowledge response") from exc
+
+            if not isinstance(response_payload, dict):
+                raise ExternalKnowledgeRetrievalError("invalid external knowledge response")
+
+            records = response_payload.get("records", [])
+            if not isinstance(records, list):
+                raise ExternalKnowledgeRetrievalError("invalid external knowledge response")
+
+            return cast(list[Any], records)
         else:
-            raise ValueError(response.text)
+            raise ExternalKnowledgeRetrievalError(response.text)

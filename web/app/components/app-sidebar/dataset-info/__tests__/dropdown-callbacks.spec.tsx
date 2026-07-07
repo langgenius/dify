@@ -1,17 +1,18 @@
 import type { DataSet } from '@/models/datasets'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   ChunkingMode,
   DatasetPermission,
   DataSourceType,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import Dropdown from '../dropdown'
 
 let mockDataset: DataSet
-let mockIsDatasetOperator = false
 const mockReplace = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
@@ -19,6 +20,13 @@ const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
 const mockToast = vi.fn()
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -78,6 +86,11 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   runtime_mode: 'rag_pipeline',
   enable_api: false,
   is_multimodal: false,
+  permission_keys: [
+    DatasetACLPermission.Edit,
+    DatasetACLPermission.Delete,
+    DatasetACLPermission.ImportExportDSL,
+  ],
   ...overrides,
 })
 
@@ -90,8 +103,10 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => unknown) =>
-    selector({ isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator }),
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }),
 }))
 
 vi.mock('@/service/knowledge/use-dataset', () => ({
@@ -113,7 +128,9 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: (...args: unknown[]) => mockToast(...args),
+  toast: {
+    error: (...args: unknown[]) => mockToast(...args),
+  },
 }))
 
 vi.mock('@/app/components/datasets/rename-modal', () => ({
@@ -140,8 +157,8 @@ vi.mock('@/app/components/datasets/rename-modal', () => ({
 describe('Dropdown callback coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsRbacEnabled = true
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
-    mockIsDatasetOperator = false
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
@@ -220,7 +237,7 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith('app.exportFailed', { type: 'error' })
+      expect(mockToast).toHaveBeenCalledWith('app.exportFailed')
     })
   })
 
@@ -257,7 +274,7 @@ describe('Dropdown callback coverage', () => {
     await user.click(screen.getByText('common.operation.delete'))
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith('check failed', { type: 'error' })
+      expect(mockToast).toHaveBeenCalledWith('check failed')
     })
     expect(screen.queryByText('dataset.deleteDatasetConfirmTitle')).not.toBeInTheDocument()
   })

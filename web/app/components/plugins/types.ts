@@ -2,8 +2,7 @@ import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
-import type { ToolCredential } from '@/app/components/tools/types'
-import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
+import type { Collection, ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n-config'
 
 export enum PluginCategoryEnum {
@@ -22,7 +21,7 @@ export enum PluginSource {
   debugging = 'remote',
 }
 
-export type PluginToolDeclaration = {
+type PluginToolDeclaration = {
   identity: {
     author: string
     name: string
@@ -34,12 +33,12 @@ export type PluginToolDeclaration = {
   credentials_schema: ToolCredential[] // TODO
 }
 
-export type PluginEndpointDeclaration = {
+type PluginEndpointDeclaration = {
   settings: ToolCredential[]
-  endpoints: EndpointItem[]
+  endpoints?: EndpointItem[] | null
 }
 
-export type EndpointItem = {
+type EndpointItem = {
   path: string
   method: string
   hidden?: boolean
@@ -60,7 +59,7 @@ export type EndpointListItem = {
   hook_id: string
 }
 
-export type PluginDeclarationMeta = {
+type PluginDeclarationMeta = {
   version: string
   minimum_dify_version?: string
 }
@@ -80,7 +79,7 @@ export type PluginDeclaration = {
   resource: any // useless in frontend
   plugins: any // useless in frontend
   verified: boolean
-  endpoint: PluginEndpointDeclaration
+  endpoint?: PluginEndpointDeclaration | null
   tool?: PluginToolDeclaration
   datasource?: PluginToolDeclaration
   model: any
@@ -96,14 +95,14 @@ export type PluginTriggerSubscriptionConstructor = {
   parameters: ParametersSchema[]
 }
 
-export type PluginTriggerDefinition = {
+type PluginTriggerDefinition = {
   events: TriggerEvent[]
   identity: Identity
   subscription_constructor: PluginTriggerSubscriptionConstructor
   subscription_schema: ParametersSchema[]
 }
 
-export type CredentialsSchema = {
+type CredentialsSchema = {
   name: string
   label: Record<Locale, string>
   description: Record<Locale, string>
@@ -117,7 +116,7 @@ export type CredentialsSchema = {
   placeholder: Record<Locale, string>
 }
 
-export type OauthSchema = {
+type OauthSchema = {
   client_schema: CredentialsSchema[]
   credentials_schema: CredentialsSchema[]
 }
@@ -190,7 +189,7 @@ export type PluginManifestInMarket = {
   introduction: string
   verified: boolean
   install_count: number
-  badges: string[]
+  badges: string[] | null
   verification: {
     authorized_category: 'langgenius' | 'partner' | 'community'
   }
@@ -225,12 +224,6 @@ export type PluginDetail = {
   alternative_plugin_id: string
 }
 
-export type PluginInfoFromMarketPlace = {
-  category: PluginCategoryEnum
-  latest_package_identifier: string
-  latest_version: string
-}
-
 export type Plugin = {
   type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool' | 'agent_strategy' | 'datasource' | 'trigger'
   org: string
@@ -255,7 +248,7 @@ export type Plugin = {
     settings: CredentialFormSchemaBase[]
   }
   tags: { name: string }[]
-  badges: string[]
+  badges: string[] | null
   verification: {
     authorized_category: 'langgenius' | 'partner' | 'community'
   }
@@ -352,7 +345,7 @@ export enum InstallStep {
   installFailed = 'failed',
 }
 
-export type GitHubAsset = {
+type GitHubAsset = {
   id: number
   name: string
   browser_download_url: string
@@ -364,9 +357,10 @@ export type GitHubRepoReleaseResponse = {
 }
 
 export type InstallPackageResponse = {
-  plugin_unique_identifier: string
+  plugin_unique_identifier?: string
   all_installed: boolean
   task_id: string
+  task?: PluginTaskStart
 }
 
 export type InstallStatusResponse = {
@@ -383,6 +377,7 @@ export type InstallStatus = {
 export type updatePackageResponse = {
   all_installed: boolean
   task_id: string
+  task?: PluginTaskStart
 }
 
 export type uploadGitHubResponse = {
@@ -397,6 +392,7 @@ export type DebugInfo = {
 }
 
 export enum TaskStatus {
+  pending = 'pending',
   running = 'running',
   success = 'success',
   failed = 'failed',
@@ -423,6 +419,10 @@ export type PluginTask = {
   plugins: PluginStatus[]
 }
 
+export type PluginTaskStart = Omit<PluginTask, 'plugins'> & {
+  plugins: Array<Omit<PluginStatus, 'taskId'> & { taskId?: string }>
+}
+
 export type TaskStatusResponse = {
   task: PluginTask
 }
@@ -438,36 +438,14 @@ export type InstalledPluginListWithTotalResponse = {
   total: number
 }
 
-export type InstalledLatestVersionResponse = {
-  versions: {
-    [plugin_id: string]: {
-      unique_identifier: string
-      version: string
-      status: 'active' | 'deleted'
-      deprecated_reason: string
-      alternative_plugin_id: string
-    } | null
-  }
+export type InstalledPluginCategoryListResponse = {
+  plugins: PluginDetail[]
+  builtin_tools: Collection[]
+  has_more: boolean
 }
 
 export type UninstallPluginResponse = {
   success: boolean
-}
-
-export type PluginsFromMarketplaceResponse = {
-  plugins: Plugin[]
-  bundles?: Plugin[]
-  total: number
-}
-export type PluginsFromMarketplaceByInfoResponse = {
-  list: {
-    plugin: Plugin
-    version: {
-      plugin_name: string
-      plugin_org: string
-      unique_identifier: string
-    }
-  }[]
 }
 
 export type GitHubItemAndMarketPlaceDependency = {
@@ -496,7 +474,7 @@ export type PackageDependency = {
 
 export type Dependency = GitHubItemAndMarketPlaceDependency | PackageDependency
 
-export type Version = {
+type Version = {
   plugin_org: string
   plugin_name: string
   version: string
@@ -554,7 +532,13 @@ export type StrategyDetail = {
   features: AgentFeature[]
 }
 
-export type Identity = {
+const AgentFeature = {
+  HISTORY_MESSAGES: 'history-messages',
+} as const
+
+type AgentFeature = typeof AgentFeature[keyof typeof AgentFeature]
+
+type Identity = {
   author: string
   name: string
   label: Record<Locale, string>
@@ -564,7 +548,7 @@ export type Identity = {
   tags: string[]
 }
 
-export type StrategyDeclaration = {
+type StrategyDeclaration = {
   identity: Identity
   plugin_id: string
   strategies: StrategyDetail[]

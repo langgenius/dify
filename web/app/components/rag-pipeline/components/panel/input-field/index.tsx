@@ -13,9 +13,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import FieldList from './field-list'
@@ -32,6 +33,9 @@ const InputFieldPanel = () => {
     isPreviewing,
     isEditing,
   } = useInputFieldPanel()
+  const canEdit = useHooksStore(s => s.accessControl.canEdit)
+  const shouldIgnoreInputFieldChange = !canEdit || isPreviewing
+  const isReadonly = shouldIgnoreInputFieldChange || isEditing
   const ragPipelineVariables = useStore(state => state.ragPipelineVariables)
   const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
 
@@ -61,6 +65,9 @@ const InputFieldPanel = () => {
   }, [nodes])
 
   const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
+    if (shouldIgnoreInputFieldChange)
+      return
+
     inputFieldsMap.current[key] = value
     const datasourceNodeInputFields: RAGPipelineVariables = []
     const globalInputFields: RAGPipelineVariables = []
@@ -85,7 +92,7 @@ const InputFieldPanel = () => {
     const newRagPipelineVariables = [...datasourceNodeInputFields, ...globalInputFields]
     setRagPipelineVariables?.(newRagPipelineVariables)
     handleSyncWorkflowDraft()
-  }, [setRagPipelineVariables, handleSyncWorkflowDraft])
+  }, [shouldIgnoreInputFieldChange, setRagPipelineVariables, handleSyncWorkflowDraft])
 
   const closePanel = useCallback(() => {
     closeAllInputFieldPanels()
@@ -121,6 +128,7 @@ const InputFieldPanel = () => {
         <Divider type="vertical" className="mx-1 h-3" />
         <button
           type="button"
+          aria-label={t('operation.close', { ns: 'common' })}
           className="flex size-6 shrink-0 items-center justify-center p-0.5"
           onClick={closePanel}
         >
@@ -136,10 +144,12 @@ const InputFieldPanel = () => {
           <span className="system-sm-semibold-uppercase text-text-secondary">
             {t('inputFieldPanel.uniqueInputs.title', { ns: 'datasetPipeline' })}
           </span>
-          <Tooltip
-            popupContent={t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
+          <Infotip
+            aria-label={t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
             popupClassName="max-w-[240px]"
-          />
+          >
+            {t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
+          </Infotip>
         </div>
         <div className="flex flex-col gap-y-1 py-1">
           {
@@ -151,7 +161,7 @@ const InputFieldPanel = () => {
                   nodeId={key}
                   LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
                   inputFields={inputFields}
-                  readonly={isPreviewing || isEditing}
+                  readonly={isReadonly}
                   labelClassName="pt-1 pb-1"
                   handleInputFieldsChange={updateInputFields}
                   allVariableNames={allVariableNames}
@@ -165,7 +175,7 @@ const InputFieldPanel = () => {
           nodeId="shared"
           LabelRightContent={<GlobalInputs />}
           inputFields={inputFieldsMap.current.shared || []}
-          readonly={isPreviewing || isEditing}
+          readonly={isReadonly}
           labelClassName="pt-2 pb-1"
           handleInputFieldsChange={updateInputFields}
           allVariableNames={allVariableNames}

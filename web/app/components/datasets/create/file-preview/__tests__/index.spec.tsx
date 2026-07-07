@@ -73,9 +73,9 @@ describe('FilePreview', () => {
     })
 
     it('should render close button with XMarkIcon', async () => {
-      const { container } = renderFilePreview()
+      renderFilePreview()
 
-      const closeButton = container.querySelector('.cursor-pointer')
+      const closeButton = screen.getByRole('button', { name: /operation\.close$/ })
       expect(closeButton)!.toBeInTheDocument()
       const xMarkIcon = closeButton?.querySelector('svg')
       expect(xMarkIcon)!.toBeInTheDocument()
@@ -269,20 +269,18 @@ describe('FilePreview', () => {
   describe('User Interactions', () => {
     it('should call hidePreview when close button is clicked', async () => {
       const hidePreview = vi.fn()
-      const { container } = renderFilePreview({ hidePreview })
+      renderFilePreview({ hidePreview })
 
-      const closeButton = container.querySelector('.cursor-pointer') as HTMLElement
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(hidePreview).toHaveBeenCalledTimes(1)
     })
 
     it('should call hidePreview with event object when clicked', async () => {
       const hidePreview = vi.fn()
-      const { container } = renderFilePreview({ hidePreview })
+      renderFilePreview({ hidePreview })
 
-      const closeButton = container.querySelector('.cursor-pointer') as HTMLElement
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       // Assert - onClick receives the event object
       expect(hidePreview).toHaveBeenCalled()
@@ -291,9 +289,9 @@ describe('FilePreview', () => {
 
     it('should handle multiple clicks on close button', async () => {
       const hidePreview = vi.fn()
-      const { container } = renderFilePreview({ hidePreview })
+      renderFilePreview({ hidePreview })
 
-      const closeButton = container.querySelector('.cursor-pointer') as HTMLElement
+      const closeButton = screen.getByRole('button', { name: /operation\.close$/ })
       fireEvent.click(closeButton)
       fireEvent.click(closeButton)
       fireEvent.click(closeButton)

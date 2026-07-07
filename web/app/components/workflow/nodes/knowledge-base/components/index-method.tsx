@@ -1,6 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
-import { RiQuestionLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -10,8 +10,8 @@ import {
   Economic,
   HighQuality,
 } from '@/app/components/base/icons/src/vender/knowledge'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import {
   ChunkStructureEnum,
@@ -36,6 +36,7 @@ const IndexMethod = ({
   readonly = false,
 }: IndexMethodProps) => {
   const { t } = useTranslation()
+  const keywordNumberLabel = t('form.numberOfKeywords', { ns: 'datasetSettings' })
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
   const isEconomy = indexMethod === IndexMethodEnum.ECONOMICAL
 
@@ -92,25 +93,28 @@ const IndexMethod = ({
               onClick={handleIndexMethodChange}
               effectColor="blue"
             >
-              <div className="flex items-center">
+              <FieldsetRoot className="flex items-center">
+                <FieldsetLegend className="sr-only">{keywordNumberLabel}</FieldsetLegend>
                 <div className="flex grow items-center">
                   <div className="truncate system-xs-medium text-text-secondary">
-                    {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                    {keywordNumberLabel}
                   </div>
-                  <Tooltip
-                    popupContent="number of keywords"
+                  <Infotip
+                    aria-label={keywordNumberLabel}
+                    className="ml-0.5 size-3.5"
                   >
-                    <RiQuestionLine className="ml-0.5 h-3.5 w-3.5 text-text-quaternary" />
-                  </Tooltip>
+                    {keywordNumberLabel}
+                  </Infotip>
                 </div>
                 <Slider
                   disabled={readonly}
                   className="mr-3 w-24 shrink-0"
                   value={keywordNumber}
                   onValueChange={onKeywordNumberChange}
-                  aria-label={t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                  aria-label={keywordNumberLabel}
                 />
                 <Input
+                  aria-label={keywordNumberLabel}
                   disabled={readonly}
                   className="shrink-0"
                   wrapperClassName="shrink-0 w-[72px]"
@@ -118,7 +122,7 @@ const IndexMethod = ({
                   value={keywordNumber}
                   onChange={handleInputChange}
                 />
-              </div>
+              </FieldsetRoot>
             </OptionCard>
           )
         }

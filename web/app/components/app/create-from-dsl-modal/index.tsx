@@ -3,19 +3,21 @@
 import type { MouseEventHandler } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine } from '@remixicon/react'
-import { useDebounceFn, useKeyPress } from 'ahooks'
-import { noop } from 'es-toolkit/function'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useDebounceFn } from 'ahooks'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
   DSLImportMode,
   DSLImportStatus,
@@ -25,9 +27,9 @@ import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
+import { useInvalidateAppList } from '@/service/use-apps'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import ShortcutsName from '../../workflow/shortcuts-name'
 import Uploader from './uploader'
 
 type CreateFromDSLModalProps = {
@@ -47,7 +49,7 @@ export enum CreateFromDSLModalTab {
 const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '', droppedFile }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
-  const [currentFile, setDSLFile] = useState<File | undefined>(droppedFile)
+  const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
@@ -55,34 +57,38 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
   const { handleCheckPluginDependencies } = usePluginDependencies()
+  const setNeedRefresh = useSetNeedRefreshAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const { userProfile, workspacePermissionKeys } = useAppContext()
 
-  const readFile = (file: File) => {
+  const readFile = useCallback((file: File) => {
     const reader = new FileReader()
     reader.onload = function (event) {
       const content = event.target?.result
       setFileContent(content as string)
     }
     reader.readAsText(file)
-  }
+  }, [])
 
-  const handleFile = (file?: File) => {
-    setDSLFile(file)
+  const handleFile = useCallback((file?: File) => {
+    setCurrentFile(file)
     if (file)
       readFile(file)
     if (!file)
       setFileContent('')
-  }
+  }, [readFile])
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const invalidateAppList = useInvalidateAppList()
 
   const isCreatingRef = useRef(false)
 
   useEffect(() => {
     if (droppedFile)
       handleFile(droppedFile)
-  }, [droppedFile])
+  }, [droppedFile, handleFile])
 
   const onCreate = async (_e?: React.MouseEvent) => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
@@ -110,9 +116,9 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
       if (!response)
         return
-      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
+      const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version, permission_keys } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-        trackCreateApp({ appMode: app_mode })
+        trackCreateApp({ source: 'studio_upload', appMode: app_mode })
 
         if (onSuccess)
           onSuccess()
@@ -125,10 +131,17 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             ? t('newApp.appCreateDSLWarning', { ns: 'app' })
             : undefined,
         })
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        if (app_id)
+        setNeedRefresh('1')
+        invalidateAppList()
+        if (app_id) {
           await handleCheckPluginDependencies(app_id)
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+            currentUserId: userProfile?.id,
+            resourceMaintainer: userProfile?.id,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
+        }
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -141,11 +154,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         setImportId(id)
       }
       else {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
+    catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
@@ -153,14 +165,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
 
-  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
-    if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
-      handleCreateApp(undefined)
-  })
-
-  useKeyPress('esc', () => {
-    if (show && !showErrorModal)
-      onClose()
+  useHotkey('Mod+Enter', () => {
+    handleCreateApp(undefined)
+  }, {
+    enabled: show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && !!currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && !!dslUrlValue)),
+    ignoreInputs: false,
   })
 
   const onDSLConfirm: MouseEventHandler = async () => {
@@ -171,10 +180,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         import_id: importId,
       })
 
-      const { status, app_id, app_mode } = response
+      const { status, app_id, app_mode, permission_keys } = response
 
       if (status === DSLImportStatus.COMPLETED) {
-        trackCreateApp({ appMode: app_mode })
+        trackCreateApp({ source: 'studio_upload', appMode: app_mode })
         if (onSuccess)
           onSuccess()
         if (onClose)
@@ -183,15 +192,22 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         toast.success(t('newApp.appCreated', { ns: 'app' }))
         if (app_id)
           await handleCheckPluginDependencies(app_id)
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-        getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
+        setNeedRefresh('1')
+        invalidateAppList()
+        if (app_id) {
+          getRedirection({ id: app_id, mode: app_mode, permission_keys }, push, {
+            currentUserId: userProfile?.id,
+            resourceMaintainer: userProfile?.id,
+            workspacePermissionKeys,
+            isRbacEnabled,
+          })
+        }
       }
       else if (status === DSLImportStatus.FAILED) {
-        toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
+        toast.error(response.error || t('newApp.appCreateFailed', { ns: 'app' }))
       }
     }
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    catch (e) {
+    catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
     }
   }
@@ -219,108 +235,116 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   return (
     <>
-      <Modal
-        className="w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
-        isShow={show}
-        onClose={noop}
-      >
-        <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-          {t('importFromDSL', { ns: 'app' })}
-          <div
-            className="flex h-8 w-8 cursor-pointer items-center"
-            onClick={() => onClose()}
-          >
-            <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+      <Dialog open={show} onOpenChange={open => !open && !showErrorModal && onClose()}>
+        <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
+
+          <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
+            {t('importApp', { ns: 'app' })}
+            <div
+              className="flex size-8 cursor-pointer items-center"
+              onClick={() => onClose()}
+            >
+              <span className="i-ri-close-line size-5 text-text-tertiary" />
+            </div>
           </div>
-        </div>
-        <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
-          {
-            tabs.map(tab => (
-              <div
-                key={tab.key}
-                className={cn(
-                  'relative flex h-full cursor-pointer items-center',
-                  currentTab === tab.key && 'text-text-primary',
-                )}
-                onClick={() => setCurrentTab(tab.key)}
-              >
-                {tab.label}
-                {
-                  currentTab === tab.key && (
-                    <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
-                  )
-                }
-              </div>
-            ))
-          }
-        </div>
-        <div className="px-6 py-4">
-          {
-            currentTab === CreateFromDSLModalTab.FROM_FILE && (
-              <Uploader
-                className="mt-0"
-                file={currentFile}
-                updateFile={handleFile}
-              />
-            )
-          }
-          {
-            currentTab === CreateFromDSLModalTab.FROM_URL && (
-              <div>
-                <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
-                <Input
-                  placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
-                  value={dslUrlValue}
-                  onChange={e => setDslUrlValue(e.target.value)}
+          <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
+            {
+              tabs.map(tab => (
+                <div
+                  key={tab.key}
+                  className={cn(
+                    'relative flex h-full cursor-pointer items-center',
+                    currentTab === tab.key && 'text-text-primary',
+                  )}
+                  onClick={() => setCurrentTab(tab.key)}
+                >
+                  {tab.label}
+                  {
+                    currentTab === tab.key && (
+                      <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
+                    )
+                  }
+                </div>
+              ))
+            }
+          </div>
+          <div className="px-6 py-4">
+            {
+              currentTab === CreateFromDSLModalTab.FROM_FILE && (
+                <Uploader
+                  className="mt-0"
+                  file={currentFile}
+                  updateFile={handleFile}
                 />
-              </div>
-            )
-          }
-        </div>
-        {isAppsFull && (
-          <div className="px-6">
-            <AppsFull className="mt-0" loc="app-create-dsl" />
+              )
+            }
+            {
+              currentTab === CreateFromDSLModalTab.FROM_URL && (
+                <div>
+                  <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
+                  <Input
+                    placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
+                    value={dslUrlValue}
+                    onChange={e => setDslUrlValue(e.target.value)}
+                  />
+                </div>
+              )
+            }
           </div>
-        )}
-        <div className="flex justify-end px-6 py-5">
-          <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button
-            disabled={buttonDisabled}
-            variant="primary"
-            onClick={handleCreateApp}
-            className="gap-1"
-          >
-            <span>{t('newApp.Create', { ns: 'app' })}</span>
-            <ShortcutsName keys={['ctrl', '↵']} bgColor="white" />
-          </Button>
-        </div>
-      </Modal>
-      <Modal
-        isShow={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        className="w-[480px]"
+          {isAppsFull && (
+            <div className="px-6">
+              <AppsFull className="mt-0" loc="app-create-dsl" />
+            </div>
+          )}
+          <div className="flex justify-end px-6 py-5">
+            <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+            <Button
+              disabled={buttonDisabled}
+              variant="primary"
+              onClick={handleCreateApp}
+              className="gap-1"
+            >
+              <span>{t('newApp.Create', { ns: 'app' })}</span>
+              <KbdGroup>
+                {['Mod', 'Enter'].map(key => (
+                  <Kbd key={key} color="white">{formatForDisplay(key)}</Kbd>
+                ))}
+              </KbdGroup>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={showErrorModal}
+        onOpenChange={(open) => {
+          if (!open)
+            setShowErrorModal(false)
+        }}
       >
-        <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
-          <div className="flex grow flex-col system-md-regular text-text-secondary">
-            <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
-            <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
-            <br />
-            <div>
-              {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
-              <span className="system-md-medium">{versions?.importedVersion}</span>
-            </div>
-            <div>
-              {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
-              <span className="system-md-medium">{versions?.systemVersion}</span>
+        <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none text-left align-middle">
+
+          <div className="flex flex-col items-start gap-2 self-stretch pb-4">
+            <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
+            <div className="flex grow flex-col system-md-regular text-text-secondary">
+              <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
+              <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
+              <br />
+              <div>
+                {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
+                <span className="system-md-medium">{versions?.importedVersion}</span>
+              </div>
+              <div>
+                {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
+                <span className="system-md-medium">{versions?.systemVersion}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-          <Button variant="primary" tone="destructive" onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
-        </div>
-      </Modal>
+          <div className="flex items-start justify-end gap-2 self-stretch pt-6">
+            <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+            <Button variant="primary" tone="destructive" onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

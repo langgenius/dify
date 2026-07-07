@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log/agent-log-trigger'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
@@ -143,6 +143,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
         {process_data && (
           <CodeEditor
             readOnly
+            showFileList
             title={<div>{t('common.processData', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
             language={CodeLanguage.json}
             value={process_data}
@@ -153,6 +154,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
         {(outputs || status === 'running') && (
           <CodeEditor
             readOnly
+            showFileList
             title={<div>{t('common.output', { ns: 'workflow' }).toLocaleUpperCase()}</div>}
             language={CodeLanguage.json}
             value={outputs}

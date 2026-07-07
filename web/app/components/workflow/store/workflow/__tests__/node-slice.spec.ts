@@ -9,6 +9,7 @@ describe('createNodeSlice', () => {
     expect(store.getState().iterTimes).toBe(1)
     expect(store.getState().loopTimes).toBe(1)
     expect(store.getState().iterParallelLogMap.size).toBe(0)
+    expect(store.getState().openInlineAgentPanelNodeId).toBeUndefined()
 
     store.getState().setConnectingNodePayload({
       nodeId: 'node-1',
@@ -20,6 +21,7 @@ describe('createNodeSlice', () => {
       nodeId: 'node-1',
       action: 'run',
     })
+    store.getState().setOpenInlineAgentPanelNodeId('agent-node-1')
 
     expect(store.getState().connectingNodePayload).toEqual({
       nodeId: 'node-1',
@@ -31,5 +33,6 @@ describe('createNodeSlice', () => {
       nodeId: 'node-1',
       action: 'run',
     })
+    expect(store.getState().openInlineAgentPanelNodeId).toBe('agent-node-1')
   })
 })

@@ -30,11 +30,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  __esModule: true,
-  default: () => <div>tooltip</div>,
-}))
-
 vi.mock('@/app/components/base/action-button', () => ({
   __esModule: true,
   default: (props: {
@@ -103,7 +98,7 @@ vi.mock('../components/form-content', () => ({
         <button
           type="button"
           onClick={() => props.onFormInputsChange([{
-            type: InputVarType.textInput,
+            type: InputVarType.paragraph,
             output_variable_name: 'email',
             default: {
               selector: [],
@@ -230,7 +225,7 @@ const createData = (overrides: Partial<HumanInputNodeType> = {}): HumanInputNode
   }],
   form_content: 'Please review this request',
   inputs: [{
-    type: InputVarType.textInput,
+    type: InputVarType.paragraph,
     output_variable_name: 'review_result',
     default: {
       selector: [],
@@ -292,6 +287,9 @@ describe('human-input/panel', () => {
         variable: ['start', 'email'],
         type: VarType.string,
       }, {
+        variable: ['code', 'result'],
+        type: VarType.arrayString,
+      }, {
         variable: ['start', 'files'],
         type: VarType.file,
       }].filter(variable => options?.filterVar ? options.filterVar({ type: variable.type } as never) : true),
@@ -311,14 +309,21 @@ describe('human-input/panel', () => {
     const config = createConfigResult()
     mockUseConfig.mockReturnValue(config)
 
-    const { container } = renderPanel()
+    renderPanel()
 
     expect(screen.getByRole('button', { name: 'delivery-method:editable' })).toBeInTheDocument()
     expect(screen.getByText('form-content:collapsed')).toBeInTheDocument()
     expect(screen.getByText('approve:editable')).toBeInTheDocument()
     expect(screen.getByText('review_result:string:Form input value')).toBeInTheDocument()
     expect(screen.getByText('__action_id:string:Action ID user triggered')).toBeInTheDocument()
+    expect(screen.getByText('__action_value:string:Selected action value')).toBeInTheDocument()
     expect(screen.getByText('__rendered_content:string:Rendered content')).toBeInTheDocument()
+    expect(mockDeliveryMethod).toHaveBeenCalledWith(expect.objectContaining({
+      nodesOutputVars: [
+        expect.objectContaining({ type: VarType.string }),
+        expect.objectContaining({ type: VarType.arrayString }),
+      ],
+    }))
 
     await user.click(screen.getByRole('button', { name: 'delivery-method:editable' }))
     await user.click(screen.getByRole('button', { name: /workflow\.nodes\.humanInput\.formContent\.preview/ }))
@@ -333,9 +338,8 @@ describe('human-input/panel', () => {
     await user.click(screen.getByRole('button', { name: 'toggle-output-vars' }))
     await user.click(screen.getByRole('button', { name: 'close-preview' }))
 
-    const iconContainers = container.querySelectorAll('div.flex.size-6.cursor-pointer')
-    await user.click(iconContainers[0] as HTMLElement)
-    await user.click(iconContainers[1] as HTMLElement)
+    await user.click(screen.getByRole('button', { name: 'common.operation.copy' }))
+    await user.click(screen.getByRole('button', { name: 'share.chat.expand' }))
 
     expect(config.handleDeliveryMethodChange).toHaveBeenCalledWith([{
       id: 'dm-email',
@@ -382,5 +386,34 @@ describe('human-input/panel', () => {
     expect(screen.queryByRole('button', { name: 'action-button' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'timeout:readonly' })).toBeInTheDocument()
     expect(screen.queryByText('form-preview')).not.toBeInTheDocument()
+  })
+
+  it('renders file outputs with file-aware types', () => {
+    mockUseConfig.mockReturnValue(createConfigResult({
+      inputs: createData({
+        inputs: [
+          {
+            type: InputVarType.singleFile,
+            output_variable_name: 'attachment',
+            allowed_file_extensions: [],
+            allowed_file_types: [],
+            allowed_file_upload_methods: [],
+          },
+          {
+            type: InputVarType.multiFiles,
+            output_variable_name: 'attachments',
+            allowed_file_extensions: [],
+            allowed_file_types: [],
+            allowed_file_upload_methods: [],
+            number_limits: 3,
+          },
+        ],
+      }),
+    }))
+
+    renderPanel()
+
+    expect(screen.getByText('attachment:file:Form input value')).toBeInTheDocument()
+    expect(screen.getByText('attachments:array[file]:Form input value')).toBeInTheDocument()
   })
 })

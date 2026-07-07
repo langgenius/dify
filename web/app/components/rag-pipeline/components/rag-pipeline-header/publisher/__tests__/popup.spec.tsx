@@ -61,8 +61,12 @@ let mockPublishedAt: string | undefined = '2024-01-01T00:00:00Z'
 let mockDraftUpdatedAt: string | undefined = '2024-06-01T00:00:00Z'
 let mockPipelineId: string | undefined = 'pipeline-123'
 let mockIsAllowPublishAsCustom = true
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 const mockUseBoolean = vi.hoisted(() => vi.fn())
-const mockUseKeyPress = vi.hoisted(() => vi.fn())
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
   useRouter: () => ({ push: mockPush }),
@@ -76,8 +80,15 @@ vi.mock('@/next/link', () => ({
 
 vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => mockUseBoolean(initial),
-  useKeyPress: (...args: unknown[]) => mockUseKeyPress(...args),
 }))
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
@@ -124,22 +135,34 @@ vi.mock('@/app/components/base/premium-badge', () => ({
   default: ({ children }: { children: React.ReactNode }) => <span data-testid="premium-badge">{children}</span>,
 }))
 
+vi.mock('@/config', () => ({
+  IS_CLOUD_EDITION: true,
+}))
+
 vi.mock('@/app/components/workflow/hooks', () => ({
   useChecklistBeforePublish: () => ({
     handleCheckBeforePublish: mockHandleCheckBeforePublish,
   }),
 }))
 
-vi.mock('@/app/components/workflow/shortcuts-name', () => ({
-  default: ({ keys }: { keys: string[] }) => <span data-testid="shortcuts">{keys.join('+')}</span>,
-}))
-
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
-}))
-
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => mockMutateDatasetRes,
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    dataset: {
+      permission_keys: mockDatasetPermissionKeys,
+      maintainer: mockDatasetMaintainer,
+    },
+    mutateDatasetRes: mockMutateDatasetRes,
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -216,11 +239,15 @@ describe('Popup', () => {
     mockDraftUpdatedAt = '2024-06-01T00:00:00Z'
     mockPipelineId = 'pipeline-123'
     mockIsAllowPublishAsCustom = true
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
     mockUseBoolean.mockImplementation((initial: boolean) => [initial, {
       setFalse: vi.fn(),
       setTrue: vi.fn(),
     }])
-    mockUseKeyPress.mockImplementation(() => {})
   })
 
   afterEach(() => {
@@ -244,10 +271,10 @@ describe('Popup', () => {
     })
 
     it('should render publish button with shortcuts', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
       expect(screen.getByText('workflow.common.publishUpdate')).toBeInTheDocument()
-      expect(screen.getByTestId('shortcuts')).toBeInTheDocument()
+      expect(container.querySelectorAll('kbd')).toHaveLength(3)
     })
 
     it('should render "Go to Add Documents" button', () => {
@@ -263,9 +290,10 @@ describe('Popup', () => {
     })
 
     it('should render "Publish As" button', () => {
-      render(<Popup />)
+      const { container } = render(<Popup />)
 
       expect(screen.getByText('pipeline.common.publishAs')).toBeInTheDocument()
+      expect(container.querySelector('.i-custom-vender-pipeline-pipeline-line')).toBeInTheDocument()
     })
   })
 
@@ -304,6 +332,14 @@ describe('Popup', () => {
       expect(btn).toBeDisabled()
     })
 
+    it('should disable add documents button when dataset cannot add documents', () => {
+      mockDatasetPermissionKeys = ['dataset.acl.edit']
+      render(<Popup />)
+
+      const btn = screen.getByText('pipeline.common.goToAddDocuments').closest('button')
+      expect(btn).toBeDisabled()
+    })
+
     it('should disable publish-as button when not published', () => {
       mockPublishedAt = undefined
       render(<Popup />)
@@ -327,11 +363,18 @@ describe('Popup', () => {
 
     it('should request closing the outer popover before opening publish-as modal', () => {
       const onRequestClose = vi.fn()
-      render(<Popup onRequestClose={onRequestClose} />)
+      const onShowPublishAsKnowledgePipelineModal = vi.fn()
+      render(
+        <Popup
+          onRequestClose={onRequestClose}
+          onShowPublishAsKnowledgePipelineModal={onShowPublishAsKnowledgePipelineModal}
+        />,
+      )
 
       fireEvent.click(screen.getByText('pipeline.common.publishAs'))
 
       expect(onRequestClose).toHaveBeenCalledTimes(1)
+      expect(onShowPublishAsKnowledgePipelineModal).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -349,27 +392,6 @@ describe('Popup', () => {
       fireEvent.click(screen.getByTestId('alert-dialog-close'))
 
       expect(hideConfirm).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  describe('Publish params', () => {
-    it('should publish as template with empty pipeline id fallback', async () => {
-      mockPipelineId = undefined
-      mockUseBoolean
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce(() => [true, { setFalse: vi.fn(), setTrue: vi.fn() }])
-        .mockImplementationOnce((initial: boolean) => [initial, { setFalse: vi.fn(), setTrue: vi.fn() }])
-      render(<Popup />)
-
-      fireEvent.click(screen.getByTestId('publish-as-confirm'))
-
-      expect(mockPublishAsCustomizedPipeline).toHaveBeenCalledWith({
-        pipelineId: '',
-        name: 'My Pipeline',
-        icon_info: { icon_type: 'emoji' },
-        description: 'desc',
-      })
     })
   })
 

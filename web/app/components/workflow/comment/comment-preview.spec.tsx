@@ -1,9 +1,9 @@
-import type { WorkflowCommentList } from '@/service/workflow-comment'
+import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import CommentPreview from './comment-preview'
 
-type UserProfile = WorkflowCommentList['created_by_account']
+type UserProfile = NonNullable<WorkflowCommentList['created_by_account']>
 
 const mockSetHovering = vi.fn()
 let capturedUsers: UserProfile[] = []
@@ -27,8 +27,8 @@ vi.mock('../store', () => ({
 }))
 
 const createComment = (overrides: Partial<WorkflowCommentList> = {}): WorkflowCommentList => {
-  const author = { id: 'user-1', name: 'Alice', email: 'alice@example.com' }
-  const participant = { id: 'user-2', name: 'Bob', email: 'bob@example.com' }
+  const author = { id: 'user-1', name: 'Alice', email: 'alice@example.com', avatar_url: null }
+  const participant = { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }
 
   return {
     id: 'comment-1',

@@ -1,4 +1,5 @@
 import type { Edge, EdgeChange } from 'reactflow'
+import type { WorkflowContextMenuTarget } from '../store/workflow/panel-slice'
 import type { Node } from '../types'
 import { produce } from 'immer'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils'
@@ -22,15 +23,13 @@ export const applyConnectedHandleNodeData = (
 }
 
 export const clearEdgeMenuIfNeeded = ({
-  edgeMenu,
+  contextMenuTarget,
   edgeIds,
 }: {
-  edgeMenu?: {
-    edgeId: string
-  }
+  contextMenuTarget?: WorkflowContextMenuTarget
   edgeIds: string[]
 }) => {
-  return !!(edgeMenu && edgeIds.includes(edgeMenu.edgeId))
+  return !!(contextMenuTarget?.type === 'edge' && edgeIds.includes(contextMenuTarget.edgeId))
 }
 
 export const updateEdgeHoverState = (

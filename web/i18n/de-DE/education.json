@@ -1,5 +1,14 @@
 {
+  "applied.activeSubscription.description": "Sie haben ein aktives Abonnement. Sie können den Bildungsrabatt verwenden, nachdem Ihr Abonnement abläuft. Bestätigen Sie Ihr Abonnement in <stripeLink>Stripe</stripeLink>.",
+  "applied.noPaymentPermission.description": "Sie haben keine Zahlungsberechtigung in diesem Arbeitsbereich. Bitte wechseln Sie zu einem Arbeitsbereich, in dem Sie die Abrechnung verwalten können, um den Bildungsrabatt zu nutzen.",
+  "applied.noPaymentPermission.returnHome": "Zurück zu Dify",
+  "applied.step1.description": "Sie haben erfolgreich den Bildungsrabatt beantragt.",
+  "applied.step2.description": "Wählen Sie den Arbeitsbereich aus, den Sie mit dem Bildungsrabatt verwenden möchten.",
   "currentSigned": "DERZEIT ANGEMELDET ALS",
+  "educationPricingConfirm.cancel": "Aktuellen Plan behalten",
+  "educationPricingConfirm.continue": "Zu Professional jährlich wechseln",
+  "educationPricingConfirm.description": "Der Bildungsrabatt gilt nur für den jährlichen Professional-Plan. Wenn Sie Ihren aktuellen Plan behalten, ist der Rabatt nicht enthalten.",
+  "educationPricingConfirm.title": "Ihr ausgewählter Plan unterstützt den Bildungsrabatt nicht",
   "emailLabel": "Ihre aktuelle E-Mail",
   "form.schoolName.placeholder": "Geben Sie den offiziellen, unabgekürzten Namen Ihrer Schule ein.",
   "form.schoolName.title": "Ihr Schulname",
@@ -31,14 +40,14 @@
   "notice.stillInEducation.expired": "Überprüfen Sie jetzt erneut, um einen neuen Gutschein für das kommende akademische Jahr zu erhalten. Wir fügen ihn Ihrem Konto hinzu und Sie können ihn für das nächste Upgrade verwenden.",
   "notice.stillInEducation.isAboutToExpire": "Überprüfen Sie jetzt erneut, um einen neuen Gutschein für das kommende Studienjahr zu erhalten. Er wird in Ihrem Konto gespeichert und ist bereit zur Nutzung bei Ihrer nächsten Verlängerung.",
   "notice.stillInEducation.title": "Immer noch in der Ausbildung?",
+  "planNotSupportEducationDiscount": "Nicht für Bildungspreise berechtigt",
   "rejectContent": "Leider sind Sie nicht für den Status \"Education Verified\" berechtigt und können daher den exklusiven 100%-Gutschein für den Dify Professional Plan nicht erhalten, wenn Sie diese E-Mail-Adresse verwenden.",
   "rejectTitle": "Ihre Dify-Ausbildungsüberprüfung wurde abgelehnt.",
   "submit": "Einreichen",
   "submitError": "Die Formularübermittlung ist fehlgeschlagen. Bitte versuchen Sie es später erneut.",
-  "successContent": "Wir haben einen 100% Rabattgutschein für den Dify Professional Plan auf Ihr Konto ausgestellt. Der Gutschein ist ein Jahr lang gültig, bitte nutzen Sie ihn innerhalb des Gültigkeitszeitraums.",
-  "successTitle": "Sie haben die Dify-Ausbildung verifiziert",
   "toVerified": "Bildung überprüfen lassen",
   "toVerifiedTip.coupon": "exklusiver 100% Gutschein",
   "toVerifiedTip.end": "für den Dify Professional Plan.",
-  "toVerifiedTip.front": "Sie sind jetzt berechtigt, den Status „Bildung verifiziert“ zu erhalten. Bitte geben Sie unten Ihre Bildungsinformationen ein, um den Prozess abzuschließen und eine Zu erhalten."
+  "toVerifiedTip.front": "Sie sind jetzt berechtigt, den Status Bildung verifiziert zu erhalten. Bitte geben Sie unten Ihre Bildungsinformationen ein, um den Prozess abzuschließen und eine zu erhalten.",
+  "useEducationDiscount": "Bildungsrabatt verwenden"
 }

@@ -1,9 +1,10 @@
+import type { AppInfoActions } from './use-app-info-actions'
 import * as React from 'react'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { getAppACLCapabilities } from '@/utils/permission'
 import AppInfoDetailPanel from './app-info-detail-panel'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
-import { useAppInfoActions } from './use-app-info-actions'
 
 type IAppInfoProps = {
   expand: boolean
@@ -12,13 +13,22 @@ type IAppInfoProps = {
   onDetailExpand?: (expand: boolean) => void
 }
 
-const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailExpand }: IAppInfoProps) => {
-  const { isCurrentWorkspaceEditor } = useAppContext()
+type AppInfoViewProps = Omit<IAppInfoProps, 'onDetailExpand'> & {
+  actions: AppInfoActions
+  renderDetail?: boolean
+}
 
+type AppInfoDetailLayerProps = {
+  actions: AppInfoActions
+  open?: boolean
+}
+
+const AppInfoDetailLayer = ({
+  actions,
+  open = actions.panelOpen,
+}: AppInfoDetailLayerProps) => {
   const {
     appDetail,
-    panelOpen,
-    setPanelOpen,
     closePanel,
     activeModal,
     openModal,
@@ -31,26 +41,16 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,
-  } = useAppInfoActions({ onDetailExpand })
+  } = actions
 
   if (!appDetail)
     return null
 
   return (
-    <div>
-      {!onlyShowDetail && (
-        <AppInfoTrigger
-          appDetail={appDetail}
-          expand={expand}
-          onClick={() => {
-            if (isCurrentWorkspaceEditor)
-              setPanelOpen(v => !v)
-          }}
-        />
-      )}
+    <>
       <AppInfoDetailPanel
         appDetail={appDetail}
-        show={onlyShowDetail ? openState : panelOpen}
+        show={open}
         onClose={closePanel}
         openModal={openModal}
         exportCheck={exportCheck}
@@ -68,8 +68,56 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         handleConfirmExport={handleConfirmExport}
         onConfirmDelete={onConfirmDelete}
       />
-    </div>
+    </>
   )
 }
 
-export default React.memo(AppInfo)
+export const AppInfoView = ({
+  expand,
+  onlyShowDetail = false,
+  openState = false,
+  actions,
+  renderDetail = true,
+}: AppInfoViewProps) => {
+  const {
+    appDetail,
+    panelOpen,
+    setPanelOpen,
+    activeModal,
+    secretEnvList,
+  } = actions
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  })
+
+  if (!appDetail)
+    return null
+
+  const detailLayerOpen = onlyShowDetail ? openState : panelOpen
+  const shouldRenderDetailLayer = renderDetail && (detailLayerOpen || activeModal || secretEnvList.length > 0)
+
+  return (
+    <div>
+      {!onlyShowDetail && (
+        <AppInfoTrigger
+          appDetail={appDetail}
+          expand={expand}
+          onClick={() => {
+            if (appACLCapabilities.canAccessLayout)
+              setPanelOpen(v => !v)
+          }}
+        />
+      )}
+      {shouldRenderDetailLayer && (
+        <AppInfoDetailLayer
+          actions={actions}
+          open={detailLayerOpen}
+        />
+      )}
+    </div>
+  )
+}

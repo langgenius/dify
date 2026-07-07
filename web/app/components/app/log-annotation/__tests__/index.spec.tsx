@@ -1,33 +1,25 @@
 import type { App, AppIconType } from '@/types/app'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import { AppModeEnum } from '@/types/app'
 import LogAnnotation from '../index'
 
-const mockRouterPush = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    push: mockRouterPush,
-  }),
-}))
-
 vi.mock('@/app/components/app/annotation', () => ({
   default: ({ appDetail }: { appDetail: App }) => (
-    <div data-testid="annotation" data-app-id={appDetail.id} />
+    <section aria-label="Annotation log">{appDetail.id}</section>
   ),
 }))
 
 vi.mock('@/app/components/app/log', () => ({
   default: ({ appDetail }: { appDetail: App }) => (
-    <div data-testid="log" data-app-id={appDetail.id} />
+    <section aria-label="App log">{appDetail.id}</section>
   ),
 }))
 
 vi.mock('@/app/components/app/workflow-log', () => ({
   default: ({ appDetail }: { appDetail: App }) => (
-    <div data-testid="workflow-log" data-app-id={appDetail.id} />
+    <section aria-label="Workflow log">{appDetail.id}</section>
   ),
 }))
 
@@ -80,7 +72,7 @@ describe('LogAnnotation', () => {
       expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
-    it('should render log and annotation tabs for non-completion apps', () => {
+    it('should render log content without the old page tabs', () => {
       // Arrange
       useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.CHAT }) })
 
@@ -88,11 +80,12 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByText('appLog.title')).toBeInTheDocument()
-      expect(screen.getByText('appAnnotation.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
+      expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
+      expect(screen.queryByText('appAnnotation.title')).not.toBeInTheDocument()
     })
 
-    it('should render only log tab for completion apps', () => {
+    it('should render completion logs without the old page tabs', () => {
       // Arrange
       useAppStore.setState({ appDetail: createMockApp({ mode: AppModeEnum.COMPLETION }) })
 
@@ -100,7 +93,8 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByText('appLog.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
+      expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
       expect(screen.queryByText('appAnnotation.title')).not.toBeInTheDocument()
     })
 
@@ -113,7 +107,7 @@ describe('LogAnnotation', () => {
 
       // Assert
       expect(screen.queryByText('appLog.title')).not.toBeInTheDocument()
-      expect(screen.getByTestId('workflow-log')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Workflow log' })).toBeInTheDocument()
     })
   })
 
@@ -127,8 +121,8 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.log} />)
 
       // Assert
-      expect(screen.getByTestId('log')).toBeInTheDocument()
-      expect(screen.queryByTestId('annotation')).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'App log' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Annotation log' })).not.toBeInTheDocument()
     })
 
     it('should render annotation content when page type is annotation', () => {
@@ -139,35 +133,8 @@ describe('LogAnnotation', () => {
       render(<LogAnnotation pageType={PageType.annotation} />)
 
       // Assert
-      expect(screen.getByTestId('annotation')).toBeInTheDocument()
-      expect(screen.queryByTestId('log')).not.toBeInTheDocument()
-    })
-  })
-
-  // User interaction behavior
-  describe('User Interactions', () => {
-    it('should navigate to annotations when switching from log tab', async () => {
-      // Arrange
-      const user = userEvent.setup()
-
-      // Act
-      render(<LogAnnotation pageType={PageType.log} />)
-      await user.click(screen.getByText('appAnnotation.title'))
-
-      // Assert
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/annotations')
-    })
-
-    it('should navigate to logs when switching from annotation tab', async () => {
-      // Arrange
-      const user = userEvent.setup()
-
-      // Act
-      render(<LogAnnotation pageType={PageType.annotation} />)
-      await user.click(screen.getByText('appLog.title'))
-
-      // Assert
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/logs')
+      expect(screen.getByRole('region', { name: 'Annotation log' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'App log' })).not.toBeInTheDocument()
     })
   })
 })

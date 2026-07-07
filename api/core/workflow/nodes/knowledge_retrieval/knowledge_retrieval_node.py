@@ -6,10 +6,13 @@ the workflow node registry.
 
 import logging
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, override
+
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.db.session_factory import session_factory
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.workflow.file_reference import parse_file_reference
@@ -71,25 +74,29 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
     def __init__(
         self,
         node_id: str,
-        config: KnowledgeRetrievalNodeData,
+        data: KnowledgeRetrievalNodeData,
         *,
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
+        session_maker=None,
     ) -> None:
         super().__init__(
             node_id=node_id,
-            config=config,
+            data=data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs = []
         self._rag_retrieval = DatasetRetrieval()
+        self._session_maker = session_maker or session_factory.get_session_maker()
 
     @classmethod
+    @override
     def version(cls):
         return "1"
 
+    @override
     def _run(self) -> NodeRunResult:
         usage = LLMUsage.empty_usage()
         if not self._node_data.query_variable_selector and not self._node_data.query_attachment_selector:
@@ -128,20 +135,23 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 variables["attachments"] = [variable.value]
 
         try:
-            results, usage = self._fetch_dataset_retriever(node_data=self._node_data, variables=variables)
-            outputs = {"result": ArrayObjectSegment(value=[item.model_dump(by_alias=True) for item in results])}
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs=variables,
-                process_data={"usage": jsonable_encoder(usage)},
-                outputs=outputs,  # type: ignore
-                metadata={
-                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
-                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
-                },
-                llm_usage=usage,
-            )
+            with self._session_maker() as session:
+                results, usage = self._fetch_dataset_retriever(
+                    session=session, node_data=self._node_data, variables=variables
+                )
+                outputs = {"result": ArrayObjectSegment(value=[item.model_dump(by_alias=True) for item in results])}
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=variables,
+                    process_data={"usage": jsonable_encoder(usage)},
+                    outputs=outputs,
+                    metadata={
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                        WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+                    },
+                    llm_usage=usage,
+                )
         except RateLimitExceededError as e:
             logger.warning(e, exc_info=True)
             return NodeRunResult(
@@ -172,7 +182,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             )
 
     def _fetch_dataset_retriever(
-        self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
+        self, session: Session, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
         dataset_ids = node_data.dataset_ids
@@ -196,6 +206,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 raise ValueError("single_retrieval_config is required for single retrieval mode")
             model = node_data.single_retrieval_config.model
             retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
+                session=session,
                 request=KnowledgeRetrievalRequest(
                     tenant_id=dify_ctx.tenant_id,
                     user_id=dify_ctx.user_id,
@@ -211,7 +222,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     metadata_filtering_conditions=resolved_metadata_conditions,
                     metadata_filtering_mode=metadata_filtering_mode,
                     query=query,
-                )
+                ),
             )
         elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
@@ -249,6 +260,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     weights = None
 
             retrieval_resource_list = self._rag_retrieval.knowledge_retrieval(
+                session=session,
                 request=KnowledgeRetrievalRequest(
                     app_id=dify_ctx.app_id,
                     tenant_id=dify_ctx.tenant_id,
@@ -275,7 +287,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     ]
                     if attachments
                     else None,
-                )
+                ),
             )
 
         usage = self._rag_retrieval.llm_usage
@@ -295,25 +307,26 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         for cond in conditions.conditions or []:
             value = cond.value
             resolved_value: str | Sequence[str] | int | float | None
-            if isinstance(value, str):
-                segment_group = variable_pool.convert_template(value)
-                if len(segment_group.value) == 1:
-                    resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
-                else:
-                    resolved_value = segment_group.text
-            elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
-                resolved_values: list[str] = []
-                for v in value:
-                    segment_group = variable_pool.convert_template(v)
+            match value:
+                case str():
+                    segment_group = variable_pool.convert_template(value)
                     if len(segment_group.value) == 1:
-                        resolved_values.append(
-                            _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
-                        )
+                        resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
                     else:
-                        resolved_values.append(segment_group.text)
-                resolved_value = resolved_values
-            else:
-                resolved_value = value
+                        resolved_value = segment_group.text
+                case _ if isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
+                    resolved_values: list[str] = []
+                    for v in value:
+                        segment_group = variable_pool.convert_template(v)
+                        if len(segment_group.value) == 1:
+                            resolved_values.append(
+                                _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
+                            )
+                        else:
+                            resolved_values.append(segment_group.text)
+                    resolved_value = resolved_values
+                case _:
+                    resolved_value = value
             resolved_conditions.append(
                 Condition(
                     name=cond.name,
@@ -327,6 +340,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         )
 
     @classmethod
+    @override
     def _extract_variable_selector_to_variable_mapping(
         cls,
         *,

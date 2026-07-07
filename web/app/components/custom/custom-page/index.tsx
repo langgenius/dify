@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { contactSalesUrl } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import CustomWebAppBrand from '../custom-web-app-brand'
@@ -9,7 +10,7 @@ const CustomPage = () => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
   const { setShowPricingModal } = useModalContext()
-  const showBillingTip = enableBilling && plan.type === Plan.sandbox
+  const showBillingTip = IS_CLOUD_EDITION && enableBilling && plan.type === Plan.sandbox
   const showContact = enableBilling && (plan.type === Plan.professional || plan.type === Plan.team)
 
   return (
@@ -20,7 +21,13 @@ const CustomPage = () => {
             <div className="title-xl-semi-bold">{t('upgradeTip.title', { ns: 'custom' })}</div>
             <div className="system-sm-regular">{t('upgradeTip.des', { ns: 'custom' })}</div>
           </div>
-          <div className="flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl bg-white system-md-semibold text-text-accent shadow-xs hover:opacity-95" onClick={() => setShowPricingModal()}>{t('upgradeBtn.encourageShort', { ns: 'billing' })}</div>
+          <button
+            type="button"
+            className="flex h-10 w-[120px] cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
+            onClick={() => setShowPricingModal()}
+          >
+            {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+          </button>
         </div>
       )}
       <CustomWebAppBrand />

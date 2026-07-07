@@ -89,7 +89,7 @@ describe('IndexBar', () => {
         />,
       )
 
-      await user.click(screen.getByText('A'))
+      await user.click(screen.getByRole('button', { name: 'A' }))
 
       expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
     })

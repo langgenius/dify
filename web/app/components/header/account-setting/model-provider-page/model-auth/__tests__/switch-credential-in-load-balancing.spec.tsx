@@ -1,25 +1,56 @@
 import type { CustomModel, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import SwitchCredentialInLoadBalancing from '../switch-credential-in-load-balancing'
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['credential.use', 'credential.create', 'credential.manage'],
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
+}))
+
 // Mock components
 vi.mock('../authorized', () => ({
-  default: ({ renderTrigger, onItemClick, items }: { renderTrigger: () => React.ReactNode, onItemClick: (c: unknown) => void, items: { credentials: unknown[] }[] }) => (
-    <div data-testid="authorized-mock">
-      <div data-testid="trigger-container" onClick={() => onItemClick(items[0]!.credentials[0])}>
+  default: ({
+    renderTrigger,
+    onItemClick,
+    items,
+    disabled,
+    hideAddAction,
+    triggerOnlyOpenModal,
+  }: {
+    renderTrigger: () => React.ReactNode
+    onItemClick?: (c: unknown) => void
+    items: { credentials: unknown[] }[]
+    disabled?: boolean
+    hideAddAction?: boolean
+    triggerOnlyOpenModal?: boolean
+  }) => (
+    <div
+      data-testid="authorized-mock"
+      data-disabled={String(!!disabled)}
+      data-hide-add-action={String(!!hideAddAction)}
+      data-trigger-only-open-modal={String(!!triggerOnlyOpenModal)}
+    >
+      <div data-testid="trigger-container" onClick={() => onItemClick?.(items[0]!.credentials[0])}>
         {renderTrigger()}
       </div>
     </div>
   ),
 }))
 
-vi.mock('@/app/components/header/indicator', () => ({
-  default: ({ color }: { color: string }) => <div data-testid={`indicator-${color}`} />,
+vi.mock('@langgenius/dify-ui/status-dot', () => ({
+  StatusDot: ({ status }: { status: string }) => <div data-testid={`indicator-${status}`} />,
 }))
 
 vi.mock('@remixicon/react', () => ({
   RiArrowDownSLine: () => <div data-testid="arrow-icon" />,
+  RiQuestionLine: () => <div data-testid="question-icon" />,
 }))
 
 describe('SwitchCredentialInLoadBalancing', () => {
@@ -42,6 +73,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['credential.use', 'credential.create', 'credential.manage']
   })
 
   it('should render selected credential name correctly', () => {
@@ -56,7 +88,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText('Key 1'))!.toBeInTheDocument()
-    expect(screen.getByTestId('indicator-green'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-success'))!.toBeInTheDocument()
   })
 
   it('should render auth removed status when selected credential is not in list', () => {
@@ -71,10 +103,10 @@ describe('SwitchCredentialInLoadBalancing', () => {
     )
 
     expect(screen.getByText(/modelProvider.auth.authRemoved/))!.toBeInTheDocument()
-    expect(screen.getByTestId('indicator-red'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-error'))!.toBeInTheDocument()
   })
 
-  it('should render unavailable status when credentials list is empty', () => {
+  it('should render add credential status when credentials list is empty and create is allowed', () => {
     render(
       <SwitchCredentialInLoadBalancing
         provider={mockProvider}
@@ -85,7 +117,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider.auth.addCredential/))!.toBeInTheDocument()
     expect(screen.queryByTestId(/indicator-/)).not.toBeInTheDocument()
   })
 
@@ -104,7 +136,29 @@ describe('SwitchCredentialInLoadBalancing', () => {
     expect(mockSetCustomModelCredential).toHaveBeenCalledWith(mockCredentials[0])
   })
 
-  it('should show tooltip when empty and custom credentials not allowed', () => {
+  it('should keep credential menu available for manage-only users without allowing selection', () => {
+    mockWorkspacePermissionKeys.value = ['credential.manage']
+
+    render(
+      <SwitchCredentialInLoadBalancing
+        provider={mockProvider}
+        model={mockModel}
+        credentials={mockCredentials}
+        customModelCredential={mockCredentials[0]}
+        setCustomModelCredential={mockSetCustomModelCredential}
+      />,
+    )
+
+    expect(screen.getByTestId('authorized-mock')).toHaveAttribute('data-disabled', 'false')
+    expect(screen.getByTestId('authorized-mock')).toHaveAttribute('data-hide-add-action', 'true')
+
+    fireEvent.click(screen.getByTestId('trigger-container'))
+
+    expect(mockSetCustomModelCredential).not.toHaveBeenCalled()
+  })
+
+  it('should show tooltip when empty and custom credentials not allowed', async () => {
+    const user = userEvent.setup()
     const restrictedProvider = { ...mockProvider, allow_custom_token: false }
     render(
       <SwitchCredentialInLoadBalancing
@@ -116,12 +170,12 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    fireEvent.mouseEnter(screen.getByText(/auth.credentialUnavailableInButton/))
-    expect(screen.getByText('plugin.auth.credentialUnavailable'))!.toBeInTheDocument()
+    await user.hover(screen.getByRole('button', { name: /auth.credentialUnavailableInButton/ }))
+    expect(await screen.findByText('plugin.auth.credentialUnavailable'))!.toBeInTheDocument()
   })
 
-  // Empty credentials with allowed custom: no tooltip but still shows unavailable text
-  it('should show unavailable status without tooltip when custom credentials are allowed', () => {
+  // Empty credentials with allowed custom: no tooltip but still shows add credential text
+  it('should show add credential status without tooltip when custom credentials are allowed', () => {
     // Act
     render(
       <SwitchCredentialInLoadBalancing
@@ -135,7 +189,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
 
     // Assert
     // Assert
-    expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
+    expect(screen.getByText(/modelProvider.auth.addCredential/))!.toBeInTheDocument()
     expect(screen.queryByText('plugin.auth.credentialUnavailable')).not.toBeInTheDocument()
   })
 
@@ -153,7 +207,7 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    expect(screen.getByTestId('indicator-red'))!.toBeInTheDocument()
+    expect(screen.getByTestId('indicator-error'))!.toBeInTheDocument()
     expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
   })
 
@@ -222,9 +276,8 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    // credentials is undefined → empty=true → unavailable text shown
-    // credentials is undefined → empty=true → unavailable text shown
-    expect(screen.getByText(/auth.credentialUnavailableInButton/))!.toBeInTheDocument()
+    // credentials is undefined -> empty=true -> add credential text shown when creation is allowed.
+    expect(screen.getByText(/modelProvider.auth.addCredential/))!.toBeInTheDocument()
     expect(screen.queryByTestId(/indicator-/)).not.toBeInTheDocument()
   })
 
@@ -241,9 +294,9 @@ describe('SwitchCredentialInLoadBalancing', () => {
       />,
     )
 
-    // indicator-green shown (not authRemoved, not unavailable, not empty)
-    // indicator-green shown (not authRemoved, not unavailable, not empty)
-    expect(screen.getByTestId('indicator-green'))!.toBeInTheDocument()
+    // indicator-success shown (not authRemoved, not unavailable, not empty)
+    // indicator-success shown (not authRemoved, not unavailable, not empty)
+    expect(screen.getByTestId('indicator-success'))!.toBeInTheDocument()
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name
     // credential_name is empty so nothing printed for name

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import TryApp from '../index'
-import { TypeEnum } from '../tab'
+import { TypeEnum } from '../types'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal() as object
@@ -39,14 +39,14 @@ vi.mock('../app-info', () => ({
   default: ({
     appId,
     appDetail,
-    category,
+    categories,
     className,
     onCreate,
-  }: { appId: string, appDetail: TryAppInfo, category?: string, className?: string, onCreate: () => void }) => (
+  }: { appId: string, appDetail: TryAppInfo, categories?: string[], className?: string, onCreate: () => void }) => (
     <div
       data-testid="app-info-component"
       data-app-id={appId}
-      data-category={category}
+      data-categories={categories?.join(',')}
       className={className}
     >
       <button data-testid="create-button" onClick={onCreate}>Create</button>
@@ -120,6 +120,42 @@ describe('TryApp (main index.tsx)', () => {
 
       expect(document.body.querySelector('[role="status"]')).toBeInTheDocument()
     })
+
+    it('renders unavailable state when the app detail request fails', () => {
+      mockUseGetTryAppInfo.mockReturnValue({
+        data: null,
+        isError: true,
+        error: new Error('App is unavailable'),
+      })
+
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('App is unavailable')).toBeInTheDocument()
+    })
+
+    it('renders unknown unavailable state when app detail is empty', () => {
+      mockUseGetTryAppInfo.mockReturnValue({
+        data: null,
+        isLoading: false,
+        isError: false,
+      })
+
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={vi.fn()}
+          onCreate={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText('share.common.appUnknownError')).toBeInTheDocument()
+    })
   })
 
   describe('content rendering', () => {
@@ -177,8 +213,7 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        const buttons = document.body.querySelectorAll('button')
-        expect(buttons.length).toBeGreaterThan(0)
+        expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
       })
     })
   })
@@ -245,17 +280,32 @@ describe('TryApp (main index.tsx)', () => {
       )
 
       await waitFor(() => {
-        const buttons = document.body.querySelectorAll('button')
-        const closeButton = Array.from(buttons).find(btn =>
-          btn.querySelector('svg') || btn.className.includes('rounded-[10px]'),
-        )
-        expect(closeButton).toBeInTheDocument()
-
-        if (closeButton)
-          fireEvent.click(closeButton)
+        expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
       })
 
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
       expect(mockOnClose).toHaveBeenCalled()
+    })
+
+    it('calls onClose when the dialog requests close', async () => {
+      const mockOnClose = vi.fn()
+
+      render(
+        <TryApp
+          appId="test-app-id"
+          onClose={mockOnClose}
+          onCreate={vi.fn()}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
+      })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -283,12 +333,12 @@ describe('TryApp (main index.tsx)', () => {
     })
   })
 
-  describe('category prop', () => {
-    it('passes category to AppInfo when provided', async () => {
+  describe('categories prop', () => {
+    it('passes categories to AppInfo when provided', async () => {
       render(
         <TryApp
           appId="test-app-id"
-          category="AI Assistant"
+          categories={['AI Assistant', 'Workflow']}
           onClose={vi.fn()}
           onCreate={vi.fn()}
         />,
@@ -296,11 +346,11 @@ describe('TryApp (main index.tsx)', () => {
 
       await waitFor(() => {
         const appInfo = document.body.querySelector('[data-testid="app-info-component"]')
-        expect(appInfo).toHaveAttribute('data-category', 'AI Assistant')
+        expect(appInfo).toHaveAttribute('data-categories', 'AI Assistant,Workflow')
       })
     })
 
-    it('does not pass category to AppInfo when not provided', async () => {
+    it('does not pass categories to AppInfo when not provided', async () => {
       render(
         <TryApp
           appId="test-app-id"
@@ -311,7 +361,7 @@ describe('TryApp (main index.tsx)', () => {
 
       await waitFor(() => {
         const appInfo = document.body.querySelector('[data-testid="app-info-component"]')
-        expect(appInfo).not.toHaveAttribute('data-category', expect.any(String))
+        expect(appInfo).not.toHaveAttribute('data-categories', expect.any(String))
       })
     })
   })

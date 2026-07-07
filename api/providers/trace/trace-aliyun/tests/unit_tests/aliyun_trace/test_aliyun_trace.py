@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock
 
 import dify_trace_aliyun.aliyun_trace as aliyun_trace_module
 import pytest
 from dify_trace_aliyun.aliyun_trace import AliyunDataTrace
 from dify_trace_aliyun.config import AliyunConfig
+from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_COMPLETION,
     GEN_AI_INPUT_MESSAGE,
@@ -44,7 +46,7 @@ class RecordingTraceClient:
         self.endpoint = endpoint
         self.added_spans: list[object] = []
 
-    def add_span(self, span) -> None:
+    def add_span(self, span: object) -> None:
         self.added_spans.append(span)
 
     def api_check(self) -> bool:
@@ -63,9 +65,33 @@ def _make_link(trace_id: int = 1, span_id: int = 2) -> Link:
         trace_id=trace_id,
         span_id=span_id,
         is_remote=False,
-        trace_flags=TraceFlags.SAMPLED,
+        trace_flags=TraceFlags(TraceFlags.SAMPLED),
     )
     return Link(context)
+
+
+def _make_trace_metadata(
+    trace_id: int = 1,
+    workflow_span_id: int = 2,
+    session_id: str = "s",
+    user_id: str = "u",
+    links: list[Link] | None = None,
+) -> TraceMetadata:
+    return TraceMetadata(
+        trace_id=trace_id,
+        workflow_span_id=workflow_span_id,
+        session_id=session_id,
+        user_id=user_id,
+        links=[] if links is None else links,
+    )
+
+
+def _recording_trace_client(trace_instance: AliyunDataTrace) -> RecordingTraceClient:
+    return cast(RecordingTraceClient, trace_instance.trace_client)
+
+
+def _recorded_span_data(trace_instance: AliyunDataTrace) -> list[SpanData]:
+    return cast(list[SpanData], _recording_trace_client(trace_instance).added_spans)
 
 
 def _make_workflow_trace_info(**overrides) -> WorkflowTraceInfo:
@@ -263,20 +289,20 @@ def test_workflow_trace_adds_workflow_and_node_spans(trace_instance: AliyunDataT
     trace_instance.workflow_trace(trace_info)
 
     add_workflow_span.assert_called_once()
-    passed_trace_metadata = add_workflow_span.call_args.args[1]
+    passed_trace_metadata = cast(TraceMetadata, add_workflow_span.call_args.args[1])
     assert passed_trace_metadata.trace_id == 111
     assert passed_trace_metadata.workflow_span_id == 222
     assert passed_trace_metadata.session_id == "c"
     assert passed_trace_metadata.user_id == "u"
     assert passed_trace_metadata.links == []
 
-    assert trace_instance.trace_client.added_spans == ["span-1", "span-2"]
+    assert _recording_trace_client(trace_instance).added_spans == ["span-1", "span-2"]
 
 
 def test_message_trace_returns_early_if_no_message_data(trace_instance: AliyunDataTrace):
     trace_info = _make_message_trace_info(message_data=None)
     trace_instance.message_trace(trace_info)
-    assert trace_instance.trace_client.added_spans == []
+    assert _recording_trace_client(trace_instance).added_spans == []
 
 
 def test_message_trace_creates_message_and_llm_spans(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
@@ -302,8 +328,9 @@ def test_message_trace_creates_message_and_llm_spans(trace_instance: AliyunDataT
     )
     trace_instance.message_trace(trace_info)
 
-    assert len(trace_instance.trace_client.added_spans) == 2
-    message_span, llm_span = trace_instance.trace_client.added_spans
+    spans = _recorded_span_data(trace_instance)
+    assert len(spans) == 2
+    message_span, llm_span = spans
 
     assert message_span.name == "message"
     assert message_span.trace_id == 10
@@ -324,7 +351,7 @@ def test_message_trace_creates_message_and_llm_spans(trace_instance: AliyunDataT
 def test_dataset_retrieval_trace_returns_early_if_no_message_data(trace_instance: AliyunDataTrace):
     trace_info = _make_dataset_retrieval_trace_info(message_data=None)
     trace_instance.dataset_retrieval_trace(trace_info)
-    assert trace_instance.trace_client.added_spans == []
+    assert _recording_trace_client(trace_instance).added_spans == []
 
 
 def test_dataset_retrieval_trace_creates_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
@@ -338,8 +365,9 @@ def test_dataset_retrieval_trace_creates_span(trace_instance: AliyunDataTrace, m
     monkeypatch.setattr(aliyun_trace_module, "extract_retrieval_documents", lambda _: [{"doc": "d"}])
 
     trace_instance.dataset_retrieval_trace(_make_dataset_retrieval_trace_info(inputs="query"))
-    assert len(trace_instance.trace_client.added_spans) == 1
-    span = trace_instance.trace_client.added_spans[0]
+    spans = _recorded_span_data(trace_instance)
+    assert len(spans) == 1
+    span = spans[0]
     assert span.name == "dataset_retrieval"
     assert span.attributes[RETRIEVAL_QUERY] == "query"
     assert span.attributes[RETRIEVAL_DOCUMENT] == '[{"doc": "d"}]'
@@ -348,7 +376,7 @@ def test_dataset_retrieval_trace_creates_span(trace_instance: AliyunDataTrace, m
 def test_tool_trace_returns_early_if_no_message_data(trace_instance: AliyunDataTrace):
     trace_info = _make_tool_trace_info(message_data=None)
     trace_instance.tool_trace(trace_info)
-    assert trace_instance.trace_client.added_spans == []
+    assert _recording_trace_client(trace_instance).added_spans == []
 
 
 def test_tool_trace_creates_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
@@ -371,8 +399,9 @@ def test_tool_trace_creates_span(trace_instance: AliyunDataTrace, monkeypatch: p
         )
     )
 
-    assert len(trace_instance.trace_client.added_spans) == 1
-    span = trace_instance.trace_client.added_spans[0]
+    spans = _recorded_span_data(trace_instance)
+    assert len(spans) == 1
+    span = spans[0]
     assert span.name == "my-tool"
     assert span.status == status
     assert span.attributes[TOOL_NAME] == "my-tool"
@@ -409,7 +438,7 @@ def test_get_workflow_node_executions_builds_repo_and_fetches(
 def test_build_workflow_node_span_routes_llm_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     trace_info = _make_workflow_trace_info()
-    trace_metadata = MagicMock()
+    trace_metadata = _make_trace_metadata()
 
     monkeypatch.setattr(trace_instance, "build_workflow_llm_span", MagicMock(return_value="llm"))
 
@@ -422,7 +451,7 @@ def test_build_workflow_node_span_routes_knowledge_retrieval_type(
 ):
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     trace_info = _make_workflow_trace_info()
-    trace_metadata = MagicMock()
+    trace_metadata = _make_trace_metadata()
 
     monkeypatch.setattr(trace_instance, "build_workflow_retrieval_span", MagicMock(return_value="retrieval"))
 
@@ -433,7 +462,7 @@ def test_build_workflow_node_span_routes_knowledge_retrieval_type(
 def test_build_workflow_node_span_routes_tool_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     trace_info = _make_workflow_trace_info()
-    trace_metadata = MagicMock()
+    trace_metadata = _make_trace_metadata()
 
     monkeypatch.setattr(trace_instance, "build_workflow_tool_span", MagicMock(return_value="tool"))
 
@@ -444,7 +473,7 @@ def test_build_workflow_node_span_routes_tool_type(trace_instance: AliyunDataTra
 def test_build_workflow_node_span_routes_code_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     trace_info = _make_workflow_trace_info()
-    trace_metadata = MagicMock()
+    trace_metadata = _make_trace_metadata()
 
     monkeypatch.setattr(trace_instance, "build_workflow_task_span", MagicMock(return_value="task"))
 
@@ -457,7 +486,7 @@ def test_build_workflow_node_span_handles_errors(
 ):
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     trace_info = _make_workflow_trace_info()
-    trace_metadata = MagicMock()
+    trace_metadata = _make_trace_metadata()
 
     monkeypatch.setattr(trace_instance, "build_workflow_task_span", MagicMock(side_effect=RuntimeError("boom")))
     node_execution.node_type = BuiltinNodeTypes.CODE
@@ -472,7 +501,7 @@ def test_build_workflow_task_span(trace_instance: AliyunDataTrace, monkeypatch: 
     status = Status(StatusCode.OK)
     monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: status)
 
-    trace_metadata = SimpleNamespace(trace_id=1, workflow_span_id=2, session_id="s", user_id="u", links=[])
+    trace_metadata = _make_trace_metadata()
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     node_execution.id = "node-id"
     node_execution.title = "title"
@@ -494,7 +523,7 @@ def test_build_workflow_tool_span(trace_instance: AliyunDataTrace, monkeypatch: 
     status = Status(StatusCode.OK)
     monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: status)
 
-    trace_metadata = SimpleNamespace(trace_id=1, workflow_span_id=2, session_id="s", user_id="u", links=[_make_link()])
+    trace_metadata = _make_trace_metadata(links=[_make_link()])
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     node_execution.id = "node-id"
     node_execution.title = "my-tool"
@@ -527,7 +556,7 @@ def test_build_workflow_retrieval_span(trace_instance: AliyunDataTrace, monkeypa
         aliyun_trace_module, "format_retrieval_documents", lambda docs: [{"formatted": True}] if docs else []
     )
 
-    trace_metadata = SimpleNamespace(trace_id=1, workflow_span_id=2, session_id="s", user_id="u", links=[])
+    trace_metadata = _make_trace_metadata()
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     node_execution.id = "node-id"
     node_execution.title = "retrieval"
@@ -556,7 +585,7 @@ def test_build_workflow_llm_span(trace_instance: AliyunDataTrace, monkeypatch: p
     monkeypatch.setattr(aliyun_trace_module, "format_input_messages", lambda _: "in")
     monkeypatch.setattr(aliyun_trace_module, "format_output_messages", lambda _: "out")
 
-    trace_metadata = SimpleNamespace(trace_id=1, workflow_span_id=2, session_id="s", user_id="u", links=[])
+    trace_metadata = _make_trace_metadata()
     node_execution = MagicMock(spec=WorkflowNodeExecution)
     node_execution.id = "node-id"
     node_execution.title = "llm"
@@ -594,7 +623,7 @@ def test_add_workflow_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.
     status = Status(StatusCode.OK)
     monkeypatch.setattr(aliyun_trace_module, "create_status_from_error", lambda _: status)
 
-    trace_metadata = SimpleNamespace(trace_id=1, workflow_span_id=2, session_id="s", user_id="u", links=[])
+    trace_metadata = _make_trace_metadata()
 
     # CASE 1: With message_id
     trace_info = _make_workflow_trace_info(
@@ -602,9 +631,11 @@ def test_add_workflow_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.
     )
     trace_instance.add_workflow_span(trace_info, trace_metadata)
 
-    assert len(trace_instance.trace_client.added_spans) == 2
-    message_span = trace_instance.trace_client.added_spans[0]
-    workflow_span = trace_instance.trace_client.added_spans[1]
+    client = _recording_trace_client(trace_instance)
+    spans = _recorded_span_data(trace_instance)
+    assert len(spans) == 2
+    message_span = spans[0]
+    workflow_span = spans[1]
 
     assert message_span.name == "message"
     assert message_span.span_kind == SpanKind.SERVER
@@ -614,13 +645,14 @@ def test_add_workflow_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.
     assert workflow_span.span_kind == SpanKind.INTERNAL
     assert workflow_span.parent_span_id == 20
 
-    trace_instance.trace_client.added_spans.clear()
+    client.added_spans.clear()
 
     # CASE 2: Without message_id
     trace_info_no_msg = _make_workflow_trace_info(message_id=None)
     trace_instance.add_workflow_span(trace_info_no_msg, trace_metadata)
-    assert len(trace_instance.trace_client.added_spans) == 1
-    span = trace_instance.trace_client.added_spans[0]
+    spans = _recorded_span_data(trace_instance)
+    assert len(spans) == 1
+    span = spans[0]
     assert span.name == "workflow"
     assert span.span_kind == SpanKind.SERVER
     assert span.parent_span_id is None
@@ -641,7 +673,8 @@ def test_suggested_question_trace(trace_instance: AliyunDataTrace, monkeypatch: 
     trace_info = _make_suggested_question_trace_info(suggested_question=["how?"])
     trace_instance.suggested_question_trace(trace_info)
 
-    assert len(trace_instance.trace_client.added_spans) == 1
-    span = trace_instance.trace_client.added_spans[0]
+    spans = _recorded_span_data(trace_instance)
+    assert len(spans) == 1
+    span = spans[0]
     assert span.name == "suggested_question"
     assert span.attributes[GEN_AI_COMPLETION] == '["how?"]'

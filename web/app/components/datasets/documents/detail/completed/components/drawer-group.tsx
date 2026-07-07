@@ -1,15 +1,13 @@
 'use client'
-import type { FC } from 'react'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { ChildChunkDetail, ChunkingMode, SegmentDetailModel } from '@/models/datasets'
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import ChildSegmentDetail from '../child-segment-detail'
-import FullScreenDrawer from '../common/full-screen-drawer'
+import { DocumentDetailDrawer } from '../common/full-screen-drawer'
 import NewChildSegment from '../new-child-segment'
-import SegmentDetail from '../segment-detail'
+import { SegmentDetail } from '../segment-detail'
 
 type DrawerGroupProps = {
-  // Segment detail drawer
   currSegment: {
     segInfo?: SegmentDetailModel
     showModal: boolean
@@ -25,14 +23,10 @@ type DrawerGroupProps = {
     summary?: string,
     needRegenerate?: boolean,
   ) => Promise<void>
-  isRegenerationModalOpen: boolean
-  setIsRegenerationModalOpen: (open: boolean) => void
-  // New segment drawer
   showNewSegmentModal: boolean
   onCloseNewSegmentModal: () => void
   onSaveNewSegment: () => void
   viewNewlyAddedChunk: () => void
-  // Child segment detail drawer
   currChildChunk: {
     childChunkInfo?: ChildChunkDetail
     showModal: boolean
@@ -40,52 +34,39 @@ type DrawerGroupProps = {
   currChunkId: string
   onCloseChildSegmentDetail: () => void
   onUpdateChildChunk: (segmentId: string, childChunkId: string, content: string) => Promise<void>
-  // New child segment drawer
   showNewChildSegmentModal: boolean
   onCloseNewChildChunkModal: () => void
   onSaveNewChildChunk: (newChildChunk?: ChildChunkDetail) => void
   viewNewlyAddedChildChunk: () => void
-  // Common props
   fullScreen: boolean
   docForm: ChunkingMode
 }
 
-const DrawerGroup: FC<DrawerGroupProps> = ({
-  // Segment detail drawer
+export function DrawerGroup({
   currSegment,
   onCloseSegmentDetail,
   onUpdateSegment,
-  isRegenerationModalOpen,
-  setIsRegenerationModalOpen,
-  // New segment drawer
   showNewSegmentModal,
   onCloseNewSegmentModal,
   onSaveNewSegment,
   viewNewlyAddedChunk,
-  // Child segment detail drawer
   currChildChunk,
   currChunkId,
   onCloseChildSegmentDetail,
   onUpdateChildChunk,
-  // New child segment drawer
   showNewChildSegmentModal,
   onCloseNewChildChunkModal,
   onSaveNewChildChunk,
   viewNewlyAddedChildChunk,
-  // Common props
   fullScreen,
   docForm,
-}) => {
+}: DrawerGroupProps) {
   return (
     <>
-      {/* Edit or view segment detail */}
-      <FullScreenDrawer
-        isOpen={currSegment.showModal}
+      <DocumentDetailDrawer
+        open={currSegment.showModal}
         fullScreen={fullScreen}
         onClose={onCloseSegmentDetail}
-        showOverlay={false}
-        needCheckChunks
-        modal={isRegenerationModalOpen}
       >
         <SegmentDetail
           key={currSegment.segInfo?.id}
@@ -94,13 +75,11 @@ const DrawerGroup: FC<DrawerGroupProps> = ({
           isEditMode={currSegment.isEditMode}
           onUpdate={onUpdateSegment}
           onCancel={onCloseSegmentDetail}
-          onModalStateChange={setIsRegenerationModalOpen}
         />
-      </FullScreenDrawer>
+      </DocumentDetailDrawer>
 
-      {/* Create New Segment */}
-      <FullScreenDrawer
-        isOpen={showNewSegmentModal}
+      <DocumentDetailDrawer
+        open={showNewSegmentModal}
         fullScreen={fullScreen}
         onClose={onCloseNewSegmentModal}
         modal
@@ -111,15 +90,12 @@ const DrawerGroup: FC<DrawerGroupProps> = ({
           onSave={onSaveNewSegment}
           viewNewlyAddedChunk={viewNewlyAddedChunk}
         />
-      </FullScreenDrawer>
+      </DocumentDetailDrawer>
 
-      {/* Edit or view child segment detail */}
-      <FullScreenDrawer
-        isOpen={currChildChunk.showModal}
+      <DocumentDetailDrawer
+        open={currChildChunk.showModal}
         fullScreen={fullScreen}
         onClose={onCloseChildSegmentDetail}
-        showOverlay={false}
-        needCheckChunks
       >
         <ChildSegmentDetail
           key={currChildChunk.childChunkInfo?.id}
@@ -129,11 +105,10 @@ const DrawerGroup: FC<DrawerGroupProps> = ({
           onUpdate={onUpdateChildChunk}
           onCancel={onCloseChildSegmentDetail}
         />
-      </FullScreenDrawer>
+      </DocumentDetailDrawer>
 
-      {/* Create New Child Segment */}
-      <FullScreenDrawer
-        isOpen={showNewChildSegmentModal}
+      <DocumentDetailDrawer
+        open={showNewChildSegmentModal}
         fullScreen={fullScreen}
         onClose={onCloseNewChildChunkModal}
         modal
@@ -144,9 +119,7 @@ const DrawerGroup: FC<DrawerGroupProps> = ({
           onSave={onSaveNewChildChunk}
           viewNewlyAddedChildChunk={viewNewlyAddedChildChunk}
         />
-      </FullScreenDrawer>
+      </DocumentDetailDrawer>
     </>
   )
 }
-
-export default DrawerGroup

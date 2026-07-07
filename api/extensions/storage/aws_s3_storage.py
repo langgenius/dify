@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Generator
+from typing import override
 
 import boto3
 from botocore.client import Config
@@ -48,9 +49,11 @@ class AwsS3Storage(BaseStorage):
                 # other error, raise exception
                 raise
 
+    @override
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
@@ -61,6 +64,7 @@ class AwsS3Storage(BaseStorage):
                 raise
         return data
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         try:
             response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
@@ -73,9 +77,11 @@ class AwsS3Storage(BaseStorage):
             else:
                 raise
 
+    @override
     def download(self, filename, target_filepath):
         self.client.download_file(self.bucket_name, filename, target_filepath)
 
+    @override
     def exists(self, filename):
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
@@ -83,5 +89,6 @@ class AwsS3Storage(BaseStorage):
         except:
             return False
 
+    @override
     def delete(self, filename: str):
         self.client.delete_object(Bucket=self.bucket_name, Key=filename)

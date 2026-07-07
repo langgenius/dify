@@ -9,7 +9,7 @@ import {
   RiBracesLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { SchemaModal } from '@/app/components/plugins/plugin-detail-panel/tool-selector/components'
@@ -54,7 +54,7 @@ const renderDescriptionWithLinks = (description: string): ReactNode => {
   return parts
 }
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
@@ -67,7 +67,7 @@ type Props = {
   onManageInputField?: () => void
   extraParams?: Record<string, any>
   providerType?: 'tool' | 'trigger'
-}
+}>
 
 const ToolFormItem: FC<Props> = ({
   readOnly,
@@ -100,15 +100,13 @@ const ToolFormItem: FC<Props> = ({
             <div className="ml-1 system-xs-regular text-text-destructive-secondary">*</div>
           )}
           {!showDescription && tooltip && (
-            <Tooltip
-              popupContent={(
-                <div className="w-[200px]">
-                  {tooltip[language] || tooltip.en_US}
-                </div>
-              )}
-              triggerClassName="ml-1 w-4 h-4"
-              asChild={false}
-            />
+            <Infotip
+              aria-label={tooltip[language] || tooltip.en_US}
+              className="ml-1"
+              popupClassName="w-[200px]"
+            >
+              {tooltip[language] || tooltip.en_US}
+            </Infotip>
           )}
           {showSchemaButton && (
             <>
@@ -126,7 +124,7 @@ const ToolFormItem: FC<Props> = ({
           )}
         </div>
         {showDescription && tooltip && (
-          <div className="pb-0.5 body-xs-regular break-words text-text-tertiary">
+          <div className="pb-0.5 body-xs-regular wrap-break-word text-text-tertiary">
             {renderDescriptionWithLinks(tooltip[language] || tooltip.en_US)}
           </div>
         )}

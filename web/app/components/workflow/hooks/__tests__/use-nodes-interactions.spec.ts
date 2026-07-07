@@ -4,6 +4,7 @@ import { createEdge, createNode } from '../../__tests__/fixtures'
 import { resetReactFlowMockState, rfState } from '../../__tests__/reactflow-mock-state'
 import { renderWorkflowHook } from '../../__tests__/workflow-test-env'
 import { collaborationManager } from '../../collaboration/core/collaboration-manager'
+import { CUSTOM_NOTE_NODE } from '../../note-node/constants'
 import { BlockEnum, ControlMode } from '../../types'
 import { useNodesInteractions } from '../use-nodes-interactions'
 
@@ -19,6 +20,7 @@ const mockHandleNodeLoopChildrenCopy = vi.hoisted(() => vi.fn(() => ({
   copyChildren: [],
   newIdMapping: {},
 })))
+const mockCreateInlineAgentBinding = vi.hoisted(() => vi.fn())
 const runtimeNodesMetaDataMap = vi.hoisted(() => ({
   value: {} as Record<string, unknown>,
 }))
@@ -77,6 +79,12 @@ vi.mock('../use-inspect-vars-crud', () => ({
   }),
 }))
 
+vi.mock('../../nodes/agent-v2/hooks', () => ({
+  useCreateInlineAgentBinding: () => ({
+    createInlineAgentBinding: mockCreateInlineAgentBinding,
+  }),
+}))
+
 vi.mock('../../nodes/iteration/use-interactions', () => ({
   useNodeIterationInteractions: () => ({
     handleNodeIterationChildDrag: () => ({ restrictPosition: {} }),
@@ -106,6 +114,17 @@ describe('useNodesInteractions', () => {
     resetReactFlowMockState()
     runtimeState.nodesReadOnly = false
     runtimeState.workflowReadOnly = false
+    mockCreateInlineAgentBinding.mockImplementation((_nodeId: string, options?: { onSuccess?: (binding: {
+      binding_type: 'inline_agent'
+      agent_id: string
+      current_snapshot_id: string
+    }) => void }) => {
+      options?.onSuccess?.({
+        binding_type: 'inline_agent',
+        agent_id: 'inline-agent-1',
+        current_snapshot_id: 'inline-snapshot-1',
+      })
+    })
     currentNodes = [
       createNode({
         id: 'node-1',
@@ -176,9 +195,7 @@ describe('useNodesInteractions', () => {
 
     const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
       initialStoreState: {
-        edgeMenu: {
-          id: 'edge-1',
-        } as never,
+        contextMenuTarget: { type: 'edge', edgeId: 'edge-1' },
       },
       historyStore: {
         nodes: historyNodes,
@@ -193,7 +210,7 @@ describe('useNodesInteractions', () => {
     expect(mockUndo).toHaveBeenCalledTimes(1)
     expect(rfState.setNodes).toHaveBeenCalledWith(historyNodes)
     expect(rfState.setEdges).toHaveBeenCalledWith(historyEdges)
-    expect(store.getState().edgeMenu).toBeUndefined()
+    expect(store.getState().contextMenuTarget).toBeUndefined()
   })
 
   it('skips undo and redo when the workflow is read-only', () => {
@@ -317,6 +334,41 @@ describe('useNodesInteractions', () => {
     expect(rfState.setEdges).not.toHaveBeenCalled()
   })
 
+  it('ignores note node selection when clicking a linked text target', () => {
+    currentNodes = [
+      createNode({
+        id: 'note-1',
+        type: CUSTOM_NOTE_NODE,
+        data: {
+          type: '' as unknown as BlockEnum,
+          title: 'Note',
+          desc: '',
+          selected: false,
+        },
+      }),
+    ]
+    currentEdges = []
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = currentEdges as unknown as typeof rfState.edges
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: currentEdges,
+      },
+    })
+
+    const link = document.createElement('a')
+    link.className = 'note-editor-theme_link'
+
+    act(() => {
+      result.current.handleNodeClick({ target: link } as never, currentNodes[0] as Node)
+    })
+
+    expect(rfState.setNodes).not.toHaveBeenCalled()
+    expect(rfState.setEdges).not.toHaveBeenCalled()
+  })
+
   it('updates entering states on node enter and clears them on leave using collaborative workflow state', () => {
     currentNodes = [
       createNode({
@@ -418,6 +470,151 @@ describe('useNodesInteractions', () => {
     expect(rfState.setEdges).not.toHaveBeenCalled()
   })
 
+  it('creates an inline agent binding before syncing an added Agent v2 node', () => {
+    currentNodes = [
+      createNode({
+        id: 'node-1',
+        width: 100,
+        data: {
+          type: BlockEnum.Code,
+          title: 'Code',
+          desc: '',
+        },
+      }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = []
+    rfState.setNodes.mockImplementation((nextNodes) => {
+      rfState.nodes = nextNodes
+    })
+    rfState.setEdges.mockImplementation((nextEdges) => {
+      rfState.edges = nextEdges
+    })
+    runtimeNodesMetaDataMap.value = {
+      [BlockEnum.AgentV2]: {
+        defaultValue: {
+          type: BlockEnum.AgentV2,
+          title: 'Agent',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          version: '2',
+        },
+        metaData: {
+          isSingleton: false,
+        },
+      },
+    }
+
+    const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: [],
+      },
+    })
+
+    act(() => {
+      result.current.handleNodeAdd(
+        {
+          nodeType: BlockEnum.AgentV2,
+          pluginDefaultValue: {
+            agent_binding: {
+              binding_type: 'inline_agent',
+            },
+            agent_node_kind: 'dify_agent',
+            version: '2',
+          },
+        },
+        { prevNodeId: 'node-1' },
+      )
+    })
+
+    const agentNode = rfState.nodes.find(node => node.data.type === BlockEnum.AgentV2)
+    const firstSetNodesPayload = rfState.setNodes.mock.calls[0]?.[0]
+    const pendingAgentNode = firstSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+    const finalSetNodesPayload = rfState.setNodes.mock.calls.at(-1)?.[0]
+    const finalAgentNode = finalSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+
+    expect(pendingAgentNode?.data._isTempNode).toBe(true)
+    expect(agentNode?.data.agent_binding).toEqual({
+      binding_type: 'inline_agent',
+      agent_id: 'inline-agent-1',
+      current_snapshot_id: 'inline-snapshot-1',
+    })
+    expect(finalAgentNode?.data._isTempNode).toBeUndefined()
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(agentNode?.id, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
+    expect(store.getState().openInlineAgentPanelNodeId).toBe(agentNode?.id)
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
+  })
+
+  it('creates an inline agent binding when Agent v2 default data is pending inline', () => {
+    currentNodes = [
+      createNode({
+        id: 'node-1',
+        width: 100,
+        data: {
+          type: BlockEnum.Code,
+          title: 'Code',
+          desc: '',
+        },
+      }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = []
+    rfState.setNodes.mockImplementation((nextNodes) => {
+      rfState.nodes = nextNodes
+    })
+    runtimeNodesMetaDataMap.value = {
+      [BlockEnum.AgentV2]: {
+        defaultValue: {
+          type: BlockEnum.AgentV2,
+          title: 'Agent',
+          desc: '',
+          agent_binding: {
+            binding_type: 'inline_agent',
+          },
+          agent_node_kind: 'dify_agent',
+          version: '2',
+        },
+        metaData: {
+          isSingleton: false,
+        },
+      },
+    }
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: [],
+      },
+    })
+
+    act(() => {
+      result.current.handleNodeAdd(
+        {
+          nodeType: BlockEnum.AgentV2,
+        },
+        { prevNodeId: 'node-1' },
+      )
+    })
+
+    const agentNode = rfState.nodes.find(node => node.data.type === BlockEnum.AgentV2)
+    const firstSetNodesPayload = rfState.setNodes.mock.calls[0]?.[0]
+    const pendingAgentNode = firstSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+
+    expect(pendingAgentNode?.data._isTempNode).toBe(true)
+    expect(agentNode?.data.agent_binding).toEqual({
+      binding_type: 'inline_agent',
+      agent_id: 'inline-agent-1',
+      current_snapshot_id: 'inline-snapshot-1',
+    })
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(agentNode?.id, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
+  })
+
   it('cancels selection state with collaborative nodes snapshot', () => {
     currentNodes = [
       createNode({
@@ -446,6 +643,51 @@ describe('useNodesInteractions', () => {
     expect(rfState.setNodes).toHaveBeenCalledTimes(1)
     const nodesArg = rfState.setNodes.mock.calls[0]?.[0] as Node[]
     expect(nodesArg[0]?.data.selected).toBe(false)
+  })
+
+  it('keeps ReactFlow and node data selection in sync when selecting another node', () => {
+    currentNodes = [
+      createNode({
+        id: 'knowledge-retrieval-node',
+        selected: true,
+        data: {
+          type: BlockEnum.KnowledgeRetrieval,
+          title: 'Knowledge Retrieval',
+          desc: '',
+          selected: true,
+        },
+      }),
+      createNode({
+        id: 'answer-node',
+        position: { x: 100, y: 0 },
+        data: {
+          type: BlockEnum.Answer,
+          title: 'Answer',
+          desc: '',
+        },
+      }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+
+    const { result } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: currentEdges,
+      },
+    })
+
+    act(() => {
+      result.current.handleNodeSelect('answer-node')
+    })
+
+    const nodesArg = rfState.setNodes.mock.calls[0]?.[0] as Node[]
+    const knowledgeNode = nodesArg.find(node => node.id === 'knowledge-retrieval-node')
+    const answerNode = nodesArg.find(node => node.id === 'answer-node')
+
+    expect(knowledgeNode?.selected).toBe(false)
+    expect(knowledgeNode?.data.selected).toBe(false)
+    expect(answerNode?.selected).toBe(true)
+    expect(answerNode?.data.selected).toBe(true)
   })
 
   it('skips clipboard copy when bundled/selected nodes have no metadata', () => {

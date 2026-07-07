@@ -1,10 +1,8 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PluginSource } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
 import ToolPicker from '../tool-picker'
-
-let portalOpen = false
 
 const mockInstalledPluginList = vi.hoisted(() => ({
   data: {
@@ -21,33 +19,51 @@ vi.mock('@/app/components/base/loading', () => ({
   default: () => <div data-testid="loading">loading</div>,
 }))
 
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const _React = await import('react')
+vi.mock('@langgenius/dify-ui/popover', async () => {
+  const React = await import('react')
+  const PopoverContext = React.createContext({
+    open: false,
+    setOpen: (_open: boolean) => {},
+  })
+
+  const Popover = ({
+    children,
+    open,
+    onOpenChange,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+  }) => (
+    <PopoverContext.Provider value={{ open: !!open, setOpen: (nextOpen: boolean) => onOpenChange?.(nextOpen) }}>
+      {children}
+    </PopoverContext.Provider>
+  )
+
+  const PopoverTrigger = ({ render }: { render: React.ReactNode }) => {
+    const { open, setOpen } = React.useContext(PopoverContext)
+    return (
+      <div onClick={() => setOpen(!open)}>
+        {render}
+      </div>
+    )
+  }
+
+  const PopoverContent = ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode
+    className?: string
+  }) => {
+    const { open } = React.useContext(PopoverContext)
+    return open ? <div data-testid="popover-content" className={className}>{children}</div> : null
+  }
+
   return {
-    PortalToFollowElem: ({
-      open,
-      children,
-    }: {
-      open: boolean
-      children: React.ReactNode
-    }) => {
-      portalOpen = open
-      return <div>{children}</div>
-    },
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick: () => void
-    }) => <button data-testid="trigger" onClick={onClick}>{children}</button>,
-    PortalToFollowElemContent: ({
-      children,
-      className,
-    }: {
-      children: React.ReactNode
-      className?: string
-    }) => portalOpen ? <div data-testid="portal-content" className={className}>{children}</div> : null,
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
   }
 })
 
@@ -118,7 +134,6 @@ const createPlugin = (
 describe('ToolPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpen = false
     mockInstalledPluginList.data = {
       plugins: [],
     }
@@ -137,7 +152,7 @@ describe('ToolPicker', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
+    fireEvent.click(screen.getByText('trigger'))
 
     expect(onShowChange).toHaveBeenCalledWith(true)
   })
@@ -209,6 +224,35 @@ describe('ToolPicker', () => {
     fireEvent.click(screen.getByTestId('set-query'))
     expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
     expect(screen.getByTestId('search-state')).toHaveTextContent('tool-rag')
+  })
+
+  it('limits selectable integrations to the provided integration category', () => {
+    mockInstalledPluginList.data = {
+      plugins: [
+        createPlugin('model-openai', PluginSource.marketplace, 'model', ['llm']),
+        createPlugin('tool-rag', PluginSource.marketplace, 'tool', ['rag']),
+        createPlugin('datasource-notion', PluginSource.marketplace, 'datasource', ['docs']),
+      ],
+    }
+
+    render(
+      <ToolPicker
+        trigger={<span>trigger</span>}
+        value={[]}
+        onChange={vi.fn()}
+        isShow
+        onShowChange={vi.fn()}
+        integrationCategory={PluginCategoryEnum.model}
+      />,
+    )
+
+    expect(screen.getByText('plugin.category.models')).toBeInTheDocument()
+    expect(screen.queryByText('plugin.category.all')).not.toBeInTheDocument()
+    expect(screen.queryByText('plugin.category.tools')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('tool-item')).toHaveLength(1)
+    expect(screen.getByText('model-openai')).toBeInTheDocument()
+    expect(screen.queryByText('tool-rag')).not.toBeInTheDocument()
+    expect(screen.queryByText('datasource-notion')).not.toBeInTheDocument()
   })
 
   it('adds and removes plugin ids from the selection', () => {

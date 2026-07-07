@@ -103,8 +103,8 @@ const TracingPanel: FC<TracingPanelProps> = ({
               )}
             >
               {isHovered
-                ? <span aria-hidden className="i-ri-arrow-down-s-line h-3 w-3" />
-                : <span aria-hidden className="i-ri-menu-4-line h-3 w-3 text-text-tertiary" />}
+                ? <span aria-hidden className="i-ri-arrow-down-s-line size-3" />
+                : <span aria-hidden className="i-ri-menu-4-line size-3 text-text-tertiary" />}
             </button>
             <div className="flex items-center system-xs-semibold-uppercase text-text-secondary">
               <span>{parallelDetail.parallelTitle}</span>

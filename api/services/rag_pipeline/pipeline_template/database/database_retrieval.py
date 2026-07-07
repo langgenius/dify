@@ -1,9 +1,9 @@
-from typing import Any, TypedDict
+from typing import Any, TypedDict, override
 
 import yaml
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from extensions.ext_database import db
 from models.dataset import PipelineBuiltInTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
@@ -39,17 +39,23 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     Retrieval pipeline   template from database
     """
 
-    def get_pipeline_templates(self, language: str) -> dict[str, Any]:
-        return self.fetch_pipeline_templates_from_db(language)
+    @override
+    def get_pipeline_templates(
+        self, session: Session, language: str, current_tenant_id: str | None = None
+    ) -> dict[str, Any]:
+        del current_tenant_id
+        return self.fetch_pipeline_templates_from_db(session, language)
 
-    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
-        return self.fetch_pipeline_template_detail_from_db(template_id)
+    @override
+    def get_pipeline_template_detail(self, session: Session, template_id: str) -> dict[str, Any] | None:
+        return self.fetch_pipeline_template_detail_from_db(session, template_id)
 
+    @override
     def get_type(self) -> str:
         return PipelineTemplateType.DATABASE
 
     @classmethod
-    def fetch_pipeline_templates_from_db(cls, language: str) -> dict[str, Any]:
+    def fetch_pipeline_templates_from_db(cls, session: Session, language: str) -> dict[str, Any]:
         """
         Fetch pipeline templates from db.
         :param language: language
@@ -57,9 +63,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         """
 
         pipeline_built_in_templates = list(
-            db.session.scalars(
-                select(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.language == language)
-            ).all()
+            session.scalars(select(PipelineBuiltInTemplate).where(PipelineBuiltInTemplate.language == language)).all()
         )
 
         recommended_pipelines_results: list[PipelineTemplateItemDict] = []
@@ -79,14 +83,14 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
-    def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> dict[str, Any] | None:
+    def fetch_pipeline_template_detail_from_db(cls, session: Session, template_id: str) -> dict[str, Any] | None:
         """
         Fetch pipeline template detail from db.
         :param pipeline_id: Pipeline ID
         :return:
         """
         # is in public recommended list
-        pipeline_template = db.session.get(PipelineBuiltInTemplate, template_id)
+        pipeline_template = session.get(PipelineBuiltInTemplate, template_id)
 
         if not pipeline_template:
             return None

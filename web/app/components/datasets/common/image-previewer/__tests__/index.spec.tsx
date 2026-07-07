@@ -474,23 +474,18 @@ describe('ImagePreviewer', () => {
       expect(nextButton)!.toBeDisabled()
     })
 
-    it('should stop event propagation on container click', async () => {
+    it('should not close on container click', async () => {
       const onClose = vi.fn()
-      const parentClick = vi.fn()
       const images = createMockImages()
 
       await act(async () => {
-        render(
-          <div onClick={parentClick}>
-            <ImagePreviewer images={images} onClose={onClose} />
-          </div>,
-        )
+        render(<ImagePreviewer images={images} onClose={onClose} />)
       })
 
       const container = document.querySelector('.image-previewer')
       if (container) {
         fireEvent.click(container)
-        expect(parentClick).not.toHaveBeenCalled()
+        expect(onClose).not.toHaveBeenCalled()
       }
     })
 

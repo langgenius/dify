@@ -14,7 +14,6 @@ const {
   mockHandleNodesDuplicate,
   mockHandleShowAuthorChange,
   mockHandleThemeChange,
-  mockSetShortcutsEnabled,
 } = vi.hoisted(() => ({
   mockHandleEditorChange: vi.fn(),
   mockHandleNodeDataUpdateWithSyncDraft: vi.fn(),
@@ -23,7 +22,6 @@ const {
   mockHandleNodesDuplicate: vi.fn(),
   mockHandleShowAuthorChange: vi.fn(),
   mockHandleThemeChange: vi.fn(),
-  mockSetShortcutsEnabled: vi.fn(),
 }))
 
 vi.mock('../../hooks', async (importOriginal) => {
@@ -46,12 +44,6 @@ vi.mock('../hooks', () => ({
     handleThemeChange: mockHandleThemeChange,
     handleEditorChange: mockHandleEditorChange,
     handleShowAuthorChange: mockHandleShowAuthorChange,
-  }),
-}))
-
-vi.mock('../../workflow-history-store', () => ({
-  useWorkflowHistoryStore: () => ({
-    setShortcutsEnabled: mockSetShortcutsEnabled,
   }),
 }))
 

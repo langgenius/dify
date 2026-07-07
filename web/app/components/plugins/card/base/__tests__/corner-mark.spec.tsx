@@ -24,4 +24,12 @@ describe('CornerMark', () => {
     expect(wrapper.className).toContain('right-0')
     expect(wrapper.className).toContain('top-0')
   })
+
+  it('supports custom class names and keeps text on one line', () => {
+    const { container } = render(<CornerMark className="z-20" text="Built-in" />)
+    const wrapper = container.firstChild as HTMLElement
+
+    expect(wrapper.className).toContain('z-20')
+    expect(screen.getByText('Built-in').className).toContain('whitespace-nowrap')
+  })
 })

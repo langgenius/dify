@@ -1,29 +1,27 @@
-import type { FC } from 'react'
-import type { Label } from '@/app/components/tools/labels/constant'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowDownSLine } from '@remixicon/react'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useDebounceFn } from 'ahooks'
-import { noop } from 'es-toolkit/function'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Input from '@/app/components/base/input'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
 import { useTags } from '@/app/components/plugins/hooks'
 
 type LabelSelectorProps = {
   value: string[]
   onChange: (v: string[]) => void
 }
-const LabelSelector: FC<LabelSelectorProps> = ({
+
+function LabelSelector({
   value,
   onChange,
-}) => {
+}: LabelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -34,53 +32,37 @@ const LabelSelector: FC<LabelSelectorProps> = ({
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
   }, { wait: 500 })
+
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
     handleSearch()
   }
 
-  const filteredLabelList = useMemo(() => {
-    return labelList.filter(label => label.name.includes(searchKeywords))
-  }, [labelList, searchKeywords])
-
-  const selectedLabels = useMemo(() => {
-    return value.map(v => labelList.find(l => l.name === v)?.label).join(', ')
-  }, [value, labelList])
-
-  const selectLabel = (label: Label) => {
-    if (value.includes(label.name))
-      onChange(value.filter(v => v !== label.name))
-    else
-      onChange([...value, label.name])
-  }
+  const filteredLabelList = labelList.filter(label => label.name.includes(searchKeywords))
+  const selectedLabels = value.map(v => labelList.find(l => l.name === v)?.label).join(', ')
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottom-start"
-      offset={4}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <div className="relative">
-        <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
-          className="block"
-        >
-          <div className={cn(
-            'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 hover:bg-components-input-bg-hover',
-            open && '!hover:bg-components-input-bg-hover hover:bg-components-input-bg-hover',
+        <PopoverTrigger
+          className={cn(
+            'flex h-10 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3 text-left hover:bg-components-input-bg-hover',
+            'data-popup-open:bg-components-input-bg-hover data-popup-open:hover:bg-components-input-bg-hover',
           )}
-          >
-            <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary', !value.length && 'text-text-quaternary!')}>
-              {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
-              {!!value.length && selectedLabels}
-            </div>
-            <div className="ml-1 shrink-0 text-text-secondary opacity-60">
-              <RiArrowDownSLine className="h-4 w-4" />
-            </div>
+        >
+          <div className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
+            {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
+            {!!value.length && selectedLabels}
           </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-1040">
+          <div className="ml-1 shrink-0 text-text-secondary opacity-60">
+            <span className="i-ri-arrow-down-s-line size-4" />
+          </div>
+        </PopoverTrigger>
+        <PopoverContent
+          placement="bottom-start"
+          sideOffset={4}
+          popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        >
           <div className="relative w-[591px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
             <div className="border-b-[0.5px] border-divider-regular p-2">
               <Input
@@ -91,32 +73,35 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                 onClear={() => handleKeywordsChange('')}
               />
             </div>
-            <div className="max-h-[264px] overflow-y-auto p-1">
+            <CheckboxGroup
+              aria-label={t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
+              value={value}
+              onValueChange={nextValue => onChange(nextValue)}
+              className="max-h-[264px] overflow-y-auto p-1"
+            >
               {filteredLabelList.map(label => (
-                <div
+                <label
                   key={label.name}
                   className="flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pr-2 pl-3 hover:bg-components-panel-on-panel-item-bg-hover"
-                  onClick={() => selectLabel(label)}
                 >
                   <Checkbox
                     className="shrink-0"
-                    checked={value.includes(label.name)}
-                    onCheck={noop}
+                    value={label.name}
                   />
-                  <div title={label.label} className="grow truncate text-sm leading-5 text-text-secondary">{label.label}</div>
-                </div>
+                  <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
+                </label>
               ))}
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
-                  <Tag03 className="h-6 w-6 text-text-quaternary" />
+                  <Tag03 className="size-6 text-text-quaternary" />
                   <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}
-            </div>
+            </CheckboxGroup>
           </div>
-        </PortalToFollowElemContent>
+        </PopoverContent>
       </div>
-    </PortalToFollowElem>
+    </Popover>
   )
 }
 

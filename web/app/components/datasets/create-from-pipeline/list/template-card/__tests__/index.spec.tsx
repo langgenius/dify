@@ -323,6 +323,21 @@ describe('TemplateCard', () => {
       })
     })
 
+    it('should close details modal when dialog requests close', async () => {
+      render(<TemplateCard {...defaultProps} />)
+      fireEvent.click(screen.getByTestId('action-details'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('details-component')).toBeInTheDocument()
+      })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('details-component')).not.toBeInTheDocument()
+      })
+    })
+
     it('should trigger use template from details modal', async () => {
       mockCreateDataset.mockImplementation((_data, callbacks) => {
         callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
@@ -588,6 +603,21 @@ describe('TemplateCard', () => {
 
       const closeButton = screen.getByTestId('edit-close')
       fireEvent.click(closeButton)
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('edit-pipeline-info')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should close edit modal when dialog requests close', async () => {
+      render(<TemplateCard {...defaultProps} />)
+      fireEvent.click(screen.getByTestId('action-edit'))
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-pipeline-info')).toBeInTheDocument()
+      })
+
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
         expect(screen.queryByTestId('edit-pipeline-info')).not.toBeInTheDocument()

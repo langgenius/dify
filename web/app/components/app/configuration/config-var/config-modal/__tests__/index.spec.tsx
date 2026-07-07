@@ -71,6 +71,25 @@ describe('ConfigModal', () => {
     }), undefined)
   })
 
+  it('should keep scrolling inside the form body so scrollbars do not cover dialog corners', () => {
+    render(
+      <ConfigModal
+        isCreate
+        isShow
+        payload={createPayload({ label: 'Question' })}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog')
+    const scrollArea = screen.getByTestId('config-modal-scroll-area')
+
+    expect(dialog).toHaveClass('overflow-hidden!')
+    expect(scrollArea).toHaveClass('overflow-y-auto')
+    expect(scrollArea).toHaveClass('overflow-x-hidden')
+  })
+
   it('should block save when the label is missing', () => {
     render(
       <ConfigModal

@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import TracingPanel from '../tracing-panel'
 
 type Props = {
-  list: NodeTracing[]
-  onBack: () => void
+  readonly list: NodeTracing[]
+  readonly onBack: () => void
 }
 
 const RetryResultPanel: FC<Props> = ({
@@ -30,7 +30,7 @@ const RetryResultPanel: FC<Props> = ({
           onBack()
         }}
       >
-        <RiArrowLeftLine className="mr-1 h-4 w-4" />
+        <RiArrowLeftLine className="mr-1 size-4" />
         {t('singleRun.back', { ns: 'workflow' })}
       </div>
       <TracingPanel

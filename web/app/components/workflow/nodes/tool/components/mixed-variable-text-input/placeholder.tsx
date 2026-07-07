@@ -1,4 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd } from '@langgenius/dify-ui/kbd'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { $insertNodes, FOCUS_COMMAND } from 'lexical'
 import { useCallback } from 'react'
@@ -26,7 +27,7 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
   return (
     <div
       className={cn(
-        'pointer-events-auto flex h-full w-full cursor-text px-2',
+        'pointer-events-auto flex size-full cursor-text px-2',
         !hideBadge ? 'items-center' : 'items-start py-1',
       )}
       onClick={(e) => {
@@ -38,7 +39,7 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
         {t('nodes.tool.insertPlaceholder1', { ns: 'workflow' })}
         {(!disableVariableInsertion) && (
           <>
-            <div className="mx-0.5 flex h-4 w-4 items-center justify-center rounded-sm bg-components-kbd-bg-gray system-kbd text-text-placeholder">/</div>
+            <Kbd className="mx-0.5 text-text-placeholder">/</Kbd>
             <div
               className="cursor-pointer system-sm-regular text-components-input-text-placeholder underline decoration-dotted decoration-auto underline-offset-auto hover:text-text-tertiary"
               onMouseDown={((e) => {

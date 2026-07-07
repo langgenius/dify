@@ -13,16 +13,20 @@ import {
   useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 
-export enum AuthorizationStatusEnum {
-  Pending = 'pending',
-  Success = 'success',
-  Failed = 'failed',
-}
+export const AuthorizationStatusEnum = {
+  Pending: 'pending',
+  Success: 'success',
+  Failed: 'failed',
+} as const
 
-export enum ClientTypeEnum {
-  Default = 'default',
-  Custom = 'custom',
-}
+export type AuthorizationStatusEnum = typeof AuthorizationStatusEnum[keyof typeof AuthorizationStatusEnum]
+
+export const ClientTypeEnum = {
+  Default: 'default',
+  Custom: 'custom',
+} as const
+
+export type ClientTypeEnum = typeof ClientTypeEnum[keyof typeof ClientTypeEnum]
 
 const POLL_INTERVAL_MS = 3000
 
@@ -41,7 +45,7 @@ export const getErrorMessage = (error: unknown, fallback: string): string => {
 type UseOAuthClientStateParams = {
   oauthConfig?: TriggerOAuthConfig
   providerName: string
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   showOAuthCreateModal: (builder: TriggerSubscriptionBuilder) => void
 }
 
@@ -67,7 +71,7 @@ type UseOAuthClientStateReturn = {
 export const useOAuthClientState = ({
   oauthConfig,
   providerName,
-  onClose,
+  onOpenChange,
   showOAuthCreateModal,
 }: UseOAuthClientStateParams): UseOAuthClientStateReturn => {
   const { t } = useTranslation()
@@ -119,7 +123,7 @@ export const useOAuthClientState = ({
           if (!callbackData)
             return
           toast.success(t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }))
-          onClose()
+          onOpenChange(false)
           showOAuthCreateModal(response.subscription_builder)
         })
       },
@@ -128,20 +132,20 @@ export const useOAuthClientState = ({
         toast.error(t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }))
       },
     })
-  }, [providerName, initiateOAuth, onClose, showOAuthCreateModal, t])
+  }, [providerName, initiateOAuth, onOpenChange, showOAuthCreateModal, t])
 
   // Remove handler
   const handleRemove = useCallback(() => {
     deleteOAuth(providerName, {
       onSuccess: () => {
-        onClose()
+        onOpenChange(false)
         toast.success(t('modal.oauth.remove.success', { ns: 'pluginTrigger' }))
       },
       onError: (error: unknown) => {
         toast.error(getErrorMessage(error, t('modal.oauth.remove.failed', { ns: 'pluginTrigger' })))
       },
     })
-  }, [providerName, deleteOAuth, onClose, t])
+  }, [providerName, deleteOAuth, onOpenChange, t])
 
   // Save handler
   const handleSave = useCallback((needAuth: boolean) => {
@@ -174,11 +178,11 @@ export const useOAuthClientState = ({
           handleAuthorization()
           return
         }
-        onClose()
+        onOpenChange(false)
         toast.success(t('modal.oauth.save.success', { ns: 'pluginTrigger' }))
       },
     })
-  }, [clientType, providerName, oauthClientSchema, oauthConfig?.params, configureOAuth, handleAuthorization, onClose, t])
+  }, [clientType, providerName, oauthClientSchema, oauthConfig?.params, configureOAuth, handleAuthorization, onOpenChange, t])
 
   // Polling effect for authorization verification
   useEffect(() => {

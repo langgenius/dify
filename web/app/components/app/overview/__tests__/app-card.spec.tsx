@@ -1,9 +1,11 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import AppCard from '../app-card'
 
@@ -11,13 +13,13 @@ const render = (ui: ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: { webapp_auth: { enabled: true } },
 })
 
-const mockFetchAppDetailDirect = vi.fn()
 const mockPush = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockOnChangeStatus = vi.fn()
 const mockOnGenerateCode = vi.fn()
+const mockFetchAppDetail = vi.fn()
 
-let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string } }> } } | null = null
+let mockWorkflow: { graph?: { nodes?: Array<{ data?: { type?: string, variables?: Array<Record<string, unknown>> } }> } } | null = null
 let mockAccessSubjects: { groups?: unknown[], members?: unknown[] } = { groups: [], members: [] }
 let mockAppDetail: AppDetailResponse | undefined
 
@@ -25,16 +27,7 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
-    langGeniusVersionInfo: {
-      current_env: 'TESTING',
-    },
-  }),
+  Trans: ({ i18nKey }: { i18nKey?: string }) => i18nKey ?? null,
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -61,14 +54,14 @@ vi.mock('@/service/use-workflow', () => ({
   }),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useAppWhiteListSubjects: () => ({
     data: mockAccessSubjects,
   }),
 }))
 
 vi.mock('@/service/apps', () => ({
-  fetchAppDetailDirect: (...args: unknown[]) => mockFetchAppDetailDirect(...args),
+  fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
 vi.mock('@/app/components/develop/secret-key/secret-key-button', () => ({
@@ -87,23 +80,19 @@ vi.mock('../customize', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => isShow ? <button data-testid="customize-modal" onClick={onClose}>customize-modal</button> : null,
 }))
 
-vi.mock('../../app-access-control', () => ({
-  default: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
+vi.mock('../../app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
     <div data-testid="access-control-modal">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
     </div>
-  ),
-}))
+  )
 
-vi.mock('@/app/components/base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: ReactNode, popupContent?: ReactNode }) => (
-    <div>
-      {children}
-      {popupContent}
-    </div>
-  ),
-}))
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 const mockWindowOpen = vi.fn()
 Object.defineProperty(window, 'open', {
@@ -120,6 +109,7 @@ describe('AppCard', () => {
     icon: 'app-icon',
     icon_background: '#fff',
     api_base_url: 'https://api.example.com',
+    permission_keys: [AppACLPermission.Edit, AppACLPermission.ReleaseAndVersion],
     site: {
       app_base_url: 'https://example.com',
       access_token: 'access-token',
@@ -145,10 +135,14 @@ describe('AppCard', () => {
       groups: [],
       members: [],
     }
-    mockFetchAppDetailDirect.mockResolvedValue({
+    mockFetchAppDetail.mockResolvedValue({
       id: 'app-1',
       access_mode: AccessMode.PUBLIC,
-    })
+      site: {
+        app_base_url: 'https://example.com',
+        access_token: 'access-token',
+      },
+    } as AppDetailResponse)
   })
 
   it('should open the published webapp when launch is clicked', () => {
@@ -164,6 +158,182 @@ describe('AppCard', () => {
     expect(mockWindowOpen).toHaveBeenCalledWith(`https://example.com${basePath}/chat/access-token`, '_blank')
   })
 
+  it('should open the workflow web app directly when launch is clicked even with hidden inputs', () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'secret',
+                label: 'Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.WORKFLOW,
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      `https://example.com${basePath}/workflow/access-token`,
+      '_blank',
+    )
+    expect(screen.queryByText('overview.appInfo.workflowLaunchHiddenInputs.title')).not.toBeInTheDocument()
+  })
+
+  it('should collect hidden workflow inputs from the config action before launching the workflow web app', async () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'secret',
+                label: 'Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.WORKFLOW,
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'operation.config' }))
+
+    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Secret'), {
+      target: { value: 'top-secret' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+
+    await waitFor(() => {
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `https://example.com${basePath}/workflow/access-token?secret=${encodeURIComponent('top-secret')}`,
+        '_blank',
+      )
+    })
+  })
+
+  it('should open the chat web app directly when launch is clicked even with hidden inputs', () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'chat_secret',
+                label: 'Chat Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.ADVANCED_CHAT,
+        } as AppDetailResponse}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('overview.appInfo.launch'))
+
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      `https://example.com${basePath}/chat/access-token`,
+      '_blank',
+    )
+    expect(screen.queryByText('overview.appInfo.workflowLaunchHiddenInputs.title')).not.toBeInTheDocument()
+  })
+
+  it('should collect hidden chatflow inputs from the config action before launching the chat web app', async () => {
+    mockWorkflow = {
+      graph: {
+        nodes: [{
+          data: {
+            type: 'start',
+            variables: [
+              {
+                variable: 'chat_secret',
+                label: 'Chat Secret',
+                type: InputVarType.textInput,
+                hide: true,
+                required: true,
+                default: '',
+              },
+            ],
+          },
+        }],
+      },
+    }
+
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          mode: AppModeEnum.ADVANCED_CHAT,
+        } as AppDetailResponse}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'operation.config' }))
+
+    expect(screen.getByText('overview.appInfo.workflowLaunchHiddenInputs.title')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Chat Secret'), {
+      target: { value: 'chat-secret' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.launch' }))
+
+    await waitFor(() => {
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        `https://example.com${basePath}/chat/access-token?chat_secret=${encodeURIComponent('chat-secret')}`,
+        '_blank',
+      )
+    })
+  })
+
   it('should show the access-control not-set badge when specific access has no subjects', () => {
     render(
       <AppCard
@@ -173,6 +343,21 @@ describe('AppCard', () => {
     )
 
     expect(screen.getByText('publishApp.notSet')).toBeInTheDocument()
+  })
+
+  it('should hide the access-control section when release permission is missing', () => {
+    render(
+      <AppCard
+        appInfo={{
+          ...appInfo,
+          permission_keys: [AppACLPermission.Edit],
+        }}
+        onChangeStatus={mockOnChangeStatus}
+      />,
+    )
+
+    expect(screen.queryByText('publishApp.title')).not.toBeInTheDocument()
+    expect(screen.queryByText('publishApp.notSet')).not.toBeInTheDocument()
   })
 
   it('should hide the address and operation sections for unpublished workflows', () => {
@@ -231,13 +416,14 @@ describe('AppCard', () => {
   })
 
   it('should refresh app detail after confirming access control changes', async () => {
-    render(
+    const { queryClient } = render(
       <AppCard
         appInfo={appInfo}
         onChangeStatus={mockOnChangeStatus}
         onGenerateCode={mockOnGenerateCode}
       />,
     )
+    const setQueryDataSpy = vi.spyOn(queryClient, 'setQueryData')
 
     fireEvent.click(screen.getByText('publishApp.notSet'))
     expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
@@ -245,12 +431,14 @@ describe('AppCard', () => {
     fireEvent.click(screen.getByText('confirm-access-control'))
 
     await waitFor(() => {
-      expect(mockFetchAppDetailDirect).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
-      expect(mockSetAppDetail).toHaveBeenCalledWith({
-        id: 'app-1',
-        access_mode: AccessMode.PUBLIC,
-      })
+      expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-1' })
     })
+    expect(setQueryDataSpy).toHaveBeenCalledWith(['apps', 'detail', 'app-1'], expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
+    expect(mockSetAppDetail).toHaveBeenCalledWith(expect.objectContaining({
+      access_mode: AccessMode.PUBLIC,
+    }))
   })
 
   it('should surface the learn-more tooltip action for workflows without a start node', () => {
@@ -270,6 +458,7 @@ describe('AppCard', () => {
       />,
     )
 
+    fireEvent.click(screen.getByRole('button', { name: 'overview.appInfo.enableTooltip.description' }))
     fireEvent.click(screen.getByText('overview.appInfo.enableTooltip.learnMore'))
 
     expect(mockWindowOpen).toHaveBeenCalledWith('https://docs.example.com/use-dify/nodes/user-input', '_blank')
@@ -301,8 +490,8 @@ describe('AppCard', () => {
   })
 
   it('should report refresh failures from access control updates', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockFetchAppDetailDirect.mockRejectedValueOnce(new Error('refresh failed'))
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+    mockFetchAppDetail.mockRejectedValueOnce(new Error('refresh failed'))
 
     render(
       <AppCard

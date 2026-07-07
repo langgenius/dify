@@ -35,10 +35,15 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
         <div>{children}</div>
       </DropdownMenuContext>
     ),
-    DropdownMenuTrigger: ({ children, render }: { children: ReactNode, render?: ReactNode }) => {
+    DropdownMenuTrigger: ({ children, render }: { children: ReactNode, render?: React.ReactElement<{ children?: ReactNode }> }) => {
       const { open, setOpen } = useDropdownMenuContext()
-      if (render)
-        return <div onClick={() => setOpen(!open)}>{children}</div>
+      if (render) {
+        return React.cloneElement(
+          render,
+          { onClick: () => setOpen(!open) } as Record<string, unknown>,
+          children ?? render.props.children,
+        )
+      }
 
       return <button type="button" onClick={() => setOpen(!open)}>{children}</button>
     },
@@ -50,8 +55,8 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
 })
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, className }: { children: ReactNode, className?: string }) => (
-    <button type="button" className={className}>
+  Button: ({ children, className, onClick }: { children: ReactNode, className?: string, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => (
+    <button type="button" className={className} onClick={onClick}>
       {children}
     </button>
   ),

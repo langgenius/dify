@@ -1,9 +1,9 @@
 import * as React from 'react'
 import VideoPlayer from './VideoPlayer'
 
-type Props = {
+type Props = Readonly<{
   srcs: string[]
-}
+}>
 
 const VideoGallery: React.FC<Props> = ({ srcs }) => {
   const validSrcs = srcs.filter(src => src)

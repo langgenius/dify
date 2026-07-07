@@ -22,8 +22,8 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, variant }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
-    <button data-testid={variant === 'primary' ? 'save-button' : 'cancel-button'} onClick={onClick}>
+  Button: ({ children, onClick }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
+    <button onClick={onClick}>
       {children}
     </button>
   ),
@@ -104,13 +104,19 @@ describe('ModifyRetrievalModal', () => {
 
   it('should call onHide when cancel button clicked', () => {
     render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('cancel-button'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.cancel$/ }))
+    expect(defaultProps.onHide).toHaveBeenCalled()
+  })
+
+  it('should call onHide when close button clicked', () => {
+    render(<ModifyRetrievalModal {...defaultProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
     expect(defaultProps.onHide).toHaveBeenCalled()
   })
 
   it('should call onSave with retrieval config when save clicked', () => {
     render(<ModifyRetrievalModal {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('save-button'))
+    fireEvent.click(screen.getByRole('button', { name: /operation\.save$/ }))
     expect(defaultProps.onSave).toHaveBeenCalled()
   })
 

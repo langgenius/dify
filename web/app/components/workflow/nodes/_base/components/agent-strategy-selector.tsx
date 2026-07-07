@@ -4,21 +4,27 @@ import type { Strategy } from './agent-strategy'
 import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ListProps, ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowDownSLine, RiErrorWarningFill } from '@remixicon/react'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import SearchInput from '@/app/components/base/search-input'
-import Tooltip from '@/app/components/base/tooltip'
-import { ToolTipContent } from '@/app/components/base/tooltip/content'
+import { SearchInput } from '@/app/components/base/search-input'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useStrategyProviders } from '@/service/use-strategy'
 import Tools from '../../../block-selector/tools'
 import ViewTypeSelect, { ViewType } from '../../../block-selector/view-type-select'
@@ -36,8 +42,11 @@ const NotFoundWarn = (props: {
 
   const { t } = useTranslation()
   return (
-    <Tooltip
-      popupContent={(
+    <Tooltip>
+      <TooltipTrigger
+        render={<div><span className="i-ri-error-warning-fill size-4 text-text-destructive" aria-hidden="true" /></div>}
+      />
+      <TooltipContent className="w-45">
         <div className="space-y-1 text-xs">
           <h3 className="font-semibold text-text-primary">
             {title}
@@ -51,11 +60,7 @@ const NotFoundWarn = (props: {
             </Link>
           </p>
         </div>
-      )}
-    >
-      <div>
-        <RiErrorWarningFill className="size-4 text-text-destructive" />
-      </div>
+      </TooltipContent>
     </Tooltip>
   )
 }
@@ -66,18 +71,18 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
       id: item.plugin_unique_identifier,
       author: item.declaration.identity.author,
       name: item.declaration.identity.name,
-      description: item.declaration.identity.description as any,
+      description: item.declaration.identity.description as ToolWithProvider['description'],
       plugin_id: item.plugin_id,
       icon: getIcon(item.declaration.identity.icon),
-      label: item.declaration.identity.label as any,
+      label: item.declaration.identity.label as ToolWithProvider['label'],
       type: CollectionType.all,
       meta: item.meta,
       tools: item.declaration.strategies.map(strategy => ({
         name: strategy.identity.name,
         author: strategy.identity.author,
-        label: strategy.identity.label as any,
+        label: strategy.identity.label as ToolWithProvider['tools'][number]['label'],
         description: strategy.description,
-        parameters: strategy.parameters as any,
+        parameters: strategy.parameters as unknown as ToolWithProvider['tools'][number]['parameters'],
         output_schema: strategy.output_schema,
         labels: [],
       })),
@@ -151,82 +156,87 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
         category: PluginCategoryEnum.agent,
       })
     }
-  }, [query])
+  }, [enable_marketplace, fetchPlugins, query])
 
   const pluginRef = useRef<ListRef>(null)
 
   return (
-    <PortalToFollowElem open={open} onOpenChange={setOpen} placement="bottom">
-      <PortalToFollowElemTrigger className="w-full">
-        <div
-          className="flex h-8 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 select-none hover:bg-state-base-hover-alt"
-          onClick={() => setOpen(o => !o)}
-        >
-          { }
-          {icon && (
-            <div className="flex h-6 w-6 items-center justify-center">
-              <img
-                src={icon}
-                width={20}
-                height={20}
-                className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
-                alt="icon"
-              />
-            </div>
-          )}
-          <p
-            className={cn(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
-          >
-            {value?.agent_strategy_label || t('nodes.agent.strategy.selectTip', { ns: 'workflow' })}
-          </p>
-          <div className="ml-auto flex items-center gap-1">
-            {showInstallButton && value && (
-              <InstallPluginButton
-                onClick={e => e.stopPropagation()}
-                size="small"
-                uniqueIdentifier={value.plugin_unique_identifier}
-              />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={(
+          <div className="flex h-8 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 select-none hover:bg-state-base-hover-alt">
+            {icon && (
+              <div className="flex size-6 items-center justify-center">
+                <img
+                  src={icon}
+                  width={20}
+                  height={20}
+                  className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
+                  alt="icon"
+                />
+              </div>
             )}
-            {showPluginNotInstalledWarn
-              ? (
-                  <NotFoundWarn
-                    title={t('nodes.agent.pluginNotInstalled', { ns: 'workflow' })}
-                    description={t('nodes.agent.pluginNotInstalledDesc', { ns: 'workflow' })}
-                  />
-                )
-              : showUnsupportedStrategy
+            <p
+              className={cn(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
+            >
+              {value?.agent_strategy_label || t('nodes.agent.strategy.selectTip', { ns: 'workflow' })}
+            </p>
+            <div className="ml-auto flex items-center gap-1">
+              {showInstallButton && value && (
+                <InstallPluginButton
+                  onClick={e => e.stopPropagation()}
+                  size="small"
+                  uniqueIdentifier={value.plugin_unique_identifier}
+                />
+              )}
+              {showPluginNotInstalledWarn
                 ? (
                     <NotFoundWarn
-                      title={t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
-                      description={t('nodes.agent.strategyNotFoundDesc', { ns: 'workflow' })}
+                      title={t('nodes.agent.pluginNotInstalled', { ns: 'workflow' })}
+                      description={t('nodes.agent.pluginNotInstalledDesc', { ns: 'workflow' })}
                     />
                   )
-                : <RiArrowDownSLine className="size-4 text-text-tertiary" />}
-            {showSwitchVersion && (
-              <SwitchPluginVersion
-                uniqueIdentifier={value.plugin_unique_identifier}
-                tooltip={(
-                  <ToolTipContent
-                    title={t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
-                  >
-                    {t('nodes.agent.strategyNotFoundDescAndSwitchVersion', { ns: 'workflow' })}
-                  </ToolTipContent>
-                )}
-                onChange={() => {
-                  refetchStrategyInfo()
-                }}
-              />
-            )}
+                : showUnsupportedStrategy
+                  ? (
+                      <NotFoundWarn
+                        title={t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
+                        description={t('nodes.agent.strategyNotFoundDesc', { ns: 'workflow' })}
+                      />
+                    )
+                  : <span className="i-ri-arrow-down-s-line size-4 text-text-tertiary" aria-hidden="true" />}
+              {showSwitchVersion && value && (
+                <SwitchPluginVersion
+                  uniqueIdentifier={value.plugin_unique_identifier}
+                  tooltip={(
+                    <div className="w-45 space-y-1 text-xs">
+                      <h3 className="font-semibold text-text-primary">
+                        {t('nodes.agent.unsupportedStrategy', { ns: 'workflow' })}
+                      </h3>
+                      <p className="text-text-tertiary">
+                        {t('nodes.agent.strategyNotFoundDescAndSwitchVersion', { ns: 'workflow' })}
+                      </p>
+                    </div>
+                  )}
+                  onChange={() => {
+                    refetchStrategyInfo()
+                  }}
+                />
+              )}
+            </div>
           </div>
-        </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="z-10">
-        <div className="w-[388px] overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
+        )}
+      />
+      <PopoverContent
+        placement="bottom"
+        sideOffset={0}
+        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+      >
+        <div className="w-97 overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
           <header className="flex gap-1 p-2">
-            <SearchInput placeholder={t('nodes.agent.strategy.searchPlaceholder', { ns: 'workflow' })} value={query} onChange={setQuery} className="w-full" />
+            <SearchInput placeholder={t('nodes.agent.strategy.searchPlaceholder', { ns: 'workflow' })} value={query} onValueChange={setQuery} className="w-full" />
             <ViewTypeSelect viewType={viewType} onChange={setViewType} />
           </header>
-          <main className="relative flex w-full flex-col overflow-hidden md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px]" ref={wrapElemRef}>
+          <div className="relative flex w-full flex-col overflow-hidden md:max-h-75 xl:max-h-100 2xl:max-h-141" ref={wrapElemRef}>
             <Tools
               tools={filteredTools}
               viewType={viewType}
@@ -258,10 +268,10 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 disableMaxWidth
               />
             )}
-          </main>
+          </div>
         </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+      </PopoverContent>
+    </Popover>
   )
 })
 

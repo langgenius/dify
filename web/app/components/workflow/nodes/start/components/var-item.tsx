@@ -16,7 +16,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import InputVarTypeIcon from '../../_base/components/input-var-type-icon'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   readonly: boolean
   payload: InputVar
@@ -26,7 +26,7 @@ type Props = {
   varKeys?: string[]
   showLegacyBadge?: boolean
   canDrag?: boolean
-}
+}>
 
 const VarItem: FC<Props> = ({
   className,
@@ -57,7 +57,7 @@ const VarItem: FC<Props> = ({
   return (
     <div ref={ref} className={cn('flex h-8 cursor-pointer items-center justify-between rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 shadow-xs hover:shadow-md', className)}>
       <div className="flex w-0 grow items-center space-x-1">
-        <Variable02 className={cn('h-3.5 w-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')} />
+        <Variable02 className={cn('size-3.5 text-text-accent', canDrag && 'group-hover:opacity-0')} />
         <div title={payload.variable} className="max-w-[130px] shrink-0 truncate text-[13px] font-medium text-text-secondary">{payload.variable}</div>
         {payload.label && (
           <>
@@ -81,17 +81,27 @@ const VarItem: FC<Props> = ({
                     {payload.required && (
                       <div className="mr-2 text-xs font-normal text-text-tertiary">{t('nodes.start.required', { ns: 'workflow' })}</div>
                     )}
-                    <InputVarTypeIcon type={payload.type} className="h-3.5 w-3.5 text-text-tertiary" />
+                    <InputVarTypeIcon type={payload.type} className="size-3.5 text-text-tertiary" />
                   </>
                 )
               : (!readonly && (
                   <>
-                    <div onClick={showEditVarModal} className="mr-1 cursor-pointer rounded-md p-1 hover:bg-state-base-hover">
-                      <Edit03 className="h-4 w-4 text-text-tertiary" />
-                    </div>
-                    <div onClick={onRemove} className="group cursor-pointer rounded-md p-1 hover:bg-state-destructive-hover">
-                      <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
-                    </div>
+                    <button
+                      type="button"
+                      aria-label={t('operation.edit', { ns: 'common' })}
+                      className="mr-1 cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                      onClick={showEditVarModal}
+                    >
+                      <Edit03 className="size-4 text-text-tertiary" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t('operation.remove', { ns: 'common' })}
+                      className="group cursor-pointer rounded-md border-none bg-transparent p-1 hover:bg-state-destructive-hover focus-visible:ring-1 focus-visible:ring-state-destructive-border focus-visible:outline-hidden"
+                      onClick={onRemove}
+                    >
+                      <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" aria-hidden="true" />
+                    </button>
                   </>
                 ))}
           </>

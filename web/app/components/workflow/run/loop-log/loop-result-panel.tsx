@@ -32,10 +32,10 @@ const getLoopRunKey = (loop: NodeTracing[], fallbackIndex: number) => {
 }
 
 type Props = {
-  list: NodeTracing[][]
-  onBack: () => void
-  loopDurationMap?: LoopDurationMap
-  loopVariableMap?: LoopVariableMap
+  readonly list: NodeTracing[][]
+  readonly onBack: () => void
+  readonly loopDurationMap?: LoopDurationMap
+  readonly loopVariableMap?: LoopVariableMap
 }
 
 const LoopResultPanel: FC<Props> = ({
@@ -66,10 +66,10 @@ const LoopResultPanel: FC<Props> = ({
     const hasDurationMap = loopDurationMap && Object.keys(loopDurationMap).length !== 0
 
     if (hasFailed)
-      return <RiErrorWarningLine className="h-4 w-4 text-text-destructive" />
+      return <RiErrorWarningLine className="size-4 text-text-destructive" />
 
     if (isRunning)
-      return <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-primary-600" />
+      return <RiLoader2Line className="size-3.5 animate-spin text-primary-600" />
 
     return (
       <>
@@ -80,7 +80,7 @@ const LoopResultPanel: FC<Props> = ({
         )}
         <RiArrowRightSLine
           className={cn(
-            'h-4 w-4 shrink-0 text-text-tertiary transition-transform duration-200',
+            'size-4 shrink-0 text-text-tertiary transition-transform duration-200',
             expandedLoops[index] && 'rotate-90',
           )}
         />
@@ -98,7 +98,7 @@ const LoopResultPanel: FC<Props> = ({
           onBack()
         }}
       >
-        <RiArrowLeftLine className="mr-1 h-4 w-4" />
+        <RiArrowLeftLine className="mr-1 size-4" />
         <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
       </div>
       {/* List */}
@@ -115,7 +115,7 @@ const LoopResultPanel: FC<Props> = ({
             >
               <div className={cn('flex grow items-center gap-2')}>
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
-                  <Loop className="h-3 w-3 text-text-primary-on-surface" />
+                  <Loop className="size-3 text-text-primary-on-surface" />
                 </div>
                 <span className="grow system-sm-semibold-uppercase text-text-primary">
                   {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}

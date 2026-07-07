@@ -1,10 +1,8 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
-import { useKeyPress } from 'ahooks'
-import { noop } from 'es-toolkit/function'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import DSLConfirmModal from './dsl-confirm-modal'
 import Header from './header'
 import { CreateFromDSLModalTab, useDSLImport } from './hooks/use-dsl-import'
@@ -51,58 +49,52 @@ const CreateFromDSLModal = ({
     onClose,
   })
 
-  useKeyPress('esc', () => {
-    if (show && !showConfirmModal)
-      onClose()
-  })
-
   return (
     <>
-      <Modal
-        className="w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl"
-        isShow={show}
-        onClose={noop}
-      >
-        <Header onClose={onClose} />
-        <Tab
-          currentTab={currentTab}
-          setCurrentTab={setCurrentTab}
-        />
-        <div className="px-6 py-4">
-          {currentTab === CreateFromDSLModalTab.FROM_FILE && (
-            <Uploader
-              className="mt-0"
-              file={currentFile}
-              updateFile={handleFile}
-            />
-          )}
-          {currentTab === CreateFromDSLModalTab.FROM_URL && (
-            <div>
-              <div className="leading6 mb-1 system-md-semibold text-text-secondary">
-                DSL URL
-              </div>
-              <Input
-                placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
-                value={dslUrlValue}
-                onChange={e => setDslUrlValue(e.target.value)}
+      <Dialog open={show} onOpenChange={open => !open && !showConfirmModal && onClose()}>
+        <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
+
+          <Header onClose={onClose} />
+          <Tab
+            currentTab={currentTab}
+            setCurrentTab={setCurrentTab}
+          />
+          <div className="px-6 py-4">
+            {currentTab === CreateFromDSLModalTab.FROM_FILE && (
+              <Uploader
+                className="mt-0"
+                file={currentFile}
+                updateFile={handleFile}
               />
-            </div>
-          )}
-        </div>
-        <div className="flex justify-end gap-x-2 p-6 pt-5">
-          <Button onClick={onClose}>
-            {t('newApp.Cancel', { ns: 'app' })}
-          </Button>
-          <Button
-            disabled={buttonDisabled}
-            variant="primary"
-            onClick={handleCreateApp}
-            className="gap-1"
-          >
-            <span>{t('newApp.import', { ns: 'app' })}</span>
-          </Button>
-        </div>
-      </Modal>
+            )}
+            {currentTab === CreateFromDSLModalTab.FROM_URL && (
+              <div>
+                <div className="leading6 mb-1 system-md-semibold text-text-secondary">
+                  DSL URL
+                </div>
+                <Input
+                  placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
+                  value={dslUrlValue}
+                  onChange={e => setDslUrlValue(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-x-2 p-6 pt-5">
+            <Button onClick={onClose}>
+              {t('newApp.Cancel', { ns: 'app' })}
+            </Button>
+            <Button
+              disabled={buttonDisabled}
+              variant="primary"
+              onClick={handleCreateApp}
+              className="gap-1"
+            >
+              <span>{t('newApp.import', { ns: 'app' })}</span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {showConfirmModal && (
         <DSLConfirmModal
           versions={versions}

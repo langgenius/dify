@@ -1,10 +1,10 @@
 'use client'
-import type { FC } from 'react'
+import type { ComponentProps, FC } from 'react'
 import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
 import type { Tool } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import { PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -24,17 +24,28 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   provider: ToolWithProvider
   payload: Tool
+  previewCardHandle: PreviewCardHandle
   disabled?: boolean
   isAdded?: boolean
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
+}>
+
+export type ToolActionPreviewPayload = {
+  providerIcon: ToolWithProvider['icon']
+  payload: Tool
+  language: ReturnType<typeof useGetLanguage>
 }
+
+type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
+export type ToolActionPreviewCardHandle = PreviewCardHandle
 
 const ToolItem: FC<Props> = ({
   provider,
   payload,
+  previewCardHandle,
   onSelect,
   disabled,
   isAdded,
@@ -58,9 +69,11 @@ const ToolItem: FC<Props> = ({
   }, [theme, normalizedIcon, normalizedIconDark])
 
   const row = (
-    <div
+    <button
       key={payload.name}
-      className="flex cursor-pointer items-center justify-between rounded-lg pr-1 pl-[21px] hover:bg-state-base-hover"
+      type="button"
+      disabled={disabled}
+      className="flex w-full cursor-pointer items-center justify-between rounded-lg border-none bg-transparent pr-1 pl-[21px] text-left hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-default"
       onClick={() => {
         if (disabled)
           return
@@ -74,6 +87,7 @@ const ToolItem: FC<Props> = ({
           provider_id: provider.id,
           provider_type: provider.type,
           provider_name: provider.name,
+          provider_show_name: provider.label[language],
           plugin_id: provider.plugin_id,
           plugin_unique_identifier: provider.plugin_unique_identifier,
           provider_icon: normalizedIcon,
@@ -99,7 +113,7 @@ const ToolItem: FC<Props> = ({
       {isAdded && (
         <div className="mr-4 system-xs-regular text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
       )}
-    </div>
+    </button>
   )
 
   return (
@@ -107,21 +121,45 @@ const ToolItem: FC<Props> = ({
     // reachable from the node inspector after the row is clicked to add the tool,
     // so hover/focus-only activation is a11y-safe. See
     // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-    <PreviewCard key={payload.name}>
-      <PreviewCardTrigger delay={150} closeDelay={150} render={row} />
-      <PreviewCardContent placement="right" popupClassName="w-[200px] px-3 py-2.5">
-        <div>
-          <BlockIcon
-            size="md"
-            className="mb-2"
-            type={BlockEnum.Tool}
-            toolIcon={providerIcon}
-          />
-          <div className="mb-1 text-sm leading-5 text-text-primary">{payload.label[language]}</div>
-          <div className="text-xs leading-[18px] text-text-secondary">{payload.description[language]}</div>
-        </div>
-      </PreviewCardContent>
-    </PreviewCard>
+    <PreviewCardTrigger
+      key={payload.name}
+      delay={150}
+      closeDelay={150}
+      handle={previewCardHandle}
+      payload={{
+        providerIcon,
+        payload,
+        language,
+      }}
+      render={row}
+    />
   )
 }
+
+type ToolActionPreviewCardProps = {
+  payload?: ToolActionPreviewPayload
+}
+
+export function ToolActionPreviewCard({
+  payload,
+}: ToolActionPreviewCardProps) {
+  if (!payload)
+    return null
+
+  return (
+    <PreviewCardContent placement="right" popupClassName="w-[200px] px-3 py-2.5">
+      <div>
+        <BlockIcon
+          size="md"
+          className="mb-2"
+          type={BlockEnum.Tool}
+          toolIcon={payload.providerIcon}
+        />
+        <div className="mb-1 text-sm/5 text-text-primary">{payload.payload.label[payload.language]}</div>
+        <div className="text-xs leading-[18px] wrap-break-word text-text-secondary">{payload.payload.description[payload.language]}</div>
+      </div>
+    </PreviewCardContent>
+  )
+}
+
 export default React.memo(ToolItem)

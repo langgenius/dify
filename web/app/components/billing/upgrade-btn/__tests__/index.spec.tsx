@@ -6,7 +6,15 @@ import UpgradeBtn from '../index'
 // PremiumBadge, Button, SparklesSoft are all base components
 
 // ✅ Mock external dependencies only
+const mockConfig = vi.hoisted(() => ({
+  isCloudEdition: true,
+}))
 const mockSetShowPricingModal = vi.fn()
+vi.mock('@/config', () => ({
+  get IS_CLOUD_EDITION() {
+    return mockConfig.isCloudEdition
+  },
+}))
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
@@ -22,6 +30,7 @@ let mockGtag = vi.fn<GtagHandler>()
 describe('UpgradeBtn', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfig.isCloudEdition = true
     mockGtag = vi.fn<GtagHandler>()
     gtagWindow.gtag = mockGtag
   })
@@ -38,10 +47,11 @@ describe('UpgradeBtn', () => {
       expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
     })
 
-    it('should render premium badge by default', () => {
+    it('should render premium badge button by default', () => {
       render(<UpgradeBtn />)
 
-      expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      expect(button).toHaveClass('premium-badge')
     })
 
     it('should render plain button when isPlain is true', () => {
@@ -71,11 +81,20 @@ describe('UpgradeBtn', () => {
       expect(button).toBeInTheDocument()
       expect(screen.getByText(/triggerLimitModal\.upgrade/i)).toBeInTheDocument()
     })
+
+    it('should not render in self-hosted edition', () => {
+      mockConfig.isCloudEdition = false
+
+      const { container } = render(<UpgradeBtn />)
+
+      expect(container.firstChild).toBeNull()
+      expect(screen.queryByText(/billing\.upgradeBtn\.encourage/i)).not.toBeInTheDocument()
+    })
   })
 
   // Props tests (REQUIRED)
   describe('Props', () => {
-    it('should apply custom className to premium badge', () => {
+    it('should apply custom className to premium badge button', () => {
       const customClass = 'custom-upgrade-btn'
 
       const { container } = render(<UpgradeBtn className={customClass} />)
@@ -93,7 +112,7 @@ describe('UpgradeBtn', () => {
       expect(button).toHaveClass(customClass)
     })
 
-    it('should apply custom style to premium badge', () => {
+    it('should apply custom style to premium badge button', () => {
       const customStyle = { padding: '10px' }
 
       const { container } = render(<UpgradeBtn style={customStyle} />)
@@ -132,13 +151,13 @@ describe('UpgradeBtn', () => {
 
   // User Interactions
   describe('User Interactions', () => {
-    it('should call custom onClick when provided and premium badge is clicked', async () => {
+    it('should call custom onClick when provided and premium badge button is clicked', async () => {
       const user = userEvent.setup()
       const handleClick = vi.fn()
 
       render(<UpgradeBtn onClick={handleClick} />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(handleClick).toHaveBeenCalledTimes(1)
       expect(mockSetShowPricingModal).not.toHaveBeenCalled()
@@ -156,12 +175,12 @@ describe('UpgradeBtn', () => {
       expect(mockSetShowPricingModal).not.toHaveBeenCalled()
     })
 
-    it('should open pricing modal when no custom onClick is provided and premium badge is clicked', async () => {
+    it('should open pricing modal when no custom onClick is provided and premium badge button is clicked', async () => {
       const user = userEvent.setup()
 
       render(<UpgradeBtn />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
     })
@@ -176,13 +195,13 @@ describe('UpgradeBtn', () => {
       expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
     })
 
-    it('should track gtag event when loc is provided and badge is clicked', async () => {
+    it('should track gtag event when loc is provided and badge button is clicked', async () => {
       const user = userEvent.setup()
       const loc = 'header-navigation'
 
       render(<UpgradeBtn loc={loc} />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(mockGtag).toHaveBeenCalledTimes(1)
       expect(mockGtag).toHaveBeenCalledWith('event', 'click_upgrade_btn', {
@@ -208,8 +227,8 @@ describe('UpgradeBtn', () => {
       const user = userEvent.setup()
 
       render(<UpgradeBtn />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(mockGtag).not.toHaveBeenCalled()
     })
@@ -219,8 +238,8 @@ describe('UpgradeBtn', () => {
       delete gtagWindow.gtag
 
       render(<UpgradeBtn loc="test-location" />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(mockGtag).not.toHaveBeenCalled()
     })
@@ -231,8 +250,8 @@ describe('UpgradeBtn', () => {
       const loc = 'settings-page'
 
       render(<UpgradeBtn onClick={handleClick} loc={loc} />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(handleClick).toHaveBeenCalledTimes(1)
       expect(mockGtag).toHaveBeenCalledTimes(1)
@@ -260,8 +279,8 @@ describe('UpgradeBtn', () => {
       const user = userEvent.setup()
 
       render(<UpgradeBtn onClick={undefined} />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
     })
@@ -270,8 +289,8 @@ describe('UpgradeBtn', () => {
       const user = userEvent.setup()
 
       render(<UpgradeBtn loc={undefined} />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(mockGtag).not.toHaveBeenCalled()
     })
@@ -292,8 +311,8 @@ describe('UpgradeBtn', () => {
       const user = userEvent.setup()
 
       render(<UpgradeBtn loc="" />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       expect(mockGtag).not.toHaveBeenCalled()
     })
@@ -391,17 +410,24 @@ describe('UpgradeBtn', () => {
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
 
-    it('should be clickable for premium badge variant', async () => {
+    it('should be keyboard accessible for premium badge button variant', async () => {
       const user = userEvent.setup()
       const handleClick = vi.fn()
 
       render(<UpgradeBtn onClick={handleClick} />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-
-      // Click badge
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.tab()
+      expect(button).toHaveFocus()
+      await user.keyboard('{Enter}')
 
       expect(handleClick).toHaveBeenCalledTimes(1)
+    })
+
+    it('should have proper button role for premium badge button variant', () => {
+      render(<UpgradeBtn />)
+
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      expect(button).toHaveClass('premium-badge')
     })
 
     it('should have proper button role when isPlain is true', () => {
@@ -418,8 +444,8 @@ describe('UpgradeBtn', () => {
       const user = userEvent.setup()
 
       render(<UpgradeBtn />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       await waitFor(() => {
         expect(mockSetShowPricingModal).toHaveBeenCalledTimes(1)
@@ -431,8 +457,8 @@ describe('UpgradeBtn', () => {
       const handleClick = vi.fn()
 
       render(<UpgradeBtn onClick={handleClick} loc="integration-test" />)
-      const badge = screen.getByText(/billing\.upgradeBtn\.encourage/i)
-      await user.click(badge)
+      const button = screen.getByRole('button', { name: /billing\.upgradeBtn\.encourage/i })
+      await user.click(button)
 
       await waitFor(() => {
         expect(handleClick).toHaveBeenCalledTimes(1)

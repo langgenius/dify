@@ -4,7 +4,7 @@ export type WebSocketConfig = {
   withCredentials?: boolean
 }
 
-export type ConnectionInfo = {
+type ConnectionInfo = {
   connected: boolean
   connecting: boolean
   socketId?: string

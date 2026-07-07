@@ -2,16 +2,17 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import Textarea from '@/app/components/base/textarea'
 import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { PreviewMode } from '../../base/features/types'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
-import DisplayContent from './display-content'
+import { DisplayContent } from './display-content'
 import LargeDataAlert from './large-data-alert'
 import { PreviewType } from './types'
 
@@ -30,9 +31,11 @@ export const TextEditorSection = ({
   isTruncated,
   onTextChange,
 }: TextEditorSectionProps) => {
+  const { t } = useTranslation()
+
   return (
     <>
-      {isTruncated && <LargeDataAlert className="absolute top-1 right-3 left-3" />}
+      {isTruncated && <LargeDataAlert className="absolute inset-x-3 top-1" />}
       {currentVar.value_type === 'string'
         ? (
             <DisplayContent
@@ -46,11 +49,12 @@ export const TextEditorSection = ({
           )
         : (
             <Textarea
+              aria-label={t('errorMsg.fields.variableValue', { ns: 'workflow' })}
               readOnly={textEditorDisabled}
               disabled={textEditorDisabled || isTruncated}
               className={cn('h-full', isTruncated && 'pt-[48px]')}
               value={typeof value === 'number' ? value : String(value ?? '')}
-              onChange={e => onTextChange(e.target.value)}
+              onValueChange={value => onTextChange(value)}
             />
           )}
     </>

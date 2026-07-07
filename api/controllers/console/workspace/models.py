@@ -5,19 +5,41 @@ from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.fields import SimpleResultResponse
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
-from graphon.model_runtime.entities.model_entities import ModelType
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    is_admin_or_owner_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
+from core.entities.provider_entities import CredentialConfiguration
+from fields.base import ResponseModel
+from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import uuid_value
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
+from services.entities.model_provider_entities import (
+    DefaultModelResponse,
+    ModelWithProviderEntityResponse,
+    ProviderWithModelsResponse,
+)
 from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ParserGetDefault(BaseModel):
@@ -40,7 +62,7 @@ class ParserDeleteModels(BaseModel):
 
 
 class LoadBalancingPayload(BaseModel):
-    configs: list[dict[str, Any]] | None = None
+    configs: list[dict[str, Any]] | None = Field(default=None)
     enabled: bool | None = None
 
 
@@ -107,6 +129,46 @@ class ParserParameter(BaseModel):
     model: str
 
 
+class ParserSwitch(BaseModel):
+    model: str
+    model_type: ModelType
+    credential_id: str
+
+
+class DefaultModelDataResponse(ResponseModel):
+    data: DefaultModelResponse | None = None
+
+
+class ModelWithProviderListResponse(ResponseModel):
+    data: list[ModelWithProviderEntityResponse]
+
+
+class ProviderWithModelsDataResponse(ResponseModel):
+    data: list[ProviderWithModelsResponse]
+
+
+class ModelCredentialLoadBalancingResponse(ResponseModel):
+    enabled: bool
+    configs: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ModelCredentialResponse(ResponseModel):
+    credentials: dict[str, Any] = Field(default_factory=dict)
+    current_credential_id: str | None = None
+    current_credential_name: str | None = None
+    load_balancing: ModelCredentialLoadBalancingResponse
+    available_credentials: list[CredentialConfiguration]
+
+
+class ModelCredentialValidateResponse(ResponseModel):
+    result: str
+    error: str | None = None
+
+
+class ModelParameterRulesResponse(ResponseModel):
+    data: list[ParameterRule]
+
+
 register_schema_models(
     console_ns,
     ParserGetDefault,
@@ -119,6 +181,17 @@ register_schema_models(
     ParserDeleteCredential,
     ParserParameter,
     Inner,
+    ParserSwitch,
+)
+register_response_schema_models(
+    console_ns,
+    SimpleResultResponse,
+    DefaultModelDataResponse,
+    ModelWithProviderListResponse,
+    ProviderWithModelsDataResponse,
+    ModelCredentialResponse,
+    ModelCredentialValidateResponse,
+    ModelParameterRulesResponse,
 )
 
 register_enum_models(console_ns, ModelType)
@@ -126,14 +199,14 @@ register_enum_models(console_ns, ModelType)
 
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGetDefault.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserGetDefault))
+    @console_ns.response(200, "Success", console_ns.models[DefaultModelDataResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        _, tenant_id = current_account_with_tenant()
-
-        args = ParserGetDefault.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        args = ParserGetDefault.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
@@ -143,13 +216,14 @@ class DefaultModelApi(Resource):
         return jsonable_encoder({"data": default_model_entity})
 
     @console_ns.expect(console_ns.models[ParserPostDefault.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str):
         args = ParserPostDefault.model_validate(console_ns.payload)
         model_provider_service = ModelProviderService()
         model_settings = args.model_settings
@@ -177,25 +251,27 @@ class DefaultModelApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models")
 class ModelProviderModelApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ModelWithProviderListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider: str):
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_provider(tenant_id=tenant_id, provider=provider)
 
         return jsonable_encoder({"data": models})
 
     @console_ns.expect(console_ns.models[ParserPostModels.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def post(self, provider: str):
+    @with_current_tenant_id
+    def post(self, tenant_id: str, provider: str):
         # To save the model's load balance configs
-        _, tenant_id = current_account_with_tenant()
         args = ParserPostModels.model_validate(console_ns.payload)
 
         if args.config_from == "custom-model":
@@ -235,13 +311,14 @@ class ModelProviderModelApi(Resource):
         return {"result": "success"}, 200
 
     @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.response(204, "Model deleted successfully")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
-    def delete(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, provider: str):
         args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -249,19 +326,20 @@ class ModelProviderModelApi(Resource):
             tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
         )
 
-        return {"result": "success"}, 204
+        return "", 204
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials")
 class ModelProviderModelCredentialApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGetCredentials.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserGetCredentials))
+    @console_ns.response(200, "Success", console_ns.models[ModelCredentialResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
-
-        args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))  # type: ignore
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, user: Account, provider: str):
+        args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
@@ -282,9 +360,13 @@ class ModelProviderModelCredentialApi(Resource):
         )
 
         if args.config_from == "predefined-model":
+            # Only the predefined-model branch needs visibility filtering by user.
+            # The account is injected once by the handler and only passed into the
+            # service branch that needs user-scoped credential visibility.
             available_credentials = model_provider_service.get_provider_available_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
+                user=user,
             )
         else:
             available_credentials = model_provider_service.get_provider_model_available_credentials(
@@ -309,13 +391,14 @@ class ModelProviderModelCredentialApi(Resource):
         )
 
     @console_ns.expect(console_ns.models[ParserCreateCredential.__name__])
+    @console_ns.response(201, "Credential created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @account_initialization_required
-    def post(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    def post(self, tenant_id: str, provider: str):
         args = ParserCreateCredential.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -341,12 +424,14 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 201
 
     @console_ns.expect(console_ns.models[ParserUpdateCredential.__name__])
+    @console_ns.response(200, "Credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
-    def put(self, provider: str):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def put(self, current_tenant_id: str, provider: str):
         args = ParserUpdateCredential.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -367,12 +452,14 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}
 
     @console_ns.expect(console_ns.models[ParserDeleteCredential.__name__])
+    @console_ns.response(204, "Credential deleted successfully")
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
-    def delete(self, provider: str):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def delete(self, current_tenant_id: str, provider: str):
         args = ParserDeleteCredential.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -384,29 +471,20 @@ class ModelProviderModelCredentialApi(Resource):
             credential_id=args.credential_id,
         )
 
-        return {"result": "success"}, 204
-
-
-class ParserSwitch(BaseModel):
-    model: str
-    model_type: ModelType
-    credential_id: str
-
-
-console_ns.schema_model(
-    ParserSwitch.__name__, ParserSwitch.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+        return "", 204
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
     @console_ns.expect(console_ns.models[ParserSwitch.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
     @account_initialization_required
-    def post(self, provider: str):
-        _, current_tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, provider: str):
         args = ParserSwitch.model_validate(console_ns.payload)
 
         service = ModelProviderService()
@@ -425,12 +503,13 @@ class ModelProviderModelCredentialSwitchApi(Resource):
 )
 class ModelProviderModelEnableApi(Resource):
     @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    def patch(self, tenant_id: str, provider: str):
         args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -446,12 +525,13 @@ class ModelProviderModelEnableApi(Resource):
 )
 class ModelProviderModelDisableApi(Resource):
     @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
+    def patch(self, tenant_id: str, provider: str):
         args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -468,19 +548,22 @@ class ParserValidate(BaseModel):
     credentials: dict[str, Any]
 
 
-console_ns.schema_model(
-    ParserValidate.__name__, ParserValidate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+register_schema_models(console_ns, ParserSwitch, ParserValidate)
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
     @console_ns.expect(console_ns.models[ParserValidate.__name__])
+    @console_ns.response(
+        200,
+        "Credential validation result",
+        console_ns.models[ModelCredentialValidateResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider: str):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def post(self, tenant_id: str, provider: str):
         args = ParserValidate.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
@@ -510,13 +593,14 @@ class ModelProviderModelValidateApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/parameter-rules")
 class ModelProviderModelParameterRuleApi(Resource):
-    @console_ns.expect(console_ns.models[ParserParameter.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserParameter))
+    @console_ns.response(200, "Success", console_ns.models[ModelParameterRulesResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider: str):
-        args = ParserParameter.model_validate(request.args.to_dict(flat=True))  # type: ignore
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, provider: str):
+        args = ParserParameter.model_validate(request.args.to_dict(flat=True))
 
         model_provider_service = ModelProviderService()
         parameter_rules = model_provider_service.get_model_parameter_rules(
@@ -528,11 +612,12 @@ class ModelProviderModelParameterRuleApi(Resource):
 
 @console_ns.route("/workspaces/current/models/model-types/<string:model_type>")
 class ModelProviderAvailableModelApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ProviderWithModelsDataResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, model_type):
-        _, tenant_id = current_account_with_tenant()
+    @with_current_tenant_id
+    def get(self, tenant_id: str, model_type: str):
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)
 

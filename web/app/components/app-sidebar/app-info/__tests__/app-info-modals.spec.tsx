@@ -2,6 +2,7 @@ import type { App, AppSSO } from '@/types/app'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { expectLoadingButton } from '@/test/button'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
@@ -46,6 +47,12 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
 }))
 
 vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
+  DSLExportConfirmContent: ({ onConfirm, onClose }: { onConfirm: (include?: boolean) => void, onClose: () => void }) => (
+    <div data-testid="dsl-export-confirm-modal">
+      <button type="button" onClick={() => onConfirm(true)}>Export Include</button>
+      <button type="button" onClick={onClose}>Close Export</button>
+    </div>
+  ),
   default: ({ onConfirm, onClose }: { onConfirm: (include?: boolean) => void, onClose: () => void }) => (
     <div data-testid="dsl-export-confirm-modal">
       <button type="button" onClick={() => onConfirm(true)}>Export Include</button>
@@ -259,7 +266,7 @@ describe('AppInfoModals', () => {
 
     const firstClick = user.click(confirmButton)
     await waitFor(() => {
-      expect(confirmButton).toBeDisabled()
+      expectLoadingButton(confirmButton)
       expect(confirmButton).toHaveTextContent('common.operation.exporting')
     })
     await user.click(confirmButton)

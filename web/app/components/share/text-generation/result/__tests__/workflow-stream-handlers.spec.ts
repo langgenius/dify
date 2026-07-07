@@ -139,6 +139,8 @@ describe('workflow-stream-handlers helpers', () => {
     expect(workflowProcessData.humanInputFilledFormDataList).toEqual([
       expect.objectContaining({
         action_text: 'Submit',
+        form_content: 'content',
+        inputs: [],
       }),
     ])
     expect(workflowProcessData.tracing[0]).toEqual(expect.objectContaining({
@@ -633,6 +635,10 @@ describe('createWorkflowStreamHandlers', () => {
       message: 'failed',
     })
     expect(failureSetup.onCompleted).toHaveBeenCalledWith('', 3, false)
+    expect(failureSetup.workflowProcessData()).toEqual(expect.objectContaining({
+      status: WorkflowRunningStatus.Failed,
+      error: 'failed',
+    }))
   })
 
   it('should cover existing workflow starts, stopped runs, and non-string outputs', () => {

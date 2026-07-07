@@ -98,7 +98,7 @@ const Item = ({
         size="l"
         onClick={() => handleRemoveLoopVariable(item.id)}
       >
-        <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />
+        <RiDeleteBinLine className="size-4 text-text-tertiary" />
       </ActionButton>
     </div>
   )

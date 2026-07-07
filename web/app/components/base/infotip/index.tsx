@@ -1,7 +1,7 @@
 'use client'
 
 import type { Placement } from '@langgenius/dify-ui/popover'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 
@@ -36,6 +36,8 @@ type InfotipProps = {
   'aria-label': string
   /** Placement of the popup relative to the trigger. Defaults to `top`. */
   'placement'?: Placement
+  /** Distance between the trigger and popup. Defaults to the popover primitive spacing. */
+  'sideOffset'?: number
   /** Extra classes on the outer trigger wrapper (layout / margin). */
   'className'?: string
   /** Extra classes on the `?` icon itself (size / color overrides). */
@@ -52,12 +54,17 @@ export function Infotip({
   children,
   'aria-label': ariaLabel,
   placement = 'top',
+  sideOffset,
   className,
   iconClassName,
   popupClassName,
   delay = 300,
   closeDelay = 200,
 }: InfotipProps) {
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
   return (
     <Popover>
       <PopoverTrigger
@@ -65,15 +72,18 @@ export function Infotip({
         delay={delay}
         closeDelay={closeDelay}
         aria-label={ariaLabel}
-        render={(
-          <span className={cn('inline-flex h-4 w-4 shrink-0 items-center justify-center', className)}>
-            <span aria-hidden className={cn('i-ri-question-line h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary', iconClassName)} />
-          </span>
+        onClick={handleClick}
+        className={cn(
+          'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          className,
         )}
-      />
+      >
+        <span aria-hidden className={cn('i-ri-question-line size-3.5 text-text-quaternary hover:text-text-tertiary', iconClassName)} />
+      </PopoverTrigger>
       <PopoverContent
         placement={placement}
-        popupClassName={cn('max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
+        sideOffset={sideOffset}
+        popupClassName={cn('max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
       >
         {children}
       </PopoverContent>

@@ -77,7 +77,7 @@ const Debug: FC<IDebug> = ({
 }) => {
   const { t } = useTranslation()
   const {
-    readonly,
+    canTestAndRun = false,
     appId,
     mode,
     modelModeType,
@@ -303,6 +303,9 @@ const Debug: FC<IDebug> = ({
   }
 
   const handleSendTextCompletion = () => {
+    if (!canTestAndRun)
+      return
+
     if (debugWithMultipleModel) {
       eventEmitter?.emit({
         type: APP_CHAT_WITH_MULTIPLE_MODEL,
@@ -404,9 +407,9 @@ const Debug: FC<IDebug> = ({
                       <Button
                         variant="ghost-accent"
                         onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
-                        disabled={multipleModelConfigs.length >= 4}
+                        disabled={multipleModelConfigs.length >= 4 || !canTestAndRun}
                       >
-                        <RiAddLine className="mr-1 h-3.5 w-3.5" />
+                        <RiAddLine className="mr-1 size-3.5" />
                         {t('modelProvider.addModel', { ns: 'common' })}
                         (
                         {multipleModelConfigs.length}
@@ -420,9 +423,9 @@ const Debug: FC<IDebug> = ({
             {mode !== AppModeEnum.COMPLETION && (
               <>
                 {
-                  !readonly && (
+                  canTestAndRun && (
                     <Tooltip>
-                      <TooltipTrigger render={<ActionButton onClick={clearConversation}><RefreshCcw01 className="h-4 w-4" /></ActionButton>} />
+                      <TooltipTrigger render={<ActionButton onClick={clearConversation}><RefreshCcw01 className="size-4" /></ActionButton>} />
                       <TooltipContent>
                         {t('operation.refresh', { ns: 'common' })}
                       </TooltipContent>
@@ -434,7 +437,7 @@ const Debug: FC<IDebug> = ({
                   varList.length > 0 && (
                     <div className="relative mr-2 ml-1">
                       <Tooltip>
-                        <TooltipTrigger render={<ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => !readonly && setExpanded(!expanded)}><RiEqualizer2Line className="h-4 w-4" /></ActionButton>} />
+                        <TooltipTrigger render={<ActionButton state={expanded ? ActionButtonState.Active : undefined} disabled={!canTestAndRun} onClick={() => setExpanded(!expanded)}><RiEqualizer2Line className="size-4" /></ActionButton>} />
                         <TooltipContent>
                           {t('panel.userInputField', { ns: 'workflow' })}
                         </TooltipContent>
@@ -513,7 +516,7 @@ const Debug: FC<IDebug> = ({
                 <div className="flex w-full max-w-[400px] flex-col gap-2 px-4 py-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-[10px]">
                     <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg backdrop-blur-[5px]">
-                      <span className="i-ri-brain-2-line h-5 w-5 text-text-tertiary" />
+                      <span className="i-ri-brain-2-line size-5 text-text-tertiary" />
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
@@ -556,7 +559,7 @@ const Debug: FC<IDebug> = ({
                 )}
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
-                    <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
+                    <RiSparklingFill className="size-12 text-text-empty-state-icon" />
                     <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}

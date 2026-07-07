@@ -1,6 +1,9 @@
 import json
+from collections.abc import Mapping
+from typing import Any, cast
 from unittest.mock import MagicMock
 
+import pytest
 from dify_trace_aliyun.entities.semconv import (
     GEN_AI_FRAMEWORK,
     GEN_AI_SESSION_ID,
@@ -29,7 +32,7 @@ from graphon.enums import WorkflowNodeExecutionStatus
 from models import EndUser
 
 
-def test_get_user_id_from_message_data_no_end_user(monkeypatch):
+def test_get_user_id_from_message_data_no_end_user(monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = None
@@ -37,7 +40,7 @@ def test_get_user_id_from_message_data_no_end_user(monkeypatch):
     assert get_user_id_from_message_data(message_data) == "account_id"
 
 
-def test_get_user_id_from_message_data_with_end_user(monkeypatch):
+def test_get_user_id_from_message_data_with_end_user(monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = "end_user_id"
@@ -55,7 +58,7 @@ def test_get_user_id_from_message_data_with_end_user(monkeypatch):
     assert get_user_id_from_message_data(message_data) == "session_id"
 
 
-def test_get_user_id_from_message_data_end_user_not_found(monkeypatch):
+def test_get_user_id_from_message_data_end_user_not_found(monkeypatch: pytest.MonkeyPatch):
     message_data = MagicMock()
     message_data.from_account_id = "account_id"
     message_data.from_end_user_id = "end_user_id"
@@ -109,7 +112,7 @@ def test_get_workflow_node_status():
     assert status.status_code == StatusCode.UNSET
 
 
-def test_create_links_from_trace_id(monkeypatch):
+def test_create_links_from_trace_id(monkeypatch: pytest.MonkeyPatch):
     # Mock create_link
     mock_link = MagicMock(spec=Link)
     import dify_trace_aliyun.data_exporter.traceclient
@@ -170,7 +173,7 @@ def test_create_common_span_attributes():
 
 def test_format_retrieval_documents():
     # Not a list
-    assert format_retrieval_documents("not a list") == []
+    assert format_retrieval_documents(cast(list[object], "not a list")) == []
 
     # Valid list
     docs = [
@@ -211,7 +214,7 @@ def test_format_retrieval_documents():
 
 def test_format_input_messages():
     # Not a dict
-    assert format_input_messages(None) == serialize_json_data([])
+    assert format_input_messages(cast(Mapping[str, Any], None)) == serialize_json_data([])
 
     # No prompts
     assert format_input_messages({}) == serialize_json_data([])
@@ -244,7 +247,7 @@ def test_format_input_messages():
 
 def test_format_output_messages():
     # Not a dict
-    assert format_output_messages(None) == serialize_json_data([])
+    assert format_output_messages(cast(Mapping[str, Any], None)) == serialize_json_data([])
 
     # No text
     assert format_output_messages({"finish_reason": "stop"}) == serialize_json_data([])

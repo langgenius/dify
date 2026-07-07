@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Code, CodeGroup, Embed, Pre } from '../code'
+import { CodeGroup, Embed } from '../code'
 
 vi.mock('@/utils/clipboard', () => ({
   writeTextToClipboard: vi.fn().mockResolvedValue(undefined),
@@ -19,31 +19,6 @@ describe('code.tsx components', () => {
     vi.runOnlyPendingTimers()
     vi.useRealTimers()
     vi.restoreAllMocks()
-  })
-
-  describe('Code', () => {
-    it('should render children as a code element', () => {
-      render(<Code>const x = 1</Code>)
-      const codeElement = screen.getByText('const x = 1')
-      expect(codeElement.tagName).toBe('CODE')
-    })
-
-    it('should pass through additional props', () => {
-      render(<Code data-testid="custom-code" className="custom-class">snippet</Code>)
-      const codeElement = screen.getByTestId('custom-code')
-      expect(codeElement).toHaveClass('custom-class')
-    })
-
-    it('should render with complex children', () => {
-      render(
-        <Code>
-          <span>part1</span>
-          <span>part2</span>
-        </Code>,
-      )
-      expect(screen.getByText('part1')).toBeInTheDocument()
-      expect(screen.getByText('part2')).toBeInTheDocument()
-    })
   })
 
   describe('Embed', () => {
@@ -139,6 +114,7 @@ describe('code.tsx components', () => {
         await waitFor(() => {
           expect(screen.getByText('second content')).toBeInTheDocument()
         })
+        expect(tab2).toHaveAttribute('aria-selected', 'true')
       })
 
       it('should use "Code" as default title when title not provided', () => {
@@ -276,28 +252,6 @@ describe('code.tsx components', () => {
     })
   })
 
-  describe('Pre', () => {
-    it('should wrap children in CodeGroup when outside CodeGroup context', () => {
-      render(
-        <Pre title="Pre Title">
-          <pre><code>code</code></pre>
-        </Pre>,
-      )
-      expect(screen.getByText('Pre Title')).toBeInTheDocument()
-    })
-
-    it('should return children directly when inside CodeGroup context', () => {
-      render(
-        <CodeGroup targetCode="outer code">
-          <Pre>
-            <code>inner code</code>
-          </Pre>
-        </CodeGroup>,
-      )
-      expect(screen.getByText('outer code')).toBeInTheDocument()
-    })
-  })
-
   describe('CodePanelHeader (via CodeGroup)', () => {
     it('should render when tag is provided', () => {
       render(
@@ -329,7 +283,8 @@ describe('code.tsx components', () => {
           <pre><code>fallback</code></pre>
         </CodeGroup>,
       )
-      expect(screen.getByRole('tablist')).toBeInTheDocument()
+      expect(screen.getByRole('tablist')).toHaveClass('-mb-px', 'gap-4', 'bg-transparent')
+      expect(screen.getByRole('tab', { name: 'cURL' })).toHaveClass('data-active:text-emerald-400')
     })
   })
 

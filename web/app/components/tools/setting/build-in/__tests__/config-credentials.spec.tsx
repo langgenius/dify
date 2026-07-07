@@ -23,16 +23,6 @@ vi.mock('../../../utils/to-form-schema', () => ({
   addDefaultValue: (value: Record<string, unknown>, _schemas: unknown[]) => ({ ...value }),
 }))
 
-vi.mock('@/app/components/base/drawer-plus', () => ({
-  default: ({ body, title, onHide }: { body: React.ReactNode, title: string, onHide: () => void }) => (
-    <div data-testid="drawer">
-      <span data-testid="drawer-title">{title}</span>
-      <button data-testid="drawer-close" onClick={onHide}>Close</button>
-      {body}
-    </div>
-  ),
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: vi.fn() },
 }))
@@ -104,7 +94,7 @@ describe('ConfigCredential', () => {
         onSaved={mockOnSaved}
       />,
     )
-    expect(screen.getByTestId('drawer-title')).toHaveTextContent('tools.auth.setupModalTitle')
+    expect(screen.getByText('tools.auth.setupModalTitle')).toBeInTheDocument()
   })
 
   it('calls onCancel when cancel button is clicked', async () => {

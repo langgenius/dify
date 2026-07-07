@@ -9,17 +9,17 @@ concurrency:
 
 jobs:
   db-migration-test-postgres:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: true
           python-version: "3.12"
@@ -37,10 +37,10 @@ jobs:
       - name: Prepare middleware env
         run: |
           cd docker
-          cp middleware.env.example middleware.env
+          cp envs/middleware.env.example middleware.env
 
       - name: Set up Middlewares
-        uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
@@ -59,17 +59,17 @@ jobs:
         run: uv run --directory api flask upgrade-db
 
   db-migration-test-mysql:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: true
           python-version: "3.12"
@@ -87,14 +87,14 @@ jobs:
       - name: Prepare middleware env for MySQL
         run: |
           cd docker
-          cp middleware.env.example middleware.env
+          cp envs/middleware.env.example middleware.env
           sed -i 's/DB_TYPE=postgresql/DB_TYPE=mysql/' middleware.env
           sed -i 's/DB_HOST=db_postgres/DB_HOST=db_mysql/' middleware.env
           sed -i 's/DB_PORT=5432/DB_PORT=3306/' middleware.env
           sed -i 's/DB_USERNAME=postgres/DB_USERNAME=mysql/' middleware.env
 
       - name: Set up Middlewares
-        uses: hoverkraft-tech/compose-action@d2bee4f07e8ca410d6b196d00f90c12e7d48c33a # v2.6.0
+        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
@@ -109,6 +109,28 @@ jobs:
           sed -i 's/DB_TYPE=postgresql/DB_TYPE=mysql/' .env
           sed -i 's/DB_PORT=5432/DB_PORT=3306/' .env
           sed -i 's/DB_USERNAME=postgres/DB_USERNAME=root/' .env
+
+      # hoverkraft-tech/compose-action@v2.6.0 only waits for `docker compose up -d`
+      # to return (container processes started); it does not wait on healthcheck
+      # status. mysql:8.0's first-time init takes 15-30s, so without an explicit
+      # wait the migration runs while InnoDB is still initialising and gets
+      # killed with "Lost connection during query". Poll a real SELECT until it
+      # succeeds.
+      - name: Wait for MySQL to accept queries
+        run: |
+          set +e
+          for i in $(seq 1 60); do
+            if docker run --rm --network host mysql:8.0 \
+                mysql -h 127.0.0.1 -P 3306 -uroot -pdifyai123456 \
+                -e 'SELECT 1' >/dev/null 2>&1; then
+              echo "MySQL ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "MySQL not ready after 60s; dumping container logs:"
+          docker compose -f docker/docker-compose.middleware.yaml --profile mysql logs --tail=200 db_mysql
+          exit 1
 
       - name: Run DB Migration
         env:

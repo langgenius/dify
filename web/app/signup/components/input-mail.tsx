@@ -9,8 +9,8 @@ import Input from '@/app/components/base/input'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 import { useSendMail } from '@/service/use-common'
 
 type Props = {

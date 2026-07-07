@@ -365,7 +365,6 @@ def _make_segment(
 
 def _make_child_chunk() -> ChildChunk:
     return ChildChunk(
-        id="child-a",
         tenant_id="tenant-1",
         dataset_id="dataset-1",
         document_id="doc-1",

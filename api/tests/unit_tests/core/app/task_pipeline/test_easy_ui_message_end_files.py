@@ -6,7 +6,7 @@ SSE event, which is critical for vision/image chat responses to render correctly
 
 Test Coverage:
 - Files array populated when MessageFile records exist
-- Files array is None when no MessageFile records exist
+- Files array is empty when no MessageFile records exist
 - Correct signed URL generation for LOCAL_FILE transfer method
 - Correct URL handling for REMOTE_URL transfer method
 - Correct URL handling for TOOL_FILE transfer method
@@ -90,7 +90,7 @@ class TestMessageEndStreamResponseFiles:
         return upload_file
 
     def test_message_end_with_no_files(self, mock_pipeline):
-        """Test that files array is None when no MessageFile records exist."""
+        """Test that files array is empty when no MessageFile records exist."""
         # Arrange
         with (
             patch("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db") as mock_db,
@@ -108,9 +108,10 @@ class TestMessageEndStreamResponseFiles:
 
             # Assert
             assert isinstance(result, MessageEndStreamResponse)
-            assert result.files is None
+            assert result.files == []
             assert result.id == mock_pipeline._message_id
             assert result.metadata == {"test": "metadata"}
+            mock_pipeline._task_state.metadata.model_dump.assert_called_once_with(exclude_none=True)
 
     def test_message_end_with_local_file(self, mock_pipeline, mock_message_file_local, mock_upload_file):
         """Test that files array is populated correctly for LOCAL_FILE transfer method."""

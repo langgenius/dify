@@ -89,9 +89,14 @@ const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
     <div className={cn('index-bar sticky top-[20px] flex h-full w-6 flex-col items-center justify-center text-xs font-medium text-text-quaternary', className)}>
       <div className={cn('absolute top-0 left-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]')}></div>
       {letters.map(letter => (
-        <div className="cursor-pointer hover:text-text-secondary" key={letter} onClick={() => handleIndexClick(letter)}>
+        <button
+          type="button"
+          className="cursor-pointer border-none bg-transparent p-0 text-left hover:text-text-secondary"
+          key={letter}
+          onClick={() => handleIndexClick(letter)}
+        >
           {letter}
-        </div>
+        </button>
       ))}
     </div>
   )

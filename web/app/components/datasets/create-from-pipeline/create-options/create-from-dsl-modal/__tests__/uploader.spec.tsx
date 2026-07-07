@@ -50,7 +50,7 @@ describe('Uploader', () => {
 
     it('should render browse link when no file', () => {
       render(<Uploader {...defaultProps} />)
-      expect(screen.getByText(/dslUploader\.browse/i)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /dslUploader\.browse/i })).toBeInTheDocument()
     })
 
     it('should render upload icon when no file', () => {
@@ -108,7 +108,7 @@ describe('Uploader', () => {
       const input = document.getElementById('fileUploader') as HTMLInputElement
       const clickSpy = vi.spyOn(input, 'click')
 
-      const browseLink = screen.getByText(/dslUploader\.browse/i)
+      const browseLink = screen.getByRole('button', { name: /dslUploader\.browse/i })
       fireEvent.click(browseLink)
 
       expect(clickSpy).toHaveBeenCalled()

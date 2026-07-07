@@ -28,7 +28,7 @@ class FunctionCallMultiDatasetRouter:
                 SystemPromptMessage(content="You are a helpful AI assistant."),
                 UserPromptMessage(content=query),
             ]
-            result: LLMResult = model_instance.invoke_llm(  # pyright: ignore[reportCallIssue, reportArgumentType]
+            result: LLMResult = model_instance.invoke_llm(  # pyrefly: ignore[no-matching-overload]
                 prompt_messages=prompt_messages,
                 tools=dataset_tools,
                 stream=False,

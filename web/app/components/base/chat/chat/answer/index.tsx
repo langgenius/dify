@@ -6,6 +6,7 @@ import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
+import type { HumanInputFormSubmitData } from './human-input-content/type'
 import type { AppData } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -23,6 +24,7 @@ import HumanInputFilledFormList from './human-input-filled-form-list'
 import HumanInputFormList from './human-input-form-list'
 import More from './more'
 import Operation from './operation'
+import ReasoningPanel from './reasoning-panel'
 import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
 
@@ -40,7 +42,7 @@ type AnswerProps = {
   noChatInput?: boolean
   switchSibling?: (siblingMessageId: string) => void
   hideAvatar?: boolean
-  onHumanInputFormSubmit?: (formToken: string, formData: any) => Promise<void>
+  onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -73,6 +75,9 @@ const Answer: FC<AnswerProps> = ({
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
   const hasHumanInputs = !!humanInputFormDataList?.length || !!humanInputFilledFormDataList?.length
+  // Truthy only when there is real reasoning text. Rehydrated messages carry an empty
+  // `{}` (the field is always persisted), and `!!{}` would otherwise be truthy.
+  const hasReasoning = !!item.reasoningContent && Object.values(item.reasoningContent).some(Boolean)
 
   const [containerWidth, setContainerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
@@ -139,11 +144,20 @@ const Answer: FC<AnswerProps> = ({
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
   const contentIsEmpty = typeof content === 'string' && content.trim() === ''
+  // Reasoning is "done" — freeze the elapsed timer and collapse the panel — as soon as ANY of:
+  //  ① the answer has begun streaming (first text delta): the only signal that fires
+  //     mid-node, so it drives the normal think→answer handoff;
+  //  ② the reasoning stream's terminal marker arrived (a reasoning node that finishes
+  //     before a separate answer node starts);
+  //  ③ the response is no longer active — explicitly false, not merely absent (history / abnormal end).
+  // graphon's is_final (on BOTH the text and reasoning channels) is a node-terminal marker
+  // that trails the whole answer, so it can't drive ①; the answer-started signal must.
+  const reasoningDone = !contentIsEmpty || !!item.reasoningFinished || responding === false
 
   return (
     <div className="mb-2 flex last:mb-0">
       {!hideAvatar && (
-        <div className="relative h-10 w-10 shrink-0">
+        <div className="relative size-10 shrink-0">
           {answerIcon || <AnswerIcon />}
           {responding && (
             <div className="absolute top-[-3px] left-[-3px] flex h-4 w-4 items-center rounded-full border-[0.5px] border-divider-subtle bg-background-section-burn pl-[6px] shadow-xs">
@@ -222,7 +236,7 @@ const Answer: FC<AnswerProps> = ({
         )}
 
         {/* Block 2: Response Content (when human inputs exist) */}
-        {hasHumanInputs && (responding || !contentIsEmpty || hasAgentThoughts) && (
+        {hasHumanInputs && (responding || !contentIsEmpty || hasAgentThoughts || hasReasoning) && (
           <div className={cn('group relative mt-2 pr-10', chatAnswerContainerInner)}>
             <div className="absolute -top-2 left-6 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
             <div
@@ -244,7 +258,15 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                responding && contentIsEmpty && !hasAgentThoughts && (
+                hasReasoning && (
+                  <ReasoningPanel
+                    content={item.reasoningContent ?? {}}
+                    done={reasoningDone}
+                  />
+                )
+              }
+              {
+                responding && contentIsEmpty && !hasAgentThoughts && !hasReasoning && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>
@@ -350,7 +372,15 @@ const Answer: FC<AnswerProps> = ({
                 )
               }
               {
-                responding && contentIsEmpty && !hasAgentThoughts && (
+                hasReasoning && (
+                  <ReasoningPanel
+                    content={item.reasoningContent ?? {}}
+                    done={reasoningDone}
+                  />
+                )
+              }
+              {
+                responding && contentIsEmpty && !hasAgentThoughts && !hasReasoning && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>

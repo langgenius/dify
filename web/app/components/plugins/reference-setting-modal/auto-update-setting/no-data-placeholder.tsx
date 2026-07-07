@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 
-type Props = {
+type Props = Readonly<{
   className: string
   noPlugins?: boolean
-}
+}>
 
 const NoDataPlaceholder: FC<Props> = ({
   className,

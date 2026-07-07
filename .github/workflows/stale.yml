@@ -12,13 +12,13 @@ on:
 jobs:
   stale:
 
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-24.04
     permissions:
       issues: write
       pull-requests: write
 
     steps:
-      - uses: actions/stale@b5d41d4e1d5dceea10e7104786b73624c18a190f # v10.2.0
+      - uses: actions/stale@eb5cf3af3ac0a1aa4c9c45633dd1ae542a27a899 # v10.3.0
         with:
           days-before-issue-stale: 15
           days-before-issue-close: 3

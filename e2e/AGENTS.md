@@ -26,12 +26,18 @@ Install Playwright browsers once:
 ```bash
 pnpm install
 pnpm -C e2e e2e:install
-pnpm -C e2e check
 ```
 
 `pnpm install` is resolved through the repository workspace and uses the shared root lockfile plus `pnpm-workspace.yaml`.
 
-Use `pnpm check` as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue. It runs formatting, linting, and type checks for this package.
+Run only one `pnpm -C e2e e2e*` process against a local workspace at a time. Separate runner processes share the frontend port, backend port, auth bootstrap state, and log paths; running them in parallel can create startup or authorization failures that are not scenario failures.
+
+Use root lint plus the package type check as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue:
+
+```bash
+vpr lint --fix --quiet
+pnpm -C e2e type-check
+```
 
 Common commands:
 
@@ -46,6 +52,12 @@ pnpm -C e2e e2e:full
 
 # run a tagged subset
 pnpm -C e2e e2e -- --tags @smoke
+
+# prepare external runtime seed resources for opt-in external suites
+pnpm -C e2e e2e:external:prepare
+
+# run scenarios that call real external providers
+pnpm -C e2e e2e:external
 
 # headed browser
 pnpm -C e2e e2e:headed -- --tags @smoke
@@ -68,8 +80,8 @@ flowchart TD
   C --> D["Cucumber loads config, steps, and support modules"]
   D --> E["BeforeAll bootstraps shared auth state via /install"]
   E --> F{"Which command is running?"}
-  F -->|`pnpm e2e`| G["Run config default tags: not @fresh and not @skip"]
-  F -->|`pnpm e2e:full*`| H["Override tags to not @skip"]
+  F -->|`pnpm -C e2e e2e`| G["Run config default tags: not @fresh and not @skip and not @preview and not @external-model and not @external-tool"]
+  F -->|`pnpm -C e2e e2e:full*`| H["Override tags to not @skip and not @preview and not @external-model and not @external-tool"]
   G --> I["Per-scenario BrowserContext from shared browser"]
   H --> I
   I --> J["Failure artifacts written to cucumber-report/artifacts"]
@@ -99,7 +111,7 @@ Behavior depends on instance state:
 - uninitialized instance: completes install and stores authenticated state
 - initialized instance: signs in and reuses authenticated state
 
-Because of that, the `@fresh` install scenario only runs in the `pnpm e2e:full*` flows. The default `pnpm e2e*` flows exclude `@fresh` via Cucumber config tags so they can be re-run against an already initialized instance.
+Because of that, the `@fresh` install scenario only runs in the `pnpm -C e2e e2e:full*` flows. The default `pnpm -C e2e e2e*` flows exclude `@fresh`, `@preview`, `@external-model`, and `@external-tool` via Cucumber config tags so they can be re-run against an already initialized instance while keeping Builder Preview and real external runtime scenarios opt-in.
 
 Reset all persisted E2E state:
 
@@ -126,7 +138,7 @@ pnpm -C e2e e2e:middleware:up
 Stop the full middleware stack:
 
 ```bash
-pnpm e2e:middleware:down
+pnpm -C e2e e2e:middleware:down
 ```
 
 The middleware stack includes:
@@ -141,15 +153,15 @@ The middleware stack includes:
 Fresh install verification:
 
 ```bash
-pnpm e2e:full
+pnpm -C e2e e2e:full
 ```
 
 Run the Cucumber suite against an already running middleware stack:
 
 ```bash
-pnpm e2e:middleware:up
-pnpm e2e
-pnpm e2e:middleware:down
+pnpm -C e2e e2e:middleware:up
+pnpm -C e2e e2e
+pnpm -C e2e e2e:middleware:down
 ```
 
 Artifacts and diagnostics:
@@ -174,7 +186,7 @@ open cucumber-report/report.html
 1. Add step definitions under `features/step-definitions/<capability>/`
 1. Reuse existing steps from `common/` and other definition files before writing new ones
 1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
-1. Run `pnpm -C e2e check` before committing
+1. Run `vpr lint --fix --quiet` from the repository root and `pnpm -C e2e type-check` before committing
 
 ### Feature file conventions
 
@@ -195,7 +207,13 @@ Feature: Create dataset
   - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
   - `@authenticated` — optional intent tag for readability or selective runs; it does not currently change hook behavior on its own
 - `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
+- `@external-model` — scenario execution can call a real model provider. Use this only for runtime requests, not for scenarios that only require an active model fixture.
+- `@external-tool` — scenario execution can call a real third-party tool provider. Use this only for runtime tool execution, not for plugin installation, discovery, or local deterministic tools.
 - `@skip` — excluded from all runs
+
+External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` reads `E2E_EXTERNAL_RUNTIME_SEED_SPECS`, defaulting to `agent-v2:external-runtime`, and runs the matching seed packs before the external suite. `pnpm -C e2e e2e:external` reads `E2E_EXTERNAL_RUNTIME_TAGS`, defaulting to `(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview`.
+
+Some external runtime scenarios need feature-owned services in addition to a real model or tool provider. Do not overload `@external-model` or `@external-tool` to mean those services are available. For Agent v2, scenarios that require the standalone `dify-agent` run server use the feature tag `@agent-backend-runtime` plus the explicit step `the Agent v2 runtime backend is available`. Run them with `E2E_START_AGENT_BACKEND=1` to let E2E start `dify-agent` and the shellctl local sandbox required by its `dify.config`/`dify.shell` runtime layers, or set `E2E_AGENT_BACKEND_URL`/`AGENT_BACKEND_BASE_URL` when an existing server should be reused.
 
 Keep scenarios short and declarative. Each step should describe **what** the user does, not **how** the UI works.
 
@@ -278,13 +296,35 @@ When('I fill in the app name in the dialog', async function (this: DifyWorld) {
 
 ### Failure diagnostics
 
-The `After` hook automatically captures on failure:
+The `After` hook automatically captures diagnostics for failed, ambiguous, pending, undefined, or unknown scenarios:
 
 - Full-page screenshot (PNG)
 - Page HTML dump
 - Console errors and page errors
 
 Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
+
+Skipped preflight scenarios should attach the blocked-precondition reason to the skipped step and should not create screenshot or HTML artifacts.
+
+### Seed resources and preflight checks
+
+Use `support/naming.ts` for generated test resource names. New app, Agent, dataset, file, or credential seeds should start with `E2E` so local and shared environments can identify disposable resources.
+
+Use `fixtures/test-materials/` for checked-in files that scenarios upload, preview, index, or retrieve. Keep these fixtures small and deterministic, and use `support/test-materials.ts` to resolve their absolute paths.
+
+Use scoped feature support for scenarios that require optional external resources such as a model provider, plugin/tool credential, knowledge base seed, or fixed app. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
+
+Treat preflight checks as read-only readiness checks. A preflight step may query the environment, record typed state on `DifyWorld`, attach a blocked-precondition reason, or return `skipped`; it must not create, repair, publish, reconfigure, or mutate shared seed resources. Treat the preflight suite as a readiness and drift report, not as a seed manager. Long-lived resources belong to the environment seed/setup process and need an explicit owner outside individual scenarios.
+
+Keep package-level support limited to broadly reusable primitives such as API clients, naming, fixture path resolution, and cleanup helpers. Feature-specific seed contracts and preflight checks belong under the owning feature's support folder.
+
+Use generated API contracts for Console/Web/Service API request, response, and payload shapes. Import the concrete type directly from `@dify/contracts/.../types.gen` when it exists, and do not hand-write duplicate response shapes or wrap generated types in local aliases just to preserve an older helper name. Keep local E2E types only for scenario state, fixture registries, helper input options, preflight resource state, and intentionally narrowed test view models that are not complete API responses.
+
+Use typed cleanup fields on `DifyWorld` for resource types created by scenarios, and use `DifyWorld.registerCleanup(...)` when a scenario creates any resource type that is not covered by typed cleanup fields. Typed cleanup should remove child or referencing resources before their owners, such as Agent files before Agents and workflow apps before Agents they reference. Cleanup failures should be attached to the report instead of being swallowed silently. Cleanup callbacks run after typed cleanup queues, even when the scenario fails.
+
+Scenario-owned setup may create disposable apps, Agents, files, credentials, drafts, or access toggles when the scenario owns their lifecycle and cleanup. Do not use scenario setup to silently fix or complete a shared preseeded resource; if a fixed resource is missing or drifted, report it as blocked and route it to the seed owner.
+
+Feature-specific seed contracts, resource readiness rules, tags, and scenario ownership can be documented in one scoped `AGENTS.md` at the feature root when a module becomes large enough to need it. Do not add deeper `AGENTS.md` files unless the nested module becomes independently owned.
 
 ## Reusing existing steps
 

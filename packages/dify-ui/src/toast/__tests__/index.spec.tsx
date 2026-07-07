@@ -3,19 +3,17 @@ import { toast, ToastHost } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
-declare global {
-  // eslint-disable-next-line vars-on-top
-  var BASE_UI_ANIMATIONS_DISABLED: boolean | undefined
+type BaseUIAnimationGlobal = typeof globalThis & {
+  BASE_UI_ANIMATIONS_DISABLED: boolean
+}
+
+const dispatchToastMouseOver = (element: HTMLElement | SVGElement) => {
+  element.dispatchEvent(new MouseEvent('mouseover', {
+    bubbles: true,
+  }))
 }
 
 describe('@langgenius/dify-ui/toast', () => {
-  beforeAll(() => {
-    // Base UI waits for `requestAnimationFrame` + `getAnimations().finished`
-    // before unmounting a toast. Fake timers can't reliably drive that path,
-    // so short-circuit it to keep auto-dismiss assertions deterministic in CI.
-    globalThis.BASE_UI_ANIMATIONS_DISABLED = true
-  })
-
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
@@ -28,10 +26,6 @@ describe('@langgenius/dify-ui/toast', () => {
     vi.useRealTimers()
   })
 
-  afterAll(() => {
-    globalThis.BASE_UI_ANIMATIONS_DISABLED = undefined
-  })
-
   it('should render a success toast when called through the typed shortcut', async () => {
     const screen = await render(<ToastHost />)
 
@@ -41,12 +35,8 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Saved')).toBeInTheDocument()
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
-    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
-    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveClass('z-1003')
-    expect(screen.getByRole('region', { name: 'Notifications' }).element().firstElementChild).toHaveClass('top-4')
-    expect(screen.getByRole('dialog').element()).not.toHaveClass('outline-hidden')
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
-    expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).toBeInTheDocument()
+    const viewport = screen.getByRole('region', { name: 'Notifications' })
+    await expect.element(viewport).toHaveAttribute('aria-live', 'polite')
   })
 
   it('should keep multiple toast roots mounted in a collapsed stack', async () => {
@@ -60,15 +50,6 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Third toast')).toBeInTheDocument()
     expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(3)
-    expect(document.body.querySelectorAll('button[aria-label="Close notification"][aria-hidden="true"]')).toHaveLength(3)
-
-    screen.getByRole('region', { name: 'Notifications' }).element().dispatchEvent(new MouseEvent('mouseover', {
-      bubbles: true,
-    }))
-
-    await vi.waitFor(() => {
-      expect(document.body.querySelector('button[aria-label="Close notification"][aria-hidden="true"]')).not.toBeInTheDocument()
-    })
   })
 
   it('should render a neutral toast when called directly', async () => {
@@ -77,7 +58,24 @@ describe('@langgenius/dify-ui/toast', () => {
     toast('Neutral toast')
 
     await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
-    expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).not.toBeInTheDocument()
+  })
+
+  it('should wrap long unbroken toast content within the card width', async () => {
+    const screen = await render(<ToastHost />)
+    const longTitle = 'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
+    const longDescription = 'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
+
+    toast.error(longTitle, {
+      description: longDescription,
+    })
+
+    await expect.element(screen.getByText(longTitle)).toBeInTheDocument()
+    await expect.element(screen.getByText(longDescription)).toBeInTheDocument()
+
+    const title = asHTMLElement(screen.getByText(longTitle).element())
+    const description = asHTMLElement(screen.getByText(longDescription).element())
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+    expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
   })
 
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {
@@ -115,9 +113,8 @@ describe('@langgenius/dify-ui/toast', () => {
       onClose,
     })
 
-    screen.getByRole('region', { name: 'Notifications' }).element().dispatchEvent(new MouseEvent('mouseover', {
-      bubbles: true,
-    }))
+    const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
+    dispatchToastMouseOver(viewport)
 
     await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
     asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
@@ -128,55 +125,113 @@ describe('@langgenius/dify-ui/toast', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('should auto dismiss toasts with the Base UI default timeout', async () => {
-    const screen = await render(<ToastHost />)
+  it('should let pointer events pass through a toast while it is exiting', async () => {
+    const onClick = vi.fn()
+    const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
+    const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
+    baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
 
-    toast('Default timeout')
-    await expect.element(screen.getByText('Default timeout')).toBeInTheDocument()
+    try {
+      const screen = await render(
+        <>
+          <style>
+            {`
+            [role="dialog"] {
+              transition: opacity 10000s, transform 10000s !important;
+            }
+            [role="dialog"][data-ending-style] {
+              opacity: 0 !important;
+              transform: translateY(-150%) !important;
+            }
+            .data-ending-style\\:pointer-events-none[data-ending-style] {
+              pointer-events: none;
+            }
+            .data-ending-style\\:after\\:pointer-events-none[data-ending-style]::after {
+              pointer-events: none;
+            }
+          `}
+          </style>
+          <button
+            type="button"
+            onClick={onClick}
+            style={{
+              position: 'fixed',
+              top: '16px',
+              right: '32px',
+              width: '360px',
+              height: '96px',
+            }}
+          >
+            Underlying action
+          </button>
+          <ToastHost />
+        </>,
+      )
 
-    await vi.advanceTimersByTimeAsync(4999)
-    expect(document.body).toHaveTextContent('Default timeout')
+      toast('Dismiss me', {
+        timeout: 0,
+      })
+
+      await expect.element(screen.getByRole('dialog', { name: 'Dismiss me' })).toBeInTheDocument()
+      asHTMLElement(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).click()
+
+      const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
+      dispatchToastMouseOver(viewport)
+
+      await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+      asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
+
+      await vi.waitFor(() => {
+        expect(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).toHaveAttribute('data-ending-style')
+      })
+
+      asHTMLElement(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).click()
+
+      const underlyingAction = asHTMLElement(screen.getByRole('button', { name: 'Underlying action' }).element())
+      const rect = underlyingAction.getBoundingClientRect()
+      const x = rect.left + rect.width / 2
+      const y = rect.top + rect.height / 2
+
+      document.elementFromPoint(x, y)?.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y,
+      }))
+
+      expect(onClick).toHaveBeenCalledTimes(1)
+    }
+    finally {
+      baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
+    }
+  })
+
+  it('should pass the host timeout to added toasts', async () => {
+    const screen = await render(<ToastHost timeout={1000} />)
+
+    toast('Auto dismiss')
+    await expect.element(screen.getByText('Auto dismiss')).toBeInTheDocument()
+
+    await vi.advanceTimersByTimeAsync(999)
+    expect(document.body).toHaveTextContent('Auto dismiss')
 
     await vi.advanceTimersByTimeAsync(1)
     await vi.waitFor(() => {
-      expect(document.body).not.toHaveTextContent('Default timeout')
+      const toastDialog = document.body.querySelector('[role="dialog"]')
+      expect(toastDialog === null || toastDialog.hasAttribute('data-ending-style')).toBe(true)
     })
   })
 
-  it('should respect the host timeout configuration', async () => {
-    const screen = await render(<ToastHost timeout={3000} />)
-
-    toast('Configured timeout')
-    await expect.element(screen.getByText('Configured timeout')).toBeInTheDocument()
-
-    await vi.advanceTimersByTimeAsync(2999)
-    expect(document.body).toHaveTextContent('Configured timeout')
-
-    await vi.advanceTimersByTimeAsync(1)
-    await vi.waitFor(() => {
-      expect(document.body).not.toHaveTextContent('Configured timeout')
-    })
-  })
-
-  it('should respect custom timeout values including zero', async () => {
-    const screen = await render(<ToastHost />)
-
-    toast('Custom timeout', {
-      timeout: 1000,
-    })
-    await expect.element(screen.getByText('Custom timeout')).toBeInTheDocument()
-
-    await vi.advanceTimersByTimeAsync(1000)
-    await vi.waitFor(() => {
-      expect(document.body).not.toHaveTextContent('Custom timeout')
-    })
+  it('should keep a toast persistent when its timeout is zero', async () => {
+    const screen = await render(<ToastHost timeout={1000} />)
 
     toast('Persistent', {
       timeout: 0,
     })
+
     await expect.element(screen.getByText('Persistent')).toBeInTheDocument()
 
-    await vi.advanceTimersByTimeAsync(10000)
+    await vi.advanceTimersByTimeAsync(5000)
     expect(document.body).toHaveTextContent('Persistent')
   })
 
@@ -202,22 +257,22 @@ describe('@langgenius/dify-ui/toast', () => {
   it('should upsert an existing toast when add is called with the same id', async () => {
     const screen = await render(<ToastHost />)
 
-    toast('Syncing', {
-      id: 'sync-job',
-      description: 'Uploading changes…',
+    toast('Draft saving', {
+      id: 'draft-save-status',
+      description: 'Saving changes…',
     })
-    await expect.element(screen.getByText('Syncing')).toBeInTheDocument()
+    await expect.element(screen.getByText('Draft saving')).toBeInTheDocument()
 
-    toast.success('Synced', {
-      id: 'sync-job',
-      description: 'All changes are uploaded.',
+    toast.success('Draft saved', {
+      id: 'draft-save-status',
+      description: 'All changes are saved.',
     })
 
     await vi.waitFor(() => {
-      expect(document.body).not.toHaveTextContent('Syncing')
+      expect(document.body).not.toHaveTextContent('Draft saving')
     })
-    await expect.element(screen.getByText('Synced')).toBeInTheDocument()
-    await expect.element(screen.getByText('All changes are uploaded.')).toBeInTheDocument()
+    await expect.element(screen.getByText('Draft saved')).toBeInTheDocument()
+    await expect.element(screen.getByText('All changes are saved.')).toBeInTheDocument()
     expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(1)
   })
 

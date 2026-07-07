@@ -29,6 +29,8 @@ export type ToastPayload = {
   customComponent?: ReactNode
 }
 
+export const MAX_DESCRIPTION_LENGTH = 255
+
 export const typeList = [
   ChatVarTypeEnum.String,
   ChatVarTypeEnum.Number,

@@ -4,17 +4,15 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
-import {
-  RiArrowRightSLine,
-} from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
+import { hasPermission } from '@/utils/permission'
 import {
   ConfigurationMethodEnum,
 } from '../declarations'
@@ -35,7 +33,8 @@ const ModelList: FC<ModelListProps> = ({
 }) => {
   const { t } = useTranslation()
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canConfigureModels = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
   const setShowModelLoadBalancingModal = useModalContextSelector(state => state.setShowModelLoadBalancingModal)
   const onModifyLoadBalancing = useCallback((model: ModelItem, credential?: Credential) => {
@@ -53,22 +52,22 @@ const ModelList: FC<ModelListProps> = ({
   return (
     <div className="rounded-b-xl px-2 pb-2">
       <div className="rounded-lg bg-components-panel-bg py-1">
-        <div className="flex items-center pr-[3px] pl-1">
+        <div className="flex items-center pr-0.75 pl-1">
           <span className="group mr-2 flex shrink-0 items-center">
             <span className="inline-flex h-6 items-center pr-1.5 pl-1 system-xs-medium text-text-tertiary group-hover:hidden">
               {t('modelProvider.modelsNum', { ns: 'common', num: models.length })}
-              <RiArrowRightSLine className="mr-0.5 h-4 w-4 rotate-90" />
+              <span className="mr-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
             </span>
             <span
               className="hidden h-6 cursor-pointer items-center rounded-lg bg-state-base-hover pr-1.5 pl-1 system-xs-medium text-text-tertiary group-hover:inline-flex"
               onClick={() => onCollapse()}
             >
               {t('modelProvider.modelsNum', { ns: 'common', num: models.length })}
-              <RiArrowRightSLine className="mr-0.5 h-4 w-4 rotate-90" />
+              <span className="mr-0.5 i-ri-arrow-right-s-line size-4 rotate-90" />
             </span>
           </span>
           {
-            isConfigurable && isCurrentWorkspaceManager && (
+            isConfigurable && canConfigureModels && (
               <div className="flex grow justify-end">
                 <ManageCustomModelCredentials
                   provider={provider}

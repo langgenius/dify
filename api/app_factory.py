@@ -1,7 +1,7 @@
 import logging
 import time
 
-import socketio  # type: ignore[reportMissingTypeStubs]
+import socketio
 from flask import request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
@@ -117,7 +117,7 @@ def create_flask_app_with_configs() -> DifyApp:
             logger.warning("Failed to add trace headers to response", exc_info=True)
         return response
 
-    # Capture the decorator's return value to avoid pyright reportUnusedFunction
+    # Capture the decorator return values so static checkers do not treat the hooks as unused.
     _ = before_request
     _ = add_trace_headers
 
@@ -159,6 +159,7 @@ def initialize_extensions(app: DifyApp):
         ext_logstore,
         ext_mail,
         ext_migrate,
+        ext_oauth_bearer,
         ext_orjson,
         ext_otel,
         ext_proxy_fix,
@@ -181,7 +182,6 @@ def initialize_extensions(app: DifyApp):
         ext_import_modules,
         ext_orjson,
         ext_forward_refs,
-        ext_set_secretkey,
         ext_compress,
         ext_code_based_extension,
         ext_database,
@@ -189,6 +189,7 @@ def initialize_extensions(app: DifyApp):
         ext_migrate,
         ext_redis,
         ext_storage,
+        ext_set_secretkey,
         ext_logstore,  # Initialize logstore after storage, before celery
         ext_celery,
         ext_login,
@@ -203,6 +204,7 @@ def initialize_extensions(app: DifyApp):
         ext_enterprise_telemetry,
         ext_request_logging,
         ext_session_factory,
+        ext_oauth_bearer,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]
@@ -221,10 +223,11 @@ def initialize_extensions(app: DifyApp):
 
 def create_migrations_app() -> DifyApp:
     app = create_flask_app_with_configs()
-    from extensions import ext_database, ext_migrate
+    from extensions import ext_commands, ext_database, ext_migrate
 
     # Initialize only required extensions
     ext_database.init_app(app)
     ext_migrate.init_app(app)
+    ext_commands.init_app(app)
 
     return app

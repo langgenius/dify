@@ -41,7 +41,7 @@ describe('parameter-extractor/extract-parameter/update', () => {
 
     const existingDialogs = screen.queryAllByRole('dialog').length
 
-    fireEvent.click(screen.getByTestId('add-button'))
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }))
     const dialogs = await waitFor(() => {
       const nextDialogs = screen.getAllByRole('dialog')
       expect(nextDialogs.length).toBeGreaterThan(existingDialogs)
@@ -88,7 +88,7 @@ describe('parameter-extractor/extract-parameter/update', () => {
 
     const existingDialogs = screen.queryAllByRole('dialog').length
 
-    await user.click(screen.getByTestId('add-button'))
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }))
     const dialogs = await waitFor(() => {
       const nextDialogs = screen.getAllByRole('dialog')
       expect(nextDialogs.length).toBeGreaterThan(existingDialogs)

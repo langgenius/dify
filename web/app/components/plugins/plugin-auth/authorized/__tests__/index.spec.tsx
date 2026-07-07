@@ -75,6 +75,17 @@ vi.mock('@/hooks/use-oauth', () => ({
 
 vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
+const mockAppContext = vi.hoisted(() => ({
+  userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
+  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
+}))
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: {
+    userProfile: typeof mockAppContext.userProfile
+    workspacePermissionKeys: string[]
+  }) => unknown) => selector(mockAppContext),
+}))
+
 // Mock service/use-triggers
 vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => ({
@@ -130,6 +141,7 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
 describe('Authorized Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContext.workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     mockDeletePluginCredential.mockResolvedValue({})
     mockSetPluginDefaultCredential.mockResolvedValue({})
     mockUpdatePluginCredential.mockResolvedValue({})
@@ -238,9 +250,7 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      // The indicator should be rendered
-      // The indicator should be rendered
-      expect(container.querySelector('[data-testid="status-indicator"]'))!.toBeInTheDocument()
+      expect(container.querySelector('.shadow-status-indicator-gray-shadow'))!.toBeInTheDocument()
     })
   })
 
@@ -1427,7 +1437,7 @@ describe('Authorized Component', () => {
       expect(document.querySelector('.custom-popup-class'))!.toBeInTheDocument()
     })
 
-    it('should pass placement to PortalToFollowElem', () => {
+    it('should pass placement to Popover', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 
@@ -1447,32 +1457,42 @@ describe('Authorized Component', () => {
       expect(screen.getByText('API Keys'))!.toBeInTheDocument()
     })
 
-    it('should pass disabled to Item components', () => {
+    it('should allow credential.use to set default when credential.manage is missing', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ is_default: false })]
+      mockAppContext.workspacePermissionKeys = ['credential.use']
 
       render(
         <Authorized
           pluginPayload={pluginPayload}
           credentials={credentials}
           isOpen={true}
-          disabled={true}
         />,
         { wrapper: createWrapper() },
       )
 
-      // When disabled is true, action buttons should be disabled
-      // Look for the set default button which should have disabled attribute
       const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
-      if (setDefaultButton) {
-        const button = setDefaultButton.closest('button')
-        expect(button)!.toBeDisabled()
-      }
-      else {
-        // If no set default button, verify the component rendered
-        // If no set default button, verify the component rendered
-        expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-      }
+      expect(setDefaultButton)!.toBeInTheDocument()
+      expect(setDefaultButton!.closest('button'))!.toBeEnabled()
+    })
+
+    it('should disable set default when credential.use and credential.manage are missing', () => {
+      const pluginPayload = createPluginPayload()
+      const credentials = [createCredential({ is_default: false })]
+      mockAppContext.workspacePermissionKeys = []
+
+      render(
+        <Authorized
+          pluginPayload={pluginPayload}
+          credentials={credentials}
+          isOpen={true}
+        />,
+        { wrapper: createWrapper() },
+      )
+
+      const setDefaultButton = screen.queryByText('plugin.auth.setDefault')
+      expect(setDefaultButton)!.toBeInTheDocument()
+      expect(setDefaultButton!.closest('button'))!.toBeDisabled()
     })
 
     it('should pass disableSetDefault to Item components', () => {

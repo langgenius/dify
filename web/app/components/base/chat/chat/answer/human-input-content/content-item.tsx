@@ -2,7 +2,7 @@ import type { ContentItemProps } from './type'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { Markdown } from '@/app/components/base/markdown'
-import Textarea from '@/app/components/base/textarea'
+import HumanInputFieldRenderer from './field-renderer'
 
 const ContentItem = ({
   content,
@@ -40,14 +40,11 @@ const ContentItem = ({
 
   return (
     <div className="py-3">
-      {formInputField.type === 'paragraph' && (
-        <Textarea
-          className="h-[104px] sm:text-xs"
-          value={inputs[fieldName]!}
-          onChange={(e) => { onInputChange(fieldName, e.target.value) }}
-          data-testid="content-item-textarea"
-        />
-      )}
+      <HumanInputFieldRenderer
+        field={formInputField}
+        value={inputs[fieldName]}
+        onChange={value => onInputChange(fieldName, value)}
+      />
     </div>
   )
 }

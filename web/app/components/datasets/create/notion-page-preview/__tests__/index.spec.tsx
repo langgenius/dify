@@ -118,9 +118,9 @@ describe('NotionPagePreview', () => {
     })
 
     it('should render close button with XMarkIcon', async () => {
-      const { container } = await renderNotionPagePreview()
+      await renderNotionPagePreview()
 
-      const closeButton = container.querySelector('.cursor-pointer')
+      const closeButton = screen.getByRole('button', { name: /operation\.close$/ })
       expect(closeButton).toBeInTheDocument()
       const xMarkIcon = closeButton?.querySelector('svg')
       expect(xMarkIcon).toBeInTheDocument()
@@ -348,19 +348,18 @@ describe('NotionPagePreview', () => {
   describe('User Interactions', () => {
     it('should call hidePreview when close button is clicked', async () => {
       const hidePreview = vi.fn()
-      const { container } = await renderNotionPagePreview({ hidePreview })
+      await renderNotionPagePreview({ hidePreview })
 
-      const closeButton = container.querySelector('.cursor-pointer') as HTMLElement
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: /operation\.close$/ }))
 
       expect(hidePreview).toHaveBeenCalledTimes(1)
     })
 
     it('should handle multiple clicks on close button', async () => {
       const hidePreview = vi.fn()
-      const { container } = await renderNotionPagePreview({ hidePreview })
+      await renderNotionPagePreview({ hidePreview })
 
-      const closeButton = container.querySelector('.cursor-pointer') as HTMLElement
+      const closeButton = screen.getByRole('button', { name: /operation\.close$/ })
       fireEvent.click(closeButton)
       fireEvent.click(closeButton)
       fireEvent.click(closeButton)

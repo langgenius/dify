@@ -1,6 +1,5 @@
 import type { Node } from './types'
 import {
-  ContextMenu,
   ContextMenuContent,
   ContextMenuGroup,
   ContextMenuItem,
@@ -9,19 +8,19 @@ import {
 } from '@langgenius/dify-ui/context-menu'
 import { produce } from 'immer'
 import {
-  memo,
   useCallback,
-  useEffect,
-  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
+import { useCreateSnippetFromSelection } from '@/app/components/snippets/hooks/use-create-snippet-from-selection'
+import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/permission'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
-import { useSelectionInteractions } from './hooks/use-selection-interactions'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
-import ShortcutsName from './shortcuts-name'
+import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
+import { BlockEnum } from './types'
 
 const AlignType = {
   Bottom: 'bottom',
@@ -75,6 +74,14 @@ const menuSections: MenuSection[] = [
     ],
   },
 ]
+
+const unsupportedSnippetNodeTypes = new Set([
+  BlockEnum.Answer,
+  BlockEnum.End,
+  BlockEnum.Start,
+  BlockEnum.HumanInput,
+  BlockEnum.KnowledgeRetrieval,
+])
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
   const selectedNodeIds = new Set(selectedNodes.map(node => node.id))
@@ -221,12 +228,16 @@ const distributeNodes = (
   })
 }
 
-const SelectionContextmenu = () => {
+export function SelectionContextmenu({
+  onClose,
+}: {
+  onClose: () => void
+}) {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { handleSelectionContextmenuCancel } = useSelectionInteractions()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
-  const selectionMenu = useStore(s => s.selectionMenu)
+  const isSelectionContextMenu = useStore(s => s.contextMenuTarget?.type === 'selection')
 
   // Access React Flow methods
   const workflowStore = useWorkflowStore()
@@ -236,46 +247,39 @@ const SelectionContextmenu = () => {
   const selectedNodes = useReactFlowStore(state =>
     state.getNodes().filter(node => node.selected),
   )
+  const edges = useReactFlowStore(state => state.edges)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
-
-  const anchor = useMemo(() => {
-    if (!selectionMenu)
-      return undefined
-
-    return {
-      getBoundingClientRect: () => DOMRect.fromRect({
-        width: 0,
-        height: 0,
-        x: selectionMenu.clientX,
-        y: selectionMenu.clientY,
-      }),
-    }
-  }, [selectionMenu])
-
-  useEffect(() => {
-    if (selectionMenu && selectedNodes.length <= 1)
-      handleSelectionContextmenuCancel()
-  }, [selectionMenu, selectedNodes.length, handleSelectionContextmenuCancel])
+  const {
+    createSnippetDialog,
+    handleOpenCreateSnippet,
+    isCreateSnippetDialogOpen,
+  } = useCreateSnippetFromSelection({
+    edges,
+    selectedNodes,
+    onClose,
+  })
+  const canCreateSnippet = canCreateAndModifySnippets(workspacePermissionKeys)
+    && selectedNodes.every(node => !unsupportedSnippetNodeTypes.has(node.data.type))
 
   const handleCopyNodes = useCallback(() => {
     handleNodesCopy()
-    handleSelectionContextmenuCancel()
-  }, [handleNodesCopy, handleSelectionContextmenuCancel])
+    onClose()
+  }, [handleNodesCopy, onClose])
 
   const handleDuplicateNodes = useCallback(() => {
     handleNodesDuplicate()
-    handleSelectionContextmenuCancel()
-  }, [handleNodesDuplicate, handleSelectionContextmenuCancel])
+    onClose()
+  }, [handleNodesDuplicate, onClose])
 
   const handleDeleteNodes = useCallback(() => {
     handleNodesDelete()
-    handleSelectionContextmenuCancel()
-  }, [handleNodesDelete, handleSelectionContextmenuCancel])
+    onClose()
+  }, [handleNodesDelete, onClose])
 
   const handleAlignNodes = useCallback((alignType: AlignTypeValue) => {
     if (getNodesReadOnly() || selectedNodes.length <= 1) {
-      handleSelectionContextmenuCancel()
+      onClose()
       return
     }
 
@@ -311,13 +315,13 @@ const SelectionContextmenu = () => {
     const nodesToAlign = getAlignableNodes(nodes, selectedNodes)
 
     if (nodesToAlign.length <= 1) {
-      handleSelectionContextmenuCancel()
+      onClose()
       return
     }
 
     const bounds = getAlignBounds(nodesToAlign)
     if (!bounds) {
-      handleSelectionContextmenuCancel()
+      onClose()
       return
     }
 
@@ -325,7 +329,7 @@ const SelectionContextmenu = () => {
       const distributedNodes = distributeNodes(nodesToAlign, nodes, alignType)
       if (distributedNodes) {
         setNodes(distributedNodes)
-        handleSelectionContextmenuCancel()
+        onClose()
 
         const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
         setHelpLineHorizontal()
@@ -353,7 +357,7 @@ const SelectionContextmenu = () => {
       setNodes(newNodes)
 
       // Close popup
-      handleSelectionContextmenuCancel()
+      onClose()
       const { setHelpLineHorizontal, setHelpLineVertical } = workflowStore.getState()
       setHelpLineHorizontal()
       setHelpLineVertical()
@@ -363,50 +367,51 @@ const SelectionContextmenu = () => {
     catch (err) {
       console.error('Failed to update nodes:', err)
     }
-  }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel])
+  }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, onClose])
 
-  if (!selectionMenu)
-    return null
+  if (!isSelectionContextMenu || selectedNodes.length <= 1)
+    return isCreateSnippetDialogOpen ? createSnippetDialog : null
 
   return (
-    <ContextMenu
-      open
-      onOpenChange={(open) => {
-        if (!open)
-          handleSelectionContextmenuCancel()
-      }}
-    >
-      <ContextMenuContent
-        popupClassName="w-[240px]"
-        positionerProps={anchor ? { anchor } : undefined}
-      >
+    <>
+      <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
+        {canCreateSnippet && (
+          <>
+            <ContextMenuGroup>
+              <ContextMenuItem
+                className="px-3 text-text-secondary"
+                onClick={handleOpenCreateSnippet}
+              >
+                <span>{t('snippet.createDialogTitle', { defaultValue: 'Create Snippet', ns: 'workflow' })}</span>
+              </ContextMenuItem>
+            </ContextMenuGroup>
+            <ContextMenuSeparator />
+          </>
+        )}
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-copy"
             onClick={handleCopyNodes}
           >
             <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'c']} />
+            <ShortcutKbd shortcut="workflow.copy" />
           </ContextMenuItem>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
-            data-testid="selection-contextmenu-item-duplicate"
             onClick={handleDuplicateNodes}
           >
             <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
-            <ShortcutsName keys={['ctrl', 'd']} />
+            <ShortcutKbd shortcut="workflow.duplicate" />
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
-            data-testid="selection-contextmenu-item-delete"
             onClick={handleDeleteNodes}
           >
             <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
-            <ShortcutsName keys={['del']} />
+            <ShortcutKbd shortcut="workflow.delete" />
           </ContextMenuItem>
         </ContextMenuGroup>
         <ContextMenuSeparator />
@@ -431,8 +436,7 @@ const SelectionContextmenu = () => {
           </ContextMenuGroup>
         ))}
       </ContextMenuContent>
-    </ContextMenu>
+      {createSnippetDialog}
+    </>
   )
 }
-
-export default memo(SelectionContextmenu)

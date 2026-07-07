@@ -131,6 +131,7 @@ describe('Header Account Dropdown Flow', () => {
       payload: ACCOUNT_SETTING_TAB.MEMBERS,
     })
 
+    fireEvent.click(screen.getByRole('button', { name: 'common.account.account' }))
     fireEvent.click(screen.getByText('common.userProfile.about'))
 
     await waitFor(() => {
@@ -140,7 +141,6 @@ describe('Header Account Dropdown Flow', () => {
   })
 
   it('logs out, resets cached user markers, and redirects to signin', async () => {
-    localStorage.setItem('setup_status', 'done')
     localStorage.setItem('education-reverify-prev-expire-at', '1')
     localStorage.setItem('education-reverify-has-noticed', '1')
     localStorage.setItem('education-expired-has-noticed', '1')
@@ -156,7 +156,6 @@ describe('Header Account Dropdown Flow', () => {
       expect(mockPush).toHaveBeenCalledWith('/signin')
     })
 
-    expect(localStorage.getItem('setup_status')).toBeNull()
     expect(localStorage.getItem('education-reverify-prev-expire-at')).toBeNull()
     expect(localStorage.getItem('education-reverify-has-noticed')).toBeNull()
     expect(localStorage.getItem('education-expired-has-noticed')).toBeNull()

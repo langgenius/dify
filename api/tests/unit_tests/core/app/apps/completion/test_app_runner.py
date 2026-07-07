@@ -1,7 +1,9 @@
+from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
+from pytest_mock import MockerFixture
 
 import core.app.apps.completion.app_runner as module
 from core.app.apps.completion.app_runner import CompletionAppRunner
@@ -46,24 +48,27 @@ def _build_generate_entity(app_config, file_upload_config=None):
     )
 
 
-class TestCompletionAppRunner:
-    def test_run_app_not_found(self, runner, mocker):
-        session = mocker.MagicMock()
-        session.scalar.return_value = None
-        mocker.patch.object(module.db, "session", session)
+@contextmanager
+def patched_create_session(*, return_value=None):
+    session = MagicMock()
+    session.scalar.return_value = return_value
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    with patch.object(module, "create_session", return_value=session_context):
+        yield session
 
+
+class TestCompletionAppRunner:
+    def test_run_app_not_found(self, runner, mocker: MockerFixture):
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
 
-        with pytest.raises(ValueError):
-            runner.run(app_generate_entity, MagicMock(), MagicMock())
+        with patched_create_session(return_value=None):
+            with pytest.raises(ValueError):
+                runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock())
 
-    def test_run_moderation_error_outputs_direct(self, runner, mocker):
+    def test_run_moderation_error_outputs_direct(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
-
-        session = mocker.MagicMock()
-        session.scalar.return_value = app_record
-        mocker.patch.object(module.db, "session", session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
@@ -73,17 +78,14 @@ class TestCompletionAppRunner:
         runner.direct_output = MagicMock()
         runner._handle_invoke_result = MagicMock()
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"))
+        with patched_create_session(return_value=app_record):
+            runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock(id="msg"))
 
         runner.direct_output.assert_called_once()
         runner._handle_invoke_result.assert_not_called()
 
-    def test_run_hosting_moderation_stops(self, runner, mocker):
+    def test_run_hosting_moderation_stops(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
-
-        session = mocker.MagicMock()
-        session.scalar.return_value = app_record
-        mocker.patch.object(module.db, "session", session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
@@ -93,17 +95,13 @@ class TestCompletionAppRunner:
         runner.check_hosting_moderation = MagicMock(return_value=True)
         runner._handle_invoke_result = MagicMock()
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"))
+        with patched_create_session(return_value=app_record):
+            runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock(id="msg"))
 
         runner._handle_invoke_result.assert_not_called()
 
-    def test_run_dataset_and_external_tools_flow(self, runner, mocker):
+    def test_run_dataset_and_external_tools_flow(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
-
-        session = mocker.MagicMock()
-        session.scalar.return_value = app_record
-        session.close = MagicMock()
-        mocker.patch.object(module.db, "session", session)
 
         retrieve_config = MagicMock(query_variable="qvar")
         dataset_config = MagicMock(dataset_ids=["ds"], retrieve_config=retrieve_config)
@@ -134,18 +132,55 @@ class TestCompletionAppRunner:
         model_instance.invoke_llm.return_value = "invoke_result"
         mocker.patch.object(module, "ModelInstance", return_value=model_instance)
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg", tenant_id="tenant"))
+        with patched_create_session(return_value=app_record):
+            runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock(id="msg", tenant_id="tenant"))
 
         dataset_retrieval.retrieve.assert_called_once()
         assert dataset_retrieval.retrieve.call_args.kwargs["query"] == "query_from_input"
         runner._handle_invoke_result.assert_called_once()
 
-    def test_run_uses_low_image_detail_default(self, runner, mocker):
+    def test_run_closes_scoped_session_before_stream_consumption(self, runner, mocker: MockerFixture):
         app_record = MagicMock(id="app1", tenant_id="tenant")
+        app_config = _build_app_config()
+        app_generate_entity = _build_generate_entity(app_config)
+        queue_manager = MagicMock()
 
-        session = mocker.MagicMock()
-        session.scalar.return_value = app_record
-        mocker.patch.object(module.db, "session", session)
+        events = []
+        runner.organize_prompt_messages = MagicMock(return_value=([], None))
+        runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
+        runner.check_hosting_moderation = MagicMock(return_value=False)
+        runner.recalc_llm_max_tokens = MagicMock()
+        runner._handle_invoke_result = MagicMock(side_effect=lambda invoke_result, **kwargs: list(invoke_result))
+
+        model_instance = MagicMock()
+
+        def invoke_stream():
+            events.append("first-chunk")
+            yield "chunk"
+
+        def invoke_llm(**kwargs):
+            events.append("invoke")
+            return invoke_stream()
+
+        model_instance.invoke_llm.side_effect = invoke_llm
+        mocker.patch.object(module, "ModelInstance", return_value=model_instance)
+        mocker.patch.object(module.db.session, "close", side_effect=lambda: events.append("close"))
+
+        with patched_create_session(return_value=app_record):
+            runner.run(MagicMock(), app_generate_entity, queue_manager, MagicMock(id="msg"))
+
+        assert events == ["close", "invoke", "first-chunk"]
+        runner._handle_invoke_result.assert_called_once_with(
+            invoke_result=ANY,
+            queue_manager=queue_manager,
+            stream=True,
+            message_id="msg",
+            user_id="user",
+            tenant_id="tenant",
+        )
+
+    def test_run_uses_low_image_detail_default(self, runner, mocker: MockerFixture):
+        app_record = MagicMock(id="app1", tenant_id="tenant")
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config, file_upload_config=None)
@@ -154,7 +189,8 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
         runner.check_hosting_moderation = MagicMock(return_value=True)
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"))
+        with patched_create_session(return_value=app_record):
+            runner.run(MagicMock(), app_generate_entity, MagicMock(), MagicMock(id="msg"))
 
         assert (
             runner.organize_prompt_messages.call_args.kwargs["image_detail_config"]

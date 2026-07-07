@@ -6,8 +6,8 @@ import { SliceContent } from '../../formatted-text/flavours/shared'
 import Score from './score'
 
 type Props = {
-  payload: HitTestingChildChunk
-  isShowAll: boolean
+  readonly payload: HitTestingChildChunk
+  readonly isShowAll: boolean
 }
 
 const ChildChunks: FC<Props> = ({

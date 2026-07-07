@@ -1,29 +1,42 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { formLabelClassName } from '../form-control-shared'
 import {
   overlayLabelClassName,
+  overlayPopupAnimationClassName,
   overlaySeparatorClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export const Select = BaseSelect.Root
+export type SelectRootProps<
+  Value,
+  Multiple extends boolean | undefined = false,
+> = BaseSelect.Root.Props<Value, Multiple>
+
+export function Select<Value, Multiple extends boolean | undefined = false>(
+  props: SelectRootProps<Value, Multiple>,
+): React.JSX.Element {
+  return <BaseSelect.Root {...props} />
+}
+
 export const SelectValue = BaseSelect.Value
 export const SelectGroup = BaseSelect.Group
 
 const selectTriggerVariants = cva(
   [
-    'group flex w-full items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt',
+    'group flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
+    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
+    'focus-visible:inset-ring-1 focus-visible:inset-ring-components-input-border-active',
     'data-placeholder:text-components-input-text-placeholder',
-    'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
+    'data-readonly:cursor-default data-readonly:bg-components-input-bg-normal data-readonly:hover:bg-components-input-bg-normal',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
     'data-disabled:data-placeholder:text-components-input-text-disabled',
   ],
@@ -60,7 +73,7 @@ export function SelectTrigger({
       <span className="min-w-0 grow truncate">
         {children}
       </span>
-      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-open:text-text-secondary">
+      <BaseSelect.Icon className="shrink-0 text-text-quaternary transition-colors group-hover:text-text-secondary group-data-readonly:hidden data-popup-open:text-text-secondary">
         <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />
       </BaseSelect.Icon>
     </BaseSelect.Trigger>
@@ -68,6 +81,18 @@ export function SelectTrigger({
 }
 
 export function SelectLabel({
+  className,
+  ...props
+}: BaseSelect.Label.Props) {
+  return (
+    <BaseSelect.Label
+      className={cn(formLabelClassName, className)}
+      {...props}
+    />
+  )
+}
+
+export function SelectGroupLabel({
   className,
   ...props
 }: BaseSelect.GroupLabel.Props) {
@@ -92,7 +117,7 @@ export function SelectSeparator({
 }
 
 type SelectContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -135,13 +160,13 @@ export function SelectContent({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         alignItemWithTrigger={false}
-        className={cn('z-1002 outline-hidden', className)}
+        className={cn('z-50 outline-hidden', className)}
         {...positionerProps}
       >
         <BaseSelect.Popup
           className={cn(
             'min-w-(--anchor-width) rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
-            'origin-(--transform-origin) transition-[transform,scale,opacity] data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 motion-reduce:transition-none',
+            overlayPopupAnimationClassName,
             popupClassName,
           )}
           {...popupProps}
@@ -180,7 +205,7 @@ export function SelectItemText({
 }: BaseSelect.ItemText.Props) {
   return (
     <BaseSelect.ItemText
-      className={cn('mr-1 min-w-0 grow truncate px-1', className)}
+      className={cn('me-1 min-w-0 grow truncate px-1', className)}
       {...props}
     />
   )
@@ -192,7 +217,7 @@ export function SelectItemIndicator({
 }: Omit<BaseSelect.ItemIndicator.Props, 'children'>) {
   return (
     <BaseSelect.ItemIndicator
-      className={cn('ml-auto flex shrink-0 items-center text-text-accent', className)}
+      className={cn('ms-auto flex shrink-0 items-center text-text-accent', className)}
       {...props}
     >
       <span className="i-ri-check-line h-4 w-4" aria-hidden />

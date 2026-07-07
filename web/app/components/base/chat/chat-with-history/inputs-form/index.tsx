@@ -7,10 +7,10 @@ import Divider from '@/app/components/base/divider'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import { useChatWithHistoryContext } from '../context'
 
-type Props = {
+type Props = Readonly<{
   collapsed: boolean
   setCollapsed: (collapsed: boolean) => void
-}
+}>
 
 const InputsFormNode = ({
   collapsed,
@@ -42,7 +42,7 @@ const InputsFormNode = ({
           isMobile && 'px-4 py-3',
         )}
         >
-          <Message3Fill className="h-6 w-6 shrink-0" />
+          <Message3Fill className="size-6 shrink-0" />
           <div className="grow system-xl-semibold text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           {collapsed && (
             <Button className="text-text-tertiary uppercase" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>

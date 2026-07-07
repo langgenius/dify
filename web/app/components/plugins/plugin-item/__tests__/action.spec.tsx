@@ -1,6 +1,7 @@
 import type { MetaData, PluginCategoryEnum } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { expectLoadingButton } from '@/test/button'
 
 // ==================== Imports (after mocks) ====================
 
@@ -82,15 +83,7 @@ vi.mock('../../plugin-page/plugin-info', () => ({
   ),
 }))
 
-// Mock Tooltip - uses PortalToFollowElem which requires complex floating UI setup
-// Simplified mock that just renders children with tooltip content accessible
-vi.mock('../../../base/tooltip', () => ({
-  default: ({ children, popupContent }: { children: React.ReactNode, popupContent: string }) => (
-    <div data-testid="tooltip" data-popup-content={popupContent}>
-      {children}
-    </div>
-  ),
-}))
+vi.mock('@langgenius/dify-ui/tooltip', () => import('@/__mocks__/base-ui-tooltip'))
 
 // ==================== Test Utilities ====================
 
@@ -236,8 +229,17 @@ describe('Action Component', () => {
       render(<Action {...props} />)
 
       // Assert
-      const tooltips = screen.getAllByTestId('tooltip')
-      expect(tooltips).toHaveLength(3)
+      const buttons = getActionButtons()
+      fireEvent.mouseEnter(buttons[0]!)
+      expect(screen.getByText('plugin.action.checkForUpdates'))!.toBeInTheDocument()
+      fireEvent.mouseLeave(buttons[0]!)
+
+      fireEvent.mouseEnter(buttons[1]!)
+      expect(screen.getByText('plugin.action.pluginInfo'))!.toBeInTheDocument()
+      fireEvent.mouseLeave(buttons[1]!)
+
+      fireEvent.mouseEnter(buttons[2]!)
+      expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
     })
   })
 
@@ -256,8 +258,7 @@ describe('Action Component', () => {
       fireEvent.click(getActionButtons()[0]!)
 
       // Assert
-      // Assert
-      expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'plugin.action.delete' }))!.toBeInTheDocument()
     })
 
     it('should display plugin name in delete confirm content', () => {
@@ -289,13 +290,13 @@ describe('Action Component', () => {
       // Act
       render(<Action {...props} />)
       fireEvent.click(getActionButtons()[0]!)
-      expect(screen.getByText('plugin.action.delete'))!.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'plugin.action.delete' }))!.toBeInTheDocument()
 
       fireEvent.click(getDeleteCancelButton())
 
       // Assert
       return waitFor(() => {
-        expect(screen.queryByText('plugin.action.delete')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       })
     })
 
@@ -338,6 +339,26 @@ describe('Action Component', () => {
       // Assert
       await waitFor(() => {
         expect(onDelete).toHaveBeenCalled()
+      })
+    })
+
+    it('should invalidate installed plugin list after successful uninstall', async () => {
+      // Arrange
+      mockUninstallPlugin.mockResolvedValue({ success: true })
+      const props = createActionProps({
+        isShowDelete: true,
+        isShowInfo: false,
+        isShowFetchNewVersion: false,
+      })
+
+      // Act
+      render(<Action {...props} />)
+      fireEvent.click(getActionButtons()[0]!)
+      fireEvent.click(getDeleteConfirmButton())
+
+      // Assert
+      await waitFor(() => {
+        expect(mockInvalidateInstalledPluginList).toHaveBeenCalled()
       })
     })
 
@@ -408,13 +429,13 @@ describe('Action Component', () => {
 
       // Assert - Loading state
       await waitFor(() => {
-        expect(getDeleteConfirmButton())!.toBeDisabled()
+        expectLoadingButton(getDeleteConfirmButton())
       })
 
       // Resolve and check modal closes
       resolveUninstall!({ success: true })
       await waitFor(() => {
-        expect(screen.queryByText('plugin.action.delete')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       })
     })
   })
@@ -865,13 +886,13 @@ describe('Action Component', () => {
 
       // The confirm button should be disabled during deletion
       // The confirm button should be disabled during deletion
-      expect(getDeleteConfirmButton())!.toBeDisabled()
+      expectLoadingButton(getDeleteConfirmButton())
 
       // Resolve the deletion
       resolveFirst!({ success: true })
 
       await waitFor(() => {
-        expect(screen.queryByText('plugin.action.delete')).not.toBeInTheDocument()
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
       })
     })
 

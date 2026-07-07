@@ -11,22 +11,22 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppIcon from '@/app/components/base/app-icon'
-import Checkbox from '@/app/components/base/checkbox'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { deleteApp, switchApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
@@ -45,8 +45,9 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { push, replace } = useRouter()
   const { t } = useTranslation()
   const setAppDetail = useAppStore(s => s.setAppDetail)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
-  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -61,9 +62,11 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
+  const setNeedRefresh = useSetNeedRefreshAppList()
+
   const goStart = async () => {
     try {
-      const { new_app_id: newAppID } = await switchApp({
+      const { new_app_id: newAppID, permission_keys } = await switchApp({
         appID: appDetail.id,
         name,
         icon_type: appIcon.type,
@@ -79,14 +82,15 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         setAppDetail()
       if (removeOriginal)
         await deleteApp(appDetail.id)
-      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      setNeedRefresh('1')
       getRedirection(
-        isCurrentWorkspaceEditor,
         {
           id: newAppID,
           mode: appDetail.mode === AppModeEnum.COMPLETION ? AppModeEnum.WORKFLOW : AppModeEnum.ADVANCED_CHAT,
+          permission_keys,
         },
         removeOriginal ? replace : push,
+        { isRbacEnabled },
       )
     }
     catch {
@@ -109,69 +113,75 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
 
   return (
     <>
-      <Modal
-        className={cn('w-[600px] max-w-[600px] p-8')}
-        isShow={show}
-        onClose={noop}
-      >
-        <div className="absolute top-4 right-4 cursor-pointer p-2" onClick={onClose}>
-          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-        </div>
-        <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
-          <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
-        </div>
-        <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t('switch', { ns: 'app' })}</div>
-        <div className="my-1 text-sm leading-5 text-text-tertiary">
-          <span>{t('switchTipStart', { ns: 'app' })}</span>
-          <span className="font-medium text-text-secondary">{t('switchTip', { ns: 'app' })}</span>
-          <span>{t('switchTipEnd', { ns: 'app' })}</span>
-        </div>
-        <div className="pb-4">
-          <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('switchLabel', { ns: 'app' })}</div>
-          <div className="flex items-center justify-between space-x-2">
-            <AppIcon
-              size="large"
-              onClick={() => { setShowAppIconPicker(true) }}
-              className="cursor-pointer"
-              iconType={appIcon.type}
-              icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-              background={appIcon.type === 'image' ? undefined : appIcon.background}
-              imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-            />
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
-              className="h-10 grow"
-            />
+      <Dialog open={show}>
+        <DialogContent className={cn('w-full overflow-hidden! border-none text-left align-middle', cn('w-[600px] max-w-[600px] p-8'))}>
+
+          <button
+            type="button"
+            className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            aria-label={t('operation.close', { ns: 'common' })}
+            onClick={onClose}
+          >
+            <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+          </button>
+          <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
+            <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
           </div>
-          {showAppIconPicker && (
-            <AppIconPicker
-              onSelect={(payload) => {
-                setAppIcon(payload)
-                setShowAppIconPicker(false)
-              }}
-              onClose={() => {
-                setAppIcon(appDetail.icon_type === 'image'
-                  ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon }
-                  : { type: 'emoji' as const, icon: appDetail.icon, background: appDetail.icon_background })
-                setShowAppIconPicker(false)
-              }}
-            />
-          )}
-        </div>
-        {isAppsFull && <AppsFull loc="app-switch" />}
-        <div className="flex items-center justify-between pt-6">
-          <div className="flex items-center">
-            <Checkbox className="shrink-0" checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
-            <div className="ml-2 cursor-pointer text-sm leading-5 text-text-secondary" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('removeOriginal', { ns: 'app' })}</div>
+          <div className="relative mt-3 text-xl leading-[30px] font-semibold text-text-primary">{t('switch', { ns: 'app' })}</div>
+          <div className="my-1 text-sm/5 text-text-tertiary">
+            <span>{t('switchTipStart', { ns: 'app' })}</span>
+            <span className="font-medium text-text-secondary">{t('switchTip', { ns: 'app' })}</span>
+            <span>{t('switchTipEnd', { ns: 'app' })}</span>
           </div>
-          <div className="flex items-center">
-            <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
-            <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" tone="destructive" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
+          <div className="pb-4">
+            <div className="py-2 text-sm leading-[20px] font-medium text-text-primary">{t('switchLabel', { ns: 'app' })}</div>
+            <div className="flex items-center justify-between space-x-2">
+              <AppIcon
+                size="large"
+                onClick={() => { setShowAppIconPicker(true) }}
+                className="cursor-pointer"
+                iconType={appIcon.type}
+                icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+                background={appIcon.type === 'image' ? undefined : appIcon.background}
+                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+              />
+              <Input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+                className="h-10 grow"
+              />
+            </div>
+            {showAppIconPicker && (
+              <AppIconPicker
+                open={showAppIconPicker}
+                initialEmoji={appIcon.type === 'emoji'
+                  ? { icon: appIcon.icon, background: appIcon.background }
+                  : undefined}
+                onOpenChange={setShowAppIconPicker}
+                onSelect={(payload) => {
+                  setAppIcon(payload)
+                }}
+              />
+            )}
           </div>
-        </div>
-      </Modal>
+          {isAppsFull && <AppsFull loc="app-switch" />}
+          <div className="flex items-center justify-between pt-6">
+            <div className="flex items-center">
+              <label className="flex cursor-pointer items-center">
+                <Checkbox className="shrink-0" checked={removeOriginal} onCheckedChange={setRemoveOriginal} />
+                <span className="ml-2 text-left text-sm/5 text-text-secondary">
+                  {t('removeOriginal', { ns: 'app' })}
+                </span>
+              </label>
+            </div>
+            <div className="flex items-center">
+              <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+              <Button className="border-red-700" disabled={isAppsFull || !name} variant="primary" tone="destructive" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <AlertDialog
         open={showConfirmDelete}
         onOpenChange={handleConfirmDeleteOpenChange}

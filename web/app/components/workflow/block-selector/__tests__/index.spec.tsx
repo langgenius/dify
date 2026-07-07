@@ -53,6 +53,10 @@ const dataSource: ToolWithProvider = {
 }
 
 describe('NodeSelectorWrapper', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('filters hidden block types from hooks store and forwards data sources', async () => {
     renderWorkflowComponent(
       <NodeSelectorWrapper
@@ -65,6 +69,7 @@ describe('NodeSelectorWrapper', () => {
           availableNodesMetaData: {
             nodes: [
               createBlock(BlockEnum.Start, 'Start'),
+              createBlock(BlockEnum.StartPlaceholder, 'Start Placeholder'),
               createBlock(BlockEnum.Tool, 'Tool'),
               createBlock(BlockEnum.Code, 'Code'),
               createBlock(BlockEnum.DataSource, 'Data Source'),
@@ -79,6 +84,7 @@ describe('NodeSelectorWrapper', () => {
 
     expect(await screen.findByText('Code')).toBeInTheDocument()
     expect(screen.queryByText('Start')).not.toBeInTheDocument()
+    expect(screen.queryByText('Start Placeholder')).not.toBeInTheDocument()
     expect(screen.queryByText('Tool')).not.toBeInTheDocument()
   })
 })

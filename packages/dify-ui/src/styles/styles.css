@@ -1,4 +1,90 @@
+/*
+ * @langgenius/dify-ui — Tailwind CSS v4 preset (CSS-first).
+ *
+ * This is the single CSS entry point for consumers:
+ *   @import '@langgenius/dify-ui/styles.css';
+ *
+ * Consumers must also `@import 'tailwindcss';` (or selected layers) in their
+ * own root stylesheet so that the engine generates utilities. This file only
+ * contributes design tokens, runtime CSS variables, and project utilities.
+ */
+
+/* ---------- Palette overrides ----------------------------------------- */
+/* Override Tailwind v4's oklch defaults with the Dify brand palette so that
+ * `bg-gray-500`, `text-primary-600`, etc. resolve to the design system. */
+@theme {
+  /* gray */
+  --color-gray-25: #fcfcfd;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f2f4f7;
+  --color-gray-200: #eaecf0;
+  --color-gray-300: #d0d5dd;
+  --color-gray-400: #98a2b3;
+  --color-gray-500: #667085;
+  --color-gray-600: #344054;
+  --color-gray-700: #475467;
+  --color-gray-800: #1d2939;
+  --color-gray-900: #101828;
+
+  /* primary */
+  --color-primary-25: #f5f8ff;
+  --color-primary-50: #eff4ff;
+  --color-primary-100: #d1e0ff;
+  --color-primary-200: #b2ccff;
+  --color-primary-300: #84adff;
+  --color-primary-400: #528bff;
+  --color-primary-500: #2970ff;
+  --color-primary-600: #155eef;
+  --color-primary-700: #004eeb;
+  --color-primary-800: #0040c1;
+  --color-primary-900: #00359e;
+
+  /* blue / green / yellow / purple — narrow overrides used by legacy markup */
+  --color-blue-500: #e1effe;
+  --color-green-50: #f3faf7;
+  --color-green-100: #def7ec;
+  --color-green-800: #03543f;
+  --color-yellow-100: #fdf6b2;
+  --color-yellow-800: #723b13;
+  --color-purple-50: #f6f5ff;
+  --color-purple-200: #dcd7fe;
+
+  /* indigo */
+  --color-indigo-25: #f5f8ff;
+  --color-indigo-50: #eef4ff;
+  --color-indigo-100: #e0eaff;
+  --color-indigo-300: #a4bcfd;
+  --color-indigo-400: #8098f9;
+  --color-indigo-600: #444ce7;
+  --color-indigo-800: #2d31a6;
+
+  /* shadows */
+  --shadow-xs: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0px 1px 2px 0px rgba(16, 24, 40, 0.06), 0px 1px 3px 0px rgba(16, 24, 40, 0.10);
+  --shadow-sm-no-bottom: 0px -1px 2px 0px rgba(16, 24, 40, 0.06), 0px -1px 3px 0px rgba(16, 24, 40, 0.10);
+  --shadow-md: 0px 2px 4px -2px rgba(16, 24, 40, 0.06), 0px 4px 8px -2px rgba(16, 24, 40, 0.10);
+  --shadow-lg: 0px 4px 6px -2px rgba(16, 24, 40, 0.03), 0px 12px 16px -4px rgba(16, 24, 40, 0.08);
+  --shadow-xl: 0px 8px 8px -4px rgba(16, 24, 40, 0.03), 0px 20px 24px -4px rgba(16, 24, 40, 0.08);
+  --shadow-2xl: 0px 24px 48px -12px rgba(16, 24, 40, 0.18);
+  --shadow-3xl: 0px 32px 64px -12px rgba(16, 24, 40, 0.14);
+  --shadow-status-indicator-green-shadow: 0px 2px 6px 0px var(--color-components-badge-status-light-success-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer);
+  --shadow-status-indicator-warning-shadow: 0px 2px 6px 0px var(--color-components-badge-status-light-warning-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer);
+  --shadow-status-indicator-red-shadow: 0px 2px 6px 0px var(--color-components-badge-status-light-error-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer);
+  --shadow-status-indicator-blue-shadow: 0px 2px 6px 0px var(--color-components-badge-status-light-normal-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer);
+  --shadow-status-indicator-gray-shadow: 0px 1px 2px 0px var(--color-components-badge-status-light-disabled-halo), 0px 0px 0px 1px var(--color-components-badge-status-light-border-outer);
+
+  /* font sizes */
+  --text-2xs: 0.625rem;
+}
+
+/* ---------- Semantic design tokens (`@theme inline`) ------------------ */
+@import '../themes/theme.css';
+
+/* ---------- Runtime variable values ----------------------------------- */
+/* Real values for the semantic tokens above, scoped per `html[data-theme]`. */
 @import '../themes/light.css' layer(base);
 @import '../themes/dark.css' layer(base);
+
+/* ---------- Project utilities & components ---------------------------- */
 @import './utilities.css';
 @import './components.css';

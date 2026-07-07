@@ -203,7 +203,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
     const mcpHandler = vi.fn()
     const workflowUpdateHandler = vi.fn()
     const commentsHandler = vi.fn()
-    const restoreRequestHandler = vi.fn()
     const restoreIntentHandler = vi.fn()
     const restoreCompleteHandler = vi.fn()
     const historyHandler = vi.fn()
@@ -218,7 +217,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
     manager.onMcpServerUpdate(mcpHandler)
     manager.onWorkflowUpdate(workflowUpdateHandler)
     manager.onCommentsUpdate(commentsHandler)
-    manager.onRestoreRequest(restoreRequestHandler)
     manager.onRestoreIntent(restoreIntentHandler)
     manager.onRestoreComplete(restoreCompleteHandler)
     manager.onHistoryAction(historyHandler)
@@ -298,11 +296,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
     } satisfies CollaborationUpdate)
     socket.trigger('collaboration_update', {
       ...baseUpdate,
-      type: 'workflow_restore_request',
-      data: { versionId: 'v1', initiatorUserId: 'u-1', initiatorName: 'Alice', graphData: { nodes: [], edges: [] } } as unknown as Record<string, unknown>,
-    } satisfies CollaborationUpdate)
-    socket.trigger('collaboration_update', {
-      ...baseUpdate,
       type: 'workflow_restore_intent',
       data: { versionId: 'v1', initiatorUserId: 'u-1', initiatorName: 'Alice' } as unknown as Record<string, unknown>,
     } satisfies CollaborationUpdate)
@@ -335,7 +328,6 @@ describe('CollaborationManager socket and subscription behavior', () => {
     expect(latestPresence).toMatchObject({ 'n-1': { 'socket-events': { userId: 'u-1' } } })
     expect(syncRequestHandler).toHaveBeenCalledTimes(1)
     expect(broadcastSpy).toHaveBeenCalledTimes(1)
-    expect(restoreRequestHandler).toHaveBeenCalledTimes(1)
     expect(restoreIntentHandler).toHaveBeenCalledWith({ versionId: 'v1', initiatorUserId: 'u-1', initiatorName: 'Alice' } satisfies RestoreIntentData)
     expect(restoreCompleteHandler).toHaveBeenCalledWith({ versionId: 'v1', success: true } satisfies RestoreCompleteData)
     expect(historyHandler).toHaveBeenCalledWith({ action: 'undo', userId: 'u-1' })

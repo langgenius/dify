@@ -5,9 +5,14 @@ import { act, renderHook } from '@testing-library/react'
 import { useFile, useFileSizeLimit } from '../hooks'
 
 const mockNotify = vi.fn()
+const mockNavigationState = vi.hoisted(() => ({
+  params: {} as { token?: string },
+  pathname: '/chat',
+}))
 
 vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ token: undefined }),
+  useParams: () => mockNavigationState.params,
+  usePathname: () => mockNavigationState.pathname,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -40,6 +45,13 @@ vi.mock('../utils', () => ({
 const mockUploadRemoteFileInfo = vi.fn()
 vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: (...args: unknown[]) => mockUploadRemoteFileInfo(...args),
+}))
+
+const mockUploadHumanInputFormLocalFile = vi.fn()
+const mockUploadHumanInputFormRemoteFileInfo = vi.fn()
+vi.mock('@/service/share', () => ({
+  uploadHumanInputFormLocalFile: (...args: unknown[]) => mockUploadHumanInputFormLocalFile(...args),
+  uploadHumanInputFormRemoteFileInfo: (...args: unknown[]) => mockUploadHumanInputFormRemoteFileInfo(...args),
 }))
 
 vi.mock('uuid', () => ({
@@ -109,6 +121,8 @@ describe('useFile', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockStoreFiles = []
+    mockNavigationState.params = {}
+    mockNavigationState.pathname = '/chat'
     mockIsAllowedFileExtension.mockReturnValue(true)
     mockGetSupportFileType.mockReturnValue('document')
   })
@@ -199,6 +213,31 @@ describe('useFile', () => {
       result.current.handleReUploadFile('file-1')
       expect(mockSetFiles).toHaveBeenCalled()
       expect(mockFileUpload).toHaveBeenCalled()
+    })
+
+    it('should use human input form local upload when re-uploading on form page', () => {
+      mockNavigationState.params = { token: 'form-token' }
+      mockNavigationState.pathname = '/form/form-token'
+      const originalFile = new File(['content'], 'test.txt', { type: 'text/plain' })
+      mockStoreFiles = [{
+        id: 'file-1',
+        name: 'test.txt',
+        type: 'text/plain',
+        size: 100,
+        progress: -1,
+        transferMethod: 'local_file',
+        supportFileType: 'document',
+        originalFile,
+      }] as FileEntity[]
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleReUploadFile('file-1')
+
+      expect(mockUploadHumanInputFormLocalFile).toHaveBeenCalledWith(expect.objectContaining({
+        formToken: 'form-token',
+        file: originalFile,
+      }))
+      expect(mockFileUpload).not.toHaveBeenCalled()
     })
 
     it('should not re-upload when file id is not found', () => {
@@ -313,6 +352,24 @@ describe('useFile', () => {
 
       expect(mockSetFiles).toHaveBeenCalled()
       expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/file.txt', false)
+    })
+
+    it('should use human input form remote upload on form page', () => {
+      mockNavigationState.params = { token: 'form-token' }
+      mockNavigationState.pathname = '/form/form-token'
+      mockUploadHumanInputFormRemoteFileInfo.mockResolvedValue({
+        id: 'remote-1',
+        mime_type: 'text/plain',
+        size: 100,
+        name: 'remote.txt',
+        url: 'https://example.com/remote.txt',
+      })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLoadFileFromLink('https://example.com/file.txt')
+
+      expect(mockUploadHumanInputFormRemoteFileInfo).toHaveBeenCalledWith('form-token', 'https://example.com/file.txt')
+      expect(mockUploadRemoteFileInfo).not.toHaveBeenCalled()
     })
 
     it('should remove file when extension is not allowed', async () => {
@@ -700,6 +757,21 @@ describe('useFile', () => {
       // Test success callback
       uploadCall.onSuccessCallback({ id: 'uploaded-1' })
       expect(mockSetFiles).toHaveBeenCalled()
+    })
+
+    it('should use human input form local upload on form page', () => {
+      mockNavigationState.params = { token: 'form-token' }
+      mockNavigationState.pathname = '/form/form-token'
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockUploadHumanInputFormLocalFile).toHaveBeenCalledWith(expect.objectContaining({
+        formToken: 'form-token',
+        file,
+      }))
+      expect(mockFileUpload).not.toHaveBeenCalled()
     })
 
     it('should handle fileUpload error callback', () => {

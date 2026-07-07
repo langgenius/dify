@@ -4,7 +4,15 @@ from models.comment import WorkflowComment, WorkflowCommentMention, WorkflowComm
 
 
 def test_workflow_comment_account_properties_and_cache() -> None:
-    comment = WorkflowComment(created_by="user-1", resolved_by="user-2", content="hello", position_x=1, position_y=2)
+    comment = WorkflowComment(
+        created_by="user-1",
+        resolved_by="user-2",
+        content="hello",
+        position_x=1,
+        position_y=2,
+        tenant_id="xxx",
+        app_id="yyy",
+    )
     created_account = Mock(id="user-1")
     resolved_account = Mock(id="user-2")
 
@@ -21,6 +29,8 @@ def test_workflow_comment_account_properties_and_cache() -> None:
         get_mock.assert_not_called()
 
     comment_without_resolver = WorkflowComment(
+        tenant_id="xxx",
+        app_id="yyy",
         created_by="user-1",
         resolved_by=None,
         content="hello",
@@ -37,7 +47,15 @@ def test_workflow_comment_counts_and_participants() -> None:
     reply_2 = WorkflowCommentReply(comment_id="comment-1", content="reply-2", created_by="user-2")
     mention_1 = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-3")
     mention_2 = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-4")
-    comment = WorkflowComment(created_by="user-1", resolved_by=None, content="hello", position_x=1, position_y=2)
+    comment = WorkflowComment(
+        created_by="user-1",
+        resolved_by=None,
+        content="hello",
+        position_x=1,
+        position_y=2,
+        tenant_id="xxx",
+        app_id="yyy",
+    )
     comment.replies = [reply_1, reply_2]
     comment.mentions = [mention_1, mention_2]
 
@@ -63,7 +81,15 @@ def test_workflow_comment_counts_and_participants() -> None:
 def test_workflow_comment_participants_use_cached_accounts() -> None:
     reply = WorkflowCommentReply(comment_id="comment-1", content="reply-1", created_by="user-2")
     mention = WorkflowCommentMention(comment_id="comment-1", mentioned_user_id="user-3")
-    comment = WorkflowComment(created_by="user-1", resolved_by=None, content="hello", position_x=1, position_y=2)
+    comment = WorkflowComment(
+        created_by="user-1",
+        resolved_by=None,
+        content="hello",
+        position_x=1,
+        position_y=2,
+        tenant_id="xxx",
+        app_id="yyy",
+    )
     comment.replies = [reply]
     comment.mentions = [mention]
 

@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import InstallPluginDropdown from '../install-plugin-dropdown'
 
-let portalOpen = false
 const {
   mockSystemFeatures,
 } = vi.hoisted(() => ({
@@ -39,9 +38,18 @@ vi.mock('@/app/components/base/icons/src/vender/solid/mediaAndDevices', () => ({
   MagicBox: () => <span data-testid="magic-box-icon">magic</span>,
 }))
 
+vi.mock('@remixicon/react', () => ({
+  RiAddCircleFill: ({ className }: { className?: string }) => <span data-testid="add-circle-fill-icon" className={className} />,
+  RiArrowDownSLine: ({ className }: { className?: string }) => <span data-testid="arrow-down-icon" className={className} />,
+}))
+
+type MockButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: string
+}
+
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" data-testid="button-content" className={className} onClick={onClick} {...props}>{children}</button>
+  Button: ({ children, onClick, className, variant, ...props }: MockButtonProps) => (
+    <button type="button" data-testid="button-content" data-variant={variant} className={className} onClick={onClick} {...props}>{children}</button>
   ),
 }))
 
@@ -60,16 +68,25 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     DropdownMenu: ({
       open,
       onOpenChange,
+      modal,
       children,
     }: {
-      open: boolean
+      open?: boolean
       onOpenChange?: (open: boolean) => void
+      modal?: boolean
       children: React.ReactNode
     }) => {
-      portalOpen = open
+      const [internalOpen, setInternalOpen] = React.useState(open ?? false)
+      const isOpen = open ?? internalOpen
+      const setOpen = (nextOpen: boolean) => {
+        if (open === undefined)
+          setInternalOpen(nextOpen)
+        onOpenChange?.(nextOpen)
+      }
+
       return (
-        <DropdownMenuContext value={{ isOpen: open, setOpen: onOpenChange ?? vi.fn() }}>
-          <div data-testid="dropdown-menu" data-open={open}>{children}</div>
+        <DropdownMenuContext value={{ isOpen, setOpen }}>
+          <div data-testid="dropdown-menu" data-open={isOpen} data-modal={modal}>{children}</div>
         </DropdownMenuContext>
       )
     },
@@ -95,9 +112,14 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     },
     DropdownMenuContent: ({
       children,
+      popupClassName,
     }: {
       children: React.ReactNode
-    }) => portalOpen ? <div data-testid="dropdown-content">{children}</div> : null,
+      popupClassName?: string
+    }) => {
+      const { isOpen } = useDropdownMenuContext()
+      return isOpen ? <div data-testid="dropdown-content" className={popupClassName}>{children}</div> : null
+    },
     DropdownMenuItem: ({
       children,
       onClick,
@@ -148,20 +170,88 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', ()
 describe('InstallPluginDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    portalOpen = false
     mockSystemFeatures.enable_marketplace = true
     mockSystemFeatures.plugin_installation_permission.restrict_to_marketplace_only = false
   })
 
   it('shows all install methods when marketplace and custom installs are enabled', () => {
-    render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
+    const { container } = render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('dropdown-trigger'))
 
+    expect(screen.getByTestId('dropdown-menu')).toHaveAttribute('data-modal', 'false')
     expect(screen.getByText('plugin.installFrom')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
     expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
+    expect(container.querySelector('.i-custom-vender-plugin-box-sparkle-fill')).toHaveClass('size-4', 'shrink-0')
+    expect(container.querySelector('.i-custom-vender-solid-general-github')).toHaveClass('size-4', 'shrink-0')
+    expect(container.querySelector('.i-custom-vender-solid-files-file-zip')).toHaveClass('size-4', 'shrink-0')
+  })
+
+  it('applies custom trigger label and presentation props', () => {
+    const { container } = render(
+      <InstallPluginDropdown
+        onSwitchToMarketplaceTab={vi.fn()}
+        rootClassName="custom-root"
+        triggerClassName="custom-trigger"
+        triggerLabel="Install"
+        triggerOpenClassName="custom-open"
+        triggerVariant="primary"
+        popupClassName="custom-popup"
+      />,
+    )
+
+    const trigger = screen.getByTestId('dropdown-trigger')
+
+    expect(container.querySelector('.custom-root')).toBeInTheDocument()
+    expect(trigger).toHaveTextContent('Install')
+    expect(screen.getByTestId('add-circle-fill-icon')).toHaveClass('size-4', 'shrink-0')
+    expect(screen.getByTestId('arrow-down-icon')).toHaveClass('ml-1', 'size-4')
+    expect(trigger).toHaveClass('custom-trigger')
+    expect(trigger).toHaveAttribute('data-variant', 'primary')
+
+    fireEvent.click(trigger)
+
+    expect(trigger).toHaveClass('custom-open')
+    expect(screen.getByTestId('dropdown-content')).toHaveClass('custom-popup')
+  })
+
+  it('can hide the trigger arrow for compact integrations placement', () => {
+    const { container } = render(
+      <InstallPluginDropdown
+        onSwitchToMarketplaceTab={vi.fn()}
+        triggerLabel="Install"
+        showTriggerArrow={false}
+      />,
+    )
+
+    const trigger = screen.getByTestId('dropdown-trigger')
+
+    expect(trigger).toHaveTextContent('Install')
+    expect(screen.getByTestId('add-circle-fill-icon')).toHaveClass('size-4', 'shrink-0')
+    expect(screen.queryByTestId('arrow-down-icon')).not.toBeInTheDocument()
+    expect(container.querySelector('.px-0\\.5')).toHaveClass('min-w-0', 'flex-1', 'text-left')
+  })
+
+  it('keeps the trigger visible but disabled when install is unavailable', () => {
+    const onSwitchToMarketplaceTab = vi.fn()
+    const { container } = render(<InstallPluginDropdown disabled onSwitchToMarketplaceTab={onSwitchToMarketplaceTab} />)
+
+    const trigger = screen.getByTestId('dropdown-trigger')
+
+    expect(trigger).toBeDisabled()
+
+    fireEvent.click(trigger)
+    fireEvent.change(container.querySelector('input[type="file"]')!, {
+      target: {
+        files: [new File(['content'], 'plugin.difypkg')],
+      },
+    })
+
+    expect(screen.queryByTestId('dropdown-content')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('local-modal')).not.toBeInTheDocument()
+    expect(onSwitchToMarketplaceTab).not.toHaveBeenCalled()
   })
 
   it('shows only marketplace when installation is restricted', () => {
@@ -199,6 +289,7 @@ describe('InstallPluginDropdown', () => {
     const { container } = render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('dropdown-trigger'))
+    fireEvent.click(screen.getByText('plugin.source.local'))
     fireEvent.change(container.querySelector('input[type="file"]')!, {
       target: {
         files: [new File(['content'], 'plugin.difypkg')],
@@ -235,6 +326,7 @@ describe('InstallPluginDropdown', () => {
     const { container } = render(<InstallPluginDropdown onSwitchToMarketplaceTab={vi.fn()} />)
 
     fireEvent.click(screen.getByTestId('dropdown-trigger'))
+    fireEvent.click(screen.getByText('plugin.source.local'))
     fireEvent.change(container.querySelector('input[type="file"]')!, {
       target: {
         files: [new File(['content'], 'plugin.difypkg')],

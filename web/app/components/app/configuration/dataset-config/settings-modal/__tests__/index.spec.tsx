@@ -1,15 +1,19 @@
 import type { MockedFunction } from 'vitest'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { defaultSystemFeatures } from '@/features/system-features/config'
 import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import SettingsModal from '../index'
 
 const toastMocks = vi.hoisted(() => ({
@@ -33,7 +37,6 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockOnCancel = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
-let mockIsWorkspaceDatasetOperator = false
 
 const mockUseModelList = vi.fn()
 const mockUseModelListAndDefaultModel = vi.fn()
@@ -65,14 +68,20 @@ vi.mock('@/service/use-common', async () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({ isCurrentWorkspaceDatasetOperator: mockIsWorkspaceDatasetOperator }),
-  useSelector: <T,>(selector: (value: { userProfile: { id: string, name: string, email: string, avatar_url: string } }) => T) => selector({
+  useAppContext: () => {
+    throw new Error('legacy workspace dataset_operator state should not be used by SettingsModal')
+  },
+  useSelector: <T,>(selector: (value: {
+    userProfile: { id: string, name: string, email: string, avatar_url: string }
+    workspacePermissionKeys: string[]
+  }) => T) => selector({
     userProfile: {
       id: 'user-1',
       name: 'User One',
       email: 'user@example.com',
       avatar_url: 'avatar.png',
     },
+    workspacePermissionKeys: [],
   }),
 }))
 
@@ -185,6 +194,7 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
     runtime_mode: 'general',
     enable_api: true,
     is_multimodal: false,
+    permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
     retrieval_model_dict: {
       ...retrievalConfig,
@@ -198,12 +208,19 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
 }
 
 const renderWithProviders = (dataset: DataSet) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, defaultSystemFeatures)
+
   return render(
-    <SettingsModal
-      currentDataset={dataset}
-      onCancel={mockOnCancel}
-      onSave={mockOnSave}
-    />,
+    <QueryClientProvider client={queryClient}>
+      <SettingsModal
+        currentDataset={dataset}
+        onCancel={mockOnCancel}
+        onSave={mockOnSave}
+      />
+    </QueryClientProvider>,
 
   )
 }
@@ -220,7 +237,6 @@ const renderSettingsModal = async (dataset: DataSet) => {
 describe('SettingsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsWorkspaceDatasetOperator = false
     mockUseMembers.mockReturnValue({
       data: {
         accounts: [
@@ -372,10 +388,22 @@ describe('SettingsModal', () => {
 
       // Act
       await renderSettingsModal(createDataset())
-      await user.click(screen.getByText('datasetSettings.form.embeddingModelTipLink'))
+      await user.click(screen.getByRole('button', { name: 'datasetSettings.form.embeddingModelTipLink' }))
 
       // Assert
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+    })
+  })
+
+  // Dataset ACL permissions control whether the legacy dataset permission selector is editable.
+  describe('Permission Handling', () => {
+    it('should disable permission selector when dataset lacks edit ACL permission', async () => {
+      const dataset = createDataset({ permission_keys: [DatasetACLPermission.Readonly] })
+
+      const { container } = renderWithProviders(dataset)
+      await waitFor(() => expect(mockUseMembers).toHaveBeenCalled())
+
+      expect(container.querySelector('[class*="cursor-not-allowed"]')).toBeInTheDocument()
     })
   })
 

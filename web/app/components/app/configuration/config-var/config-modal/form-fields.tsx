@@ -3,6 +3,7 @@ import type { ChangeEvent, FC } from 'react'
 import type { Item as SelectOptionItem } from './type-select'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVar, UploadFileSetting } from '@/app/components/workflow/types'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -12,15 +13,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
-import Checkbox from '@/app/components/base/checkbox'
+import { Trans } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { Infotip } from '@/app/components/base/infotip'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useDocLink } from '@/context/i18n'
 import { TransferMethod } from '@/types/app'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
@@ -30,7 +33,7 @@ import TypeSelector from './type-select'
 import { CHECKBOX_DEFAULT_FALSE_VALUE, CHECKBOX_DEFAULT_TRUE_VALUE, TEXT_MAX_LENGTH } from './utils'
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
-const EMPTY_SELECT_VALUE = '__empty__'
+const EMPTY_SELECT_VALUE = '__empty__' as const
 
 type ConfigModalFormFieldsProps = {
   checkboxDefaultSelectValue: string
@@ -46,6 +49,7 @@ type ConfigModalFormFieldsProps = {
   onVarNameChange: (event: ChangeEvent<HTMLInputElement>) => void
   options?: string[]
   selectOptions: SelectOptionItem[]
+  showHiddenField?: boolean
   tempPayload: InputVar
   t: Translate
 }
@@ -64,10 +68,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
   onVarNameChange,
   options,
   selectOptions,
+  showHiddenField = true,
   tempPayload,
   t,
 }) => {
   const { type, label, variable } = tempPayload
+  const isFileInput = [InputVarType.singleFile, InputVarType.multiFiles].includes(type)
+  const docLink = useDocLink()
+  const hiddenDescriptionAriaLabel = t('variableConfig.hiddenDescription', { ns: 'appDebug' }).replace(/<[^>]+>/g, '')
 
   return (
     <div className="space-y-2">
@@ -105,7 +113,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       {type === InputVarType.textInput && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Input
-            value={tempPayload.default || ''}
+            value={typeof tempPayload.default === 'string' ? tempPayload.default : ''}
             onChange={e => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
@@ -115,8 +123,9 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       {type === InputVarType.paragraph && (
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Textarea
+            aria-label={t('variableConfig.defaultValue', { ns: 'appDebug' })}
             value={String(tempPayload.default ?? '')}
-            onChange={e => onPayloadChange('default')(e.target.value || undefined)}
+            onValueChange={value => onPayloadChange('default')(value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
         </Field>
@@ -126,7 +135,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
           <Input
             type="number"
-            value={tempPayload.default || ''}
+            value={typeof tempPayload.default === 'number' || typeof tempPayload.default === 'string' ? tempPayload.default : ''}
             onChange={e => onPayloadChange('default')(e.target.value || undefined)}
             placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })}
           />
@@ -160,10 +169,14 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
           </Field>
           {options && options.length > 0 && (
             <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
-              <Select
+              <Select<string>
                 key={`default-select-${options.join('-')}`}
-                value={tempPayload.default ? String(tempPayload.default) : EMPTY_SELECT_VALUE}
-                onValueChange={value => onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)}
+                value={typeof tempPayload.default === 'string' ? tempPayload.default : EMPTY_SELECT_VALUE}
+                onValueChange={(value) => {
+                  if (value == null)
+                    return
+                  onPayloadChange('default')(value === EMPTY_SELECT_VALUE ? undefined : value)
+                }}
               >
                 <SelectTrigger size="large" className="w-full">
                   <SelectValue placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })} />
@@ -186,7 +199,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </>
       )}
 
-      {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
+      {isFileInput && (
         <>
           <FileUploadSetting
             payload={tempPayload as UploadFileSetting}
@@ -226,15 +239,48 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </Field>
       )}
 
-      <div className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => onPayloadChange('required')(!tempPayload.required)} />
+      <label className="mt-5! flex h-6 items-center space-x-2">
+        <Checkbox
+          checked={tempPayload.required}
+          disabled={!isFileInput && tempPayload.hide}
+          onCheckedChange={checked => onPayloadChange('required')(checked)}
+        />
         <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
-      </div>
+      </label>
 
-      <div className="mt-5! flex h-6 items-center space-x-2">
-        <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => onPayloadChange('hide')(!tempPayload.hide)} />
-        <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hide', { ns: 'appDebug' })}</span>
-      </div>
+      {showHiddenField && !isFileInput && (
+        <div className="mt-5! flex h-6 items-center gap-2">
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={tempPayload.hide}
+              disabled={tempPayload.required}
+              onCheckedChange={checked => onPayloadChange('hide')(checked)}
+            />
+            <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hidden', { ns: 'appDebug' })}</span>
+          </label>
+          <div className="flex items-center gap-1">
+            <Infotip
+              aria-label={hiddenDescriptionAriaLabel}
+              popupClassName="max-w-[300px]"
+            >
+              <Trans
+                i18nKey="variableConfig.hiddenDescription"
+                ns="appDebug"
+                components={{
+                  docLink: (
+                    <a
+                      href={docLink('/use-dify/nodes/user-input#hide-and-pre-fill-input-fields')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-text-accent hover:underline"
+                    />
+                  ),
+                }}
+              />
+            </Infotip>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

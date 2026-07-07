@@ -11,6 +11,7 @@ const mockUploadRemoteFileInfo = vi.fn()
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
+  usePathname: () => '/',
 }))
 
 vi.mock('@/service/common', () => ({

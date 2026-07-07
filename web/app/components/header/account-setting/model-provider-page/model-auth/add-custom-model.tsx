@@ -18,16 +18,13 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import {
-  RiAddCircleFill,
-  RiAddLine,
-} from '@remixicon/react'
-import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import ModelIcon from '../model-icon'
 import { useAuth } from './hooks/use-auth'
 import { useCanAddedModels } from './hooks/use-custom-models'
@@ -48,6 +45,7 @@ const AddCustomModel = ({
   const [open, setOpen] = useState(false)
   const canAddedModels = useCanAddedModels(provider)
   const noModels = !canAddedModels.length
+  const { canUseCredential, canCreateCredential } = useCredentialPermissions()
   const {
     handleOpenModal: handleOpenModalForAddNewCustomModel,
   } = useAuth(
@@ -72,6 +70,9 @@ const AddCustomModel = ({
   )
   const notAllowCustomCredential = provider.allow_custom_token === false
   const renderTrigger = useCallback((open?: boolean, onClick?: () => void) => {
+    const disabled = noModels
+      ? !canCreateCredential
+      : !canUseCredential && !canCreateCredential
     const item = (
       <Button
         variant="ghost"
@@ -81,13 +82,14 @@ const AddCustomModel = ({
           'text-text-tertiary',
           open && 'bg-components-button-ghost-bg-hover',
           notAllowCustomCredential && !!noModels && 'cursor-not-allowed opacity-50',
+          disabled && 'cursor-not-allowed opacity-50',
         )}
       >
-        <RiAddCircleFill className="mr-1 h-3.5 w-3.5" />
+        <span className="mr-1 i-ri-add-circle-fill size-3.5" />
         {t('modelProvider.addModel', { ns: 'common' })}
       </Button>
     )
-    if (notAllowCustomCredential && !!noModels) {
+    if ((notAllowCustomCredential && !!noModels) || disabled) {
       return (
         <Tooltip>
           <TooltipTrigger render={item} />
@@ -96,10 +98,10 @@ const AddCustomModel = ({
       )
     }
     return item
-  }, [t, notAllowCustomCredential, noModels])
+  }, [canCreateCredential, canUseCredential, t, notAllowCustomCredential, noModels])
 
   if (noModels) {
-    return renderTrigger(false, notAllowCustomCredential ? undefined : handleOpenModalForAddNewCustomModel)
+    return renderTrigger(false, notAllowCustomCredential || !canCreateCredential ? undefined : handleOpenModalForAddNewCustomModel)
   }
 
   return (
@@ -108,6 +110,7 @@ const AddCustomModel = ({
       onOpenChange={setOpen}
     >
       <PopoverTrigger
+        nativeButton={false}
         render={<div className="inline-block">{renderTrigger(open)}</div>}
       />
       <PopoverContent
@@ -121,14 +124,21 @@ const AddCustomModel = ({
               canAddedModels.map(model => (
                 <div
                   key={model.model}
-                  className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
+                  className={cn(
+                    'flex h-8 items-center rounded-lg px-2',
+                    canUseCredential ? 'cursor-pointer hover:bg-state-base-hover' : 'cursor-not-allowed opacity-50',
+                  )}
+                  aria-disabled={!canUseCredential}
                   onClick={() => {
+                    if (!canUseCredential)
+                      return
+
                     setOpen(false)
                     handleOpenModalForAddCustomModelToModelList(undefined, model)
                   }}
                 >
                   <ModelIcon
-                    className="mr-1 h-5 w-5 shrink-0"
+                    className="mr-1 size-5 shrink-0"
                     iconClassName="h-5 w-5"
                     provider={provider}
                     modelName={model.model}
@@ -144,7 +154,7 @@ const AddCustomModel = ({
             }
           </div>
           {
-            !notAllowCustomCredential && (
+            !notAllowCustomCredential && canCreateCredential && (
               <div
                 className="flex cursor-pointer items-center border-t border-t-divider-subtle p-3 system-xs-medium text-text-accent-light-mode-only"
                 onClick={() => {
@@ -152,7 +162,7 @@ const AddCustomModel = ({
                   handleOpenModalForAddNewCustomModel()
                 }}
               >
-                <RiAddLine className="mr-1 h-4 w-4" />
+                <span className="mr-1 i-ri-add-line size-4" />
                 {t('modelProvider.auth.addNewModel', { ns: 'common' })}
               </div>
             )

@@ -3,6 +3,7 @@ import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { consoleClient } from '@/service/client'
@@ -15,6 +16,10 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
 }))
 
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
+}))
+
 vi.mock('@/service/billing', () => ({
   fetchSubscriptionUrls: vi.fn(),
 }))
@@ -22,7 +27,9 @@ vi.mock('@/service/billing', () => ({
 vi.mock('@/service/client', () => ({
   consoleClient: {
     billing: {
-      invoices: vi.fn(),
+      invoices: {
+        get: vi.fn(),
+      },
     },
   },
 }))
@@ -38,8 +45,9 @@ vi.mock('../../../assets', () => ({
 }))
 
 const mockUseAppContext = useAppContext as Mock
+const mockUseProviderContext = useProviderContext as Mock
 const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
-const mockBillingInvoices = consoleClient.billing.invoices as Mock
+const mockBillingInvoices = consoleClient.billing.invoices.get as Mock
 const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
 
 let assignedHref = ''
@@ -71,7 +79,18 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   toast.dismiss()
-  mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
+  mockUseAppContext.mockReturnValue({
+    isCurrentWorkspaceManager: true,
+    workspacePermissionKeys: [
+      'billing.view',
+      'billing.manage',
+      'billing.subscription.manage',
+    ],
+  })
+  mockUseProviderContext.mockReturnValue({
+    enableEducationPlan: false,
+    isEducationAccount: false,
+  })
   mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async open => await open()))
   mockBillingInvoices.mockResolvedValue({ url: 'https://billing.example' })
   mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://subscription.example' })
@@ -163,8 +182,11 @@ describe('CloudPlanItem', () => {
 
   // Payment actions triggered from the CTA
   describe('Plan purchase flow', () => {
-    it('should show toast when non-manager tries to buy a plan', () => {
-      mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
+    it('should show toast when billing manage permission is missing for plan purchase', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
 
       renderWithToastHost(
         <CloudPlanItem
@@ -178,11 +200,16 @@ describe('CloudPlanItem', () => {
       fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))
       expect(screen.getByText('billing.buyPermissionDeniedTip'))!.toBeInTheDocument()
       expect(mockBillingInvoices).not.toHaveBeenCalled()
+      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
     })
 
     it('should open billing portal when upgrading current paid plan', async () => {
       const openWindow = vi.fn(async (cb: () => Promise<string>) => await cb())
       mockUseAsyncWindowOpen.mockReturnValue(openWindow)
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.subscription.manage'],
+      })
 
       render(
         <CloudPlanItem
@@ -202,6 +229,11 @@ describe('CloudPlanItem', () => {
     })
 
     it('should redirect to subscription url when selecting a new paid plan', async () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.manage'],
+      })
+
       render(
         <CloudPlanItem
           plan={Plan.professional}
@@ -231,7 +263,7 @@ describe('CloudPlanItem', () => {
       )
 
       // Sandbox viewed from a higher plan is disabled, but let's verify no API calls
-      const button = screen.getByRole('button')
+      const button = screen.getByRole('button', { name: 'billing.plansCommon.startForFree' })
       fireEvent.click(button)
 
       await waitFor(() => {
@@ -258,6 +290,158 @@ describe('CloudPlanItem', () => {
         expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.team, 'year')
         expect(assignedHref).toBe('https://subscription.example')
       })
+    })
+
+    it('should use education discount checkout for yearly professional plan when education account is active', async () => {
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.yearly}
+          canPay
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
+        expect(assignedHref).toBe('https://subscription.example')
+      })
+    })
+
+    it('should show default CTA and hide warning when billing manage permission is missing', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: [],
+      })
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.yearly}
+          canPay={false}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))!.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'education.useEducationDiscount' })).not.toBeInTheDocument()
+      expect(screen.queryByText('education.planNotSupportEducationDiscount')).not.toBeInTheDocument()
+    })
+
+    it('should hide education unsupported warning when billing manage permission is missing', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: [],
+      })
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay={false}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' }))!.toBeInTheDocument()
+      expect(screen.queryByText('education.planNotSupportEducationDiscount')).not.toBeInTheDocument()
+    })
+
+    it('should show education unsupported warning and switch checkout to professional annual', async () => {
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.professional}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.monthly}
+          canPay
+        />,
+      )
+
+      const button = screen.getByRole('button', { name: 'billing.plansCommon.startBuilding' })
+      expect(button)!.not.toBeDisabled()
+      expect(screen.getByText('education.planNotSupportEducationDiscount'))!.toBeInTheDocument()
+
+      fireEvent.click(button)
+      expect(screen.getByText('education.educationPricingConfirm.title'))!.toBeInTheDocument()
+      expect(screen.getByText('education.educationPricingConfirm.description'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' }))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))!.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.continue' }))
+
+      await waitFor(() => {
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.professional, 'year')
+        expect(assignedHref).toBe('https://subscription.example')
+      })
+    })
+
+    it('should continue selected plan checkout when keeping current plan', async () => {
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.team}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.yearly}
+          canPay
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+      fireEvent.click(screen.getByRole('button', { name: 'education.educationPricingConfirm.cancel' }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('education.educationPricingConfirm.title'))!.not.toBeInTheDocument()
+        expect(mockFetchSubscriptionUrls).toHaveBeenCalledWith(Plan.team, 'year')
+        expect(assignedHref).toBe('https://subscription.example')
+      })
+    })
+
+    it('should close the unsupported plan confirm without checkout when using the close button', async () => {
+      mockUseProviderContext.mockReturnValue({
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      })
+
+      render(
+        <CloudPlanItem
+          plan={Plan.team}
+          currentPlan={Plan.sandbox}
+          planRange={PlanRange.yearly}
+          canPay
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'billing.plansCommon.getStarted' }))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+      await waitFor(() => {
+        expect(screen.queryByText('education.educationPricingConfirm.title'))!.not.toBeInTheDocument()
+      })
+      expect(mockFetchSubscriptionUrls).not.toHaveBeenCalled()
+      expect(assignedHref).toBe('')
     })
 
     // Covers L62-63: loading guard prevents double click

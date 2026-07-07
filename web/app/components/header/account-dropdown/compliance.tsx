@@ -65,7 +65,7 @@ function ComplianceDocActionVisual({
         disabled={!canShowUpgradeTooltip}
         render={(
           <PremiumBadge color="blue" allowHover={true}>
-            <SparklesSoft className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+            <SparklesSoft aria-hidden="true" className="flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
             <div className="px-1 system-xs-medium">
               {upgradeText}
             </div>
@@ -140,6 +140,7 @@ function ComplianceDocRowItem({
     [Plan.team]: '',
     [Plan.enterprise]: '',
   }
+  const labelTitle = typeof label === 'string' ? label : undefined
 
   return (
     <DropdownMenuItem
@@ -148,7 +149,7 @@ function ComplianceDocRowItem({
       onClick={handleSelect}
     >
       {icon}
-      <div className="grow truncate px-1 system-md-regular text-text-secondary">{label}</div>
+      <div className="grow truncate px-1 system-md-regular text-text-secondary" title={labelTitle}>{label}</div>
       <ComplianceDocActionVisual
         isCurrentPlanCanDownload={isCurrentPlanCanDownload}
         isPending={isPending}
@@ -166,7 +167,7 @@ export default function Compliance() {
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger className="mx-0 h-8 gap-1 px-3 py-1">
         <MenuItemContent
           iconClassName="i-ri-verified-badge-line"
           label={t('userProfile.compliance', { ns: 'common' })}

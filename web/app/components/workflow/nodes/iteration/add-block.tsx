@@ -54,7 +54,7 @@ const AddBlock = ({
         open && 'bg-components-button-secondary-bg-hover',
       )}
       >
-        <RiAddLine className="mr-1 h-4 w-4" />
+        <RiAddLine className="mr-1 size-4" />
         {t('common.addBlock', { ns: 'workflow' })}
       </div>
     )
@@ -68,6 +68,10 @@ const AddBlock = ({
       <BlockSelector
         disabled={nodesReadOnly}
         onSelect={handleSelect}
+        snippetInsertPayload={{
+          prevNodeId: iterationNodeData.start_node_id,
+          prevNodeSourceHandle: 'source',
+        }}
         trigger={renderTriggerElement}
         triggerInnerClassName="inline-flex"
         popupClassName="min-w-[256px]!"

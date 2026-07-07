@@ -25,20 +25,20 @@ const VariableItem = ({
     >
       <div className="flex items-center justify-between">
         <div className="flex grow items-center gap-1">
-          <BubbleX className="h-4 w-4 text-util-colors-teal-teal-700" />
+          <BubbleX className="size-4 text-util-colors-teal-teal-700" />
           <div className="system-sm-medium text-text-primary">{item.name}</div>
           <div className="system-xs-medium text-text-tertiary">{capitalize(item.value_type)}</div>
         </div>
         <div className="flex shrink-0 items-center gap-1 text-text-tertiary">
           <div className="cursor-pointer rounded-lg p-1 hover:bg-state-base-hover hover:text-text-secondary">
-            <RiEditLine className="h-4 w-4" onClick={() => onEdit(item)} />
+            <RiEditLine className="size-4" onClick={() => onEdit(item)} />
           </div>
           <div
             className="cursor-pointer rounded-lg p-1 hover:bg-state-destructive-hover hover:text-text-destructive"
             onMouseOver={() => setDestructive(true)}
             onMouseOut={() => setDestructive(false)}
           >
-            <RiDeleteBinLine className="h-4 w-4" onClick={() => onDelete(item)} />
+            <RiDeleteBinLine className="size-4" onClick={() => onDelete(item)} />
           </div>
         </div>
       </div>

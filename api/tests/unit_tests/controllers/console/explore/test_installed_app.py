@@ -1,25 +1,28 @@
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from datetime import datetime
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import controllers.console.explore.installed_app as module
 
+type Payload = dict[str, object]
+type PayloadPatch = Callable[[Payload], AbstractContextManager[object]]
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+
+from inspect import unwrap
 
 
 @pytest.fixture
-def tenant_id():
+def tenant_id() -> str:
     return "t1"
 
 
 @pytest.fixture
-def current_user(tenant_id):
+def current_user(tenant_id: str) -> MagicMock:
     user = MagicMock()
     user.id = "u1"
     user.current_tenant = MagicMock(id=tenant_id)
@@ -27,7 +30,7 @@ def current_user(tenant_id):
 
 
 @pytest.fixture
-def installed_app():
+def installed_app() -> MagicMock:
     app = MagicMock()
     app.id = "ia1"
     app.app = MagicMock(id="a1")
@@ -38,8 +41,8 @@ def installed_app():
 
 
 @pytest.fixture
-def payload_patch():
-    def _patch(payload):
+def payload_patch() -> PayloadPatch:
+    def _patch(payload: Payload) -> AbstractContextManager[object]:
         return patch.object(
             type(module.console_ns),
             "payload",
@@ -51,16 +54,26 @@ def payload_patch():
 
 
 class TestInstalledAppsListApi:
-    def test_get_installed_apps(self, app, current_user, tenant_id, installed_app):
+    def test_published_app_filter_checks_publish_targets(self) -> None:
+        compiled_filter = str(module._published_app_filter().compile(compile_kwargs={"literal_binds": True}))
+
+        assert "workflows" in compiled_filter
+        assert "app_model_configs" in compiled_filter
+        assert "workflow_id" in compiled_filter
+        assert "app_model_config_id" in compiled_filter
+        assert "apps.mode != 'agent'" in compiled_filter
+
+    def test_get_installed_apps(
+        self, app: Flask, current_user: MagicMock, tenant_id: str, installed_app: MagicMock
+    ) -> None:
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch.object(module.db, "session", session),
             patch.object(module.TenantService, "get_user_role", return_value="owner"),
             patch.object(
@@ -69,22 +82,21 @@ class TestInstalledAppsListApi:
                 return_value=MagicMock(webapp_auth=MagicMock(enabled=False)),
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, current_user)
 
         assert "installed_apps" in result
         assert result["installed_apps"][0]["editable"] is True
         assert result["installed_apps"][0]["uninstallable"] is False
 
-    def test_get_installed_apps_with_app_id_filter(self, app, current_user, tenant_id):
+    def test_get_installed_apps_with_app_id_filter(self, app: Flask, current_user: MagicMock, tenant_id: str) -> None:
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = []
+        session.execute.return_value.all.return_value = []
 
         with (
             app.test_request_context("/?app_id=a1"),
-            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch.object(module.db, "session", session),
             patch.object(module.TenantService, "get_user_role", return_value="member"),
             patch.object(
@@ -93,24 +105,25 @@ class TestInstalledAppsListApi:
                 return_value=MagicMock(webapp_auth=MagicMock(enabled=False)),
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, current_user)
 
         assert result == {"installed_apps": []}
 
-    def test_get_installed_apps_with_webapp_auth_enabled(self, app, current_user, tenant_id, installed_app):
+    def test_get_installed_apps_with_webapp_auth_enabled(
+        self, app: Flask, current_user: MagicMock, tenant_id: str, installed_app: MagicMock
+    ) -> None:
         """Test filtering when webapp_auth is enabled."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         mock_webapp_setting = MagicMock()
         mock_webapp_setting.access_mode = "restricted"
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch.object(module.db, "session", session),
             patch.object(module.TenantService, "get_user_role", return_value="owner"),
             patch.object(
@@ -129,24 +142,25 @@ class TestInstalledAppsListApi:
                 return_value={"a1": True},
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, current_user)
 
         assert len(result["installed_apps"]) == 1
 
-    def test_get_installed_apps_with_webapp_auth_user_denied(self, app, current_user, tenant_id, installed_app):
+    def test_get_installed_apps_with_webapp_auth_user_denied(
+        self, app: Flask, current_user: MagicMock, tenant_id: str, installed_app: MagicMock
+    ) -> None:
         """Test filtering when user doesn't have access."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         mock_webapp_setting = MagicMock()
         mock_webapp_setting.access_mode = "restricted"
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch.object(module.db, "session", session),
             patch.object(module.TenantService, "get_user_role", return_value="member"),
             patch.object(
@@ -165,24 +179,25 @@ class TestInstalledAppsListApi:
                 return_value={"a1": False},
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, current_user)
 
         assert result["installed_apps"] == []
 
-    def test_get_installed_apps_with_sso_verified_access(self, app, current_user, tenant_id, installed_app):
+    def test_get_installed_apps_with_sso_verified_access(
+        self, app: Flask, current_user: MagicMock, tenant_id: str, installed_app: MagicMock
+    ) -> None:
         """Test that sso_verified access mode apps are skipped in filtering."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         mock_webapp_setting = MagicMock()
         mock_webapp_setting.access_mode = "sso_verified"
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch.object(module.db, "session", session),
             patch.object(module.TenantService, "get_user_role", return_value="owner"),
             patch.object(
@@ -196,24 +211,20 @@ class TestInstalledAppsListApi:
                 return_value={"a1": mock_webapp_setting},
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, current_user)
 
         assert len(result["installed_apps"]) == 0
 
-    def test_get_installed_apps_filters_null_apps(self, app, current_user, tenant_id):
+    def test_get_installed_apps_filters_null_apps(self, app: Flask, current_user: MagicMock, tenant_id: str) -> None:
         """Test that installed apps with null app are filtered out."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
-        installed_app_with_null = MagicMock()
-        installed_app_with_null.app = None
-
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app_with_null]
+        session.execute.return_value.all.return_value = []
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch.object(module.db, "session", session),
             patch.object(module.TenantService, "get_user_role", return_value="owner"),
             patch.object(
@@ -222,11 +233,57 @@ class TestInstalledAppsListApi:
                 return_value=MagicMock(webapp_auth=MagicMock(enabled=False)),
             ),
         ):
-            result = method(api)
+            result = method(api, tenant_id, current_user)
 
         assert result["installed_apps"] == []
 
-    def test_get_installed_apps_current_tenant_none(self, app, tenant_id, installed_app):
+    def test_get_installed_apps_filters_unpublished_chat_apps(
+        self, app: Flask, current_user: MagicMock, tenant_id: str
+    ) -> None:
+        api = module.InstalledAppsListApi()
+        method = unwrap(api.get)
+
+        session = MagicMock()
+        session.execute.return_value.all.return_value = []
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module.db, "session", session),
+            patch.object(module.TenantService, "get_user_role", return_value="owner"),
+            patch.object(
+                module.FeatureService,
+                "get_system_features",
+                return_value=MagicMock(webapp_auth=MagicMock(enabled=False)),
+            ),
+        ):
+            result = method(api, tenant_id, current_user)
+
+        assert result["installed_apps"] == []
+
+    def test_get_installed_apps_filters_unpublished_workflow_apps(
+        self, app: Flask, current_user: MagicMock, tenant_id: str
+    ) -> None:
+        api = module.InstalledAppsListApi()
+        method = unwrap(api.get)
+
+        session = MagicMock()
+        session.execute.return_value.all.return_value = []
+
+        with (
+            app.test_request_context("/"),
+            patch.object(module.db, "session", session),
+            patch.object(module.TenantService, "get_user_role", return_value="owner"),
+            patch.object(
+                module.FeatureService,
+                "get_system_features",
+                return_value=MagicMock(webapp_auth=MagicMock(enabled=False)),
+            ),
+        ):
+            result = method(api, tenant_id, current_user)
+
+        assert result["installed_apps"] == []
+
+    def test_get_installed_apps_current_tenant_none(self, app: Flask, tenant_id: str, installed_app: MagicMock) -> None:
         """Test error when current_user.current_tenant is None."""
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
@@ -235,19 +292,18 @@ class TestInstalledAppsListApi:
         current_user.current_tenant = None
 
         session = MagicMock()
-        session.scalars.return_value.all.return_value = [installed_app]
+        session.execute.return_value.all.return_value = [(installed_app, installed_app.app)]
 
         with (
             app.test_request_context("/"),
-            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id)),
             patch.object(module.db, "session", session),
         ):
             with pytest.raises(ValueError, match="current_user.current_tenant must not be None"):
-                method(api)
+                method(api, tenant_id, current_user)
 
 
 class TestInstalledAppsCreateApi:
-    def test_post_success(self, app, tenant_id, payload_patch):
+    def test_post_success(self, app: Flask, tenant_id: str, payload_patch: PayloadPatch) -> None:
         api = module.InstalledAppsListApi()
         method = unwrap(api.post)
 
@@ -269,14 +325,13 @@ class TestInstalledAppsCreateApi:
             app.test_request_context("/", json={"app_id": "a1"}),
             payload_patch({"app_id": "a1"}),
             patch.object(module.db, "session", session),
-            patch.object(module, "current_account_with_tenant", return_value=(None, tenant_id)),
         ):
-            result = method(api)
+            result = method(api, tenant_id)
 
         assert result == {"message": "App installed successfully"}
         assert recommended.install_count == 1
 
-    def test_post_recommended_not_found(self, app, payload_patch):
+    def test_post_recommended_not_found(self, app: Flask, tenant_id: str, payload_patch: PayloadPatch) -> None:
         api = module.InstalledAppsListApi()
         method = unwrap(api.post)
 
@@ -289,9 +344,9 @@ class TestInstalledAppsCreateApi:
             patch.object(module.db, "session", session),
         ):
             with pytest.raises(NotFound):
-                method(api)
+                method(api, tenant_id)
 
-    def test_post_app_not_public(self, app, tenant_id, payload_patch):
+    def test_post_app_not_public(self, app: Flask, tenant_id: str, payload_patch: PayloadPatch) -> None:
         api = module.InstalledAppsListApi()
         method = unwrap(api.post)
 
@@ -308,37 +363,32 @@ class TestInstalledAppsCreateApi:
             app.test_request_context("/", json={"app_id": "a1"}),
             payload_patch({"app_id": "a1"}),
             patch.object(module.db, "session", session),
-            patch.object(module, "current_account_with_tenant", return_value=(None, tenant_id)),
         ):
             with pytest.raises(Forbidden):
-                method(api)
+                method(api, tenant_id)
 
 
 class TestInstalledAppApi:
-    def test_delete_success(self, tenant_id, installed_app):
+    def test_delete_success(self, tenant_id: str, installed_app: MagicMock) -> None:
         api = module.InstalledAppApi()
         method = unwrap(api.delete)
 
-        with (
-            patch.object(module, "current_account_with_tenant", return_value=(None, tenant_id)),
-            patch.object(module.db, "session"),
-        ):
-            resp, status = method(installed_app)
+        with patch.object(module.db, "session"):
+            resp, status = method(api, tenant_id, installed_app)
 
         assert status == 204
-        assert resp["result"] == "success"
+        assert resp == ""
 
-    def test_delete_owned_by_current_tenant(self, tenant_id):
+    def test_delete_owned_by_current_tenant(self, tenant_id: str) -> None:
         api = module.InstalledAppApi()
         method = unwrap(api.delete)
 
         installed_app = MagicMock(app_owner_tenant_id=tenant_id)
 
-        with patch.object(module, "current_account_with_tenant", return_value=(None, tenant_id)):
-            with pytest.raises(BadRequest):
-                method(installed_app)
+        with pytest.raises(BadRequest):
+            method(api, tenant_id, installed_app)
 
-    def test_patch_update_pin(self, app, payload_patch, installed_app):
+    def test_patch_update_pin(self, app: Flask, payload_patch: PayloadPatch, installed_app: MagicMock) -> None:
         api = module.InstalledAppApi()
         method = unwrap(api.patch)
 
@@ -352,7 +402,7 @@ class TestInstalledAppApi:
         assert installed_app.is_pinned is True
         assert result["result"] == "success"
 
-    def test_patch_no_change(self, app, payload_patch, installed_app):
+    def test_patch_no_change(self, app: Flask, payload_patch: PayloadPatch, installed_app: MagicMock) -> None:
         api = module.InstalledAppApi()
         method = unwrap(api.patch)
 

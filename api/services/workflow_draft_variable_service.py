@@ -1,11 +1,11 @@
 import dataclasses
 import json
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, ClassVar, NotRequired, TypedDict
+from typing import Any, ClassVar, NotRequired, TypedDict, cast, override
 
 from sqlalchemy import Engine, delete, orm, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -107,6 +107,7 @@ class DraftVarLoader(VariableLoader):
     def _selector_to_tuple(self, selector: Sequence[str]) -> tuple[str, str]:
         return (selector[0], selector[1])
 
+    @override
     def load_variables(self, selectors: list[list[str]]) -> list[VariableBase]:
         if not selectors:
             return []
@@ -124,10 +125,11 @@ class DraftVarLoader(VariableLoader):
         # can be safely accessed before any offloading logic is applied.
         for draft_var in draft_vars:
             value = draft_var.get_value()
-            if isinstance(value, FileSegment):
-                files.append(value.value)
-            elif isinstance(value, ArrayFileSegment):
-                files.extend(value.value)
+            match value:
+                case FileSegment():
+                    files.append(value.value)
+                case ArrayFileSegment():
+                    files.extend(value.value)
         with Session(bind=self._engine) as session:
             storage_key_loader = StorageKeyLoader(
                 session,
@@ -157,8 +159,8 @@ class DraftVarLoader(VariableLoader):
         # This approach reduces loading time by querying external systems concurrently.
         with ThreadPoolExecutor(max_workers=10) as executor:
             offloaded_variables = executor.map(self._load_offloaded_variable, offloaded_draft_vars)
-            for selector, variable in offloaded_variables:
-                variable_by_selector[selector] = variable
+            for selector, offloaded_variable in offloaded_variables:
+                variable_by_selector[selector] = offloaded_variable
 
         return list(variable_by_selector.values())
 
@@ -271,12 +273,20 @@ class WorkflowDraftVariableService:
         )
 
     def list_variables_without_values(
-        self, app_id: str, page: int, limit: int, user_id: str
+        self,
+        app_id: str,
+        page: int,
+        limit: int,
+        user_id: str,
+        *,
+        exclude_node_ids: Set[str] | None = None,
     ) -> WorkflowDraftVariableList:
         criteria = [
             WorkflowDraftVariable.app_id == app_id,
             WorkflowDraftVariable.user_id == user_id,
         ]
+        if exclude_node_ids:
+            criteria.append(WorkflowDraftVariable.node_id.notin_(list(exclude_node_ids)))
         total = None
         base_stmt = select(WorkflowDraftVariable).where(*criteria)
         if page == 1:
@@ -740,6 +750,7 @@ class _InsertionDict(TypedDict):
     file_id: str | None
     visible: NotRequired[bool]
     editable: NotRequired[bool]
+    is_default_value: NotRequired[bool]
     created_at: NotRequired[datetime]
     updated_at: NotRequired[datetime]
     description: NotRequired[str]
@@ -769,6 +780,8 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> _InsertionDict:
         d["updated_at"] = model.updated_at
     if model.description is not None:
         d["description"] = model.description
+    if model.is_default_value is not None:
+        d["is_default_value"] = model.is_default_value
     return d
 
 
@@ -1060,9 +1073,10 @@ class DraftVariableSaver:
             original_length = len(value_seg.value)
 
         # Prepare content for storage
+        original_content_serialized: str
         if isinstance(value_seg, StringSegment):
             # For string types, store as plain text
-            original_content_serialized = value_seg.value
+            original_content_serialized = cast(str, value_seg.value)
             content_type = "text/plain"
             filename = f"{self._generate_filename(name)}.txt"
         else:
@@ -1083,10 +1097,9 @@ class DraftVariableSaver:
             mimetype=content_type,
             user=self._user,
         )
-
+        assert self._user.current_tenant_id
         # Create WorkflowDraftVariableFile record
         variable_file = WorkflowDraftVariableFile(
-            id=uuidv7(),
             upload_file_id=upload_file.id,
             size=original_size,
             length=original_length,
@@ -1095,6 +1108,7 @@ class DraftVariableSaver:
             tenant_id=self._user.current_tenant_id,
             user_id=self._user.id,
         )
+        variable_file.id = str(uuidv7())
         engine = bind = self._session.get_bind()
         assert isinstance(engine, Engine)
         with sessionmaker(bind=engine, expire_on_commit=False).begin() as session:

@@ -2,12 +2,13 @@ import type { PluginPayload } from '../types'
 import type { AddApiKeyButtonProps } from './add-api-key-button'
 import type { AddOAuthButtonProps } from './add-oauth-button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import AddApiKeyButton from './add-api-key-button'
 import AddOAuthButton from './add-oauth-button'
 
@@ -17,9 +18,15 @@ type AuthorizeProps = {
   showDivider?: boolean
   canOAuth?: boolean
   canApiKey?: boolean
-  disabled?: boolean
   onUpdate?: () => void
   notAllowCustomCredential?: boolean
+  /**
+   * If provided, the API-key button delegates modal-opening to the parent
+   * instead of rendering it inline. Used when this Authorize is mounted
+   * inside a Popover whose outside-click handler would otherwise unmount
+   * the modal.
+   */
+  onApiKeyClick?: () => void
 }
 const Authorize = ({
   pluginPayload,
@@ -27,11 +34,13 @@ const Authorize = ({
   showDivider = true,
   canOAuth,
   canApiKey,
-  disabled,
   onUpdate,
   notAllowCustomCredential,
+  onApiKeyClick,
 }: AuthorizeProps) => {
   const { t } = useTranslation()
+  const { canCreateCredential } = useCredentialPermissions()
+
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     if (theme === 'secondary') {
       return {
@@ -57,21 +66,23 @@ const Authorize = ({
         pluginPayload,
         buttonVariant: 'secondary',
         buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
+        onClick: onApiKeyClick,
       }
     }
     return {
       pluginPayload,
       buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
+      onClick: onApiKeyClick,
     }
-  }, [canOAuth, theme, pluginPayload, t])
+  }, [canOAuth, theme, pluginPayload, t, onApiKeyClick])
 
   const OAuthButton = useMemo(() => {
     const Item = (
       <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddOAuthButton
           {...oAuthButtonProps}
-          disabled={disabled || notAllowCustomCredential}
+          disabled={!canCreateCredential || notAllowCustomCredential}
           onUpdate={onUpdate}
         />
       </div>
@@ -79,20 +90,23 @@ const Authorize = ({
 
     if (notAllowCustomCredential) {
       return (
-        <Tooltip popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}>
-          {Item}
+        <Tooltip>
+          <TooltipTrigger render={Item} />
+          <TooltipContent>
+            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+          </TooltipContent>
         </Tooltip>
       )
     }
     return Item
-  }, [notAllowCustomCredential, oAuthButtonProps, disabled, onUpdate, t])
+  }, [notAllowCustomCredential, oAuthButtonProps, canCreateCredential, onUpdate, t])
 
   const ApiKeyButton = useMemo(() => {
     const Item = (
       <div className={cn('min-w-0 flex-1', notAllowCustomCredential && 'opacity-50')}>
         <AddApiKeyButton
           {...apiKeyButtonProps}
-          disabled={disabled || notAllowCustomCredential}
+          disabled={!canCreateCredential || notAllowCustomCredential}
           onUpdate={onUpdate}
         />
       </div>
@@ -100,13 +114,16 @@ const Authorize = ({
 
     if (notAllowCustomCredential) {
       return (
-        <Tooltip popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}>
-          {Item}
+        <Tooltip>
+          <TooltipTrigger render={Item} />
+          <TooltipContent>
+            {t('auth.credentialUnavailable', { ns: 'plugin' })}
+          </TooltipContent>
         </Tooltip>
       )
     }
     return Item
-  }, [notAllowCustomCredential, apiKeyButtonProps, disabled, onUpdate, t])
+  }, [notAllowCustomCredential, apiKeyButtonProps, canCreateCredential, onUpdate, t])
 
   return (
     <>

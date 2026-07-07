@@ -3,22 +3,31 @@ import type { FC } from 'react'
 import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import type { TracingStatus } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiArrowDownDoubleLine,
-  RiEqualizer2Line,
-} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
-import { AliyunIcon, ArizeIcon, DatabricksIcon, LangfuseIcon, LangsmithIcon, MlflowIcon, OpikIcon, PhoenixIcon, TencentIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
+import {
+  AliyunIcon,
+  ArizeIcon,
+  DatabricksIcon,
+  LangfuseIcon,
+  LangsmithIcon,
+  MlflowIcon,
+  OpikIcon,
+  PhoenixIcon,
+  TencentIcon,
+  WeaveIcon,
+} from '@/app/components/base/icons/src/public/tracing'
 import Loading from '@/app/components/base/loading'
-import Indicator from '@/app/components/header/indicator'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { usePathname } from '@/next/navigation'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
+import { getAppACLCapabilities } from '@/utils/permission'
 import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
@@ -30,8 +39,16 @@ const Panel: FC = () => {
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
-  const { isCurrentWorkspaceEditor } = useAppContext()
-  const readOnly = !isCurrentWorkspaceEditor
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appDetail = useAppStore(s => s.appDetail)
+  const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail?.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
+  const canConfigTracing = appACLCapabilities.canConfigureTracing
+  const readOnly = !canConfigTracing
 
   const [isLoaded, {
     setTrue: setLoaded,
@@ -247,17 +264,17 @@ const Panel: FC = () => {
         >
           <div
             className={cn(
-              'flex cursor-pointer items-center rounded-xl border-t border-l-[0.5px] border-effects-highlight bg-background-default-dodge p-2 shadow-xs select-none hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+              'flex cursor-pointer items-center rounded-xl border-[0.5px] border-components-panel-border bg-background-default-dodge p-2 shadow-xs select-none hover:bg-background-default-lighter',
             )}
           >
             <TracingIcon size="md" />
             <div className="mx-2 system-sm-semibold text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
             <div className="rounded-md p-1">
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
             <Divider type="vertical" className="h-3.5" />
             <div className="rounded-md p-1">
-              <RiArrowDownDoubleLine className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-arrow-down-double-line size-4 text-text-tertiary" />
             </div>
           </div>
         </ConfigButton>
@@ -286,18 +303,18 @@ const Panel: FC = () => {
         >
           <div
             className={cn(
-              'flex cursor-pointer items-center rounded-xl border-t border-l-[0.5px] border-effects-highlight bg-background-default-dodge p-2 shadow-xs select-none hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+              'flex cursor-pointer items-center rounded-xl border-[0.5px] border-components-panel-border bg-background-default-dodge p-2 shadow-xs select-none hover:bg-background-default-lighter',
             )}
           >
             <div className="mr-1 ml-4 flex items-center">
-              <Indicator color={enabled ? 'green' : 'gray'} />
+              <StatusDot status={enabled ? 'success' : 'disabled'} />
               <div className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
                 {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
               </div>
             </div>
             {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}
             <div className="ml-2 rounded-md p-1">
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
+              <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
             <Divider type="vertical" className="h-3.5" />
           </div>

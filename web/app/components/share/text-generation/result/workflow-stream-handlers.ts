@@ -3,6 +3,7 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
 import type { HumanInputFormTimeoutData, NodeTracing, WorkflowFinishedResponse } from '@/types/workflow'
 import { produce } from 'immer'
+import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { sseGet } from '@/service/base'
@@ -32,6 +33,7 @@ type CreateWorkflowStreamHandlersParams = {
 const createInitialWorkflowProcess = (): WorkflowProcess => ({
   status: WorkflowRunningStatus.Running,
   tracing: [],
+  error: undefined,
   expand: false,
   resultText: '',
 })
@@ -147,9 +149,11 @@ const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
 const applyWorkflowFinishedState = (
   current: WorkflowProcess | undefined,
   status: WorkflowRunningStatus,
+  error?: string,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = status
+    draft.error = error
     if ([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Failed].includes(status))
       markNodesStopped(draft.tracing)
   })
@@ -161,6 +165,7 @@ const applyWorkflowOutputs = (
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = WorkflowRunningStatus.Succeeded
+    draft.error = undefined
     draft.files = getFilesInLogs(outputs || []) as unknown as WorkflowProcess['files']
   })
 }
@@ -204,16 +209,20 @@ const updateHumanInputFilled = (
   data: NonNullable<WorkflowProcess['humanInputFilledFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
+    let requiredFormData: NonNullable<WorkflowProcess['humanInputFormDataList']>[number] | undefined
     if (draft.humanInputFormDataList?.length) {
       const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
-      if (currentFormIndex > -1)
+      if (currentFormIndex > -1) {
+        requiredFormData = draft.humanInputFormDataList[currentFormIndex]
         draft.humanInputFormDataList.splice(currentFormIndex, 1)
+      }
     }
 
+    const enrichedData = enrichSubmittedHumanInputFormData(data, requiredFormData)
     if (!draft.humanInputFilledFormDataList)
-      draft.humanInputFilledFormDataList = [data]
+      draft.humanInputFilledFormDataList = [enrichedData]
     else
-      draft.humanInputFilledFormDataList.push(data)
+      draft.humanInputFilledFormDataList.push(enrichedData)
   })
 }
 
@@ -296,6 +305,7 @@ export const createWorkflowStreamHandlers = ({
         setWorkflowProcessData(updateWorkflowProcess(workflowProcessData, (draft) => {
           draft.expand = true
           draft.status = WorkflowRunningStatus.Running
+          draft.error = undefined
         }))
         return
       }
@@ -337,14 +347,18 @@ export const createWorkflowStreamHandlers = ({
 
       const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (workflowStatus === WorkflowRunningStatus.Stopped) {
-        setWorkflowProcessData(applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Stopped))
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Stopped, data.error),
+        )
         finishWithFailure()
         return
       }
 
       if (data.error) {
         notify({ type: 'error', message: data.error })
-        setWorkflowProcessData(applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed))
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed, data.error),
+        )
         finishWithFailure()
         return
       }

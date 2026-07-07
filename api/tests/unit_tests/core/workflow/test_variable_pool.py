@@ -5,7 +5,7 @@ from collections import defaultdict
 import pytest
 
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
-from core.workflow.variable_pool_initializer import add_variables_to_pool
+from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
@@ -80,6 +80,25 @@ def test_get_file_attribute(pool, file):
     assert result is None
 
 
+def test_add_node_inputs_to_pool_stores_inputs_under_aliases():
+    pool = VariablePool()
+
+    add_node_inputs_to_pool(
+        pool,
+        node_id="__snippet_virtual_start__",
+        inputs={"query": "hello"},
+        aliases=("start", "__snippet_virtual_start__"),
+    )
+
+    primary_value = pool.get(["__snippet_virtual_start__", "query"])
+    alias_value = pool.get(["start", "query"])
+
+    assert primary_value is not None
+    assert primary_value.value == "hello"
+    assert alias_value is not None
+    assert alias_value.value == "hello"
+
+
 class TestVariablePool:
     def test_constructor(self):
         pool = VariablePool()
@@ -109,8 +128,8 @@ class TestVariablePool:
         assert pool.get([ENVIRONMENT_VARIABLE_NODE_ID, "env_var_1"]) is not None
         assert pool.get([CONVERSATION_VARIABLE_NODE_ID, "conv_var_1"]) is not None
 
-    def test_constructor_loads_legacy_bootstrap_kwargs(self):
-        pool = VariablePool(
+    def test_from_bootstrap_loads_legacy_bootstrap_kwargs(self):
+        pool = VariablePool.from_bootstrap(
             system_variables=build_system_variables(user_id="test_user_id"),
             environment_variables=[StringVariable(name="env_var", value="env-value")],
             conversation_variables=[StringVariable(name="conv_var", value="conv-value")],

@@ -3,8 +3,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
-import * as React from 'react'
-import { useState } from 'react'
+import { useDebounceFn } from 'ahooks'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useRouter } from '@/next/navigation'
@@ -18,22 +18,48 @@ import { useLogout } from '@/service/use-common'
 import { asyncRunSafe } from '@/utils'
 
 type Props = {
-  show: boolean
   onClose: () => void
   email: string
 }
 
-enum STEP {
-  start = 'start',
-  verifyOrigin = 'verifyOrigin',
-  newEmail = 'newEmail',
-  verifyNew = 'verifyNew',
+const STEP = {
+  start: 'start',
+  verifyOrigin: 'verifyOrigin',
+  newEmail: 'newEmail',
+  verifyNew: 'verifyNew',
+} as const
+
+type Step = typeof STEP[keyof typeof STEP]
+
+const emailPattern = /^[\w.!#$%&'*+\-/=?^`{|}~]+@(?:[\w-]+\.)+[\w-]{2,}$/
+
+type FetchResponseError = {
+  status: number
+  json: () => Promise<ResponseError>
 }
 
-const EmailChangeModal = ({ onClose, email, show }: Props) => {
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error)
+    return error.message
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    return typeof message === 'string' ? message : ''
+  }
+  return ''
+}
+
+function isFetchResponseError(error: unknown): error is FetchResponseError {
+  if (typeof error !== 'object' || error === null)
+    return false
+
+  const maybeError = error as { status?: unknown, json?: unknown }
+  return typeof maybeError.status === 'number' && typeof maybeError.json === 'function'
+}
+
+const EmailChangeModal = ({ onClose, email }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [step, setStep] = useState<STEP>(STEP.start)
+  const [step, setStep] = useState<Step>(STEP.newEmail)
   const [code, setCode] = useState<string>('')
   const [mail, setMail] = useState<string>('')
   const [time, setTime] = useState<number>(0)
@@ -41,13 +67,26 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const [newEmailExited, setNewEmailExited] = useState<boolean>(false)
   const [unAvailableEmail, setUnAvailableEmail] = useState<boolean>(false)
   const [isCheckingEmail, setIsCheckingEmail] = useState<boolean>(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const latestEmailRef = useRef<string>('')
+
+  const clearCountdown = useCallback(() => {
+    if (!timerRef.current)
+      return
+
+    clearInterval(timerRef.current)
+    timerRef.current = null
+  }, [])
+
+  useEffect(() => clearCountdown, [clearCountdown])
 
   const startCount = () => {
+    clearCountdown()
     setTime(60)
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTime((prev) => {
-        if (prev <= 0) {
-          clearInterval(timer)
+        if (prev <= 1) {
+          clearCountdown()
           return 0
         }
         return prev - 1
@@ -67,11 +106,11 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
         setStepToken(res.data)
     }
     catch (error) {
-      toast.error(`Error sending verification code: ${error ? (error as any).message : ''}`)
+      toast.error(`Error sending verification code: ${getErrorMessage(error)}`)
     }
   }
 
-  const verifyEmailAddress = async (email: string, code: string, token: string, callback?: (data?: any) => void) => {
+  const verifyEmailAddress = async (email: string, code: string, token: string, callback?: (token: string) => void) => {
     try {
       const res = await verifyEmail({
         email,
@@ -87,7 +126,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       }
     }
     catch (error) {
-      toast.error(`Error verifying email: ${error ? (error as any).message : ''}`)
+      toast.error(`Error verifying email: ${getErrorMessage(error)}`)
     }
   }
 
@@ -105,8 +144,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   }
 
   const isValidEmail = (email: string): boolean => {
-    const rfc5322emailRegex = /^[\w.!#$%&'*+/=?^`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i
-    return rfc5322emailRegex.test(email) && email.length <= 254
+    return emailPattern.test(email)
   }
 
   const checkNewEmailExisted = async (email: string) => {
@@ -115,11 +153,15 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       await checkEmailExisted({
         email,
       })
+      if (latestEmailRef.current !== email)
+        return
       setNewEmailExited(false)
       setUnAvailableEmail(false)
     }
-    catch (e: any) {
-      if (e.status === 400) {
+    catch (e: unknown) {
+      if (latestEmailRef.current !== email)
+        return
+      if (isFetchResponseError(e) && e.status === 400) {
         const [, errRespData] = await asyncRunSafe<ResponseError>(e.json())
         const { code } = errRespData || {}
         if (code === 'email_already_in_use')
@@ -129,24 +171,41 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       }
     }
     finally {
-      setIsCheckingEmail(false)
+      if (latestEmailRef.current === email)
+        setIsCheckingEmail(false)
     }
   }
 
+  const {
+    run: checkNewEmailExistedDebounced,
+    cancel: cancelCheckNewEmailExisted,
+  } = useDebounceFn(checkNewEmailExisted, { wait: 500 })
+
+  useEffect(() => cancelCheckNewEmailExisted, [cancelCheckNewEmailExisted])
+
   const handleNewEmailValueChange = (mailAddress: string) => {
+    const normalizedMailAddress = mailAddress.trim()
+    latestEmailRef.current = normalizedMailAddress
     setMail(mailAddress)
     setNewEmailExited(false)
-    if (isValidEmail(mailAddress))
-      checkNewEmailExisted(mailAddress)
+    setUnAvailableEmail(false)
+    if (isValidEmail(normalizedMailAddress)) {
+      setIsCheckingEmail(true)
+      checkNewEmailExistedDebounced(normalizedMailAddress)
+      return
+    }
+    cancelCheckNewEmailExisted()
+    setIsCheckingEmail(false)
   }
 
   const sendCodeToNewEmail = async () => {
-    if (!isValidEmail(mail)) {
+    const normalizedMail = mail.trim()
+    if (!isValidEmail(normalizedMail)) {
       toast.error('Invalid email format')
       return
     }
     await sendEmail(
-      mail,
+      normalizedMail,
       false,
       stepToken,
     )
@@ -157,7 +216,6 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const handleLogout = async () => {
     await logout()
 
-    localStorage.removeItem('setup_status')
     // Tokens are now stored in cookies and cleared by backend
 
     router.push('/signin')
@@ -166,25 +224,29 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   const updateEmail = async (lastToken: string) => {
     try {
       await resetEmail({
-        new_email: mail,
+        new_email: mail.trim(),
         token: lastToken,
       })
       handleLogout()
     }
     catch (error) {
-      toast.error(`Error changing email: ${error ? (error as any).message : ''}`)
+      toast.error(`Error changing email: ${getErrorMessage(error)}`)
     }
   }
 
   const submitNewEmail = async () => {
-    await verifyEmailAddress(mail, code, stepToken, updateEmail)
+    await verifyEmailAddress(mail.trim(), code, stepToken, updateEmail)
   }
 
+  const normalizedMail = mail.trim()
+  const isMailValid = isValidEmail(normalizedMail)
+  const isSendCodeDisabled = !normalizedMail || newEmailExited || unAvailableEmail || isCheckingEmail || !isMailValid
+
   return (
-    <Dialog open={show} onOpenChange={open => !open && onClose()}>
-      <DialogContent className="w-[420px]! p-6!">
+    <Dialog open onOpenChange={open => !open && onClose()}>
+      <DialogContent className="w-105! p-6!">
         <div className="absolute top-5 right-5 cursor-pointer p-1.5" onClick={onClose}>
-          <RiCloseLine className="h-5 w-5 text-text-tertiary" />
+          <RiCloseLine className="size-5 text-text-tertiary" />
         </div>
         {step === STEP.start && (
           <>
@@ -292,7 +354,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             </div>
             <div className="mt-3 space-y-2">
               <Button
-                disabled={!mail || newEmailExited || unAvailableEmail || isCheckingEmail || !isValidEmail(mail)}
+                disabled={isSendCodeDisabled}
                 className="w-full!"
                 variant="primary"
                 onClick={sendCodeToNewEmail}

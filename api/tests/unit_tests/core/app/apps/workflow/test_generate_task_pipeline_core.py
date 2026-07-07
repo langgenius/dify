@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -26,6 +27,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -36,11 +38,13 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
+    HumanInputRequiredResponse,
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
+    WorkflowAppPausedBlockingResponse,
     WorkflowFinishStreamResponse,
-    WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
@@ -91,27 +95,53 @@ def _make_pipeline():
 
 
 class TestWorkflowGenerateTaskPipeline:
-    def test_to_blocking_response_handles_pause(self):
+    def test_to_blocking_response_falls_back_to_human_input_required_when_pause_event_missing(self):
         pipeline = _make_pipeline()
+        pipeline._graph_runtime_state = GraphRuntimeState(
+            variable_pool=build_test_variable_pool(
+                variables=build_system_variables(workflow_execution_id="run-id"),
+            ),
+            start_at=0.0,
+            total_tokens=5,
+            node_run_steps=2,
+        )
 
         def _gen():
-            yield WorkflowPauseStreamResponse(
+            yield HumanInputRequiredResponse(
                 task_id="task",
-                workflow_run_id="run",
-                data=WorkflowPauseStreamResponse.Data(
-                    workflow_run_id="run",
-                    status=WorkflowExecutionStatus.PAUSED,
-                    outputs={},
-                    created_at=1,
-                    elapsed_time=0.1,
-                    total_tokens=0,
-                    total_steps=0,
+                workflow_run_id="run-id",
+                data=HumanInputRequiredResponse.Data(
+                    form_id="form-1",
+                    node_id="node-1",
+                    node_title="Human Input",
+                    form_content="content",
+                    expiration_time=1,
                 ),
             )
 
         response = pipeline._to_blocking_response(_gen())
 
+        assert isinstance(response, WorkflowAppPausedBlockingResponse)
+        assert response.workflow_run_id == "run-id"
         assert response.data.status == WorkflowExecutionStatus.PAUSED
+        assert response.data.created_at == 0
+        assert response.data.paused_nodes == ["node-1"]
+        assert response.data.reasons == [
+            {
+                "TYPE": "human_input_required",
+                "form_id": "form-1",
+                "node_id": "node-1",
+                "node_title": "Human Input",
+                "form_content": "content",
+                "inputs": [],
+                "actions": [],
+                "display_in_ui": False,
+                "form_token": None,
+                "approval_channels": [],
+                "resolved_default_values": {},
+                "expiration_time": 1,
+            }
+        ]
 
     def test_to_blocking_response_handles_finish(self):
         pipeline = _make_pipeline()
@@ -163,7 +193,7 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert isinstance(responses[0], ValueError)
 
-    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch):
+    def test_handle_workflow_started_event_sets_run_id(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
             variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
@@ -238,6 +268,41 @@ class TestWorkflowGenerateTaskPipeline:
         assert responses[0].data.text == "hi"
         assert published == [queue_message]
 
+    def test_handle_reasoning_chunk_event_emits_on_nonempty(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="pondering", from_node_id="llm-1", is_final=False)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert isinstance(response, ReasoningChunkStreamResponse)
+        # workflow runs have no message, so the id is omitted
+        assert response.data.message_id is None
+        assert response.data.reasoning == "pondering"
+        assert response.data.node_id == "llm-1"
+        assert response.data.is_final is False
+
+    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=False)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert responses == []
+
+    def test_handle_reasoning_chunk_event_emits_empty_final_marker(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=True)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert isinstance(response, ReasoningChunkStreamResponse)
+        assert response.data.reasoning == ""
+        assert response.data.is_final is True
+
     def test_dispatch_event_handles_node_failed(self):
         pipeline = _make_pipeline()
         pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
@@ -259,7 +324,9 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._workflow_response_converter.workflow_finish_to_stream_response = lambda **kwargs: "finish"
@@ -384,7 +451,7 @@ class TestWorkflowGenerateTaskPipeline:
         assert list(pipeline._handle_human_input_form_timeout_event(timeout_event)) == ["timeout"]
         assert list(pipeline._handle_agent_log_event(agent_event)) == ["log"]
 
-    def test_wrapper_process_stream_response_emits_audio_end(self, monkeypatch):
+    def test_wrapper_process_stream_response_emits_audio_end(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -536,7 +603,7 @@ class TestWorkflowGenerateTaskPipeline:
         responses = list(pipeline._wrapper_process_stream_response())
         assert responses == [PingStreamResponse(task_id="task")]
 
-    def test_wrapper_process_stream_response_final_audio_none_then_finish(self, monkeypatch):
+    def test_wrapper_process_stream_response_final_audio_none_then_finish(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -573,7 +640,9 @@ class TestWorkflowGenerateTaskPipeline:
         assert sleep_spy
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_wrapper_process_stream_response_handles_audio_exception(self, monkeypatch):
+    def test_wrapper_process_stream_response_handles_audio_exception(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ):
         pipeline = _make_pipeline()
         pipeline._workflow_features_dict = {
             "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
@@ -593,23 +662,19 @@ class TestWorkflowGenerateTaskPipeline:
             def publish(self, message):
                 _ = message
 
-        logger_exception = []
         monkeypatch.setattr("core.app.apps.workflow.generate_task_pipeline.time.time", lambda: 0.0)
-        monkeypatch.setattr(
-            "core.app.apps.workflow.generate_task_pipeline.logger.exception",
-            lambda *args, **kwargs: logger_exception.append((args, kwargs)),
-        )
         monkeypatch.setattr(
             "core.app.apps.workflow.generate_task_pipeline.AppGeneratorTTSPublisher",
             _Publisher,
         )
 
-        responses = list(pipeline._wrapper_process_stream_response())
+        with caplog.at_level(logging.ERROR, logger="core.app.apps.workflow.generate_task_pipeline"):
+            responses = list(pipeline._wrapper_process_stream_response())
 
-        assert logger_exception
+        assert "Fails to get audio trunk, task_id: task" in caplog.messages
         assert any(isinstance(item, MessageAudioEndStreamResponse) for item in responses)
 
-    def test_database_session_rolls_back_on_error(self, monkeypatch):
+    def test_database_session_rolls_back_on_error(self, monkeypatch: pytest.MonkeyPatch):
         pipeline = _make_pipeline()
         calls = {"enter": 0, "exit_exc": None}
 
@@ -701,7 +766,9 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
 
@@ -729,7 +796,9 @@ class TestWorkflowGenerateTaskPipeline:
         pipeline = _make_pipeline()
         pipeline._workflow_execution_id = "run-id"
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._handle_ping_event = lambda event, **kwargs: iter(["ping"])
@@ -745,7 +814,9 @@ class TestWorkflowGenerateTaskPipeline:
     def test_process_stream_response_main_match_paths_and_cleanup(self):
         pipeline = _make_pipeline()
         pipeline._graph_runtime_state = GraphRuntimeState(
-            variable_pool=VariablePool(system_variables=build_system_variables(workflow_execution_id="run-id")),
+            variable_pool=VariablePool.from_bootstrap(
+                system_variables=build_system_variables(workflow_execution_id="run-id")
+            ),
             start_at=0.0,
         )
         pipeline._base_task_pipeline.queue_manager.listen = lambda: iter(

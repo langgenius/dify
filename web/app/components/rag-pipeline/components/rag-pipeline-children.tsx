@@ -9,6 +9,7 @@ import {
   useDSL,
   usePanelInteractions,
 } from '@/app/components/workflow/hooks'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import PluginDependency from '../../workflow/plugin-dependency'
 import { useStore } from '../../workflow/store'
@@ -23,6 +24,7 @@ const RagPipelineChildren = () => {
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
+  const canImportExportDSL = useHooksStore(s => s.accessControl.canImportExportDSL)
   const {
     handlePaneContextmenuCancel,
   } = usePanelInteractions()
@@ -43,7 +45,7 @@ const RagPipelineChildren = () => {
     <>
       <PluginDependency />
       {
-        showImportDSLModal && (
+        canImportExportDSL && showImportDSLModal && (
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
             onBackup={exportCheck!}
@@ -52,7 +54,7 @@ const RagPipelineChildren = () => {
         )
       }
       {
-        secretEnvList.length > 0 && (
+        canImportExportDSL && secretEnvList.length > 0 && (
           <DSLExportConfirmModal
             envList={secretEnvList}
             onConfirm={handleExportDSL!}

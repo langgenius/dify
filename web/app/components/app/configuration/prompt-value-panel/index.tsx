@@ -4,6 +4,9 @@ import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -17,9 +20,6 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
-import Select from '@/app/components/base/select'
-import Textarea from '@/app/components/base/textarea'
-import Tooltip from '@/app/components/base/tooltip'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType } from '@/types/app'
@@ -40,7 +40,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
-  const { readonly, modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const { readonly, canTestAndRun = false, modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const debugInputReadonly = !canTestAndRun
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -86,6 +87,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }, [chatPromptConfig?.prompt, completionPromptConfig.prompt?.text, isAdvancedMode, mode, modelConfig.configs.prompt_template, modelModeType])
 
   const handleInputValueChange = (key: string, value: string | boolean) => {
+    if (debugInputReadonly)
+      return
     if (!(key in promptVariableObj))
       return
 
@@ -98,6 +101,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }
 
   const onClear = () => {
+    if (debugInputReadonly)
+      return
     const newInputs: Inputs = {}
     promptVariables.forEach((item) => {
       newInputs[item.key] = ''
@@ -111,11 +116,15 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     <>
       <div className="relative z-1 mx-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-md">
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
-          <div className="flex cursor-pointer items-center gap-0.5 py-0.5" onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
+          <button
+            type="button"
+            className="flex cursor-pointer items-center gap-0.5 border-none bg-transparent px-0 py-0.5 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}
+          >
             <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
-            {userInputFieldCollapse && <RiArrowRightSLine className="h-4 w-4 text-text-secondary" />}
-            {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />}
-          </div>
+            {userInputFieldCollapse && <RiArrowRightSLine className="size-4 text-text-secondary" aria-hidden="true" />}
+            {!userInputFieldCollapse && <RiArrowDownSLine className="size-4 text-text-secondary" aria-hidden="true" />}
+          </button>
           {!userInputFieldCollapse && (
             <div className="mt-1 system-xs-regular text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
           )}
@@ -142,28 +151,41 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         placeholder={name}
                         autoFocus={index === 0}
                         maxLength={max_length}
-                        readOnly={readonly}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'paragraph' && (
                       <Textarea
+                        aria-label={name}
                         className="h-[120px] grow"
                         placeholder={name}
                         value={inputs[key] ? `${inputs[key]}` : ''}
-                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                        readOnly={readonly}
+                        onValueChange={(value) => { handleInputValueChange(key, value) }}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'select' && (
-                      <Select
-                        className="w-full"
-                        defaultValue={inputs[key] as string}
-                        onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                        items={(options || []).map(i => ({ name: i, value: i }))}
-                        allowSearch={false}
-                        bgClassName="bg-gray-50"
-                        disabled={readonly}
-                      />
+                      <Select<string>
+                        value={typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : null}
+                        disabled={debugInputReadonly}
+                        onValueChange={(nextValue) => {
+                          if (nextValue == null || nextValue === '')
+                            return
+                          handleInputValueChange(key, nextValue)
+                        }}
+                      >
+                        <SelectTrigger className="w-full bg-gray-50">
+                          {typeof inputs[key] === 'string' && inputs[key] !== '' ? inputs[key] : t('placeholder.select', { ns: 'common' })}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(options || []).map(option => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                     {type === 'number' && (
                       <Input
@@ -173,7 +195,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         placeholder={name}
                         autoFocus={index === 0}
                         maxLength={max_length}
-                        readOnly={readonly}
+                        readOnly={debugInputReadonly}
                       />
                     )}
                     {type === 'checkbox' && (
@@ -182,7 +204,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                         value={!!inputs[key]}
                         required={required}
                         onChange={(value) => { handleInputValueChange(key, value) }}
-                        readonly={readonly}
+                        readonly={debugInputReadonly}
                       />
                     )}
                   </div>
@@ -201,7 +223,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       url: fileItem.url,
                       upload_file_id: fileItem.fileId,
                     })))}
-                    disabled={readonly}
+                    disabled={debugInputReadonly}
                   />
                 </div>
               </div>
@@ -210,28 +232,35 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         )}
         {!userInputFieldCollapse && (
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
-            <Button className="w-[72px]" disabled={readonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
+            <Button className="w-[72px]" disabled={debugInputReadonly} onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
             {canNotRun && (
-              <Tooltip popupContent={t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}>
-                <Button
-                  variant="primary"
-                  disabled={canNotRun || readonly}
-                  onClick={() => onSend?.()}
-                  className="w-[96px]"
-                >
-                  <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  {t('inputs.run', { ns: 'appDebug' })}
-                </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={(
+                    <Button
+                      variant="primary"
+                      disabled={canNotRun || !canTestAndRun}
+                      onClick={() => onSend?.()}
+                      className="w-[96px]"
+                    >
+                      <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
+                      {t('inputs.run', { ns: 'appDebug' })}
+                    </Button>
+                  )}
+                />
+                <TooltipContent>
+                  {t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}
+                </TooltipContent>
               </Tooltip>
             )}
             {!canNotRun && (
               <Button
                 variant="primary"
-                disabled={canNotRun || readonly}
+                disabled={canNotRun || !canTestAndRun}
                 onClick={() => onSend?.()}
                 className="w-[96px]"
               >
-                <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <RiPlayLargeFill className="mr-0.5 size-4 shrink-0" aria-hidden="true" />
                 {t('inputs.run', { ns: 'appDebug' })}
               </Button>
             )}

@@ -1,12 +1,11 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import AppPublisher from '@/app/components/app/app-publisher'
+import { AppPublisher } from '@/app/components/app/app-publisher'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 
 const mockTrackEvent = vi.fn()
-const mockRefetch = vi.fn()
 const mockFetchInstalledAppList = vi.fn()
 const mockFetchAppDetailDirect = vi.fn()
 const mockToastError = vi.fn()
@@ -43,10 +42,6 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-vi.mock('ahooks', () => ({
-  useKeyPress: vi.fn(),
-}))
-
 vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
     appDetail: mockAppDetail,
@@ -64,11 +59,10 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => mockOpenAsyncWindow,
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({
     data: { result: true },
     isLoading: false,
-    refetch: mockRefetch,
   }),
   useAppWhiteListSubjects: () => ({
     data: { groups: [], members: [] },
@@ -118,42 +112,16 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-vi.mock('@/app/components/app/app-access-control', () => ({
-  default: () => <div data-testid="app-access-control" />,
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
-  const OpenContext = React.createContext(false)
+vi.mock('@/app/components/app/app-access-control', () => {
+  const MockAccessControl = () => <div data-testid="app-access-control" />
 
   return {
-    PortalToFollowElem: ({ children, open }: { children: React.ReactNode, open: boolean }) => (
-      <OpenContext.Provider value={open}>
-        <div>{children}</div>
-      </OpenContext.Provider>
-    ),
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick?: () => void
-    }) => (
-      <div onClick={onClick}>
-        {children}
-      </div>
-    ),
-    PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => {
-      const open = React.useContext(OpenContext)
-      return open ? <div>{children}</div> : null
-    },
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
   }
 })
 
-vi.mock('@/app/components/workflow/utils', () => ({
-  getKeyboardKeyCodeBySystem: () => 'ctrl',
-  getKeyboardKeyNameBySystem: (key: string) => key,
-}))
+vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 
 describe('App Publisher Flow', () => {
   beforeEach(() => {
@@ -217,8 +185,6 @@ describe('App Publisher Flow', () => {
         app_name: 'Demo App',
       }))
     })
-
-    expect(mockRefetch).toHaveBeenCalled()
   })
 
   it('opens embedded modal and resolves the installed explore target', async () => {
@@ -249,7 +215,7 @@ describe('App Publisher Flow', () => {
     fireEvent.click(screen.getByText('common.openInExplore'))
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('No app found in Explore')
+      expect(mockToastError).toHaveBeenCalledWith('notPublishedYet')
     })
   })
 })

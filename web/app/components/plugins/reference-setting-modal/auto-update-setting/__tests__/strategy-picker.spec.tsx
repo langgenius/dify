@@ -1,63 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import StrategyPicker from '../strategy-picker'
 import { AUTO_UPDATE_STRATEGY } from '../types'
 
-let portalOpen = false
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-  }: {
-    children: React.ReactNode
-  }) => <span data-testid="picker-button">{children}</span>,
-}))
-
-vi.mock('@/app/components/base/portal-to-follow-elem', async () => {
-  const _React = await import('react')
-  return {
-    PortalToFollowElem: ({
-      open,
-      children,
-    }: {
-      open: boolean
-      children: React.ReactNode
-    }) => {
-      portalOpen = open
-      return <div>{children}</div>
-    },
-    PortalToFollowElemTrigger: ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode
-      onClick: (event: { stopPropagation: () => void, nativeEvent: { stopImmediatePropagation: () => void } }) => void
-    }) => (
-      <button
-        data-testid="trigger"
-        onClick={() => onClick({
-          stopPropagation: vi.fn(),
-          nativeEvent: { stopImmediatePropagation: vi.fn() },
-        })}
-      >
-        {children}
-      </button>
-    ),
-    PortalToFollowElemContent: ({
-      children,
-    }: {
-      children: React.ReactNode
-    }) => portalOpen ? <div data-testid="portal-content">{children}</div> : null,
-  }
-})
+const triggerName = (key: string) => new RegExp(`plugin\\.autoUpdate\\.strategy\\.${key}\\.name`, 'i')
 
 describe('StrategyPicker', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    portalOpen = false
-  })
-
-  it('renders the selected strategy label in the trigger', () => {
+  it('renders all strategy toggle options', () => {
     render(
       <StrategyPicker
         value={AUTO_UPDATE_STRATEGY.fixOnly}
@@ -65,25 +14,28 @@ describe('StrategyPicker', () => {
       />,
     )
 
-    expect(screen.getByTestId('trigger')).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name')
+    expect(screen.getByRole('group', { name: 'plugin.autoUpdate.automaticUpdates' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: triggerName('disabled') })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: triggerName('fixOnly') })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: triggerName('latest') })).toBeInTheDocument()
   })
 
-  it('opens the option list when the trigger is clicked', () => {
+  it('marks only the currently selected strategy as pressed', () => {
     render(
       <StrategyPicker
-        value={AUTO_UPDATE_STRATEGY.disabled}
+        value={AUTO_UPDATE_STRATEGY.fixOnly}
         onChange={vi.fn()}
       />,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
+    const buttons = screen.getAllByRole('button')
+    const pressedOptions = buttons.filter(item => item.getAttribute('aria-pressed') === 'true')
 
-    expect(screen.getByTestId('portal-content')).toBeInTheDocument()
-    expect(screen.getByTestId('portal-content').querySelectorAll('svg')).toHaveLength(1)
-    expect(screen.getByText('plugin.autoUpdate.strategy.latest.description')).toBeInTheDocument()
+    expect(pressedOptions).toHaveLength(1)
+    expect(pressedOptions[0]).toHaveTextContent('plugin.autoUpdate.strategy.fixOnly.name')
   })
 
-  it('calls onChange when a new strategy is selected', () => {
+  it('calls onChange when a new strategy is selected', async () => {
     const onChange = vi.fn()
     render(
       <StrategyPicker
@@ -92,8 +44,7 @@ describe('StrategyPicker', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('trigger'))
-    fireEvent.click(screen.getByText('plugin.autoUpdate.strategy.latest.name'))
+    fireEvent.click(screen.getByRole('button', { name: triggerName('latest') }))
 
     expect(onChange).toHaveBeenCalledWith(AUTO_UPDATE_STRATEGY.latest)
   })

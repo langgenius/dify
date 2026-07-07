@@ -1,20 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import UpgradeModal from '../upgrade-modal'
+import { UpgradeModal } from '../upgrade-modal'
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
 
 const mockUseModalContextSelector = vi.hoisted(() => vi.fn())
 
 vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: (selector: (state: { setShowPricingModal: () => void }) => () => void) =>
     mockUseModalContextSelector(selector),
-}))
-
-vi.mock('@/app/components/base/premium-badge', () => ({
-  __esModule: true,
-  default: ({ children, onClick }: { children: React.ReactNode, onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {children}
-    </button>
-  ),
 }))
 
 describe('human-input/delivery-method/upgrade-modal', () => {
@@ -32,8 +31,8 @@ describe('human-input/delivery-method/upgrade-modal', () => {
 
     render(
       <UpgradeModal
-        isShow
-        onClose={handleClose}
+        open
+        onOpenChange={handleClose}
       />,
     )
 
@@ -41,7 +40,7 @@ describe('human-input/delivery-method/upgrade-modal', () => {
     expect(screen.getByText('workflow.nodes.humanInput.deliveryMethod.upgradeTipContent')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.humanInput.deliveryMethod.upgradeTipHide' }))
-    expect(handleClose).toHaveBeenCalledTimes(1)
+    expect(handleClose).toHaveBeenCalledWith(false)
 
     fireEvent.click(screen.getByRole('button', { name: /billing.upgradeBtn.encourageShort/i }))
     expect(handleShowPricingModal).toHaveBeenCalledTimes(1)

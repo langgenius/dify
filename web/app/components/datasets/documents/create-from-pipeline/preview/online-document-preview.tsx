@@ -50,7 +50,7 @@ const OnlineDocumentPreview = ({
   }, [currentPage.page_id])
 
   return (
-    <div className="flex h-full w-full flex-col rounded-t-xl border-t border-l border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
+    <div className="flex size-full flex-col rounded-t-xl border-t border-l border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
       <div className="flex gap-x-2 border-b border-divider-subtle pt-4 pr-4 pb-3 pl-6">
         <div className="flex grow flex-col gap-y-1">
           <div className="system-2xs-semibold-uppercase text-text-accent">{t('addDocuments.stepOne.preview', { ns: 'datasetPipeline' })}</div>
@@ -64,7 +64,7 @@ const OnlineDocumentPreview = ({
         </div>
         <button
           type="button"
-          className="flex h-8 w-8 shrink-0 items-center justify-center"
+          className="flex size-8 shrink-0 items-center justify-center"
           onClick={hidePreview}
         >
           <RiCloseLine className="size-[18px]" />

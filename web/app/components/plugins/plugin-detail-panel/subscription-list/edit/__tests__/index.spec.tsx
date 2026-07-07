@@ -76,6 +76,11 @@ vi.mock('../../../store', () => ({
     selector({ detail: mockPluginStoreDetail }),
 }))
 
+const getCancelButton = () => screen.getByRole('button', { name: /common\.operation\.cancel/i })
+const getConfirmButton = () => screen.getByRole('button', { name: /common\.operation\.(save|saving)|pluginTrigger\.modal\.common\.verify/i })
+const getBackButton = () => screen.getByRole('button', { name: /pluginTrigger\.modal\.common\.back/i })
+const queryBackButton = () => screen.queryByRole('button', { name: /pluginTrigger\.modal\.common\.back/i })
+
 const mockRefetch = vi.fn()
 vi.mock('../../use-subscription-list', () => ({
   useSubscriptionList: () => ({ refetch: mockRefetch }),
@@ -164,49 +169,6 @@ vi.mock('@/app/components/base/form/components/base', () => ({
       </div>
     )
   }),
-}))
-
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({
-    title,
-    confirmButtonText,
-    onClose,
-    onCancel,
-    onConfirm,
-    disabled,
-    children,
-    showExtraButton,
-    extraButtonText,
-    onExtraButtonClick,
-    bottomSlot,
-  }: {
-    title: string
-    confirmButtonText: string
-    onClose: () => void
-    onCancel: () => void
-    onConfirm: () => void
-    disabled?: boolean
-    children: React.ReactNode
-    showExtraButton?: boolean
-    extraButtonText?: string
-    onExtraButtonClick?: () => void
-    bottomSlot?: React.ReactNode
-  }) => (
-    <div data-testid="modal" data-title={title} data-disabled={disabled}>
-      <div data-testid="modal-content">{children}</div>
-      <button data-testid="modal-confirm-button" onClick={onConfirm} disabled={disabled}>
-        {confirmButtonText}
-      </button>
-      <button data-testid="modal-cancel-button" onClick={onCancel}>Cancel</button>
-      <button data-testid="modal-close-button" onClick={onClose}>Close</button>
-      {showExtraButton && (
-        <button data-testid="modal-extra-button" onClick={onExtraButtonClick}>
-          {extraButtonText}
-        </button>
-      )}
-      {!!bottomSlot && <div data-testid="modal-bottom-slot">{bottomSlot}</div>}
-    </div>
-  ),
 }))
 
 // ==================== Test Utilities ====================
@@ -444,7 +406,7 @@ describe('Edit Modal Components', () => {
     describe('Confirm Button Text', () => {
       it('should show "save" when not updating', () => {
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+        expect(getConfirmButton()).toHaveTextContent('common.operation.save')
       })
     })
 
@@ -452,21 +414,21 @@ describe('Edit Modal Components', () => {
       it('should call onClose when cancel button is clicked', () => {
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
-        fireEvent.click(screen.getByTestId('modal-cancel-button'))
+        fireEvent.click(getCancelButton())
         expect(onClose).toHaveBeenCalledTimes(1)
       })
 
       it('should call onClose when close button is clicked', () => {
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
-        fireEvent.click(screen.getByTestId('modal-close-button'))
+        fireEvent.click(screen.getByRole('button', { name: 'Close' }))
         expect(onClose).toHaveBeenCalledTimes(1)
       })
 
       it('should call updateSubscription when confirm is clicked with valid form', () => {
         formValuesMap.set('main', { values: { subscription_name: 'New Name' }, isCheckValidated: true })
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ subscriptionId: 'test-subscription-id', name: 'New Name' }),
           expect.any(Object),
@@ -476,7 +438,7 @@ describe('Edit Modal Components', () => {
       it('should not call updateSubscription when form validation fails', () => {
         formValuesMap.set('main', { values: {}, isCheckValidated: false })
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
     })
@@ -489,7 +451,7 @@ describe('Edit Modal Components', () => {
           isCheckValidated: true,
         })
         render(<ManualEditModal {...createProps({ subscription })} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ properties: undefined }),
           expect.any(Object),
@@ -503,7 +465,7 @@ describe('Edit Modal Components', () => {
           isCheckValidated: true,
         })
         render(<ManualEditModal {...createProps({ subscription })} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ properties: { custom: 'new' } }),
           expect.any(Object),
@@ -517,7 +479,7 @@ describe('Edit Modal Components', () => {
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
         })
@@ -529,7 +491,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Custom error')))
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -542,7 +504,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: 'Object error' }))
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -555,7 +517,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({}))
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -568,7 +530,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(null))
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -581,7 +543,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: 123 }))
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -594,7 +556,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: '' }))
         render(<ManualEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -634,7 +596,7 @@ describe('Edit Modal Components', () => {
       it('should show saving text when isUpdating is true', () => {
         mockIsUpdating = true
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.saving')
+        expect(getConfirmButton()).toHaveTextContent('common.operation.saving')
       })
     })
   })
@@ -740,7 +702,7 @@ describe('Edit Modal Components', () => {
           })}
           />,
         )
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ parameters: undefined }),
           expect.any(Object),
@@ -761,7 +723,7 @@ describe('Edit Modal Components', () => {
           })}
           />,
         )
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ parameters: { channel: 'new' } }),
           expect.any(Object),
@@ -775,7 +737,7 @@ describe('Edit Modal Components', () => {
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
         const onClose = vi.fn()
         render(<OAuthEditModal {...createProps({ onClose })} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
         })
@@ -786,7 +748,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Failed')))
         render(<OAuthEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
         })
@@ -796,7 +758,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: 123 }))
         render(<OAuthEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -809,7 +771,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: '' }))
         render(<OAuthEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -823,7 +785,7 @@ describe('Edit Modal Components', () => {
       it('should not call updateSubscription when form validation fails', () => {
         formValuesMap.set('main', { values: {}, isCheckValidated: false })
         render(<OAuthEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
     })
@@ -874,7 +836,7 @@ describe('Edit Modal Components', () => {
       it('should show saving text when isUpdating is true', () => {
         mockIsUpdating = true
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.saving')
+        expect(getConfirmButton()).toHaveTextContent('common.operation.saving')
       })
     })
   })
@@ -922,12 +884,12 @@ describe('Edit Modal Components', () => {
 
       it('should show verify button text in credentials step', () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('pluginTrigger.modal.common.verify')
+        expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.verify')
       })
 
       it('should not show extra button (back) in credentials step', () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.queryByTestId('modal-extra-button')).not.toBeInTheDocument()
+        expect(queryBackButton()).not.toBeInTheDocument()
       })
 
       it('should render ReadmeEntrance when pluginDetail is provided', () => {
@@ -960,7 +922,7 @@ describe('Edit Modal Components', () => {
       it('should call verifyCredentials when confirm clicked in credentials step', () => {
         formValuesMap.set('credentials', { values: { api_key: 'test-key' }, isCheckValidated: true })
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockVerifyCredentials).toHaveBeenCalledWith(
           expect.objectContaining({
             provider: 'test-provider',
@@ -974,7 +936,7 @@ describe('Edit Modal Components', () => {
       it('should not call verifyCredentials when form validation fails', () => {
         formValuesMap.set('credentials', { values: {}, isCheckValidated: false })
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockVerifyCredentials).not.toHaveBeenCalled()
       })
 
@@ -982,7 +944,7 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('credentials', { values: { api_key: 'new-key' }, isCheckValidated: true })
         mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'success',
@@ -990,7 +952,7 @@ describe('Edit Modal Components', () => {
           }))
         })
         // Should now be in step 2
-        expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+        expect(getConfirmButton()).toHaveTextContent('common.operation.save')
       })
 
       it('should show error toast on verification failure', async () => {
@@ -998,7 +960,7 @@ describe('Edit Modal Components', () => {
         mockParsePluginErrorMessage.mockResolvedValue('Invalid API key')
         mockVerifyCredentials.mockImplementation((_p, cb) => cb.onError(new Error('Invalid')))
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -1012,7 +974,7 @@ describe('Edit Modal Components', () => {
         mockParsePluginErrorMessage.mockResolvedValue(null)
         mockVerifyCredentials.mockImplementation((_p, cb) => cb.onError(new Error('Invalid')))
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -1028,13 +990,13 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Verify credentials
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
         // Update subscription
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ credentials: undefined }),
           expect.any(Object),
@@ -1051,24 +1013,24 @@ describe('Edit Modal Components', () => {
 
       it('should show save button text in configuration step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
       })
 
       it('should show extra button (back) in configuration step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-extra-button')).toBeInTheDocument()
-          expect(screen.getByTestId('modal-extra-button')).toHaveTextContent('pluginTrigger.modal.common.back')
+          expect(getBackButton()).toBeInTheDocument()
+          expect(getBackButton()).toHaveTextContent('pluginTrigger.modal.common.back')
         })
       })
 
       it('should not show EncryptedBottom in configuration step', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(screen.queryByTestId('modal-bottom-slot')).not.toBeInTheDocument()
         })
@@ -1076,7 +1038,7 @@ describe('Edit Modal Components', () => {
 
       it('should render basic form fields in step 2', async () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(screen.getByTestId('form-field-subscription_name')).toBeInTheDocument()
           expect(screen.getByTestId('form-field-callback_url')).toBeInTheDocument()
@@ -1088,7 +1050,7 @@ describe('Edit Modal Components', () => {
           createSchemaField('param1'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(screen.getByTestId('form-field-param1')).toBeInTheDocument()
         })
@@ -1106,19 +1068,19 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Go to step 2
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-extra-button')).toBeInTheDocument()
+          expect(getBackButton()).toBeInTheDocument()
         })
 
         // Click back
-        fireEvent.click(screen.getByTestId('modal-extra-button'))
+        fireEvent.click(getBackButton())
 
         // Should be back in step 1
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('pluginTrigger.modal.common.verify')
+          expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.verify')
         })
-        expect(screen.queryByTestId('modal-extra-button')).not.toBeInTheDocument()
+        expect(queryBackButton()).not.toBeInTheDocument()
       })
 
       it('should go back to credentials step when clicking step indicator', async () => {
@@ -1127,9 +1089,9 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Go to step 2
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
         // Find and click the step indicator (first step text should be clickable in step 2)
@@ -1138,7 +1100,7 @@ describe('Edit Modal Components', () => {
 
         // Should be back in step 1
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('pluginTrigger.modal.common.verify')
+          expect(getConfirmButton()).toHaveTextContent('pluginTrigger.modal.common.verify')
         })
       })
     })
@@ -1155,13 +1117,13 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Step 1: Verify
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
         // Step 2: Update
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({
             subscriptionId: 'test-subscription-id',
@@ -1176,12 +1138,12 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('basic', { values: {}, isCheckValidated: false })
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
 
@@ -1191,12 +1153,12 @@ describe('Edit Modal Components', () => {
         const onClose = vi.fn()
         render(<ApiKeyEditModal {...createProps({ onClose })} />)
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'success',
@@ -1213,12 +1175,12 @@ describe('Edit Modal Components', () => {
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Failed')))
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
             type: 'error',
@@ -1251,12 +1213,12 @@ describe('Edit Modal Components', () => {
           />,
         )
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ parameters: undefined }),
           expect.any(Object),
@@ -1276,12 +1238,12 @@ describe('Edit Modal Components', () => {
           />,
         )
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
           expect.objectContaining({ parameters: { param1: 'new_value' } }),
           expect.any(Object),
@@ -1328,9 +1290,9 @@ describe('Edit Modal Components', () => {
         ]
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
         expect(screen.getByTestId('form-field-channel')).toHaveAttribute('data-has-dynamic-select', 'true')
@@ -1350,9 +1312,9 @@ describe('Edit Modal Components', () => {
         ]
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
         expect(screen.getByTestId('form-field-enabled')).toHaveAttribute(
@@ -1427,12 +1389,12 @@ describe('Edit Modal Components', () => {
         formValuesMap.set('parameters', { values: {}, isCheckValidated: false })
         render(<ApiKeyEditModal {...createProps()} />)
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('modal-confirm-button')).toHaveTextContent('common.operation.save')
+          expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).not.toHaveBeenCalled()
       })
     })
@@ -1458,7 +1420,7 @@ describe('Edit Modal Components', () => {
           createSchemaField('secret_param', 'password'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(screen.getByTestId('form-field-secret_param')).toHaveAttribute('data-field-type', FormTypeEnum.secretInput)
         })
@@ -1469,7 +1431,7 @@ describe('Edit Modal Components', () => {
           createSchemaField('api_secret', 'secret'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(screen.getByTestId('form-field-api_secret')).toHaveAttribute('data-field-type', FormTypeEnum.secretInput)
         })
@@ -1480,7 +1442,7 @@ describe('Edit Modal Components', () => {
           createSchemaField('count', 'integer'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        fireEvent.click(screen.getByTestId('modal-confirm-button'))
+        fireEvent.click(getConfirmButton())
         await waitFor(() => {
           expect(screen.getByTestId('form-field-count')).toHaveAttribute('data-field-type', FormTypeEnum.textNumber)
         })

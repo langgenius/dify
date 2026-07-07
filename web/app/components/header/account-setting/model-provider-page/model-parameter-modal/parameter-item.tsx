@@ -4,14 +4,16 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
+import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger, SelectValue } from '@langgenius/dify-ui/select'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import Radio from '@/app/components/base/radio'
 import TagInput from '@/app/components/base/tag-input'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useLanguage } from '../hooks'
@@ -162,71 +164,123 @@ function ParameterItem({
           step = 10
       }
 
-      return (
-        <>
-          {numberInputWithSlide && (
-            <Slider
-              className="w-[120px]"
-              value={renderValue as number}
-              min={parameterRule.min}
-              max={parameterRule.max}
-              step={step}
-              onValueChange={handleSlideChange}
-              aria-label={sliderLabel}
-            />
-          )}
+      if (!numberInputWithSlide) {
+        return (
           <input
+            aria-label={sliderLabel}
             ref={numberInputRef}
             className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
-            step={numberInputWithSlide ? step : +`0.${parameterRule.precision || 0}`}
+            step={+`0.${parameterRule.precision || 0}`}
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
-        </>
+        )
+      }
+
+      return (
+        <FieldsetRoot className="flex items-center">
+          <FieldsetLegend className="sr-only">{sliderLabel}</FieldsetLegend>
+          <Slider
+            className="w-[120px]"
+            value={renderValue as number}
+            min={parameterRule.min}
+            max={parameterRule.max}
+            step={step}
+            onValueChange={handleSlideChange}
+            aria-label={sliderLabel}
+          />
+          <input
+            aria-label={sliderLabel}
+            ref={numberInputRef}
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
+            type="number"
+            max={parameterRule.max}
+            min={parameterRule.min}
+            step={step}
+            onChange={handleNumberInputChange}
+            onBlur={handleNumberInputBlur}
+          />
+        </FieldsetRoot>
       )
     }
 
     if (parameterRule.type === 'float') {
-      return (
-        <>
-          {numberInputWithSlide && (
-            <Slider
-              className="w-[120px]"
-              value={renderValue as number}
-              min={parameterRule.min}
-              max={parameterRule.max}
-              step={0.1}
-              onValueChange={handleSlideChange}
-              aria-label={sliderLabel}
-            />
-          )}
+      if (!numberInputWithSlide) {
+        return (
           <input
+            aria-label={sliderLabel}
             ref={numberInputRef}
             className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
-            step={numberInputWithSlide ? 0.1 : +`0.${parameterRule.precision || 0}`}
+            step={+`0.${parameterRule.precision || 0}`}
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
-        </>
+        )
+      }
+
+      return (
+        <FieldsetRoot className="flex items-center">
+          <FieldsetLegend className="sr-only">{sliderLabel}</FieldsetLegend>
+          <Slider
+            className="w-[120px]"
+            value={renderValue as number}
+            min={parameterRule.min}
+            max={parameterRule.max}
+            step={0.1}
+            onValueChange={handleSlideChange}
+            aria-label={sliderLabel}
+          />
+          <input
+            aria-label={sliderLabel}
+            ref={numberInputRef}
+            className="ml-4 block h-8 w-16 shrink-0 appearance-none rounded-lg bg-components-input-bg-normal pl-3 system-sm-regular text-components-input-text-filled outline-hidden"
+            type="number"
+            max={parameterRule.max}
+            min={parameterRule.min}
+            step={0.1}
+            onChange={handleNumberInputChange}
+            onBlur={handleNumberInputBlur}
+          />
+        </FieldsetRoot>
       )
     }
 
     if (parameterRule.type === 'boolean') {
+      const booleanValue = typeof renderValue === 'boolean' ? renderValue : undefined
+      const translatedLabel = parameterRule.label[language] || parameterRule.label.en_US
+
       return (
-        <Radio.Group
-          className="flex w-[150px] items-center"
-          value={renderValue as boolean}
-          onChange={handleRadioChange}
-        >
-          <Radio value={true} className="w-[70px] px-[18px]">True</Radio>
-          <Radio value={false} className="w-[70px] px-[18px]">False</Radio>
-        </Radio.Group>
+        <FieldRoot name={parameterRule.name} className="contents">
+          <FieldsetRoot
+            render={(
+              <RadioGroup<boolean>
+                className="w-[150px] gap-3"
+                value={booleanValue}
+                onValueChange={handleRadioChange}
+              />
+            )}
+          >
+            <FieldsetLegend className="sr-only">{translatedLabel}</FieldsetLegend>
+            <FieldItem>
+              <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
+                <Radio<boolean> value={true} />
+                True
+              </FieldLabel>
+            </FieldItem>
+            <FieldItem>
+              <FieldLabel className="flex w-[70px] items-center gap-1.5 system-sm-regular text-text-secondary">
+                <Radio<boolean> value={false} />
+                False
+              </FieldLabel>
+            </FieldItem>
+          </FieldsetRoot>
+        </FieldRoot>
       )
     }
 
@@ -294,6 +348,7 @@ function ParameterItem({
           value={renderValue as string}
           onValueChange={v => handleInputChange(v ?? undefined)}
         >
+          <SelectLabel className="sr-only">{sliderLabel}</SelectLabel>
           <SelectTrigger className="w-full">
             <SelectValue />
           </SelectTrigger>

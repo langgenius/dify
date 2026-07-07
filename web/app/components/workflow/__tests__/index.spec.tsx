@@ -1,6 +1,7 @@
 import type { Edge, Node } from '../types'
 import { render, screen } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
+import { WorkflowContextProvider } from '../context'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import WorkflowWithDefaultContext from '../index'
 import { BlockEnum } from '../types'
@@ -35,14 +36,13 @@ const edges: Edge[] = [
 ]
 
 const ContextConsumer = () => {
-  const { store, shortcutsEnabled } = useWorkflowHistoryStore()
+  const { store } = useWorkflowHistoryStore()
   const datasetCount = useDatasetsDetailStore(state => Object.keys(state.datasetsDetail).length)
   const reactFlowStore = useStoreApi()
 
   return (
     <div>
       {`history:${store.getState().nodes.length}`}
-      {` shortcuts:${String(shortcutsEnabled)}`}
       {` datasets:${datasetCount}`}
       {` reactflow:${String(!!reactFlowStore)}`}
     </div>
@@ -52,16 +52,18 @@ const ContextConsumer = () => {
 describe('WorkflowWithDefaultContext', () => {
   it('wires the ReactFlow, workflow history, and datasets detail providers around its children', () => {
     render(
-      <WorkflowWithDefaultContext
-        nodes={nodes}
-        edges={edges}
-      >
-        <ContextConsumer />
-      </WorkflowWithDefaultContext>,
+      <WorkflowContextProvider>
+        <WorkflowWithDefaultContext
+          nodes={nodes}
+          edges={edges}
+        >
+          <ContextConsumer />
+        </WorkflowWithDefaultContext>
+      </WorkflowContextProvider>,
     )
 
     expect(
-      screen.getByText('history:1 shortcuts:true datasets:0 reactflow:true'),
+      screen.getByText('history:1 datasets:0 reactflow:true'),
     ).toBeInTheDocument()
   })
 })

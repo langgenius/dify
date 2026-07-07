@@ -9,6 +9,7 @@ import { defaultPlan } from '@/app/components/billing/config'
 
 export type ProviderContextState = {
   modelProviders: ModelProvider[]
+  isLoadingModelProviders: boolean
   refreshModelProviders: () => void
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
@@ -20,6 +21,7 @@ export type ProviderContextState = {
     reset: UsageResetInfo
   }
   isFetchedPlan: boolean
+  isFetchedPlanInfo: boolean
   enableBilling: boolean
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
@@ -47,12 +49,14 @@ export type ProviderContextState = {
 
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
+  isLoadingModelProviders: false,
   refreshModelProviders: noop,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,
   plan: defaultPlan,
   isFetchedPlan: false,
+  isFetchedPlanInfo: false,
   enableBilling: false,
   onPlanInfoChanged: noop,
   enableReplaceWebAppLogo: false,

@@ -74,7 +74,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 variant="tertiary"
                 onClick={navBackHandle}
               >
-                <RiArrowLeftLine className="h-4 w-4 text-text-tertiary" />
+                <RiArrowLeftLine className="size-4 text-text-tertiary" />
               </Button>
             </div>
             <KnowledgeBaseInfo
@@ -119,7 +119,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 loading={loading}
               >
                 <div className="system-sm-medium text-components-button-primary-text">{t('externalKnowledgeForm.connect', { ns: 'dataset' })}</div>
-                <RiArrowRightLine className="h-4 w-4 text-components-button-primary-text" />
+                <RiArrowRightLine className="size-4 text-components-button-primary-text" />
               </Button>
             </div>
           </div>

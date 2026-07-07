@@ -16,6 +16,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
+from models.enums import SegmentType
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,7 @@ class VectorService:
                 "dataset_id": segment.dataset_id,
             },
         )
+        assert segment.index_node_id
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
             vector = Vector(dataset=dataset)
@@ -137,6 +139,7 @@ class VectorService:
         regenerate: bool = False,
     ):
         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
+        assert segment.index_node_id
         if regenerate:
             # delete child chunks
             index_processor.clean(dataset, [segment.index_node_id], with_keywords=True, delete_child_chunks=True)
@@ -178,7 +181,7 @@ class VectorService:
                     index_node_hash=child_chunk.metadata["doc_hash"],
                     content=child_chunk.page_content,
                     word_count=len(child_chunk.page_content),
-                    type="automatic",
+                    type=SegmentType.AUTOMATIC,
                     created_by=dataset_document.created_by,
                 )
                 db.session.add(child_segment)
@@ -222,6 +225,7 @@ class VectorService:
             )
             documents.append(new_child_document)
         for update_child_chunk in update_child_chunks:
+            assert update_child_chunk.index_node_id
             child_document = Document(
                 page_content=update_child_chunk.content,
                 metadata={
@@ -234,6 +238,7 @@ class VectorService:
             documents.append(child_document)
             delete_node_ids.append(update_child_chunk.index_node_id)
         for delete_child_chunk in delete_child_chunks:
+            assert delete_child_chunk.index_node_id
             delete_node_ids.append(delete_child_chunk.index_node_id)
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
             # update vector index
@@ -246,6 +251,7 @@ class VectorService:
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
         vector = Vector(dataset=dataset)
+        assert child_chunk.index_node_id
         vector.delete_by_ids([child_chunk.index_node_id])
 
     @classmethod
@@ -327,7 +333,7 @@ class VectorService:
 
             # Add documents to vector store if any
             if documents and dataset.is_multimodal:
-                vector.add_texts(documents, duplicate_check=True)
+                vector.create_multimodal(documents)
 
             # Single commit for all operations
             db.session.commit()

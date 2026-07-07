@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { FieldTitle } from '../field-title'
 
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ render }: { render: React.ReactNode }) => <>{render}</>,
-  TooltipContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 describe('FieldTitle', () => {
   it('should render title, subtitle, operation, tooltip and warning dot', () => {
     render(
@@ -21,7 +15,7 @@ describe('FieldTitle', () => {
 
     expect(screen.getByText('Embedding')).toBeInTheDocument()
     expect(screen.getByText('subtitle')).toBeInTheDocument()
-    expect(screen.getByText('Tooltip copy')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tooltip copy' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'action' })).toBeInTheDocument()
     expect(document.querySelector('.bg-text-warning-secondary')).not.toBeNull()
   })

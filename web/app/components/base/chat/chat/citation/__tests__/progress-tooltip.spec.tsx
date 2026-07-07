@@ -55,7 +55,7 @@ describe('ProgressTooltip', () => {
 
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(screen.getByTestId('progress-tooltip-popup')).toBeInTheDocument()
+      expect(await screen.findByTestId('progress-tooltip-popup')).toBeInTheDocument()
     })
 
     it('should hide the tooltip popup on mouse leave', async () => {
@@ -74,7 +74,7 @@ describe('ProgressTooltip', () => {
 
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(screen.getByTestId('progress-tooltip-popup')).toHaveTextContent(/hitScore/i)
+      expect(await screen.findByTestId('progress-tooltip-popup')).toHaveTextContent(/hitScore/i)
     })
 
     it('should show the data value inside the tooltip popup', async () => {
@@ -83,7 +83,7 @@ describe('ProgressTooltip', () => {
 
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(screen.getByTestId('progress-tooltip-popup')).toHaveTextContent('0.8')
+      expect(await screen.findByTestId('progress-tooltip-popup')).toHaveTextContent('0.8')
     })
   })
 
@@ -126,7 +126,7 @@ describe('ProgressTooltip', () => {
       await user.unhover(screen.getByTestId('progress-trigger-content'))
       await user.hover(screen.getByTestId('progress-trigger-content'))
 
-      expect(screen.getByTestId('progress-tooltip-popup')).toBeInTheDocument()
+      expect(await screen.findByTestId('progress-tooltip-popup')).toBeInTheDocument()
     })
 
     it('should keep tooltip closed without any interaction', () => {

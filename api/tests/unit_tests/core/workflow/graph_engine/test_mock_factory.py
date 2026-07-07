@@ -96,7 +96,7 @@ class MockNodeFactory(DifyNodeFactory):
             if node_type == BuiltinNodeTypes.CODE:
                 mock_instance = mock_class(
                     node_id=node_id,
-                    config=resolved_node_data,
+                    data=resolved_node_data,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -106,7 +106,7 @@ class MockNodeFactory(DifyNodeFactory):
             elif node_type == BuiltinNodeTypes.HTTP_REQUEST:
                 mock_instance = mock_class(
                     node_id=node_id,
-                    config=resolved_node_data,
+                    data=resolved_node_data,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -122,7 +122,7 @@ class MockNodeFactory(DifyNodeFactory):
             }:
                 mock_instance = mock_class(
                     node_id=node_id,
-                    config=resolved_node_data,
+                    data=resolved_node_data,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,
@@ -132,7 +132,7 @@ class MockNodeFactory(DifyNodeFactory):
             else:
                 mock_instance = mock_class(
                     node_id=node_id,
-                    config=resolved_node_data,
+                    data=resolved_node_data,
                     graph_init_params=self.graph_init_params,
                     graph_runtime_state=self.graph_runtime_state,
                     mock_config=self.mock_config,

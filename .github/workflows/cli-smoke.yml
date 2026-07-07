@@ -1,0 +1,60 @@
+name: CLI Smoke (live dify)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dify_version:
+        description: "Dify image tag to test against (e.g. 1.7.0)"
+        type: string
+        required: true
+      cli_ref:
+        description: "Git ref to build the cli from (default: current branch)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout cli ref
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.cli_ref || github.ref }}
+          persist-credentials: false
+
+      - name: Setup web environment
+        uses: ./.github/actions/setup-web
+
+      - name: Bring up dify
+        env:
+          DIFY_VERSION: ${{ inputs.dify_version }}
+        run: |
+          cd docker
+          cp .env.example .env
+          DIFY_API_IMAGE_TAG="$DIFY_VERSION" \
+          DIFY_WEB_IMAGE_TAG="$DIFY_VERSION" \
+          docker compose up -d api worker web db redis
+          for i in $(seq 1 60); do
+              if curl -fsS http://localhost:5001/health >/dev/null 2>&1; then
+                  echo "dify api ready after ${i}s"
+                  break
+              fi
+              sleep 1
+          done
+
+      - name: Run smoke against live dify
+        working-directory: ./cli
+        run: pnpm exec tsx scripts/run-smoke.ts --base-url http://localhost:5001
+
+      - name: Dump dify logs on failure
+        if: failure()
+        run: |
+          cd docker
+          docker compose logs api worker web --tail=200

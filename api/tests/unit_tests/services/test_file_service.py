@@ -52,7 +52,7 @@ class TestFileService:
     @patch("services.file_service.extract_tenant_id")
     @patch("services.file_service.file_helpers.get_signed_file_url")
     def test_upload_file_success(
-        self, mock_get_url, mock_tenant_id, mock_now, mock_storage, file_service, mock_db_session
+        self, mock_get_url, mock_tenant_id, mock_now, mock_storage, file_service: FileService, mock_db_session
     ):
         # Setup
         mock_tenant_id.return_value = "tenant_id"
@@ -88,7 +88,7 @@ class TestFileService:
         with pytest.raises(ValueError, match="Filename contains invalid characters"):
             file_service.upload_file(filename="invalid/file.txt", content=b"", mimetype="text/plain", user=MagicMock())
 
-    def test_upload_file_long_filename(self, file_service, mock_db_session):
+    def test_upload_file_long_filename(self, file_service: FileService, mock_db_session):
         # Setup
         long_name = "a" * 210 + ".txt"
         user = MagicMock(spec=Account)
@@ -124,7 +124,7 @@ class TestFileService:
             with pytest.raises(FileTooLargeError):
                 file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=MagicMock())
 
-    def test_upload_file_end_user(self, file_service, mock_db_session):
+    def test_upload_file_end_user(self, file_service: FileService, mock_db_session):
         user = MagicMock(spec=EndUser)
         user.id = "end_user_id"
 
@@ -160,7 +160,7 @@ class TestFileService:
             assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
             assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
 
-    def test_get_file_base64_success(self, file_service, mock_db_session):
+    def test_get_file_base64_success(self, file_service: FileService, mock_db_session):
         # Setup
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
@@ -177,12 +177,12 @@ class TestFileService:
             assert result == base64.b64encode(b"test content").decode()
             mock_storage.load_once.assert_called_once_with("test_key")
 
-    def test_get_file_base64_not_found(self, file_service, mock_db_session):
+    def test_get_file_base64_not_found(self, file_service: FileService, mock_db_session):
         mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_base64("non_existent")
 
-    def test_upload_text_success(self, file_service, mock_db_session):
+    def test_upload_text_success(self, file_service: FileService, mock_db_session):
         # Setup
         text = "sample text"
         text_name = "test.txt"
@@ -204,13 +204,13 @@ class TestFileService:
             mock_db_session.add.assert_called_once()
             mock_db_session.commit.assert_called_once()
 
-    def test_upload_text_long_name(self, file_service, mock_db_session):
+    def test_upload_text_long_name(self, file_service: FileService, mock_db_session):
         long_name = "a" * 210
         with patch("services.file_service.storage"):
             result = file_service.upload_text("text", long_name, "user", "tenant")
             assert len(result.name) == 200
 
-    def test_get_file_preview_success(self, file_service, mock_db_session):
+    def test_get_file_preview_success(self, file_service: FileService, mock_db_session):
         # Setup
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
@@ -221,25 +221,25 @@ class TestFileService:
             mock_extract.return_value = "Extracted text content"
 
             # Execute
-            result = file_service.get_file_preview("file_id")
+            result = file_service.get_file_preview("file_id", "tenant_id")
 
             # Assert
             assert result == "Extracted text content"
 
-    def test_get_file_preview_not_found(self, file_service, mock_db_session):
+    def test_get_file_preview_not_found(self, file_service: FileService, mock_db_session):
         mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found"):
-            file_service.get_file_preview("non_existent")
+            file_service.get_file_preview("non_existent", "tenant_id")
 
-    def test_get_file_preview_unsupported_type(self, file_service, mock_db_session):
+    def test_get_file_preview_unsupported_type(self, file_service: FileService, mock_db_session):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.extension = "exe"
         mock_db_session.scalar.return_value = upload_file
         with pytest.raises(UnsupportedFileTypeError):
-            file_service.get_file_preview("file_id")
+            file_service.get_file_preview("file_id", "tenant_id")
 
-    def test_get_image_preview_success(self, file_service, mock_db_session):
+    def test_get_image_preview_success(self, file_service: FileService, mock_db_session):
         # Setup
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
@@ -268,14 +268,14 @@ class TestFileService:
             with pytest.raises(NotFound, match="File not found or signature is invalid"):
                 file_service.get_image_preview("file_id", "ts", "nonce", "sign")
 
-    def test_get_image_preview_not_found(self, file_service, mock_db_session):
+    def test_get_image_preview_not_found(self, file_service: FileService, mock_db_session):
         mock_db_session.scalar.return_value = None
         with patch("services.file_service.file_helpers.verify_image_signature") as mock_verify:
             mock_verify.return_value = True
             with pytest.raises(NotFound, match="File not found or signature is invalid"):
                 file_service.get_image_preview("file_id", "ts", "nonce", "sign")
 
-    def test_get_image_preview_unsupported_type(self, file_service, mock_db_session):
+    def test_get_image_preview_unsupported_type(self, file_service: FileService, mock_db_session):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.extension = "txt"
@@ -285,7 +285,7 @@ class TestFileService:
             with pytest.raises(UnsupportedFileTypeError):
                 file_service.get_image_preview("file_id", "ts", "nonce", "sign")
 
-    def test_get_file_generator_by_file_id_success(self, file_service, mock_db_session):
+    def test_get_file_generator_by_file_id_success(self, file_service: FileService, mock_db_session):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.key = "key"
@@ -308,14 +308,14 @@ class TestFileService:
             with pytest.raises(NotFound, match="File not found or signature is invalid"):
                 file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
 
-    def test_get_file_generator_by_file_id_not_found(self, file_service, mock_db_session):
+    def test_get_file_generator_by_file_id_not_found(self, file_service: FileService, mock_db_session):
         mock_db_session.scalar.return_value = None
         with patch("services.file_service.file_helpers.verify_file_signature") as mock_verify:
             mock_verify.return_value = True
             with pytest.raises(NotFound, match="File not found or signature is invalid"):
                 file_service.get_file_generator_by_file_id("file_id", "ts", "nonce", "sign")
 
-    def test_get_public_image_preview_success(self, file_service, mock_db_session):
+    def test_get_public_image_preview_success(self, file_service: FileService, mock_db_session):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.extension = "png"
@@ -329,12 +329,12 @@ class TestFileService:
             assert gen == b"image content"
             assert mime == "image/png"
 
-    def test_get_public_image_preview_not_found(self, file_service, mock_db_session):
+    def test_get_public_image_preview_not_found(self, file_service: FileService, mock_db_session):
         mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found or signature is invalid"):
             file_service.get_public_image_preview("file_id")
 
-    def test_get_public_image_preview_unsupported_type(self, file_service, mock_db_session):
+    def test_get_public_image_preview_unsupported_type(self, file_service: FileService, mock_db_session):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.extension = "txt"
@@ -342,7 +342,7 @@ class TestFileService:
         with pytest.raises(UnsupportedFileTypeError):
             file_service.get_public_image_preview("file_id")
 
-    def test_get_file_content_success(self, file_service, mock_db_session):
+    def test_get_file_content_success(self, file_service: FileService, mock_db_session):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.key = "key"
@@ -353,12 +353,12 @@ class TestFileService:
             result = file_service.get_file_content("file_id")
             assert result == "hello world"
 
-    def test_get_file_content_not_found(self, file_service, mock_db_session):
+    def test_get_file_content_not_found(self, file_service: FileService, mock_db_session):
         mock_db_session.scalar.return_value = None
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_content("file_id")
 
-    def test_delete_file_success(self, file_service, mock_db_session):
+    def test_delete_file_success(self, file_service: FileService, mock_db_session):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "file_id"
         upload_file.key = "key"
@@ -370,24 +370,24 @@ class TestFileService:
             mock_storage.delete.assert_called_once_with("key")
             mock_db_session.delete.assert_called_once_with(upload_file)
 
-    def test_delete_file_not_found(self, file_service, mock_db_session):
+    def test_delete_file_not_found(self, file_service: FileService, mock_db_session):
         mock_db_session.scalar.return_value = None
         file_service.delete_file("file_id")
         # Should return without doing anything
 
-    @patch("services.file_service.db")
-    def test_get_upload_files_by_ids_empty(self, mock_db):
-        result = FileService.get_upload_files_by_ids("tenant_id", [])
+    def test_get_upload_files_by_ids_empty(self):
+        session = MagicMock()
+        result = FileService.get_upload_files_by_ids(session, "tenant_id", [])
         assert result == {}
 
-    @patch("services.file_service.db")
-    def test_get_upload_files_by_ids(self, mock_db):
+    def test_get_upload_files_by_ids(self):
         upload_file = MagicMock(spec=UploadFile)
         upload_file.id = "550e8400-e29b-41d4-a716-446655440000"
         upload_file.tenant_id = "tenant_id"
-        mock_db.session.scalars().all.return_value = [upload_file]
+        session = MagicMock()
+        session.scalars().all.return_value = [upload_file]
 
-        result = FileService.get_upload_files_by_ids("tenant_id", ["550e8400-e29b-41d4-a716-446655440000"])
+        result = FileService.get_upload_files_by_ids(session, "tenant_id", ["550e8400-e29b-41d4-a716-446655440000"])
         assert result["550e8400-e29b-41d4-a716-446655440000"] == upload_file
 
     def test_sanitize_zip_entry_name(self):

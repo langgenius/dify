@@ -13,10 +13,11 @@ import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import AppCard from '@/app/components/apps/app-card'
+import { AppCard } from '@/app/components/apps/app-card'
 import { AccessMode } from '@/models/access-control'
 import { exportAppConfig, updateAppInfo } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 
 let mockIsCurrentWorkspaceEditor = true
 let mockSystemFeatures = {
@@ -53,33 +54,21 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-// Mock headless UI Popover so it renders content without transition
-vi.mock('@headlessui/react', async () => {
-  const actual = await vi.importActual<typeof import('@headlessui/react')>('@headlessui/react')
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...actual,
-    Popover: ({ children, className }: { children: ((bag: { open: boolean }) => React.ReactNode) | React.ReactNode, className?: string }) => (
-      <div className={className} data-testid="popover-wrapper">
-        {typeof children === 'function' ? children({ open: true }) : children}
-      </div>
-    ),
-    PopoverButton: ({ children, className, ref: _ref, ...rest }: Record<string, unknown>) => (
-      <button className={className as string} {...rest}>{children as React.ReactNode}</button>
-    ),
-    PopoverPanel: ({ children, className }: { children: ((bag: { close: () => void }) => React.ReactNode) | React.ReactNode, className?: string }) => (
-      <div className={className}>
-        {typeof children === 'function' ? children({ close: vi.fn() }) : children}
-      </div>
-    ),
-    Transition: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    useQuery: () => ({
+      data: [],
+    }),
   }
 })
 
 vi.mock('@/next/dynamic', () => ({
-  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
+  default: (loader: () => Promise<React.ComponentType | { default: React.ComponentType }>) => {
     let Component: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((mod) => {
-      Component = mod.default as React.ComponentType<Record<string, unknown>>
+      Component = (typeof mod === 'function' ? mod : mod.default) as React.ComponentType<Record<string, unknown>>
     }).catch(() => {})
     const Wrapper = (props: Record<string, unknown>) => {
       if (Component)
@@ -94,6 +83,17 @@ vi.mock('@/next/dynamic', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
+  }),
+  useSelector: <T,>(selector: (state: {
+    isCurrentWorkspaceEditor: boolean
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+  }) => T): T => selector({
+    isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: mockIsCurrentWorkspaceEditor ? ['app.create_and_management'] : [],
   }),
 }))
 
@@ -112,6 +112,10 @@ vi.mock('@/service/use-apps', () => ({
     mutateAsync: mockDeleteAppMutation,
     isPending: mockDeleteMutationPending,
   }),
+  useToggleAppStarMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -129,7 +133,7 @@ vi.mock('@/service/workflow', () => ({
   fetchWorkflowDraft: vi.fn().mockResolvedValue({ environment_variables: [] }),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({ data: { result: true }, isLoading: false }),
 }))
 
@@ -208,14 +212,19 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/app/app-access-control', () => ({
-  default: ({ onConfirm, onClose }: Record<string, unknown>) => (
+vi.mock('@/app/components/app/app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="access-control-modal">
       <button data-testid="confirm-access" onClick={onConfirm as () => void}>Confirm</button>
       <button data-testid="cancel-access" onClick={onClose as () => void}>Cancel</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: overrides.id ?? 'app-1',
@@ -242,6 +251,14 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   tags: overrides.tags ?? [],
   access_mode: overrides.access_mode ?? AccessMode.PUBLIC,
   max_active_requests: overrides.max_active_requests ?? null,
+  created_by: overrides.created_by ?? 'user-1',
+  permission_keys: overrides.permission_keys ?? [
+    AppACLPermission.Edit,
+    AppACLPermission.ImportExportDSL,
+    AppACLPermission.Delete,
+    AppACLPermission.ReleaseAndVersion,
+    AppACLPermission.AccessConfig,
+  ],
 })
 
 const mockOnRefresh = vi.fn()
@@ -289,21 +306,13 @@ describe('App Card Operations Flow', () => {
     it('should navigate to app config page when card is clicked', () => {
       renderAppCard({ id: 'app-123', mode: AppModeEnum.CHAT })
 
-      const card = screen.getByText('Test Chat App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-123/configuration')
+      expect(screen.getByRole('link', { name: 'Test Chat App' })).toHaveAttribute('href', '/app/app-123/configuration')
     })
 
     it('should navigate to workflow page for workflow apps', () => {
       renderAppCard({ id: 'app-wf', mode: AppModeEnum.WORKFLOW, name: 'WF App' })
 
-      const card = screen.getByText('WF App').closest('[class*="cursor-pointer"]')
-      if (card)
-        fireEvent.click(card)
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/app/app-wf/workflow')
+      expect(screen.getByRole('link', { name: 'WF App' })).toHaveAttribute('href', '/app/app-wf/workflow')
     })
   })
 
@@ -366,12 +375,11 @@ describe('App Card Operations Flow', () => {
 
   // -- Access mode display --
   describe('Access Mode Display', () => {
-    it('should not render operations menu for non-editor users', () => {
+    it('should not render operations menu when user has no app permissions', () => {
       mockIsCurrentWorkspaceEditor = false
-      renderAppCard({ name: 'Readonly App' })
+      renderAppCard({ name: 'Readonly App', created_by: 'another-user', permission_keys: [] })
 
-      expect(screen.queryByText('app.editApp')).not.toBeInTheDocument()
-      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
     })
   })
 

@@ -29,6 +29,7 @@ import {
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
 import { useAppContext } from '@/context/app-context'
+import { selectWorkflowNode } from '../../utils/node-navigation'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
 import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
@@ -79,6 +80,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const appId = useStore(s => s.appId)
   const { nodePanelPresence } = useCollaboration(appId as string)
   const controlMode = useStore(s => s.controlMode)
+  const isContextMenuTarget = useStore(s => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id)
 
   const currentUserPresence = useMemo(() => {
     const userId = userProfile?.id || ''
@@ -123,7 +125,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   const { hasNodeInspectVars } = useInspectVarsCrud()
   const isLoading = data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running
   const hasVarValue = hasNodeInspectVars(id)
-  const showSelectedBorder = Boolean(data.selected || data._isBundled || data._isEntering)
+  const showSelectedBorder = Boolean(data.selected || isContextMenuTarget || data._isBundled || data._isEntering)
   const {
     showRunningBorder,
     showSuccessBorder,
@@ -167,15 +169,17 @@ const BaseNode: FC<BaseNodeProps> = ({
         height: isContainerNode(data.type) ? data.height : 'auto',
       }}
     >
-      {(data._dimmed || pluginDimmed || pluginInstallLocked) && (
+      {pluginInstallLocked && (
+        <button
+          type="button"
+          disabled
+          aria-label={t('installPlugin', { ns: 'plugin' })}
+          className="pointer-events-auto absolute inset-0 z-30 rounded-2xl border-0 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]"
+        />
+      )}
+      {!pluginInstallLocked && (data._dimmed || pluginDimmed) && (
         <div
-          className={cn(
-            'absolute inset-0 rounded-2xl transition-opacity',
-            pluginInstallLocked
-              ? 'pointer-events-auto z-30 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]'
-              : 'pointer-events-none z-20 bg-workflow-block-parma-bg opacity-50',
-          )}
-          onClick={pluginInstallLocked ? e => e.stopPropagation() : undefined}
+          className="pointer-events-none absolute inset-0 z-20 rounded-2xl bg-workflow-block-parma-bg opacity-50 transition-opacity"
           data-testid="workflow-node-install-overlay"
         />
       )}
@@ -194,7 +198,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           'rounded-[15px] border border-transparent',
           (controlMode === ControlMode.Comment) && 'hover:cursor-none',
           !isContainerNode(data.type) && 'w-[240px] bg-workflow-block-bg',
-          isContainerNode(data.type) && 'flex h-full w-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
+          isContainerNode(data.type) && 'flex size-full flex-col border-workflow-block-border bg-workflow-block-bg-transparent',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && 'border-state-accent-solid!',
           showSuccessBorder && 'border-state-success-solid!',
@@ -228,7 +232,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          !data._isCandidate && (
+          data.type !== BlockEnum.StartPlaceholder && !data._isCandidate && (
             <NodeTargetHandle
               id={id}
               data={data}
@@ -238,7 +242,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
+          data.type !== BlockEnum.StartPlaceholder && data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && data.type !== BlockEnum.HumanInput && !data._isCandidate && (
             <NodeSourceHandle
               id={id}
               data={data}
@@ -256,44 +260,54 @@ const BaseNode: FC<BaseNodeProps> = ({
             />
           )
         }
-        <div className={cn(
-          'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
-          isContainerNode(data.type) && 'bg-transparent',
-        )}
+        <div
+          className={cn(
+            'flex items-center rounded-t-2xl px-3 pt-3 pb-2',
+            isContainerNode(data.type) && 'bg-transparent',
+          )}
         >
-          <BlockIcon
-            className="mr-2 shrink-0"
-            type={data.type}
-            size="md"
-            toolIcon={toolIcon}
-          />
-          <div
-            className="mr-1 flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary"
+          <button
+            type="button"
+            aria-label={data.title}
+            className="mr-1 flex min-w-0 grow appearance-none items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            onClick={() => selectWorkflowNode(id)}
           >
-            <div title={data.title} className="min-w-0 grow truncate">
-              {data.title}
-            </div>
-            {viewingUsers.length > 0 && (
-              <div className="ml-3 shrink-0">
-                <UserAvatarList
-                  users={viewingUsers}
-                  maxVisible={3}
-                  size="sm"
-                />
+            <BlockIcon
+              className="mr-2 shrink-0"
+              type={data.type}
+              size="md"
+              toolIcon={toolIcon}
+            />
+            <div
+              className="flex min-w-0 grow items-center system-sm-semibold-uppercase text-text-primary"
+            >
+              <div title={data.title} className="min-w-0 grow truncate">
+                {data.title}
               </div>
-            )}
+              {viewingUsers.length > 0 && (
+                <div className="ml-3 shrink-0">
+                  <UserAvatarList
+                    users={viewingUsers}
+                    maxVisible={3}
+                    size="sm"
+                  />
+                </div>
+              )}
+            </div>
+          </button>
+          <div className="flex shrink-0 items-center">
+            <NodeHeaderMeta
+              data={data}
+              hasVarValue={hasVarValue}
+              isLoading={isLoading}
+              loopIndex={LoopIndex}
+              t={t}
+            />
           </div>
-          <NodeHeaderMeta
-            data={data}
-            hasVarValue={hasVarValue}
-            isLoading={isLoading}
-            loopIndex={LoopIndex}
-            t={t}
-          />
         </div>
         <NodeBody
           data={data}
-          child={cloneElement(children, { id, data } as any)}
+          child={cloneElement(children, { id, data } satisfies Partial<NodeChildProps>)}
         />
         {
           hasRetryNode(data.type) && (
@@ -321,7 +335,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     </div>
   )
 
-  const isStartNode = data.type === BlockEnum.Start
+  const isStartNode = data.type === BlockEnum.Start || data.type === BlockEnum.StartPlaceholder
   const isEntryNode = isEntryWorkflowNode(data.type)
 
   return isEntryNode

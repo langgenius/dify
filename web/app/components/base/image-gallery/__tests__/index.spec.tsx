@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ImageGallery, { ImageGalleryTest } from '..'
+import ImageGallery from '..'
 
 const getImages = (container: HTMLElement) => container.querySelectorAll('img')
 
@@ -113,7 +113,7 @@ describe('ImageGallery', () => {
       await user.click(getImages(container)[0]!)
       expect(screen.queryByTestId('image-preview-container'))!.toBeInTheDocument()
 
-      await user.keyboard('{Escape}')
+      fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' })
 
       await waitFor(() => {
         expect(screen.queryByTestId('image-preview-container')).not.toBeInTheDocument()
@@ -130,15 +130,5 @@ describe('ImageGallery', () => {
 
       expect(getImages(container)).toHaveLength(0)
     })
-  })
-})
-
-describe('ImageGalleryTest', () => {
-  it('should render multiple ImageGallery instances', () => {
-    const { container } = render(<ImageGalleryTest />)
-
-    const imgs = getImages(container)
-    // 6 images renders galleries with 1+2+3+4+5+6 = 21 images total
-    expect(imgs.length).toBe(21)
   })
 })

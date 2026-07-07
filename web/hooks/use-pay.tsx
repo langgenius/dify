@@ -102,7 +102,7 @@ export const CheckModal = () => {
 
   const confirmInfo = anthropicConfirmInfo || notionConfirmInfo || billingConfirmInfo
 
-  if (!confirmInfo || !showPayStatusModal)
+  if (!confirmInfo)
     return null
 
   const description = (confirmInfo as { desc?: string }).desc || ''

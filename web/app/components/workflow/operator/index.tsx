@@ -15,6 +15,8 @@ type OperatorProps = {
 
 const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const bottomPanelRef = useRef<HTMLDivElement>(null)
+  const bottomPanelSizeRef = useRef<{ width?: number, height?: number }>({})
+  const bottomPanelResizeFrameRef = useRef<number | undefined>(undefined)
   const [showMiniMap, setShowMiniMap] = useState(true)
   const showUserCursors = useStore(s => s.showUserCursors)
   const setShowUserCursors = useStore(s => s.setShowUserCursors)
@@ -55,15 +57,33 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   // update bottom panel height
   useEffect(() => {
     if (bottomPanelRef.current) {
+      const updateBottomPanelSize = (width: number, height: number) => {
+        if (bottomPanelSizeRef.current.width === width && bottomPanelSizeRef.current.height === height)
+          return
+
+        bottomPanelSizeRef.current = { width, height }
+        if (bottomPanelResizeFrameRef.current)
+          cancelAnimationFrame(bottomPanelResizeFrameRef.current)
+
+        bottomPanelResizeFrameRef.current = requestAnimationFrame(() => {
+          bottomPanelResizeFrameRef.current = undefined
+          setBottomPanelWidth(width)
+          setBottomPanelHeight(height)
+        })
+      }
+
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { inlineSize, blockSize } = entry.borderBoxSize[0]!
-          setBottomPanelWidth(inlineSize)
-          setBottomPanelHeight(blockSize)
+          updateBottomPanelSize(inlineSize, blockSize)
         }
       })
       resizeContainerObserver.observe(bottomPanelRef.current)
       return () => {
+        if (bottomPanelResizeFrameRef.current) {
+          cancelAnimationFrame(bottomPanelResizeFrameRef.current)
+          bottomPanelResizeFrameRef.current = undefined
+        }
         resizeContainerObserver.disconnect()
       }
     }
@@ -72,7 +92,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   return (
     <div
       ref={bottomPanelRef}
-      className="absolute right-0 bottom-0 left-0 z-[60] px-1"
+      className="absolute inset-x-0 bottom-0 z-10 px-1"
       style={
         {
           width: bottomPanelWidth,
@@ -96,7 +116,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
               maskColor="var(--color-workflow-minimap-bg)"
               nodeClassName={getMiniMapNodeClassName}
               nodeStrokeWidth={3}
-              className="!absolute bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]!
+              className="absolute! bottom-10! z-9 m-0! h-[73px]! w-[103px]! rounded-lg! border-[0.5px]!
             border-divider-subtle! bg-background-default-subtle! shadow-md! shadow-shadow-shadow-5!"
             />
           )}

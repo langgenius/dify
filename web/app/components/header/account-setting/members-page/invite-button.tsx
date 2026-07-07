@@ -4,7 +4,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useWorkspacePermissions } from '@/service/use-workspace'
 
 type InviteButtonProps = {
@@ -27,7 +27,7 @@ const InviteButton = (props: InviteButtonProps) => {
   }
   return (
     <Button variant="primary" {...props}>
-      <RiUserAddLine className="mr-1 h-4 w-4" />
+      <RiUserAddLine className="mr-1 size-4" />
       {t('members.invite', { ns: 'common' })}
     </Button>
   )

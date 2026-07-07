@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from models.enums import AppTriggerStatus, AppTriggerType
@@ -52,7 +53,7 @@ class TestWebhookService:
             }
 
     @pytest.fixture
-    def test_data(self, db_session_with_containers, mock_external_dependencies):
+    def test_data(self, db_session_with_containers: Session, mock_external_dependencies):
         """Create test data for webhook service tests."""
         fake = Faker()
 
@@ -62,8 +63,9 @@ class TestWebhookService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
         assert tenant is not None
 
@@ -125,6 +127,9 @@ class TestWebhookService:
         db_session_with_containers.add(workflow)
         db_session_with_containers.flush()
 
+        app.workflow_id = workflow.id
+        db_session_with_containers.flush()
+
         # Create webhook trigger
         webhook_id = fake.uuid4()[:16]
         webhook_trigger = WorkflowWebhookTrigger(
@@ -160,7 +165,7 @@ class TestWebhookService:
             "app_trigger": app_trigger,
         }
 
-    def test_get_webhook_trigger_and_workflow_success(self, test_data, flask_app_with_containers):
+    def test_get_webhook_trigger_and_workflow_success(self, test_data, flask_app_with_containers: Flask):
         """Test successful retrieval of webhook trigger and workflow."""
         webhook_id = test_data["webhook_id"]
 
@@ -175,7 +180,7 @@ class TestWebhookService:
             assert node_config["id"] == "webhook_node"
             assert node_config["data"].title == "Test Webhook"
 
-    def test_get_webhook_trigger_and_workflow_not_found(self, flask_app_with_containers):
+    def test_get_webhook_trigger_and_workflow_not_found(self, flask_app_with_containers: Flask):
         """Test webhook trigger not found scenario."""
         with flask_app_with_containers.app_context():
             with pytest.raises(ValueError, match="Webhook not found"):
@@ -421,7 +426,9 @@ class TestWebhookService:
 
             assert result["files"] == {}
 
-    def test_trigger_workflow_execution_success(self, test_data, mock_external_dependencies, flask_app_with_containers):
+    def test_trigger_workflow_execution_success(
+        self, test_data, mock_external_dependencies, flask_app_with_containers: Flask
+    ):
         """Test successful workflow execution trigger."""
         webhook_data = {
             "method": "POST",
@@ -452,7 +459,7 @@ class TestWebhookService:
                     mock_external_dependencies["async_service"].trigger_workflow_async.assert_called_once()
 
     def test_trigger_workflow_execution_end_user_service_failure(
-        self, test_data, mock_external_dependencies, flask_app_with_containers
+        self, test_data, mock_external_dependencies, flask_app_with_containers: Flask
     ):
         """Test workflow execution trigger when EndUserService fails."""
         webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
@@ -540,8 +547,8 @@ class TestWebhookService:
             "bad_file": MagicMock(filename="test.bad", content_type="text/plain"),
         }
 
-        files["good_file"].read.return_value = b"content"
-        files["bad_file"].read.side_effect = Exception("Read error")
+        files["good_file"].stream.read.return_value = b"content"
+        files["bad_file"].stream.read.side_effect = Exception("Read error")
 
         webhook_trigger = MagicMock()
         webhook_trigger.tenant_id = "test_tenant"

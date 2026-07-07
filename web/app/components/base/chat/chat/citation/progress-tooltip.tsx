@@ -1,11 +1,10 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@langgenius/dify-ui/tooltip'
+import { useTranslation } from 'react-i18next'
 
 type ProgressTooltipProps = {
   data: number
@@ -15,38 +14,33 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement="top-start"
-    >
-      <PortalToFollowElemTrigger
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+    <Tooltip>
+      <TooltipTrigger
+        data-testid="progress-trigger-content"
+        className="flex grow items-center border-0 bg-transparent p-0 text-left"
       >
-        <div data-testid="progress-trigger-content" className="flex grow items-center">
-          <div className="mr-1 h-1.5 w-16 overflow-hidden rounded-[3px] border border-components-progress-gray-border">
-            <div
-              data-testid="progress-bar-fill"
-              className="h-full bg-components-progress-gray-progress"
-              style={{ width: `${data * 100}%` }}
-            >
-            </div>
+        <div className="mr-1 h-1.5 w-16 overflow-hidden rounded-[3px] border border-components-progress-gray-border">
+          <div
+            data-testid="progress-bar-fill"
+            className="h-full bg-components-progress-gray-progress"
+            style={{ width: `${data * 100}%` }}
+          >
           </div>
-          {data}
         </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div data-testid="progress-tooltip-popup" className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg">
-          {t('chat.citation.hitScore', { ns: 'common' })}
-          {' '}
-          {data}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+        {data}
+      </TooltipTrigger>
+      <TooltipContent
+        data-testid="progress-tooltip-popup"
+        placement="top-start"
+        className="rounded-lg bg-components-tooltip-bg p-3 system-xs-medium text-text-quaternary shadow-lg"
+      >
+        {t('chat.citation.hitScore', { ns: 'common' })}
+        {' '}
+        {data}
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

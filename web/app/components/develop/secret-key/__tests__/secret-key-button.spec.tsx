@@ -3,11 +3,12 @@ import userEvent from '@testing-library/user-event'
 import SecretKeyButton from '../secret-key-button'
 
 vi.mock('@/app/components/develop/secret-key/secret-key-modal', () => ({
-  default: ({ isShow, onClose, appId }: { isShow: boolean, onClose: () => void, appId?: string }) => (
+  default: ({ isShow, onClose, appId, canManage }: { isShow: boolean, onClose: () => void, appId?: string, canManage: boolean }) => (
     isShow
       ? (
           <div data-testid="secret-key-modal">
             <span data-testid="modal-app-id">{`Modal for ${appId || 'no-app'}`}</span>
+            <span data-testid="modal-can-manage">{String(canManage)}</span>
             <button onClick={onClose} data-testid="close-modal">Close</button>
           </div>
         )
@@ -29,8 +30,8 @@ describe('SecretKeyButton', () => {
 
     it('should render the key icon', () => {
       const { container } = render(<SecretKeyButton />)
-      const svg = container.querySelector('svg')
-      expect(svg)!.toBeInTheDocument()
+      const icon = container.querySelector('.i-ri-key-2-line')
+      expect(icon)!.toBeInTheDocument()
     })
 
     it('should not show modal initially', () => {
@@ -42,7 +43,7 @@ describe('SecretKeyButton', () => {
   describe('button interaction', () => {
     it('should open modal when button is clicked', async () => {
       const user = userEvent.setup()
-      render(<SecretKeyButton />)
+      render(<SecretKeyButton canManage />)
 
       const button = screen.getByRole('button')
       await act(async () => {
@@ -54,7 +55,7 @@ describe('SecretKeyButton', () => {
 
     it('should close modal when onClose is called', async () => {
       const user = userEvent.setup()
-      render(<SecretKeyButton />)
+      render(<SecretKeyButton canManage />)
 
       const button = screen.getByRole('button')
       await act(async () => {
@@ -73,7 +74,7 @@ describe('SecretKeyButton', () => {
 
     it('should toggle modal visibility', async () => {
       const user = userEvent.setup()
-      render(<SecretKeyButton />)
+      render(<SecretKeyButton canManage />)
 
       const button = screen.getByRole('button')
 
@@ -104,7 +105,7 @@ describe('SecretKeyButton', () => {
 
     it('should pass appId to modal', async () => {
       const user = userEvent.setup()
-      render(<SecretKeyButton appId="app-123" />)
+      render(<SecretKeyButton appId="app-123" canManage />)
 
       const button = screen.getByRole('button')
       await act(async () => {
@@ -116,7 +117,7 @@ describe('SecretKeyButton', () => {
 
     it('should handle undefined appId', async () => {
       const user = userEvent.setup()
-      render(<SecretKeyButton />)
+      render(<SecretKeyButton canManage />)
 
       const button = screen.getByRole('button')
       await act(async () => {
@@ -124,6 +125,38 @@ describe('SecretKeyButton', () => {
       })
 
       expect(screen.getByText('Modal for no-app'))!.toBeInTheDocument()
+    })
+
+    it('should pass canManage to modal', async () => {
+      const user = userEvent.setup()
+      render(<SecretKeyButton appId="app-123" canManage />)
+
+      const button = screen.getByRole('button')
+      await act(async () => {
+        await user.click(button)
+      })
+
+      expect(screen.getByTestId('modal-can-manage')).toHaveTextContent('true')
+    })
+
+    it('should disable the button and keep modal closed when canManage is false', async () => {
+      const user = userEvent.setup()
+      render(<SecretKeyButton appId="app-123" canManage={false} />)
+
+      const button = screen.getByRole('button')
+      expect(button).toBeDisabled()
+
+      await act(async () => {
+        await user.click(button)
+      })
+
+      expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
+    })
+
+    it('should disable the button by default when canManage is omitted', () => {
+      render(<SecretKeyButton appId="app-123" />)
+
+      expect(screen.getByRole('button')).toBeDisabled()
     })
 
     it('should apply custom textCls', () => {
@@ -150,7 +183,7 @@ describe('SecretKeyButton', () => {
 
     it('should have correct icon dimensions', () => {
       const { container } = render(<SecretKeyButton />)
-      const iconContainer = container.querySelector('.h-3\\.5.w-3\\.5')
+      const iconContainer = container.querySelector('.size-3\\.5')
       expect(iconContainer)!.toBeInTheDocument()
     })
 
@@ -184,7 +217,7 @@ describe('SecretKeyButton', () => {
   describe('modal props', () => {
     it('should pass isShow prop to modal', async () => {
       const user = userEvent.setup()
-      render(<SecretKeyButton />)
+      render(<SecretKeyButton canManage />)
 
       expect(screen.queryByTestId('secret-key-modal')).not.toBeInTheDocument()
 
@@ -198,7 +231,7 @@ describe('SecretKeyButton', () => {
 
     it('should pass onClose callback to modal', async () => {
       const user = userEvent.setup()
-      render(<SecretKeyButton />)
+      render(<SecretKeyButton canManage />)
 
       const button = screen.getByRole('button')
       await act(async () => {
@@ -223,7 +256,7 @@ describe('SecretKeyButton', () => {
 
     it('should be keyboard accessible', async () => {
       const user = userEvent.setup()
-      render(<SecretKeyButton />)
+      render(<SecretKeyButton canManage />)
 
       const button = screen.getByRole('button')
       button.focus()
@@ -242,8 +275,8 @@ describe('SecretKeyButton', () => {
       const user = userEvent.setup()
       render(
         <>
-          <SecretKeyButton appId="app-1" />
-          <SecretKeyButton appId="app-2" />
+          <SecretKeyButton appId="app-1" canManage />
+          <SecretKeyButton appId="app-2" canManage />
         </>,
       )
 

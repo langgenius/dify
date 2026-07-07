@@ -4,13 +4,14 @@ import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
+import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { handleStream, post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { AppModeEnum } from '@/types/app'
 
-export type HandleRunMode = TriggerType
+type HandleRunMode = TriggerType
 export type HandleRunOptions = {
   mode?: HandleRunMode
   scheduleNodeId?: string
@@ -77,6 +78,8 @@ export const createRunningWorkflowState = () => {
     },
     tracing: [],
     resultText: '',
+    reasoningContent: {},
+    reasoningFinished: false,
   }
 }
 
@@ -267,7 +270,7 @@ export const buildTTSConfig = (resolvedParams: TTSParamsLike, pathname: string) 
     ttsIsPublic = true
   }
   else if (resolvedParams.appId) {
-    if (pathname.search('explore/installed') > -1)
+    if (isInstalledAppPath(pathname))
       ttsUrl = `/installed-apps/${resolvedParams.appId}/text-to-audio`
     else
       ttsUrl = `/apps/${resolvedParams.appId}/text-to-audio`

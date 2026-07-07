@@ -4,31 +4,30 @@ import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   RiAddLine,
-  RiQuestionLine,
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import Tooltip from '@/app/components/base/tooltip'
+import { Infotip } from '@/app/components/base/infotip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import { useAllMCPTools } from '@/service/use-tools'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   value: ToolValue[]
   label: string
   required?: boolean
-  tooltip?: any
+  tooltip?: React.ReactNode
   supportCollapse?: boolean
   scope?: string
   onChange: (value: ToolValue[]) => void
   nodeOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   nodeId?: string
-}
+}>
 
 const MultipleToolSelector = ({
   disabled,
@@ -111,17 +110,20 @@ const MultipleToolSelector = ({
         >
           <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">{label}</div>
           {required && <div className="text-red-500">*</div>}
-          {tooltip && (
-            <Tooltip
-              popupContent={tooltip}
-            >
-              <div><RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary hover:text-text-tertiary" /></div>
-            </Tooltip>
-          )}
+          {tooltip
+            ? (
+                <Infotip
+                  aria-label={typeof tooltip === 'string' ? tooltip : label}
+                  className="size-3.5"
+                >
+                  {tooltip}
+                </Infotip>
+              )
+            : null}
           {supportCollapse && (
             <ArrowDownRoundFill
               className={cn(
-                'h-4 w-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
+                'size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
                 collapse && 'rotate-270',
               )}
             />
@@ -145,7 +147,7 @@ const MultipleToolSelector = ({
               setPanelShowState(true)
             }}
           >
-            <RiAddLine className="h-4 w-4" />
+            <RiAddLine className="size-4" />
           </ActionButton>
         )}
       </div>
