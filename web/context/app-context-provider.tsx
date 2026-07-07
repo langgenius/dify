@@ -2,14 +2,13 @@
 
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { FC, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
-import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import {
   AppContext,
@@ -18,7 +17,6 @@ import {
   userProfilePlaceholder,
   useSelector,
 } from '@/context/app-context'
-import { env } from '@/env'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useWorkspacePermissionKeys } from '@/service/access-control/use-permission-keys'
@@ -66,7 +64,7 @@ const normalizeCurrentWorkspace = (workspace?: PostWorkspacesCurrentResponse): I
   }
 }
 
-export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
+export function AppContextProvider({ children }: AppContextProviderProps) {
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
@@ -192,12 +190,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       workspacePermissionKeys: workspacePermissionKeysQuery.data?.workspace.permission_keys ?? emptyWorkspacePermissionKeys,
     }}
     >
-      <div className="flex h-full flex-col overflow-hidden">
-        {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
-        <div className="relative flex h-0 min-h-0 grow flex-col overflow-hidden bg-background-body">
-          {children}
-        </div>
-      </div>
+      {children}
     </AppContext.Provider>
   )
 }
