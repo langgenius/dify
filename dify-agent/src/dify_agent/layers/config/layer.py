@@ -44,6 +44,10 @@ _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config skills push --help": ("config", "skills", "push"),
     "dify-agent config skills delete --help": ("config", "skills", "delete"),
 }
+_AGENT_FILE_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
+    "dify-agent file upload --help": ("file", "upload"),
+    "dify-agent file download --help": ("file", "download"),
+}
 _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
 
 
@@ -94,6 +98,7 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         command_paths = dict(_CONFIG_CLI_HELP_COMMANDS)
         if self._config_writable:
             command_paths.update(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
+        command_paths.update(_AGENT_FILE_CLI_HELP_COMMANDS)
         self.runtime_state.config_context_json = self._format_config_context_json()
         self.runtime_state.config_cli_help = {
             command: render_agent_stub_cli_help(args) for command, args in command_paths.items()
@@ -133,6 +138,8 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
         if cli_help := self._format_config_cli_help():
             usage_lines.append(cli_help)
+        if file_cli_help := self._format_agent_file_cli_help():
+            usage_lines.append(file_cli_help)
         usage_lines.append(_USER_FILE_DOWNLOAD_PROMPT)
         sections.append("\n".join(usage_lines))
         return "\n\n".join(section for section in sections if section)
@@ -153,6 +160,16 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         if not command_sections:
             return ""
         return "Agent config CLI help:\n" + "\n\n".join(command_sections)
+
+    def _format_agent_file_cli_help(self) -> str:
+        command_sections = [
+            f"$ {command}\n{self.runtime_state.config_cli_help[command]}"
+            for command in _AGENT_FILE_CLI_HELP_COMMANDS
+            if command in self.runtime_state.config_cli_help
+        ]
+        if not command_sections:
+            return ""
+        return "Agent file CLI help:\n" + "\n\n".join(command_sections)
 
     def _format_config_context_json(self) -> str:
         return self.config.model_dump_json(exclude=_CONFIG_CONTEXT_EXCLUDE, exclude_none=True)
