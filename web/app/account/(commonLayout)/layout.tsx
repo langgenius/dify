@@ -5,6 +5,7 @@ import AmplitudeProvider from '@/app/components/base/amplitude'
 import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
 import { EducationVerifyActionRecorder } from '@/app/components/education-verify-action-recorder'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
+import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { OAuthRegistrationAnalytics } from '@/app/components/oauth-registration-analytics'
 import { AppContextProvider } from '@/context/app-context-provider'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
@@ -20,20 +21,25 @@ const Layout = async ({ children }: { children: ReactNode }) => {
       <OAuthRegistrationAnalytics />
       <EducationVerifyActionRecorder />
       <CommonLayoutHydrationBoundary>
-        <AppContextProvider>
-          <EventEmitterContextProvider>
-            <ProviderContextProvider>
-              <ModalContextProvider>
-                <HeaderWrapper>
-                  <Header />
-                </HeaderWrapper>
-                <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
-                  {children}
-                </div>
-              </ModalContextProvider>
-            </ProviderContextProvider>
-          </EventEmitterContextProvider>
-        </AppContextProvider>
+        <div className="flex h-full flex-col overflow-hidden">
+          <MaintenanceNotice />
+          <div className="relative flex h-0 min-h-0 grow flex-col overflow-hidden bg-background-body">
+            <AppContextProvider>
+              <EventEmitterContextProvider>
+                <ProviderContextProvider>
+                  <ModalContextProvider>
+                    <HeaderWrapper>
+                      <Header />
+                    </HeaderWrapper>
+                    <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
+                      {children}
+                    </div>
+                  </ModalContextProvider>
+                </ProviderContextProvider>
+              </EventEmitterContextProvider>
+            </AppContextProvider>
+          </div>
+        </div>
       </CommonLayoutHydrationBoundary>
     </>
   )
