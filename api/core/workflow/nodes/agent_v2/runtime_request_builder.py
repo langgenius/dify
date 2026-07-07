@@ -499,7 +499,21 @@ class WorkflowAgentRuntimeRequestBuilder:
                 return mapping.model_dump(mode="json", exclude_none=True)
 
             if isinstance(value, Mapping):
-                mapping = AgentStubFileMapping.model_validate(value)
+                transfer_method = value.get("transfer_method")
+                if not isinstance(transfer_method, str):
+                    return None
+                if transfer_method == "remote_url":
+                    mapping = AgentStubFileMapping(
+                        transfer_method="remote_url",
+                        url=value.get("url") or value.get("remote_url"),
+                    )
+                elif transfer_method in {"local_file", "tool_file", "datasource_file"}:
+                    mapping = AgentStubFileMapping(
+                        transfer_method=cast(AgentStubFileTransferMethod, transfer_method),
+                        reference=value.get("reference"),
+                    )
+                else:
+                    return None
                 return mapping.model_dump(mode="json", exclude_none=True)
         except ValidationError:
             return None

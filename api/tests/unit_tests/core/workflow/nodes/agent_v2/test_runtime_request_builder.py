@@ -1174,6 +1174,37 @@ def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_
     }
 
 
+def test_previous_node_file_mapping_strips_extra_fields_in_workflow_context():
+    file_reference = build_file_reference(record_id="tool-file-1")
+
+    class FileMappingVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["previous-node", "report"]:
+                return SimpleNamespace(
+                    value={
+                        "filename": "report.pdf",
+                        "transfer_method": "tool_file",
+                        "reference": file_reference,
+                        "external": True,
+                    }
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=FileMappingVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Review {{#previous-node.report#}} before responding.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    assert _previous_node_prompt_payload(result, "previous-node.report") == {
+        "transfer_method": "tool_file",
+        "reference": file_reference,
+    }
+
+
 def test_scalar_previous_node_output_appears_in_workflow_context_section():
     context = _context()
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(

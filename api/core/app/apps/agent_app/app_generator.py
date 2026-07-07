@@ -47,6 +47,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.llm.model_access import build_dify_model_access
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from extensions.ext_database import db
 from models import Account, App, EndUser, Message
 from models.agent import (
@@ -63,12 +64,63 @@ from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
 
+_REFERENCE_FILE_TRANSFER_METHODS = {"local_file", "tool_file", "datasource_file"}
+
 
 def _append_prompt_file_mappings(query: str, prompt_file_mappings: Sequence[JsonValue]) -> str:
-    """Append labeled raw request file references to the backend user prompt."""
-    if not prompt_file_mappings:
+    """Append labeled, prompt-safe file locators to the backend user prompt."""
+    prompt_files = _prompt_file_locators(prompt_file_mappings)
+    if not prompt_files:
         return query
-    return f"{query}\nUser provided files: {json.dumps(list(prompt_file_mappings), ensure_ascii=False)}"
+    payload = json.dumps(prompt_files, ensure_ascii=False, separators=(",", ":"))
+    return f"{query}\nUser provided files: {payload}"
+
+
+def _prompt_file_locators(prompt_file_mappings: Sequence[JsonValue]) -> list[dict[str, str]]:
+    locators: list[dict[str, str]] = []
+    for file_mapping in prompt_file_mappings:
+        if not isinstance(file_mapping, Mapping):
+            continue
+        locator = _prompt_file_locator(file_mapping)
+        if locator is not None:
+            locators.append(locator)
+    return locators
+
+
+def _prompt_file_locator(file_mapping: Mapping[str, object]) -> dict[str, str] | None:
+    transfer_method = _string_value(file_mapping, "transfer_method")
+    if transfer_method == "remote_url":
+        url = _string_value(file_mapping, "url") or _string_value(file_mapping, "remote_url")
+        if url is None:
+            return None
+        locator = {"transfer_method": transfer_method, "url": url}
+    elif transfer_method in _REFERENCE_FILE_TRANSFER_METHODS:
+        reference = _canonical_file_reference(
+            _string_value(file_mapping, "reference")
+            or _string_value(file_mapping, "upload_file_id")
+            or _string_value(file_mapping, "file_id")
+            or _string_value(file_mapping, "id")
+        )
+        if reference is None:
+            return None
+        locator = {"transfer_method": transfer_method, "reference": reference}
+    else:
+        return None
+
+    return locator
+
+
+def _canonical_file_reference(reference: str | None) -> str | None:
+    if reference is None:
+        return None
+    if reference.startswith("dify-file-ref:"):
+        return reference if is_canonical_file_reference(reference) else None
+    return build_file_reference(record_id=reference)
+
+
+def _string_value(mapping: Mapping[str, object], key: str) -> str | None:
+    value = mapping.get(key)
+    return value if isinstance(value, str) and value else None
 
 
 class AgentAppGenerator(MessageBasedAppGenerator):

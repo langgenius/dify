@@ -21,6 +21,7 @@ from core.app.apps.agent_app.app_generator import (
 )
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import AGENT_RUNTIME_EXIT_INTENT_ARG, InvokeFrom, UserFrom
+from core.workflow.file_reference import build_file_reference
 from models import Account
 from models.agent import AgentConfigDraftType
 
@@ -380,7 +381,23 @@ class TestGenerateWorker:
                 "transfer_method": "local_file",
                 "url": "",
                 "upload_file_id": "upload-file-1",
-            }
+            },
+            {
+                "type": "document",
+                "transfer_method": "remote_url",
+                "url": "https://example.com/source.pdf",
+                "upload_file_id": "ignored",
+            },
+        ]
+        expected_file_mappings = [
+            {
+                "transfer_method": "local_file",
+                "reference": build_file_reference(record_id="upload-file-1"),
+            },
+            {
+                "transfer_method": "remote_url",
+                "url": "https://example.com/source.pdf",
+            },
         ]
 
         self._call(
@@ -392,7 +409,8 @@ class TestGenerateWorker:
         )
 
         assert runner.run.call_args.kwargs["query"] == (
-            f"你看得见这张图片吗\nUser provided files: {json.dumps(file_mappings, ensure_ascii=False)}"
+            "你看得见这张图片吗\nUser provided files: "
+            f"{json.dumps(expected_file_mappings, ensure_ascii=False, separators=(',', ':'))}"
         )
 
     def test_input_guard_short_circuit_skips_backend(self, generator, mocker: MockerFixture):

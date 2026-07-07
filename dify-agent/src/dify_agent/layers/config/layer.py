@@ -26,9 +26,10 @@ from the same `dify-agent` CLI definitions available in shell jobs.
 Local edits to config files, skills, env, or notes are not saved by themselves. Config changes are saved only by a
 matching resource mutation command. Those commands are available only when the Agent config context reports
 `config_version.kind` as `build_draft` and `config_version.writable` as true."""
-_USER_FILE_DOWNLOAD_PROMPT = """User-provided files can be downloaded into the local shell workspace with
-`dify-agent file download TRANSFER_METHOD REFERENCE_OR_URL`. If you have a full file mapping JSON, use
-`dify-agent file download --mapping '<mapping-json>'`; add `--to <dir>` to choose the destination directory."""
+_USER_FILE_CLI_PROMPT = (
+    "For user-provided files, refer to the generated `dify-agent file upload --help` and "
+    "`dify-agent file download --help` sections above."
+)
 _CONFIG_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config --help": ("config",),
     "dify-agent config manifest --help": ("config", "manifest"),
@@ -140,7 +141,7 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
             usage_lines.append(cli_help)
         if file_cli_help := self._format_agent_file_cli_help():
             usage_lines.append(file_cli_help)
-        usage_lines.append(_USER_FILE_DOWNLOAD_PROMPT)
+        usage_lines.append(_USER_FILE_CLI_PROMPT)
         sections.append("\n".join(usage_lines))
         return "\n\n".join(section for section in sections if section)
 

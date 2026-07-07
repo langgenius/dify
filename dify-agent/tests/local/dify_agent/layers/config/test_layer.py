@@ -132,10 +132,11 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
     assert layer.runtime_state.push_spec_json_schema == ""
     suffix_prompt = layer.build_suffix_prompt()
     assert suffix_prompt.index("Agent config CLI help:") < suffix_prompt.index("Agent file CLI help:")
-    assert suffix_prompt.index("Agent file CLI help:") < suffix_prompt.index("User-provided files")
+    assert suffix_prompt.index("Agent file CLI help:") < suffix_prompt.index("For user-provided files")
     assert "$ dify-agent file upload --help" in suffix_prompt
     assert "$ dify-agent file download --help" in suffix_prompt
-    assert "dify-agent file download --mapping '<mapping-json>'" in suffix_prompt
+    assert "refer to the generated `dify-agent file upload --help`" in suffix_prompt
+    assert "dify-agent file download --mapping '<mapping-json>'" not in suffix_prompt
 
 
 @pytest.mark.anyio
