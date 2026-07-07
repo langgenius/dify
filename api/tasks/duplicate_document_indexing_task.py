@@ -149,18 +149,13 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
 
                     # clean up old summary data (PG records + vector embeddings)
                     summary_records = session.scalars(
-                        select(DocumentSegmentSummary).where(
-                            DocumentSegmentSummary.document_id == document.id
-                        )
+                        select(DocumentSegmentSummary).where(DocumentSegmentSummary.document_id == document.id)
                     ).all()
                     if summary_records:
-                        summary_node_ids = [
-                            r.summary_index_node_id
-                            for r in summary_records
-                            if r.summary_index_node_id
-                        ]
+                        summary_node_ids = [r.summary_index_node_id for r in summary_records if r.summary_index_node_id]
                         if summary_node_ids:
                             from core.rag.datasource.vdb.vector_factory import Vector
+
                             vector = Vector(dataset)
                             vector.delete_by_ids(summary_node_ids)
 
