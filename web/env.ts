@@ -69,7 +69,7 @@ const clientSchema = {
    * Currently gates the `/create` and `/refine` slash commands in the
    * "Go to Anything" command palette (Cmd/Ctrl+K).
    */
-  NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(true),
 
   /**
    * Cloud-only system-features defaults.
