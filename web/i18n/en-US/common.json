@@ -444,6 +444,7 @@
   "operation.download": "Download",
   "operation.downloadFailed": "Download failed. Please try again later.",
   "operation.downloadSuccess": "Download Completed.",
+  "operation.downloading": "Downloading",
   "operation.duplicate": "Duplicate",
   "operation.edit": "Edit",
   "operation.exporting": "Exporting",

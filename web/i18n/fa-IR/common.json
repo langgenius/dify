@@ -444,6 +444,7 @@
   "operation.download": "دانلود",
   "operation.downloadFailed": "دانلود ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
   "operation.downloadSuccess": "دانلود کامل شد.",
+  "operation.downloading": "در حال دانلود...",
   "operation.duplicate": "تکرار",
   "operation.edit": "ویرایش",
   "operation.exporting": "در حال خروجی گرفتن",

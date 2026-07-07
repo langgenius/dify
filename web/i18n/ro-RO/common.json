@@ -444,6 +444,7 @@
   "operation.download": "Descarcă",
   "operation.downloadFailed": "Descărcarea a eșuat. Vă rugăm să încercați din nou mai târziu.",
   "operation.downloadSuccess": "Descărcarea a fost finalizată.",
+  "operation.downloading": "Se descarcă...",
   "operation.duplicate": "Duplică",
   "operation.edit": "Editează",
   "operation.exporting": "Se exportă",

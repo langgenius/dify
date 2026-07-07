@@ -444,6 +444,7 @@
   "operation.download": "Descargar",
   "operation.downloadFailed": "La descarga ha fallado. Por favor, inténtalo de nuevo más tarde.",
   "operation.downloadSuccess": "Descarga completada.",
+  "operation.downloading": "Descargando...",
   "operation.duplicate": "Duplicar",
   "operation.edit": "Editar",
   "operation.exporting": "Exportando",

@@ -1,14 +1,17 @@
 'use client'
 
 import type { SandboxFileEntryResponse, SandboxListResponse, SandboxReadResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSkillDetailDownloadAction } from '../orchestrate/skills/detail-dialog'
 import type { AgentWorkingDirectoryPath } from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
+import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { downloadUrl } from '@/utils/download'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
 import { AgentWorkingDirectoryBreadcrumb } from './working-directory-breadcrumb'
@@ -241,6 +244,7 @@ export function AgentWorkingDirectoryPanel({
   const [loadedFolderPaths, setLoadedFolderPaths] = useState<string[]>([])
   const [openFolderPaths, setOpenFolderPaths] = useState<string[]>([])
   const [pendingOpenFolderPaths, setPendingOpenFolderPaths] = useState<string[]>([])
+  const [downloadActionLoadingTarget, setDownloadActionLoadingTarget] = useState<AgentSkillDetailDownloadAction | null>(null)
   const workflowNodeRunId = source.type === 'workflow-node'
     ? (source.workflowRunId ?? source.conversationId)
     : undefined
@@ -434,41 +438,58 @@ export function AgentWorkingDirectoryPanel({
   const workflowSandboxUploadMutation = useMutation(consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.upload.post.mutationOptions())
   const { mutateAsync: uploadAgentSandboxFile } = agentSandboxUploadMutation
   const { mutateAsync: uploadWorkflowSandboxFile } = workflowSandboxUploadMutation
+  const isFileDownloadPending = agentSandboxUploadMutation.isPending || workflowSandboxUploadMutation.isPending
   const isFileReadLoading = !!selectedWorkingDirectoryFile && fileReadQuery.isPending
-  const handleDownloadFile = useCallback(async () => {
-    if (!selectedWorkingDirectoryFile)
+  const handleDownloadFile = useCallback(async (action: AgentSkillDetailDownloadAction) => {
+    if (!selectedWorkingDirectoryFile || isFileDownloadPending)
       return
 
     if (source.type === 'agent') {
       if (!source.conversationId)
         return
 
-      await uploadAgentSandboxFile({
-        params: {
-          agent_id: source.agentId,
-        },
-        body: {
-          conversation_id: source.conversationId,
-          path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
-        },
-      })
+      setDownloadActionLoadingTarget(action)
+      try {
+        const result = await uploadAgentSandboxFile({
+          params: {
+            agent_id: source.agentId,
+          },
+          body: {
+            conversation_id: source.conversationId,
+            path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
+          },
+        })
+        downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
+        toast.success(tCommon('operation.downloadSuccess'))
+      }
+      finally {
+        setDownloadActionLoadingTarget(null)
+      }
       return
     }
 
     if (!source.appId || !workflowNodeRunId)
       return
 
-    await uploadWorkflowSandboxFile({
-      params: {
-        app_id: source.appId,
-        workflow_run_id: workflowNodeRunId,
-        node_id: source.nodeId,
-      },
-      body: {
-        path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
-      },
-    })
-  }, [selectedWorkingDirectoryFile, source, uploadAgentSandboxFile, uploadWorkflowSandboxFile, workflowNodeRunId])
+    setDownloadActionLoadingTarget(action)
+    try {
+      const result = await uploadWorkflowSandboxFile({
+        params: {
+          app_id: source.appId,
+          workflow_run_id: workflowNodeRunId,
+          node_id: source.nodeId,
+        },
+        body: {
+          path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
+        },
+      })
+      downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
+      toast.success(tCommon('operation.downloadSuccess'))
+    }
+    finally {
+      setDownloadActionLoadingTarget(null)
+    }
+  }, [isFileDownloadPending, selectedWorkingDirectoryFile, source, tCommon, uploadAgentSandboxFile, uploadWorkflowSandboxFile, workflowNodeRunId])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -519,6 +540,7 @@ export function AgentWorkingDirectoryPanel({
           filePreview: {
             binary: fileReadQuery.data?.binary,
             content: fileReadQuery.data?.text ?? undefined,
+            downloadActionLoadingTarget,
             fileName: isFileListLoading ? '' : selectedWorkingDirectoryFile?.name,
             isError: fileListQuery.isError || fileReadQuery.isError,
             isLoading: isFileListLoading || isFileReadLoading,

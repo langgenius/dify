@@ -444,6 +444,7 @@
   "operation.download": "Скачать",
   "operation.downloadFailed": "Скачивание не удалось. Пожалуйста, попробуйте еще раз позже.",
   "operation.downloadSuccess": "Загрузка завершена.",
+  "operation.downloading": "Скачивание...",
   "operation.duplicate": "Дублировать",
   "operation.edit": "Редактировать",
   "operation.exporting": "Экспорт",

@@ -444,6 +444,7 @@
   "operation.download": "Mengunduh",
   "operation.downloadFailed": "Unduhan gagal. Silakan coba lagi nanti.",
   "operation.downloadSuccess": "Unduh Selesai.",
+  "operation.downloading": "Mengunduh...",
   "operation.duplicate": "Duplikat",
   "operation.edit": "Mengedit",
   "operation.exporting": "Mengekspor",

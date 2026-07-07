@@ -444,6 +444,7 @@
   "operation.download": "ดาวน์โหลด",
   "operation.downloadFailed": "ดาวน์โหลดล้มเหลว กรุณาลองอีกครั้งในภายหลัง.",
   "operation.downloadSuccess": "ดาวน์โหลดเสร็จสิ้นแล้ว.",
+  "operation.downloading": "กำลังดาวน์โหลด...",
   "operation.duplicate": "สำเนา",
   "operation.edit": "แก้ไข",
   "operation.exporting": "กำลังส่งออก",

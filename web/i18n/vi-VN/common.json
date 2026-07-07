@@ -444,6 +444,7 @@
   "operation.download": "Tải xuống",
   "operation.downloadFailed": "Tải xuống thất bại. Vui lòng thử lại sau.",
   "operation.downloadSuccess": "Tải xuống đã hoàn thành.",
+  "operation.downloading": "Đang tải xuống...",
   "operation.duplicate": "Nhân bản",
   "operation.edit": "Chỉnh sửa",
   "operation.exporting": "Đang xuất",

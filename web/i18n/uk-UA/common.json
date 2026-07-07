@@ -444,6 +444,7 @@
   "operation.download": "Завантажити",
   "operation.downloadFailed": "Не вдалося завантажити. Будь ласка, спробуйте ще раз пізніше.",
   "operation.downloadSuccess": "Завантаження завершено.",
+  "operation.downloading": "Завантаження...",
   "operation.duplicate": "дублікат",
   "operation.edit": "Редагувати",
   "operation.exporting": "Експорт",

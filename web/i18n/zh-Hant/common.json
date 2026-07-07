@@ -444,6 +444,7 @@
   "operation.download": "下載",
   "operation.downloadFailed": "下載失敗。請稍後再試。",
   "operation.downloadSuccess": "下載完成。",
+  "operation.downloading": "下載中",
   "operation.duplicate": "複製",
   "operation.edit": "編輯",
   "operation.exporting": "匯出中",

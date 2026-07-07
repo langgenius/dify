@@ -1,3 +1,4 @@
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,21 +18,15 @@ const mocks = vi.hoisted(() => ({
   sandboxFilesQueryOptions: vi.fn(),
   sandboxFileReadQueryOptions: vi.fn(),
   sandboxFileUploadMutationFn: vi.fn(async (_input: unknown) => ({
-    path: '~/workspace/notes.md',
-    file: {
-      transfer_method: 'tool_file',
-      reference: 'dify-file-ref:file-1',
-    },
+    url: 'https://example.com/sandbox-file',
   })),
   workflowSandboxFilesQueryOptions: vi.fn(),
   workflowSandboxFileReadQueryOptions: vi.fn(),
   workflowSandboxFileUploadMutationFn: vi.fn(async (_input: unknown) => ({
-    path: '~/workspace/notes.md',
-    file: {
-      transfer_method: 'tool_file',
-      reference: 'dify-file-ref:file-1',
-    },
+    url: 'https://example.com/workflow-sandbox-file',
   })),
+  downloadUrl: vi.fn(),
+  toastSuccess: vi.fn(),
 }))
 
 vi.mock('@/service/client', () => ({
@@ -92,6 +87,24 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+vi.mock('@/utils/download', () => ({
+  downloadUrl: mocks.downloadUrl,
+}))
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: {
+    success: mocks.toastSuccess,
+  },
+}))
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+  return { promise, resolve }
+}
+
 function renderWorkingDirectoryPanel() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -145,14 +158,23 @@ describe('AgentWorkingDirectoryPanel', () => {
     }))
   })
 
-  it('should upload the selected working directory file from the preview header download action', async () => {
+  it('should download the selected working directory file from the preview header download action', async () => {
     const user = userEvent.setup()
+    const upload = createDeferred<{ url: string }>()
+    mocks.sandboxFileUploadMutationFn.mockReturnValueOnce(upload.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('notes.md'))
     await user.click(await screen.findByRole('button', {
       name: /common\.operation\.download.*notes\.md/i,
     }))
+
+    const downloadingButton = await screen.findByRole('button', {
+      name: /common\.operation\.downloading.*notes\.md/i,
+    })
+    expect(downloadingButton.querySelector('.animate-spin')).toBeInTheDocument()
+
+    upload.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
       expect(mocks.sandboxFileUploadMutationFn).toHaveBeenCalled()
@@ -165,17 +187,33 @@ describe('AgentWorkingDirectoryPanel', () => {
           path: '~/workspace/notes.md',
         },
       })
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/sandbox-file',
+        fileName: 'notes.md',
+      })
+      expect(toast.success).toHaveBeenCalledWith('common.operation.downloadSuccess')
     })
   })
 
-  it('should upload binary working directory files from the unsupported preview download link', async () => {
+  it('should download binary working directory files from the unsupported preview download link', async () => {
     const user = userEvent.setup()
+    const upload = createDeferred<{ url: string }>()
+    mocks.sandboxFileUploadMutationFn.mockReturnValueOnce(upload.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('chart.png'))
 
     expect(await screen.findByText('agentV2.agentDetail.configure.files.preview.unsupported')).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: /common\.operation\.download/i }))
+
+    const downloadingLink = await screen.findByRole('link', { name: /common\.operation\.downloading/i })
+    expect(downloadingLink.querySelector('.animate-spin')).toBeInTheDocument()
+    const headerDownloadButton = screen.getByRole('button', {
+      name: /common\.operation\.download.*chart\.png/i,
+    })
+    expect(headerDownloadButton.querySelector('.animate-spin')).not.toBeInTheDocument()
+
+    upload.resolve({ url: 'https://example.com/sandbox-file' })
 
     await waitFor(() => {
       expect(mocks.sandboxFileUploadMutationFn).toHaveBeenCalled()
@@ -188,6 +226,11 @@ describe('AgentWorkingDirectoryPanel', () => {
           path: '~/workspace/chart.png',
         },
       })
+      expect(mocks.downloadUrl).toHaveBeenCalledWith({
+        url: 'https://example.com/sandbox-file',
+        fileName: 'chart.png',
+      })
+      expect(toast.success).toHaveBeenCalledWith('common.operation.downloadSuccess')
     })
   })
 })

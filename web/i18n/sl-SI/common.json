@@ -444,6 +444,7 @@
   "operation.download": "Prenesi",
   "operation.downloadFailed": "Prenos ni uspel. Prosim, poskusite znova pozneje.",
   "operation.downloadSuccess": "Prenos končan.",
+  "operation.downloading": "Prenašanje...",
   "operation.duplicate": "Podvoji",
   "operation.edit": "Uredi",
   "operation.exporting": "Izvažanje",
