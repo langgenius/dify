@@ -611,7 +611,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 "build_draft" if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD else "draft"
             )
             return agent, draft.id, config_version_kind, agent_soul
-        if not agent.active_config_snapshot_id or not agent.active_config_is_published:
+        # active_config_is_published tracks whether the editable draft matches the active snapshot.
+        # Public runtime must keep serving the active snapshot even when unpublished draft edits exist.
+        if not agent.active_config_snapshot_id:
             raise AgentAppNotPublishedError("Agent has not been published")
         _, snapshot, agent_soul = self._resolve_agent_by_id(
             tenant_id=app_model.tenant_id,

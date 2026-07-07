@@ -32,7 +32,9 @@ def get_published_agent_app_feature_dict_and_user_input_form(
     )
     if agent is None:
         raise AgentAppGeneratorError("Agent App has no bound Agent")
-    if not agent.active_config_snapshot_id or not agent.active_config_is_published:
+    # active_config_is_published means the draft has no unpublished edits; the public app
+    # can still read parameters from the active snapshot while a newer draft is pending.
+    if not agent.active_config_snapshot_id:
         raise AgentAppNotPublishedError("Agent has not been published")
 
     snapshot = db.session.scalar(
