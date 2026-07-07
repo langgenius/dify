@@ -7223,17 +7223,6 @@
       "count": 1
     }
   },
-  "web/service/use-common.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "ts/no-empty-object-type": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/service/use-datasource.ts": {
     "no-restricted-imports": {
       "count": 1
