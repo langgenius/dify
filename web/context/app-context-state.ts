@@ -25,9 +25,9 @@ import {
 
 type SuspenseQueryResult<T> = Omit<DefinedQueryObserverResult<T>, 'isPlaceholderData'>
 
-export const accountProfileQueryAtom = atomWithSuspenseQuery(() => userProfileQueryOptions())
+const accountProfileQueryAtom = atomWithSuspenseQuery(() => userProfileQueryOptions())
 
-export const systemFeaturesQueryAtom = atomWithSuspenseQuery(() => systemFeaturesQueryOptions())
+const systemFeaturesQueryAtom = atomWithSuspenseQuery(() => systemFeaturesQueryOptions())
 
 export const userProfileAtom = atom((get): GetAccountProfileResponse => {
   const accountProfileQuery = get(accountProfileQueryAtom) as SuspenseQueryResult<UserProfileWithMeta>
@@ -35,7 +35,7 @@ export const userProfileAtom = atom((get): GetAccountProfileResponse => {
   return accountProfileQuery.data?.profile || userProfilePlaceholder
 })
 
-export const profileMetaAtom = atom((get) => {
+const profileMetaAtom = atom((get) => {
   const accountProfileQuery = get(accountProfileQueryAtom) as SuspenseQueryResult<UserProfileWithMeta>
 
   return accountProfileQuery.data?.meta ?? {
@@ -44,13 +44,13 @@ export const profileMetaAtom = atom((get) => {
   }
 })
 
-export const currentWorkspaceQueryAtom = atomWithQuery(() => {
+const currentWorkspaceQueryAtom = atomWithQuery(() => {
   return consoleQuery.workspaces.current.post.queryOptions({
     select: normalizeCurrentWorkspace,
   })
 })
 
-export const normalizedCurrentWorkspaceAtom = atom((get) => {
+const normalizedCurrentWorkspaceAtom = atom((get) => {
   return get(currentWorkspaceQueryAtom).data ?? initialWorkspaceInfo
 })
 
@@ -62,7 +62,7 @@ export const workspaceRoleFlagsAtom = atom((get) => {
   return getWorkspaceRoleFlags(get(currentWorkspaceAtom))
 })
 
-export const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
+const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
   const workspaceId = get(currentWorkspaceAtom).id
 
   return workspacePermissionKeysQueryOptions(workspaceId)
@@ -84,7 +84,7 @@ export const currentWorkspaceValidatingAtom = atom((get) => {
   return get(currentWorkspaceQueryAtom).isFetching
 })
 
-export const versionQueryAtom = atomWithQuery((get) => {
+const versionQueryAtom = atomWithQuery((get) => {
   const meta = get(profileMetaAtom)
   const systemFeaturesQuery = get(systemFeaturesQueryAtom) as SuspenseQueryResult<GetSystemFeaturesResponse>
   const enabled = Boolean(meta.currentVersion && !systemFeaturesQuery.data?.branding.enabled)

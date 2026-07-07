@@ -18,7 +18,7 @@ export type ProfileMeta = {
   currentEnv: string | null
 }
 
-export function resolveWorkspaceRole(role: PostWorkspacesCurrentResponse['role']): ICurrentWorkspace['role'] {
+function resolveWorkspaceRole(role: PostWorkspacesCurrentResponse['role']): ICurrentWorkspace['role'] {
   if (role && workspaceRoles.has(role as ICurrentWorkspace['role']))
     return role as ICurrentWorkspace['role']
 
