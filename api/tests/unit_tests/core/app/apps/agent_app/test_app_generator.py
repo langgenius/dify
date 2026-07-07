@@ -392,7 +392,7 @@ class TestGenerateWorker:
         )
 
         assert runner.run.call_args.kwargs["query"] == (
-            f"你看得见这张图片吗\n{json.dumps(file_mappings, ensure_ascii=False)}"
+            f"你看得见这张图片吗\nUser provided files: {json.dumps(file_mappings, ensure_ascii=False)}"
         )
 
     def test_input_guard_short_circuit_skips_backend(self, generator, mocker: MockerFixture):

@@ -65,10 +65,10 @@ logger = logging.getLogger(__name__)
 
 
 def _append_prompt_file_mappings(query: str, prompt_file_mappings: Sequence[JsonValue]) -> str:
-    """Append raw request file references to the backend user prompt."""
+    """Append labeled raw request file references to the backend user prompt."""
     if not prompt_file_mappings:
         return query
-    return f"{query}\n{json.dumps(list(prompt_file_mappings), ensure_ascii=False)}"
+    return f"{query}\nUser provided files: {json.dumps(list(prompt_file_mappings), ensure_ascii=False)}"
 
 
 class AgentAppGenerator(MessageBasedAppGenerator):
