@@ -10,7 +10,7 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   title: string
   isPinned: boolean
   isShowRenameConversation?: boolean
@@ -19,7 +19,7 @@ type Props = {
   togglePin: () => void
   onDelete: () => void
   placement?: Placement
-}
+}>
 
 const deferAction = (action: () => void) => {
   queueMicrotask(action)

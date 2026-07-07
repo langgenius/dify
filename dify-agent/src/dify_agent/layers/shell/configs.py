@@ -3,7 +3,8 @@
 Server-only shellctl connection settings are injected by the runtime provider
 factory. Public config carries product-level Agent Soul settings that must affect
 the sandbox workspace itself: CLI tool bootstrap commands, normal environment
-variables, secret environment variable names, and sandbox-provider metadata.
+variables, secret environment variable names, sandbox-provider metadata, and the
+Agent Stub drive ref used by shell-visible drive commands.
 """
 
 import re
@@ -16,20 +17,6 @@ from agenton.layers import LayerConfig
 
 DIFY_SHELL_LAYER_TYPE_ID: Final[str] = "dify.shell"
 _ENV_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-
-
-class DifyShellCliToolConfig(BaseModel):
-    """One CLI tool declaration that can bootstrap itself in the sandbox."""
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    name: str | None = Field(default=None, max_length=255)
-    install_commands: list[str] = Field(default_factory=list)
-
-    @field_validator("install_commands")
-    @classmethod
-    def _reject_blank_install_commands(cls, value: list[str]) -> list[str]:
-        return [command for command in (item.strip() for item in value) if command]
 
 
 class DifyShellEnvVarConfig(BaseModel):
@@ -64,6 +51,22 @@ class DifyShellSecretRefConfig(BaseModel):
         return value
 
 
+class DifyShellCliToolConfig(BaseModel):
+    """One CLI tool declaration that can bootstrap itself in the sandbox."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, max_length=255)
+    install_commands: list[str] = Field(default_factory=list)
+    env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
+    secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)
+
+    @field_validator("install_commands")
+    @classmethod
+    def _reject_blank_install_commands(cls, value: list[str]) -> list[str]:
+        return [command for command in (item.strip() for item in value) if command]
+
+
 class DifyShellSandboxConfig(BaseModel):
     """Sandbox provider selection persisted in Agent Soul."""
 
@@ -78,6 +81,8 @@ class DifyShellLayerConfig(LayerConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
+    # Optional because shell can be used without a drive layer.
+    agent_stub_drive_ref: str | None = Field(default=None, max_length=1024)
     cli_tools: list[DifyShellCliToolConfig] = Field(default_factory=list)
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)

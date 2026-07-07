@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from inspect import unwrap
-from types import SimpleNamespace
 from typing import TypedDict, Unpack
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -35,12 +34,15 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     RagPipelineTaskStopApi,
     RagPipelineTransformApi,
     RagPipelineWorkflowLastRunApi,
+    RagPipelineWorkflowRunNodeExecutionListApi,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
-from models.workflow import Workflow
+from models.enums import CreatorUserRole
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 
@@ -71,7 +73,7 @@ class WorkflowFactoryPayload(TypedDict):
     created_by: str
     created_at: datetime
     updated_by: str | None
-    updated_at: datetime
+    updated_at: datetime | None
     environment_variables: list[WorkflowVariablePayload]
     conversation_variables: list[WorkflowVariablePayload]
     rag_pipeline_variables: list[WorkflowVariablePayload]
@@ -90,39 +92,69 @@ class WorkflowFactoryOverrides(TypedDict, total=False):
     created_by: str
     created_at: datetime
     updated_by: str | None
-    updated_at: datetime
+    updated_at: datetime | None
     environment_variables: list[WorkflowVariablePayload]
     conversation_variables: list[WorkflowVariablePayload]
     rag_pipeline_variables: list[WorkflowVariablePayload]
 
 
-def make_node_execution(**overrides: object) -> SimpleNamespace:
-    payload: dict[str, object] = {
+class NodeExecutionOverrides(TypedDict, total=False):
+    id: str
+    tenant_id: str
+    app_id: str
+    workflow_id: str
+    workflow_run_id: str | None
+    index: int
+    predecessor_node_id: str | None
+    node_execution_id: str | None
+    node_id: str
+    node_type: str
+    title: str
+    inputs: str | None
+    process_data: str | None
+    outputs: str | None
+    status: WorkflowNodeExecutionStatus
+    error: str | None
+    elapsed_time: float
+    execution_metadata: str | None
+    created_at: datetime
+    created_by_role: CreatorUserRole
+    created_by: str
+    finished_at: datetime | None
+
+
+def make_node_execution(**overrides: Unpack[NodeExecutionOverrides]) -> WorkflowNodeExecutionModel:
+    payload: NodeExecutionOverrides = {
         "id": "node-exec-1",
+        "tenant_id": DEFAULT_WORKFLOW_TENANT_ID,
+        "app_id": DEFAULT_WORKFLOW_APP_ID,
+        "workflow_id": "workflow-1",
+        "workflow_run_id": None,
         "index": 1,
         "predecessor_node_id": None,
+        "node_execution_id": None,
         "node_id": "node1",
         "node_type": "start",
         "title": "Start",
-        "inputs_dict": {"query": "hello"},
-        "process_data_dict": {},
-        "outputs_dict": {"answer": "world"},
-        "status": "succeeded",
+        "inputs": json.dumps({"query": "hello"}),
+        "process_data": json.dumps({}),
+        "outputs": json.dumps({"answer": "world"}),
+        "status": WorkflowNodeExecutionStatus.SUCCEEDED,
         "error": None,
         "elapsed_time": 1.0,
-        "execution_metadata_dict": {},
-        "extras": {},
+        "execution_metadata": json.dumps({}),
         "created_at": datetime(2026, 1, 1, 0, 0, 0),
-        "created_by_role": "account",
-        "created_by_account": None,
-        "created_by_end_user": None,
+        "created_by_role": CreatorUserRole.ACCOUNT,
+        "created_by": DEFAULT_WORKFLOW_CREATED_BY,
         "finished_at": datetime(2026, 1, 1, 0, 0, 1),
-        "inputs_truncated": False,
-        "outputs_truncated": False,
-        "process_data_truncated": False,
     }
     payload.update(overrides)
-    return SimpleNamespace(**payload)
+    execution = WorkflowNodeExecutionModel(
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+        **payload,
+    )
+    execution.offload_data = []
+    return execution
 
 
 def default_workflow_payload() -> WorkflowFactoryPayload:
@@ -274,7 +306,10 @@ class TestDraftWorkflowApi:
 
         pipeline = make_pipeline()
         user = make_account(id="account-1")
-        workflow = MagicMock(unique_hash="restored-hash", updated_at=None, created_at=datetime(2024, 1, 1))
+        workflow = make_workflow(
+            graph=json.dumps({"nodes": [{"id": "restored"}], "edges": []}),
+            created_at=datetime(2024, 1, 1),
+        )
 
         service = MagicMock()
         service.restore_published_workflow_to_draft.return_value = workflow
@@ -289,7 +324,7 @@ class TestDraftWorkflowApi:
             result = method(api, user, pipeline, "published-workflow")
 
         assert result["result"] == "success"
-        assert result["hash"] == "restored-hash"
+        assert result["hash"] == workflow.unique_hash
 
     def test_restore_published_workflow_to_draft_not_found(self, app: Flask) -> None:
         api = RagPipelineDraftWorkflowRestoreApi()
@@ -435,7 +470,7 @@ class TestPipelineRunApis:
                 return_value={"ok": True},
             ),
         ):
-            assert method(api, user, pipeline) == {"ok": True}
+            assert method(api, MagicMock(), user, pipeline) == {"ok": True}
 
     def test_draft_run_rate_limit(self, app: Flask) -> None:
         api = DraftRagPipelineRunApi()
@@ -463,7 +498,7 @@ class TestPipelineRunApis:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, pipeline)
+                method(api, MagicMock(), user, pipeline)
 
 
 class TestDraftNodeRun:
@@ -515,10 +550,7 @@ class TestPublishedPipelineApis:
 
         user = make_account(id="u1")
 
-        workflow = MagicMock(
-            id=str(uuid4()),
-            created_at=naive_utc_now(),
-        )
+        workflow = make_workflow(id=str(uuid4()), created_at=naive_utc_now())
 
         service = MagicMock()
         service.publish_workflow.return_value = workflow
@@ -568,14 +600,20 @@ class TestMiscApis:
             app.test_request_context("/"),
         ):
             with pytest.raises(Forbidden):
-                method(api, user, "ds1")
+                method(api, MagicMock(spec=Session), user, "ds1")
 
     def test_recommended_plugins(self, app: Flask) -> None:
         api = RagPipelineRecommendedPluginApi()
         method = unwrap(api.get)
 
         service = MagicMock()
-        service.get_recommended_plugins.return_value = [{"id": "p1"}]
+        recommended_plugins = {
+            "installed_recommended_plugins": [{"id": "p1"}],
+            "uninstalled_recommended_plugins": [{"id": "p2"}],
+        }
+        service.get_recommended_plugins.return_value = recommended_plugins
+        user = make_account()
+        tenant_id = "tenant-1"
 
         with (
             app.test_request_context("/?type=all"),
@@ -584,8 +622,9 @@ class TestMiscApis:
                 return_value=service,
             ),
         ):
-            result = method(api)
-            assert result == [{"id": "p1"}]
+            result = method(api, tenant_id, user)
+            assert result == recommended_plugins
+            service.get_recommended_plugins.assert_called_once_with("all", user, tenant_id)
 
 
 class TestPublishedRagPipelineRunApi:
@@ -620,7 +659,7 @@ class TestPublishedRagPipelineRunApi:
                 return_value={"ok": True},
             ),
         ):
-            result = method(api, user, pipeline)
+            result = method(api, MagicMock(), user, pipeline)
             assert result == {"ok": True}
 
     def test_published_run_rate_limit(self, app: Flask) -> None:
@@ -646,7 +685,7 @@ class TestPublishedRagPipelineRunApi:
             ),
         ):
             with pytest.raises(InvokeRateLimitHttpError):
-                method(api, user, pipeline)
+                method(api, MagicMock(), user, pipeline)
 
 
 class TestDefaultBlockConfigApi:
@@ -814,7 +853,7 @@ class TestRagPipelineWorkflowLastRunApi:
         method = unwrap(api.get)
 
         pipeline = make_pipeline()
-        workflow = MagicMock()
+        workflow = make_workflow()
         node_exec = make_node_execution()
 
         service = MagicMock()
@@ -851,6 +890,42 @@ class TestRagPipelineWorkflowLastRunApi:
         ):
             with pytest.raises(NotFound):
                 method(api, pipeline, "node1")
+
+
+class TestRagPipelineWorkflowRunNodeExecutionListApi:
+    @pytest.fixture
+    def app(self, flask_app_with_containers: Flask) -> Flask:
+        return flask_app_with_containers
+
+    def test_get_node_executions_passes_current_user(self, app: Flask) -> None:
+        api = RagPipelineWorkflowRunNodeExecutionListApi()
+        method = unwrap(api.get)
+
+        user = make_account()
+        pipeline = make_pipeline()
+        run_id = uuid4()
+        node_exec = make_node_execution(workflow_run_id=str(run_id))
+
+        service = MagicMock()
+        service.get_rag_pipeline_workflow_run_node_executions.return_value = [node_exec]
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
+                return_value=service,
+            ),
+        ):
+            result = method(api, user, pipeline, run_id)
+
+        service.get_rag_pipeline_workflow_run_node_executions.assert_called_once_with(
+            pipeline=pipeline,
+            run_id=str(run_id),
+            user=user,
+        )
+        assert result["data"][0]["id"] == "node-exec-1"
+        assert result["data"][0]["inputs"] == {"query": "hello"}
+        assert result["data"][0]["outputs"] == {"answer": "world"}
 
 
 class TestRagPipelineDatasourceVariableApi:

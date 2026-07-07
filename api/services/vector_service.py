@@ -333,7 +333,7 @@ class VectorService:
 
             # Add documents to vector store if any
             if documents and dataset.is_multimodal:
-                vector.add_texts(documents, duplicate_check=True)
+                vector.create_multimodal(documents)
 
             # Single commit for all operations
             db.session.commit()

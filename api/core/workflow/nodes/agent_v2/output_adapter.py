@@ -4,11 +4,11 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 from clients.agent_backend import (
+    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendInternalEvent,
     AgentBackendInternalEventType,
     AgentBackendRunCancelledInternalEvent,
     AgentBackendRunFailedInternalEvent,
-    AgentBackendRunPausedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
 )
 from core.app.file_access import DatabaseFileAccessController
@@ -85,11 +85,7 @@ class WorkflowAgentOutputAdapter:
     def build_failure_result(
         self,
         *,
-        event: (
-            AgentBackendRunFailedInternalEvent
-            | AgentBackendRunCancelledInternalEvent
-            | AgentBackendRunPausedInternalEvent
-        ),
+        event: (AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent),
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
@@ -108,10 +104,6 @@ class WorkflowAgentOutputAdapter:
                 error = event.message or "Agent backend run was cancelled."
                 error_type = "agent_backend_run_cancelled"
                 terminal_status = "cancelled"
-            case AgentBackendRunPausedInternalEvent():
-                error = event.message or "Agent backend run paused, but workflow Agent Node pause is not supported yet."
-                error_type = "agent_backend_paused_unsupported"
-                terminal_status = "paused"
 
         metadata = self._with_terminal_metadata(metadata, event, terminal_status)
         usage = self._usage_from_metadata(metadata)
@@ -339,8 +331,10 @@ class WorkflowAgentOutputAdapter:
             }
         )
         session_snapshot = None
-        if isinstance(event, AgentBackendRunSucceededInternalEvent | AgentBackendRunPausedInternalEvent):
+        if isinstance(event, AgentBackendRunSucceededInternalEvent | AgentBackendDeferredToolCallInternalEvent):
             session_snapshot = event.session_snapshot
+            if event.usage is not None:
+                agent_backend["usage"] = dict(event.usage)
         if session_snapshot is not None:
             agent_backend["session_snapshot"] = {
                 "layer_count": len(session_snapshot.layers),

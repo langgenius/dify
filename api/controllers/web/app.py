@@ -8,8 +8,10 @@ from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.agent_app_parameters import get_published_agent_app_feature_dict_and_user_input_form
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, AppMode, EndUser
@@ -19,7 +21,7 @@ from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
 from . import web_ns
-from .error import AppUnavailableError
+from .error import AgentNotPublishedError, AppUnavailableError
 from .wraps import WebApiResource
 
 logger = logging.getLogger(__name__)
@@ -32,9 +34,24 @@ class AppAccessModeQuery(BaseModel):
     app_code: str | None = Field(default=None, alias="appCode", description="Application code")
 
 
-register_schema_models(web_ns, AppAccessModeQuery)
+class AppPermissionQuery(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    app_id: str = Field(..., alias="appId", description="Application ID")
+
+
+class AppMetaResponse(BaseModel):
+    tool_icons: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Tool icon metadata keyed by tool name",
+    )
+
+
+register_schema_models(web_ns, AppAccessModeQuery, AppPermissionQuery)
 register_response_schema_models(
     web_ns,
+    fields.Parameters,
+    AppMetaResponse,
     fields.AccessModeResponse,
     fields.BooleanResultResponse,
 )
@@ -56,14 +73,24 @@ class AppParameterApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[fields.Parameters.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Retrieve app parameters."""
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
+        features_dict: dict[str, Any]
+        user_input_form: list[dict[str, Any]]
+        if app_model.mode == AppMode.AGENT:
+            try:
+                features_dict, user_input_form = get_published_agent_app_feature_dict_and_user_input_form(app_model)
+            except AgentAppNotPublishedError:
+                raise AgentNotPublishedError()
+            except AgentAppGeneratorError:
+                raise AppUnavailableError()
+        elif app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()
 
-            features_dict: dict[str, Any] = workflow.features_dict
+            features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config
@@ -92,6 +119,7 @@ class AppMeta(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[AppMetaResponse.__name__])
     def get(self, app_model: App, end_user: EndUser):
         """Get app meta"""
         return AppService().get_app_meta(app_model)
@@ -101,12 +129,7 @@ class AppMeta(WebApiResource):
 class AppAccessMode(Resource):
     @web_ns.doc("Get App Access Mode")
     @web_ns.doc(description="Retrieve the access mode for a web application (public or restricted).")
-    @web_ns.doc(
-        params={
-            "appId": {"description": "Application ID", "type": "string", "required": False},
-            "appCode": {"description": "Application code", "type": "string", "required": False},
-        }
-    )
+    @web_ns.doc(params=query_params_from_model(AppAccessModeQuery))
     @web_ns.doc(
         responses={
             200: "Success",
@@ -139,7 +162,7 @@ class AppAccessMode(Resource):
 class AppWebAuthPermission(Resource):
     @web_ns.doc("Check App Permission")
     @web_ns.doc(description="Check if user has permission to access a web application.")
-    @web_ns.doc(params={"appId": {"description": "Application ID", "type": "string", "required": True}})
+    @web_ns.doc(params=query_params_from_model(AppPermissionQuery))
     @web_ns.doc(
         responses={
             200: "Success",

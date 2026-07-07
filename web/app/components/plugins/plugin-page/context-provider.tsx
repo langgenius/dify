@@ -28,13 +28,15 @@ const parseAsPluginPageTab = parseAsStringEnum<PluginPageTab>(PLUGIN_PAGE_TAB_VA
 
 type PluginPageContextProviderProps = {
   children: ReactNode
+  initialFilters?: FilterState
 }
 
 export const PluginPageContextProvider = ({
   children,
+  initialFilters,
 }: PluginPageContextProviderProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [filters, setFilters] = useState<FilterState>({
+  const [filters, setFilters] = useState<FilterState>(initialFilters ?? {
     categories: [],
     tags: [],
     searchQuery: '',

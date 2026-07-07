@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 from inspect import unwrap
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -23,6 +24,7 @@ from controllers.console.app.error import (
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
+from services.app_ref_service import MessageRef
 from services.audio_service import AudioService
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
@@ -103,6 +105,32 @@ def test_console_text_api_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     assert response == {"audio": "ok"}
 
 
+def test_console_text_api_builds_message_ref(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    api = ChatMessageTextApi()
+    handler = unwrap(api.post)
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    calls = {}
+
+    def fake_transcript_tts(**kwargs):
+        calls.update(kwargs)
+        return {"audio": "ok"}
+
+    monkeypatch.setattr(AudioService, "transcript_tts", fake_transcript_tts)
+
+    with (
+        app.test_request_context(
+            "/console/api/apps/app-1/text-to-audio",
+            method="POST",
+            json={"text": "hello", "message_id": "message-1"},
+        ),
+        patch("controllers.console.app.audio.current_user", SimpleNamespace(id="account-1")),
+    ):
+        response = handler(api, app_model=app_model)
+
+    assert response == {"audio": "ok"}
+    assert calls["message_ref"] == MessageRef("tenant-1", "app-1", "message-1", account_id="account-1")
+
+
 def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: (_ for _ in ()).throw(QuotaExceededError()))
 
@@ -120,7 +148,8 @@ def test_console_text_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPa
 
 
 def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: ["voice-1"])
+    expected_voices = [{"name": "Voice 1", "value": "voice-1"}]
+    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: expected_voices)
 
     api = TextModesApi()
     handler = unwrap(api.get)
@@ -129,7 +158,7 @@ def test_console_text_modes_success(app: Flask, monkeypatch: pytest.MonkeyPatch)
     with app.test_request_context("/console/api/apps/app/text-to-audio/voices?language=en", method="GET"):
         response = handler(api, app_model=app_model)
 
-    assert response == ["voice-1"]
+    assert response == expected_voices
 
 
 def test_console_text_modes_language_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -214,7 +243,8 @@ def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatc
     api = TextModesApi()
     method = unwrap(api.get)
 
-    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: ["voice-1"])
+    expected_voices = [{"name": "Voice 1", "value": "voice-1"}]
+    monkeypatch.setattr(AudioService, "transcript_tts_voices", lambda **_kwargs: expected_voices)
 
     app_model = SimpleNamespace(tenant_id="tenant-1")
 
@@ -225,7 +255,7 @@ def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatc
     ):
         response = method(api, app_model=app_model)
 
-    assert response == ["voice-1"]
+    assert response == expected_voices
 
 
 def test_audio_to_text_with_invalid_file(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -272,7 +302,7 @@ def test_text_to_audio_voices_with_language_filter(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(
         AudioService,
         "transcript_tts_voices",
-        lambda **_kwargs: [{"id": "voice-1", "name": "Voice 1"}],
+        lambda **_kwargs: [{"name": "Voice 1", "value": "voice-1"}],
     )
 
     app_model = SimpleNamespace(tenant_id="tenant-1")

@@ -18,6 +18,7 @@ describe('error codes', () => {
     expect(ExitCode.Usage).toBe(2)
     expect(ExitCode.Auth).toBe(4)
     expect(ExitCode.VersionCompat).toBe(6)
+    expect(ExitCode.RateLimited).toBe(7)
   })
 
   it('every code maps to an exit', () => {
@@ -46,6 +47,7 @@ describe('error codes', () => {
     [ErrorCode.Server4xxOther, ExitCode.Generic],
     [ErrorCode.ClientError, ExitCode.Generic],
     [ErrorCode.Unknown, ExitCode.Generic],
+    [ErrorCode.RateLimited, ExitCode.RateLimited],
   ])('exitFor(%s) -> %d', (code, want) => {
     expect(exitFor(code)).toBe(want)
   })

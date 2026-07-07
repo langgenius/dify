@@ -38,6 +38,7 @@ from services.app_dsl_service import (
 )
 from services.app_service import AppService, CreateAppParams
 from services.dsl_version import check_version_compatibility
+from services.errors.app import WorkflowNotFoundError
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 _DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
@@ -144,8 +145,11 @@ class TestAppDslService:
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
+                session=db_session_with_containers,
             )
-            TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+            TenantService.create_owner_tenant_if_not_exist(
+                account, name=fake.company(), session=db_session_with_containers
+            )
             tenant = account.current_tenant
             app_args = CreateAppParams(
                 name=fake.company(),
@@ -1027,7 +1031,7 @@ class TestAppDslService:
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.return_value = None
 
         with pytest.raises(
-            ValueError,
+            WorkflowNotFoundError,
             match="Missing draft workflow configuration, please check.",
         ):
             AppDslService.export_dsl(app, include_secret=False, workflow_id=str(uuid4()))
@@ -1139,7 +1143,7 @@ class TestAppDslService:
         workflow_service.get_draft_workflow.return_value = None
         monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)
 
-        with pytest.raises(ValueError, match="Missing draft workflow configuration"):
+        with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
             AppDslService._append_workflow_export_data(
                 export_data={},
                 app_model=_app_stub(),

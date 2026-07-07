@@ -1,6 +1,6 @@
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { DefaultModel, Model, ModelFeatureEnum, ModelItem } from '../declarations'
-import type { ModelSelectorValue } from './types'
+import type { ModelSelectorModelPredicate, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { useCallback, useMemo, useState } from 'react'
@@ -10,6 +10,15 @@ import { useCurrentProviderAndModel } from '../hooks'
 import ModelSelectorTrigger from './model-selector-trigger'
 import Popup from './popup'
 import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
+
+const getModelProviderPluginId = (provider: string) => {
+  const [organization, pluginName] = provider.split('/').filter(Boolean)
+
+  if (organization && pluginName)
+    return `${organization}/${pluginName}`
+
+  return provider ? `langgenius/${provider}` : ''
+}
 
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
@@ -22,6 +31,13 @@ type ModelSelectorProps = {
   scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
+  hideProviderSettingsFooter?: boolean
+  onConfigureEmptyState?: () => void
+  onOpenMarketplace?: () => void
+  providerSettingsSource?: 'agent'
+  showModelMeta?: boolean
+  modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
 }
 function ModelSelector({
   defaultModel,
@@ -34,6 +50,13 @@ function ModelSelector({
   scopeFeatures = [],
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
+  hideProviderSettingsFooter,
+  onConfigureEmptyState,
+  onOpenMarketplace,
+  providerSettingsSource,
+  showModelMeta,
+  modelPredicate,
+  modelSuggestionPredicate,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -68,8 +91,13 @@ function ModelSelector({
     setOpen(false)
     setInputValue('')
 
-    if (onSelect)
-      onSelect({ provider, model: model.model })
+    if (onSelect) {
+      onSelect({
+        provider,
+        model: model.model,
+        plugin_id: getModelProviderPluginId(provider),
+      })
+    }
   }, [onSelect])
 
   const handleValueChange = useCallback((value: ModelSelectorValue | null) => {
@@ -97,6 +125,11 @@ function ModelSelector({
     setInputValue('')
     onHide?.()
   }, [onHide])
+  const handleConfigureEmptyState = useCallback(() => {
+    setOpen(false)
+    setInputValue('')
+    onConfigureEmptyState?.()
+  }, [onConfigureEmptyState])
 
   return (
     <Combobox<ModelSelectorValue>
@@ -125,6 +158,8 @@ function ModelSelector({
           className={triggerClassName}
           deprecatedClassName={deprecatedClassName}
           showDeprecatedWarnIcon={showDeprecatedWarnIcon}
+          showModelMeta={showModelMeta}
+          isModelCompatible={currentProvider && currentModel ? modelPredicate?.(currentProvider, currentModel) : undefined}
         />
       </ComboboxTrigger>
       <ComboboxContent
@@ -137,6 +172,12 @@ function ModelSelector({
           inputValue={inputValue}
           modelList={modelList}
           scopeFeatures={scopeFeatures}
+          hideProviderSettingsFooter={hideProviderSettingsFooter}
+          providerSettingsSource={providerSettingsSource}
+          modelPredicate={modelPredicate}
+          modelSuggestionPredicate={modelSuggestionPredicate}
+          onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
+          onOpenMarketplace={onOpenMarketplace}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />

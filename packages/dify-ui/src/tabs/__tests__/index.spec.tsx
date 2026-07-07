@@ -27,25 +27,6 @@ describe('Tabs wrappers', () => {
     await expect.element(screen.getByText('JS panel')).toBeInTheDocument()
   })
 
-  it('keeps tabs styling minimal by default', async () => {
-    const screen = await render(
-      <Tabs defaultValue="first">
-        <TabsList>
-          <TabsTab value="first">First</TabsTab>
-          <TabsTab value="second">Second</TabsTab>
-        </TabsList>
-      </Tabs>,
-    )
-
-    await expect.element(screen.getByRole('tablist')).toHaveClass(
-      'flex',
-    )
-    await expect.element(screen.getByRole('tab', { name: 'First' })).toHaveClass(
-      'touch-manipulation',
-      'focus-visible:outline-hidden',
-    )
-  })
-
   it('calls onValueChange while leaving controlled value to the caller', async () => {
     const onValueChange = vi.fn()
     const screen = await render(

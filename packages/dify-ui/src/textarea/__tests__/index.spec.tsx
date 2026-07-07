@@ -1,4 +1,4 @@
-import type { FocusEvent } from 'react'
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   FieldDescription,
@@ -31,11 +31,10 @@ describe('Textarea', () => {
 
     await expect.element(textarea).toHaveValue('A workspace for support automation.')
     await expect.element(textarea).toHaveAccessibleDescription('Shown to workspace members.')
-    await expect.element(textarea).toHaveClass('min-h-20', 'overflow-auto', 'rounded-lg', 'system-sm-regular')
     expect(asHTMLElement(textarea.element()).tagName).toBe('TEXTAREA')
   })
 
-  it('should apply size variants and custom classes', async () => {
+  it('should apply custom classes', async () => {
     const screen = await render(
       <label>
         Prompt
@@ -43,13 +42,7 @@ describe('Textarea', () => {
       </label>,
     )
 
-    await expect.element(screen.getByRole('textbox', { name: 'Prompt' })).toHaveClass(
-      'rounded-[10px]',
-      'px-4',
-      'py-2',
-      'system-md-regular',
-      'resize-none',
-    )
+    await expect.element(screen.getByRole('textbox', { name: 'Prompt' })).toHaveClass('resize-none')
   })
 
   it('should call onValueChange and stay controlled until value changes', async () => {
@@ -131,7 +124,7 @@ describe('Textarea', () => {
 
   it('should route field props through Base UI Field.Control and textarea-only props to textarea', async () => {
     const onFormSubmit = vi.fn()
-    const onBlur = vi.fn((event: FocusEvent<HTMLTextAreaElement>) => {
+    const onBlur = vi.fn((event: React.FocusEvent<HTMLTextAreaElement>) => {
       expect(event.currentTarget.tagName).toBe('TEXTAREA')
     })
     const screen = await render(

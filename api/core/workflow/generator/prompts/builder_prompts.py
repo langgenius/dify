@@ -526,13 +526,77 @@ Now emit the complete workflow graph JSON.
 """
 
 
+# Node wrapper fields that carry no meaning the builder needs: pure canvas /
+# selection state, plus geometry the runner's postprocess recomputes anyway.
+# Stripping them out of the refine prompt cuts its size roughly in half on
+# hand-edited graphs — fewer tokens in, and (because the builder echoes
+# untouched nodes verbatim) far fewer tokens out, which is where the latency
+# lives.
+_PRUNED_NODE_KEYS = frozenset(
+    {
+        "positionAbsolute",
+        "sourcePosition",
+        "targetPosition",
+        "selected",
+        "dragging",
+        "measured",
+    }
+)
+
+# Additionally pruned from TOP-LEVEL nodes only: the layered auto-layout
+# recomputes their position and size defaults, so the builder never needs to
+# reproduce them. Container children keep ``position`` (relative to the
+# parent, which we cannot recompute) and containers keep ``width`` /
+# ``height`` (their canvas size is real config, not a default).
+_PRUNED_TOP_LEVEL_NODE_KEYS = _PRUNED_NODE_KEYS | {"position", "width", "height"}
+
+_CONTAINER_DATA_TYPES = frozenset({"iteration", "loop"})
+
+# Edge fields the builder must echo; everything else (ids, zIndex,
+# sourceType / targetType, isInIteration / isInLoop markers) is recomputed
+# by the runner's postprocess from the node topology.
+_KEPT_EDGE_KEYS = ("source", "target", "sourceHandle", "targetHandle")
+
+
+def compact_graph_for_builder(current_graph: dict) -> dict:
+    """
+    Strip canvas noise out of a draft graph before prompt injection.
+
+    Keeps everything semantically meaningful — ids, wrapper ``type``,
+    ``parentId``, the full ``data`` config, child positions, container
+    sizes — and drops geometry / selection state the postprocess pass
+    recomputes. The builder echoes untouched nodes verbatim, so every byte
+    removed here is removed twice (prompt AND completion).
+    """
+    nodes_out: list[dict] = []
+    for node in current_graph.get("nodes") or []:
+        if not isinstance(node, dict):
+            continue
+        is_child = bool(node.get("parentId"))
+        is_container = isinstance(node.get("data"), dict) and node["data"].get("type") in _CONTAINER_DATA_TYPES
+        pruned = _PRUNED_NODE_KEYS if (is_child or is_container) else _PRUNED_TOP_LEVEL_NODE_KEYS
+        compact = {k: v for k, v in node.items() if k not in pruned}
+        if is_container:
+            # Container position is still recomputed by the layout pass.
+            compact.pop("position", None)
+        nodes_out.append(compact)
+    edges_out = [
+        {k: edge[k] for k in _KEPT_EDGE_KEYS if k in edge}
+        for edge in (current_graph.get("edges") or [])
+        if isinstance(edge, dict)
+    ]
+    return {"nodes": nodes_out, "edges": edges_out}
+
+
 def format_builder_existing_graph_section(current_graph: dict | None) -> str:
     """
-    Refine mode: give the builder the FULL existing graph JSON so it can keep
+    Refine mode: give the builder the existing graph JSON so it can keep
     every node and edge the user's change does not touch byte-for-byte — same
     ids, same config, same prompt templates. Without the full config the
     builder would regenerate untouched nodes from scratch and silently drop
-    the user's hand-tuned settings.
+    the user's hand-tuned settings. Canvas-only fields are stripped first
+    (see ``compact_graph_for_builder``) — they're recomputed in postprocess,
+    so carrying them only slows the call down.
 
     Returns an empty string in create mode (no ``current_graph``); the builder
     then behaves exactly as before, constructing the graph purely from the
@@ -540,7 +604,7 @@ def format_builder_existing_graph_section(current_graph: dict | None) -> str:
     """
     if not current_graph:
         return ""
-    graph_json = json.dumps(current_graph, ensure_ascii=False, separators=(",", ":"))
+    graph_json = json.dumps(compact_graph_for_builder(current_graph), ensure_ascii=False, separators=(",", ":"))
     return (
         "# Existing graph to refine (JSON)\n\n"
         "You are REFINING this existing graph, NOT building from scratch. Apply "

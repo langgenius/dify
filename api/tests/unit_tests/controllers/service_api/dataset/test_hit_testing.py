@@ -9,21 +9,21 @@ Strategy:
 - ``HitTestingApi.post`` is decorated with ``@cloud_edition_billing_rate_limit_check``
   which preserves ``__wrapped__``.  We call ``post.__wrapped__(self, ...)`` to skip
   the billing decorator and test the business logic directly.
-- Base-class methods (``get_and_validate_dataset``, ``perform_hit_testing``) read
-  ``current_user`` from ``controllers.console.datasets.hit_testing_base``, so we
-  patch it there.
+- ``validate_dataset_token`` installs the tenant owner account into Flask-Login's
+  request context before calling the handler, so direct method-call tests install
+  the same concrete account on ``g._login_user``.
 """
 
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.service_api.dataset.hit_testing import HitTestingApi, HitTestingPayload
-from models.account import Account
+from models.account import Account, Tenant, TenantAccountRole
 from models.dataset import Dataset
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 
@@ -131,13 +131,21 @@ class TestHitTestingApiPost:
     def _dataset(dataset_id: str, tenant_id: str) -> Dataset:
         return Dataset(id=dataset_id, tenant_id=tenant_id, name="Dataset", created_by="account-1")
 
+    @staticmethod
+    def _account(tenant_id: str) -> Account:
+        account = Account(name="Service API", email="service-api@example.com")
+        account.id = "account-1"
+        tenant = Tenant(name="Tenant")
+        tenant.id = tenant_id
+        account._current_tenant = tenant
+        account.role = TenantAccountRole.OWNER
+        return account
+
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
-    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
     def test_post_success(
         self,
-        mock_current_user,
         mock_dataset_svc,
         mock_hit_svc,
         mock_ns,
@@ -148,6 +156,7 @@ class TestHitTestingApiPost:
         tenant_id = str(uuid.uuid4())
 
         mock_dataset = self._dataset(dataset_id, tenant_id)
+        account = self._account(tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
@@ -158,6 +167,8 @@ class TestHitTestingApiPost:
         mock_ns.payload = {"query": "test query"}
 
         with app.test_request_context():
+            # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
+            g._login_user = account
             api = HitTestingApi()
             # Skip billing decorator via __wrapped__
             response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
@@ -168,10 +179,8 @@ class TestHitTestingApiPost:
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
-    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
     def test_post_with_retrieval_model(
         self,
-        mock_current_user,
         mock_dataset_svc,
         mock_hit_svc,
         mock_ns,
@@ -182,6 +191,7 @@ class TestHitTestingApiPost:
         tenant_id = str(uuid.uuid4())
 
         mock_dataset = self._dataset(dataset_id, tenant_id)
+        account = self._account(tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
@@ -204,6 +214,8 @@ class TestHitTestingApiPost:
         }
 
         with app.test_request_context():
+            # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
+            g._login_user = account
             api = HitTestingApi()
             response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
 
@@ -218,10 +230,8 @@ class TestHitTestingApiPost:
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
-    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
     def test_post_preserves_retrieval_model_metadata_filtering_conditions(
         self,
-        mock_current_user,
         mock_dataset_svc,
         mock_hit_svc,
         mock_ns,
@@ -232,6 +242,7 @@ class TestHitTestingApiPost:
         tenant_id = str(uuid.uuid4())
 
         mock_dataset = self._dataset(dataset_id, tenant_id)
+        account = self._account(tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
@@ -260,6 +271,8 @@ class TestHitTestingApiPost:
         }
 
         with app.test_request_context():
+            # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
+            g._login_user = account
             api = HitTestingApi()
             HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
 
@@ -270,10 +283,8 @@ class TestHitTestingApiPost:
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
-    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
     def test_post_prepares_nullable_list_fields(
         self,
-        mock_current_user,
         mock_dataset_svc,
         mock_hit_svc,
         mock_ns,
@@ -284,6 +295,7 @@ class TestHitTestingApiPost:
         tenant_id = str(uuid.uuid4())
 
         mock_dataset = self._dataset(dataset_id, tenant_id)
+        account = self._account(tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.return_value = None
@@ -297,6 +309,8 @@ class TestHitTestingApiPost:
         mock_ns.payload = {"query": "legacy query"}
 
         with app.test_request_context():
+            # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
+            g._login_user = account
             api = HitTestingApi()
             response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
 
@@ -312,10 +326,8 @@ class TestHitTestingApiPost:
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
-    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
     def test_post_dataset_not_found(
         self,
-        mock_current_user,
         mock_dataset_svc,
         mock_ns,
         app: Flask,
@@ -323,21 +335,22 @@ class TestHitTestingApiPost:
         """Test hit testing with non-existent dataset."""
         dataset_id = str(uuid.uuid4())
         tenant_id = str(uuid.uuid4())
+        account = self._account(tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = None
         mock_ns.payload = {"query": "test query"}
 
         with app.test_request_context():
+            # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
+            g._login_user = account
             api = HitTestingApi()
             with pytest.raises(NotFound):
                 HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
-    @patch("controllers.console.datasets.hit_testing_base.current_user", new_callable=lambda: Mock(spec=Account))
     def test_post_no_dataset_permission(
         self,
-        mock_current_user,
         mock_dataset_svc,
         mock_ns,
         app: Flask,
@@ -347,6 +360,7 @@ class TestHitTestingApiPost:
         tenant_id = str(uuid.uuid4())
 
         mock_dataset = self._dataset(dataset_id, tenant_id)
+        account = self._account(tenant_id)
 
         mock_dataset_svc.get_dataset.return_value = mock_dataset
         mock_dataset_svc.check_dataset_permission.side_effect = services.errors.account.NoPermissionError(
@@ -355,6 +369,8 @@ class TestHitTestingApiPost:
         mock_ns.payload = {"query": "test query"}
 
         with app.test_request_context():
+            # TODO: the service APIs are NOT migrated yet, so we have to do the very dirty hack
+            g._login_user = account
             api = HitTestingApi()
             with pytest.raises(Forbidden):
                 HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)

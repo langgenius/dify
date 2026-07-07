@@ -2,7 +2,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,12 +33,16 @@ type ToggleButtonProps = {
   expand: boolean
   handleToggle: () => void
   className?: string
+  icon?: React.ReactNode
+  iconClassName?: string
 }
 
 const ToggleButton = ({
   expand,
   handleToggle,
   className,
+  icon,
+  iconClassName,
 }: ToggleButtonProps) => {
   return (
     <Tooltip>
@@ -52,7 +55,12 @@ const ToggleButton = ({
           />
         )}
       >
-        {expand ? <RiArrowLeftSLine className="size-4" /> : <RiArrowRightSLine className="size-4" />}
+        {icon
+          || (iconClassName
+            ? <span aria-hidden className={cn('size-4', iconClassName)} />
+            : expand
+              ? <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+              : <span aria-hidden className="i-ri-arrow-right-s-line size-4" />)}
       </TooltipTrigger>
       <TooltipContent placement="right" className="rounded-lg p-1.5">
         <ToggleTooltipContent expand={expand} />

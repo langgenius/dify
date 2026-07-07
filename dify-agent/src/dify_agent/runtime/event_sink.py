@@ -3,19 +3,22 @@
 The runner only needs append-only event writes and status transitions, so tests
 can use ``InMemoryRunEventSink`` without Redis. Production storage implements the
 same protocol with Redis streams in ``dify_agent.storage.redis_run_store``. The
-terminal success helper writes the final JSON-safe output and session snapshot in
-one event so event consumers can stop at ``run_succeeded`` without correlating
-separate payload events.
+terminal success helper writes either the final JSON-safe output or one deferred
+tool request together with the resumable session snapshot in a single event so
+consumers can stop at ``run_succeeded`` without correlating separate payload
+events.
 """
 
 from collections import defaultdict
-from typing import Protocol
+from typing import Protocol, cast
 
 from pydantic import JsonValue
 from pydantic_ai.messages import AgentStreamEvent
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol.schemas import (
+    AgentRunUsage,
+    DeferredToolCallPayload,
     EmptyRunEventData,
     PydanticAIStreamRunEvent,
     RunEvent,
@@ -27,6 +30,9 @@ from dify_agent.protocol.schemas import (
     RunSucceededEventData,
     utc_now,
 )
+
+
+_UNSET = object()
 
 
 class RunEventSink(Protocol):
@@ -95,15 +101,34 @@ async def emit_run_succeeded(
     sink: RunEventSink,
     *,
     run_id: str,
-    output: JsonValue,
+    output: JsonValue | None | object = _UNSET,
+    deferred_tool_call: DeferredToolCallPayload | object = _UNSET,
     session_snapshot: CompositorSessionSnapshot,
+    usage: AgentRunUsage | None = None,
 ) -> str:
-    """Emit the terminal success event with output and resumable state."""
+    """Emit the terminal success event with output or deferred continuation.
+
+    Callers must activate exactly one result branch. ``_UNSET`` is used instead
+    of ``None`` to preserve the distinction between an omitted inactive branch
+    and an active ``output`` branch whose JSON value is explicitly ``null``.
+    Without that sentinel, ``output=None`` would be indistinguishable from
+    “output field absent”, which would break nullable-success payloads.
+    """
+    data: dict[str, JsonValue | DeferredToolCallPayload | CompositorSessionSnapshot | AgentRunUsage | None] = {
+        "session_snapshot": session_snapshot,
+    }
+    if output is not _UNSET:
+        data["output"] = cast(JsonValue | None, output)
+    if deferred_tool_call is not _UNSET:
+        data["deferred_tool_call"] = cast(DeferredToolCallPayload, deferred_tool_call)
+    if usage is not None:
+        data["usage"] = usage
+
     return await emit_run_event(
         sink,
         event=RunSucceededEvent(
             run_id=run_id,
-            data=RunSucceededEventData(output=output, session_snapshot=session_snapshot),
+            data=RunSucceededEventData.model_validate(data),
             created_at=utc_now(),
         ),
     )

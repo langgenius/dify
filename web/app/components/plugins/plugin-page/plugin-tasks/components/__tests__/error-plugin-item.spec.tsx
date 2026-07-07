@@ -1,4 +1,5 @@
-import type { PluginInfoFromMarketPlace, PluginStatus } from '@/app/components/plugins/types'
+import type { PluginInfoFromMarketPlace } from '@dify/contracts/marketplace'
+import type { PluginStatus } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
@@ -22,6 +23,13 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () =
 
 vi.mock('@/service/plugins', () => ({
   fetchPluginInfoFromMarketPlace: vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    currentDifyVersion: '1.0.0',
+  }),
 }))
 
 const mockFetch = vi.mocked(fetchPluginInfoFromMarketPlace)

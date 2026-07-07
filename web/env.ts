@@ -63,12 +63,13 @@ const clientSchema = {
    * The deployment edition, SELF_HOSTED
    */
   NEXT_PUBLIC_EDITION: z.enum(['SELF_HOSTED', 'CLOUD']).default('SELF_HOSTED'),
+  NEXT_PUBLIC_ENABLE_AGENT_V2: coercedBoolean.default(false),
   /**
    * Enable preview features that are still in development.
    * Currently gates the `/create` and `/refine` slash commands in the
    * "Go to Anything" command palette (Cmd/Ctrl+K).
    */
-  NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(true),
 
   /**
    * Cloud-only system-features defaults.
@@ -86,6 +87,8 @@ const clientSchema = {
   NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_TRIAL_APP: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: coercedBoolean.default(true),
+  NEXT_PUBLIC_ENABLE_LEARN_APP: coercedBoolean.default(true),
+  NEXT_PUBLIC_RBAC_ENABLED: coercedBoolean.default(false),
 
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
@@ -196,6 +199,7 @@ export const env = createEnv({
     NEXT_PUBLIC_DEPLOY_ENV: isServer ? process.env.NEXT_PUBLIC_DEPLOY_ENV : getRuntimeEnvFromBody('deployEnv'),
     NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON: isServer ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
     NEXT_PUBLIC_EDITION: isServer ? process.env.NEXT_PUBLIC_EDITION : getRuntimeEnvFromBody('edition'),
+    NEXT_PUBLIC_ENABLE_AGENT_V2: isServer ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 : getRuntimeEnvFromBody('enableAgentV2'),
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW : getRuntimeEnvFromBody('enableFeaturePreview'),
 
     /**
@@ -214,6 +218,8 @@ export const env = createEnv({
     NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: isServer ? process.env.NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED : getRuntimeEnvFromBody('creatorsPlatformFeaturesEnabled'),
     NEXT_PUBLIC_ENABLE_TRIAL_APP: isServer ? process.env.NEXT_PUBLIC_ENABLE_TRIAL_APP : getRuntimeEnvFromBody('enableTrialApp'),
     NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: isServer ? process.env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER : getRuntimeEnvFromBody('enableExploreBanner'),
+    NEXT_PUBLIC_ENABLE_LEARN_APP: isServer ? process.env.NEXT_PUBLIC_ENABLE_LEARN_APP : getRuntimeEnvFromBody('enableLearnApp'),
+    NEXT_PUBLIC_RBAC_ENABLED: isServer ? process.env.NEXT_PUBLIC_RBAC_ENABLED : getRuntimeEnvFromBody('rbacEnabled'),
 
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX : getRuntimeEnvFromBody('enableSingleDollarLatex'),
     NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL : getRuntimeEnvFromBody('enableWebsiteFirecrawl'),
@@ -252,6 +258,11 @@ export const env = createEnv({
 type ClientEnvKey = keyof typeof clientSchema
 type DatasetKey = CamelCase<Replace<ClientEnvKey, typeof CLIENT_ENV_PREFIX>>
 
+function getDatasetAttributeName(envKey: ClientEnvKey) {
+  const datasetName = kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX))).replace(/-(\d)/g, '$1')
+  return concat('data-', datasetName)
+}
+
 /**
  * Browser-only function to get runtime env value from HTML body dataset.
  */
@@ -274,7 +285,7 @@ export function getDatasetMap() {
   return ObjectFromEntries(
     ObjectKeys(clientSchema)
       .map(envKey => [
-        concat('data-', kebabCase(slice(envKey, length(CLIENT_ENV_PREFIX)))),
+        getDatasetAttributeName(envKey),
         env[envKey],
       ]),
   )

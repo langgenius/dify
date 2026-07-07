@@ -14,6 +14,11 @@ export type Scenario
     | 'server-version-empty'
     | 'server-version-unsupported'
     | 'run-422-stale'
+    | 'workflow-think'
+    | 'chat-reasoning'
+    | 'workflow-reasoning'
+    | 'import-pending'
+    | 'import-failed'
 
 export type AccountFixture = {
   id: string
@@ -140,6 +145,13 @@ export const APPS: AppFixture[] = [
     service_api_enabled: false,
   },
 ]
+
+export const DSL_YAML = `app:
+  description: A simple greeting bot
+  mode: chat
+  name: Greeter
+version: '0.1.4'
+`
 
 export const SESSIONS: SessionFixture[] = [
   {

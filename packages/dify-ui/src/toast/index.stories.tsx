@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import { toast, ToastHost } from '.'
 
-const buttonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs transition-colors hover:bg-state-base-hover'
+const buttonClassName = 'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 const cardClassName = 'flex min-h-[220px] flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6 shadow-sm shadow-shadow-shadow-3'
 
 const ExampleCard = ({
@@ -14,7 +14,7 @@ const ExampleCard = ({
   eyebrow: string
   title: string
   description: string
-  children: ReactNode
+  children: React.ReactNode
 }) => {
   return (
     <section className={cardClassName}>
@@ -117,6 +117,15 @@ const StackExamples = () => {
     })
   }
 
+  const createVaryingHeightStack = () => {
+    toast.info('Long background toast', {
+      description: 'This longer toast intentionally spans multiple lines so the collapsed stack can be checked against the shorter frontmost toast height without panel overflow.',
+    })
+    toast.success('Short front toast', {
+      description: 'Short message.',
+    })
+  }
+
   return (
     <ExampleCard
       eyebrow="Stack"
@@ -128,6 +137,9 @@ const StackExamples = () => {
       </button>
       <button type="button" className={buttonClassName} onClick={createBurst}>
         Stress the stack
+      </button>
+      <button type="button" className={buttonClassName} onClick={createVaryingHeightStack}>
+        Varying heights
       </button>
     </ExampleCard>
   )
@@ -192,11 +204,14 @@ const PromiseExamples = () => {
 
 const ActionExamples = () => {
   const createActionToast = () => {
-    toast.warning('Project archived', {
+    let archivedToastId = ''
+    archivedToastId = toast.warning('Project archived', {
       description: 'You can restore it from workspace settings for the next 30 days.',
+      timeout: 10000,
       actionProps: {
         children: 'Undo',
         onClick: () => {
+          toast.dismiss(archivedToastId)
           toast.success('Project restored', {
             description: 'The workspace is active again.',
           })
@@ -228,6 +243,32 @@ const ActionExamples = () => {
       </button>
       <button type="button" className={buttonClassName} onClick={createLongCopyToast}>
         Long content
+      </button>
+    </ExampleCard>
+  )
+}
+
+const DeduplicateExamples = () => {
+  const saveCountRef = React.useRef(0)
+
+  const saveDraft = () => {
+    saveCountRef.current += 1
+    toast.success('Draft saved', {
+      id: 'draft-save-status',
+      description: saveCountRef.current === 1
+        ? 'Click again while this toast is visible to update the same mounted toast.'
+        : `Same toast updated ${saveCountRef.current} times.`,
+    })
+  }
+
+  return (
+    <ExampleCard
+      eyebrow="Deduplicated"
+      title="Same-id upsert"
+      description="Matches the Base UI deduplicated toast example: repeated triggers use a stable id, so the visible toast is updated instead of adding another stack item."
+    >
+      <button type="button" className={buttonClassName} onClick={saveDraft}>
+        Save draft
       </button>
     </ExampleCard>
   )
@@ -272,7 +313,7 @@ const UpdateExamples = () => {
 
 const ToastDocsDemo = () => {
   return (
-    <>
+    <React.Fragment>
       <ToastHost />
       <div className="min-h-screen bg-background-default-subtle px-6 py-12">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
@@ -292,11 +333,12 @@ const ToastDocsDemo = () => {
             <StackExamples />
             <PromiseExamples />
             <ActionExamples />
+            <DeduplicateExamples />
             <UpdateExamples />
           </div>
         </div>
       </div>
-    </>
+    </React.Fragment>
   )
 }
 

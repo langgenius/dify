@@ -9,11 +9,11 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 
-type Props = {
+type Props = Readonly<{
   isString: boolean
   list: any[]
   onChange: (list: any[]) => void
-}
+}>
 
 const ArrayValueList: FC<Props> = ({
   isString = true,

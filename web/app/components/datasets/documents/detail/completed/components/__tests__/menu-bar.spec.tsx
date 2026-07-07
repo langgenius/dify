@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,7 +13,7 @@ vi.mock('../../display-toggle', () => ({
 }))
 
 describe('MenuBar', () => {
-  const defaultProps = {
+  const defaultProps: ComponentProps<typeof MenuBar> = {
     hasSelectableSegments: true,
     isLoading: false,
     totalText: '10 Chunks',
@@ -21,7 +22,7 @@ describe('MenuBar', () => {
       { value: 0, name: 'Enabled' },
       { value: 1, name: 'Disabled' },
     ],
-    selectDefaultValue: 'all' as const,
+    selectDefaultValue: 'all',
     onChangeStatus: vi.fn(),
     inputValue: '',
     onInputChange: vi.fn(),

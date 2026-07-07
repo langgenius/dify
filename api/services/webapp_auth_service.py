@@ -12,6 +12,7 @@ from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
 from models import Account, AccountStatus
+from models.enums import EndUserType
 from models.model import App, EndUser, Site
 from services.account_service import AccountService
 from services.app_service import AppService
@@ -34,7 +35,7 @@ class WebAppAuthService:
     @staticmethod
     def authenticate(email: str, password: str) -> Account:
         """authenticate account with email and password"""
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
         if not account:
             raise AccountNotFoundError()
 
@@ -54,7 +55,7 @@ class WebAppAuthService:
 
     @classmethod
     def get_user_through_email(cls, email: str):
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
         if not account:
             return None
 
@@ -102,7 +103,7 @@ class WebAppAuthService:
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type="browser",
+            type=EndUserType.BROWSER,
             is_anonymous=False,
             session_id=email,
             name="enterpriseuser",

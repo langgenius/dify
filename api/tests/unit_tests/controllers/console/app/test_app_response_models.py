@@ -14,6 +14,8 @@ from flask.views import MethodView
 from pydantic import ValidationError
 from werkzeug.datastructures import MultiDict
 
+from configs import dify_config
+
 # kombu references MethodView as a global when importing celery/kombu pools.
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -194,38 +196,44 @@ def _dummy_workflow():
     )
 
 
-def test_app_list_query_normalizes_orpc_bracket_tag_ids(app_module):
+def test_app_list_query_reads_repeated_tag_ids(app_module):
     first_tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
     second_tag_id = "3c39395b-6d1f-4030-8b17-eaa7cc85221c"
     query_args = MultiDict(
         [
             ("page", "1"),
             ("limit", "30"),
-            ("tag_ids[1]", second_tag_id),
-            ("tag_ids[0]", first_tag_id),
+            ("tag_ids", first_tag_id),
+            ("tag_ids", second_tag_id),
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
     assert query.tag_ids == [first_tag_id, second_tag_id]
 
 
-def test_app_list_query_normalizes_orpc_bracket_creator_ids(app_module):
+def test_app_list_query_reads_repeated_creator_ids(app_module):
     first_creator_id = "9e8959cf-a67b-4d34-9906-1d687517b248"
     second_creator_id = "1886f96a-5bf0-42bf-961d-8d2129049076"
     query_args = MultiDict(
         [
             ("page", "1"),
             ("limit", "30"),
-            ("creator_ids[1]", second_creator_id),
-            ("creator_ids[0]", first_creator_id),
+            ("creator_ids", first_creator_id),
+            ("creator_ids", second_creator_id),
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
     assert query.creator_ids == [first_creator_id, second_creator_id]
 
@@ -241,16 +249,12 @@ def test_app_list_query_preserves_regular_query_params(app_module):
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
-    assert normalized == {
-        "page": "2",
-        "limit": "50",
-        "mode": "chat",
-        "name": "Sales Copilot",
-        "is_created_by_me": "true",
-    }
     assert query.page == 2
     assert query.limit == 50
     assert query.mode == "chat"
@@ -259,59 +263,82 @@ def test_app_list_query_preserves_regular_query_params(app_module):
     assert query.tag_ids is None
 
 
-def test_app_list_query_normalizes_empty_bracket_tag_ids_to_none(app_module):
+def test_app_list_query_normalizes_empty_repeated_tag_ids_to_none(app_module):
     query_args = MultiDict(
         [
-            ("tag_ids[0]", ""),
-            ("tag_ids[1]", "   "),
+            ("tag_ids", ""),
+            ("tag_ids", "   "),
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
-    assert normalized == {"tag_ids": ["", "   "]}
     assert query.tag_ids is None
 
 
-def test_app_list_query_rejects_invalid_bracket_tag_id(app_module):
-    normalized = app_module._normalize_app_list_query_args(MultiDict([("tag_ids[0]", "not-a-uuid")]))
-
+def test_app_list_query_rejects_invalid_repeated_tag_id(app_module):
     with pytest.raises(ValidationError):
-        app_module.AppListQuery.model_validate(normalized)
+        app_module.query_params_from_request(
+            app_module.AppListQuery,
+            list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+            args=MultiDict([("tag_ids", "not-a-uuid")]),
+        )
 
 
-def test_app_list_query_rejects_invalid_bracket_creator_id(app_module):
-    normalized = app_module._normalize_app_list_query_args(MultiDict([("creator_ids[0]", "not-a-uuid")]))
-
+def test_app_list_query_rejects_invalid_repeated_creator_id(app_module):
     with pytest.raises(ValidationError):
-        app_module.AppListQuery.model_validate(normalized)
+        app_module.query_params_from_request(
+            app_module.AppListQuery,
+            list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+            args=MultiDict([("creator_ids", "not-a-uuid")]),
+        )
 
 
-def test_app_list_query_sorts_bracket_tag_ids_by_index(app_module):
-    first_tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
-    second_tag_id = "3c39395b-6d1f-4030-8b17-eaa7cc85221c"
-    third_tag_id = "9d5ec0f7-4f2b-4e7f-9c13-1e7a034d0eb1"
+def test_app_list_query_ignores_indexed_tag_ids(app_module):
+    tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
     query_args = MultiDict(
         [
-            ("tag_ids[2]", third_tag_id),
-            ("tag_ids[1]", second_tag_id),
-            ("tag_ids[0]", first_tag_id),
+            ("tag_ids[0]", tag_id),
         ]
     )
 
-    normalized = app_module._normalize_app_list_query_args(query_args)
-    query = app_module.AppListQuery.model_validate(normalized)
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=query_args,
+    )
 
-    assert query.tag_ids == [first_tag_id, second_tag_id, third_tag_id]
+    assert query.tag_ids is None
 
 
-def test_app_list_query_rejects_flat_tag_ids(app_module):
+def test_app_list_query_accepts_single_repeated_tag_id(app_module):
     tag_id = "8c4ef3d1-58a1-4d94-8a1c-1c171d889e08"
-    normalized = app_module._normalize_app_list_query_args(MultiDict([("tag_ids", tag_id)]))
+    query = app_module.query_params_from_request(
+        app_module.AppListQuery,
+        list_fields=app_module.APP_LIST_QUERY_ARRAY_FIELDS,
+        args=MultiDict([("tag_ids", tag_id)]),
+    )
 
-    with pytest.raises(ValidationError):
-        app_module.AppListQuery.model_validate(normalized)
+    assert query.tag_ids == [tag_id]
+
+
+def test_create_app_endpoint_rejects_agent_mode(app_module, monkeypatch: pytest.MonkeyPatch):
+    payload = {"name": "Iris", "mode": "agent", "description": "Agent app"}
+    app_service = MagicMock()
+    monkeypatch.setattr(app_module, "AppService", lambda: app_service)
+
+    app_module.console_ns.payload = payload
+    try:
+        with pytest.raises(ValidationError):
+            _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
+    finally:
+        app_module.console_ns.payload = None
+
+    app_service.create_app.assert_not_called()
 
 
 def test_app_partial_serialization_uses_aliases(app_models):
@@ -336,6 +363,8 @@ def test_app_partial_serialization_uses_aliases(app_models):
         create_user_name="Creator",
         author_name="Author",
         has_draft_trigger=True,
+        permission_keys=["app.acl.view_layout"],
+        role="Should stay agent-only",
     )
 
     serialized = AppPartial.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -348,6 +377,8 @@ def test_app_partial_serialization_uses_aliases(app_models):
     assert serialized["model_config"]["model"] == {"provider": "openai", "name": "gpt-4o"}
     assert serialized["workflow"]["id"] == "wf-1"
     assert serialized["tags"][0]["name"] == "Utilities"
+    assert serialized["permission_keys"] == ["app.acl.view_layout"]
+    assert "role" not in serialized
 
 
 def test_app_detail_with_site_includes_nested_serialization(app_models):
@@ -358,6 +389,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         title="Public Site",
         icon_type="image",
         icon="site-icon",
+        input_placeholder="Ask anything",
         created_at=timestamp,
         updated_at=timestamp,
     )
@@ -385,10 +417,13 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         updated_at=timestamp,
         access_mode="public",
         tags=[SimpleNamespace(id="tag-2", name="Prod", type="app")],
+        permission_keys=["app.acl.view_layout", "app.acl.edit"],
         api_base_url="https://api.example.com/v1",
         max_active_requests=5,
         deleted_tools=[{"type": "api", "tool_name": "search", "provider_id": "prov"}],
         site=site,
+        bound_agent_id="agent-1",
+        role="Should stay agent-only",
     )
 
     serialized = AppDetailWithSite.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
@@ -397,7 +432,11 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["model_config"]["retriever_resource"] == {"enabled": True}
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
     assert serialized["site"]["icon_url"] == "signed:site-icon"
+    assert serialized["site"]["input_placeholder"] == "Ask anything"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
+    assert serialized["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+    assert serialized["bound_agent_id"] == "agent-1"
+    assert "role" not in serialized
 
 
 def test_app_pagination_aliases_per_page_and_has_next(app_models):
@@ -411,6 +450,7 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models):
         icon="first-icon",
         created_at=_ts(15),
         updated_at=_ts(15),
+        permission_keys=["app.acl.edit"],
     )
     item_two = SimpleNamespace(
         id="app-11",
@@ -472,6 +512,20 @@ def test_app_list_uses_injected_session_for_draft_workflows(
         "FeatureService",
         SimpleNamespace(get_system_features=lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
     )
+    monkeypatch.setattr(
+        app_module.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+            app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                overrides=[
+                    app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="app-1",
+                        permission_keys=["app.acl.edit"],
+                    )
+                ]
+            )
+        ),
+    )
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=scoped_session))
 
     with app.test_request_context("/console/api/apps?page=1&limit=20", method="GET"):
@@ -481,3 +535,351 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     assert response["data"][0]["has_draft_trigger"] is True
     session.execute.assert_called_once()
     scoped_session.execute.assert_not_called()
+    assert response["data"][0]["permission_keys"] == ["app.acl.edit"]
+
+
+def test_app_create_api_attaches_permission_keys(app, app_module):
+    method = app_module.AppListApi.post
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    app_obj = SimpleNamespace(
+        id="app-new",
+        name="Created App",
+        description="Summary",
+        mode_compatible_with_agent="advanced-chat",
+        enable_site=True,
+        enable_api=True,
+        permission_keys=[],
+    )
+
+    with app.test_request_context("/apps", method="POST", json={}):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            app_module.console_ns.payload = {
+                "name": "Created App",
+                "description": "Summary",
+                "mode": "advanced-chat",
+            }
+            monkeypatch.setattr(
+                app_module,
+                "AppService",
+                lambda: SimpleNamespace(create_app=lambda tenant_id, params, user: app_obj),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppPermissions,
+                "batch_get",
+                lambda tenant_id, account_id, app_ids: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
+            )
+
+            resp, status = method(app_module.AppListApi(), "tenant-1", SimpleNamespace(id="acct-1"))
+
+    assert status == 201
+    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+
+def test_app_list_api_attaches_permission_keys(app, app_module):
+    method = app_module.AppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    app_obj = SimpleNamespace(
+        id="app-1",
+        name="List App",
+        desc_or_prompt="Summary",
+        mode_compatible_with_agent="chat",
+        mode="chat",
+        created_at=_ts(15),
+        updated_at=_ts(15),
+        permission_keys=[],
+    )
+    pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_obj])
+    get_paginate_apps = MagicMock(return_value=pagination)
+
+    with app.test_request_context("/apps"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module.AppService,
+                "get_paginate_apps",
+                get_paginate_apps,
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                        default_permission_keys=["app.preview", "app.acl.view_layout"],
+                        overrides=[
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-1",
+                                permission_keys=["app.acl.view_layout", "app.acl.edit"],
+                            )
+                        ],
+                    )
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "whitelist_resources",
+                lambda tenant_id, account_id: SimpleNamespace(unrestricted=True, resource_ids=[]),
+            )
+
+            session = MagicMock()
+            session.execute.return_value.scalars.return_value.all.return_value = []
+            resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", session)
+
+    assert status == 200
+    params = get_paginate_apps.call_args.args[2]
+    assert params.accessible_app_ids is None
+    assert params.is_created_by_me is None
+    assert resp["data"][0]["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+
+def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permission(app, app_module):
+    method = app_module.AppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
+    get_paginate_apps = MagicMock(return_value=pagination)
+
+    with app.test_request_context("/apps"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
+                        permission_keys=["app.create_and_management"]
+                    )
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "whitelist_resources",
+                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-shared", "app-not-permitted"]),
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+
+            session = MagicMock()
+            resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", session)
+
+    assert status == 200
+    assert resp["data"] == []
+    params = get_paginate_apps.call_args.args[2]
+    assert params.accessible_app_ids == ["app-not-permitted", "app-shared"]
+    assert params.include_own_apps is True
+    assert params.is_created_by_me is None
+
+
+def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(app, app_module):
+    method = app_module.AppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
+    get_paginate_apps = MagicMock(return_value=pagination)
+
+    with app.test_request_context("/apps"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                        overrides=[
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-acl-shared",
+                                permission_keys=["app.acl.preview"],
+                            ),
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-full",
+                                permission_keys=["app.full_access"],
+                            ),
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-shared",
+                                permission_keys=["app.preview"],
+                            ),
+                        ]
+                    )
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "whitelist_resources",
+                lambda tenant_id, account_id: SimpleNamespace(
+                    resource_ids=["app-shared", "app-acl-shared", "app-full", "app-whitelist-only"]
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+
+            session = MagicMock()
+            method(app_module.AppListApi(), "tenant-1", "acct-1", session)
+
+    params = get_paginate_apps.call_args.args[2]
+    assert params.accessible_app_ids == ["app-acl-shared", "app-full", "app-shared", "app-whitelist-only"]
+    assert params.include_own_apps is False
+    assert params.is_created_by_me is None
+
+
+def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permission(app, app_module):
+    method = app_module.AppListApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
+    get_paginate_apps = MagicMock(return_value=pagination)
+
+    with app.test_request_context("/apps"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                lambda tenant_id, account_id: app_module.enterprise_rbac_service.MyPermissionsResponse(),
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppAccess,
+                "whitelist_resources",
+                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-not-permitted"]),
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+
+            session = MagicMock()
+            method(app_module.AppListApi(), "tenant-1", "acct-1", session)
+
+    params = get_paginate_apps.call_args.args[2]
+    assert params.accessible_app_ids == ["app-not-permitted"]
+    assert params.include_own_apps is False
+    assert params.is_created_by_me is None
+
+
+def test_app_detail_api_attaches_current_user_permission_keys(app, app_module):
+    method = app_module.AppApi.get
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    app_obj = SimpleNamespace(
+        id="app-1",
+        name="Detail App",
+        description="Summary",
+        mode_compatible_with_agent="chat",
+        enable_site=True,
+        enable_api=True,
+        permission_keys=[],
+    )
+
+    with app.test_request_context("/apps/app-1"):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=lambda app_model: app_obj))
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+            get_permissions = MagicMock(
+                return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
+                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                        overrides=[
+                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id="app-1",
+                                permission_keys=["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"],
+                            )
+                        ]
+                    )
+                )
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.MyPermissions,
+                "get",
+                get_permissions,
+            )
+
+            resp = method(app_module.AppApi(), "tenant-1", SimpleNamespace(id="acct-1"), app_model=app_obj)
+
+    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1")
+    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
+
+
+def test_app_copy_api_attaches_permission_keys(app, app_module):
+    method = app_module.AppCopyApi.post
+    while hasattr(method, "__wrapped__"):
+        method = method.__wrapped__
+
+    app_obj = SimpleNamespace(
+        id="app-new",
+        name="Copied App",
+        description="Summary",
+        mode_compatible_with_agent="workflow",
+        enable_site=True,
+        enable_api=True,
+        permission_keys=[],
+    )
+
+    import_result = SimpleNamespace(status=app_module.ImportStatus.COMPLETED, app_id="app-new")
+    fake_session = MagicMock()
+    fake_session.__enter__.return_value = fake_session
+    fake_session.__exit__.return_value = None
+    fake_session.scalar.return_value = app_obj
+
+    with app.test_request_context("/apps/app-original/copy", method="POST", json={}):
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+            monkeypatch.setattr(
+                app_module,
+                "AppDslService",
+                lambda *_args, **_kwargs: SimpleNamespace(
+                    export_dsl=lambda **_kwargs: "dsl",
+                    import_app=lambda **_kwargs: import_result,
+                ),
+            )
+            monkeypatch.setattr(
+                app_module.FeatureService,
+                "get_system_features",
+                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+            )
+            monkeypatch.setattr(app_module, "db", SimpleNamespace(engine=object()))
+            monkeypatch.setattr(
+                app_module,
+                "Session",
+                lambda *_args, **_kwargs: fake_session,
+            )
+            monkeypatch.setattr(
+                app_module.enterprise_rbac_service.RBACService.AppPermissions,
+                "batch_get",
+                lambda tenant_id, account_id, app_ids: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
+            )
+
+            resp, status = method(
+                app_module.AppCopyApi(),
+                "tenant-1",
+                SimpleNamespace(id="acct-1"),
+                app_model=SimpleNamespace(id="app-original"),
+            )
+
+    assert status == 201
+    assert fake_session.scalar.called
+    assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]

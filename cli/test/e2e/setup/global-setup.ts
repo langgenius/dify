@@ -27,9 +27,11 @@
 import type { TestProject } from 'vitest/node'
 import type { E2ECapabilities } from './env.js'
 import { Buffer } from 'node:buffer'
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { injectAuth, run } from '../helpers/cli.js'
 import { loadE2EEnv } from './env.js'
 
 const TOKEN_MINT_APPROVE_ATTEMPTS = 5
@@ -180,6 +182,7 @@ export async function setup(project: TestProject): Promise<void> {
       workflowAppId: '',
       fileAppId: '',
       fileChatAppId: '',
+      reasoningAppId: '',
       hitlAppId: '',
       hitlExternalAppId: '',
       hitlSingleActionAppId: '',
@@ -259,6 +262,10 @@ export async function setup(project: TestProject): Promise<void> {
         secondaryWsId,
         fixturesDir,
         E.edition,
+        primaryToken,
+        apiBase,
+        E.email,
+        primaryWsName,
       )
       console.warn(`[E2E global-setup] Provisioned ${Object.keys(provisionedIds).length} fixture apps`)
     }
@@ -282,6 +289,7 @@ export async function setup(project: TestProject): Promise<void> {
     workflowAppId: provisionedIds.DIFY_E2E_WORKFLOW_APP_ID || E.workflowAppId,
     fileAppId: provisionedIds.DIFY_E2E_FILE_APP_ID || E.fileAppId,
     fileChatAppId: provisionedIds.DIFY_E2E_FILE_CHAT_APP_ID || E.fileChatAppId,
+    reasoningAppId: provisionedIds.DIFY_E2E_REASONING_APP_ID || E.reasoningAppId,
     hitlAppId: provisionedIds.DIFY_E2E_HITL_APP_ID || E.hitlAppId,
     hitlExternalAppId: provisionedIds.DIFY_E2E_HITL_EXTERNAL_APP_ID || E.hitlExternalAppId,
     hitlSingleActionAppId: provisionedIds.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID || E.hitlSingleActionAppId,
@@ -474,6 +482,10 @@ async function provisionApps(
   secondaryWsId: string,
   fixturesDir: string,
   edition: 'ce' | 'ee',
+  token: string,
+  host: string,
+  email: string,
+  primaryWsName: string,
 ): Promise<Record<string, string>> {
   const NEEDS_PUBLISH = new Set(['workflow', 'advanced-chat', 'agent-chat'])
 
@@ -493,10 +505,38 @@ async function provisionApps(
     ['hitl-single-action.yml', 'DIFY_E2E_HITL_SINGLE_ACTION_APP_ID', primaryWsId],
     ['hitl-multi-node.yml', 'DIFY_E2E_HITL_MULTI_NODE_APP_ID', primaryWsId],
     ['file-chat.yml', 'DIFY_E2E_FILE_CHAT_APP_ID', primaryWsId],
+    // reasoning-chat.yml runs a real LLM node, so it is opt-in: provisioning it
+    // requires the workspace to have a default chat model configured. Off by
+    // default to keep the shared bootstrap free of any model dependency.
+    ...(process.env.DIFY_E2E_REASONING_PROVISION === '1'
+      ? [['reasoning-chat.yml', 'DIFY_E2E_REASONING_APP_ID', primaryWsId] as [string, string, string]]
+      : []),
     ...(edition === 'ee'
       ? [['ws2-workflow.yml', 'DIFY_E2E_WS2_APP_ID', secondaryWsId] as [string, string, string]]
       : []),
   ]
+
+  const configDir = await mkdtemp(join(tmpdir(), 'difyctl-e2e-provision-'))
+  await injectAuth(configDir, {
+    host,
+    bearer: token,
+    email,
+    workspaceId: primaryWsId,
+    workspaceName: primaryWsName,
+  })
+
+  async function importAppCli(filePath: string, wsId: string): Promise<string> {
+    const result = await run(
+      ['import', 'studio-app', '--from-file', filePath, '--workspace', wsId],
+      { configDir, timeout: 60_000 },
+    )
+    if (result.exitCode !== 0)
+      throw new Error(`import studio-app failed (exit ${result.exitCode}): ${result.stderr}`)
+    const match = result.stderr.match(/app ([0-9a-f-]{36})/)
+    if (!match?.[1])
+      throw new Error(`import studio-app: could not parse app_id: ${result.stderr}`)
+    return match[1]
+  }
 
   async function switchWorkspace(wsId: string): Promise<void> {
     const r = await fetch(`${consoleBase}/console/api/workspaces/switch`, {
@@ -516,30 +556,6 @@ async function provisionApps(
       throw new Error(`list apps by name "${name}" failed: HTTP ${r.status}`)
     const d = await r.json() as { data?: Array<{ id: string, name: string }> }
     return d.data?.find(a => a.name === name)?.id ?? null
-  }
-
-  async function importFromDsl(yamlContent: string): Promise<string> {
-    const r = await fetch(`${consoleBase}/console/api/apps/imports`, {
-      method: 'POST',
-      headers: mkHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ mode: 'yaml-content', yaml_content: yamlContent }),
-      signal: AbortSignal.timeout(30_000),
-    })
-    const d = await r.json() as { app_id?: string, import_id?: string, status?: string }
-    if (r.status === 202 && d.import_id) {
-      const cr = await fetch(`${consoleBase}/console/api/apps/imports/${d.import_id}/confirm`, {
-        method: 'POST',
-        headers: mkHeaders(),
-        signal: AbortSignal.timeout(15_000),
-      })
-      const c = await cr.json() as { app_id?: string }
-      if (!c.app_id)
-        throw new Error(`import confirm failed: HTTP ${cr.status}`)
-      return c.app_id
-    }
-    if (!d.app_id)
-      throw new Error(`import failed: HTTP ${r.status} ${JSON.stringify(d)}`)
-    return d.app_id
   }
 
   async function enableApi(appId: string): Promise<void> {
@@ -603,7 +619,7 @@ async function provisionApps(
         console.warn(`[E2E provision] ${dslFile}: exists in workspace id=${appId}; skip import`)
       }
       else {
-        appId = await importFromDsl(dsl)
+        appId = await importAppCli(join(fixturesDir, dslFile), wsId)
         console.warn(`[E2E provision] ${dslFile}: imported id=${appId}`)
       }
 
@@ -619,6 +635,9 @@ async function provisionApps(
     }
   }
 
+  await rm(configDir, { recursive: true, force: true }).catch((err: unknown) =>
+    console.warn(`[E2E provision] failed to clean up configDir: ${err}`),
+  )
   return results
 }
 

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any, cast, override
 
 import mlflow
-from mlflow.entities import Document, Span, SpanEvent, SpanStatusCode, SpanType
+from mlflow.entities import Document, LiveSpan, Span, SpanEvent, SpanStatusCode, SpanType
 from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
 from mlflow.tracing.fluent import start_span_no_context, update_current_trace
 from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
@@ -31,12 +31,40 @@ from models.workflow import WorkflowNodeExecutionModel
 
 logger = logging.getLogger(__name__)
 
+type SpanAttributes = dict[str, object]
+
 
 def datetime_to_nanoseconds(dt: datetime | None) -> int | None:
     """Convert datetime to nanosecond timestamp for MLflow API"""
     if dt is None:
         return None
     return int(dt.timestamp() * 1_000_000_000)
+
+
+def _start_span_no_context(
+    *,
+    name: str,
+    span_type: str,
+    parent_span: LiveSpan | None = None,
+    inputs: object | None = None,
+    attributes: SpanAttributes | None = None,
+    start_time_ns: int | None = None,
+) -> LiveSpan:
+    """Start an MLflow span while preserving structured Dify attributes.
+
+    MLflow 3.11 annotates `start_span_no_context(..., attributes=...)` as `dict[str, str]`,
+    but the implementation immediately calls `LiveSpan.set_attributes(dict[str, Any])`.
+    `LiveSpan` JSON-serializes arbitrary values before storing them in OpenTelemetry, and
+    reserved attributes like `mlflow.chat.tokenUsage` are expected to round-trip as dicts.
+    """
+    return start_span_no_context(
+        name=name,
+        span_type=span_type,
+        parent_span=parent_span,
+        inputs=inputs,
+        attributes=cast(dict[str, str] | None, attributes),
+        start_time_ns=start_time_ns,
+    )
 
 
 class MLflowDataTrace(BaseTraceInstance):
@@ -119,7 +147,7 @@ class MLflowDataTrace(BaseTraceInstance):
         if trace_info.query:
             workflow_inputs["query"] = trace_info.query
 
-        workflow_span = start_span_no_context(
+        workflow_span = _start_span_no_context(
             name=TraceTaskName.WORKFLOW_TRACE.value,
             span_type=SpanType.CHAIN,
             inputs=workflow_inputs,
@@ -139,7 +167,7 @@ class MLflowDataTrace(BaseTraceInstance):
             # Create child spans for workflow nodes
             for node in self._get_workflow_nodes(trace_info.workflow_run_id):
                 inputs = None
-                attributes = {
+                attributes: SpanAttributes = {
                     "node_id": node.id,
                     "node_type": node.node_type,
                     "status": node.status,
@@ -157,7 +185,7 @@ class MLflowDataTrace(BaseTraceInstance):
                 if not inputs:
                     inputs = JSON_DICT_ADAPTER.validate_json(node.inputs) if node.inputs else {}
 
-                node_span = start_span_no_context(
+                node_span = _start_span_no_context(
                     name=node.title,
                     span_type=self._get_node_span_type(node.node_type),
                     parent_span=workflow_span,
@@ -212,7 +240,7 @@ class MLflowDataTrace(BaseTraceInstance):
                 end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
             )
 
-    def _parse_llm_inputs_and_attributes(self, node: WorkflowNodeExecutionModel) -> tuple[Any, dict]:
+    def _parse_llm_inputs_and_attributes(self, node: WorkflowNodeExecutionModel) -> tuple[object, SpanAttributes]:
         """Parse LLM inputs and attributes from LLM workflow node"""
         if node.process_data is None:
             return {}, {}
@@ -266,16 +294,16 @@ class MLflowDataTrace(BaseTraceInstance):
             base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
             file_list.append(f"{base_url}/{message_file_data.url}")
 
-        span = start_span_no_context(
+        span = _start_span_no_context(
             name=TraceTaskName.MESSAGE_TRACE.value,
             span_type=SpanType.LLM,
-            inputs=self._parse_prompts(trace_info.inputs),  # type: ignore[arg-type]
+            inputs=self._parse_prompts(trace_info.inputs),
             attributes={
-                "message_id": trace_info.message_id,  # type: ignore[dict-item]
+                "message_id": trace_info.message_id,
                 "model_provider": trace_info.message_data.model_provider,
                 "model_id": trace_info.message_data.model_id,
                 "conversation_mode": trace_info.conversation_mode,
-                "file_list": file_list,  # type: ignore[dict-item]
+                "file_list": file_list,
                 "total_price": trace_info.message_data.total_price,
                 **trace_info.metadata,
             },
@@ -330,15 +358,15 @@ class MLflowDataTrace(BaseTraceInstance):
         return metadata.get("from_account_id")  # type: ignore[return-value]
 
     def tool_trace(self, trace_info: ToolTraceInfo):
-        span = start_span_no_context(
+        span = _start_span_no_context(
             name=trace_info.tool_name,
             span_type=SpanType.TOOL,
-            inputs=trace_info.tool_inputs,  # type: ignore[arg-type]
+            inputs=trace_info.tool_inputs,
             attributes={
-                "message_id": trace_info.message_id,  # type: ignore[dict-item]
-                "metadata": trace_info.metadata,  # type: ignore[dict-item]
-                "tool_config": trace_info.tool_config,  # type: ignore[dict-item]
-                "tool_parameters": trace_info.tool_parameters,  # type: ignore[dict-item]
+                "message_id": trace_info.message_id,
+                "metadata": trace_info.metadata,
+                "tool_config": trace_info.tool_config,
+                "tool_parameters": trace_info.tool_parameters,
             },
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
@@ -367,13 +395,13 @@ class MLflowDataTrace(BaseTraceInstance):
             return
 
         start_time = trace_info.start_time or trace_info.message_data.created_at
-        span = start_span_no_context(
+        span = _start_span_no_context(
             name=TraceTaskName.MODERATION_TRACE.value,
             span_type=SpanType.TOOL,
             inputs=trace_info.inputs or {},
             attributes={
-                "message_id": trace_info.message_id,  # type: ignore[dict-item]
-                "metadata": trace_info.metadata,  # type: ignore[dict-item]
+                "message_id": trace_info.message_id,
+                "metadata": trace_info.metadata,
             },
             start_time_ns=datetime_to_nanoseconds(start_time),
         )
@@ -391,13 +419,13 @@ class MLflowDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
 
-        span = start_span_no_context(
+        span = _start_span_no_context(
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             span_type=SpanType.RETRIEVER,
             inputs=trace_info.inputs,
             attributes={
-                "message_id": trace_info.message_id,  # type: ignore[dict-item]
-                "metadata": trace_info.metadata,  # type: ignore[dict-item]
+                "message_id": trace_info.message_id,
+                "metadata": trace_info.metadata,
             },
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
@@ -410,15 +438,15 @@ class MLflowDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or trace_info.message_data.created_at
         end_time = trace_info.end_time or trace_info.message_data.updated_at
 
-        span = start_span_no_context(
+        span = _start_span_no_context(
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
             span_type=SpanType.TOOL,
             inputs=trace_info.inputs,
             attributes={
-                "message_id": trace_info.message_id,  # type: ignore[dict-item]
-                "model_provider": trace_info.model_provider,  # type: ignore[dict-item]
-                "model_id": trace_info.model_id,  # type: ignore[dict-item]
-                "total_tokens": trace_info.total_tokens or 0,  # type: ignore[dict-item]
+                "message_id": trace_info.message_id,
+                "model_provider": trace_info.model_provider,
+                "model_id": trace_info.model_id,
+                "total_tokens": trace_info.total_tokens or 0,
             },
             start_time_ns=datetime_to_nanoseconds(start_time),
         )
@@ -439,11 +467,11 @@ class MLflowDataTrace(BaseTraceInstance):
         span.end(outputs=trace_info.suggested_question, end_time_ns=datetime_to_nanoseconds(end_time))
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
-        span = start_span_no_context(
+        span = _start_span_no_context(
             name=TraceTaskName.GENERATE_NAME_TRACE.value,
             span_type=SpanType.CHAIN,
             inputs=trace_info.inputs,
-            attributes={"message_id": trace_info.message_id},  # type: ignore[dict-item]
+            attributes={"message_id": trace_info.message_id},
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
         span.end(outputs=trace_info.outputs, end_time_ns=datetime_to_nanoseconds(trace_info.end_time))

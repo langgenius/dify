@@ -23,15 +23,21 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_forms import (
+    load_form_dispositions_by_form_id,
+)
 from core.workflow.human_input_policy import (
+    FormDisposition,
     HumanInputSurface,
     enrich_human_input_pause_reasons,
     resolve_human_input_pause_reason_inputs,
     resolve_variable_select_input_options,
 )
+from core.workflow.nodes.human_input.pause_reason import (
+    DifyHITLEventType,
+    HumanInputRequired,
+)
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
@@ -359,7 +365,7 @@ def _build_human_input_required_events(
 
     expiration_times_by_form_id: dict[str, int] = {}
     display_in_ui_by_form_id: dict[str, bool] = {}
-    form_tokens_by_form_id: dict[str, str] = {}
+    dispositions_by_form_id: dict[str, FormDisposition] = {}
     if human_input_form_ids and session_maker is not None:
         stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
             HumanInputForm.id.in_(human_input_form_ids)
@@ -372,7 +378,7 @@ def _build_human_input_required_events(
                 except (TypeError, json.JSONDecodeError):
                     definition_payload = {}
                 display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-            form_tokens_by_form_id = load_form_tokens_by_form_id(
+            dispositions_by_form_id = load_form_dispositions_by_form_id(
                 human_input_form_ids,
                 session=session,
                 surface=human_input_surface,
@@ -393,6 +399,7 @@ def _build_human_input_required_events(
             reason.inputs,
             variable_pool=variable_pool,
         )
+        disposition = dispositions_by_form_id.get(form_id)
 
         response = HumanInputRequiredResponse(
             task_id=task_id,
@@ -405,7 +412,8 @@ def _build_human_input_required_events(
                 inputs=resolved_inputs,
                 actions=reason.actions,
                 display_in_ui=display_in_ui_by_form_id.get(form_id, False),
-                form_token=form_tokens_by_form_id.get(form_id),
+                form_token=disposition.form_token if disposition else None,
+                approval_channels=list(disposition.approval_channels) if disposition else [],
                 resolved_default_values=reason.resolved_default_values,
                 expiration_time=expiration_time,
             ),
@@ -489,15 +497,15 @@ def _build_pause_event(
     human_input_form_ids = [
         form_id
         for reason in reasons
-        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
+        if reason.get("TYPE") == DifyHITLEventType.HUMAN_INPUT_REQUIRED
         for form_id in [reason.get("form_id")]
         if isinstance(form_id, str)
     ]
-    form_tokens_by_form_id: dict[str, str] = {}
+    dispositions_by_form_id: dict[str, FormDisposition] = {}
     expiration_times_by_form_id: dict[str, int] = {}
     if human_input_form_ids and session_maker is not None:
         with session_maker() as session:
-            form_tokens_by_form_id = load_form_tokens_by_form_id(
+            dispositions_by_form_id = load_form_dispositions_by_form_id(
                 human_input_form_ids,
                 session=session,
                 surface=human_input_surface,
@@ -512,7 +520,7 @@ def _build_pause_event(
         # otherwise clients see schema drift after resume.
         reasons = enrich_human_input_pause_reasons(
             reasons,
-            form_tokens_by_form_id=form_tokens_by_form_id,
+            dispositions_by_form_id=dispositions_by_form_id,
             expiration_times_by_form_id=expiration_times_by_form_id,
         )
 

@@ -4,6 +4,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgeni
 import { RiExternalLinkLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -80,7 +81,7 @@ const ExpireNoticeModal: React.FC<Props> = ({ expireAt, expired, onClose }) => {
             <RiExternalLinkLine className="size-3" />
           </Link>
           <div className="flex space-x-2">
-            {expired
+            {expired && IS_CLOUD_EDITION
               ? (
                   <Button
                     onClick={() => {

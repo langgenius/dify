@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { AppModeEnum } from '@/types/app'
 import { isAppListCategory } from './app-type-filter-shared'
 
-const chipClassName = 'flex h-8 items-center rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors'
+const chipClassName = 'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
 type AppTypeFilterProps = {
   value: AppListCategory
@@ -34,7 +34,7 @@ export function AppTypeFilter({
     { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), iconClassName: 'i-ri-message-3-line' },
     { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), iconClassName: 'i-ri-message-3-line' },
     { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), iconClassName: 'i-ri-robot-3-line' },
-    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), iconClassName: 'i-ri-file-4-line' },
+    { value: AppModeEnum.COMPLETION, text: t('newApp.completeApp', { ns: 'app' }), iconClassName: 'i-ri-file-4-line' },
   ]), [t])
 
   const activeOption = options.find(option => option.value === value)
@@ -56,7 +56,6 @@ export function AppTypeFilter({
           />
         )}
       >
-        <span aria-hidden className={cn('h-4 w-4 shrink-0 text-text-tertiary', activeOption?.iconClassName ?? 'i-ri-apps-2-line')} />
         <span className="px-1 text-text-tertiary">{triggerLabel}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>

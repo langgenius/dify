@@ -1,7 +1,8 @@
 import type { Clock } from './device-flow.js'
 import type { CodeResponse, PollSuccess } from '@/api/oauth-device'
-import type { AccountContext, Workspace } from '@/auth/hosts'
-import type { StorageMode, Store } from '@/store/store'
+import type { AccountContext } from '@/auth/hosts'
+import type { StorageMode } from '@/store/store'
+import type { TokenStore } from '@/store/token-store'
 import type { ParseResult } from '@/sys/io/prompt'
 import type { IOStreams } from '@/sys/io/streams'
 import type { BrowserEnv, BrowserOpener } from '@/util/browser'
@@ -11,7 +12,7 @@ import { Registry } from '@/auth/hosts'
 import { BaseError, isBaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { createHttpClient } from '@/http/client'
-import { getTokenStore, tokenKey } from '@/store/manager'
+import { detectTokenStore } from '@/store/manager'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { promptText } from '@/sys/io/prompt'
 import { startSpinner } from '@/sys/io/spinner'
@@ -25,7 +26,7 @@ export type LoginOptions = {
   readonly noBrowser?: boolean
   readonly insecure?: boolean
   readonly deviceLabel?: string
-  readonly store?: { readonly store: Store, readonly mode: StorageMode }
+  readonly store?: { readonly store: TokenStore, readonly mode: StorageMode }
   readonly api?: DeviceFlowApi
   readonly browserEnv?: BrowserEnv
   readonly browserOpener?: BrowserOpener
@@ -69,18 +70,18 @@ export async function runLogin(opts: LoginOptions): Promise<Registry> {
     spinner.stop()
   }
 
-  const storeBundle = opts.store ?? getTokenStore()
+  const storeBundle = opts.store ?? await detectTokenStore()
   const display = bareHost(host)
   const email = accountEmail(success)
   const ctx = contextFromSuccess(success)
 
-  storeBundle.store.set(tokenKey(display, email), success.token)
+  await storeBundle.store.write(display, email, success.token)
 
-  const reg = Registry.load()
+  const reg = await Registry.load()
   reg.token_storage = storeBundle.mode
   reg.activate(display, email, ctx)
   applyScheme(reg, display, host)
-  reg.save()
+  await reg.save()
 
   renderLoggedIn(opts.io.out, cs, host, success)
   return reg
@@ -187,9 +188,6 @@ function contextFromSuccess(s: PollSuccess): AccountContext {
   const def = findDefaultWorkspace(s)
   if (def !== undefined)
     ctx.workspace = def
-  if (s.workspaces !== undefined && s.workspaces.length > 0) {
-    ctx.available_workspaces = s.workspaces.map<Workspace>(w => ({ id: w.id, name: w.name, role: w.role }))
-  }
   return ctx
 }
 

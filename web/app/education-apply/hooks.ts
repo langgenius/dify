@@ -10,16 +10,20 @@ import {
   useState,
 } from 'react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import {
+  useEducationExpiredHasNoticed,
+  useEducationReverifyHasNoticed,
+  useEducationReverifyPrevExpireAt,
+  useEducationVerifying,
+} from '@/app/education-apply/storage'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useEducationAutocomplete, useEducationVerify } from '@/service/use-education'
 import {
   EDUCATION_RE_VERIFY_ACTION,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from './constants'
 
 dayjs.extend(utc)
@@ -89,9 +93,9 @@ const useEducationReverifyNotice = ({
   // const [educationInfo, setEducationInfo] = useState<{ is_student: boolean, allow_refresh: boolean, expire_at: number | null } | null>(null)
   // const isLoading = !educationInfo
   const { educationAccountExpireAt, allowRefreshEducationVerify, isLoadingEducationAccountInfo: isLoading } = useProviderContext()
-  const [prevExpireAt, setPrevExpireAt] = useLocalStorage<number>('education-reverify-prev-expire-at', 0)
-  const [reverifyHasNoticed, setReverifyHasNoticed] = useLocalStorage<boolean>('education-reverify-has-noticed', false)
-  const [expiredHasNoticed, setExpiredHasNoticed] = useLocalStorage<boolean>('education-expired-has-noticed', false)
+  const [prevExpireAt, setPrevExpireAt] = useEducationReverifyPrevExpireAt()
+  const [reverifyHasNoticed, setReverifyHasNoticed] = useEducationReverifyHasNoticed()
+  const [expiredHasNoticed, setExpiredHasNoticed] = useEducationExpiredHasNoticed()
 
   useEffect(() => {
     if (isLoading || !timezone)
@@ -132,7 +136,7 @@ const useEducationReverifyNotice = ({
 export const useEducationInit = () => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const setShowEducationExpireNoticeModal = useModalContextSelector(s => s.setShowEducationExpireNoticeModal)
-  const [educationVerifying, setEducationVerifying] = useLocalStorage<string>(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM, 'no', { raw: true })
+  const [educationVerifying, setEducationVerifying] = useEducationVerifying()
   const searchParams = useSearchParams()
   const educationVerifyAction = searchParams.get('action')
 

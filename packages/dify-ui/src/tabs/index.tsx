@@ -18,7 +18,7 @@ export function TabsList({
 }: TabsListProps) {
   return (
     <BaseTabs.List
-      className={cn('flex', className)}
+      className={cn('flex gap-4', className)}
       {...props}
     />
   )
@@ -34,7 +34,7 @@ export function TabsTab({
 }: TabsTabProps) {
   return (
     <BaseTabs.Tab
-      className={cn('touch-manipulation focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-disabled:cursor-not-allowed data-disabled:text-text-disabled', className)}
+      className={cn('touch-manipulation focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid relative flex cursor-pointer items-center border-b-2 border-transparent pt-2.5 pb-2 system-md-semibold text-text-tertiary data-active:border-components-tab-active data-active:text-text-primary data-disabled:cursor-not-allowed data-disabled:text-text-tertiary data-disabled:opacity-30 data-active:data-disabled:text-text-primary', className)}
       {...props}
     />
   )

@@ -5,27 +5,24 @@ import type {
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
-  AccountIntegrate,
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
-  IWorkspace,
-  LangGeniusVersionResponse,
   Member,
-  PluginProvider,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+// eslint-disable-next-line no-restricted-imports
 import { get, post } from './base'
 
 const NAME_SPACE = 'common'
 
 export const commonQueryKeys = {
   fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
-  workspaces: [NAME_SPACE, 'workspaces'] as const,
   members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
@@ -34,7 +31,6 @@ export const commonQueryKeys = {
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
   retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
-  pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
   invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
@@ -55,21 +51,6 @@ export const useFileUploadConfig = () => {
   return useQuery<FileUploadConfigResponse>({
     queryKey: commonQueryKeys.fileUploadConfig,
     queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
-  })
-}
-
-export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {
-  return useQuery<LangGeniusVersionResponse>({
-    queryKey: commonQueryKeys.langGeniusVersion(currentVersion || undefined),
-    queryFn: () => get<LangGeniusVersionResponse>('/version', { params: { current_version: currentVersion } }),
-    enabled: !!currentVersion && (enabled ?? true),
-  })
-}
-
-export const useWorkspaces = () => {
-  return useQuery<{ workspaces: IWorkspace[] }>({
-    queryKey: commonQueryKeys.workspaces,
-    queryFn: () => get<{ workspaces: IWorkspace[] }>('/workspaces'),
   })
 }
 
@@ -106,7 +87,7 @@ export const useMailValidity = () => {
   })
 }
 
-export type MailRegisterResponse = { result: string, data: {} }
+export type MailRegisterResponse = { result: string, data: Record<string, never> }
 
 export const useMailRegister = () => {
   return useMutation({
@@ -134,10 +115,14 @@ type MemberResponse = {
   accounts: Member[] | null
 }
 
-export const useMembers = () => {
+export const useMembers = (language?: AccessControlTemplateLanguage) => {
   return useQuery<MemberResponse>({
-    queryKey: commonQueryKeys.members,
-    queryFn: () => get<MemberResponse>('/workspaces/current/members', { params: {} }),
+    queryKey: [...commonQueryKeys.members, language],
+    queryFn: () => get<MemberResponse>('/workspaces/current/members', {
+      params: {
+        language,
+      },
+    }),
   })
 }
 
@@ -156,7 +141,7 @@ export const useFilePreview = (fileID: string) => {
 export type SchemaTypeDefinition = {
   name: string
   schema: {
-    properties: Record<string, any>
+    properties: Record<string, unknown>
   }
 }
 
@@ -231,20 +216,6 @@ export const useSupportRetrievalMethods = () => {
   })
 }
 
-export const useAccountIntegrates = () => {
-  return useQuery<{ data: AccountIntegrate[] | null }>({
-    queryKey: commonQueryKeys.accountIntegrates,
-    queryFn: () => get<{ data: AccountIntegrate[] | null }>('/account/integrates'),
-  })
-}
-
-export const usePluginProviders = () => {
-  return useQuery<PluginProvider[] | null>({
-    queryKey: commonQueryKeys.pluginProviders,
-    queryFn: () => get<PluginProvider[] | null>('/workspaces/current/tool-providers'),
-  })
-}
-
 export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
@@ -257,7 +228,7 @@ export const useInvitationCheck = (params?: { workspace_id?: string, email?: str
     queryKey: commonQueryKeys.invitationCheck(params),
     queryFn: () => get<{
       is_valid: boolean
-      data: { workspace_name: string, email: string, workspace_id: string }
+      data: { workspace_name: string, email: string, workspace_id: string, account_status?: string, requires_setup?: boolean }
       result: string
     }>('/activate/check', { params }),
     enabled: enabled ?? !!params?.token,

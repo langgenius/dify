@@ -1,26 +1,34 @@
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
 
 from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendStreamInternalEvent,
-    CleanupLayerSpec,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
+    RuntimeLayerSpec,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
+from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.entities import DifyAgentNodeData
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
-from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore, WorkflowAgentSessionScope
+from core.workflow.nodes.agent_v2.session_store import (
+    StoredWorkflowAgentSession,
+    WorkflowAgentRuntimeSessionStore,
+    WorkflowAgentSessionScope,
+)
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.entities import GraphInitParams
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
@@ -113,12 +121,16 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
 class FakeSessionStore:
     def __init__(self, snapshot: CompositorSessionSnapshot | None = None) -> None:
         self.loaded_snapshot = snapshot
+        # ENG-638: set to simulate resume after a submitted/timed-out form.
+        self.loaded_session: StoredWorkflowAgentSession | None = None
         self.saved: list[
             tuple[
                 WorkflowAgentSessionScope,
                 str,
                 CompositorSessionSnapshot | None,
-                list[CleanupLayerSpec],
+                list[RuntimeLayerSpec],
+                str | None,
+                str | None,
             ]
         ] = []
         self.cleaned: list[tuple[WorkflowAgentSessionScope, str | None]] = []
@@ -126,15 +138,22 @@ class FakeSessionStore:
     def load_active_snapshot(self, scope: WorkflowAgentSessionScope) -> CompositorSessionSnapshot | None:
         return self.loaded_snapshot
 
+    def load_active_session(self, scope: WorkflowAgentSessionScope) -> StoredWorkflowAgentSession | None:
+        return self.loaded_session
+
     def save_active_snapshot(
         self,
         *,
         scope: WorkflowAgentSessionScope,
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
-        composition_layer_specs: list[CleanupLayerSpec],
+        runtime_layer_specs: list[RuntimeLayerSpec],
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
-        self.saved.append((scope, backend_run_id, snapshot, list(composition_layer_specs)))
+        self.saved.append(
+            (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
+        )
 
     def mark_cleaned(
         self,
@@ -226,6 +245,23 @@ def _node(
     )
 
 
+def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_markers():
+    mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="agent-node",
+        node_data={
+            "agent_task": (
+                "Review {{#previous-node.report#}}, ignore {{#sys.query#}}, "
+                "ignore [§node_output:legacy-node.output:LEGACY§], then use {{#previous-node.report#}} again."
+            )
+        },
+    )
+
+    assert mapping == {
+        "agent-node.previous-node.report": ["previous-node", "report"],
+    }
+
+
 def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     events = list(_node()._run())
 
@@ -237,7 +273,8 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert agent_log["agent_backend"]["run_id"] == "fake-run-1"
     assert agent_log["agent_backend"]["status"] == "succeeded"
     assert result.process_data["agent_id"] == "agent-1"
-    assert result.inputs["agent_backend_request"]["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
+    assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
 
 
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
@@ -378,10 +415,13 @@ def test_agent_node_saves_success_snapshot_and_reuses_existing_snapshot():
 
     assert len(events) == 1
     assert store.saved
-    scope, backend_run_id, saved_snapshot, saved_specs = store.saved[0]
+    scope, backend_run_id, saved_snapshot, saved_specs, pending_form_id, pending_tool_call_id = store.saved[0]
     assert scope.workflow_run_id == "workflow-run-1"
     assert backend_run_id == "fake-run-1"
     assert saved_snapshot is not None
+    # A successful terminal carries no ask_human pause correlation.
+    assert pending_form_id is None
+    assert pending_tool_call_id is None
     assert client.request is not None
     assert client.request.session_snapshot is existing_snapshot
     # Persist enough composition shape to replay a cleanup run; plugin layers
@@ -462,13 +502,100 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     store = FakeSessionStore()
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)
 
+    # ENG-636: the PAUSED scenario emits a dify.ask_human deferred call, so the
+    # node now builds a HITL form and pauses with HitlRequired. Stub the
+    # form repository so the unit test stays DB-free.
+    fake_repo = MagicMock()
+    fake_repo.create_form.return_value = MagicMock(id="form-1")
+    node._build_human_input_form_repository = lambda *, dify_ctx, workflow_run_id: fake_repo  # type: ignore[assignment]
+
     events = list(node._run())
 
     assert len(events) == 1
     assert isinstance(events[0], PauseRequestedEvent)
+    assert isinstance(events[0].reason, HitlRequired)
+    assert events[0].reason.session_id == "form-1"
+    assert events[0].reason.node_id == "agent-node"
+    fake_repo.create_form.assert_called_once()
     assert store.saved
     assert store.saved[0][1] == "fake-run-1"
     assert store.saved[0][3], "paused agent run should still persist replayable layer specs"
+    # ENG-637: the awaiting form + deferred tool_call correlation is persisted.
+    assert store.saved[0][4] == "form-1"
+    assert store.saved[0][5] == "fake-ask-human-1"
+
+
+def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgentSession:
+    return StoredWorkflowAgentSession(
+        scope=WorkflowAgentSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="workflow-run-1",
+            node_id="agent-node",
+            node_execution_id="exec-1",
+            binding_id="binding-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snapshot-1",
+        ),
+        session_snapshot=snapshot,
+        backend_run_id="run-0",
+        pending_form_id="form-1",
+        pending_tool_call_id="call-1",
+    )
+
+
+def test_agent_node_resumes_with_deferred_tool_results_after_submitted_form(monkeypatch):
+    # ENG-638: a submitted form re-enters _run; the human's answer is threaded
+    # into the second Agent run as deferred_tool_results.
+    snapshot = CompositorSessionSnapshot(layers=[])
+    store = FakeSessionStore(snapshot=snapshot)
+    store.loaded_session = _pending_session(snapshot)
+
+    def _fake_resolve(*, form_id: str, tenant_id: str, node_id: str) -> AskHumanResumeOutcome:
+        assert form_id == "form-1"
+        return AskHumanResumeOutcome(deferred_result=AskHumanToolResult(status="submitted", values={"note": "ok"}))
+
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.agent_node.resolve_ask_human_form", _fake_resolve)
+
+    client = FakeAgentBackendRunClient()  # SUCCESS scenario -> second run completes
+    node = _node(agent_backend_client=client, session_store=store)
+
+    events = list(node._run())
+
+    assert client.request is not None
+    assert client.request.deferred_tool_results is not None
+    assert set(client.request.deferred_tool_results.calls) == {"call-1"}
+    assert any(isinstance(event, StreamCompletedEvent) for event in events)
+
+
+def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
+    snapshot = CompositorSessionSnapshot(layers=[])
+    store = FakeSessionStore(snapshot=snapshot)
+    store.loaded_session = _pending_session(snapshot)
+
+    repause = HumanInputRequired(
+        form_id="form-1",
+        form_content="Approve?",
+        inputs=[],
+        actions=[],
+        node_id="agent-node",
+        node_title="Budget review",
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.agent_node.resolve_ask_human_form",
+        lambda **_kwargs: AskHumanResumeOutcome(repause=repause),
+    )
+
+    client = FakeAgentBackendRunClient()
+    node = _node(agent_backend_client=client, session_store=store)
+
+    events = list(node._run())
+
+    assert len(events) == 1
+    assert isinstance(events[0], PauseRequestedEvent)
+    assert isinstance(events[0].reason, HitlRequired)
+    assert client.request is None  # no second Agent run was created
 
 
 def test_agent_node_records_stream_usage_metadata():

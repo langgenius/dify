@@ -150,6 +150,7 @@ const mockContextValue: ChatContextValue = {
   onAnnotationAdded: vi.fn(),
   onAnnotationEdited: vi.fn(),
   onAnnotationRemoved: vi.fn(),
+  readonly: false,
 }
 
 vi.mock('../../context', () => ({
@@ -205,6 +206,7 @@ describe('Operation', () => {
     mockContextValue.onAnnotationAdded = vi.fn()
     mockContextValue.onAnnotationEdited = vi.fn()
     mockContextValue.onAnnotationRemoved = vi.fn()
+    mockContextValue.readonly = false
     mockProviderContext.plan.usage.annotatedResponse = 0
     mockProviderContext.enableBilling = false
     mockAddAnnotation.mockResolvedValue({ id: 'ann-new', account: { name: 'Test User' } })
@@ -241,6 +243,30 @@ describe('Operation', () => {
       })
       renderOperation()
       expect(screen.getByTestId('annotation-ctrl'))!.toBeInTheDocument()
+    })
+
+    it('should hide annotation button when chat is readonly', () => {
+      mockContextValue.readonly = true
+      mockContextValue.config = makeChatConfig({
+        supportAnnotation: true,
+        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+      })
+
+      renderOperation()
+
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
+    })
+
+    it('should hide annotation button when annotation callbacks are incomplete', () => {
+      mockContextValue.onAnnotationEdited = undefined
+      mockContextValue.config = makeChatConfig({
+        supportAnnotation: true,
+        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
+      })
+
+      renderOperation()
+
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
     })
 
     it('should show prompt log when showPromptLog is true', () => {
@@ -307,6 +333,7 @@ describe('Operation', () => {
       renderOperation({ ...baseProps, item })
       expect(screen.queryByTestId('audio-btn')).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'operation.copy' })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('annotation-ctrl')).not.toBeInTheDocument()
     })
   })
 
@@ -804,40 +831,22 @@ describe('Operation', () => {
       expect(copy).toHaveBeenCalledWith('Hello world')
     })
 
-    it('should handle editing annotation missing onAnnotationEdited gracefully', async () => {
-      const user = userEvent.setup()
+    it('should hide cached annotation edit controls when chat is readonly', () => {
+      mockContextValue.readonly = true
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
         annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
         appId: 'test-app',
       })
-      mockContextValue.onAnnotationEdited = undefined
       const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+
       renderOperation({ ...baseProps, item })
-      const editBtn = screen.getByTestId('annotation-edit-btn')
-      await user.click(editBtn)
-      await user.click(screen.getByTestId('modal-edit'))
-      expect(mockContextValue.onAnnotationEdited).toBeUndefined()
+
+      expect(screen.queryByTestId('annotation-edit-btn')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('edit-reply-modal')).not.toBeInTheDocument()
     })
 
-    it('should handle adding annotation missing onAnnotationAdded gracefully', async () => {
-      const user = userEvent.setup()
-      mockContextValue.config = makeChatConfig({
-        supportAnnotation: true,
-        annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
-        appId: 'test-app',
-      })
-      mockContextValue.onAnnotationAdded = undefined
-      const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
-      renderOperation({ ...baseProps, item })
-      const editBtn = screen.getByTestId('annotation-edit-btn')
-      await user.click(editBtn)
-      await user.click(screen.getByTestId('modal-add'))
-      expect(mockContextValue.onAnnotationAdded).toBeUndefined()
-    })
-
-    it('should handle removing annotation missing onAnnotationRemoved gracefully', async () => {
-      const user = userEvent.setup()
+    it('should hide cached annotation edit controls when mutation callbacks are missing', () => {
       mockContextValue.config = makeChatConfig({
         supportAnnotation: true,
         annotation_reply: { id: 'ar-1', score_threshold: 0.5, embedding_model: { embedding_provider_name: '', embedding_model_name: '' }, enabled: true },
@@ -845,11 +854,11 @@ describe('Operation', () => {
       })
       mockContextValue.onAnnotationRemoved = undefined
       const item = { ...baseItem, annotation: { id: 'ann-1', created_at: 123, authorName: 'test author' } as unknown as Record<string, unknown> } as unknown as ChatItem
+
       renderOperation({ ...baseProps, item })
-      const editBtn = screen.getByTestId('annotation-edit-btn')
-      await user.click(editBtn)
-      await user.click(screen.getByTestId('modal-remove'))
-      expect(mockContextValue.onAnnotationRemoved).toBeUndefined()
+
+      expect(screen.queryByTestId('annotation-edit-btn')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('edit-reply-modal')).not.toBeInTheDocument()
     })
   })
 })

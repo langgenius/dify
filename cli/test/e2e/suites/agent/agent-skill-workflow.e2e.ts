@@ -288,7 +288,7 @@ describe('E2E / agent skill — get app -o json (auth required)', () => {
       expect(line.trim()).not.toMatch(/\s/)
   })
 
-  itWithSso('[P0] [SSO] dfoe_ get app → JSON error envelope (insufficient_scope)', async () => {
+  itWithSso('[P0] [SSO] dfoe_ get app -o json → permitted-apps list envelope', async () => {
     const tc = await withTempConfig()
     try {
       const { mkdir, writeFile } = await import('node:fs/promises')
@@ -296,12 +296,21 @@ describe('E2E / agent skill — get app -o json (auth required)', () => {
       await mkdir(tc.configDir, { recursive: true })
       await writeFile(
         join(tc.configDir, 'hosts.yml'),
-        `${[`current_host: ${E.host}`, 'token_storage: file', 'tokens:', `  bearer: ${E.ssoToken}`].join('\n')}\n`,
+        `${[
+          `current_host: ${E.host}`,
+          'token_storage: file',
+          'tokens:',
+          `  bearer: ${E.ssoToken}`,
+          'external_subject:',
+          '  email: sso@example.com',
+          '  issuer: https://issuer.example.com',
+        ].join('\n')}\n`,
         { mode: 0o600 },
       )
       const r = await run(['get', 'app', '-o', 'json'], { configDir: tc.configDir })
-      expect(r.exitCode).not.toBe(0)
-      assertErrorEnvelope(r)
+      assertExitCode(r, 0)
+      const parsed = assertJson<{ data: unknown[] }>(r)
+      expect(Array.isArray(parsed.data), 'permitted-apps envelope has a data array').toBe(true)
     }
     finally { await tc.cleanup() }
   })
@@ -349,9 +358,11 @@ describe('E2E / agent skill — describe app -o json (auth required)', () => {
     assertPipeFriendlyJson(r)
   })
 
-  itWithAuth('[P0] nonexistent app → exit 1 + JSON error envelope', async () => {
+  itWithAuth('[P0] invalid (non-UUID) app id → exit 2 + usage error envelope', async () => {
+    // 'app-id-nonexistent-e2e-xyz' is not a valid UUID; describe app rejects it
+    // client-side via isValidUuid() with usage_invalid_flag (exit 2).
     const r = await fx.r(['describe', 'app', 'app-id-nonexistent-e2e-xyz', '-o', 'json'])
-    expect(r.exitCode).toBe(1)
+    expect(r.exitCode).toBe(2)
     assertErrorEnvelope(r)
   })
 })

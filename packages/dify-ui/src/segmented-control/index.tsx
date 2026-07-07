@@ -2,7 +2,7 @@
 
 import type { Toggle as BaseToggleNS } from '@base-ui/react/toggle'
 import type { ToggleGroup as BaseToggleGroupNS } from '@base-ui/react/toggle-group'
-import type { HTMLAttributes } from 'react'
+import type * as React from 'react'
 import { Toggle as BaseToggle } from '@base-ui/react/toggle'
 import { ToggleGroup as BaseToggleGroup } from '@base-ui/react/toggle-group'
 import { cn } from '../cn'
@@ -33,13 +33,13 @@ export function SegmentedControlItem<Value extends string = string>({
 }: SegmentedControlItemProps<Value>) {
   return (
     <BaseToggle
-      className={cn('relative flex h-7 min-w-0 touch-manipulation items-center justify-center gap-0.5 overflow-hidden whitespace-nowrap rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium text-text-secondary transition-colors duration-150 hover:bg-state-base-hover hover:text-text-secondary focus-visible:z-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid data-pressed:border-components-segmented-control-item-active-border data-pressed:bg-components-segmented-control-item-active-bg data-pressed:text-text-accent-light-mode-only data-pressed:shadow-xs data-pressed:shadow-shadow-shadow-3 data-disabled:cursor-not-allowed data-disabled:bg-transparent data-disabled:text-text-disabled data-disabled:shadow-none data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled motion-reduce:transition-none', className)}
+      className={cn('relative flex h-7 min-w-0 touch-manipulation items-center justify-center gap-0.5 overflow-hidden whitespace-nowrap rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium text-text-secondary transition-colors duration-150 hover:bg-state-base-hover hover:text-text-secondary focus-visible:outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid data-pressed:border-components-segmented-control-item-active-border data-pressed:bg-components-segmented-control-item-active-bg data-pressed:text-text-accent-light-mode-only data-pressed:shadow-xs data-pressed:shadow-shadow-shadow-3 data-disabled:cursor-not-allowed data-disabled:bg-transparent data-disabled:text-text-disabled data-disabled:shadow-none data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled motion-reduce:transition-none', className)}
       {...props}
     />
   )
 }
 
-export type SegmentedControlDividerProps = Omit<HTMLAttributes<HTMLSpanElement>, 'className'> & {
+export type SegmentedControlDividerProps = Omit<React.ComponentProps<'span'>, 'className'> & {
   className?: string
 }
 

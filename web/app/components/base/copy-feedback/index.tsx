@@ -4,16 +4,16 @@ import {
   RiClipboardFill,
   RiClipboardLine,
 } from '@remixicon/react'
+import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { useClipboard } from '@/hooks/use-clipboard'
 import copyStyle from './style.module.css'
 
-type Props = {
+type Props = Readonly<{
   content: string
   className?: string
-}
+}>
 
 const prefixEmbedded = 'overview.appInfo.embedded'
 

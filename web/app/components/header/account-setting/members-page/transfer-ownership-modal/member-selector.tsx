@@ -12,11 +12,11 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { useMembers } from '@/service/use-common'
 
-type Props = {
+type Props = Readonly<{
   value?: string
   onSelect: (value: string) => void
   exclude?: string[]
-}
+}>
 
 const MemberSelector: FC<Props> = ({
   value,

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, over
 from uuid import UUID
 from zoneinfo import available_timezones
 
-from flask import Response, stream_with_context
+from flask import Request, Response, stream_with_context
 from flask_restx import fields
 from pydantic import BaseModel, ConfigDict, TypeAdapter, with_config
 from pydantic.functional_validators import AfterValidator
@@ -129,6 +129,10 @@ def run(script):
 
 class AppIconUrlField(fields.Raw):
     @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "string", "nullable": True}
+
+    @override
     def output(self, key, obj, **kwargs):
         if obj is None:
             return None
@@ -163,26 +167,21 @@ def build_avatar_url(avatar: str | None) -> str | None:
     return file_helpers.get_signed_file_url(avatar)
 
 
-class AvatarUrlField(fields.Raw):
-    @override
-    def output(self, key, obj, **kwargs):
-        if obj is None:
-            return None
-
-        from models import Account
-
-        if isinstance(obj, Account) and obj.avatar is not None:
-            return build_avatar_url(obj.avatar)
-        return None
-
-
 class TimestampField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "integer", "format": "int64"}
+
     @override
     def format(self, value) -> int:
         return int(value.timestamp())
 
 
 class OptionalTimestampField(fields.Raw):
+    @override
+    def schema(self) -> dict[str, object]:
+        return {"type": "integer", "format": "int64", "nullable": True}
+
     @override
     def format(self, value) -> int | None:
         if value is None:
@@ -385,7 +384,7 @@ def generate_string(n):
     return result
 
 
-def extract_remote_ip(request) -> str:
+def extract_remote_ip(request: Request) -> str:
     if request.headers.get("CF-Connecting-IP"):
         return cast(str, request.headers.get("CF-Connecting-IP"))
     elif request.headers.getlist("X-Forwarded-For"):

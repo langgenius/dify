@@ -36,6 +36,7 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import (
     WorkflowService,
     _rebuild_file_for_user_inputs_in_start_node,
@@ -1008,6 +1009,8 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
         account_id = "user-123"
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id)
 
@@ -1021,10 +1024,9 @@ class TestWorkflowService:
 
             result = workflow_service.update_workflow(
                 session=mock_session,
-                workflow_id=workflow_id,
-                tenant_id=tenant_id,
                 account_id=account_id,
                 data={"marked_name": "Updated Name", "marked_comment": "Updated Comment"},
+                workflow_ref=workflow_ref,
             )
 
             assert result == mock_workflow
@@ -1044,13 +1046,41 @@ class TestWorkflowService:
 
             result = workflow_service.update_workflow(
                 session=mock_session,
-                workflow_id="nonexistent",
-                tenant_id="tenant-456",
                 account_id="user-123",
                 data={"marked_name": "Test"},
+                workflow_ref=WorkflowRef(tenant_id="tenant-456", owner_id="app-789", workflow_id="nonexistent"),
             )
 
             assert result is None
+
+    def test_update_workflow_with_ref_scopes_lookup_to_app(self, workflow_service: WorkflowService):
+        """Test update_workflow includes the trusted app owner in the lookup."""
+        workflow_id = "workflow-123"
+        tenant_id = "tenant-456"
+        app_id = "app-789"
+        account_id = "user-123"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id)
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = mock_workflow
+
+        result = workflow_service.update_workflow(
+            session=mock_session,
+            account_id=account_id,
+            data={"marked_name": "Updated Name"},
+            workflow_ref=workflow_ref,
+        )
+
+        stmt = mock_session.scalar.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "workflows.id" in statement
+        assert "workflows.tenant_id" in statement
+        assert "workflows.app_id" in statement
+        assert workflow_id in compiled.params.values()
+        assert tenant_id in compiled.params.values()
+        assert app_id in compiled.params.values()
+        assert result == mock_workflow
 
     # ==================== Delete Workflow Tests ====================
     # These tests verify workflow deletion with safety checks
@@ -1064,6 +1094,8 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
         mock_session = MagicMock()
@@ -1078,12 +1110,34 @@ class TestWorkflowService:
             mock_select.return_value = mock_stmt
             mock_stmt.where.return_value = mock_stmt
 
-            result = workflow_service.delete_workflow(
-                session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id
-            )
+            result = workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
             assert result is True
             mock_session.delete.assert_called_once_with(mock_workflow)
+
+    def test_delete_workflow_with_ref_scopes_lookup_to_app(self, workflow_service: WorkflowService):
+        """Test delete_workflow includes the trusted app owner in the lookup."""
+        workflow_id = "workflow-123"
+        tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id=app_id, workflow_id=workflow_id)
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
+        mock_session = MagicMock()
+        mock_session.scalar.side_effect = [mock_workflow, None, None]
+
+        result = workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
+
+        stmt = mock_session.scalar.call_args_list[0].args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "workflows.id" in statement
+        assert "workflows.tenant_id" in statement
+        assert "workflows.app_id" in statement
+        assert workflow_id in compiled.params.values()
+        assert tenant_id in compiled.params.values()
+        assert app_id in compiled.params.values()
+        assert result is True
+        mock_session.delete.assert_called_once_with(mock_workflow)
 
     def test_delete_workflow_draft_raises_error(self, workflow_service: WorkflowService):
         """
@@ -1094,6 +1148,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(
             workflow_id=workflow_id, version=Workflow.VERSION_DRAFT
         )
@@ -1107,7 +1162,7 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     def test_delete_workflow_in_use_by_app_raises_error(self, workflow_service: WorkflowService):
         """
@@ -1118,6 +1173,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
         mock_app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=workflow_id)
 
@@ -1130,7 +1186,7 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="currently in use by app"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     def test_delete_workflow_published_as_tool_raises_error(self, workflow_service: WorkflowService):
         """
@@ -1142,6 +1198,7 @@ class TestWorkflowService:
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
         mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
         mock_tool_provider = MagicMock()
 
@@ -1154,12 +1211,13 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="published as a tool"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     def test_delete_workflow_not_found_raises_error(self, workflow_service: WorkflowService):
         """Test delete_workflow raises error when workflow not found."""
         workflow_id = "nonexistent"
         tenant_id = "tenant-456"
+        workflow_ref = WorkflowRef(tenant_id=tenant_id, owner_id="app-789", workflow_id=workflow_id)
 
         mock_session = MagicMock()
         mock_session.scalar.return_value = None
@@ -1170,7 +1228,7 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(ValueError, match="not found"):
-                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
+                workflow_service.delete_workflow(session=mock_session, workflow_ref=workflow_ref)
 
     # ==================== Get Default Block Config Tests ====================
     # These tests verify retrieval of default node configurations
@@ -2775,6 +2833,8 @@ class TestWorkflowServiceHumanInputOperations:
         workflow = MagicMock()
         workflow.environment_variables = []
         workflow.graph_dict = {}
+        node_data = MagicMock()
+        node_data.extract_variable_selector_to_variable_mapping.return_value = {}
 
         with (
             patch("services.workflow_service.db"),
@@ -2782,12 +2842,16 @@ class TestWorkflowServiceHumanInputOperations:
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
             patch("services.workflow_service.DraftVarLoader"),
-            patch("services.workflow_service.HumanInputNode.extract_variable_selector_to_variable_mapping"),
+            patch("services.workflow_service.HumanInputNodeData.model_validate", return_value=node_data),
             patch("services.workflow_service.load_into_variable_pool"),
             patch("services.workflow_service.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
         ):
             service._build_human_input_variable_pool(
-                app_model=MagicMock(), workflow=workflow, node_config={}, manual_inputs={}, user_id="user-1"
+                app_model=MagicMock(),
+                workflow=workflow,
+                node_config={"id": "node-1", "data": {}},
+                manual_inputs={},
+                user_id="user-1",
             )
             mock_pool_cls.assert_called_once()
 
@@ -2838,9 +2902,7 @@ class TestWorkflowServiceFreeNodeExecution:
             service.validate_features_structure(app, {})
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
-        with patch(
-            "graphon.nodes.human_input.entities.HumanInputNodeData.model_validate", side_effect=Exception("error")
-        ):
+        with patch("services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")):
             with pytest.raises(ValueError, match="Invalid HumanInput node data"):
                 service._validate_human_input_node_data({})
 
@@ -2852,49 +2914,24 @@ class TestWorkflowServiceFreeNodeExecution:
     def test_build_human_input_node_for_debugging(self, service: WorkflowService) -> None:
         """Cover _build_human_input_node_for_debugging."""
         workflow = MagicMock()
-        workflow.id = "wf-1"
-        workflow.tenant_id = "t-1"
-        workflow.app_id = "app-1"
         account = MagicMock()
-        account.id = "u-1"
         node_config = {"id": "n-1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "title": "Human Input"}}
         variable_pool = MagicMock()
+        node_data = MagicMock()
+        node_data.title = "Human Input"
 
         with (
-            patch("services.workflow_service.DifyGraphInitContext") as mock_graph_init_context_cls,
-            patch("services.workflow_service.GraphRuntimeState"),
             patch(
                 "services.workflow_service.adapt_human_input_node_data_for_graph",
                 return_value=sentinel.adapted_node_data,
             ) as mock_adapt_node_data,
-            patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
-            patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
-            patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
-            patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
-            patch("services.workflow_service.HumanInputNode") as mock_node_cls,
+            patch("services.workflow_service.HumanInputNodeData.model_validate", return_value=node_data),
         ):
-            mock_node_cls.validate_node_data.return_value = sentinel.node_data
             node = service._build_human_input_node_for_debugging(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
-            assert node == mock_node_cls.return_value
-            mock_node_cls.assert_called_once()
-            mock_graph_init_context_cls.assert_called_once_with(
-                workflow_id="wf-1",
-                graph_config=workflow.graph_dict,
-                run_context=mock_build_dify_run_context.return_value,
-                call_depth=0,
-            )
-            mock_runtime_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
-            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
             mock_adapt_node_data.assert_called_once_with(node_config["data"])
-            mock_node_cls.validate_node_data.assert_called_once_with(sentinel.adapted_node_data)
-            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
-            mock_node_cls.assert_called_once_with(
-                node_id="n-1",
-                data=sentinel.node_data,
-                graph_init_params=mock_graph_init_context_cls.return_value.to_graph_init_params.return_value,
-                graph_runtime_state=ANY,
-                file_reference_factory=mock_file_reference_factory_cls.return_value,
-                runtime=mock_runtime_cls.return_value,
-            )
+            assert node.node_id == "n-1"
+            assert node.title == "Human Input"
+            assert node.node_data is node_data
+            assert node.variable_pool is variable_pool

@@ -13,7 +13,7 @@ import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   email: string
   value: RecipientItem[]
   list: Member[]
@@ -21,7 +21,7 @@ type Props = {
   onSelect: (value: string) => void
   onAdd: (email: string) => void
   disabled?: boolean
-}
+}>
 
 const EmailInput = ({
   email,

@@ -8,22 +8,18 @@ import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useConversationIdInfo, useWebAppSidebarCollapseState } from '@/app/components/base/chat/storage'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { changeLanguage } from '@/i18n-config/client'
 import { AppSourceType, delConversation, pinConversation, renameConversation, unpinConversation, updateFeedback } from '@/service/share'
 import { useInvalidateShareConversations, useShareChatList, useShareConversationName, useShareConversations } from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
-import { CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
-
-const WEBAPP_SIDEBAR_COLLAPSE_STORAGE_KEY = 'webappSidebarCollapse'
-const rawStorageOptions = { raw: true } as const
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -71,6 +67,8 @@ function getFormattedChatList(messages: any[]) {
       feedback: item.feedback,
       isAnswer: true,
       citation: item.retriever_resources,
+      reasoningContent: item.metadata?.reasoning,
+      reasoningFinished: true,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id, upload_file_id: item.upload_file_id }))),
       parentMessageId: `question-${item.id}`,
       humanInputFormDataList,
@@ -100,6 +98,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         app_id: id,
         site: {
           title: app.name,
+          description: app.description,
           icon_type: app.icon_type,
           icon: app.icon,
           icon_background: app.icon_background,
@@ -129,17 +128,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     }
     setLocaleFromProps()
   }, [appData])
-  const [storedSidebarCollapseState, setStoredSidebarCollapseState] = useLocalStorage<string>(
-    WEBAPP_SIDEBAR_COLLAPSE_STORAGE_KEY,
-    undefined,
-    rawStorageOptions,
-  )
+  const [storedSidebarCollapseState, setStoredSidebarCollapseState] = useWebAppSidebarCollapseState()
   const sidebarCollapseState = storedSidebarCollapseState === 'collapsed'
   const handleSidebarCollapse = useCallback((state: boolean) => {
     if (appId)
       setStoredSidebarCollapseState(state ? 'collapsed' : 'expanded')
   }, [appId, setStoredSidebarCollapseState])
-  const [conversationIdInfo, setConversationIdInfo] = useLocalStorage<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
+  const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
   const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {

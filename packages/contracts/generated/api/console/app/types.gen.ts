@@ -4,6 +4,15 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type AdvancedPromptTemplateResponse = {
+  chat_prompt_config?: {
+    [key: string]: unknown
+  } | null
+  completion_prompt_config?: {
+    [key: string]: unknown
+  } | null
+}
+
 export type GetAppPromptTemplatesData = {
   body?: never
   path?: never
@@ -17,18 +26,11 @@ export type GetAppPromptTemplatesData = {
 }
 
 export type GetAppPromptTemplatesErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type GetAppPromptTemplatesError
-  = GetAppPromptTemplatesErrors[keyof GetAppPromptTemplatesErrors]
-
 export type GetAppPromptTemplatesResponses = {
-  200: Array<{
-    [key: string]: unknown
-  }>
+  200: AdvancedPromptTemplateResponse
 }
 
 export type GetAppPromptTemplatesResponse

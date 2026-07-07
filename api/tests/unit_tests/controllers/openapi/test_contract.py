@@ -5,6 +5,7 @@ view function decorated with @accepts/@returns, driven inside a request context.
 """
 
 from functools import wraps
+from typing import Any, cast
 
 import pytest
 from pydantic import BaseModel, ConfigDict, Field
@@ -100,7 +101,7 @@ def test_accepts_validation_error_is_sanitized_and_structured(app):
         with pytest.raises(UnprocessableEntity) as exc_info:
             view()
 
-    data = exc_info.value.data
+    data = cast(dict[str, Any], cast(Any, exc_info.value).data)
     assert data["message"] == "Request validation failed"
     assert isinstance(data["errors"], list)
     assert data["errors"]
@@ -208,3 +209,41 @@ def test_accepts_body_emits_expect_through_guard_stack():
 
     apidoc = getattr(view, "__apidoc__", {})
     assert apidoc.get("expect")  # body schema advertised via @openapi_ns.expect
+
+
+def _response_model_name(entry) -> str:
+    """Extract the model name from a flask-restx __apidoc__ response entry.
+
+    flask-restx stores responses as ``(description, model, kwargs)`` tuples
+    where ``model.name`` is the registered schema name.
+    """
+    if isinstance(entry, tuple) and len(entry) >= 2:
+        model = entry[1]
+        return getattr(model, "name", "") or ""
+    return ""
+
+
+def test_accepts_documents_422_error_response(app):
+    from controllers.openapi._errors import ErrorBody
+
+    @accepts(query=ContractQuery)
+    def view(*, query):
+        return query
+
+    doc = getattr(view, "__apidoc__", {})
+    responses = doc.get("responses", {})
+    assert "422" in responses
+    assert _response_model_name(responses["422"]) == ErrorBody.__name__
+
+
+def test_returns_documents_default_error_response(app):
+    from controllers.openapi._errors import ErrorBody
+
+    @returns(200, ContractResp)
+    def view():
+        return ContractResp(value=1)
+
+    doc = getattr(view, "__apidoc__", {})
+    responses = doc.get("responses", {})
+    assert "default" in responses
+    assert _response_model_name(responses["default"]) == ErrorBody.__name__

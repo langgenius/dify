@@ -21,6 +21,7 @@ nav:
           - Prompt Layer: dify-agent/user-manual/prompt-layer/index.md
           - Execution Context Layer: dify-agent/user-manual/execution-context-layer/index.md
           - Shell Layer: dify-agent/user-manual/shell-layer/index.md
+          - Ask Human Layer: dify-agent/user-manual/ask-human-layer/index.md
           - Plugin LLM Layer: dify-agent/user-manual/plugin-llm-layer/index.md
           - Plugin Tool Layer: dify-agent/user-manual/plugin-tool-layer/index.md
           - History Layer: dify-agent/user-manual/history-layer/index.md

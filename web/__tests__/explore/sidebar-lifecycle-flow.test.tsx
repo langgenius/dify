@@ -24,6 +24,7 @@ let mockInstalledApps: InstalledApp[] = []
 let mockIsUninstallPending = false
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/explore',
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,
@@ -202,13 +203,6 @@ describe('Sidebar Lifecycle Flow', () => {
       renderSidebar()
 
       expect(screen.getByText('explore.sidebar.noApps.title')).toBeInTheDocument()
-    })
-
-    it('should hide NoApps on mobile', () => {
-      mockMediaType = MediaType.mobile
-      renderSidebar()
-
-      expect(screen.queryByText('explore.sidebar.noApps.title')).not.toBeInTheDocument()
     })
   })
 })

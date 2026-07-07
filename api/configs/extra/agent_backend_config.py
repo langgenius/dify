@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, NonNegativeFloat
 from pydantic_settings import BaseSettings
 
 
@@ -30,4 +30,12 @@ class AgentBackendConfig(BaseSettings):
             "shell layer will fail."
         ),
         default=False,
+    )
+
+    AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS: NonNegativeFloat = Field(
+        description=(
+            "Buffer Agent App assistant text deltas for up to this many seconds before "
+            "publishing SSE chunks. Set to 0 to publish each delta immediately."
+        ),
+        default=0.5,
     )

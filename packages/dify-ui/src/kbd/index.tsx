@@ -1,7 +1,7 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { ComponentProps } from 'react'
+import type * as React from 'react'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
@@ -28,7 +28,7 @@ const kbdVariants = cva(
 export type KbdColor = NonNullable<VariantProps<typeof kbdVariants>['color']>
 
 export type KbdProps
-  = Omit<ComponentProps<'kbd'>, 'color'>
+  = Omit<React.ComponentProps<'kbd'>, 'color'>
     & VariantProps<typeof kbdVariants>
 
 export function Kbd({
@@ -46,7 +46,7 @@ export function Kbd({
   )
 }
 
-export type KbdGroupProps = ComponentProps<'span'>
+export type KbdGroupProps = React.ComponentProps<'span'>
 
 export function KbdGroup({
   className,

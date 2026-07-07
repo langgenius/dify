@@ -1,10 +1,12 @@
 import logging
 
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from controllers.common.controller_schemas import WorkflowRunPayload
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
@@ -33,7 +35,7 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 register_schema_models(web_ns, WorkflowRunPayload)
-register_response_schema_models(web_ns, SimpleResultResponse)
+register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 @web_ns.route("/workflows/run")
@@ -51,7 +53,9 @@ class WorkflowRunApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    def post(self, app_model: App, end_user: EndUser):
+    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
+    @with_session
+    def post(self, session: Session, app_model: App, end_user: EndUser):
         """
         Run workflow
         """
@@ -64,7 +68,12 @@ class WorkflowRunApi(WebApiResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=True
+                session=session,
+                app_model=app_model,
+                user=end_user,
+                args=args,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)

@@ -10,14 +10,14 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
 import InstructionEditor from './instruction-editor'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   value: string
   editorKey: string
   onChange: (text: string) => void
   generatorType: GeneratorType
   isShowCurrentBlock: boolean
-}
+}>
 
 const InstructionEditorInWorkflow: FC<Props> = ({
   nodeId,

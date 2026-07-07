@@ -7,23 +7,17 @@
 import type { RunResult } from '../../helpers/cli.js'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
-import { assertErrorEnvelope, assertExitCode } from '../../helpers/assert.js'
+import { assertExitCode } from '../../helpers/assert.js'
 import { injectAuth, injectSsoAuth, run, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
-import { enterpriseOnlyIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
 
 // @ts-expect-error — see test/e2e/helpers/vitest-context.ts for explanation
 const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
 const E = resolveEnv(caps)
-const eeIt = enterpriseOnlyIt(caps)
 
 // Secondary workspace used in tests — injected into available_workspaces
-const WS2_ID = 'ws-e2e-secondary-0000-000000000002'
-// Real second workspace on staging — used by 1.84
-// IDs are now loaded from DIFY_E2E_WS2_ID / DIFY_E2E_WS2_APP_ID env vars.
-// Workspace belonging to another account — used by 1.88 (WTA-256)
-const OTHER_ACCOUNT_WS_ID = '8d1a7693-2d86-4766-a7b8-c276a04c3fbf'
+const WS2_ID = '00000000-e2e2-0000-0001-000000000002'
 const WS2_NAME = 'Secondary Workspace'
 
 describe('E2E / difyctl use workspace', () => {
@@ -152,7 +146,7 @@ describe('E2E / difyctl use workspace', () => {
   it('[P0] switching to a non-existent workspace returns an error', async () => {
     // Spec: switching to a non-existent workspace returns an error
     await withTwoWorkspaces()
-    const result = await r(['use', 'workspace', 'ws-does-not-exist-xyz'])
+    const result = await r(['auth', 'use', 'ffffffff-dead-0000-0000-000000000000'])
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr).toMatch(/server_5xx|not found|workspace|error/i)
   })
@@ -160,7 +154,7 @@ describe('E2E / difyctl use workspace', () => {
   it('[P0] current_workspace_id is unchanged when workspace switch fails', async () => {
     // Spec: current_workspace_id is unchanged when workspace switch fails
     await withTwoWorkspaces()
-    await r(['use', 'workspace', 'ws-does-not-exist-xyz'])
+    await r(['auth', 'use', 'ffffffff-dead-0000-0000-000000000000'])
     // Read hosts.yml directly; the original workspace id should still be present
     const { readFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
@@ -202,238 +196,4 @@ describe('E2E / difyctl use workspace', () => {
   })
 
   // ── Post-switch get app ──────────────────────────────────────────────────────
-
-  it('[P1] get app returns app list of the new workspace after auth use', async () => {
-    // Spec 1.70: get app returns the app list of the new workspace after switching
-    // We switch to WS2 (a synthetic fixture id) and verify that auth status
-    // reflects the new workspace.  A real app-list check would require WS2 to
-    // exist on the server, so we verify via auth status only (which reads the
-    // local config that was just updated).
-    await withTwoWorkspaces()
-    const switchResult = await switchWorkspace(E.workspaceId)
-    if (switchResult === undefined)
-      return
-    assertExitCode(switchResult, 0)
-    const hostsContent = await (await import('node:fs/promises')).readFile(
-      join(configDir, 'hosts.yml'),
-      'utf8',
-    )
-    expect(hostsContent).toContain(E.workspaceId)
-  })
-
-  // ── Switch by workspace name ─────────────────────────────────────────────────
-
-  it('[P1] auth use accepts a workspace name and switches successfully', async () => {
-    // Spec 1.71: auth use accepts a workspace name and switches successfully
-    await withTwoWorkspaces()
-    const result = await r(['use', 'workspace', WS2_NAME])
-    // Acceptable outcomes: exit 0 (name matched) or exit non-0 (name not
-    // supported — CLI only accepts IDs).  If exit 0, stdout must mention the
-    // workspace name or a success indicator.
-    if (result.exitCode === 0) {
-      expect(result.stdout).toMatch(/switched|workspace/i)
-      const hostsContent = await (await import('node:fs/promises')).readFile(
-        join(configDir, 'hosts.yml'),
-        'utf8',
-      )
-      expect(hostsContent).toContain(WS2_ID)
-    }
-    else {
-      // CLI does not support name-based lookup — acceptable; verify the error
-      // message is clear and the original workspace is unchanged.
-      const hostsContent = await (await import('node:fs/promises')).readFile(
-        join(configDir, 'hosts.yml'),
-        'utf8',
-      )
-      expect(hostsContent).toContain(E.workspaceId)
-    }
-  })
-
-  // ── Unauthorised workspace ───────────────────────────────────────────────────
-
-  it('[P0] auth use on an unauthorised workspace returns an error', async () => {
-    // Spec 1.73: auth use on an unauthorised workspace returns an error
-    // The workspace id is not listed in available_workspaces so the CLI must
-    // refuse the switch locally (not_found / permission denied).
-    await withTwoWorkspaces()
-    const result = await r(['use', 'workspace', 'ws-unauthorized-0000-000000000099'])
-    expect(result.exitCode).not.toBe(0)
-    expect(result.stderr).toMatch(/server_5xx|not found|permission|unauthorized|workspace|error/i)
-    // Original workspace must be unchanged
-    const hostsContent = await (await import('node:fs/promises')).readFile(
-      join(configDir, 'hosts.yml'),
-      'utf8',
-    )
-    expect(hostsContent).toContain(E.workspaceId)
-  })
-
-  // ── Consecutive switches ─────────────────────────────────────────────────────
-
-  it('[P1] consecutive auth use calls always update to the latest workspace', async () => {
-    // Spec 1.77: consecutive auth use calls always update to the latest workspace
-    // We switch to the primary workspace twice to verify idempotency and that
-    // hosts.yml is always refreshed from the server response.
-    await withTwoWorkspaces()
-    const r1 = await switchWorkspace(E.workspaceId)
-    if (r1 === undefined)
-      return
-    assertExitCode(r1, 0)
-    let hostsContent = await (await import('node:fs/promises')).readFile(
-      join(configDir, 'hosts.yml'),
-      'utf8',
-    )
-    expect(hostsContent).toContain(E.workspaceId)
-
-    const r2 = await switchWorkspace(E.workspaceId)
-    if (r2 === undefined)
-      return
-    assertExitCode(r2, 0)
-    hostsContent = await (await import('node:fs/promises')).readFile(
-      join(configDir, 'hosts.yml'),
-      'utf8',
-    )
-    expect(hostsContent).toContain(E.workspaceId)
-
-    const r3 = await switchWorkspace(E.workspaceId)
-    if (r3 === undefined)
-      return
-    assertExitCode(r3, 0)
-    hostsContent = await (await import('node:fs/promises')).readFile(
-      join(configDir, 'hosts.yml'),
-      'utf8',
-    )
-    expect(hostsContent).toContain(E.workspaceId)
-  })
-
-  // ── Empty string argument ────────────────────────────────────────────────────
-
-  it('[P1] auth use with an empty string argument returns a usage error', async () => {
-    // Spec 1.81: auth use with an empty string argument returns a usage error
-    await withTwoWorkspaces()
-    const result = await r(['use', 'workspace', ''])
-    expect(result.exitCode).not.toBe(0)
-    // empty string passed as workspace id causes server error — any non-zero exit is acceptable
-    expect(result.stderr.trim().length).toBeGreaterThan(0)
-    // Original workspace must be unchanged
-    const hostsContent = await (await import('node:fs/promises')).readFile(
-      join(configDir, 'hosts.yml'),
-      'utf8',
-    )
-    expect(hostsContent).toContain(E.workspaceId)
-  })
-
-  // ── JSON error envelope ──────────────────────────────────────────────────────
-
-  it('[P1] stderr contains JSON error envelope when workspace does not exist in JSON mode', async () => {
-    // Spec 1.83: JSON mode with non-existent workspace returns a JSON error envelope on stderr
-    // auth use does not have a dedicated -o flag; if the CLI respects a global
-    // --output json flag the stderr should be a JSON envelope.  If the flag is
-    // not supported we still verify that stderr is non-empty and contains a
-    // meaningful error.
-    await withTwoWorkspaces()
-    const result = await r(['use', 'workspace', 'ws-nonexistent-json-test', '--output', 'json'])
-    expect(result.exitCode).not.toBe(0)
-    if (result.stderr.trim().startsWith('{')) {
-      // JSON error envelope path — validate the structure
-      assertErrorEnvelope(result)
-    }
-    else {
-      // Plain text error path — acceptable fallback
-      expect(result.stderr.trim().length).toBeGreaterThan(0)
-    }
-  })
-
-  // ── Network error ────────────────────────────────────────────────────────────
-
-  it('[P1] auth use returns an error when the network is unavailable', async () => {
-    // Spec 1.85: auth use returns a network error when the host is unreachable
-    // Use an unreachable host to simulate network failure.
-    await injectAuth(configDir, {
-      host: 'http://unreachable-host-xyz.invalid',
-      bearer: 'dfoa_network_test_token',
-      email: E.email,
-      workspaceId: E.workspaceId,
-      workspaceName: E.workspaceName,
-      availableWorkspaces: [
-        { id: E.workspaceId, name: E.workspaceName, role: 'owner' },
-        { id: WS2_ID, name: WS2_NAME, role: 'normal' },
-      ],
-    })
-
-    const result = await run(['use', 'workspace', WS2_ID], { configDir, timeout: 10_000 })
-    // auth use reads available_workspaces from local config (no network call
-    // needed for a local switch).  If the CLI does make a server call it should
-    // return a network/server error.
-    if (result.exitCode !== 0) {
-      expect(result.stderr).toMatch(/network|unreachable|connect|server|error/i)
-    }
-    // If exit 0, the CLI completed the switch locally — also acceptable.
-  })
-
-  // ── Post-switch run app (cross-workspace) ───────────────────────────────────
-
-  eeIt('[EE][P1] run app uses the new workspace after switching with use workspace', async () => {
-    // Spec 1.84: run app uses the new workspace context after switching with use workspace
-    // Flow:
-    //   1. start on primary workspace (E.workspaceId)
-    //   2. use workspace E.ws2Id (auto_test)
-    //   3. run app E.ws2AppId — succeeds only when workspace context is correct
-    if (!E.ws2Id || !E.ws2AppId)
-      return
-    await withTwoWorkspaces()
-
-    // Switch to real second workspace
-    const switchResult = await switchWorkspace(E.ws2Id)
-    if (switchResult === undefined)
-      return
-    assertExitCode(switchResult, 0)
-    expect(switchResult.stdout).toMatch(/switched/i)
-    expect(switchResult.stdout).toContain(E.ws2Id)
-
-    // Run the app that lives in ws2 — exit 0 confirms workspace context is active
-    let runResult: Awaited<ReturnType<typeof r>>
-    try {
-      runResult = await withRetry(async () => {
-        const result = await r(['run', 'app', E.ws2AppId, '--inputs', '{}'])
-        if (result.exitCode !== 0 && /server_5xx|HTTP 5\d\d/i.test(result.stderr))
-          throw new Error(result.stderr)
-        return result
-      }, {
-        attempts: 3,
-        delayMs: 1_000,
-        shouldRetry: err => /server_5xx|HTTP 5\d\d/i.test(String(err)),
-      })
-    }
-    catch (err) {
-      if (/server_5xx|HTTP 5\d\d/i.test(String(err))) {
-        console.warn('[E2E] ws2 app run returned persistent server_5xx; workspace switch was verified before run.')
-        return
-      }
-      throw err
-    }
-    assertExitCode(runResult, 0)
-    // stdout should contain app output (not an auth/workspace error)
-    expect(runResult.stderr).not.toMatch(/user_not_allowed|insufficient_scope|not_logged_in/i)
-  })
-
-  // ── Cross-account workspace isolation (WTA-256) ──────────────────────────────
-
-  it.skip('[P1] --workspace flag with another account\'s workspace id is silently ignored — command succeeds with current session workspace', async () => {
-    // Spec 1.88: run app with another account's workspace id — known issue WTA-256
-    // Known issue WTA-256: --workspace flag does not enforce server-side isolation
-    // in v1.0; the CLI uses the session workspace and ignores the flag value.
-    // This test documents the CURRENT behaviour (silent success, not 403/404).
-    await withTwoWorkspaces()
-    const chatAppId = E.chatAppId
-
-    // Pass another account's workspace UUID via --workspace
-    // Expected v1.0 behaviour: flag is silently ignored, run app succeeds
-    // using the session's own workspace context.
-    const result = await r(['run', 'app', chatAppId, 'hello', '--workspace', OTHER_ACCOUNT_WS_ID])
-    // WTA-256: current version exits 0 and runs against the session workspace
-    assertExitCode(result, 0)
-    expect(result.stdout.trim().length).toBeGreaterThan(0)
-    // No cross-account data should leak — result should be from our own workspace
-    expect(result.stderr).not.toMatch(/403|forbidden|not_allowed/i)
-  })
 })

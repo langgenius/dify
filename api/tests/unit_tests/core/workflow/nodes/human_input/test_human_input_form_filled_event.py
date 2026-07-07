@@ -4,17 +4,10 @@ from types import SimpleNamespace
 from typing import Any
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
-from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
-from core.workflow.system_variables import default_system_variables
-from graphon.entities import GraphInitParams
-from graphon.enums import BuiltinNodeTypes
-from graphon.file import File, FileTransferMethod, FileType
-from graphon.graph_events import (
-    NodeRunHumanInputFormFilledEvent,
-    NodeRunHumanInputFormTimeoutEvent,
-    NodeRunStartedEvent,
+from core.workflow.nodes.human_input.callback import (
+    DifyHITLCallback,
 )
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     HumanInputNodeData,
@@ -23,7 +16,15 @@ from graphon.nodes.human_input.entities import (
     StringListSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.system_variables import default_system_variables
+from graphon.entities import GraphInitParams
+from graphon.enums import BuiltinNodeTypes
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.graph_events import (
+    NodeRunStartedEvent,
+    NodeRunSucceededEvent,
+)
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -67,14 +68,17 @@ def _create_human_input_node(
         if isinstance(config["data"], HumanInputNodeData)
         else HumanInputNodeData.model_validate(config["data"])
     )
+    callback = DifyHITLCallback(
+        form_repository=repo,
+        node_data=node_data,
+        file_reference_factory=_TestFileReferenceFactory(),
+    )
     return HumanInputNode(
         node_id=config["id"],
         data=node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
-        form_repository=repo,
-        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
-        runtime=DifyHumanInputNodeRuntime(graph_init_params.run_context),
+        hitl_callback=callback,
     )
 
 
@@ -230,26 +234,25 @@ def test_human_input_node_emits_form_filled_event_before_succeeded():
     events = list(node.run())
 
     assert isinstance(events[0], NodeRunStartedEvent)
-    assert isinstance(events[1], NodeRunHumanInputFormFilledEvent)
+    assert isinstance(events[1], NodeRunSucceededEvent)
 
-    filled_event = events[1]
-    assert filled_event.node_title == "Human Input"
-    assert filled_event.rendered_content == (
-        "Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
+    completed_event = events[1]
+    assert completed_event.node_run_result.outputs["__rendered_content"] == StringSegment(
+        value="Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
     )
-    assert filled_event.action_id == "Accept"
-    assert filled_event.action_text == "Approve"
-    assert filled_event.submitted_data["name"] == StringSegment(value="Alice")
-    assert filled_event.submitted_data["decision"] == StringSegment(value="approve")
-    assert isinstance(filled_event.submitted_data["attachment"], FileSegment)
-    assert filled_event.submitted_data["attachment"].value_type == SegmentType.FILE
-    assert filled_event.submitted_data["attachment"].value.filename == "resume.pdf"
-    assert filled_event.submitted_data["attachment"].value.type == FileType.DOCUMENT
-    assert filled_event.submitted_data["attachment"].value.transfer_method == FileTransferMethod.REMOTE_URL
-    assert isinstance(filled_event.submitted_data["attachments"], ArrayFileSegment)
-    assert filled_event.submitted_data["attachments"].value_type == SegmentType.ARRAY_FILE
-    assert filled_event.submitted_data["attachments"].value[0].filename == "a.png"
-    assert filled_event.submitted_data["attachments"].value[0].type == FileType.IMAGE
+    assert completed_event.node_run_result.outputs["__action_id"] == StringSegment(value="Accept")
+    assert completed_event.node_run_result.outputs["__action_value"] == StringSegment(value="Approve")
+    assert completed_event.node_run_result.inputs["name"] == StringSegment(value="Alice")
+    assert completed_event.node_run_result.inputs["decision"] == StringSegment(value="approve")
+    assert isinstance(completed_event.node_run_result.inputs["attachment"], FileSegment)
+    assert completed_event.node_run_result.inputs["attachment"].value_type == SegmentType.FILE
+    assert completed_event.node_run_result.inputs["attachment"].value.filename == "resume.pdf"
+    assert completed_event.node_run_result.inputs["attachment"].value.type == FileType.DOCUMENT
+    assert completed_event.node_run_result.inputs["attachment"].value.transfer_method == FileTransferMethod.REMOTE_URL
+    assert isinstance(completed_event.node_run_result.inputs["attachments"], ArrayFileSegment)
+    assert completed_event.node_run_result.inputs["attachments"].value_type == SegmentType.ARRAY_FILE
+    assert completed_event.node_run_result.inputs["attachments"].value[0].filename == "a.png"
+    assert completed_event.node_run_result.inputs["attachments"].value[0].type == FileType.IMAGE
 
 
 def test_human_input_node_emits_timeout_event_before_succeeded():
@@ -258,7 +261,5 @@ def test_human_input_node_emits_timeout_event_before_succeeded():
     events = list(node.run())
 
     assert isinstance(events[0], NodeRunStartedEvent)
-    assert isinstance(events[1], NodeRunHumanInputFormTimeoutEvent)
-
-    timeout_event = events[1]
-    assert timeout_event.node_title == "Human Input"
+    assert isinstance(events[1], NodeRunSucceededEvent)
+    assert events[1].node_run_result.edge_source_handle == "__timeout__"

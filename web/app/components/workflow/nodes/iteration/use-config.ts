@@ -22,7 +22,7 @@ import { toNodeOutputVars } from '../_base/components/variable/utils'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 
 type SelectOption = {
-  value: string | number
+  value: ErrorHandleMode
   name: string
 }
 
@@ -98,7 +98,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
 
   const changeErrorResponseMode = useCallback((item: SelectOption) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.error_handle_mode = item.value as ErrorHandleMode
+      draft.error_handle_mode = item.value
     })
     setInputs(newInputs)
   }, [inputs, setInputs])

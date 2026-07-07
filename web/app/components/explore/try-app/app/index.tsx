@@ -7,10 +7,10 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Chat from './chat'
 import TextGeneration from './text-generation'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
-}
+}>
 
 const TryApp: FC<Props> = ({
   appId,

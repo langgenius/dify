@@ -21,14 +21,19 @@ class SnippetListQuery(BaseModel):
     @field_validator("creators", mode="before")
     @classmethod
     def parse_creators(cls, value: object) -> list[str] | None:
-        """Normalize creators filter from query string or list input."""
-        return cls._normalize_string_list(value)
+        """Normalize creator filters without comma-splitting list values."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            item = value.strip()
+            return [item] if item else None
+        return cls._normalize_string_list(value, "creators")
 
     @field_validator("tag_ids", mode="before")
     @classmethod
     def parse_tag_ids(cls, value: object) -> list[str] | None:
-        """Normalize and validate tag IDs from query string or list input."""
-        items = cls._normalize_string_list(value)
+        """Normalize and validate tag IDs from repeated query parameters."""
+        items = cls._normalize_string_list(value, "tag_ids")
         if not items:
             return None
         try:
@@ -37,14 +42,12 @@ class SnippetListQuery(BaseModel):
             raise ValueError("Invalid UUID format in tag_ids.") from exc
 
     @staticmethod
-    def _normalize_string_list(value: object) -> list[str] | None:
+    def _normalize_string_list(value: object, field_name: str) -> list[str] | None:
         if value is None:
             return None
-        if isinstance(value, str):
-            return [item.strip() for item in value.split(",") if item.strip()] or None
         if isinstance(value, list):
             return [str(item).strip() for item in value if str(item).strip()] or None
-        return None
+        raise ValueError(f"Unsupported {field_name} type.")
 
 
 class IconInfo(BaseModel):
@@ -76,7 +79,7 @@ class CreateSnippetPayload(BaseModel):
     description: str | None = Field(default=None, max_length=2000)
     type: Literal["node", "group"] = "node"
     icon_info: IconInfo | None = None
-    graph: dict[str, Any] | None = None
+    graph: dict[str, Any] | None = Field(default=None)
     input_fields: list[InputFieldDefinition] | None = Field(default_factory=list)
 
 
@@ -97,7 +100,7 @@ class SnippetDraftSyncPayload(BaseModel):
         default=None,
         description="Ignored. Snippet workflows do not persist conversation variables.",
     )
-    input_fields: list[dict[str, Any]] | None = None
+    input_fields: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetWorkflowListQuery(BaseModel):
@@ -118,7 +121,7 @@ class SnippetDraftRunPayload(BaseModel):
     """Payload for running snippet draft workflow."""
 
     inputs: dict[str, Any]
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetDraftNodeRunPayload(BaseModel):
@@ -126,25 +129,25 @@ class SnippetDraftNodeRunPayload(BaseModel):
 
     inputs: dict[str, Any]
     query: str = ""
-    files: list[dict[str, Any]] | None = None
+    files: list[dict[str, Any]] | None = Field(default=None)
 
 
 class SnippetIterationNodeRunPayload(BaseModel):
     """Payload for running an iteration node in snippet draft workflow."""
 
-    inputs: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class SnippetLoopNodeRunPayload(BaseModel):
     """Payload for running a loop node in snippet draft workflow."""
 
-    inputs: dict[str, Any] | None = None
+    inputs: dict[str, Any] | None = Field(default=None)
 
 
 class PublishWorkflowPayload(BaseModel):
     """Payload for publishing snippet workflow."""
 
-    knowledge_base_setting: dict[str, Any] | None = None
+    knowledge_base_setting: dict[str, Any] | None = Field(default=None)
 
 
 class SnippetImportPayload(BaseModel):

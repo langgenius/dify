@@ -1,11 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { textControlCompoundFocusClassName } from '../form-control-shared'
 import {
   overlayIndicatorClassName,
   overlayLabelClassName,
@@ -16,7 +17,30 @@ import { parsePlacement } from '../placement'
 
 export type { Placement }
 
-export const Autocomplete = BaseAutocomplete.Root
+export type AutocompleteRootProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
+export type AutocompleteRootGroupedProps<
+  Items extends readonly { items: readonly unknown[] }[],
+> = Omit<AutocompleteRootProps<Items[number]['items'][number]>, 'items'> & {
+  items: Items
+}
+export type AutocompleteRootFlatProps<ItemValue>
+  = Omit<AutocompleteRootProps<ItemValue>, 'items'>
+    & {
+      items?: readonly ItemValue[]
+    }
+
+export function Autocomplete<Items extends readonly { items: readonly unknown[] }[]>(
+  props: AutocompleteRootGroupedProps<Items>,
+): React.JSX.Element
+export function Autocomplete<ItemValue>(
+  props: AutocompleteRootFlatProps<ItemValue>,
+): React.JSX.Element
+export function Autocomplete(
+  props: AutocompleteRootProps<unknown>,
+): React.JSX.Element {
+  return <BaseAutocomplete.Root {...props} />
+}
+
 export const AutocompleteValue = BaseAutocomplete.Value
 export const AutocompleteGroup = BaseAutocomplete.Group
 export const AutocompleteCollection = BaseAutocomplete.Collection
@@ -24,7 +48,6 @@ export const AutocompleteRow = BaseAutocomplete.Row
 export const useAutocompleteFilter = BaseAutocomplete.useFilter
 export const useAutocompleteFilteredItems = BaseAutocomplete.useFilteredItems
 
-export type AutocompleteRootProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
 export type AutocompleteRootChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
 export type AutocompleteRootHighlightEventDetails = BaseAutocomplete.Root.HighlightEventDetails
 
@@ -49,7 +72,7 @@ const autocompleteInputGroupVariants = cva(
   [
     'group/autocomplete flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
+    textControlCompoundFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
@@ -135,7 +158,7 @@ const autocompleteControlVariants = cva(
   [
     'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent group-data-disabled/autocomplete:focus-visible:ring-0',
     'group-data-readonly/autocomplete:hidden',
@@ -144,9 +167,9 @@ const autocompleteControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'mr-1 size-4',
-        medium: 'mr-1.5 size-5',
-        large: 'mr-2 size-5',
+        small: 'me-1 size-4',
+        medium: 'me-1.5 size-5',
+        large: 'me-2 size-5',
       },
     },
     defaultVariants: {
@@ -223,7 +246,7 @@ export function AutocompleteIcon({
 }
 
 type AutocompleteContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -302,7 +325,7 @@ export function AutocompleteItem({
   )
 }
 
-export type AutocompleteItemTextProps = HTMLAttributes<HTMLSpanElement>
+export type AutocompleteItemTextProps = React.ComponentProps<'span'>
 
 export function AutocompleteItemText({
   className,
@@ -368,7 +391,7 @@ export function AutocompleteItemIndicator({
   className,
   children,
   ...props
-}: HTMLAttributes<HTMLSpanElement>) {
+}: React.ComponentProps<'span'>) {
   return (
     <span
       className={cn(overlayIndicatorClassName, className)}

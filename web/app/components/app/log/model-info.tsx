@@ -20,9 +20,9 @@ const PARAM_MAP = {
   frequency_penalty: 'Frequency Penalty',
 }
 
-type Props = {
+type Props = Readonly<{
   model: any
-}
+}>
 
 const ModelInfo: FC<Props> = ({
   model,

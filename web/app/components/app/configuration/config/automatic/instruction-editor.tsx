@@ -12,7 +12,7 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
-type Props = {
+type Props = Readonly<{
   editorKey: string
   value: string
   onChange: (text: string) => void
@@ -25,7 +25,7 @@ type Props = {
   }) => Type
   isShowCurrentBlock: boolean
   isShowLastRunBlock: boolean
-}
+}>
 
 const i18nPrefix = 'generate'
 

@@ -7,7 +7,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
-import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { useGetWebAppInfo, useGetWebAppMeta, useGetWebAppParams } from '@/service/use-share'
 import { webAppLogout } from '@/service/webapp-auth'
 
@@ -18,9 +18,9 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const updateAppParams = useWebAppStore(s => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore(s => s.updateWebAppMeta)
   const updateUserCanAccessApp = useWebAppStore(s => s.updateUserCanAccessApp)
-  const { isFetching: isFetchingAppParams, data: appParams, error: appParamsError } = useGetWebAppParams()
-  const { isFetching: isFetchingAppInfo, data: appInfo, error: appInfoError } = useGetWebAppInfo()
-  const { isFetching: isFetchingAppMeta, data: appMeta, error: appMetaError } = useGetWebAppMeta()
+  const { isLoading: isLoadingAppParams, data: appParams, error: appParamsError } = useGetWebAppParams()
+  const { isLoading: isLoadingAppInfo, data: appInfo, error: appInfoError } = useGetWebAppInfo()
+  const { isLoading: isLoadingAppMeta, data: appMeta, error: appMetaError } = useGetWebAppMeta()
   const { data: userCanAccessApp, error: useCanAccessAppError } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp: false })
 
   useEffect(() => {
@@ -87,7 +87,7 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
       </div>
     )
   }
-  if (isFetchingAppInfo || isFetchingAppParams || isFetchingAppMeta) {
+  if (isLoadingAppInfo || isLoadingAppParams || isLoadingAppMeta || !appInfo || !appParams || !appMeta) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading />

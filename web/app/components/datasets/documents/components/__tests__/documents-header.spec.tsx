@@ -32,6 +32,9 @@ describe('DocumentsHeader', () => {
     datasetId: 'dataset-123',
     dataSourceType: DataSourceType.FILE,
     embeddingAvailable: true,
+    canManageMetadata: true,
+    canAddDocument: true,
+    canEditDocument: true,
     isFreePlan: false,
     statusFilterValue: 'all',
     sortValue: 'created_at' as SortType,
@@ -86,6 +89,22 @@ describe('DocumentsHeader', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
+
+    it('should hide action controls by default when permissions are omitted', () => {
+      const {
+        canManageMetadata: _canManageMetadata,
+        canAddDocument: _canAddDocument,
+        canEditDocument: _canEditDocument,
+        ...propsWithoutPermissions
+      } = defaultProps
+
+      render(<DocumentsHeader {...propsWithoutPermissions} />)
+
+      expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('index-failed')).not.toBeInTheDocument()
+      expect(screen.queryByText(/metadata\.metadata/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/list\.addFile/i)).not.toBeInTheDocument()
+    })
   })
 
   describe('AutoDisabledDocument', () => {
@@ -98,12 +117,22 @@ describe('DocumentsHeader', () => {
       render(<DocumentsHeader {...defaultProps} isFreePlan={true} />)
       expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
     })
+
+    it('should not show AutoDisabledDocument without document edit permission', () => {
+      render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
+      expect(screen.queryByTestId('auto-disabled-document')).not.toBeInTheDocument()
+    })
   })
 
   describe('IndexFailed', () => {
     it('should always show IndexFailed component', () => {
       render(<DocumentsHeader {...defaultProps} />)
       expect(screen.getByTestId('index-failed')).toBeInTheDocument()
+    })
+
+    it('should not show IndexFailed without document edit permission', () => {
+      render(<DocumentsHeader {...defaultProps} canEditDocument={false} />)
+      expect(screen.queryByTestId('index-failed')).not.toBeInTheDocument()
     })
   })
 

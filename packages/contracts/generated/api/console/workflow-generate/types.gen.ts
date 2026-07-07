@@ -10,8 +10,16 @@ export type WorkflowGeneratePayload = {
   } | null
   ideal_output?: string
   instruction: string
-  mode: 'advanced-chat' | 'workflow'
+  mode: 'advanced-chat' | 'auto' | 'workflow'
   model_config: ModelConfig
+}
+
+export type GeneratorResponse = unknown
+
+export type WorkflowInstructionSuggestionsPayload = {
+  count?: number
+  language?: string | null
+  mode: 'advanced-chat' | 'workflow'
 }
 
 export type ModelConfig = {
@@ -33,21 +41,51 @@ export type PostWorkflowGenerateData = {
 }
 
 export type PostWorkflowGenerateErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  402: {
-    [key: string]: unknown
-  }
+  400: unknown
+  402: unknown
 }
 
-export type PostWorkflowGenerateError = PostWorkflowGenerateErrors[keyof PostWorkflowGenerateErrors]
-
 export type PostWorkflowGenerateResponses = {
+  200: GeneratorResponse
+}
+
+export type PostWorkflowGenerateResponse
+  = PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]
+
+export type PostWorkflowGenerateStreamData = {
+  body: WorkflowGeneratePayload
+  path?: never
+  query?: never
+  url: '/workflow-generate/stream'
+}
+
+export type PostWorkflowGenerateStreamErrors = {
+  400: unknown
+}
+
+export type PostWorkflowGenerateStreamResponses = {
   200: {
     [key: string]: unknown
   }
 }
 
-export type PostWorkflowGenerateResponse
-  = PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]
+export type PostWorkflowGenerateStreamResponse
+  = PostWorkflowGenerateStreamResponses[keyof PostWorkflowGenerateStreamResponses]
+
+export type PostWorkflowGenerateSuggestionsData = {
+  body: WorkflowInstructionSuggestionsPayload
+  path?: never
+  query?: never
+  url: '/workflow-generate/suggestions'
+}
+
+export type PostWorkflowGenerateSuggestionsErrors = {
+  400: unknown
+}
+
+export type PostWorkflowGenerateSuggestionsResponses = {
+  200: GeneratorResponse
+}
+
+export type PostWorkflowGenerateSuggestionsResponse
+  = PostWorkflowGenerateSuggestionsResponses[keyof PostWorkflowGenerateSuggestionsResponses]

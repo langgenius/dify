@@ -5,9 +5,9 @@ producers, storage adapters, and Python client. Create-run requests expose a
 Dify-friendly ``composition.layers[].config`` shape so callers can describe one
 layer in one place; the server normalizes that public DTO into Agenton's
 state-only ``CompositorConfig`` plus node-name keyed per-run configs before
-calling ``Compositor.enter(configs=...)``. Session snapshots and ``on_exit`` stay
-top-level because they are per-run resume state and exit policy, not graph node
-definition.
+calling ``Compositor.enter(configs=...)``. Session snapshots, deferred tool
+results, and ``on_exit`` stay top-level because they are per-run resume state or
+exit policy, not graph node definition.
 
 The server still constructs layers only from explicit provider type ids, keeping
 HTTP input data-only and preventing unsafe import-path construction. Run events
@@ -22,21 +22,25 @@ by ``DIFY_AGENT_MODEL_LAYER_ID``, the optional history layer named by
 by ``DIFY_AGENT_OUTPUT_LAYER_ID``. Request-level ``on_exit`` signals decide
 whether each active layer is suspended or deleted when the run exits, with
 suspend as the default so successful terminal events can include resumable
-snapshots. Successful runs publish the final JSON-safe agent output and the
-resumable Agenton session snapshot together on the terminal ``run_succeeded``
-event so consumers can treat terminal events as complete run summaries. Session
-snapshots carry only layer lifecycle/runtime state in compositor order; they do
-not persist output-layer config. Resumed structured-output runs therefore must
-resubmit the same ``output`` layer in ``composition.layers[]`` so snapshot layer
-name/order still matches the composition and the runtime can rebuild the same
-structured output contract.
+snapshots. Successful runs always publish the resumable Agenton session snapshot
+on the terminal ``run_succeeded`` event together with exactly one of the final
+JSON-safe ``output`` or a deferred external ``deferred_tool_call`` payload. That
+lets consumers treat terminal success events as complete run summaries without a
+separate pause protocol. Session snapshots carry only layer lifecycle/runtime
+state in compositor order; they do not persist output-layer config. Resumed
+structured-output runs therefore must resubmit the same ``output`` layer in
+``composition.layers[]`` so snapshot layer name/order still matches the
+composition and the runtime can rebuild the same structured output contract.
 """
+
+from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Annotated, ClassVar, Final, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_serializer, model_validator
 from pydantic_ai.messages import AgentStreamEvent
+from pydantic_ai.tools import DeferredToolResults
 
 from agenton.compositor import CompositorConfig, CompositorSessionSnapshot, LayerConfigInput, LayerNodeConfig
 from agenton.layers import ExitIntent
@@ -45,12 +49,11 @@ from agenton.layers import ExitIntent
 DIFY_AGENT_MODEL_LAYER_ID: Final[str] = "llm"
 DIFY_AGENT_HISTORY_LAYER_ID: Final[str] = "history"
 DIFY_AGENT_OUTPUT_LAYER_ID: Final[str] = "output"
-RunStatus = Literal["running", "paused", "succeeded", "failed", "cancelled"]
+RunStatus = Literal["running", "succeeded", "failed", "cancelled"]
 RunPurpose = Literal["workflow_node", "single_step", "agent_app", "babysit", "fasten_preview"]
 RunEventType = Literal[
     "run_started",
     "pydantic_ai_event",
-    "run_paused",
     "run_succeeded",
     "run_failed",
     "run_cancelled",
@@ -121,7 +124,15 @@ class CreateRunRequest(BaseModel):
     keep snapshot compatibility and rebuild the output schema. Dify tenant,
     user, and run-correlation identifiers must be submitted through a
     ``dify.execution_context`` entry in ``composition.layers[]``; there is no
-    parallel top-level ``execution_context`` request field.
+    parallel top-level ``execution_context`` request field. External deferred
+    tool continuation input belongs in the top-level ``deferred_tool_results``
+    field rather than inside composition. Resume requests are therefore expected
+    to pair a prior ``session_snapshot`` with the same logical composition so
+    Agenton can rebuild the same layers and message history. For ask-human
+    continuation specifically, the matching pending tool call must still exist
+    in prior history state; callers should keep the history layer active across
+    runs so deferred tool results can be matched against the original model
+    response instead of starting a fresh user-prompt turn.
     """
 
     composition: RunComposition
@@ -129,6 +140,7 @@ class CreateRunRequest(BaseModel):
     idempotency_key: str | None = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     session_snapshot: CompositorSessionSnapshot | None = None
+    deferred_tool_results: DeferredToolResultsPayload | None = None
     on_exit: LayerExitSignals = Field(default_factory=LayerExitSignals)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
@@ -213,13 +225,77 @@ class EmptyRunEventData(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
-class RunSucceededEventData(BaseModel):
-    """Terminal success payload for final output and resumable session state."""
+class DeferredToolResultsPayload(BaseModel):
+    """Public JSON-safe DTO for deferred external tool results supplied on resume."""
 
-    output: JsonValue
-    session_snapshot: CompositorSessionSnapshot
+    calls: dict[str, JsonValue] = Field(default_factory=dict)
+    metadata: dict[str, dict[str, JsonValue]] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    def to_pydantic_ai(self) -> DeferredToolResults:
+        """Convert the public DTO into pydantic-ai's resume input dataclass."""
+        return DeferredToolResults(
+            calls=dict(self.calls),
+            metadata={key: dict(value) for key, value in self.metadata.items()},
+        )
+
+
+class DeferredToolCallPayload(BaseModel):
+    """Terminal success payload for one deferred external tool request."""
+
+    tool_call_id: str
+    tool_name: str
+    args: JsonValue
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentRunUsage(BaseModel):
+    """Token usage reported by the model request behind one Agent run."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _derive_total_tokens(self) -> AgentRunUsage:
+        if self.total_tokens == 0 and (self.prompt_tokens > 0 or self.completion_tokens > 0):
+            self.total_tokens = self.prompt_tokens + self.completion_tokens
+        return self
+
+
+class RunSucceededEventData(BaseModel):
+    """Terminal success payload for final output or deferred tool continuation."""
+
+    output: JsonValue | None = None
+    deferred_tool_call: DeferredToolCallPayload | None = None
+    session_snapshot: CompositorSessionSnapshot
+    usage: AgentRunUsage | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _validate_result_shape(self) -> RunSucceededEventData:
+        has_output = "output" in self.model_fields_set
+        has_deferred_tool_call = "deferred_tool_call" in self.model_fields_set
+        if has_output == has_deferred_tool_call:
+            raise ValueError("Exactly one of output or deferred_tool_call must be set")
+        return self
+
+    @model_serializer(mode="plain")
+    def _serialize_active_result(self) -> dict[str, object]:
+        data: dict[str, object] = {"session_snapshot": self.session_snapshot}
+        if "output" in self.model_fields_set:
+            data["output"] = self.output
+        if "deferred_tool_call" in self.model_fields_set:
+            data["deferred_tool_call"] = self.deferred_tool_call
+        if self.usage is not None:
+            data["usage"] = self.usage
+        return data
 
 
 class RunFailedEventData(BaseModel):
@@ -227,16 +303,6 @@ class RunFailedEventData(BaseModel):
 
     error: str
     reason: str | None = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class RunPausedEventData(BaseModel):
-    """Pause payload used for human handoff or other resumable waits."""
-
-    reason: str
-    message: str | None = None
-    session_snapshot: CompositorSessionSnapshot | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -288,13 +354,6 @@ class RunFailedEvent(BaseRunEvent):
     data: RunFailedEventData
 
 
-class RunPausedEvent(BaseRunEvent):
-    """Resumable pause event emitted when a run waits for outside input."""
-
-    type: Literal["run_paused"] = "run_paused"
-    data: RunPausedEventData
-
-
 class RunCancelledEvent(BaseRunEvent):
     """Terminal cancellation event emitted after an explicit cancel request."""
 
@@ -303,12 +362,7 @@ class RunCancelledEvent(BaseRunEvent):
 
 
 RunEvent: TypeAlias = Annotated[
-    RunStartedEvent
-    | PydanticAIStreamRunEvent
-    | RunPausedEvent
-    | RunSucceededEvent
-    | RunFailedEvent
-    | RunCancelledEvent,
+    RunStartedEvent | PydanticAIStreamRunEvent | RunSucceededEvent | RunFailedEvent | RunCancelledEvent,
     Field(discriminator="type"),
 ]
 RUN_EVENT_ADAPTER: TypeAdapter[RunEvent] = TypeAdapter(RunEvent)
@@ -326,10 +380,13 @@ class RunEventsResponse(BaseModel):
 
 __all__ = [
     "BaseRunEvent",
+    "AgentRunUsage",
     "CancelRunRequest",
     "CancelRunResponse",
     "CreateRunRequest",
     "CreateRunResponse",
+    "DeferredToolCallPayload",
+    "DeferredToolResultsPayload",
     "DIFY_AGENT_HISTORY_LAYER_ID",
     "DIFY_AGENT_MODEL_LAYER_ID",
     "DIFY_AGENT_OUTPUT_LAYER_ID",
@@ -345,8 +402,6 @@ __all__ = [
     "RunEventsResponse",
     "RunFailedEvent",
     "RunFailedEventData",
-    "RunPausedEvent",
-    "RunPausedEventData",
     "RunPurpose",
     "RunStartedEvent",
     "RunStatus",

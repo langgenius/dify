@@ -36,11 +36,13 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_RUN_RETENTION_SECONDS` | `259200` | Seconds to retain Redis run records and per-run event streams; defaults to 3 days. |
 | `DIFY_AGENT_PLUGIN_DAEMON_URL` | `http://localhost:5002` | Base URL for the Dify plugin daemon. |
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
+| `DIFY_AGENT_INNER_API_URL` | `http://localhost:5001` | Dify API service root used when dify-agent calls `/inner/api/...` endpoints. |
+| `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
 | `DIFY_AGENT_SHELLCTL_ENTRYPOINT` | empty | Base URL for the shellctl server used by `dify.shell`; required when runs include the shell layer. |
 | `DIFY_AGENT_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token sent to the shellctl server. |
-| `DIFY_AGENT_STUB_URL` | empty | Public Agent Stub URL reachable from shellctl-managed remote machines. Use `http(s)://.../agent-stub` for HTTP or `grpc://host:port` for gRPC; enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
-| `DIFY_AGENT_STUB_GRPC_BIND_ADDRESS` | empty | Optional `host:port` bind override used only when `DIFY_AGENT_STUB_URL` uses `grpc://`. |
-| `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Server-wide root secret used to derive Agent Stub JWE keys; required when `DIFY_AGENT_STUB_URL` is set and must be unpadded base64url for 32 bytes. |
+| `DIFY_AGENT_STUB_API_BASE_URL` | empty | Public Agent Stub API base URL reachable from shellctl-managed remote machines. HTTP may be the service root or `/agent-stub`; gRPC must be `grpc://host:port`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
+| `DIFY_AGENT_STUB_GRPC_BIND_ADDRESS` | empty | Optional `host:port` bind override used only when `DIFY_AGENT_STUB_API_BASE_URL` uses `grpc://`. |
+| `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Server-wide root secret used to derive Agent Stub JWE keys; required when `DIFY_AGENT_STUB_API_BASE_URL` is set and must be unpadded base64url for 32 bytes. |
 | `DIFY_AGENT_PLUGIN_DAEMON_CONNECT_TIMEOUT` | `10` | Plugin-daemon HTTP connect timeout in seconds. |
 | `DIFY_AGENT_PLUGIN_DAEMON_READ_TIMEOUT` | `600` | Plugin-daemon HTTP read timeout in seconds. |
 | `DIFY_AGENT_PLUGIN_DAEMON_WRITE_TIMEOUT` | `30` | Plugin-daemon HTTP write timeout in seconds. |
@@ -58,10 +60,12 @@ DIFY_AGENT_SHUTDOWN_GRACE_SECONDS=30
 DIFY_AGENT_RUN_RETENTION_SECONDS=259200
 DIFY_AGENT_PLUGIN_DAEMON_URL=http://localhost:5002
 DIFY_AGENT_PLUGIN_DAEMON_API_KEY=replace-with-daemon-key
+DIFY_AGENT_INNER_API_URL=http://localhost:5001
+DIFY_AGENT_INNER_API_KEY=replace-with-dify-inner-api-key-for-plugin
 DIFY_AGENT_SHELLCTL_ENTRYPOINT=http://127.0.0.1:5004
 DIFY_AGENT_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
 # Generate with: python -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).rstrip(b"=").decode())'
-DIFY_AGENT_STUB_URL=https://agent.example.com/agent-stub
+DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
 DIFY_AGENT_SERVER_SECRET_KEY=replace-with-base64url-32-byte-secret
 ```
 
@@ -136,8 +140,10 @@ Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`. Event envelopes retain `id`,
 `run_id`, `type`, `data`, and `created_at`; `data` is typed per event type,
 including Pydantic AI's `AgentStreamEvent` payload for `pydantic_ai_event` and a
-terminal `run_succeeded.data` object containing JSON-safe `output` plus a
-`CompositorSessionSnapshot` for resumption.
+terminal `run_succeeded.data` object containing a `CompositorSessionSnapshot` for
+resumption. A successful run has exactly one active result branch: JSON-safe
+`output` for final answers, or `deferred_tool_call` when a layer such as
+`dify.ask_human` ends the current agent run with an external deferred tool call.
 
 ## Examples
 

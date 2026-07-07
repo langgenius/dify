@@ -14,13 +14,13 @@ from __future__ import annotations
 from itertools import starmap
 from urllib import parse
 
-from flask import jsonify, make_response
 from flask_restx import Resource
-from werkzeug.exceptions import BadRequest, Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import accepts, returns
+from controllers.openapi._errors import MemberLicenseExceeded, MemberLimitExceeded
 from controllers.openapi._models import (
     MemberActionResponse,
     MemberInvitePayload,
@@ -77,34 +77,16 @@ def _load_account(account_id: object) -> Account:
     return account
 
 
-def _quota_error(*, code: str, message: str, hint: str) -> Forbidden:
-    err = Forbidden(message)
-    err.response = make_response(
-        jsonify({"code": code, "message": message, "hint": hint}),
-        403,
-    )
-    return err
-
-
 def _check_member_invite_quota(tenant_id: str) -> None:
     features = FeatureService.get_features(tenant_id)
 
     if features.billing.enabled:
         members = features.members
         if 0 < members.limit <= members.size:
-            raise _quota_error(
-                code="members.limit_exceeded",
-                message="Subscription member limit reached.",
-                hint="Upgrade your plan to invite more members or remove an existing member first.",
-            )
+            raise MemberLimitExceeded()
 
-    if features.workspace_members.enabled:
-        if not features.workspace_members.is_available(1):
-            raise _quota_error(
-                code="workspace_members.license_exceeded",
-                message="Workspace member license capacity reached.",
-                hint="Contact your workspace administrator to expand the license seat count.",
-            )
+    if features.workspace_members.enabled and not features.workspace_members.is_available(1):
+        raise MemberLicenseExceeded()
 
 
 @openapi_ns.route("/workspaces")
@@ -146,7 +128,7 @@ class WorkspaceSwitchApi(Resource):
         account = _load_account(auth_data.account_id)
 
         try:
-            TenantService.switch_tenant(account, workspace_id)
+            TenantService.switch_tenant(account, workspace_id, session=db.session)
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
@@ -170,7 +152,7 @@ class WorkspaceMembersApi(Resource):
     @accepts(query=MemberListQuery)
     def get(self, workspace_id: str, *, auth_data: AuthData, query: MemberListQuery):
         tenant = _load_tenant(workspace_id)
-        members = TenantService.get_tenant_members(tenant)
+        members = TenantService.get_tenant_members(tenant, session=db.session)
         total = len(members)
         start = (query.page - 1) * query.limit
         page_items = members[start : start + query.limit]
@@ -202,6 +184,7 @@ class WorkspaceMembersApi(Resource):
                 language=None,
                 role=body.role,
                 inviter=inviter,
+                session=db.session,
             )
         except AccountAlreadyInTenantError as exc:
             raise BadRequest(str(exc))
@@ -211,7 +194,7 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc))
 
         normalized_email = body.email.lower()
-        member = AccountService.get_account_by_email_with_case_fallback(normalized_email)
+        member = AccountService.get_account_by_email_with_case_fallback(db.session, normalized_email)
         if member is None:
             # invite_new_member just created or fetched this account.
             raise RuntimeError("invited member missing from DB after invite")
@@ -250,7 +233,7 @@ class WorkspaceMemberApi(Resource):
             raise NotFound("member not found")
 
         try:
-            TenantService.remove_member_from_tenant(tenant, member, operator)
+            TenantService.remove_member_from_tenant(tenant, member, operator, session=db.session)
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
@@ -284,7 +267,7 @@ class WorkspaceMemberRoleApi(Resource):
             raise NotFound("member not found")
 
         try:
-            TenantService.update_member_role(tenant, member, body.role, operator)
+            TenantService.update_member_role(tenant, member, body.role, operator, session=db.session)
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:

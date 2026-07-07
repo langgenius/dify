@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 
-type Props = {
+type Props = Readonly<{
   isGeneralMode: boolean
   isQAMode: boolean
-}
+}>
 
 const ChunkingModeLabel: FC<Props> = ({
   isGeneralMode,

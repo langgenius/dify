@@ -1,3 +1,5 @@
+from typing import Any
+
 from flask_restx import (  # type: ignore
     Resource,  # type: ignore
 )
@@ -14,7 +16,7 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
 class Parser(BaseModel):
-    inputs: dict
+    inputs: dict[str, Any]
     datasource_type: str
     credential_id: str | None = None
 
@@ -25,6 +27,7 @@ register_schema_models(console_ns, Parser)
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
 class DataSourceContentPreviewApi(Resource):
     @console_ns.expect(console_ns.models[Parser.__name__])
+    @console_ns.response(200, "Success")
     @setup_required
     @login_required
     @account_initialization_required

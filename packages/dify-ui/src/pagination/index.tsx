@@ -1,12 +1,12 @@
 'use client'
 
 import type { Button as BaseButtonNS } from '@base-ui/react/button'
-import type { ReactNode } from 'react'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
-import { createContext, useContext, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
 import { cn } from '../cn'
+import { useIsoLayoutEffect } from '../internals/use-iso-layout-effect'
 import {
   NumberField,
   NumberFieldGroup,
@@ -28,10 +28,10 @@ type PaginationContextValue = {
   items: PageItem[]
 }
 
-const PaginationContext = createContext<PaginationContextValue | null>(null)
+const PaginationContext = React.createContext<PaginationContextValue | null>(null)
 
 function usePaginationContext(component: string) {
-  const context = useContext(PaginationContext)
+  const context = React.useContext(PaginationContext)
 
   if (!context)
     throw new Error(`${component} must be used inside PaginationRoot.`)
@@ -156,7 +156,7 @@ export function PaginationRoot({
   const normalizedPage = clampPage(page, normalizedTotalPages)
   const hasPages = normalizedTotalPages > 0
   const disabled = normalizedTotalPages <= 1
-  const items = useMemo(() => getPageItems({
+  const items = React.useMemo(() => getPageItems({
     page: normalizedPage,
     totalPages: normalizedTotalPages,
     siblingCount,
@@ -170,7 +170,7 @@ export function PaginationRoot({
     visiblePageCount,
   ])
 
-  const context = useMemo<PaginationContextValue>(() => ({
+  const context = React.useMemo<PaginationContextValue>(() => ({
     page: normalizedPage,
     totalPages: normalizedTotalPages,
     hasPages,
@@ -239,7 +239,7 @@ export function PaginationNavigation({
 }
 
 type PaginationButtonProps = Omit<BaseButtonNS.Props, 'children'> & {
-  children?: ReactNode
+  children?: React.ReactNode
 }
 
 const paginationArrowButtonClassName = [
@@ -316,7 +316,7 @@ export function PaginationNext({
 
 export type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children'> & {
   inputLabel?: string
-  children?: ReactNode
+  children?: React.ReactNode
 }
 
 export function PaginationPageJump({
@@ -327,8 +327,26 @@ export function PaginationPageJump({
   ...props
 }: PaginationPageJumpProps) {
   const pagination = usePaginationContext('PaginationPageJump')
-  const [editing, setEditing] = useState(false)
-  const summaryButtonRef = useRef<HTMLButtonElement | null>(null)
+  const [editing, setEditing] = React.useState(false)
+  const summaryButtonRef = React.useRef<HTMLButtonElement | null>(null)
+  const restoreSummaryFocusRef = React.useRef(false)
+
+  useIsoLayoutEffect(() => {
+    if (editing || !restoreSummaryFocusRef.current)
+      return
+
+    restoreSummaryFocusRef.current = false
+
+    const summaryButton = summaryButtonRef.current
+    if (!summaryButton)
+      return
+
+    const activeElement = summaryButton.ownerDocument.activeElement
+    if (activeElement && activeElement !== summaryButton.ownerDocument.body)
+      return
+
+    summaryButton.focus({ preventScroll: true })
+  }, [editing])
 
   if (!pagination.hasPages)
     return null
@@ -337,7 +355,7 @@ export function PaginationPageJump({
     return (
       <span
         data-page-summary={`${pagination.page}/${pagination.totalPages}`}
-        className="inline-grid h-7 system-xs-medium tabular-nums after:invisible after:col-start-1 after:row-start-1 after:py-1.5 after:pr-3 after:pl-2 after:content-[attr(data-page-summary)]"
+        className="inline-grid h-7 system-xs-medium tabular-nums after:invisible after:col-start-1 after:row-start-1 after:py-1.5 after:pe-3 after:ps-2 after:content-[attr(data-page-summary)]"
       >
         <NumberField
           key={pagination.page}
@@ -367,14 +385,15 @@ export function PaginationPageJump({
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
                   event.preventDefault()
+                  restoreSummaryFocusRef.current = true
                   event.currentTarget.blur()
                   return
                 }
 
                 if (event.key === 'Escape') {
                   event.preventDefault()
+                  restoreSummaryFocusRef.current = true
                   setEditing(false)
-                  requestAnimationFrame(() => summaryButtonRef.current?.focus())
                 }
               }}
             />
@@ -402,11 +421,11 @@ export function PaginationPageJump({
       }}
     >
       {children ?? (
-        <>
+        <React.Fragment>
           <span>{pagination.page}</span>
           <span className="text-text-quaternary">/</span>
           <span>{pagination.totalPages}</span>
-        </>
+        </React.Fragment>
       )}
     </BaseButton>
   )
@@ -444,7 +463,7 @@ export function PaginationPageList({
 
 export type PaginationPageProps = Omit<BaseButtonNS.Props, 'children'> & {
   page: number
-  children?: ReactNode
+  children?: React.ReactNode
 }
 
 export function PaginationPage({
@@ -464,9 +483,8 @@ export function PaginationPage({
       aria-current={current ? 'page' : undefined}
       aria-label={ariaLabel ?? (current ? `Page ${page}, current page` : `Go to page ${page}`)}
       className={cn(
-        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden transition-colors hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium tabular-nums text-text-tertiary outline-hidden hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         current && 'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
-        'motion-reduce:transition-none',
         className,
       )}
       onClick={(event) => {
@@ -505,7 +523,7 @@ export type PaginationPageSizeProps<Value extends number = number> = {
   'value': Value
   'options': readonly Value[]
   'onValueChange': (value: Value) => void
-  'label'?: ReactNode
+  'label'?: React.ReactNode
   'aria-label'?: string
   'className'?: string
 }
@@ -563,7 +581,7 @@ export type PaginationPageSizeConfig<Value extends number = number> = {
   value: Value
   options: readonly Value[]
   onValueChange: (value: Value) => void
-  label?: ReactNode
+  label?: React.ReactNode
   ariaLabel?: string
 }
 

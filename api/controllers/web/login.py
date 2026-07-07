@@ -9,12 +9,13 @@ from werkzeug.exceptions import Unauthorized
 import services
 from configs import dify_config
 from controllers.common.fields import (
+    AccessTokenData,
     AccessTokenResultResponse,
     LoginStatusResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
 )
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -62,7 +63,12 @@ class EmailCodeLoginVerifyPayload(BaseModel):
     token: str = Field(min_length=1)
 
 
-register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload)
+class LoginStatusQuery(BaseModel):
+    app_code: str | None = Field(default=None, description="Web app code")
+    user_id: str | None = Field(default=None, description="End user session ID")
+
+
+register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload, LoginStatusQuery)
 register_response_schema_models(
     web_ns,
     AccessTokenResultResponse,
@@ -110,9 +116,10 @@ class LoginApi(Resource):
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        response = make_response({"result": "success", "data": {"access_token": token}})
         # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
-        return response
+        return AccessTokenResultResponse(result="success", data=AccessTokenData(access_token=token)).model_dump(
+            mode="json"
+        )
 
 
 # this api helps frontend to check whether user is authenticated
@@ -122,6 +129,7 @@ class LoginStatusApi(Resource):
     @setup_required
     @web_ns.doc("web_app_login_status")
     @web_ns.doc(description="Check login status")
+    @web_ns.doc(params=query_params_from_model(LoginStatusQuery))
     @web_ns.doc(
         responses={
             200: "Login status",
@@ -130,14 +138,12 @@ class LoginStatusApi(Resource):
     )
     @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
     def get(self):
-        app_code = request.args.get("app_code")
-        user_id = request.args.get("user_id")
+        query = LoginStatusQuery.model_validate(request.args.to_dict(flat=True))
+        app_code = query.app_code
+        user_id = query.user_id
         token = extract_webapp_access_token(request)
         if not app_code:
-            return {
-                "logged_in": bool(token),
-                "app_logged_in": False,
-            }
+            return LoginStatusResponse(logged_in=bool(token), app_logged_in=False).model_dump(mode="json")
         app_id = AppService.get_app_id_by_code(app_code)
         is_public = not dify_config.ENTERPRISE_ENABLED or not WebAppAuthService.is_app_require_permission_check(
             app_id=app_id
@@ -159,10 +165,7 @@ class LoginStatusApi(Resource):
         except Exception:
             app_logged_in = False
 
-        return {
-            "logged_in": user_logged_in,
-            "app_logged_in": app_logged_in,
-        }
+        return LoginStatusResponse(logged_in=user_logged_in, app_logged_in=app_logged_in).model_dump(mode="json")
 
 
 @web_ns.route("/logout")
@@ -177,7 +180,8 @@ class LogoutApi(Resource):
     )
     @web_ns.response(200, "Logout successful", web_ns.models[SimpleResultResponse.__name__])
     def post(self):
-        response = make_response({"result": "success"})
+        # response-contract:ignore hand-crafted response
+        response = make_response(SimpleResultResponse(result="success").model_dump(mode="json"))
         # enterprise SSO sets same site to None in https deployment
         # so we need to logout by calling api
         clear_webapp_access_token_from_cookie(response, samesite="None")
@@ -210,9 +214,8 @@ class EmailCodeLoginSendEmailApi(Resource):
         account = WebAppAuthService.get_user_through_email(payload.email)
         if account is None:
             raise AuthenticationFailedError()
-        else:
-            token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
-        return {"result": "success", "data": token}
+        token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
+        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
 @web_ns.route("/email-code-login/validity")
@@ -271,9 +274,10 @@ class EmailCodeLoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         AccountService.reset_login_error_rate_limit(user_email)
-        response = make_response({"result": "success", "data": {"access_token": token}})
         # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
-        return response
+        return AccessTokenResultResponse(result="success", data=AccessTokenData(access_token=token)).model_dump(
+            mode="json"
+        )
 
 
 def _log_web_login_failure(*, email: str, reason: LoginFailureReason) -> None:

@@ -10,6 +10,8 @@ when data is present, and (3) round-trip the raw catalogue text unchanged.
 from core.workflow.generator.prompts.builder_prompts import (
     BUILDER_SYSTEM_PROMPT_ADVANCED_CHAT,
     BUILDER_SYSTEM_PROMPT_WORKFLOW,
+    compact_graph_for_builder,
+    format_builder_existing_graph_section,
     format_builder_tool_catalogue_section,
     format_plan_block,
     get_builder_system_prompt,
@@ -182,3 +184,102 @@ class TestFormatPlanBlockParentHints:
             ]
         )
         assert "parent='Ghost Container'" in out
+
+
+class TestCompactGraphForBuilder:
+    """
+    The refine-mode existing-graph JSON is the single biggest token sink in
+    the pipeline — and the builder echoes untouched nodes back, doubling the
+    cost. The compactor must drop canvas noise (recomputed in postprocess)
+    while keeping everything the builder genuinely has to preserve.
+    """
+
+    @staticmethod
+    def _graph() -> dict:
+        return {
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "custom",
+                    "position": {"x": 80, "y": 282},
+                    "positionAbsolute": {"x": 80, "y": 282},
+                    "width": 244,
+                    "height": 100,
+                    "sourcePosition": "right",
+                    "targetPosition": "left",
+                    "selected": True,
+                    "data": {"type": "start", "title": "Start", "variables": []},
+                },
+                {
+                    "id": "iter1",
+                    "type": "custom",
+                    "position": {"x": 400, "y": 282},
+                    "width": 808,
+                    "height": 204,
+                    "data": {"type": "iteration", "title": "Per Item", "start_node_id": "iter1start"},
+                },
+                {
+                    "id": "iter1start",
+                    "type": "custom-iteration-start",
+                    "parentId": "iter1",
+                    "position": {"x": 60, "y": 78},
+                    "positionAbsolute": {"x": 460, "y": 360},
+                    "data": {"type": "iteration-start", "title": ""},
+                },
+            ],
+            "edges": [
+                {
+                    "id": "node1-source-iter1-target",
+                    "source": "node1",
+                    "target": "iter1",
+                    "sourceHandle": "source",
+                    "targetHandle": "target",
+                    "type": "custom",
+                    "zIndex": 0,
+                    "data": {"sourceType": "start", "targetType": "iteration", "isInIteration": False},
+                }
+            ],
+            "viewport": {"x": 0, "y": 0, "zoom": 0.7},
+        }
+
+    def test_drops_canvas_noise_from_top_level_nodes(self):
+        compact = compact_graph_for_builder(self._graph())
+        start = next(n for n in compact["nodes"] if n["id"] == "node1")
+        for key in ("position", "positionAbsolute", "width", "height", "sourcePosition", "targetPosition", "selected"):
+            assert key not in start
+        # Semantics survive.
+        assert start["data"]["type"] == "start"
+        assert start["type"] == "custom"
+
+    def test_keeps_container_size_but_not_position(self):
+        compact = compact_graph_for_builder(self._graph())
+        container = next(n for n in compact["nodes"] if n["id"] == "iter1")
+        assert container["width"] == 808
+        assert container["height"] == 204
+        assert "position" not in container
+
+    def test_keeps_child_relative_position(self):
+        compact = compact_graph_for_builder(self._graph())
+        child = next(n for n in compact["nodes"] if n["id"] == "iter1start")
+        assert child["position"] == {"x": 60, "y": 78}
+        assert child["parentId"] == "iter1"
+        assert child["type"] == "custom-iteration-start"
+        assert "positionAbsolute" not in child
+
+    def test_edges_keep_only_topology_fields(self):
+        compact = compact_graph_for_builder(self._graph())
+        assert compact["edges"] == [
+            {"source": "node1", "target": "iter1", "sourceHandle": "source", "targetHandle": "target"}
+        ]
+
+    def test_viewport_is_dropped(self):
+        assert "viewport" not in compact_graph_for_builder(self._graph())
+
+    def test_existing_graph_section_embeds_the_compact_graph(self):
+        section = format_builder_existing_graph_section(self._graph())
+        assert "Existing graph to refine" in section
+        assert "positionAbsolute" not in section
+        assert '"start_node_id":"iter1start"' in section
+
+    def test_existing_graph_section_empty_for_create_mode(self):
+        assert format_builder_existing_graph_section(None) == ""

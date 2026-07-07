@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 import pytest
 
-from core.entities.provider_entities import ProviderConfig
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -22,9 +22,11 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 
 class _DummyTool(Tool):
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.BUILT_IN
 
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -36,7 +38,8 @@ class _DummyTool(Tool):
         yield self.create_text_message("ok")
 
 
-class _DummyController(ToolProviderController):
+class _DummyController(ToolProviderController[ToolProviderEntity, Tool]):
+    @override
     def get_tool(self, tool_name: str) -> Tool:
         entity = ToolEntity(
             identity=ToolIdentity(
@@ -63,7 +66,7 @@ def _provider_identity() -> ToolProviderIdentity:
 def test_tool_provider_controller_get_credentials_schema_returns_deep_copy():
     entity = ToolProviderEntity(
         identity=_provider_identity(),
-        credentials_schema=[ProviderConfig(type=ProviderConfig.Type.TEXT_INPUT, name="api_key", required=False)],
+        credentials_schema=[ProviderConfig(type=ProviderConfigType.TEXT_INPUT, name="api_key", required=False)],
     )
     controller = _DummyController(entity=entity)
 
@@ -85,10 +88,10 @@ def test_validate_credentials_format_covers_required_default_and_type_rules():
     entity = ToolProviderEntity(
         identity=_provider_identity(),
         credentials_schema=[
-            ProviderConfig(type=ProviderConfig.Type.TEXT_INPUT, name="required_text", required=True),
-            ProviderConfig(type=ProviderConfig.Type.SECRET_INPUT, name="secret", required=False),
-            ProviderConfig(type=ProviderConfig.Type.SELECT, name="choice", required=False, options=select_options),
-            ProviderConfig(type=ProviderConfig.Type.TEXT_INPUT, name="with_default", required=False, default="x"),
+            ProviderConfig(type=ProviderConfigType.TEXT_INPUT, name="required_text", required=True),
+            ProviderConfig(type=ProviderConfigType.SECRET_INPUT, name="secret", required=False),
+            ProviderConfig(type=ProviderConfigType.SELECT, name="choice", required=False, options=select_options),
+            ProviderConfig(type=ProviderConfigType.TEXT_INPUT, name="with_default", required=False, default="x"),
         ],
     )
     controller = _DummyController(entity=entity)

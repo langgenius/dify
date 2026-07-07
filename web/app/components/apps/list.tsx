@@ -1,54 +1,50 @@
 'use client'
 
-import type { AppListQuery } from '@/contract/console/apps'
+import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { keepPreviousData, useInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SearchInput } from '@/app/components/base/search-input'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { CheckModal } from '@/hooks/use-pay'
-import dynamic from '@/next/dynamic'
-import Link from '@/next/link'
-import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { normalizeAppPagination } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
-import AppCard from './app-card'
+import { hasPermission } from '@/utils/permission'
+import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
-import { AppTypeFilter } from './app-type-filter'
-import { APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
-import CreatorsFilter from './creators-filter'
+import { AppListCreationModals } from './app-list-creation-modals'
+import { AppListHeaderFilters } from './app-list-header-filters'
+import { AppListTagManagementModal } from './app-list-tag-management-modal'
+import { APP_LIST_GRID_CLASS_NAME, APP_LIST_SEARCH_DEBOUNCE_MS } from './constants'
 import Empty from './empty'
-import Footer from './footer'
+import FirstEmptyState from './first-empty-state'
 import { useAppsQueryState } from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
 import { useWorkflowOnlineUsers } from './hooks/use-workflow-online-users'
-import NewAppCard from './new-app-card'
+import { StarredAppList } from './starred-app-list'
+import { StudioListHeader } from './studio-list-header'
 
-const TagManagementModal = dynamic(() => import('@/features/tag-management/components/tag-management-modal').then(mod => mod.TagManagementModal), {
-  ssr: false,
-})
-const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
-  ssr: false,
-})
+const STARRED_APP_LIMIT = 100
 
-type Props = {
+type AppListQuery = NonNullable<GetAppsData['query']>
+type AppListSortBy = NonNullable<AppListQuery['sort_by']>
+
+type Props = Readonly<{
   controlRefreshList?: number
-}
+}>
+
 function List({
   controlRefreshList = 0,
 }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace } = useAppContext()
-  const searchParams = useSearchParams()
-  const pathname = usePathname()
-  const { replace } = useRouter()
+  const { workspacePermissionKeys } = useAppContext()
+  const { onPlanInfoChanged } = useProviderContext()
 
   // eslint-disable-next-line react/use-state -- custom URL query hook, not React.useState
   const {
@@ -58,43 +54,40 @@ function List({
     setCreatorIDs,
   } = useAppsQueryState()
   const [tagIDs, setTagIDs] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
-  const newAppCardRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
+  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
+  const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const [needRefreshAppList, setNeedRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
+  const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const handleDSLFileDropped = useCallback((file: File) => {
+    if (!canCreateApp)
+      return
+
     setDroppedDSLFile(file)
     setShowCreateFromDSLModal(true)
-  }, [])
+  }, [canCreateApp])
 
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
     containerRef,
-    enabled: isCurrentWorkspaceEditor,
+    enabled: canCreateApp,
   })
-
-  useEffect(() => {
-    if (!searchParams.has('tagIDs'))
-      return
-
-    const params = new URLSearchParams(searchParams.toString())
-    params.delete('tagIDs')
-    const query = params.toString()
-    replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
-  }, [pathname, replace, searchParams])
 
   const appListQuery = useMemo<AppListQuery>(() => ({
     page: 1,
     limit: 30,
     name: debouncedKeywords,
+    sort_by: sortBy,
     ...(tagIDs.length ? { tag_ids: tagIDs } : {}),
     ...(creatorIDs.length ? { creator_ids: creatorIDs } : {}),
     ...(category !== 'all' ? { mode: category } : {}),
-  }), [category, creatorIDs, debouncedKeywords, tagIDs])
+  }), [category, creatorIDs, debouncedKeywords, sortBy, tagIDs])
 
   const {
     data,
@@ -106,7 +99,7 @@ function List({
     error,
     refetch,
   } = useInfiniteQuery({
-    ...consoleQuery.apps.list.infiniteOptions({
+    ...consoleQuery.apps.get.infiniteOptions({
       input: pageParam => ({
         query: {
           ...appListQuery,
@@ -117,28 +110,51 @@ function List({
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    enabled: !isCurrentWorkspaceDatasetOperator,
+    select: data => ({
+      ...data,
+      pages: data.pages.map(normalizeAppPagination),
+    }),
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
 
+  const starredAppListQuery = useMemo<AppListQuery>(() => ({
+    ...appListQuery,
+    page: 1,
+    limit: STARRED_APP_LIMIT,
+  }), [appListQuery])
+
+  const {
+    data: starredAppList,
+    refetch: refetchStarredAppList,
+  } = useQuery({
+    ...consoleQuery.apps.starred.get.queryOptions({
+      input: {
+        query: starredAppListQuery,
+      },
+      select: normalizeAppPagination,
+    }),
+  })
+
+  const refreshAppLists = useCallback(() => {
+    void refetch()
+    void refetchStarredAppList()
+  }, [refetch, refetchStarredAppList])
+
   useEffect(() => {
-    if (controlRefreshList > 0) {
+    if (controlRefreshList > 0)
       refetch()
-    }
   }, [controlRefreshList, refetch])
 
   const anchorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (needRefreshAppList === '1') {
-      setNeedRefreshAppList(null)
+    if (needsRefreshAppList === '1') {
+      setNeedsRefreshAppList(null)
       refetch()
     }
-  }, [needRefreshAppList, refetch, setNeedRefreshAppList])
+  }, [needsRefreshAppList, refetch, setNeedsRefreshAppList])
 
   useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
@@ -149,9 +165,8 @@ function List({
     }
 
     if (anchorRef.current && containerRef.current) {
-      // Calculate dynamic rootMargin: clamps to 100-200px range, using 20% of container height as the base value for better responsiveness
       const containerHeight = containerRef.current.clientHeight
-      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
+      const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200))
 
       observer = new IntersectionObserver((entries) => {
         if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
@@ -159,15 +174,16 @@ function List({
       }, {
         root: containerRef.current,
         rootMargin: `${dynamicMargin}px`,
-        threshold: 0.1, // Trigger when 10% of the anchor element is visible
+        threshold: 0.1,
       })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
+  const starredApps = useMemo(() => starredAppList?.data ?? [], [starredAppList?.data])
 
   const workflowOnlineUserAppIds = useMemo(() => {
     const appIds = new Set<string>()
@@ -185,9 +201,23 @@ function List({
     enabled: systemFeatures.enable_collaboration_mode,
   })
 
+  const hasResolvedFirstPage = pages.length > 0
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
-  // Show skeleton during initial load or when refetching with no previous data
+  const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || creatorIDs.length > 0
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
+  const showFirstEmptyState = !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const openCreateBlankModal = useCallback(() => {
+    if (canCreateApp)
+      setShowNewAppModal(true)
+  }, [canCreateApp])
+  const openCreateTemplateDialog = useCallback(() => {
+    if (canCreateApp)
+      setShowNewAppTemplateDialog(true)
+  }, [canCreateApp])
+  const openCreateFromDSLModal = useCallback(() => {
+    if (canCreateApp)
+      setShowCreateFromDSLModal(true)
+  }, [canCreateApp])
 
   return (
     <>
@@ -197,78 +227,74 @@ function List({
           </div>
         )}
 
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 bg-background-body px-12 pt-7 pb-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <AppTypeFilter
-              value={category}
-              onChange={setCategory}
-            />
-            <CreatorsFilter
-              value={creatorIDs}
-              onChange={setCreatorIDs}
-            />
-            <TagFilter type="app" value={tagIDs} onChange={setTagIDs} onOpenTagManagement={() => setShowTagManagementModal(true)} />
-            <div className="relative w-50">
-              <span aria-hidden className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder" />
-              <SearchInput
-                className="w-52"
-                value={keywords}
-                onValueChange={setKeywords}
-                placeholder={t('operation.search', { ns: 'common' })}
-                aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
-              />
-              {!!keywords && (
-                <button
-                  type="button"
-                  aria-label={t('operation.clear', { ns: 'common' })}
-                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
-                  onClick={() => setKeywords('')}
-                >
-                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
-                </button>
-              )}
+        <StudioListHeader
+          title={(
+            <div className="flex items-center">
+              <h1 className="text-[18px]/[21.6px] font-semibold text-text-primary">{t('menus.apps', { ns: 'common' })}</h1>
             </div>
-          </div>
-          <Link
-            href="/snippets"
-            className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold text-text-secondary hover:bg-state-base-hover hover:text-text-primary"
-          >
-            {t('studio.viewSnippets', { ns: 'app' })}
-          </Link>
-        </div>
-        <div className={cn(
-          'relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 2k:grid-cols-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5',
-          !hasAnyApp && 'overflow-hidden',
-        )}
+          )}
         >
-          {(isCurrentWorkspaceEditor || isLoadingCurrentWorkspace) && (
-            <NewAppCard
-              ref={newAppCardRef}
-              isLoading={isLoadingCurrentWorkspace}
-              onSuccess={refetch}
-              selectedAppType={category}
-              className={cn(!hasAnyApp && 'z-10')}
-            />
-          )}
-          {showSkeleton
-            ? <AppCardSkeleton count={6} />
-            : hasAnyApp
-              ? apps.map(app => (
-                  <AppCard
-                    key={app.id}
-                    app={app}
-                    onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
-                    onRefresh={refetch}
-                    onOpenTagManagement={() => setShowTagManagementModal(true)}
+          <AppListHeaderFilters
+            category={category}
+            tagIDs={tagIDs}
+            keywords={keywords}
+            creatorIDs={creatorIDs}
+            sortBy={sortBy}
+            onCategoryChange={setCategory}
+            onTagIDsChange={setTagIDs}
+            onKeywordsChange={setKeywords}
+            onCreatorIDsChange={setCreatorIDs}
+            onSortByChange={setSortBy}
+            onCreateBlank={openCreateBlankModal}
+            onCreateTemplate={openCreateTemplateDialog}
+            onImportDSL={openCreateFromDSLModal}
+            onOpenTagManagement={() => setShowTagManagementModal(true)}
+            showCreateButton={canCreateApp}
+          />
+        </StudioListHeader>
+        {showFirstEmptyState
+          ? (
+              <FirstEmptyState
+                onCreateBlank={openCreateBlankModal}
+                onCreateTemplate={openCreateTemplateDialog}
+                onImportDSL={openCreateFromDSLModal}
+                showLearnDify={systemFeatures.enable_learn_app}
+              />
+            )
+          : (
+              <>
+                {starredApps.length > 0 && (
+                  <StarredAppList
+                    apps={starredApps}
+                    onRefresh={refreshAppLists}
                   />
-                ))
-              : <Empty />}
-          {isFetchingNextPage && (
-            <AppCardSkeleton count={3} />
-          )}
-        </div>
+                )}
+                <div className={cn(
+                  `relative grow content-start ${APP_LIST_GRID_CLASS_NAME}`,
+                  !hasAnyApp && 'overflow-hidden',
+                )}
+                >
+                  {showSkeleton
+                    ? <AppCardSkeleton count={6} />
+                    : hasAnyApp
+                      ? apps.map(app => (
+                          <AppCard
+                            key={app.id}
+                            app={app}
+                            onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
+                            onRefresh={refreshAppLists}
+                            onOpenTagManagement={() => setShowTagManagementModal(true)}
+                          />
+                        ))
+                      : <Empty />}
+                  {isFetchingNextPage && (
+                    <AppCardSkeleton count={3} />
+                  )}
+                </div>
+              </>
+            )}
 
-        {isCurrentWorkspaceEditor && (
+        {canCreateApp && !showFirstEmptyState && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
@@ -278,34 +304,29 @@ function List({
             <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}
-        {!systemFeatures.branding.enabled && (
-          <Footer />
-        )}
         <CheckModal />
         <div ref={anchorRef} className="h-0"> </div>
-        <TagManagementModal
-          type="app"
+        <AppListTagManagementModal
           show={showTagManagementModal}
           onClose={() => setShowTagManagementModal(false)}
-          onTagsChange={refetch}
+          onTagsChange={refreshAppLists}
         />
       </div>
 
-      {showCreateFromDSLModal && (
-        <CreateFromDSLModal
-          show={showCreateFromDSLModal}
-          onClose={() => {
-            setShowCreateFromDSLModal(false)
-            setDroppedDSLFile(undefined)
-          }}
-          onSuccess={() => {
-            setShowCreateFromDSLModal(false)
-            setDroppedDSLFile(undefined)
-            refetch()
-          }}
-          droppedFile={droppedDSLFile}
-        />
-      )}
+      <AppListCreationModals
+        canCreateApp={canCreateApp}
+        category={category}
+        droppedDSLFile={droppedDSLFile}
+        showCreateFromDSLModal={showCreateFromDSLModal}
+        showNewAppModal={showNewAppModal}
+        showNewAppTemplateDialog={showNewAppTemplateDialog}
+        onPlanInfoChanged={onPlanInfoChanged}
+        onRefetch={refreshAppLists}
+        onSetDroppedDSLFile={setDroppedDSLFile}
+        onSetShowCreateFromDSLModal={setShowCreateFromDSLModal}
+        onSetShowNewAppModal={setShowNewAppModal}
+        onSetShowNewAppTemplateDialog={setShowNewAppTemplateDialog}
+      />
     </>
   )
 }

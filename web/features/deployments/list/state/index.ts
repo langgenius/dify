@@ -1,0 +1,141 @@
+'use client'
+
+import type { ReactNode } from 'react'
+import { keepPreviousData } from '@tanstack/react-query'
+import { atom } from 'jotai'
+import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
+import { useHydrateAtoms } from 'jotai/utils'
+import { parseAsString, useQueryState } from 'nuqs'
+import { consoleQuery } from '@/service/client'
+import { deploymentStatusPollingInterval } from '../../shared/domain/runtime-status'
+
+const DEPLOYMENTS_LIST_PAGE_SIZE = 100
+
+export const envFilterQueryState = parseAsString.withOptions({ history: 'push' })
+export const keywordsQueryState = parseAsString.withDefault('').withOptions({ history: 'push' })
+
+// Mirrors nuqs URL state. DeploymentsListStateBoundary force-hydrates these
+// atoms on render so query atoms can read URL filters through Jotai.
+const deploymentsListKeywordsAtom = atom('')
+const deploymentsListEnvironmentIdAtom = atom<string | null>(null)
+
+export type DeploymentsListEnvironmentFilterOption = {
+  kind: 'all' | 'environment'
+  value: string | null
+  displayName?: string
+}
+
+export function DeploymentsListStateBoundary({ children }: {
+  children: ReactNode
+}) {
+  const [envFilter] = useQueryState('env', envFilterQueryState)
+  const [keywords] = useQueryState('keywords', keywordsQueryState)
+
+  useHydrateAtoms([
+    [deploymentsListEnvironmentIdAtom, envFilter],
+    [deploymentsListKeywordsAtom, keywords],
+  ] as const, { dangerouslyForceHydrate: true })
+
+  return children
+}
+
+const deploymentsListEnvironmentsQueryAtom = atomWithQuery(() => {
+  return consoleQuery.enterprise.environmentService.listEnvironments.queryOptions({
+    input: {
+      query: {
+        // The filter lists every deployable environment; environment count is
+        // capped well below the 100-per-page maximum.
+        pageNumber: 1,
+        resultsPerPage: 100,
+      },
+    },
+  })
+})
+
+export const deploymentsListEnvironmentFilterOptionsAtom = atom((get): DeploymentsListEnvironmentFilterOption[] => {
+  const environments = get(deploymentsListEnvironmentsQueryAtom).data?.environments ?? []
+
+  return [
+    {
+      kind: 'all',
+      value: null,
+    },
+    ...environments.map(environment => ({
+      kind: 'environment' as const,
+      value: environment.id,
+      displayName: environment.displayName,
+    })),
+  ]
+})
+
+export const deploymentsListSelectedEnvironmentFilterOptionAtom = atom((get): DeploymentsListEnvironmentFilterOption => {
+  const envFilter = get(deploymentsListEnvironmentIdAtom)
+  const options = get(deploymentsListEnvironmentFilterOptionsAtom)
+  const allOption = options[0] ?? { kind: 'all' as const, value: null }
+
+  return options.find(option => option.value === envFilter)
+    ?? (envFilter
+      ? {
+          kind: 'environment',
+          value: envFilter,
+          displayName: envFilter,
+        }
+      : allOption)
+})
+
+export const deploymentsListQueryAtom = atomWithInfiniteQuery((get) => {
+  const queryKeywords = get(deploymentsListKeywordsAtom).trim()
+  const queryEnvironmentId = get(deploymentsListEnvironmentIdAtom) ?? undefined
+
+  return consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.infiniteOptions({
+    input: pageParam => ({
+      query: {
+        pageNumber: Number(pageParam),
+        resultsPerPage: DEPLOYMENTS_LIST_PAGE_SIZE,
+        ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
+        ...(queryKeywords ? { displayName: queryKeywords } : {}),
+      },
+    }),
+    getNextPageParam: (lastPage) => {
+      const currentPage = lastPage.pagination?.currentPage ?? 1
+      const totalPages = lastPage.pagination?.totalPages ?? 1
+
+      return currentPage < totalPages ? currentPage + 1 : undefined
+    },
+    initialPageParam: 1,
+    placeholderData: keepPreviousData,
+    refetchInterval: (query) => {
+      const rows = query.state.data?.pages.flatMap(page =>
+        page.appInstanceSummaries.flatMap(summary => summary.environmentDeployments),
+      ) ?? []
+
+      return deploymentStatusPollingInterval(rows)
+    },
+  })
+})
+
+export const deploymentsListRowsAtom = atom((get) => {
+  return get(deploymentsListQueryAtom).data?.pages.flatMap(page => page.appInstanceSummaries) ?? []
+})
+
+export const deploymentsListShowSkeletonAtom = atom((get) => {
+  const deploymentsListQuery = get(deploymentsListQueryAtom)
+  const pages = deploymentsListQuery.data?.pages ?? []
+
+  return deploymentsListQuery.isLoading || (deploymentsListQuery.isFetching && pages.length === 0)
+})
+
+export const deploymentsListShowEmptyStateAtom = atom((get) => {
+  return !get(deploymentsListShowSkeletonAtom)
+    && !get(deploymentsListQueryAtom).isError
+    && get(deploymentsListRowsAtom).length === 0
+})
+
+export const deploymentsListShowErrorStateAtom = atom((get) => {
+  return !get(deploymentsListShowSkeletonAtom)
+    && get(deploymentsListQueryAtom).isError
+})
+
+export const deploymentsListHasFilterAtom = atom((get) => {
+  return Boolean(get(deploymentsListKeywordsAtom).trim() || get(deploymentsListEnvironmentIdAtom))
+})

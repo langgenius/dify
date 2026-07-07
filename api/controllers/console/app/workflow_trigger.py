@@ -9,9 +9,10 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import login_required
 from models.enums import AppTriggerStatus
 from models.model import App, AppMode
@@ -19,7 +20,15 @@ from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
 from .. import console_ns
 from ..app.wraps import get_app_model
-from ..wraps import account_initialization_required, edit_permission_required, setup_required, with_current_tenant_id
+from ..wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    edit_permission_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_tenant_id,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,12 +95,13 @@ register_schema_models(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.expect(console_ns.models[Parser.__name__])
+    @console_ns.doc(params=query_params_from_model(Parser))
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
     @console_ns.response(200, "Success", console_ns.models[WebhookTriggerResponse.__name__])
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.WORKFLOW)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
         args = Parser.model_validate(request.args.to_dict(flat=True))
@@ -112,7 +122,7 @@ class WebhookTriggerApi(Resource):
             if not webhook_trigger:
                 raise NotFound("Webhook trigger not found for this node")
 
-            return WebhookTriggerResponse.model_validate(webhook_trigger, from_attributes=True).model_dump(mode="json")
+            return dump_response(WebhookTriggerResponse, webhook_trigger)
 
 
 @console_ns.route("/apps/<uuid:app_id>/triggers")
@@ -122,9 +132,10 @@ class AppTriggersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.WORKFLOW)
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerListResponse.__name__])
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model(mode=AppMode.WORKFLOW)
     def get(self, current_tenant_id: str, app_model: App):
         """Get app triggers list"""
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
@@ -150,9 +161,7 @@ class AppTriggersApi(Resource):
             else:
                 trigger.icon = ""  # type: ignore
 
-        return WorkflowTriggerListResponse.model_validate({"data": triggers}, from_attributes=True).model_dump(
-            mode="json"
-        )
+        return dump_response(WorkflowTriggerListResponse, {"data": triggers})
 
 
 @console_ns.route("/apps/<uuid:app_id>/trigger-enable")
@@ -162,9 +171,10 @@ class AppTriggerEnableApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @get_app_model(mode=AppMode.WORKFLOW)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(200, "Success", console_ns.models[WorkflowTriggerResponse.__name__])
     @with_current_tenant_id
+    @get_app_model(mode=AppMode.WORKFLOW)
     def post(self, current_tenant_id: str, app_model: App):
         """Update app trigger (enable/disable)"""
         args = ParserEnable.model_validate(console_ns.payload)
@@ -193,4 +203,4 @@ class AppTriggerEnableApi(Resource):
         else:
             trigger.icon = ""  # type: ignore
 
-        return WorkflowTriggerResponse.model_validate(trigger, from_attributes=True).model_dump(mode="json")
+        return dump_response(WorkflowTriggerResponse, trigger)

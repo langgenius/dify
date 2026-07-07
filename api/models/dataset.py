@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session
 
 from configs import dify_config
 from core.rag.entities import ParentMode, Rule
@@ -167,6 +167,7 @@ class Dataset(Base):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
         sa.Index("dataset_tenant_idx", "tenant_id"),
+        sa.Index("dataset_tenant_maintainer_idx", "tenant_id", "maintainer"),
         adjusted_json_index("retrieval_model_idx", "retrieval_model"),
     )
 
@@ -188,6 +189,7 @@ class Dataset(Base):
     indexing_technique: Mapped[IndexTechniqueType | None] = mapped_column(EnumText(IndexTechniqueType, length=255))
     index_struct = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
+    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at = mapped_column(
@@ -1668,7 +1670,7 @@ class Pipeline(TypeBase):
         init=False,
     )
 
-    def retrieve_dataset(self, session: Session):
+    def retrieve_dataset(self, session: Session | scoped_session):
         return session.scalar(select(Dataset).where(Dataset.pipeline_id == self.id))
 
 

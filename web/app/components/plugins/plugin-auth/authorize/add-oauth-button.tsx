@@ -31,6 +31,11 @@ export type AddOAuthButtonProps = {
   dividerClassName?: string
   disabled?: boolean
   onUpdate?: () => void
+  renderTrigger?: (props: {
+    disabled?: boolean
+    isConfigured: boolean
+    onClick: () => void
+  }) => React.ReactNode
   oAuthData?: {
     schema?: FormSchema[]
     is_oauth_custom_client_enabled?: boolean
@@ -51,6 +56,7 @@ const AddOAuthButton = ({
   dividerClassName,
   disabled,
   onUpdate,
+  renderTrigger,
   oAuthData,
 }: AddOAuthButtonProps) => {
   const { t } = useTranslation()
@@ -67,8 +73,8 @@ const AddOAuthButton = ({
   }, [oAuthData, data])
   const {
     schema = [],
-    is_oauth_custom_client_enabled,
-    is_system_oauth_params_exists,
+    is_oauth_custom_client_enabled = false,
+    is_system_oauth_params_exists = false,
     client_params = {},
     redirect_uri,
   } = mergedOAuthData
@@ -186,7 +192,14 @@ const AddOAuthButton = ({
   return (
     <>
       {
-        isConfigured && (
+        renderTrigger?.({
+          disabled,
+          isConfigured,
+          onClick: isConfigured ? handleOAuth : openOAuthSettings,
+        })
+      }
+      {
+        !renderTrigger && isConfigured && (
           <div className={cn('flex w-full', className)}>
             <Button
               variant={buttonVariant}
@@ -199,7 +212,6 @@ const AddOAuthButton = ({
             >
               <div
                 className="truncate"
-                title={buttonText}
               >
                 {buttonText}
               </div>
@@ -240,7 +252,7 @@ const AddOAuthButton = ({
         )
       }
       {
-        !isConfigured && (
+        !renderTrigger && !isConfigured && (
           <Button
             variant={buttonVariant}
             onClick={openOAuthSettings}

@@ -4,9 +4,13 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type TenantListResponse = {
+  workspaces: Array<TenantListItemResponse>
+}
+
 export type TenantInfoResponse = {
   created_at?: number | null
-  custom_config?: WorkspaceCustomConfigResponse
+  custom_config?: WorkspaceCustomConfigResponse | null
   id: string
   in_trial?: boolean | null
   name?: string | null
@@ -19,12 +23,20 @@ export type TenantInfoResponse = {
   trial_end_reason?: string | null
 }
 
-export type SnippetPagination = {
-  data?: Array<AnonymousInlineModel7B67Ac8A4Db8>
-  has_more?: boolean
-  limit?: number
-  page?: number
-  total?: number
+export type AgentProviderResponse = {
+  [key: string]: unknown
+}
+
+export type AgentProviderListResponse = Array<{
+  [key: string]: unknown
+}>
+
+export type SnippetPaginationResponse = {
+  data: Array<SnippetListItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type CreateSnippetPayload = {
@@ -32,38 +44,34 @@ export type CreateSnippetPayload = {
   graph?: {
     [key: string]: unknown
   } | null
-  icon_info?: IconInfo
+  icon_info?: IconInfo | null
   input_fields?: Array<InputFieldDefinition> | null
   name: string
   type?: 'group' | 'node'
 }
 
-export type Snippet = {
-  created_at?: {
+export type SnippetResponse = {
+  created_at: number
+  created_by: SnippetAccountResponse | null
+  description: string | null
+  graph: {
     [key: string]: unknown
   }
-  created_by?: AnonymousInlineModelB0Fd3F86D9D5
-  description?: string
-  graph?: {
+  icon_info: {
     [key: string]: unknown
-  }
-  icon_info?: {
+  } | null
+  id: string
+  input_fields: Array<{
     [key: string]: unknown
-  }
-  id?: string
-  input_fields?: {
-    [key: string]: unknown
-  }
-  is_published?: boolean
-  name?: string
-  tags?: Array<AnonymousInlineModel7B8B49Ca164e>
-  type?: string
-  updated_at?: {
-    [key: string]: unknown
-  }
-  updated_by?: AnonymousInlineModelB0Fd3F86D9D5
-  use_count?: number
-  version?: number
+  }>
+  is_published: boolean
+  name: string
+  tags: Array<SnippetTagResponse>
+  type: SnippetType
+  updated_at: number
+  updated_by: SnippetAccountResponse | null
+  use_count: number
+  version: number
 }
 
 export type SnippetImportPayload = {
@@ -75,14 +83,38 @@ export type SnippetImportPayload = {
   yaml_url?: string | null
 }
 
+export type SnippetImportResponse = {
+  current_dsl_version: string
+  error: string
+  id: string
+  imported_dsl_version: string
+  snippet_id: string | null
+  status: ImportStatus
+}
+
 export type UpdateSnippetPayload = {
   description?: string | null
-  icon_info?: IconInfo
+  icon_info?: IconInfo | null
   name?: string | null
 }
 
-export type AccountWithRoleList = {
-  accounts: Array<AccountWithRole>
+export type SnippetDependencyCheckResponse = {
+  leaked_dependencies: Array<PluginDependency>
+}
+
+export type TextFileResponse = string
+
+export type SnippetUseCountResponse = {
+  result: string
+  use_count: number
+}
+
+export type AccountWithRoleListResponse = {
+  accounts: Array<AccountWithRoleResponse>
+}
+
+export type DefaultModelDataResponse = {
+  data?: DefaultModelResponse | null
 }
 
 export type ParserPostDefault = {
@@ -101,7 +133,7 @@ export type EndpointCreatePayload = {
   }
 }
 
-export type EndpointCreateResponse = {
+export type SuccessResponse = {
   success: boolean
 }
 
@@ -109,28 +141,8 @@ export type EndpointIdPayload = {
   endpoint_id: string
 }
 
-export type EndpointDeleteResponse = {
-  success: boolean
-}
-
-export type EndpointDisableResponse = {
-  success: boolean
-}
-
-export type EndpointEnableResponse = {
-  success: boolean
-}
-
 export type EndpointListResponse = {
-  endpoints: Array<{
-    [key: string]: unknown
-  }>
-}
-
-export type PluginEndpointListResponse = {
-  endpoints: Array<{
-    [key: string]: unknown
-  }>
+  endpoints: Array<EndpointListItemResponse>
 }
 
 export type LegacyEndpointUpdatePayload = {
@@ -139,10 +151,6 @@ export type LegacyEndpointUpdatePayload = {
   settings: {
     [key: string]: unknown
   }
-}
-
-export type EndpointUpdateResponse = {
-  success: boolean
 }
 
 export type EndpointUpdatePayload = {
@@ -155,7 +163,13 @@ export type EndpointUpdatePayload = {
 export type MemberInvitePayload = {
   emails?: Array<string>
   language?: string | null
-  role: TenantAccountRole
+  role: string
+}
+
+export type MemberInviteResponse = {
+  invitation_results: Array<MemberInviteResultResponse>
+  result: string
+  tenant_id: string
 }
 
 export type OwnerTransferCheckPayload = {
@@ -178,6 +192,11 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type MemberActionResponse = {
+  result: string
+  tenant_id: string
+}
+
 export type OwnerTransferPayload = {
   token: string
 }
@@ -186,8 +205,22 @@ export type MemberRoleUpdatePayload = {
   role: string
 }
 
+export type ModelProviderListResponse = {
+  data: Array<ProviderResponse>
+}
+
+export type ModelProviderPaymentCheckoutUrlResponse = {
+  payment_link: string
+}
+
 export type ParserCredentialDelete = {
   credential_id: string
+}
+
+export type ProviderCredentialResponse = {
+  credentials?: {
+    [key: string]: unknown
+  } | null
 }
 
 export type ParserCredentialCreate = {
@@ -215,15 +248,24 @@ export type ParserCredentialValidate = {
   }
 }
 
+export type ProviderCredentialValidateResponse = {
+  error?: string | null
+  result: 'error' | 'success'
+}
+
 export type ParserDeleteModels = {
   model: string
   model_type: ModelType
 }
 
+export type ModelWithProviderListResponse = {
+  data: Array<ModelWithProviderEntityResponse>
+}
+
 export type ParserPostModels = {
   config_from?: string | null
   credential_id?: string | null
-  load_balancing?: LoadBalancingPayload
+  load_balancing?: LoadBalancingPayload | null
   model: string
   model_type: ModelType
 }
@@ -232,6 +274,16 @@ export type ParserDeleteCredential = {
   credential_id: string
   model: string
   model_type: ModelType
+}
+
+export type ModelCredentialResponse = {
+  available_credentials: Array<CredentialConfiguration>
+  credentials?: {
+    [key: string]: unknown
+  }
+  current_credential_id?: string | null
+  current_credential_name?: string | null
+  load_balancing: ModelCredentialLoadBalancingResponse
 }
 
 export type ParserCreateCredential = {
@@ -267,6 +319,11 @@ export type ParserValidate = {
   model_type: ModelType
 }
 
+export type ModelCredentialValidateResponse = {
+  error?: string | null
+  result: string
+}
+
 export type LoadBalancingCredentialPayload = {
   credentials: {
     [key: string]: unknown
@@ -275,8 +332,21 @@ export type LoadBalancingCredentialPayload = {
   model_type: ModelType
 }
 
+export type LoadBalancingCredentialValidateResponse = {
+  error?: string | null
+  result: string
+}
+
+export type ModelParameterRulesResponse = {
+  data: Array<ParameterRule>
+}
+
 export type ParserPreferredProviderType = {
   preferred_provider_type: 'custom' | 'system'
+}
+
+export type ProviderWithModelsDataResponse = {
+  data: Array<ProviderWithModelsResponse>
 }
 
 export type WorkspacePermissionResponse = {
@@ -285,10 +355,36 @@ export type WorkspacePermissionResponse = {
   workspace_id: string
 }
 
+export type BinaryFileResponse = Blob | File
+
+export type ParserAutoUpgradeChange = {
+  auto_upgrade: PluginAutoUpgradeSettingsPayload
+  category: TenantPluginAutoUpgradeCategory
+}
+
+export type PluginAutoUpgradeChangeResponse = {
+  message?: string | null
+  success: boolean
+}
+
+export type ParserExcludePlugin = {
+  category: TenantPluginAutoUpgradeCategory
+  plugin_id: string
+}
+
+export type PluginAutoUpgradeFetchResponse = {
+  auto_upgrade: PluginAutoUpgradeSettingsResponseModel
+  category: TenantPluginAutoUpgradeCategory
+}
+
 export type PluginDebuggingKeyResponse = {
   host: string
   key: string
   port: number
+}
+
+export type PluginManifestResponse = {
+  manifest: unknown
 }
 
 export type ParserGithubInstall = {
@@ -298,12 +394,33 @@ export type ParserGithubInstall = {
   version: string
 }
 
+export type PluginDaemonOperationResponse = unknown
+
 export type ParserPluginIdentifiers = {
   plugin_unique_identifiers: Array<string>
 }
 
+export type PluginListResponse = {
+  plugins: unknown
+  total: number
+}
+
 export type ParserLatest = {
   plugin_ids: Array<string>
+}
+
+export type PluginInstallationsResponse = {
+  plugins: Array<PluginInstallationItemResponse>
+}
+
+export type PluginVersionsResponse = {
+  versions: {
+    [key: string]: LatestPluginCache | null
+  }
+}
+
+export type PluginDynamicOptionsResponse = {
+  options: unknown
 }
 
 export type ParserDynamicOptionsWithCredentials = {
@@ -318,21 +435,25 @@ export type ParserDynamicOptionsWithCredentials = {
 }
 
 export type ParserPermissionChange = {
-  debug_permission: DebugPermission
-  install_permission: InstallPermission
+  debug_permission?: TenantPluginDebugPermission
+  install_permission?: TenantPluginInstallPermission
 }
 
-export type SuccessResponse = {
-  success: boolean
+export type PluginPermissionResponse = {
+  debug_permission: TenantPluginDebugPermission
+  install_permission: TenantPluginInstallPermission
 }
 
-export type ParserExcludePlugin = {
-  plugin_id: string
+export type PluginReadmeResponse = {
+  readme: string
 }
 
-export type ParserPreferencesChange = {
-  auto_upgrade: PluginAutoUpgradeSettingsPayload
-  permission: PluginPermissionSettingsPayload
+export type PluginTasksResponse = {
+  tasks: unknown
+}
+
+export type PluginTaskResponse = {
+  task: unknown
 }
 
 export type ParserUninstall = {
@@ -357,6 +478,138 @@ export type ParserGithubUpload = {
   repo: string
   version: string
 }
+
+export type PluginCategoryListResponse = {
+  builtin_tools: Array<PluginCategoryBuiltinToolProviderResponse>
+  has_more: boolean
+  plugins: Array<PluginCategoryInstalledPluginResponse>
+}
+
+export type AccessPolicyList = {
+  data?: Array<AccessPolicy>
+  pagination?: Pagination | null
+}
+
+export type AccessPolicy = {
+  category?: string
+  created_at?: number
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  policy_key?: string
+  resource_type: string
+  tenant_id?: string
+  updated_at?: number
+}
+
+export type AccessPolicyBindingState = {
+  binding_id: string
+  is_locked?: boolean
+}
+
+export type DeleteMemberBindingsRequest = {
+  account_ids?: Array<string>
+}
+
+export type MemberBindingsResponse = {
+  data?: Array<AccessPolicyMemberBinding>
+}
+
+export type RoleBindingsResponse = {
+  data?: Array<AccessPolicyRoleBinding>
+}
+
+export type AppAccessMatrix = {
+  app_id?: string
+  items?: Array<AccessMatrixItem>
+}
+
+export type ResourceUserAccessPoliciesResponse = {
+  data?: Array<ResourceUserAccessPolicies>
+  scope: RbacResourceWhitelistScope
+}
+
+export type ReplaceUserAccessPolicies = {
+  access_policy_ids?: Array<string>
+}
+
+export type ReplaceUserAccessPoliciesResponse = {
+  access_policies?: Array<AccessPolicy>
+}
+
+export type ResourceWhitelist = {
+  account_ids?: Array<string>
+}
+
+export type ResourceAccessScopeRequest = {
+  scope: RbacResourceWhitelistScope
+}
+
+export type DatasetAccessMatrix = {
+  dataset_id?: string
+  items?: Array<AccessMatrixItem>
+}
+
+export type MemberRolesResponse = {
+  account_id: string
+  roles?: Array<RbacRole>
+}
+
+export type ReplaceMemberRolesRequest = {
+  role_ids?: Array<string>
+}
+
+export type MyPermissionsResponse = {
+  app?: ResourcePermissionSnapshot
+  dataset?: ResourcePermissionSnapshot
+  workspace?: WorkspacePermissionSnapshot
+}
+
+export type PermissionCatalogResponse = {
+  groups?: Array<PermissionCatalogGroup>
+}
+
+export type RbacRoleList = {
+  data?: Array<RbacRole>
+  pagination?: Pagination | null
+}
+
+export type RbacRole = {
+  category?: string
+  description?: string
+  id: string
+  is_builtin?: boolean
+  name: string
+  permission_keys?: Array<string>
+  role_tag?: string
+  tenant_id?: string | null
+  type: string
+}
+
+export type MembersInRoleList = {
+  data?: Array<MembersInRole>
+  pagination?: Pagination | null
+}
+
+export type ReplaceBindingsRequest = {
+  account_ids?: Array<string>
+  role_ids?: Array<string>
+}
+
+export type AccessMatrixItem = {
+  accounts?: Array<AccessPolicyAccount>
+  policy?: AccessPolicy | null
+  roles?: Array<AccessPolicyRole>
+}
+
+export type WorkspaceAccessMatrix = {
+  items?: Array<AccessMatrixItem>
+  pagination?: Pagination | null
+}
+
+export type ToolProviderOpaqueResponse = unknown
 
 export type ApiToolProviderAddPayload = {
   credentials: {
@@ -427,6 +680,14 @@ export type BuiltinToolCredentialDeletePayload = {
   credential_id: string
 }
 
+export type ToolOAuthClientSchemaResponse = Array<{
+  [key: string]: unknown
+}>
+
+export type ToolOAuthCustomClientResponse = {
+  [key: string]: unknown
+}
+
 export type ToolOAuthCustomClientPayload = {
   client_params?: {
     [key: string]: unknown
@@ -459,7 +720,7 @@ export type McpProviderCreatePayload = {
   icon: string
   icon_background?: string
   icon_type: string
-  identity_mode?: IdentityMode
+  identity_mode?: IdentityMode | null
   name: string
   server_identifier: string
   server_url: string
@@ -478,7 +739,7 @@ export type McpProviderUpdatePayload = {
   icon: string
   icon_background?: string
   icon_type: string
-  identity_mode?: IdentityMode
+  identity_mode?: IdentityMode | null
   name: string
   provider_id: string
   server_identifier: string
@@ -520,6 +781,34 @@ export type WorkflowToolUpdatePayload = {
   workflow_tool_id: string
 }
 
+export type TriggerProviderApiEntity = {
+  author: string
+  description: I18nObject
+  events: Array<EventApiEntity>
+  icon?: string | null
+  icon_dark?: string | null
+  label: I18nObject
+  name: string
+  plugin_id?: string | null
+  plugin_unique_identifier?: string | null
+  subscription_constructor?: SubscriptionConstructor | null
+  subscription_schema?: Array<ProviderConfig>
+  supported_creation_methods?: Array<TriggerCreationMethod>
+  tags?: Array<string>
+}
+
+export type TriggerOAuthClientResponse = {
+  configured: boolean
+  custom_configured: boolean
+  custom_enabled: boolean
+  oauth_client_schema: Array<TriggerProviderConfigResponse>
+  params: {
+    [key: string]: unknown
+  }
+  redirect_uri: string
+  system_configured: boolean
+}
+
 export type TriggerOAuthClientPayload = {
   client_params?: {
     [key: string]: unknown
@@ -540,8 +829,35 @@ export type TriggerSubscriptionBuilderUpdatePayload = {
   } | null
 }
 
+export type TriggerProviderOpaqueResponse = unknown
+
 export type TriggerSubscriptionBuilderCreatePayload = {
   credential_type?: string
+}
+
+export type TriggerSubscriptionBuilderCreateResponse = {
+  subscription_builder: SubscriptionBuilderApiEntity
+}
+
+export type TriggerSubscriptionBuilderLogsResponse = {
+  logs: Array<RequestLog>
+}
+
+export type SubscriptionBuilderApiEntity = {
+  credential_type: CredentialType
+  credentials: {
+    [key: string]: string
+  }
+  endpoint: string
+  id: string
+  name: string
+  parameters: {
+    [key: string]: unknown
+  }
+  properties: {
+    [key: string]: unknown
+  }
+  provider: string
 }
 
 export type TriggerSubscriptionBuilderVerifyPayload = {
@@ -550,9 +866,32 @@ export type TriggerSubscriptionBuilderVerifyPayload = {
   }
 }
 
+export type TriggerSubscriptionBuilderVerifyResponse = {
+  verified: boolean
+}
+
+export type TriggerSubscriptionListResponse = Array<TriggerProviderSubscriptionApiEntity>
+
+export type TriggerOAuthAuthorizeResponse = {
+  authorization_url: string
+  subscription_builder: SubscriptionBuilderApiEntity
+  subscription_builder_id: string
+}
+
+export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
+
 export type WorkspaceCustomConfigPayload = {
   remove_webapp_brand?: boolean | null
   replace_webapp_logo?: string | null
+}
+
+export type WorkspaceTenantResultResponse = {
+  result: string
+  tenant: TenantInfoResponse
+}
+
+export type WorkspaceLogoUploadResponse = {
+  id: string
 }
 
 export type WorkspaceInfoPayload = {
@@ -563,32 +902,43 @@ export type SwitchWorkspacePayload = {
   tenant_id: string
 }
 
+export type SwitchWorkspaceResponse = {
+  new_tenant: TenantInfoResponse
+  result: string
+}
+
+export type TenantListItemResponse = {
+  created_at?: number | null
+  current: boolean
+  id: string
+  last_opened_at?: number | null
+  name?: string | null
+  plan?: string | null
+  status?: string | null
+}
+
 export type WorkspaceCustomConfigResponse = {
   remove_webapp_brand?: boolean | null
   replace_webapp_logo?: string | null
 }
 
-export type AnonymousInlineModel7B67Ac8A4Db8 = {
-  author_name?: string
-  created_at?: {
+export type SnippetListItemResponse = {
+  author_name: string | null
+  created_at: number
+  created_by: string | null
+  description: string | null
+  icon_info: {
     [key: string]: unknown
-  }
-  created_by?: string
-  description?: string
-  icon_info?: {
-    [key: string]: unknown
-  }
-  id?: string
-  is_published?: boolean
-  name?: string
-  tags?: Array<AnonymousInlineModel7B8B49Ca164e>
-  type?: string
-  updated_at?: {
-    [key: string]: unknown
-  }
-  updated_by?: string
-  use_count?: number
-  version?: number
+  } | null
+  id: string
+  is_published: boolean
+  name: string
+  tags: Array<SnippetTagResponse>
+  type: SnippetType
+  updated_at: number
+  updated_by: string | null
+  use_count: number
+  version: number
 }
 
 export type IconInfo = {
@@ -609,20 +959,31 @@ export type InputFieldDefinition = {
   type?: string | null
 }
 
-export type AnonymousInlineModelB0Fd3F86D9D5 = {
-  email?: string
-  id?: string
-  name?: string
+export type SnippetAccountResponse = {
+  email: string
+  id: string
+  name: string
 }
 
-export type AnonymousInlineModel7B8B49Ca164e = {
-  id?: string
-  name?: string
-  type?: string
+export type SnippetTagResponse = {
+  id: string
+  name: string
+  type: string
 }
 
-export type AccountWithRole = {
+export type SnippetType = 'group' | 'node'
+
+export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type PluginDependency = {
+  current_identifier?: string | null
+  type: PluginDependencyType
+  value: Github | Marketplace | Package
+}
+
+export type AccountWithRoleResponse = {
   avatar?: string | null
+  readonly avatar_url: string | null
   created_at?: number | null
   email: string
   id: string
@@ -630,7 +991,16 @@ export type AccountWithRole = {
   last_login_at?: number | null
   name: string
   role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
   status: string
+}
+
+export type DefaultModelResponse = {
+  model: string
+  model_type: ModelType
+  provider: SimpleProviderEntityResponse
 }
 
 export type Inner = {
@@ -639,9 +1009,65 @@ export type Inner = {
   provider?: string | null
 }
 
-export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
+export type EndpointListItemResponse = {
+  created_at: string
+  declaration?: EndpointProviderDeclarationResponse
+  enabled: boolean
+  expired_at: string
+  hook_id: string
+  id: string
+  name: string
+  plugin_id: string
+  settings: {
+    [key: string]: unknown
+  }
+  tenant_id: string
+  updated_at: string
+  url: string
+}
+
+export type MemberInviteResultResponse = {
+  email: string
+  message?: string | null
+  status: string
+  url?: string | null
+}
+
+export type ProviderResponse = {
+  background?: string | null
+  configurate_methods: Array<ConfigurateMethod>
+  custom_configuration: CustomConfigurationResponse
+  description?: I18nObject | null
+  help?: ProviderHelpEntity | null
+  icon_small?: I18nObject | null
+  icon_small_dark?: I18nObject | null
+  label: I18nObject
+  model_credential_schema?: ModelCredentialSchema | null
+  preferred_provider_type: ProviderType
+  provider: string
+  provider_credential_schema?: ProviderCredentialSchema | null
+  supported_model_types: Array<ModelType>
+  system_configuration: SystemConfigurationResponse
+  tenant_id: string
+}
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+
+export type ModelWithProviderEntityResponse = {
+  deprecated?: boolean
+  features?: Array<ModelFeature> | null
+  fetch_from: FetchFrom
+  has_invalid_load_balancing_configs?: boolean
+  label: I18nObject
+  load_balancing_enabled?: boolean
+  model: string
+  model_properties: {
+    [key in ModelPropertyKey]?: unknown
+  }
+  model_type: ModelType
+  provider: SimpleProviderEntityResponse
+  status: ModelStatus
+}
 
 export type LoadBalancingPayload = {
   configs?: Array<{
@@ -650,21 +1076,222 @@ export type LoadBalancingPayload = {
   enabled?: boolean | null
 }
 
-export type DebugPermission = 'admins' | 'everyone' | 'noone'
+export type CredentialConfiguration = {
+  credential_id: string
+  credential_name: string
+}
 
-export type InstallPermission = 'admins' | 'everyone' | 'noone'
+export type ModelCredentialLoadBalancingResponse = {
+  configs?: Array<{
+    [key: string]: unknown
+  }>
+  enabled: boolean
+}
+
+export type ParameterRule = {
+  default?: unknown | null
+  help?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  max?: number | null
+  min?: number | null
+  name: string
+  options?: Array<string>
+  precision?: number | null
+  required?: boolean
+  type: ParameterType
+  use_template?: string | null
+}
+
+export type ProviderWithModelsResponse = {
+  icon_small?: I18nObject | null
+  icon_small_dark?: I18nObject | null
+  label: I18nObject
+  models: Array<ProviderModelWithStatusEntity>
+  provider: string
+  status: CustomConfigurationStatus
+  tenant_id: string
+}
 
 export type PluginAutoUpgradeSettingsPayload = {
   exclude_plugins?: Array<string>
   include_plugins?: Array<string>
-  strategy_setting?: StrategySetting
-  upgrade_mode?: UpgradeMode
+  strategy_setting?: TenantPluginAutoUpgradeStrategySetting
+  upgrade_mode?: TenantPluginAutoUpgradeMode
   upgrade_time_of_day?: number
 }
 
-export type PluginPermissionSettingsPayload = {
-  debug_permission?: DebugPermission
-  install_permission?: InstallPermission
+export type TenantPluginAutoUpgradeCategory
+  = | 'agent-strategy'
+    | 'datasource'
+    | 'extension'
+    | 'model'
+    | 'tool'
+    | 'trigger'
+
+export type PluginAutoUpgradeSettingsResponseModel = {
+  exclude_plugins: Array<string>
+  include_plugins: Array<string>
+  strategy_setting: TenantPluginAutoUpgradeStrategySetting
+  upgrade_mode: TenantPluginAutoUpgradeMode
+  upgrade_time_of_day: number
+}
+
+export type PluginInstallationItemResponse = {
+  checksum: string
+  created_at: string
+  declaration: PluginDeclarationResponse
+  endpoints_active: number
+  endpoints_setups: number
+  id: string
+  meta: {
+    [key: string]: unknown
+  }
+  plugin_id: string
+  plugin_unique_identifier: string
+  runtime_type: string
+  source: PluginInstallationSource
+  tenant_id: string
+  updated_at: string
+  version: string
+}
+
+export type LatestPluginCache = {
+  alternative_plugin_id: string
+  deprecated_reason: string
+  plugin_id: string
+  status: 'active' | 'deleted'
+  unique_identifier: string
+  version: string
+}
+
+export type TenantPluginDebugPermission = 'admins' | 'everyone' | 'noone'
+
+export type TenantPluginInstallPermission = 'admins' | 'everyone' | 'noone'
+
+export type PluginCategoryBuiltinToolProviderResponse = {
+  allow_delete: boolean
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  icon:
+    | string
+    | {
+      [key: string]: string
+    }
+  icon_dark:
+    | string
+    | {
+      [key: string]: string
+    }
+    | null
+  id: string
+  is_team_authorization: boolean
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  labels: Array<string>
+  name: string
+  plugin_id: string | null
+  plugin_unique_identifier: string | null
+  team_credentials: {
+    [key: string]: unknown
+  }
+  tools: Array<PluginCategoryBuiltinToolResponse>
+  type: ToolProviderType
+  [key: string]: unknown
+}
+
+export type PluginCategoryInstalledPluginResponse = {
+  checksum: string
+  created_at: string
+  declaration: PluginDeclarationResponse
+  endpoints_active: number
+  endpoints_setups: number
+  id: string
+  installation_id: string
+  meta: {
+    [key: string]: unknown
+  }
+  name: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  runtime_type: string
+  source: PluginInstallationSource
+  tenant_id: string
+  updated_at: string
+  version: string
+}
+
+export type Pagination = {
+  current_page?: number
+  per_page?: number
+  total_count?: number
+  total_pages?: number
+}
+
+export type AccessPolicyMemberBinding = {
+  access_policy_id: string
+  account_id: string
+  account_name?: string
+  created_at?: number
+  id: string
+  resource_id?: string
+  resource_type: string
+  tenant_id?: string
+}
+
+export type AccessPolicyRoleBinding = {
+  access_policy_id: string
+  created_at?: number
+  id: string
+  resource_id?: string
+  resource_type: string
+  role_id: string
+  role_name?: string
+  tenant_id?: string
+}
+
+export type ResourceUserAccessPolicies = {
+  access_policies?: Array<AccessPolicy>
+  account: RbacRoleAccount
+  roles?: Array<RbacRole>
+}
+
+export type RbacResourceWhitelistScope = 'all' | 'only_me' | 'specific'
+
+export type ResourcePermissionSnapshot = {
+  default_permission_keys?: Array<string>
+  overrides?: Array<ResourcePermissionKeys>
+}
+
+export type WorkspacePermissionSnapshot = {
+  permission_keys?: Array<string>
+}
+
+export type PermissionCatalogGroup = {
+  description?: string
+  group_key: string
+  group_name: string
+  permissions?: Array<PermissionCatalogItem>
+}
+
+export type MembersInRole = {
+  account_id?: string
+  account_name?: string
+}
+
+export type AccessPolicyAccount = {
+  account_id: string
+  account_name: string
+  avatar?: string
+  binding_id: string
+  email?: string
+  is_locked?: boolean
+}
+
+export type AccessPolicyRole = {
+  binding_id: string
+  is_locked?: boolean
+  role_id: string
+  role_name: string
+  role_tag?: string
 }
 
 export type ApiProviderSchemaType = 'openai_actions' | 'openai_plugin' | 'openapi' | 'swagger'
@@ -679,11 +1306,590 @@ export type WorkflowToolParameterConfiguration = {
   name: string
 }
 
-export type StrategySetting = 'disabled' | 'fix_only' | 'latest'
+export type I18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
 
-export type UpgradeMode = 'all' | 'exclude' | 'partial'
+export type EventApiEntity = {
+  description: I18nObject
+  identity: EventIdentity
+  name: string
+  output_schema: {
+    [key: string]: unknown
+  } | null
+  parameters: Array<EventParameter>
+}
+
+export type SubscriptionConstructor = {
+  credentials_schema?: Array<ProviderConfig>
+  oauth_schema?: OAuthSchema | null
+  parameters?: Array<EventParameter>
+}
+
+export type ProviderConfig = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<Option> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type: ProviderConfigType
+  url?: string | null
+}
+
+export type TriggerCreationMethod = 'APIKEY' | 'MANUAL' | 'OAUTH'
+
+export type TriggerProviderConfigResponse = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<TriggerProviderConfigOptionResponse> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type:
+    | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
+  url?: string | null
+}
+
+export type RequestLog = {
+  created_at: string
+  endpoint: string
+  id: string
+  request: {
+    [key: string]: unknown
+  }
+  response: {
+    [key: string]: unknown
+  }
+}
+
+export type TriggerProviderSubscriptionApiEntity = {
+  credential_type: CredentialType
+  credentials: {
+    [key: string]: unknown
+  }
+  endpoint: string
+  id: string
+  name: string
+  parameters: {
+    [key: string]: unknown
+  }
+  properties: {
+    [key: string]: unknown
+  }
+  provider: string
+  workflows_in_use: number
+}
+
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
+
+export type Github = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
+export type Marketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type Package = {
+  plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type SimpleProviderEntityResponse = {
+  icon_small?: I18nObject | null
+  icon_small_dark?: I18nObject | null
+  label: I18nObject
+  models?: Array<AiModelEntityResponse>
+  provider: string
+  provider_name?: string
+  supported_model_types: Array<ModelType>
+  tenant_id: string
+}
+
+export type EndpointProviderDeclarationResponse = {
+  endpoints?: Array<EndpointDeclarationResponse> | null
+  settings?: Array<EndpointProviderConfigResponse>
+}
+
+export type ConfigurateMethod = 'customizable-model' | 'predefined-model'
+
+export type CustomConfigurationResponse = {
+  available_credentials?: Array<CredentialConfiguration> | null
+  can_added_models?: Array<UnaddedModelConfiguration> | null
+  current_credential_id?: string | null
+  current_credential_name?: string | null
+  custom_models?: Array<CustomModelConfiguration> | null
+  status: CustomConfigurationStatus
+}
+
+export type ProviderHelpEntity = {
+  title: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  url: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+}
+
+export type ModelCredentialSchema = {
+  credential_form_schemas: Array<CredentialFormSchema>
+  model: FieldModelSchema
+}
+
+export type ProviderType = 'custom' | 'system'
+
+export type ProviderCredentialSchema = {
+  credential_form_schemas: Array<CredentialFormSchema>
+}
+
+export type SystemConfigurationResponse = {
+  current_quota_type?: ProviderQuotaType | null
+  enabled: boolean
+  quota_configurations?: Array<QuotaConfiguration>
+}
+
+export type ModelFeature
+  = | 'agent-thought'
+    | 'audio'
+    | 'document'
+    | 'multi-tool-call'
+    | 'polling'
+    | 'stream-tool-call'
+    | 'structured-output'
+    | 'tool-call'
+    | 'video'
+    | 'vision'
+
+export type FetchFrom = 'customizable-model' | 'predefined-model'
+
+export type ModelPropertyKey
+  = | 'audio_type'
+    | 'context_size'
+    | 'default_voice'
+    | 'file_upload_limit'
+    | 'max_characters_per_chunk'
+    | 'max_chunks'
+    | 'max_workers'
+    | 'mode'
+    | 'supported_file_extensions'
+    | 'voices'
+    | 'word_limit'
+
+export type ModelStatus
+  = | 'active'
+    | 'credential-removed'
+    | 'disabled'
+    | 'no-configure'
+    | 'no-permission'
+    | 'quota-exceeded'
+
+export type GraphonModelRuntimeEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  zh_Hans?: string | null
+}
+
+export type ParameterType = 'boolean' | 'float' | 'int' | 'string' | 'text'
+
+export type ProviderModelWithStatusEntity = {
+  deprecated?: boolean
+  features?: Array<ModelFeature> | null
+  fetch_from: FetchFrom
+  has_invalid_load_balancing_configs?: boolean
+  label: I18nObject
+  load_balancing_enabled?: boolean
+  model: string
+  model_properties: {
+    [key in ModelPropertyKey]?: unknown
+  }
+  model_type: ModelType
+  status: ModelStatus
+}
+
+export type CustomConfigurationStatus = 'active' | 'no-configure'
+
+export type TenantPluginAutoUpgradeStrategySetting = 'disabled' | 'fix_only' | 'latest'
+
+export type TenantPluginAutoUpgradeMode = 'all' | 'exclude' | 'partial'
+
+export type PluginDeclarationResponse = {
+  agent_strategy?: {
+    [key: string]: unknown
+  } | null
+  author: string | null
+  category: PluginCategory
+  created_at: string
+  datasource?: {
+    [key: string]: unknown
+  } | null
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  endpoint?: {
+    [key: string]: unknown
+  } | null
+  icon: string
+  icon_dark?: string | null
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  meta: {
+    [key: string]: unknown
+  }
+  model?: ProviderEntityResponse | null
+  name: string
+  plugins: {
+    [key: string]: Array<string> | null
+  }
+  repo?: string | null
+  resource: {
+    [key: string]: unknown
+  }
+  tags?: Array<string>
+  tool?: {
+    [key: string]: unknown
+  } | null
+  trigger?: {
+    [key: string]: unknown
+  } | null
+  verified?: boolean
+  version: string
+}
+
+export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
+
+export type CoreToolsEntitiesCommonEntitiesI18nObject = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type PluginCategoryBuiltinToolResponse = {
+  author: string
+  description: CoreToolsEntitiesCommonEntitiesI18nObject
+  label: CoreToolsEntitiesCommonEntitiesI18nObject
+  labels: Array<string>
+  name: string
+  output_schema: {
+    [key: string]: unknown
+  }
+  parameters?: Array<{
+    [key: string]: unknown
+  }> | null
+  [key: string]: unknown
+}
+
+export type ToolProviderType
+  = | 'api'
+    | 'app'
+    | 'builtin'
+    | 'dataset-retrieval'
+    | 'mcp'
+    | 'plugin'
+    | 'workflow'
+
+export type RbacRoleAccount = {
+  account_id: string
+  account_name?: string
+  avatar?: string
+  email?: string
+}
+
+export type ResourcePermissionKeys = {
+  permission_keys?: Array<string>
+  resource_id: string
+}
+
+export type PermissionCatalogItem = {
+  description?: string
+  key: string
+  name: string
+}
 
 export type ToolParameterForm = 'form' | 'llm' | 'schema'
+
+export type EventIdentity = {
+  author: string
+  label: I18nObject
+  name: string
+  provider?: string | null
+}
+
+export type EventParameter = {
+  auto_generate?: PluginParameterAutoGenerate | null
+  default?: number | number | string | Array<unknown> | null
+  description?: I18nObject | null
+  label: I18nObject
+  max?: number | number | null
+  min?: number | number | null
+  multiple?: boolean
+  name: string
+  options?: Array<PluginParameterOption> | null
+  precision?: number | null
+  required?: boolean
+  scope?: string | null
+  template?: PluginParameterTemplate | null
+  type: EventParameterType
+}
+
+export type OAuthSchema = {
+  client_schema?: Array<ProviderConfig>
+  credentials_schema?: Array<ProviderConfig>
+}
+
+export type Option = {
+  label: I18nObject
+  value: string
+}
+
+export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
+
+export type ModelSelectorScope
+  = | 'llm'
+    | 'moderation'
+    | 'rerank'
+    | 'speech2text'
+    | 'text-embedding'
+    | 'tts'
+    | 'vision'
+
+export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
+
+export type ProviderConfigType
+  = | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
+
+export type TriggerProviderConfigOptionResponse = {
+  label: I18nObject
+  value: string
+}
+
+export type AiModelEntityResponse = {
+  deprecated?: boolean
+  features?: Array<ModelFeature> | null
+  fetch_from: FetchFrom
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  model: string
+  model_properties: {
+    [key in ModelPropertyKey]?: unknown
+  }
+  model_type: ModelType
+  parameter_rules?: Array<ParameterRule>
+  pricing?: PriceConfigResponse | null
+}
+
+export type EndpointDeclarationResponse = {
+  hidden?: boolean
+  method: string
+  path: string
+}
+
+export type EndpointProviderConfigResponse = {
+  default?: number | string | number | boolean | null
+  help?: EndpointProviderConfigI18nResponse | null
+  label?: EndpointProviderConfigI18nResponse | null
+  multiple?: boolean
+  name: string
+  options?: Array<EndpointProviderConfigOptionResponse> | null
+  placeholder?: EndpointProviderConfigI18nResponse | null
+  required?: boolean
+  scope?: EndpointProviderConfigScope | null
+  type: ProviderConfigType
+  url?: string | null
+}
+
+export type UnaddedModelConfiguration = {
+  model: string
+  model_type: ModelType
+}
+
+export type CustomModelConfiguration = {
+  available_model_credentials?: Array<CredentialConfiguration>
+  credentials: {
+    [key: string]: unknown
+  } | null
+  current_credential_id?: string | null
+  current_credential_name?: string | null
+  model: string
+  model_type: ModelType
+  unadded_to_model_list?: boolean
+}
+
+export type CredentialFormSchema = {
+  default?: string | null
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  max_length?: number
+  options?: Array<FormOption> | null
+  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  required?: boolean
+  show_on?: Array<FormShowOnObject>
+  type: FormType
+  variable: string
+}
+
+export type FieldModelSchema = {
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  placeholder?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+}
+
+export type ProviderQuotaType = 'free' | 'paid' | 'trial'
+
+export type QuotaConfiguration = {
+  is_valid: boolean
+  quota_limit: number
+  quota_type: ProviderQuotaType
+  quota_unit: QuotaUnit
+  quota_used: number
+  restrict_models?: Array<RestrictModel>
+}
+
+export type PluginCategory
+  = | 'agent-strategy'
+    | 'datasource'
+    | 'extension'
+    | 'model'
+    | 'tool'
+    | 'trigger'
+
+export type ProviderEntityResponse = {
+  background?: string | null
+  configurate_methods: Array<ConfigurateMethod>
+  description?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  help?: ProviderHelpEntity | null
+  icon_small?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  icon_small_dark?: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject | null
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  model_credential_schema?: ModelCredentialSchema | null
+  models?: Array<AiModelEntityResponse>
+  position?: {
+    [key: string]: Array<string>
+  } | null
+  provider: string
+  provider_credential_schema?: ProviderCredentialSchema | null
+  provider_name?: string
+  supported_model_types: Array<ModelType>
+}
+
+export type PluginParameterAutoGenerate = {
+  type: PluginParameterAutoGenerateType
+}
+
+export type PluginParameterOption = {
+  icon?: string | null
+  label: I18nObject
+  value: string
+}
+
+export type PluginParameterTemplate = {
+  enabled?: boolean
+}
+
+export type EventParameterType
+  = | 'app-selector'
+    | 'array'
+    | 'boolean'
+    | 'checkbox'
+    | 'dynamic-select'
+    | 'file'
+    | 'files'
+    | 'model-selector'
+    | 'number'
+    | 'object'
+    | 'select'
+    | 'string'
+
+export type PriceConfigResponse = {
+  currency: string
+  input: string
+  output?: string | null
+  unit: string
+}
+
+export type EndpointProviderConfigI18nResponse = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type EndpointProviderConfigOptionResponse = {
+  label: EndpointProviderConfigI18nResponse
+  value: string
+}
+
+export type EndpointProviderConfigScope
+  = | 'all'
+    | 'builtin'
+    | 'chat'
+    | 'completion'
+    | 'custom'
+    | 'llm'
+    | 'moderation'
+    | 'rerank'
+    | 'speech2text'
+    | 'text-embedding'
+    | 'tts'
+    | 'vision'
+    | 'workflow'
+
+export type FormOption = {
+  label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
+  show_on?: Array<FormShowOnObject>
+  value: string
+}
+
+export type FormShowOnObject = {
+  value: string
+  variable: string
+}
+
+export type FormType = 'radio' | 'secret-input' | 'select' | 'switch' | 'text-input'
+
+export type QuotaUnit = 'credits' | 'times' | 'tokens'
+
+export type RestrictModel = {
+  base_model_name?: string | null
+  model: string
+  model_type: ModelType
+}
+
+export type PluginParameterAutoGenerateType = 'prompt_instruction'
+
+export type AccountWithRoleListResponseWritable = {
+  accounts: Array<AccountWithRoleResponseWritable>
+}
+
+export type AccountWithRoleResponseWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  last_active_at?: number | null
+  last_login_at?: number | null
+  name: string
+  role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
+  status: string
+}
 
 export type GetWorkspacesData = {
   body?: never
@@ -693,9 +1899,7 @@ export type GetWorkspacesData = {
 }
 
 export type GetWorkspacesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TenantListResponse
 }
 
 export type GetWorkspacesResponse = GetWorkspacesResponses[keyof GetWorkspacesResponses]
@@ -724,9 +1928,7 @@ export type GetWorkspacesCurrentAgentProviderByProviderNameData = {
 }
 
 export type GetWorkspacesCurrentAgentProviderByProviderNameResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AgentProviderResponse
 }
 
 export type GetWorkspacesCurrentAgentProviderByProviderNameResponse
@@ -740,9 +1942,7 @@ export type GetWorkspacesCurrentAgentProvidersData = {
 }
 
 export type GetWorkspacesCurrentAgentProvidersResponses = {
-  200: Array<{
-    [key: string]: unknown
-  }>
+  200: AgentProviderListResponse
 }
 
 export type GetWorkspacesCurrentAgentProvidersResponse
@@ -752,18 +1952,18 @@ export type GetWorkspacesCurrentCustomizedSnippetsData = {
   body?: never
   path?: never
   query?: {
-    creators?: Array<string> | null
-    is_published?: boolean | null
-    keyword?: string | null
+    creators?: Array<string>
+    is_published?: boolean
+    keyword?: string
     limit?: number
     page?: number
-    tag_ids?: Array<string> | null
+    tag_ids?: Array<string>
   }
   url: '/workspaces/current/customized-snippets'
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsResponses = {
-  200: SnippetPagination
+  200: SnippetPaginationResponse
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsResponse
@@ -777,16 +1977,11 @@ export type PostWorkspacesCurrentCustomizedSnippetsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type PostWorkspacesCurrentCustomizedSnippetsError
-  = PostWorkspacesCurrentCustomizedSnippetsErrors[keyof PostWorkspacesCurrentCustomizedSnippetsErrors]
-
 export type PostWorkspacesCurrentCustomizedSnippetsResponses = {
-  201: Snippet
+  201: SnippetResponse
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsResponse
@@ -800,21 +1995,12 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type PostWorkspacesCurrentCustomizedSnippetsImportsError
-  = PostWorkspacesCurrentCustomizedSnippetsImportsErrors[keyof PostWorkspacesCurrentCustomizedSnippetsImportsErrors]
-
 export type PostWorkspacesCurrentCustomizedSnippetsImportsResponses = {
-  200: {
-    [key: string]: unknown
-  }
-  202: {
-    [key: string]: unknown
-  }
+  200: SnippetImportResponse
+  202: SnippetImportResponse
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsResponse
@@ -830,18 +2016,11 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmData 
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors = {
-  400: {
-    [key: string]: unknown
-  }
+  400: unknown
 }
 
-export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmError
-  = PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors[keyof PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors]
-
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SnippetImportResponse
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
@@ -857,18 +2036,11 @@ export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
 
-export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdError
-  = DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
-
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
@@ -884,16 +2056,11 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
 
-export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdError
-  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
-
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  200: Snippet
+  200: SnippetResponse
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
@@ -909,19 +2076,12 @@ export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  404: unknown
 }
 
-export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdError
-  = PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
-
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  200: Snippet
+  200: SnippetResponse
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
@@ -937,18 +2097,11 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesDa
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
 
-export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesError
-  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors]
-
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SnippetDependencyCheckResponse
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse
@@ -959,23 +2112,18 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
   path: {
     snippet_id: string
   }
-  query?: never
+  query?: {
+    include_secret?: string
+  }
   url: '/workspaces/current/customized-snippets/{snippet_id}/export'
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
 
-export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportError
-  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors]
-
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TextFileResponse
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse
@@ -991,18 +2139,11 @@ export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementD
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors = {
-  404: {
-    [key: string]: unknown
-  }
+  404: unknown
 }
 
-export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementError
-  = PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors[keyof PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors]
-
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SnippetUseCountResponse
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse
@@ -1016,7 +2157,7 @@ export type GetWorkspacesCurrentDatasetOperatorsData = {
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponse
@@ -1026,15 +2167,13 @@ export type GetWorkspacesCurrentDefaultModelData = {
   body?: never
   path?: never
   query: {
-    model_type: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   url: '/workspaces/current/default-model'
 }
 
 export type GetWorkspacesCurrentDefaultModelResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DefaultModelDataResponse
 }
 
 export type GetWorkspacesCurrentDefaultModelResponse
@@ -1062,16 +2201,11 @@ export type PostWorkspacesCurrentEndpointsData = {
 }
 
 export type PostWorkspacesCurrentEndpointsErrors = {
-  403: {
-    [key: string]: unknown
-  }
+  403: unknown
 }
 
-export type PostWorkspacesCurrentEndpointsError
-  = PostWorkspacesCurrentEndpointsErrors[keyof PostWorkspacesCurrentEndpointsErrors]
-
 export type PostWorkspacesCurrentEndpointsResponses = {
-  200: EndpointCreateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsResponse
@@ -1085,16 +2219,11 @@ export type PostWorkspacesCurrentEndpointsCreateData = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateErrors = {
-  403: {
-    [key: string]: unknown
-  }
+  403: unknown
 }
 
-export type PostWorkspacesCurrentEndpointsCreateError
-  = PostWorkspacesCurrentEndpointsCreateErrors[keyof PostWorkspacesCurrentEndpointsCreateErrors]
-
 export type PostWorkspacesCurrentEndpointsCreateResponses = {
-  200: EndpointCreateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponse
@@ -1108,16 +2237,11 @@ export type PostWorkspacesCurrentEndpointsDeleteData = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteErrors = {
-  403: {
-    [key: string]: unknown
-  }
+  403: unknown
 }
 
-export type PostWorkspacesCurrentEndpointsDeleteError
-  = PostWorkspacesCurrentEndpointsDeleteErrors[keyof PostWorkspacesCurrentEndpointsDeleteErrors]
-
 export type PostWorkspacesCurrentEndpointsDeleteResponses = {
-  200: EndpointDeleteResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponse
@@ -1131,16 +2255,11 @@ export type PostWorkspacesCurrentEndpointsDisableData = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableErrors = {
-  403: {
-    [key: string]: unknown
-  }
+  403: unknown
 }
 
-export type PostWorkspacesCurrentEndpointsDisableError
-  = PostWorkspacesCurrentEndpointsDisableErrors[keyof PostWorkspacesCurrentEndpointsDisableErrors]
-
 export type PostWorkspacesCurrentEndpointsDisableResponses = {
-  200: EndpointDisableResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponse
@@ -1154,16 +2273,11 @@ export type PostWorkspacesCurrentEndpointsEnableData = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableErrors = {
-  403: {
-    [key: string]: unknown
-  }
+  403: unknown
 }
 
-export type PostWorkspacesCurrentEndpointsEnableError
-  = PostWorkspacesCurrentEndpointsEnableErrors[keyof PostWorkspacesCurrentEndpointsEnableErrors]
-
 export type PostWorkspacesCurrentEndpointsEnableResponses = {
-  200: EndpointEnableResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponse
@@ -1198,7 +2312,7 @@ export type GetWorkspacesCurrentEndpointsListPluginData = {
 }
 
 export type GetWorkspacesCurrentEndpointsListPluginResponses = {
-  200: PluginEndpointListResponse
+  200: EndpointListResponse
 }
 
 export type GetWorkspacesCurrentEndpointsListPluginResponse
@@ -1212,16 +2326,11 @@ export type PostWorkspacesCurrentEndpointsUpdateData = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateErrors = {
-  403: {
-    [key: string]: unknown
-  }
+  403: unknown
 }
 
-export type PostWorkspacesCurrentEndpointsUpdateError
-  = PostWorkspacesCurrentEndpointsUpdateErrors[keyof PostWorkspacesCurrentEndpointsUpdateErrors]
-
 export type PostWorkspacesCurrentEndpointsUpdateResponses = {
-  200: EndpointUpdateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponse
@@ -1237,16 +2346,11 @@ export type DeleteWorkspacesCurrentEndpointsByIdData = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
-  403: {
-    [key: string]: unknown
-  }
+  403: unknown
 }
 
-export type DeleteWorkspacesCurrentEndpointsByIdError
-  = DeleteWorkspacesCurrentEndpointsByIdErrors[keyof DeleteWorkspacesCurrentEndpointsByIdErrors]
-
 export type DeleteWorkspacesCurrentEndpointsByIdResponses = {
-  200: EndpointDeleteResponse
+  200: SuccessResponse
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponse
@@ -1262,16 +2366,11 @@ export type PatchWorkspacesCurrentEndpointsByIdData = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdErrors = {
-  403: {
-    [key: string]: unknown
-  }
+  403: unknown
 }
 
-export type PatchWorkspacesCurrentEndpointsByIdError
-  = PatchWorkspacesCurrentEndpointsByIdErrors[keyof PatchWorkspacesCurrentEndpointsByIdErrors]
-
 export type PatchWorkspacesCurrentEndpointsByIdResponses = {
-  200: EndpointUpdateResponse
+  200: SuccessResponse
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse
@@ -1285,7 +2384,7 @@ export type GetWorkspacesCurrentMembersData = {
 }
 
 export type GetWorkspacesCurrentMembersResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentMembersResponse
@@ -1299,9 +2398,7 @@ export type PostWorkspacesCurrentMembersInviteEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersInviteEmailResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: MemberInviteResponse
 }
 
 export type PostWorkspacesCurrentMembersInviteEmailResponse
@@ -1345,9 +2442,7 @@ export type DeleteWorkspacesCurrentMembersByMemberIdData = {
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: MemberActionResponse
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdResponse
@@ -1363,9 +2458,7 @@ export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferData = {
 }
 
 export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferResponse
@@ -1381,9 +2474,7 @@ export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleData = {
 }
 
 export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleResponse
@@ -1393,15 +2484,13 @@ export type GetWorkspacesCurrentModelProvidersData = {
   body?: never
   path?: never
   query?: {
-    model_type?: string | null
+    model_type?: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   url: '/workspaces/current/model-providers'
 }
 
 export type GetWorkspacesCurrentModelProvidersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ModelProviderListResponse
 }
 
 export type GetWorkspacesCurrentModelProvidersResponse
@@ -1417,9 +2506,7 @@ export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ModelProviderPaymentCheckoutUrlResponse
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse
@@ -1435,9 +2522,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse
@@ -1449,15 +2534,13 @@ export type GetWorkspacesCurrentModelProvidersByProviderCredentialsData = {
     provider: string
   }
   query?: {
-    credential_id?: string | null
+    credential_id?: string
   }
   url: '/workspaces/current/model-providers/{provider}/credentials'
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ProviderCredentialResponse
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderCredentialsResponse
@@ -1473,9 +2556,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsResponse
@@ -1491,9 +2572,7 @@ export type PutWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type PutWorkspacesCurrentModelProvidersByProviderCredentialsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PutWorkspacesCurrentModelProvidersByProviderCredentialsResponse
@@ -1525,9 +2604,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateData
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ProviderCredentialValidateResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse
@@ -1543,9 +2620,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsResponse
@@ -1561,9 +2636,7 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ModelWithProviderListResponse
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsResponse
@@ -1579,9 +2652,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsResponse
@@ -1597,9 +2668,7 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
@@ -1611,18 +2680,16 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
     provider: string
   }
   query: {
-    config_from?: string | null
-    credential_id?: string | null
+    config_from?: string
+    credential_id?: string
     model: string
-    model_type: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   url: '/workspaces/current/model-providers/{provider}/models/credentials'
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ModelCredentialResponse
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
@@ -1638,9 +2705,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsData =
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
@@ -1656,9 +2721,7 @@ export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
 }
 
 export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse
@@ -1690,9 +2753,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValida
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ModelCredentialValidateResponse
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateResponse
@@ -1742,9 +2803,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConf
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: LoadBalancingCredentialValidateResponse
   }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateResponse
@@ -1763,9 +2822,7 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConf
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: LoadBalancingCredentialValidateResponse
   }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateResponse
@@ -1783,9 +2840,7 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesData
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ModelParameterRulesResponse
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse
@@ -1817,9 +2872,7 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
 }
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ProviderWithModelsDataResponse
 }
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse
@@ -1850,13 +2903,55 @@ export type GetWorkspacesCurrentPluginAssetData = {
 }
 
 export type GetWorkspacesCurrentPluginAssetResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type GetWorkspacesCurrentPluginAssetResponse
   = GetWorkspacesCurrentPluginAssetResponses[keyof GetWorkspacesCurrentPluginAssetResponses]
+
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeData = {
+  body: ParserAutoUpgradeChange
+  path?: never
+  query?: never
+  url: '/workspaces/current/plugin/auto-upgrade/change'
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponses = {
+  200: PluginAutoUpgradeChangeResponse
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeChangeResponse
+  = PostWorkspacesCurrentPluginAutoUpgradeChangeResponses[keyof PostWorkspacesCurrentPluginAutoUpgradeChangeResponses]
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeData = {
+  body: ParserExcludePlugin
+  path?: never
+  query?: never
+  url: '/workspaces/current/plugin/auto-upgrade/exclude'
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses = {
+  200: SuccessResponse
+}
+
+export type PostWorkspacesCurrentPluginAutoUpgradeExcludeResponse
+  = PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses[keyof PostWorkspacesCurrentPluginAutoUpgradeExcludeResponses]
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchData = {
+  body?: never
+  path?: never
+  query: {
+    category: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+  }
+  url: '/workspaces/current/plugin/auto-upgrade/fetch'
+}
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponses = {
+  200: PluginAutoUpgradeFetchResponse
+}
+
+export type GetWorkspacesCurrentPluginAutoUpgradeFetchResponse
+  = GetWorkspacesCurrentPluginAutoUpgradeFetchResponses[keyof GetWorkspacesCurrentPluginAutoUpgradeFetchResponses]
 
 export type GetWorkspacesCurrentPluginDebuggingKeyData = {
   body?: never
@@ -1882,9 +2977,7 @@ export type GetWorkspacesCurrentPluginFetchManifestData = {
 }
 
 export type GetWorkspacesCurrentPluginFetchManifestResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginManifestResponse
 }
 
 export type GetWorkspacesCurrentPluginFetchManifestResponse
@@ -1901,9 +2994,7 @@ export type GetWorkspacesCurrentPluginIconData = {
 }
 
 export type GetWorkspacesCurrentPluginIconResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type GetWorkspacesCurrentPluginIconResponse
@@ -1917,9 +3008,7 @@ export type PostWorkspacesCurrentPluginInstallGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallGithubResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDaemonOperationResponse
 }
 
 export type PostWorkspacesCurrentPluginInstallGithubResponse
@@ -1933,9 +3022,7 @@ export type PostWorkspacesCurrentPluginInstallMarketplaceData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallMarketplaceResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDaemonOperationResponse
 }
 
 export type PostWorkspacesCurrentPluginInstallMarketplaceResponse
@@ -1949,9 +3036,7 @@ export type PostWorkspacesCurrentPluginInstallPkgData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallPkgResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDaemonOperationResponse
 }
 
 export type PostWorkspacesCurrentPluginInstallPkgResponse
@@ -1968,9 +3053,7 @@ export type GetWorkspacesCurrentPluginListData = {
 }
 
 export type GetWorkspacesCurrentPluginListResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginListResponse
 }
 
 export type GetWorkspacesCurrentPluginListResponse
@@ -1984,9 +3067,7 @@ export type PostWorkspacesCurrentPluginListInstallationsIdsData = {
 }
 
 export type PostWorkspacesCurrentPluginListInstallationsIdsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginInstallationsResponse
 }
 
 export type PostWorkspacesCurrentPluginListInstallationsIdsResponse
@@ -2000,9 +3081,7 @@ export type PostWorkspacesCurrentPluginListLatestVersionsData = {
 }
 
 export type PostWorkspacesCurrentPluginListLatestVersionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginVersionsResponse
 }
 
 export type PostWorkspacesCurrentPluginListLatestVersionsResponse
@@ -2018,9 +3097,7 @@ export type GetWorkspacesCurrentPluginMarketplacePkgData = {
 }
 
 export type GetWorkspacesCurrentPluginMarketplacePkgResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginManifestResponse
 }
 
 export type GetWorkspacesCurrentPluginMarketplacePkgResponse
@@ -2031,7 +3108,7 @@ export type GetWorkspacesCurrentPluginParametersDynamicOptionsData = {
   path?: never
   query: {
     action: string
-    credential_id?: string | null
+    credential_id?: string
     parameter: string
     plugin_id: string
     provider: string
@@ -2041,9 +3118,7 @@ export type GetWorkspacesCurrentPluginParametersDynamicOptionsData = {
 }
 
 export type GetWorkspacesCurrentPluginParametersDynamicOptionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDynamicOptionsResponse
 }
 
 export type GetWorkspacesCurrentPluginParametersDynamicOptionsResponse
@@ -2057,9 +3132,7 @@ export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsDa
 }
 
 export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDynamicOptionsResponse
 }
 
 export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse
@@ -2087,61 +3160,11 @@ export type GetWorkspacesCurrentPluginPermissionFetchData = {
 }
 
 export type GetWorkspacesCurrentPluginPermissionFetchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginPermissionResponse
 }
 
 export type GetWorkspacesCurrentPluginPermissionFetchResponse
   = GetWorkspacesCurrentPluginPermissionFetchResponses[keyof GetWorkspacesCurrentPluginPermissionFetchResponses]
-
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeData = {
-  body: ParserExcludePlugin
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/autoupgrade/exclude'
-}
-
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponse
-  = PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses[keyof PostWorkspacesCurrentPluginPreferencesAutoupgradeExcludeResponses]
-
-export type PostWorkspacesCurrentPluginPreferencesChangeData = {
-  body: ParserPreferencesChange
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/change'
-}
-
-export type PostWorkspacesCurrentPluginPreferencesChangeResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PostWorkspacesCurrentPluginPreferencesChangeResponse
-  = PostWorkspacesCurrentPluginPreferencesChangeResponses[keyof PostWorkspacesCurrentPluginPreferencesChangeResponses]
-
-export type GetWorkspacesCurrentPluginPreferencesFetchData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/workspaces/current/plugin/preferences/fetch'
-}
-
-export type GetWorkspacesCurrentPluginPreferencesFetchResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type GetWorkspacesCurrentPluginPreferencesFetchResponse
-  = GetWorkspacesCurrentPluginPreferencesFetchResponses[keyof GetWorkspacesCurrentPluginPreferencesFetchResponses]
 
 export type GetWorkspacesCurrentPluginReadmeData = {
   body?: never
@@ -2154,9 +3177,7 @@ export type GetWorkspacesCurrentPluginReadmeData = {
 }
 
 export type GetWorkspacesCurrentPluginReadmeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginReadmeResponse
 }
 
 export type GetWorkspacesCurrentPluginReadmeResponse
@@ -2173,9 +3194,7 @@ export type GetWorkspacesCurrentPluginTasksData = {
 }
 
 export type GetWorkspacesCurrentPluginTasksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginTasksResponse
 }
 
 export type GetWorkspacesCurrentPluginTasksResponse
@@ -2205,9 +3224,7 @@ export type GetWorkspacesCurrentPluginTasksByTaskIdData = {
 }
 
 export type GetWorkspacesCurrentPluginTasksByTaskIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginTaskResponse
 }
 
 export type GetWorkspacesCurrentPluginTasksByTaskIdResponse
@@ -2268,9 +3285,7 @@ export type PostWorkspacesCurrentPluginUpgradeGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginUpgradeGithubResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDaemonOperationResponse
 }
 
 export type PostWorkspacesCurrentPluginUpgradeGithubResponse
@@ -2284,9 +3299,7 @@ export type PostWorkspacesCurrentPluginUpgradeMarketplaceData = {
 }
 
 export type PostWorkspacesCurrentPluginUpgradeMarketplaceResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDaemonOperationResponse
 }
 
 export type PostWorkspacesCurrentPluginUpgradeMarketplaceResponse
@@ -2300,9 +3313,7 @@ export type PostWorkspacesCurrentPluginUploadBundleData = {
 }
 
 export type PostWorkspacesCurrentPluginUploadBundleResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDaemonOperationResponse
 }
 
 export type PostWorkspacesCurrentPluginUploadBundleResponse
@@ -2316,9 +3327,7 @@ export type PostWorkspacesCurrentPluginUploadGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginUploadGithubResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDaemonOperationResponse
 }
 
 export type PostWorkspacesCurrentPluginUploadGithubResponse
@@ -2332,13 +3341,755 @@ export type PostWorkspacesCurrentPluginUploadPkgData = {
 }
 
 export type PostWorkspacesCurrentPluginUploadPkgResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: PluginDaemonOperationResponse
 }
 
 export type PostWorkspacesCurrentPluginUploadPkgResponse
   = PostWorkspacesCurrentPluginUploadPkgResponses[keyof PostWorkspacesCurrentPluginUploadPkgResponses]
+
+export type GetWorkspacesCurrentPluginByCategoryListData = {
+  body?: never
+  path: {
+    category: string
+  }
+  query?: {
+    page?: number
+    page_size?: number
+  }
+  url: '/workspaces/current/plugin/{category}/list'
+}
+
+export type GetWorkspacesCurrentPluginByCategoryListResponses = {
+  200: PluginCategoryListResponse
+}
+
+export type GetWorkspacesCurrentPluginByCategoryListResponse
+  = GetWorkspacesCurrentPluginByCategoryListResponses[keyof GetWorkspacesCurrentPluginByCategoryListResponses]
+
+export type GetWorkspacesCurrentRbacAccessPoliciesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/access-policies'
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesResponses = {
+  200: AccessPolicyList
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesResponse
+  = GetWorkspacesCurrentRbacAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacAccessPoliciesResponses]
+
+export type PostWorkspacesCurrentRbacAccessPoliciesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/access-policies'
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesResponses = {
+  201: AccessPolicy
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesResponse
+  = PostWorkspacesCurrentRbacAccessPoliciesResponses[keyof PostWorkspacesCurrentRbacAccessPoliciesResponses]
+
+export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policies/{policy_id}'
+}
+
+export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
+  200: AccessPolicy
+}
+
+export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse
+  = DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses[keyof DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses]
+
+export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policies/{policy_id}'
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
+  200: AccessPolicy
+}
+
+export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse
+  = GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses[keyof GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses]
+
+export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policies/{policy_id}'
+}
+
+export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses = {
+  200: AccessPolicy
+}
+
+export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse
+  = PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses[keyof PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponses]
+
+export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policies/{policy_id}/copy'
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses = {
+  201: AccessPolicy
+}
+
+export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse
+  = PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses[keyof PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponses]
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockData = {
+  body?: never
+  path: {
+    binding_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policy-bindings/{binding_id}/lock'
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses = {
+  200: AccessPolicyBindingState
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse
+  = PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses[keyof PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponses]
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockData = {
+  body?: never
+  path: {
+    binding_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock'
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses = {
+  200: AccessPolicyBindingState
+}
+
+export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse
+  = PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses[keyof PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponses]
+
+export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsData = {
+  body: DeleteMemberBindingsRequest
+  path: {
+    app_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings'
+}
+
+export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses
+  = {
+    200: MemberBindingsResponse
+  }
+
+export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse
+  = DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses[keyof DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsData = {
+  body?: never
+  path: {
+    app_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses = {
+  200: MemberBindingsResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse
+  = GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    app_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponses = {
+  200: RoleBindingsResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse
+  = GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
+  url: '/workspaces/current/rbac/apps/{app_id}/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponses = {
+  200: AppAccessMatrix
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse
+  = GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
+  url: '/workspaces/current/rbac/apps/{app_id}/user-access-policies'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponses = {
+  200: ResourceUserAccessPoliciesResponse
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse
+  = GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponses]
+
+export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesData = {
+  body: ReplaceUserAccessPolicies
+  path: {
+    app_id: string
+    target_account_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/users/{target_account_id}/access-policies'
+}
+
+export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponses = {
+  200: ReplaceUserAccessPoliciesResponse
+}
+
+export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponse
+  = PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponses[keyof PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponses]
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/whitelist'
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistResponses = {
+  200: ResourceWhitelist
+}
+
+export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistResponse
+  = GetWorkspacesCurrentRbacAppsByAppIdWhitelistResponses[keyof GetWorkspacesCurrentRbacAppsByAppIdWhitelistResponses]
+
+export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistData = {
+  body: ResourceAccessScopeRequest
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/apps/{app_id}/whitelist'
+}
+
+export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses = {
+  200: ResourceWhitelist
+}
+
+export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse
+  = PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses[keyof PutWorkspacesCurrentRbacAppsByAppIdWhitelistResponses]
+
+export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsData
+  = {
+    body: DeleteMemberBindingsRequest
+    path: {
+      dataset_id: string
+      policy_id: string
+    }
+    query?: never
+    url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings'
+  }
+
+export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses
+  = {
+    200: MemberBindingsResponse
+  }
+
+export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse
+  = DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses[keyof DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsData
+  = {
+    body?: never
+    path: {
+      dataset_id: string
+      policy_id: string
+    }
+    query?: never
+    url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings'
+  }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses
+  = {
+    200: MemberBindingsResponse
+  }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse
+  = GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    dataset_id: string
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponses
+  = {
+    200: RoleBindingsResponse
+  }
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse
+  = GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponses = {
+  200: DatasetAccessMatrix
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse
+  = GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: {
+    language?: 'en' | 'ja' | 'zh'
+  }
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/user-access-policies'
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponses = {
+  200: ResourceUserAccessPoliciesResponse
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse
+  = GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponses]
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesData = {
+  body: ReplaceUserAccessPolicies
+  path: {
+    dataset_id: string
+    target_account_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/users/{target_account_id}/access-policies'
+}
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponses
+  = {
+    200: ReplaceUserAccessPoliciesResponse
+  }
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponse
+  = PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponses[keyof PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponses]
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist'
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses = {
+  200: ResourceWhitelist
+}
+
+export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse
+  = GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses[keyof GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses]
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistData = {
+  body: ResourceAccessScopeRequest
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/datasets/{dataset_id}/whitelist'
+}
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses = {
+  200: ResourceWhitelist
+}
+
+export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse
+  = PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses[keyof PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponses]
+
+export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
+  body?: never
+  path: {
+    member_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/members/{member_id}/rbac-roles'
+}
+
+export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses = {
+  200: MemberRolesResponse
+}
+
+export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse
+  = GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses[keyof GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses]
+
+export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
+  body: ReplaceMemberRolesRequest
+  path: {
+    member_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/members/{member_id}/rbac-roles'
+}
+
+export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses = {
+  200: MemberRolesResponse
+}
+
+export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse
+  = PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses[keyof PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponses]
+
+export type GetWorkspacesCurrentRbacMyPermissionsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/my-permissions'
+}
+
+export type GetWorkspacesCurrentRbacMyPermissionsResponses = {
+  200: MyPermissionsResponse
+}
+
+export type GetWorkspacesCurrentRbacMyPermissionsResponse
+  = GetWorkspacesCurrentRbacMyPermissionsResponses[keyof GetWorkspacesCurrentRbacMyPermissionsResponses]
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/role-permissions/catalog'
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogResponses = {
+  200: PermissionCatalogResponse
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogResponse
+  = GetWorkspacesCurrentRbacRolePermissionsCatalogResponses[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogResponses]
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/role-permissions/catalog/app'
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponses = {
+  200: PermissionCatalogResponse
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse
+  = GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponses[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogAppResponses]
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/role-permissions/catalog/dataset'
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponses = {
+  200: PermissionCatalogResponse
+}
+
+export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse
+  = GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponses[keyof GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponses]
+
+export type GetWorkspacesCurrentRbacRolesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/roles'
+}
+
+export type GetWorkspacesCurrentRbacRolesResponses = {
+  200: RbacRoleList
+}
+
+export type GetWorkspacesCurrentRbacRolesResponse
+  = GetWorkspacesCurrentRbacRolesResponses[keyof GetWorkspacesCurrentRbacRolesResponses]
+
+export type PostWorkspacesCurrentRbacRolesData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/roles'
+}
+
+export type PostWorkspacesCurrentRbacRolesResponses = {
+  201: RbacRole
+}
+
+export type PostWorkspacesCurrentRbacRolesResponse
+  = PostWorkspacesCurrentRbacRolesResponses[keyof PostWorkspacesCurrentRbacRolesResponses]
+
+export type DeleteWorkspacesCurrentRbacRolesByRoleIdData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}'
+}
+
+export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponses = {
+  200: RbacRole
+}
+
+export type DeleteWorkspacesCurrentRbacRolesByRoleIdResponse
+  = DeleteWorkspacesCurrentRbacRolesByRoleIdResponses[keyof DeleteWorkspacesCurrentRbacRolesByRoleIdResponses]
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}'
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdResponses = {
+  200: RbacRole
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdResponse
+  = GetWorkspacesCurrentRbacRolesByRoleIdResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdResponses]
+
+export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}'
+}
+
+export type PutWorkspacesCurrentRbacRolesByRoleIdResponses = {
+  200: RbacRole
+}
+
+export type PutWorkspacesCurrentRbacRolesByRoleIdResponse
+  = PutWorkspacesCurrentRbacRolesByRoleIdResponses[keyof PutWorkspacesCurrentRbacRolesByRoleIdResponses]
+
+export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}/copy'
+}
+
+export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses = {
+  201: RbacRole
+}
+
+export type PostWorkspacesCurrentRbacRolesByRoleIdCopyResponse
+  = PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses[keyof PostWorkspacesCurrentRbacRolesByRoleIdCopyResponses]
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersData = {
+  body?: never
+  path: {
+    role_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/roles/{role_id}/members'
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses = {
+  200: MembersInRoleList
+}
+
+export type GetWorkspacesCurrentRbacRolesByRoleIdMembersResponse
+  = GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses[keyof GetWorkspacesCurrentRbacRolesByRoleIdMembersResponses]
+
+export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsData = {
+  body: ReplaceBindingsRequest
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings'
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponses = {
+  200: AccessMatrixItem
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse
+  = PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponses[keyof PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponses = {
+  200: MemberBindingsResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse
+  = GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponses = {
+  200: RoleBindingsResponse
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse
+  = GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/workspace/apps/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponses = {
+  200: WorkspaceAccessMatrix
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse
+  = GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponses]
+
+export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsData = {
+  body: ReplaceBindingsRequest
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings'
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponses = {
+  200: AccessMatrixItem
+}
+
+export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse
+  = PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponses[keyof PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponses
+  = {
+    200: MemberBindingsResponse
+  }
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse
+  = GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsData = {
+  body?: never
+  path: {
+    policy_id: string
+  }
+  query?: never
+  url: '/workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponses
+  = {
+    200: RoleBindingsResponse
+  }
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse
+  = GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponses]
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/rbac/workspace/datasets/access-policy'
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses = {
+  200: WorkspaceAccessMatrix
+}
+
+export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse
+  = GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses]
 
 export type GetWorkspacesCurrentToolLabelsData = {
   body?: never
@@ -2348,9 +4099,7 @@ export type GetWorkspacesCurrentToolLabelsData = {
 }
 
 export type GetWorkspacesCurrentToolLabelsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolLabelsResponse
@@ -2364,9 +4113,7 @@ export type PostWorkspacesCurrentToolProviderApiAddData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiAddResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiAddResponse
@@ -2380,9 +4127,7 @@ export type PostWorkspacesCurrentToolProviderApiDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiDeleteResponse
@@ -2391,14 +4136,14 @@ export type PostWorkspacesCurrentToolProviderApiDeleteResponse
 export type GetWorkspacesCurrentToolProviderApiGetData = {
   body?: never
   path?: never
-  query?: never
+  query: {
+    provider: string
+  }
   url: '/workspaces/current/tool-provider/api/get'
 }
 
 export type GetWorkspacesCurrentToolProviderApiGetResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderApiGetResponse
@@ -2407,14 +4152,14 @@ export type GetWorkspacesCurrentToolProviderApiGetResponse
 export type GetWorkspacesCurrentToolProviderApiRemoteData = {
   body?: never
   path?: never
-  query?: never
+  query: {
+    url: string
+  }
   url: '/workspaces/current/tool-provider/api/remote'
 }
 
 export type GetWorkspacesCurrentToolProviderApiRemoteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderApiRemoteResponse
@@ -2428,9 +4173,7 @@ export type PostWorkspacesCurrentToolProviderApiSchemaData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiSchemaResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiSchemaResponse
@@ -2444,9 +4187,7 @@ export type PostWorkspacesCurrentToolProviderApiTestPreData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiTestPreResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiTestPreResponse
@@ -2455,14 +4196,14 @@ export type PostWorkspacesCurrentToolProviderApiTestPreResponse
 export type GetWorkspacesCurrentToolProviderApiToolsData = {
   body?: never
   path?: never
-  query?: never
+  query: {
+    provider: string
+  }
   url: '/workspaces/current/tool-provider/api/tools'
 }
 
 export type GetWorkspacesCurrentToolProviderApiToolsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderApiToolsResponse
@@ -2476,9 +4217,7 @@ export type PostWorkspacesCurrentToolProviderApiUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiUpdateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderApiUpdateResponse
@@ -2494,9 +4233,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse
@@ -2507,14 +4244,14 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoData 
   path: {
     provider: string
   }
-  query?: never
+  query?: {
+    include_credential_ids?: Array<string>
+  }
   url: '/workspaces/current/tool-provider/builtin/{provider}/credential/info'
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse
@@ -2533,9 +4270,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByC
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: ToolProviderOpaqueResponse
   }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponse
@@ -2546,14 +4281,14 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsData = {
   path: {
     provider: string
   }
-  query?: never
+  query?: {
+    include_credential_ids?: Array<string>
+  }
   url: '/workspaces/current/tool-provider/builtin/{provider}/credentials'
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse
@@ -2569,9 +4304,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialD
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponse
@@ -2587,9 +4320,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse
@@ -2605,9 +4336,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse
@@ -2623,9 +4352,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse
@@ -2641,9 +4368,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaDa
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolOAuthClientSchemaResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse
@@ -2659,9 +4384,7 @@ export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClien
 }
 
 export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse
@@ -2677,9 +4400,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientDa
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolOAuthCustomClientResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse
@@ -2695,9 +4416,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientD
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse
@@ -2713,9 +4432,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse
@@ -2731,9 +4448,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponse
@@ -2761,9 +4476,7 @@ export type PostWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type PostWorkspacesCurrentToolProviderMcpResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderMcpResponse
@@ -2777,9 +4490,7 @@ export type PutWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type PutWorkspacesCurrentToolProviderMcpResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PutWorkspacesCurrentToolProviderMcpResponse
@@ -2793,9 +4504,7 @@ export type PostWorkspacesCurrentToolProviderMcpAuthData = {
 }
 
 export type PostWorkspacesCurrentToolProviderMcpAuthResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderMcpAuthResponse
@@ -2811,9 +4520,7 @@ export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdData = {
 }
 
 export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse
@@ -2829,9 +4536,7 @@ export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdData = {
 }
 
 export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse
@@ -2845,9 +4550,7 @@ export type PostWorkspacesCurrentToolProviderWorkflowCreateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateResponse
@@ -2861,9 +4564,7 @@ export type PostWorkspacesCurrentToolProviderWorkflowDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowDeleteResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowDeleteResponse
@@ -2872,14 +4573,15 @@ export type PostWorkspacesCurrentToolProviderWorkflowDeleteResponse
 export type GetWorkspacesCurrentToolProviderWorkflowGetData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    workflow_app_id?: string
+    workflow_tool_id?: string
+  }
   url: '/workspaces/current/tool-provider/workflow/get'
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowGetResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowGetResponse
@@ -2888,14 +4590,14 @@ export type GetWorkspacesCurrentToolProviderWorkflowGetResponse
 export type GetWorkspacesCurrentToolProviderWorkflowToolsData = {
   body?: never
   path?: never
-  query?: never
+  query: {
+    workflow_tool_id: string
+  }
   url: '/workspaces/current/tool-provider/workflow/tools'
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowToolsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowToolsResponse
@@ -2909,9 +4611,7 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateResponse
@@ -2920,14 +4620,14 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateResponse
 export type GetWorkspacesCurrentToolProvidersData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    type?: 'api' | 'builtin' | 'mcp' | 'model' | 'workflow'
+  }
   url: '/workspaces/current/tool-providers'
 }
 
 export type GetWorkspacesCurrentToolProvidersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolProvidersResponse
@@ -2941,9 +4641,7 @@ export type GetWorkspacesCurrentToolsApiData = {
 }
 
 export type GetWorkspacesCurrentToolsApiResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolsApiResponse
@@ -2957,9 +4655,7 @@ export type GetWorkspacesCurrentToolsBuiltinData = {
 }
 
 export type GetWorkspacesCurrentToolsBuiltinResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolsBuiltinResponse
@@ -2973,9 +4669,7 @@ export type GetWorkspacesCurrentToolsMcpData = {
 }
 
 export type GetWorkspacesCurrentToolsMcpResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolsMcpResponse
@@ -2989,9 +4683,7 @@ export type GetWorkspacesCurrentToolsWorkflowData = {
 }
 
 export type GetWorkspacesCurrentToolsWorkflowResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ToolProviderOpaqueResponse
 }
 
 export type GetWorkspacesCurrentToolsWorkflowResponse
@@ -3007,9 +4699,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderIconData = {
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderIconResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderIconResponse
@@ -3025,9 +4715,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderInfoData = {
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderInfoResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TriggerProviderApiEntity
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderInfoResponse
@@ -3043,9 +4731,7 @@ export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
 }
 
 export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse
@@ -3061,9 +4747,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TriggerOAuthClientResponse
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse
@@ -3079,9 +4763,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
 }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleResultResponse
 }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse
@@ -3100,9 +4782,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBu
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: TriggerProviderOpaqueResponse
   }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse
@@ -3118,9 +4798,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCr
 }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TriggerSubscriptionBuilderCreateResponse
 }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponse
@@ -3139,9 +4817,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLog
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: TriggerSubscriptionBuilderLogsResponse
   }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdResponse
@@ -3160,9 +4836,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUp
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: SubscriptionBuilderApiEntity
   }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdResponse
@@ -3181,9 +4855,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVe
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: TriggerSubscriptionBuilderVerifyResponse
   }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponse
@@ -3202,9 +4874,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderByS
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: SubscriptionBuilderApiEntity
   }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdResponse
@@ -3220,9 +4890,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListData =
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TriggerSubscriptionListResponse
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse
@@ -3238,9 +4906,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TriggerOAuthAuthorizeResponse
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse
@@ -3259,9 +4925,7 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyByS
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: TriggerSubscriptionBuilderVerifyResponse
   }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse
@@ -3293,9 +4957,7 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpd
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TriggerProviderOpaqueResponse
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse
@@ -3309,9 +4971,7 @@ export type GetWorkspacesCurrentTriggersData = {
 }
 
 export type GetWorkspacesCurrentTriggersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: TriggerProviderListResponse
 }
 
 export type GetWorkspacesCurrentTriggersResponse
@@ -3325,25 +4985,23 @@ export type PostWorkspacesCustomConfigData = {
 }
 
 export type PostWorkspacesCustomConfigResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkspaceTenantResultResponse
 }
 
 export type PostWorkspacesCustomConfigResponse
   = PostWorkspacesCustomConfigResponses[keyof PostWorkspacesCustomConfigResponses]
 
 export type PostWorkspacesCustomConfigWebappLogoUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/custom-config/webapp-logo/upload'
 }
 
 export type PostWorkspacesCustomConfigWebappLogoUploadResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  201: WorkspaceLogoUploadResponse
 }
 
 export type PostWorkspacesCustomConfigWebappLogoUploadResponse
@@ -3357,9 +5015,7 @@ export type PostWorkspacesInfoData = {
 }
 
 export type PostWorkspacesInfoResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkspaceTenantResultResponse
 }
 
 export type PostWorkspacesInfoResponse
@@ -3373,9 +5029,7 @@ export type PostWorkspacesSwitchData = {
 }
 
 export type PostWorkspacesSwitchResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SwitchWorkspaceResponse
 }
 
 export type PostWorkspacesSwitchResponse
@@ -3394,9 +5048,7 @@ export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangData 
 }
 
 export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: BinaryFileResponse
 }
 
 export type GetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse

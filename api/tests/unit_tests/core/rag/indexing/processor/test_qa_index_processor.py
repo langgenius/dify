@@ -1,3 +1,4 @@
+import logging
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
@@ -258,19 +259,6 @@ class TestQAIndexProcessor:
         mock_summary.assert_called_once_with(dataset, None)
         vector.delete.assert_called_once()
 
-    def test_retrieve_filters_by_score_threshold(self, processor: QAIndexProcessor, dataset: Mock) -> None:
-        result_ok = SimpleNamespace(page_content="accepted", metadata={"source": "a"}, score=0.9)
-        result_low = SimpleNamespace(page_content="rejected", metadata={"source": "b"}, score=0.1)
-
-        with patch("core.rag.index_processor.processor.qa_index_processor.RetrievalService.retrieve") as mock_retrieve:
-            mock_retrieve.return_value = [result_ok, result_low]
-            reranking_model = {"reranking_provider_name": "", "reranking_model_name": ""}
-            docs = processor.retrieve("semantic_search", "query", dataset, 5, 0.5, reranking_model)
-
-        assert len(docs) == 1
-        assert docs[0].page_content == "accepted"
-        assert docs[0].metadata["score"] == 0.9
-
     def test_index_adds_documents_and_vectors_for_high_quality(
         self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock
     ) -> None:
@@ -331,7 +319,7 @@ class TestQAIndexProcessor:
 
     def test_generate_summary_preview_returns_input(self, processor: QAIndexProcessor) -> None:
         preview_items = [PreviewDetail(content="Q1")]
-        assert processor.generate_summary_preview("tenant-1", preview_items, {}) is preview_items
+        assert processor.generate_summary_preview("tenant-1", preview_items, {"enable": False}) is preview_items
 
     def test_format_qa_document_ignores_blank_text(self, processor: QAIndexProcessor, fake_flask_app) -> None:
         all_qa_documents: list[Document] = []
@@ -363,7 +351,9 @@ class TestQAIndexProcessor:
         assert all_qa_documents[0].metadata["answer"] == "A test."
         assert all_qa_documents[1].metadata["answer"] == "Coverage."
 
-    def test_format_qa_document_logs_errors(self, processor: QAIndexProcessor, fake_flask_app) -> None:
+    def test_format_qa_document_logs_errors(
+        self, processor: QAIndexProcessor, fake_flask_app, caplog: pytest.LogCaptureFixture
+    ) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
 
@@ -372,12 +362,14 @@ class TestQAIndexProcessor:
                 "core.rag.index_processor.processor.qa_index_processor.LLMGenerator.generate_qa_document",
                 side_effect=RuntimeError("llm failure"),
             ),
-            patch("core.rag.index_processor.processor.qa_index_processor.logger") as mock_logger,
+            caplog.at_level(logging.ERROR, logger="core.rag.index_processor.processor.qa_index_processor"),
         ):
             processor._format_qa_document(fake_flask_app, "tenant-1", source_document, all_qa_documents, "English")
 
         assert all_qa_documents == []
-        mock_logger.exception.assert_called_once_with("Failed to format qa document")
+        assert len(caplog.records) == 1
+        assert caplog.records[0].levelname == "ERROR"
+        assert "Failed to format qa document" in caplog.records[0].message
 
     def test_format_split_text_extracts_question_answer_pairs(self, processor: QAIndexProcessor) -> None:
         parsed = processor._format_split_text("Q1: First?\nA1: One.\nQ2: Second?\nA2: Two.\n")

@@ -39,7 +39,7 @@ vi.mock('@/service/use-plugins', () => ({
     mutateAsync: mockInstallPackageFromLocal,
   }),
   usePluginTaskList: () => ({
-    handleRefetch: vi.fn(),
+    handleInstallTaskStart: vi.fn(),
   }),
 }))
 

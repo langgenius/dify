@@ -14,13 +14,13 @@ import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
 import ItemPanel from './item-panel'
 
-type Props = {
+type Props = Readonly<{
   isChatModel: boolean
   payload: AgentConfig
   isFunctionCall: boolean
   onCancel: () => void
   onSave: (payload: any) => void
-}
+}>
 
 const maxIterationsMin = 1
 
@@ -123,7 +123,7 @@ const AgentSetting: FC<Props> = ({
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
                 step={1}
-                className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:ring-1 focus:ring-primary-600 focus:ring-inset"
+                className="block h-7 w-11 rounded-lg border-0 bg-components-input-bg-normal px-1.5 pl-1 leading-7 text-text-primary placeholder:text-text-tertiary focus:inset-ring-1 focus:inset-ring-primary-600"
                 value={tempPayload.max_iteration}
                 onChange={(e) => {
                   let value = Number.parseInt(e.target.value, 10)

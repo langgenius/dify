@@ -15,13 +15,13 @@ function run(args: string[]): { code: number, stdout: string, stderr: string } {
   }
 }
 
-describe('release-naming compat-check (compat 1.14.0..1.15.0)', () => {
+describe('release-naming compat-check (compat 1.15.0..1.15.0)', () => {
   it('accepts a version inside the window', () => {
-    expect(run(['compat-check', '1.14.7']).code).toBe(0)
+    expect(run(['compat-check', '1.15.0']).code).toBe(0)
   })
 
   it('accepts the inclusive lower bound', () => {
-    expect(run(['compat-check', '1.14.0']).code).toBe(0)
+    expect(run(['compat-check', '1.15.0']).code).toBe(0)
   })
 
   it('accepts the inclusive upper bound', () => {
@@ -29,26 +29,22 @@ describe('release-naming compat-check (compat 1.14.0..1.15.0)', () => {
   })
 
   it('accepts a v-prefixed tag', () => {
-    expect(run(['compat-check', 'v1.14.2']).code).toBe(0)
+    expect(run(['compat-check', 'v1.15.0']).code).toBe(0)
   })
 
   it('rejects a version below the lower bound', () => {
-    expect(run(['compat-check', '1.13.9']).code).not.toBe(0)
+    expect(run(['compat-check', '1.14.9']).code).not.toBe(0)
   })
 
   it('rejects a version above the upper bound', () => {
     expect(run(['compat-check', '1.15.1']).code).not.toBe(0)
   })
 
-  it('treats a prerelease of the upper bound as in range (1.15.0-rc1 <= 1.15.0)', () => {
-    expect(run(['compat-check', '1.15.0-rc1']).code).toBe(0)
+  it('treats a prerelease of the bound as below it (1.15.0-rc1 < 1.15.0)', () => {
+    expect(run(['compat-check', '1.15.0-rc1']).code).not.toBe(0)
   })
 
-  it('treats a prerelease of the lower bound as below it (1.14.0-rc1 < 1.14.0)', () => {
-    expect(run(['compat-check', '1.14.0-rc1']).code).not.toBe(0)
-  })
-
-  it('ignores build metadata on the upper bound (1.15.0+build == 1.15.0)', () => {
+  it('ignores build metadata on the bound (1.15.0+build == 1.15.0)', () => {
     expect(run(['compat-check', '1.15.0+build123']).code).toBe(0)
   })
 
@@ -64,12 +60,44 @@ describe('release-naming compat-check (compat 1.14.0..1.15.0)', () => {
 describe('release-naming github-env', () => {
   it('emits difyctlTag = tagPrefix + version', () => {
     const { stdout } = run(['github-env'])
-    expect(stdout).toMatch(/^difyctlTag=difyctl-v0\.1\.0-rc\.1$/m)
+    expect(stdout).toMatch(/^difyctlTag=difyctl-v0\.1\.0-alpha$/m)
   })
 
   it('still emits the existing trace fields', () => {
     const { stdout } = run(['github-env'])
     for (const key of ['version', 'channel', 'prerelease', 'minDify', 'maxDify', 'tagPrefix'])
       expect(stdout).toMatch(new RegExp(`^${key}=`, 'm'))
+  })
+})
+
+describe('release-naming edge channel', () => {
+  it('lists edge among channels', () => {
+    expect(run(['channels']).stdout).toMatch(/^edge$/m)
+  })
+
+  it('edge-version derives <pkgcore>-edge.<sha> stripping the alpha prerelease', () => {
+    // package.json version is 0.1.0-alpha -> core 0.1.0
+    expect(run(['edge-version', '2fd7b82']).stdout.trim()).toBe('0.1.0-edge.2fd7b82')
+  })
+
+  it('edge-version accepts a 40-char sha', () => {
+    const sha = '2fd7b829e1f0aaaabbbbccccddddeeeeffff0000'
+    expect(run(['edge-version', sha]).stdout.trim()).toBe(`0.1.0-edge.${sha}`)
+  })
+
+  it('edge-version rejects a non-hex sha', () => {
+    expect(run(['edge-version', 'nothex!']).code).not.toBe(0)
+  })
+
+  it('edge-version requires a sha argument', () => {
+    expect(run(['edge-version']).code).not.toBe(0)
+  })
+
+  it('the edge version form matches a computed edge version', () => {
+    expect(run(['validate-version', '0.1.0-edge.2fd7b82', 'edge']).code).toBe(0)
+  })
+
+  it('validate-version rejects an rc string under the edge channel', () => {
+    expect(run(['validate-version', '0.1.0-rc.1', 'edge']).code).not.toBe(0)
   })
 })

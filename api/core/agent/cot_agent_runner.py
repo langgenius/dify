@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, TypedDict
 
+from sqlalchemy.orm import Session
+
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
@@ -46,6 +48,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
     def run(
         self,
+        session: Session,
         message: Message,
         query: str,
         inputs: Mapping[str, str],
@@ -130,6 +133,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
                 callbacks=[],
+                request_metadata={"app_id": self.app_config.app_id},
             )
 
             usage_dict: dict[str, LLMUsage | None] = {}
@@ -208,18 +212,20 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if scratchpad.action.action_name.lower() == "final answer":
                     # action is final answer, return final answer directly
                     try:
-                        if isinstance(scratchpad.action.action_input, dict):
-                            final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
-                        elif isinstance(scratchpad.action.action_input, str):
-                            final_answer = scratchpad.action.action_input
-                        else:
-                            final_answer = f"{scratchpad.action.action_input}"
+                        match scratchpad.action.action_input:
+                            case dict():
+                                final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
+                            case str():
+                                final_answer = scratchpad.action.action_input
+                            case _:
+                                final_answer = f"{scratchpad.action.action_input}"
                     except TypeError:
                         final_answer = f"{scratchpad.action.action_input}"
                 else:
                     function_call_state = True
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
+                        session=session,
                         action=scratchpad.action,
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
@@ -286,6 +292,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
     def _handle_invoke_action(
         self,
+        session: Session,
         action: AgentScratchpadUnit.Action,
         tool_instances: Mapping[str, Tool],
         message_file_ids: list[str],
@@ -316,6 +323,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         # invoke tool
         tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+            session=session,
             tool=tool_instance,
             tool_parameters=tool_call_args,
             user_id=self.user_id,

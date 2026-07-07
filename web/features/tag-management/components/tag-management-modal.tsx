@@ -1,11 +1,14 @@
 'use client'
-import type { TagType } from '@/contract/console/tags'
+import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { consoleQuery } from '@/service/client'
+import { hasPermission } from '@/utils/permission'
+import { getTagManagePermissionKey } from '../utils'
 import { TagItemEditor } from './tag-item-editor'
 
 type TagManagementModalProps = {
@@ -16,18 +19,22 @@ type TagManagementModalProps = {
 }
 export const TagManagementModal = ({ show, type, onClose, onTagsChange }: TagManagementModalProps) => {
   const { t } = useTranslation()
-  const { data: tagList = [] } = useQuery(consoleQuery.tags.list.queryOptions({
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageTags = hasPermission(workspacePermissionKeys, getTagManagePermissionKey(type))
+  const { data: tagList = [] } = useQuery(consoleQuery.tags.get.queryOptions({
     input: {
       query: {
         type,
       },
     },
-    enabled: show,
+    enabled: show && canManageTags,
   }))
-  const createTagMutation = useMutation(consoleQuery.tags.create.mutationOptions())
+  const createTagMutation = useMutation(consoleQuery.tags.post.mutationOptions())
   const [name, setName] = useState<string>('')
 
   const createNewTag = () => {
+    if (!canManageTags)
+      return
     if (!name)
       return
     if (createTagMutation.isPending)
@@ -52,6 +59,9 @@ export const TagManagementModal = ({ show, type, onClose, onTagsChange }: TagMan
     setName('')
     onClose()
   }
+
+  if (!canManageTags)
+    return null
 
   return (
     <Dialog open={show} onOpenChange={open => !open && handleClose()}>

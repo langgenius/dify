@@ -64,6 +64,7 @@ export type NodeSelectorProps = {
   forceEnableStartTab?: boolean // Force enabling Start tab regardless of existing trigger/user input nodes (e.g., when changing Start node type).
   allowUserInputSelection?: boolean // Override user-input availability; default logic blocks it when triggers exist.
   snippetInsertPayload?: Parameters<OnNodeAdd>[1]
+  isolateKeyboardEvents?: boolean
 }
 function NodeSelector({
   open: openFromProps,
@@ -90,6 +91,7 @@ function NodeSelector({
   forceEnableStartTab = false,
   allowUserInputSelection,
   snippetInsertPayload,
+  isolateKeyboardEvents = false,
 }: NodeSelectorProps) {
   const { t } = useTranslation()
   const nodes = useNodes()
@@ -107,10 +109,11 @@ function NodeSelector({
     return nodes.filter(node => !ignoreSet.has(node.id))
   }, [nodes, ignoreNodeIds])
 
-  const { hasTriggerNode, hasUserInputNode } = useMemo(() => {
+  const { hasTriggerNode, hasUserInputNode, hasStartPlaceholderNode } = useMemo(() => {
     const result = {
       hasTriggerNode: false,
       hasUserInputNode: false,
+      hasStartPlaceholderNode: false,
     }
     for (const node of filteredNodes) {
       const nodeType = (node.data as CommonNodeType | undefined)?.type
@@ -118,9 +121,11 @@ function NodeSelector({
         continue
       if (nodeType === BlockEnum.Start)
         result.hasUserInputNode = true
+      if (nodeType === BlockEnum.StartPlaceholder)
+        result.hasStartPlaceholderNode = true
       if (isTriggerNode(nodeType))
         result.hasTriggerNode = true
-      if (result.hasTriggerNode && result.hasUserInputNode)
+      if (result.hasTriggerNode && result.hasUserInputNode && result.hasStartPlaceholderNode)
         break
     }
     return result
@@ -132,6 +137,7 @@ function NodeSelector({
   const disableSnippetsTab = flowType === FlowType.snippet
   const {
     activeTab,
+    resetActiveTab,
     setActiveTab,
     tabs,
   } = useTabs({
@@ -141,7 +147,7 @@ function NodeSelector({
     noSnippets: disableSnippetsTab,
     noStart: !showStartTab,
     defaultActiveTab,
-    hasUserInputNode,
+    hasStartPlaceholderNode,
     disableStartTab,
     forceEnableStartTab,
   })
@@ -155,6 +161,7 @@ function NodeSelector({
     if (!newOpen) {
       setSearchText('')
       setSnippetsLoading(false)
+      resetActiveTab()
     }
     else if (activeTab === TabsEnum.Snippets) {
       setSnippetsLoading(true)
@@ -162,7 +169,7 @@ function NodeSelector({
 
     if (onOpenChange)
       onOpenChange(newOpen)
-  }, [activeTab, disabled, onOpenChange])
+  }, [activeTab, disabled, onOpenChange, resetActiveTab])
   const handleTrigger = useCallback<MouseEventHandler<HTMLElement>>((e) => {
     e.stopPropagation()
   }, [])
@@ -177,6 +184,10 @@ function NodeSelector({
     if (open && newActiveTab === TabsEnum.Snippets)
       setSnippetsLoading(true)
   }, [open, setActiveTab])
+  const handlePopupKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (isolateKeyboardEvents)
+      event.stopPropagation()
+  }, [isolateKeyboardEvents])
 
   useEffect(() => {
     if (!snippetsLoading)
@@ -258,6 +269,7 @@ function NodeSelector({
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         popupClassName="border-none bg-transparent shadow-none"
+        popupProps={isolateKeyboardEvents ? { onKeyDown: handlePopupKeyDown } : undefined}
       >
         <div className={cn('w-[400px] min-w-0 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', popupClassName)}>
           <Tabs
@@ -265,6 +277,8 @@ function NodeSelector({
             activeTab={activeTab}
             blocks={blocks}
             allowStartNodeSelection={canSelectUserInput}
+            hasUserInputNode={hasUserInputNode}
+            hasTriggerNode={hasTriggerNode}
             onActiveTabChange={handleActiveTabChange}
             filterElem={activeTab === TabsEnum.Snippets
               ? null

@@ -1,6 +1,7 @@
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.openapi._errors import ErrorBody, OpenApiErrorCode, OpenApiErrorFormatter
 from libs.device_flow_security import attach_anti_framing
 from libs.external_api import ExternalApi
 
@@ -12,20 +13,25 @@ api = ExternalApi(
     version="1.0",
     title="OpenAPI",
     description="User-scoped programmatic API (bearer auth)",
+    error_body_formatter=OpenApiErrorFormatter(),
 )
 
 openapi_ns = Namespace("openapi", description="User-scoped operations", path="/")
 
 # Register response/query models BEFORE importing controller modules so that
 # @openapi_ns.response / @openapi_ns.expect decorators can resolve model names.
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.fields import EventStreamResponse, SimpleResultResponse
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.openapi._models import (
     AccountPayload,
     AccountResponse,
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
-    AppInfoResponse,
+    AppDslExportQuery,
+    AppDslExportResponse,
+    AppDslImportPayload,
+    AppInfo,
     AppListQuery,
     AppListResponse,
     AppListRow,
@@ -37,8 +43,10 @@ from controllers.openapi._models import (
     DeviceMutateRequest,
     DeviceMutateResponse,
     DevicePollRequest,
+    DeviceTokenResponse,
     FormSubmitResponse,
     HealthResponse,
+    HumanInputFormDefinitionResponse,
     MemberActionResponse,
     MemberInvitePayload,
     MemberInviteResponse,
@@ -54,7 +62,6 @@ from controllers.openapi._models import (
     SessionListQuery,
     SessionListResponse,
     SessionRow,
-    TagItem,
     TaskStopResponse,
     UsageInfo,
     WorkflowRunData,
@@ -64,10 +71,14 @@ from controllers.openapi._models import (
     WorkspaceSummaryResponse,
 )
 from fields.file_fields import FileResponse
+from services.app_dsl_service import Import
+from services.entities.dsl_entities import CheckDependenciesResult
 
 register_schema_models(
     openapi_ns,
     AppDescribeQuery,
+    AppDslImportPayload,
+    AppDslExportQuery,
     AppListQuery,
     AppRunRequest,
     DeviceCodeRequest,
@@ -82,14 +93,19 @@ register_schema_models(
 )
 register_response_schema_models(
     openapi_ns,
-    TagItem,
+    ErrorBody,
+    EventStreamResponse,
+    SimpleResultResponse,
     UsageInfo,
     MessageMetadata,
     AppListRow,
     AppListResponse,
-    AppInfoResponse,
+    AppInfo,
     AppDescribeInfo,
     AppDescribeResponse,
+    AppDslExportResponse,
+    Import,
+    CheckDependenciesResult,
     WorkflowRunData,
     AccountPayload,
     WorkspacePayload,
@@ -107,17 +123,23 @@ register_response_schema_models(
     MemberActionResponse,
     TaskStopResponse,
     FormSubmitResponse,
+    HumanInputFormDefinitionResponse,
     DeviceCodeResponse,
+    DeviceTokenResponse,
     DeviceLookupResponse,
     DeviceMutateResponse,
     FileResponse,
     ServerVersionResponse,
     HealthResponse,
 )
+# Standalone definition for contract codegen; ErrorBody.code stays an open
+# string on the wire so old clients keep parsing future codes.
+register_enum_models(openapi_ns, OpenApiErrorCode)
 
 from . import (
     _meta,
     account,
+    app_dsl,
     app_run,
     apps,
     apps_permitted_external,
@@ -135,6 +157,7 @@ from . import (
 __all__ = [
     "_meta",
     "account",
+    "app_dsl",
     "app_run",
     "apps",
     "apps_permitted_external",

@@ -10,7 +10,6 @@ from werkzeug.exceptions import BadRequest
 import services
 from controllers.common.errors import (
     BlockedFileExtensionError,
-    FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,
@@ -18,6 +17,7 @@ from controllers.common.errors import (
 )
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import returns
+from controllers.openapi._errors import FilenameNotExists
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
 from extensions.ext_database import db
@@ -52,7 +52,7 @@ class AppFileUploadApi(Resource):
         if not file.mimetype:
             raise UnsupportedFileTypeError()
         if not file.filename:
-            raise FilenameNotExistsError()
+            raise FilenameNotExists()
 
         try:
             upload_file = FileService(db.engine).upload_file(

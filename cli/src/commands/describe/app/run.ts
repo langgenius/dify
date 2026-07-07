@@ -3,7 +3,7 @@ import type { AppInfoCache } from '@/cache/app-info'
 import type { HttpClient } from '@/http/types'
 import type { IOStreams } from '@/sys/io/streams'
 import { AppMetaClient } from '@/api/app-meta'
-import { AppsClient } from '@/api/apps'
+import { selectAppReader } from '@/api/app-reader'
 import { runWithSpinner } from '@/sys/io/spinner'
 import { nullStreams } from '@/sys/io/streams'
 import { FieldInfo, FieldInputSchema, FieldParameters } from '@/types/app-meta'
@@ -26,7 +26,7 @@ export type DescribeAppDeps = {
 }
 
 export async function runDescribeApp(opts: DescribeAppOptions, deps: DescribeAppDeps): Promise<AppDescribeOutput> {
-  const apps = new AppsClient(deps.http)
+  const apps = selectAppReader(deps.active, deps.http)
   const meta = new AppMetaClient({ apps, host: deps.host, cache: deps.cache })
   const io = deps.io ?? nullStreams()
   const result = await runWithSpinner(

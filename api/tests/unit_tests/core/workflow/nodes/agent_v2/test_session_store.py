@@ -14,9 +14,9 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
+from dify_agent.protocol import RuntimeLayerSpec
 from sqlalchemy import delete
 
-from clients.agent_backend.request_builder import CleanupLayerSpec
 from core.db.session_factory import session_factory
 from core.workflow.nodes.agent_v2.session_store import (
     StoredWorkflowAgentSession,
@@ -52,10 +52,10 @@ def _snapshot(messages: int = 1) -> CompositorSessionSnapshot:
     )
 
 
-def _specs() -> list[CleanupLayerSpec]:
+def _specs() -> list[RuntimeLayerSpec]:
     return [
-        CleanupLayerSpec(name="workflow_node_job_prompt", type="plain.prompt", config={"prefix": "ok"}),
-        CleanupLayerSpec(name="history", type="pydantic_ai.history"),
+        RuntimeLayerSpec(name="workflow_node_job_prompt", type="plain.prompt", config={"prefix": "ok"}),
+        RuntimeLayerSpec(name="history", type="pydantic_ai.history"),
     ]
 
 
@@ -85,15 +85,17 @@ def test_load_active_snapshot_returns_none_when_no_row_matches():
 def test_save_active_snapshot_creates_row_and_load_round_trips():
     store = WorkflowAgentRuntimeSessionStore()
     snapshot = _snapshot(messages=2)
-    store.save_active_snapshot(
-        scope=_scope(), backend_run_id="run-1", snapshot=snapshot, composition_layer_specs=_specs()
-    )
+    store.save_active_snapshot(scope=_scope(), backend_run_id="run-1", snapshot=snapshot, runtime_layer_specs=_specs())
 
     loaded = store.load_active_snapshot(_scope())
     assert loaded is not None
     assert len(loaded.layers) == 1
     assert loaded.layers[0].name == "history"
     assert loaded.layers[0].runtime_state["messages"] == snapshot.layers[0].runtime_state["messages"]
+    with session_factory.create_session() as session:
+        row = session.query(WorkflowAgentRuntimeSession).one()
+        assert "workflow_node_job_prompt" in row.composition_layer_specs
+        assert "history" in row.composition_layer_specs
 
 
 def test_save_active_snapshot_skips_when_workflow_run_id_missing():
@@ -103,7 +105,7 @@ def test_save_active_snapshot_skips_when_workflow_run_id_missing():
         scope=_scope(workflow_run_id=None),
         backend_run_id="run-skipped",
         snapshot=_snapshot(),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     with session_factory.create_session() as session:
         assert session.query(WorkflowAgentRuntimeSession).count() == 0
@@ -116,7 +118,7 @@ def test_save_active_snapshot_skips_when_snapshot_missing():
         scope=_scope(),
         backend_run_id="run-empty",
         snapshot=None,
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     with session_factory.create_session() as session:
         assert session.query(WorkflowAgentRuntimeSession).count() == 0
@@ -129,14 +131,14 @@ def test_save_active_snapshot_updates_existing_row_on_re_entry():
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(messages=1),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     # Second call with new snapshot + backend_run_id.
     store.save_active_snapshot(
         scope=_scope(),
         backend_run_id="run-2",
         snapshot=_snapshot(messages=2),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
 
     with session_factory.create_session() as session:
@@ -154,7 +156,7 @@ def test_save_active_snapshot_resurrects_cleaned_row():
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
     # Save again — the existing row was CLEANED; should be revived.
@@ -162,7 +164,7 @@ def test_save_active_snapshot_resurrects_cleaned_row():
         scope=_scope(),
         backend_run_id="run-2",
         snapshot=_snapshot(messages=3),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
 
     with session_factory.create_session() as session:
@@ -179,13 +181,13 @@ def test_list_active_sessions_returns_specs_and_snapshot():
         scope=_scope(binding_id="binding-A"),
         backend_run_id="run-A",
         snapshot=_snapshot(),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     store.save_active_snapshot(
         scope=_scope(binding_id="binding-B"),
         backend_run_id="run-B",
         snapshot=_snapshot(messages=2),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
 
     listed = store.list_active_sessions(workflow_run_id="wfr-1")
@@ -193,8 +195,8 @@ def test_list_active_sessions_returns_specs_and_snapshot():
     by_run = {s.backend_run_id: s for s in listed}
     assert isinstance(by_run["run-A"], StoredWorkflowAgentSession)
     # Specs round-trip through pydantic TypeAdapter — ensure deserialize works.
-    assert by_run["run-A"].composition_layer_specs[0].name == "workflow_node_job_prompt"
-    assert by_run["run-A"].composition_layer_specs[1].type == "pydantic_ai.history"
+    assert by_run["run-A"].runtime_layer_specs[0].name == "workflow_node_job_prompt"
+    assert by_run["run-A"].runtime_layer_specs[1].type == "pydantic_ai.history"
     # node_execution_id default-replaces NULL with "" when the DB column is None.
     assert by_run["run-A"].scope.node_execution_id == "node-exec-1"
 
@@ -205,13 +207,13 @@ def test_list_active_sessions_skips_cleaned_rows():
         scope=_scope(binding_id="binding-A"),
         backend_run_id="run-A",
         snapshot=_snapshot(),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     store.save_active_snapshot(
         scope=_scope(binding_id="binding-B"),
         backend_run_id="run-B",
         snapshot=_snapshot(),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     store.mark_cleaned(scope=_scope(binding_id="binding-A"), backend_run_id="cleanup-A")
 
@@ -220,7 +222,7 @@ def test_list_active_sessions_skips_cleaned_rows():
 
 
 def test_list_active_sessions_handles_legacy_rows_without_specs():
-    """Rows persisted before composition_layer_specs landed have an empty string."""
+    """Rows persisted before runtime_layer_specs landed have an empty string."""
     # Insert a legacy-shape row directly: empty specs payload simulates a row
     # written before the spec persistence feature landed in A.1.
     store = WorkflowAgentRuntimeSessionStore()
@@ -228,11 +230,11 @@ def test_list_active_sessions_handles_legacy_rows_without_specs():
         scope=_scope(),
         backend_run_id="run-legacy",
         snapshot=_snapshot(),
-        composition_layer_specs=[],
+        runtime_layer_specs=[],
     )
     listed = store.list_active_sessions(workflow_run_id="wfr-1")
     assert len(listed) == 1
-    assert listed[0].composition_layer_specs == []
+    assert listed[0].runtime_layer_specs == []
 
 
 def test_mark_cleaned_sets_status_and_cleaned_at_with_backend_run_id():
@@ -241,7 +243,7 @@ def test_mark_cleaned_sets_status_and_cleaned_at_with_backend_run_id():
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
 
@@ -259,7 +261,7 @@ def test_mark_cleaned_preserves_existing_backend_run_id_when_none_given():
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(),
-        composition_layer_specs=_specs(),
+        runtime_layer_specs=_specs(),
     )
     store.mark_cleaned(scope=_scope(), backend_run_id=None)
 

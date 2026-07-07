@@ -1,8 +1,11 @@
+import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { GeneratorType } from '../../app/configuration/config/automatic/types'
 import type { FormInputItem } from '../../workflow/nodes/human-input/types'
 import type { Type } from '../../workflow/nodes/llm/types'
+import type { AgentOutputTypeOptionValue } from './plugins/agent-output-block/utils'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
+import type { RosterReferenceToken } from './plugins/roster-reference-block/utils'
 import type {
   Node,
   NodeOutPutVar,
@@ -59,6 +62,12 @@ export type VariableBlockType = {
   variables?: Option[]
 }
 
+export type RosterReferenceBlockType = {
+  show?: boolean
+  renderIcon?: (token: RosterReferenceToken) => React.ReactNode
+  getWarning?: (token: RosterReferenceToken) => string | undefined
+}
+
 export type ExternalToolBlockType = {
   show?: boolean
   externalTools?: ExternalToolOption[]
@@ -79,6 +88,13 @@ export type WorkflowVariableBlockType = {
   getVarType?: GetVarType
   showManageInputField?: boolean
   onManageInputField?: () => void
+}
+
+export type AgentOutputBlockType = {
+  show?: boolean
+  outputs?: DeclaredOutputConfig[]
+  onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
+  onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 }
 
 export type WorkflowNodesMap = Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'> & { modelProvider?: string }>

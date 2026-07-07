@@ -17,11 +17,11 @@ import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
-type Props = {
+type Props = Readonly<{
   onClose: () => void
   subscription: TriggerSubscription
   pluginDetail?: PluginDetail
-}
+}>
 
 const EditStep = {
   EditCredentials: 'edit_credentials',

@@ -1,5 +1,7 @@
 from flask_restx import Resource
+from sqlalchemy.orm import Session
 
+from controllers.console.app.wraps import with_session
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user_tenant, plugin_data
@@ -236,10 +238,12 @@ class PluginInvokeToolApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
+    @with_session
+    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
             return PluginToolBackwardsInvocation.convert_to_event_stream(
                 PluginToolBackwardsInvocation.invoke_tool(
+                    session=session,
                     tenant_id=tenant_model.id,
                     user_id=user_model.id,
                     tool_type=ToolProviderType.value_of(payload.tool_type),
@@ -334,8 +338,10 @@ class PluginInvokeAppApi(Resource):
             404: "Service not available",
         }
     )
-    def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
+    @with_session
+    def post(self, session: Session, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeApp):
         response = PluginAppBackwardsInvocation.invoke_app(
+            session=session,
             app_id=payload.app_id,
             user_id=user_model.id,
             tenant_id=tenant_model.id,
@@ -428,6 +434,7 @@ class PluginUploadFileRequestApi(Resource):
             mimetype=payload.mimetype,
             tenant_id=tenant_model.id,
             user_id=user_model.id,
+            conversation_id=payload.conversation_id,
         )
         return BaseBackwardsInvocationResponse(data={"url": url}).model_dump()
 

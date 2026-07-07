@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import type { OverlayItemVariant } from '../overlay-shared'
 import type { Placement } from '../placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
@@ -27,7 +27,7 @@ export type ContextMenuActions = BaseContextMenu.Root.Actions
 // Intentionally no public Backdrop export; Base UI handles context-menu modal dismissal internally.
 
 type ContextMenuContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number
@@ -219,13 +219,13 @@ export function ContextMenuSubTrigger({
       {...props}
     >
       {children}
-      <span aria-hidden className="ml-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
+      <span aria-hidden className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
     </BaseContextMenu.SubmenuTrigger>
   )
 }
 
 type ContextMenuSubContentProps = {
-  children: ReactNode
+  children: React.ReactNode
   placement?: Placement
   sideOffset?: number
   alignOffset?: number

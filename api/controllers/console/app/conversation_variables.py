@@ -9,14 +9,20 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+)
 from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
-from libs.helper import to_timestamp
+from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import ConversationVariable
 from models.model import App, AppMode
@@ -84,7 +90,7 @@ class ConversationVariablesApi(Resource):
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[ConversationVariablesQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(ConversationVariablesQuery))
     @console_ns.response(
         200,
         "Conversation variables retrieved successfully",
@@ -93,6 +99,7 @@ class ConversationVariablesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
     def get(self, app_model: App):
         args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))
@@ -112,7 +119,8 @@ class ConversationVariablesApi(Resource):
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             rows = session.scalars(stmt).all()
 
-        response = PaginatedConversationVariableResponse.model_validate(
+        return dump_response(
+            PaginatedConversationVariableResponse,
             {
                 "page": page,
                 "limit": page_size,
@@ -128,6 +136,5 @@ class ConversationVariablesApi(Resource):
                     )
                     for row in rows
                 ],
-            }
+            },
         )
-        return response.model_dump(mode="json")

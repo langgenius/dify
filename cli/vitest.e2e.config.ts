@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite-plus'
 import { resolveBuildInfo } from './scripts/lib/resolve-buildinfo.js'
 
@@ -36,6 +37,12 @@ catch {
  * Run: bun vitest --config vitest.e2e.config.ts
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@test': fileURLToPath(new URL('./test', import.meta.url)),
+    },
+  },
   pack: {
     entry: ['src/index.ts'],
     format: ['esm'],
@@ -85,6 +92,8 @@ export default defineConfig({
           'test/e2e/suites/framework/**/*.e2e.ts',
           // discovery (get app / describe app)
           'test/e2e/suites/discovery/**/*.e2e.ts',
+          // dsl (export / import)
+          'test/e2e/suites/dsl/**/*.e2e.ts',
           // run tests (require valid token)
           'test/e2e/suites/run/**/*.e2e.ts',
           'test/e2e/suites/agent/**/*.e2e.ts',

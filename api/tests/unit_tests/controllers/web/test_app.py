@@ -9,7 +9,8 @@ import pytest
 from flask import Flask
 
 from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
-from controllers.web.error import AppUnavailableError
+from controllers.web.error import AgentNotPublishedError, AppUnavailableError
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 
 
 # ---------------------------------------------------------------------------
@@ -78,6 +79,18 @@ class TestAppParameterApi:
         app_model = SimpleNamespace(mode="chat", app_model_config=None)
         with app.test_request_context("/parameters"):
             with pytest.raises(AppUnavailableError):
+                AppParameterApi().get(app_model, SimpleNamespace())
+
+    def test_agent_mode_unpublished_raises_friendly_error(self, app: Flask) -> None:
+        app_model = SimpleNamespace(mode="agent")
+        with (
+            app.test_request_context("/parameters"),
+            patch(
+                "controllers.web.app.get_published_agent_app_feature_dict_and_user_input_form",
+                side_effect=AgentAppNotPublishedError("Agent has not been published"),
+            ),
+        ):
+            with pytest.raises(AgentNotPublishedError):
                 AppParameterApi().get(app_model, SimpleNamespace())
 
 

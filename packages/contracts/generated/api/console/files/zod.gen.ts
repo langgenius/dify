@@ -63,13 +63,18 @@ export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
  */
 export const zGetFilesUploadResponse = zUploadConfig
 
+export const zPostFilesUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+  source: z.enum(['datasets']).optional(),
+})
+
 /**
  * File uploaded successfully
  */
 export const zPostFilesUploadResponse = zFileResponse
 
 export const zGetFilesByFileIdPreviewPath = z.object({
-  file_id: z.string(),
+  file_id: z.uuid(),
 })
 
 /**

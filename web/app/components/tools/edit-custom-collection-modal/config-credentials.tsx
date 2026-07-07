@@ -15,8 +15,7 @@ import {
 import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { Input } from '@langgenius/dify-ui/input'
-import { Radio } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,13 +29,13 @@ type Props = Readonly<{
   onHide: () => void
 }>
 
-type ItemProps = {
+type ItemProps<Value = string> = {
   text: string
-  value: AuthType | AuthHeaderPrefix
+  value: Value
   isChecked: boolean
 }
 
-function SelectItem({ text, value, isChecked }: ItemProps) {
+function SelectItem<Value = string>({ text, value, isChecked }: ItemProps<Value>) {
   return (
     <FieldItem>
       <FieldLabel
@@ -45,7 +44,7 @@ function SelectItem({ text, value, isChecked }: ItemProps) {
           'flex h-9 w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl bg-components-panel-on-panel-item-bg px-3 text-left outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover',
         )}
       >
-        <Radio value={value} />
+        <Radio<Value> value={value} />
         <div className="min-w-0 truncate system-sm-regular text-text-primary">{text}</div>
       </FieldLabel>
     </FieldItem>
@@ -137,17 +136,17 @@ export default function ConfigCredential({
                     <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
                       {t('createTool.authMethod.type', { ns: 'tools' })}
                     </FieldsetLegend>
-                    <SelectItem
+                    <SelectItem<AuthType>
                       text={t('createTool.authMethod.types.none', { ns: 'tools' })}
                       value={AuthType.none}
                       isChecked={tempCredential.auth_type === AuthType.none}
                     />
-                    <SelectItem
+                    <SelectItem<AuthType>
                       text={t('createTool.authMethod.types.api_key_header', { ns: 'tools' })}
                       value={AuthType.apiKeyHeader}
                       isChecked={tempCredential.auth_type === AuthType.apiKeyHeader}
                     />
-                    <SelectItem
+                    <SelectItem<AuthType>
                       text={t('createTool.authMethod.types.api_key_query', { ns: 'tools' })}
                       value={AuthType.apiKeyQuery}
                       isChecked={tempCredential.auth_type === AuthType.apiKeyQuery}
@@ -169,17 +168,17 @@ export default function ConfigCredential({
                         <FieldsetLegend className="col-span-full py-2 system-sm-medium text-text-primary">
                           {t('createTool.authHeaderPrefix.title', { ns: 'tools' })}
                         </FieldsetLegend>
-                        <SelectItem
+                        <SelectItem<AuthHeaderPrefix>
                           text={t('createTool.authHeaderPrefix.types.basic', { ns: 'tools' })}
                           value={AuthHeaderPrefix.basic}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.basic}
                         />
-                        <SelectItem
+                        <SelectItem<AuthHeaderPrefix>
                           text={t('createTool.authHeaderPrefix.types.bearer', { ns: 'tools' })}
                           value={AuthHeaderPrefix.bearer}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.bearer}
                         />
-                        <SelectItem
+                        <SelectItem<AuthHeaderPrefix>
                           text={t('createTool.authHeaderPrefix.types.custom', { ns: 'tools' })}
                           value={AuthHeaderPrefix.custom}
                           isChecked={tempCredential.api_key_header_prefix === AuthHeaderPrefix.custom}

@@ -309,6 +309,17 @@ export type TextChunkResponse = {
   }
 }
 
+export type ReasoningChunkResponse = {
+  task_id: string
+  event: string
+  data: {
+    message_id: string
+    reasoning: string
+    node_id?: string
+    is_final?: boolean
+  }
+}
+
 export type TextReplaceResponse = {
   task_id: string
   workflow_run_id: string
