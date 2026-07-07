@@ -641,3 +641,48 @@ def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(monkeypatch)
         "tenant-1:dataset-1",
         "tenant-1:dataset-2",
     ]
+
+
+def test_extract_dependencies_uses_provider_type_not_provider_name():
+    """Regression test for #38406 — f-string used provider_name twice."""
+    service = SnippetDslService(session=SimpleNamespace())
+    graph = {
+        "nodes": [
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.TOOL,
+                    "tool_configurations": {
+                        "provider_type": "langgenius",
+                        "provider": "google",
+                    },
+                },
+            },
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.AGENT,
+                    "agent_parameters": {
+                        "tools": {
+                            "value": [
+                                {
+                                    "provider_type": "community",
+                                    "provider": "custom_tool",
+                                },
+                            ],
+                        },
+                    },
+                },
+            },
+            # Node missing provider — should be skipped
+            {
+                "data": {
+                    "type": BuiltinNodeTypes.TOOL,
+                    "tool_configurations": {
+                        "provider_type": "langgenius",
+                        # no provider key
+                    },
+                },
+            },
+        ],
+    }
+    deps = service._extract_dependencies_from_workflow_graph(graph)
+    assert deps == ["langgenius/google", "community/custom_tool"]
