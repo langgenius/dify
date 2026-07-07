@@ -11,8 +11,9 @@ composition-driven.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
@@ -63,6 +64,7 @@ DIFY_CORE_TOOLS_LAYER_ID = "core_tools"
 DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
 DIFY_ASK_HUMAN_LAYER_ID = "ask_human"
 DIFY_SHELL_LAYER_ID = "shell"
+type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
 
 
 def _filter_snapshot_to_specs(
@@ -102,6 +104,44 @@ def _shell_config_with_drive_ref(
     if drive_config is None:
         return config
     return config.model_copy(update={"agent_stub_drive_ref": drive_config.drive_ref})
+
+
+def _markdown_backtick_fence(text: str) -> str:
+    """Choose a fence that will not terminate inside the prompt body."""
+    longest_backtick_run = max((len(match.group(0)) for match in re.finditer(r"`+", text)), default=0)
+    return "`" * max(3, longest_backtick_run + 1)
+
+
+def _wrap_build_draft_agent_soul_prompt(prompt: str) -> str:
+    """Reframe build-draft Agent Soul prompts as preparation work for a future run."""
+    fence = _markdown_backtick_fence(prompt)
+    return (
+        "Your current job is to prepare the agent's working environment, configuration, tools, and context "
+        "so future runs can complete the task below smoothly. Do not perform the task itself yet.\n\n"
+        f"{fence}text\n{prompt}\n{fence}"
+    )
+
+
+def _agent_soul_prompt_for_layer(
+    prompt: str | None,
+    *,
+    config_version_kind: AgentConfigVersionKind,
+) -> str | None:
+    """Preserve normal snapshot/draft prompts and only wrap build-draft prompts.
+
+    The API-side layer adapter is the product boundary where Agent Soul text
+    becomes the model-facing system-prompt layer. ``snapshot`` and normal
+    ``draft`` runs pass through the original effective prompt unchanged, while
+    ``build_draft`` reframes that prompt as future work and embeds it in a
+    fenced block.
+    """
+    if prompt is None:
+        return None
+    if not prompt.strip():
+        return None
+    if config_version_kind != "build_draft":
+        return prompt
+    return _wrap_build_draft_agent_soul_prompt(prompt)
 
 
 class AgentBackendModelConfig(BaseModel):
@@ -163,6 +203,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     workflow_node_job_prompt: str
     user_prompt: str
     agent_soul_prompt: str | None = None
+    agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     purpose: RunPurpose = "workflow_node"
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
@@ -212,6 +253,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     execution_context: DifyExecutionContextLayerConfig
     user_prompt: str
     agent_soul_prompt: str | None = None
+    agent_config_version_kind: AgentConfigVersionKind = "snapshot"
     purpose: RunPurpose = "agent_app"
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
@@ -261,13 +303,17 @@ class AgentBackendRunRequestBuilder:
         prompt.
         """
         layers: list[RunLayerSpec] = []
-        if run_input.agent_soul_prompt:
+        agent_soul_prompt = _agent_soul_prompt_for_layer(
+            run_input.agent_soul_prompt,
+            config_version_kind=run_input.agent_config_version_kind,
+        )
+        if agent_soul_prompt:
             layers.append(
                 RunLayerSpec(
                     name=AGENT_SOUL_PROMPT_LAYER_ID,
                     type=PLAIN_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "agent_soul"},
-                    config=PromptLayerConfig(prefix=run_input.agent_soul_prompt),
+                    config=PromptLayerConfig(prefix=agent_soul_prompt),
                 )
             )
 
@@ -483,13 +529,17 @@ class AgentBackendRunRequestBuilder:
         ask_human / structured output.
         """
         layers: list[RunLayerSpec] = []
-        if run_input.agent_soul_prompt:
+        agent_soul_prompt = _agent_soul_prompt_for_layer(
+            run_input.agent_soul_prompt,
+            config_version_kind=run_input.agent_config_version_kind,
+        )
+        if agent_soul_prompt:
             layers.append(
                 RunLayerSpec(
                     name=AGENT_SOUL_PROMPT_LAYER_ID,
                     type=PLAIN_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "agent_soul"},
-                    config=PromptLayerConfig(prefix=run_input.agent_soul_prompt),
+                    config=PromptLayerConfig(prefix=agent_soul_prompt),
                 )
             )
 

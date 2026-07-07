@@ -211,6 +211,37 @@ class TestAgentAppRuntimeRequestBuilder:
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"
 
+    def test_build_wraps_agent_soul_prompt_for_build_draft(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="build_draft"))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert prompt_layer.config.prefix == (
+            "Your current job is to prepare the agent's working environment, configuration, tools, and context "
+            "so future runs can complete the task below smoothly. Do not perform the task itself yet.\n\n"
+            "```text\nYou are Iris.\n```"
+        )
+
+    def test_build_propagates_draft_version_kind_without_wrapping_prompt(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="draft"))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        execution_context = next(layer for layer in result.request.composition.layers if layer.name == "execution_context")
+        config_layer = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+
+        assert prompt_layer.config.prefix == "You are Iris."
+        assert execution_context.config.agent_config_version_kind == "draft"
+        assert config_layer.config.config_version.kind == "draft"
+
     def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_draft(self):
         soul = _soul_with_model()
         soul.tools.dify_tools = [
