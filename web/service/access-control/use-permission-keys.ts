@@ -1,5 +1,5 @@
 import type { PermissionKeysResponse } from '@/models/access-control'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { queryOptions } from '@tanstack/react-query'
 // eslint-disable-next-line no-restricted-imports
 import { get } from '../base'
 
@@ -15,8 +15,4 @@ export const workspacePermissionKeysQueryOptions = (workspaceId?: string) => {
     queryFn: () => get<PermissionKeysResponse>('/workspaces/current/rbac/my-permissions'),
     enabled: workspaceId === undefined || Boolean(workspaceId),
   })
-}
-
-export const useWorkspacePermissionKeys = () => {
-  return useQuery(workspacePermissionKeysQueryOptions())
 }
