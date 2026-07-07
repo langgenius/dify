@@ -89,7 +89,7 @@ def test_deal_dependencies_installs_missing_marketplace_plugins(mocker: MockerFi
     installer_cls.return_value.list_plugins.return_value = [SimpleNamespace(plugin_id="installed-plugin")]
 
     migration_cls = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration")
-    migration_cls.return_value._fetch_plugin_unique_identifier.return_value = "missing-plugin:1.0.0"
+    migration_cls.return_value._fetch_latest_package_identifier.return_value = "missing-plugin:1.0.0"
 
     install_mock = mocker.patch(
         "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
@@ -518,7 +518,7 @@ def test_deal_dependencies_installs_when_enabled(mocker: MockerFixture) -> None:
     installer = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginInstaller").return_value
     installer.list_plugins.return_value = []
     migration = mocker.patch("services.rag_pipeline.rag_pipeline_transform_service.PluginMigration").return_value
-    migration._fetch_plugin_unique_identifier.return_value = "langgenius/openai:1.0.0@abc"
+    migration._fetch_latest_package_identifier.return_value = "langgenius/openai:1.0.0@abc"
     install_call = mocker.patch(
         "services.rag_pipeline.rag_pipeline_transform_service.PluginService.install_from_marketplace_pkg"
     )

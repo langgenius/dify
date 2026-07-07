@@ -34,7 +34,7 @@ class ProviderCredentialsCache:
         else:
             return None
 
-    def set(self, credentials: dict[str, Any]):
+    def set(self, credentials: dict[str, Any]) -> None:
         """
         Cache model provider credentials.
 
@@ -43,7 +43,7 @@ class ProviderCredentialsCache:
         """
         redis_client.setex(self.cache_key, 86400, json.dumps(credentials))
 
-    def delete(self):
+    def delete(self) -> None:
         """
         Delete cached model provider credentials.
 
