@@ -789,8 +789,8 @@ export type TriggerProviderApiEntity = {
   icon_dark?: string | null
   label: I18nObject
   name: string
-  plugin_id?: string | null
-  plugin_unique_identifier?: string | null
+  plugin_id?: string
+  plugin_unique_identifier?: string
   subscription_constructor?: SubscriptionConstructor | null
   subscription_schema?: Array<ProviderConfig>
   supported_creation_methods?: Array<TriggerCreationMethod>
