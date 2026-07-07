@@ -1,7 +1,7 @@
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from models.model import AccountTrialAppRecord, TrialApp
@@ -11,7 +11,7 @@ from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFa
 
 class RecommendedAppService:
     @classmethod
-    def get_recommended_apps_and_categories(cls, session: scoped_session, language: str):
+    def get_recommended_apps_and_categories(cls, session: Session, language: str):
         """
         Get recommended apps and categories.
         :param language: language
@@ -19,7 +19,7 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result = retrieval_instance.get_recommended_apps_and_categories(language)
+        result = retrieval_instance.get_recommended_apps_and_categories(language, session=session)
         if not result.get("recommended_apps"):
             result = (
                 RecommendAppRetrievalFactory.get_buildin_recommend_app_retrieval().fetch_recommended_apps_from_builtin(
@@ -35,7 +35,7 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def get_learn_dify_apps(cls, session: scoped_session, language: str) -> dict[str, Any]:
+    def get_learn_dify_apps(cls, session: Session, language: str) -> dict[str, Any]:
         """
         Get recommended apps marked for the Learn Dify section.
         :param language: language
@@ -43,7 +43,7 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result = retrieval_instance.get_learn_dify_apps(language)
+        result = retrieval_instance.get_learn_dify_apps(language, session=session)
 
         if FeatureService.get_system_features().enable_trial_app:
             for app in result["recommended_apps"]:
@@ -52,7 +52,7 @@ class RecommendedAppService:
         return {"recommended_apps": result["recommended_apps"]}
 
     @classmethod
-    def get_recommend_app_detail(cls, session: scoped_session, app_id: str) -> dict[str, Any] | None:
+    def get_recommend_app_detail(cls, session: Session, app_id: str) -> dict[str, Any] | None:
         """
         Get recommend app detail.
         :param app_id: app id
@@ -60,7 +60,7 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result: dict[str, Any] | None = retrieval_instance.get_recommend_app_detail(app_id)
+        result: dict[str, Any] | None = retrieval_instance.get_recommend_app_detail(app_id, session=session)
         if result is None:
             return None
         if FeatureService.get_system_features().enable_trial_app:
@@ -69,7 +69,7 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def add_trial_app_record(cls, session: scoped_session, app_id: str, account_id: str):
+    def add_trial_app_record(cls, session: Session, app_id: str, account_id: str):
         """
         Add trial app record.
         :param app_id: app id
@@ -88,6 +88,6 @@ class RecommendedAppService:
             session.commit()
 
     @staticmethod
-    def _can_trial_app(session: scoped_session, app_id: str) -> bool:
+    def _can_trial_app(session: Session, app_id: str) -> bool:
         trial_app_model = session.scalar(select(TrialApp).where(TrialApp.app_id == app_id).limit(1))
         return trial_app_model is not None

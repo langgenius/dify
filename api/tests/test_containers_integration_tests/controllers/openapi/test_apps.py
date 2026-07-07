@@ -39,7 +39,7 @@ def _create_app(
         icon="🤖",
         icon_background="#FF6B6B",
     )
-    app_model = AppService().create_app(tenant.id, params, account)
+    app_model = AppService().create_app(tenant.id, params, account, session=db_session)
     # The openapi surface gate keys off ``enable_api``; flip it explicitly so
     # the test states the visibility precondition rather than relying on the
     # template default.

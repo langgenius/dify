@@ -247,7 +247,7 @@ class DeviceApproveApi(Resource):
                 raise BadRequest(description=str(e)) from None
             ttl_days = oauth_ttl_days(tenant_id=tenant)
             mint = mint_oauth_token(
-                db.session,
+                db.session(),
                 redis_client,
                 subject_email=account.email,
                 subject_issuer=ACCOUNT_ISSUER_SENTINEL,
@@ -342,7 +342,7 @@ def _audit_cross_ip_if_needed(state) -> None:
 
 
 def _build_account_poll_payload(account, tenant, mint) -> PollPayload:
-    rows = TenantService.get_workspaces_for_account(db.session, str(account.id))
+    rows = TenantService.get_workspaces_for_account(db.session(), str(account.id))
     workspaces = [WorkspacePayload(id=str(t.id), name=t.name, role=getattr(m, "role", "")) for t, m in rows]
     # Prefer active session tenant → DB-flagged current join → first membership.
     default_ws_id = None

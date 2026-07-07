@@ -7,7 +7,7 @@ import importlib
 from contextlib import ExitStack, contextmanager
 from inspect import unwrap
 from types import ModuleType, SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -186,6 +186,7 @@ def test_builtin_provider_credentials_get(app: Flask, controller_module, monkeyp
     service_mock.assert_called_once_with(
         tenant_id="tenant-cred",
         provider_name="demo",
+        session=ANY,
         user=user,
         include_credential_ids=None,
     )
@@ -210,6 +211,7 @@ def test_builtin_provider_credentials_get_reads_repeated_include_ids(
     service_mock.assert_called_once_with(
         tenant_id="tenant-cred",
         provider_name="demo",
+        session=ANY,
         user=user,
         include_credential_ids=["cred-1", "cred-2"],
     )

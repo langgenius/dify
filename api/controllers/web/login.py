@@ -30,6 +30,7 @@ from controllers.console.wraps import (
 )
 from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token
+from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.passport import PassportService
 from libs.password import valid_password
@@ -104,7 +105,7 @@ class LoginApi(Resource):
         normalized_email = payload.email.lower()
 
         try:
-            account = WebAppAuthService.authenticate(payload.email, payload.password)
+            account = WebAppAuthService.authenticate(payload.email, payload.password, db.session())
         except services.errors.account.AccountLoginError:
             _log_web_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError()
@@ -144,9 +145,9 @@ class LoginStatusApi(Resource):
         token = extract_webapp_access_token(request)
         if not app_code:
             return LoginStatusResponse(logged_in=bool(token), app_logged_in=False).model_dump(mode="json")
-        app_id = AppService.get_app_id_by_code(app_code)
+        app_id = AppService.get_app_id_by_code(app_code, session=db.session())
         is_public = not dify_config.ENTERPRISE_ENABLED or not WebAppAuthService.is_app_require_permission_check(
-            app_id=app_id
+            db.session(), app_id=app_id
         )
         user_logged_in = False
 
@@ -211,7 +212,7 @@ class EmailCodeLoginSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        account = WebAppAuthService.get_user_through_email(payload.email)
+        account = WebAppAuthService.get_user_through_email(payload.email, db.session())
         if account is None:
             raise AuthenticationFailedError()
         token = WebAppAuthService.send_email_code_login_email(account=account, language=language)
@@ -264,7 +265,7 @@ class EmailCodeLoginApi(Resource):
 
         WebAppAuthService.revoke_email_code_login_token(payload.token)
         try:
-            account = WebAppAuthService.get_user_through_email(token_email)
+            account = WebAppAuthService.get_user_through_email(token_email, db.session())
         except Unauthorized as exc:
             _log_web_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError() from exc

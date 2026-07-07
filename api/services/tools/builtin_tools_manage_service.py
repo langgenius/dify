@@ -347,6 +347,7 @@ class BuiltinToolManageService:
     def get_builtin_tool_provider_credentials(
         tenant_id: str,
         provider_name: str,
+        session: Session,
         user: Account | None = None,
         include_credential_ids: list[str] | None = None,
     ) -> list[ToolProviderCredentialApiEntity]:
@@ -367,7 +368,7 @@ class BuiltinToolManageService:
         from models.credential_permission import CredentialType as CredPermType
         from services.credential_permission_service import CredentialPermissionService
 
-        with db.session.no_autoflush:
+        with session.no_autoflush:
             base_filter = (
                 BuiltinToolProvider.tenant_id == tenant_id,
                 BuiltinToolProvider.provider == provider_name,
@@ -383,7 +384,7 @@ class BuiltinToolManageService:
                     credential_type=CredPermType.BUILTIN_TOOL_PROVIDER,
                     user=user,
                 )
-            visible_providers = list(db.session.scalars(visible_query).all())
+            visible_providers = list(session.scalars(visible_query).all())
 
             # Fetch any explicitly-included IDs that the visibility filter excluded.
             borrowed_ids: set[str] = set()
@@ -397,7 +398,7 @@ class BuiltinToolManageService:
                         .where(*base_filter, BuiltinToolProvider.id.in_(wanted_ids))
                         .order_by(*order)
                     )
-                    borrowed_providers = list(db.session.scalars(borrowed_query).all())
+                    borrowed_providers = list(session.scalars(borrowed_query).all())
                     borrowed_ids = {p.id for p in borrowed_providers}
 
             providers = visible_providers + borrowed_providers
@@ -427,7 +428,7 @@ class BuiltinToolManageService:
                 if vis_str == "partial_members":
                     credential_entity.partial_member_list = list(
                         CredentialPermissionService.get_partial_member_list(
-                            db.session, provider.id, CredPermType.BUILTIN_TOOL_PROVIDER
+                            session, provider.id, CredPermType.BUILTIN_TOOL_PROVIDER
                         )
                     )
                 if provider.id in borrowed_ids:
@@ -439,6 +440,7 @@ class BuiltinToolManageService:
     def get_builtin_tool_provider_credential_info(
         tenant_id: str,
         provider: str,
+        session: Session,
         user: Account | None = None,
         include_credential_ids: list[str] | None = None,
     ) -> ToolProviderCredentialInfoApiEntity:
@@ -450,6 +452,7 @@ class BuiltinToolManageService:
         credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(
             tenant_id,
             provider,
+            session=session,
             user=user,
             include_credential_ids=include_credential_ids,
         )

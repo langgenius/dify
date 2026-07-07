@@ -4,7 +4,7 @@ import time
 from typing import Any, TypedDict, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
@@ -56,9 +56,7 @@ class HitTestingService:
         }
 
     @classmethod
-    def _dump_retrieval_records(
-        cls, session: Session | scoped_session, records: list[RetrievalSegments]
-    ) -> list[dict[str, Any]]:
+    def _dump_retrieval_records(cls, session: Session, records: list[RetrievalSegments]) -> list[dict[str, Any]]:
         document_ids = {
             document_id
             for record in records
@@ -232,9 +230,7 @@ class HitTestingService:
         return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
-    def compact_retrieve_response(
-        cls, session: Session | scoped_session, query: str, documents: list[Document]
-    ) -> RetrieveResponseDict:
+    def compact_retrieve_response(cls, session: Session, query: str, documents: list[Document]) -> RetrieveResponseDict:
         records = RetrievalService.format_retrieval_documents(documents)
 
         return {

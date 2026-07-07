@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -148,7 +148,7 @@ class TestAppAccessMode:
         with app.test_request_context("/webapp/access-mode?appCode=code1"):
             result = AppAccessMode().get()
 
-        mock_resolve.assert_called_once_with("code1")
+        mock_resolve.assert_called_once_with("code1", session=ANY)
         mock_access.assert_called_once_with("resolved-id")
         assert result == {"accessMode": "external"}
 

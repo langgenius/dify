@@ -159,7 +159,7 @@ class DatasourcePluginsApi(DatasetApiResource):
 
         query = query_params_from_request(DatasourcePluginsQuery)
 
-        rag_pipeline_service: RagPipelineService = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session())
         datasource_plugins: list[dict[Any, Any]] = rag_pipeline_service.get_datasource_plugins(
             tenant_id=tenant_id, dataset_id=dataset_id_str, is_published=query.is_published
         )
@@ -204,7 +204,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
 
         payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
         assert isinstance(current_user, Account)
-        rag_pipeline_service: RagPipelineService = RagPipelineService()
+        rag_pipeline_service: RagPipelineService = RagPipelineService(db.session())
         pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(
             {
@@ -281,8 +281,8 @@ class PipelineRunApi(DatasetApiResource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        rag_pipeline_service: RagPipelineService = RagPipelineService()
-        pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
+        rag_pipeline_service = RagPipelineService(db.session())
+        pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
                 session=session,

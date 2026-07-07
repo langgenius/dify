@@ -109,8 +109,8 @@ def test_export_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
     package = MigrationPackage.from_mapping({"metadata": {"version": "1", "source_scope": "single"}})
 
     class FakeMigrationExportService:
-        def export(self, export_session, selection):
-            captured["session"] = export_session
+        def export(self, selection, *, session):
+            captured["session"] = session
             captured["selection"] = selection
             return ExportResult(package=package, report_items=[], report_context=ReportContext())
 
@@ -156,8 +156,8 @@ def test_import_command_uses_cli_owned_session(monkeypatch, tmp_path: Path):
     )
 
     class FakeMigrationImportService:
-        def import_package(self, import_session, request):
-            captured["session"] = import_session
+        def import_package(self, request, *, session):
+            captured["session"] = session
             captured["request"] = request
             return ImportResult(report_items=[], report_context=ReportContext(target_tenant="target"))
 

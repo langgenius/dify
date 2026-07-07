@@ -79,7 +79,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     if get_setup_status():
         raise AlreadySetupError()
 
-    tenant_count = TenantService.get_tenant_count(session=db.session)
+    tenant_count = TenantService.get_tenant_count(session=db.session())
     if tenant_count > 0:
         raise AlreadySetupError()
 
@@ -94,7 +94,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
         password=payload.password,
         ip_address=extract_remote_ip(request),
         language=payload.language,
-        session=db.session,
+        session=db.session(),
     )
 
     return SetupResponse(result="success")

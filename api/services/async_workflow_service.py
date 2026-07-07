@@ -309,7 +309,8 @@ class AsyncWorkflowService:
         workflow_service: WorkflowService,
         app_model: App,
         workflow_id: str | None = None,
-        session: Session | None = None,
+        *,
+        session: Session,
     ) -> Workflow:
         """
         Get workflow for the app
@@ -317,9 +318,7 @@ class AsyncWorkflowService:
         Args:
             app_model: App model instance
             workflow_id: Optional specific workflow ID
-            session: Reuse this SQLAlchemy session for the lookup when provided,
-                so the caller's explicit session bears the connection cost
-                instead of Flask's request-scoped ``db.session``.
+            session: SQLAlchemy session used for the workflow lookup.
 
         Returns:
             Workflow instance

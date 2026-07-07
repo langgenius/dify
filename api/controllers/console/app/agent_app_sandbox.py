@@ -25,6 +25,7 @@ from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models.model import App, AppMode
@@ -269,6 +270,7 @@ class WorkflowAgentSandboxListResource(Resource):
                 node_id=node_id,
                 node_execution_id=query.node_execution_id,
                 path=query.path,
+                session=db.session(),
             )
         except Exception as exc:
             return _handle(exc)
@@ -305,6 +307,7 @@ class WorkflowAgentSandboxReadResource(Resource):
                 node_id=node_id,
                 node_execution_id=query.node_execution_id,
                 path=query.path,
+                session=db.session(),
             )
         except Exception as exc:
             return _handle(exc)
@@ -334,6 +337,7 @@ class WorkflowAgentSandboxUploadResource(Resource):
                 node_id=node_id,
                 node_execution_id=payload.node_execution_id,
                 path=payload.path,
+                session=db.session(),
             )
         except Exception as exc:
             return _handle(exc)
