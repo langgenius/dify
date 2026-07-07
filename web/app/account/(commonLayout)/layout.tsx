@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import * as React from 'react'
 import { CommonLayoutHydrationBoundary } from '@/app/(commonLayout)/hydration-boundary'
 import AmplitudeProvider from '@/app/components/base/amplitude'
@@ -13,35 +12,32 @@ import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
 import Header from './header'
 
-const Layout = async ({ children }: { children: ReactNode }) => {
+export default async function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <React.Fragment>
       <GoogleAnalyticsScripts />
       <AmplitudeProvider />
       <OAuthRegistrationAnalytics />
       <EducationVerifyActionRecorder />
       <CommonLayoutHydrationBoundary>
-        <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex h-full flex-col overflow-hidden bg-background-body">
           <MaintenanceNotice />
-          <div className="relative flex h-0 min-h-0 grow flex-col overflow-hidden bg-background-body">
-            <AppContextProvider>
-              <EventEmitterContextProvider>
-                <ProviderContextProvider>
-                  <ModalContextProvider>
-                    <HeaderWrapper>
-                      <Header />
-                    </HeaderWrapper>
-                    <div className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
-                      {children}
-                    </div>
-                  </ModalContextProvider>
-                </ProviderContextProvider>
-              </EventEmitterContextProvider>
-            </AppContextProvider>
-          </div>
+          <AppContextProvider>
+            <EventEmitterContextProvider>
+              <ProviderContextProvider>
+                <ModalContextProvider>
+                  <HeaderWrapper>
+                    <Header />
+                  </HeaderWrapper>
+                  <div className="relative flex h-0 min-h-0 shrink-0 grow flex-col overflow-y-auto bg-components-panel-bg">
+                    {children}
+                  </div>
+                </ModalContextProvider>
+              </ProviderContextProvider>
+            </EventEmitterContextProvider>
+          </AppContextProvider>
         </div>
       </CommonLayoutHydrationBoundary>
-    </>
+    </React.Fragment>
   )
 }
-export default Layout

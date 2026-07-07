@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import * as React from 'react'
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import { GoogleAnalyticsScripts } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
@@ -18,11 +18,11 @@ export default async function Layout({
   children,
   detailSidebar,
 }: {
-  children: ReactNode
-  detailSidebar: ReactNode
+  children: React.ReactNode
+  detailSidebar: React.ReactNode
 }) {
   return (
-    <>
+    <React.Fragment>
       <GoogleAnalyticsScripts />
       <AmplitudeProvider />
       <OAuthRegistrationAnalytics />
@@ -31,24 +31,22 @@ export default async function Layout({
         <NextRouteStateBridge>
           <div className="flex h-full flex-col overflow-hidden">
             <MaintenanceNotice />
-            <div className="relative flex h-0 min-h-0 grow flex-col overflow-hidden bg-background-body">
-              <AppContextProvider>
-                <EventEmitterContextProvider>
-                  <ProviderContextProvider>
-                    <ModalContextProvider>
-                      <MainNavLayout detailSidebar={detailSidebar}>
-                        {children}
-                      </MainNavLayout>
-                      <CommonLayoutGlobalMounts />
-                    </ModalContextProvider>
-                  </ProviderContextProvider>
-                </EventEmitterContextProvider>
-              </AppContextProvider>
-            </div>
+            <AppContextProvider>
+              <EventEmitterContextProvider>
+                <ProviderContextProvider>
+                  <ModalContextProvider>
+                    <MainNavLayout detailSidebar={detailSidebar}>
+                      {children}
+                    </MainNavLayout>
+                    <CommonLayoutGlobalMounts />
+                  </ModalContextProvider>
+                </ProviderContextProvider>
+              </EventEmitterContextProvider>
+            </AppContextProvider>
           </div>
         </NextRouteStateBridge>
       </CommonLayoutHydrationBoundary>
       <Zendesk />
-    </>
+    </React.Fragment>
   )
 }
