@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, field_validator
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
 AGENT_RUNTIME_EXIT_INTENT_ARG = "_agent_runtime_exit_intent"
-AgentRuntimeExitIntent: TypeAlias = Literal["suspend", "delete"]
+type AgentRuntimeExitIntent = Literal["suspend", "delete"]
 
 
 class UserFrom(StrEnum):
