@@ -1,18 +1,19 @@
+import type { Ref } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
+import { useImperativeHandle } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../../types'
 
-const mockNotify = vi.fn()
+const mockToastSuccess = vi.fn()
 const mockSetPluginOAuthCustomClient = vi.fn().mockResolvedValue({})
 const mockDeletePluginOAuthCustomClient = vi.fn().mockResolvedValue({})
 const mockInvalidPluginOAuthClientSchema = vi.fn()
 const mockFormValues = { isCheckValidated: true, values: { __oauth_client__: 'custom', client_id: 'test-id' } }
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+  },
 }))
 
 vi.mock('../../hooks/use-credential', () => ({
@@ -33,36 +34,18 @@ vi.mock('../../../readme-panel/store', () => ({
   ReadmeShowType: { modal: 'modal' },
 }))
 
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({ children, title, onClose: _onClose, onConfirm, onCancel, onExtraButtonClick, footerSlot }: {
-    children: React.ReactNode
-    title: string
-    onClose?: () => void
-    onConfirm?: () => void
-    onCancel?: () => void
-    onExtraButtonClick?: () => void
-    footerSlot?: React.ReactNode
-    [key: string]: unknown
-  }) => (
-    <div data-testid="modal">
-      <div data-testid="modal-title">{title}</div>
-      {children}
-      <button data-testid="modal-confirm" onClick={onConfirm}>Save And Auth</button>
-      <button data-testid="modal-cancel" onClick={onCancel}>Save Only</button>
-      <button data-testid="modal-close" onClick={onExtraButtonClick}>Cancel</button>
-      {!!footerSlot && <div data-testid="footer-slot">{footerSlot}</div>}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
-  default: React.forwardRef((_props: Record<string, unknown>, ref: React.Ref<unknown>) => {
-    React.useImperativeHandle(ref, () => ({
+vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
+  const MockAuthForm = ({ ref }: Record<string, unknown> & { ref?: Ref<unknown> }) => {
+    useImperativeHandle(ref, () => ({
       getFormValues: () => mockFormValues,
     }))
     return <div data-testid="auth-form" />
-  }),
-}))
+  }
+
+  return {
+    default: MockAuthForm,
+  }
+})
 
 vi.mock('@tanstack/react-form', () => ({
   useForm: (config: Record<string, unknown>) => ({
@@ -115,15 +98,18 @@ describe('OAuthClientSettings', () => {
 
   it('should call onClose when cancel clicked', () => {
     const mockOnClose = vi.fn()
+    const mockOnOpenChange = vi.fn()
     render(
       <OAuthClientSettings
         pluginPayload={basePayload}
         schemas={defaultSchemas}
         onClose={mockOnClose}
+        onOpenChange={mockOnOpenChange}
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByText('common.operation.cancel'))
+    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     expect(mockOnClose).toHaveBeenCalled()
   })
 
@@ -139,7 +125,7 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-cancel'))
+    fireEvent.click(screen.getByText('plugin.auth.saveOnly'))
 
     await waitFor(() => {
       expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledWith(expect.objectContaining({
@@ -158,11 +144,12 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByText('plugin.auth.saveAndAuth'))
 
     await waitFor(() => {
       expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
     })
+    expect(mockOnAuth).toHaveBeenCalled()
   })
 
   it('should render readme entrance when detail is provided', () => {

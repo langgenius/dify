@@ -66,3 +66,6 @@ public/fallback-*.js
 .vscode/mcp.json
 
 .eslintcache
+
+# vinext
+.vinext

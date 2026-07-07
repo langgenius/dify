@@ -8,7 +8,14 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Confirm from '@/app/components/base/confirm'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogTitle,
+} from '@/app/components/base/ui/alert-dialog'
 import {
   ApiKeyModal,
   usePluginAuthAction,
@@ -80,7 +87,7 @@ const Card = ({
   const handleAction = useCallback((
     action: string,
     credentialItem: DataSourceCredential,
-    renamePayload?: Record<string, any>,
+    renamePayload?: { credential_id: string, name: string },
   ) => {
     if (action === 'edit') {
       handleEdit(
@@ -98,19 +105,14 @@ const Card = ({
     if (action === 'setDefault')
       handleSetDefault(credentialItem.id)
 
-    if (action === 'rename')
-      handleRename(renamePayload as any)
+    if (action === 'rename' && renamePayload)
+      handleRename(renamePayload)
 
     if (action === 'change') {
       changeCredentialIdRef.current = credentialItem.id
       handleOAuth()
     }
-  }, [
-    openConfirm,
-    handleEdit,
-    handleSetDefault,
-    handleRename,
-  ])
+  }, [openConfirm, handleSetDefault, handleRename, handleEdit, handleOAuth])
 
   return (
     <div className="rounded-xl bg-background-section-burn">
@@ -120,10 +122,10 @@ const Card = ({
           className="mr-3 flex h-10 w-10 shrink-0 items-center justify-center"
         />
         <div className="grow">
-          <div className="system-md-semibold text-text-primary">
+          <div className="text-text-primary system-md-semibold">
             {renderI18nObject(label)}
           </div>
-          <div className="system-xs-regular flex h-4 items-center text-text-tertiary">
+          <div className="flex h-4 items-center text-text-tertiary system-xs-regular">
             {author}
             <div className="mx-0.5 text-text-quaternary">/</div>
             {name}
@@ -135,7 +137,7 @@ const Card = ({
           onUpdate={handleAuthUpdate}
         />
       </div>
-      <div className="system-xs-medium flex h-4 items-center pl-3 text-text-tertiary">
+      <div className="flex h-4 items-center pl-3 text-text-tertiary system-xs-medium">
         {t('auth.connectedWorkspace', { ns: 'plugin' })}
         <div className="ml-3 h-[1px] grow bg-divider-subtle"></div>
       </div>
@@ -157,23 +159,30 @@ const Card = ({
       {
         !credentials_list.length && (
           <div className="p-3 pt-1">
-            <div className="system-xs-regular flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary">
+            <div className="flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary system-xs-regular">
               {t('auth.emptyAuth', { ns: 'plugin' })}
             </div>
           </div>
         )
       }
-      {
-        deleteCredentialId && (
-          <Confirm
-            isShow
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
-            isDisabled={doingAction}
-            onCancel={closeConfirm}
-            onConfirm={handleConfirm}
-          />
-        )
-      }
+      <AlertDialog
+        open={!!deleteCredentialId}
+        onOpenChange={open => !open && closeConfirm()}
+      >
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
+          <div className="flex flex-col gap-2 px-6 pb-4 pt-6">
+            <AlertDialogTitle className="w-full truncate text-text-primary title-2xl-semi-bold">
+              {t('list.delete.title', { ns: 'datasetDocuments' })}
+            </AlertDialogTitle>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton disabled={doingAction} onClick={handleConfirm}>
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {
         !!editValues && (
           <ApiKeyModal

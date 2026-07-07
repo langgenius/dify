@@ -1,18 +1,19 @@
+import type { Ref } from 'react'
 import type { ApiKeyModalProps } from '../api-key-modal'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
+import { useImperativeHandle } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../../types'
 
-const mockNotify = vi.fn()
+const mockToastSuccess = vi.fn()
 const mockAddPluginCredential = vi.fn().mockResolvedValue({})
 const mockUpdatePluginCredential = vi.fn().mockResolvedValue({})
 const mockFormValues = { isCheckValidated: true, values: { __name__: 'My Key', api_key: 'sk-123' } }
 
-vi.mock('@/app/components/base/toast/context', () => ({
-  useToastContext: () => ({
-    notify: mockNotify,
-  }),
+vi.mock('@/app/components/base/ui/toast', () => ({
+  toast: {
+    success: mockToastSuccess,
+  },
 }))
 
 vi.mock('../../hooks/use-credential', () => ({
@@ -42,36 +43,18 @@ vi.mock('@/app/components/base/encrypted-bottom', () => ({
   EncryptedBottom: () => <div data-testid="encrypted-bottom" />,
 }))
 
-vi.mock('@/app/components/base/modal/modal', () => ({
-  default: ({ children, title, onClose, onConfirm, onExtraButtonClick, showExtraButton, disabled }: {
-    children: React.ReactNode
-    title: string
-    onClose?: () => void
-    onCancel?: () => void
-    onConfirm?: () => void
-    onExtraButtonClick?: () => void
-    showExtraButton?: boolean
-    disabled?: boolean
-    [key: string]: unknown
-  }) => (
-    <div data-testid="modal">
-      <div data-testid="modal-title">{title}</div>
-      {children}
-      <button data-testid="modal-confirm" onClick={onConfirm} disabled={disabled}>Confirm</button>
-      <button data-testid="modal-close" onClick={onClose}>Close</button>
-      {showExtraButton && <button data-testid="modal-extra" onClick={onExtraButtonClick}>Remove</button>}
-    </div>
-  ),
-}))
-
-vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
-  default: React.forwardRef((_props: Record<string, unknown>, ref: React.Ref<unknown>) => {
-    React.useImperativeHandle(ref, () => ({
+vi.mock('@/app/components/base/form/form-scenarios/auth', () => {
+  const MockAuthForm = ({ ref }: Record<string, unknown> & { ref?: Ref<unknown> }) => {
+    useImperativeHandle(ref, () => ({
       getFormValues: () => mockFormValues,
     }))
     return <div data-testid="auth-form" />
-  }),
-}))
+  }
+
+  return {
+    default: MockAuthForm,
+  }
+})
 
 vi.mock('@/app/components/base/form/types', () => ({
   FormTypeEnum: { textInput: 'text-input' },
@@ -106,20 +89,22 @@ describe('ApiKeyModal', () => {
   it('should show remove button when editValues is provided', () => {
     render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing' }} />)
 
-    expect(screen.getByTestId('modal-extra')).toBeInTheDocument()
+    expect(screen.getByText('common.operation.remove')).toBeInTheDocument()
   })
 
   it('should not show remove button in add mode', () => {
     render(<ApiKeyModal pluginPayload={basePayload} />)
 
-    expect(screen.queryByTestId('modal-extra')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.operation.remove')).not.toBeInTheDocument()
   })
 
-  it('should call onClose when close button clicked', () => {
+  it('should call close handlers when cancel button is clicked', () => {
     const mockOnClose = vi.fn()
-    render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} />)
+    const mockOnOpenChange = vi.fn()
+    render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} onOpenChange={mockOnOpenChange} />)
 
-    fireEvent.click(screen.getByTestId('modal-close'))
+    fireEvent.click(screen.getByText('common.operation.cancel'))
+    expect(mockOnOpenChange).toHaveBeenCalledWith(false)
     expect(mockOnClose).toHaveBeenCalled()
   })
 
@@ -128,7 +113,7 @@ describe('ApiKeyModal', () => {
     const mockOnUpdate = vi.fn()
     render(<ApiKeyModal pluginPayload={basePayload} onClose={mockOnClose} onUpdate={mockOnUpdate} />)
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
       expect(mockAddPluginCredential).toHaveBeenCalledWith(expect.objectContaining({
@@ -141,7 +126,7 @@ describe('ApiKeyModal', () => {
   it('should call updatePluginCredential on confirm in edit mode', async () => {
     render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing', __credential_id__: 'cred-1' }} />)
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
       expect(mockUpdatePluginCredential).toHaveBeenCalled()
@@ -152,7 +137,7 @@ describe('ApiKeyModal', () => {
     const mockOnRemove = vi.fn()
     render(<ApiKeyModal pluginPayload={basePayload} editValues={{ api_key: 'existing' }} onRemove={mockOnRemove} />)
 
-    fireEvent.click(screen.getByTestId('modal-extra'))
+    fireEvent.click(screen.getByText('common.operation.remove'))
     expect(mockOnRemove).toHaveBeenCalled()
   })
 
