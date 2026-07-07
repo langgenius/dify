@@ -16,11 +16,8 @@ from typing import Final
 from flask import Blueprint, Response, request
 from packaging.version import InvalidVersion, Version
 
+from configs import dify_config
 from controllers.openapi._errors import ErrorBody, OpenApiErrorCode
-
-# Oldest difyctl this server serves. Bumped in lockstep with breaking
-# /openapi/v1 changes (paired with difyctl's own version + its MIN_DIFY_VERSION).
-MIN_DIFYCTL_VERSION: Final = "0.2.0-alpha"
 
 _UPGRADE_HINT: Final = "Upgrade difyctl: https://docs.dify.ai/en/cli/install"
 
@@ -33,10 +30,10 @@ _PREFIX: Final = "/openapi/v1/"
 _ALLOWLIST: Final = frozenset({"/openapi/v1/_version", "/openapi/v1/_health"})
 
 
-def _upgrade_required_response(client_version: str) -> Response:
+def _upgrade_required_response(client_version: str, min_version: str) -> Response:
     body = ErrorBody(
         code=OpenApiErrorCode.UPGRADE_REQUIRED,
-        message=f"difyctl {client_version} is no longer supported; upgrade to >= {MIN_DIFYCTL_VERSION}.",
+        message=f"difyctl {client_version} is no longer supported; upgrade to >= {min_version}.",
         status=426,
         hint=_UPGRADE_HINT,
     )
@@ -44,7 +41,7 @@ def _upgrade_required_response(client_version: str) -> Response:
 
 
 def attach_version_gate(bp: Blueprint) -> None:
-    """Reject difyctl clients older than ``MIN_DIFYCTL_VERSION`` with 426.
+    """Reject difyctl clients older than ``[tool.dify] min_difyctl_version`` with 426.
 
     Registered app-wide (``before_app_request``) rather than blueprint-scoped so it
     also fires for requests to *removed* paths — those no longer match an openapi
@@ -66,6 +63,9 @@ def attach_version_gate(bp: Blueprint) -> None:
             client_version = Version(match.group(1))
         except InvalidVersion:
             return None
-        if client_version < Version(MIN_DIFYCTL_VERSION):
-            return _upgrade_required_response(match.group(1))
+        # Compare the numeric core (major.minor.patch) only — a pre-release build
+        # like 0.2.0-rc.1 must not sort below the 0.2.0 floor.
+        min_version = dify_config.tool.dify.min_difyctl_version
+        if client_version.release[:3] < Version(min_version).release[:3]:
+            return _upgrade_required_response(match.group(1), min_version)
         return None

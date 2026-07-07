@@ -13,7 +13,9 @@ import uuid
 import pytest
 from flask import Flask
 
-# 0.1.0 < MIN_DIFYCTL_VERSION (0.2.0-alpha); 0.2.0-alpha is exactly the floor (allowed).
+# Floor is [tool.dify] min_difyctl_version = "0.2.0". Comparison is on the numeric
+# core (major.minor.patch), so 0.2.0-alpha passes (core 0.2.0 == floor) while
+# 0.1.0 (core 0.1.0 < 0.2.0) is blocked.
 OLD_UA = "difyctl/0.1.0 (darwin; arm64; stable)"
 CURRENT_UA = "difyctl/0.2.0-alpha (darwin; arm64; stable)"
 
@@ -54,9 +56,23 @@ class TestVersionGate:
 
     def test_current_client_passes_gate(self, client):
         # Gate passes → normal dispatch (auth rejects, never the gate's 426).
+        # 0.2.0-alpha == floor on the numeric core, so it passes despite the suffix.
         res = client.get(_gated_path(), headers={"User-Agent": CURRENT_UA})
 
         assert res.status_code != 426
+
+    def test_prerelease_at_floor_passes(self, client):
+        # Numeric-core comparison: a pre-release of the floor version (0.2.0-rc.1,
+        # core 0.2.0) passes, even though 0.2.0-rc.1 < 0.2.0 under naive ordering.
+        res = client.get(_gated_path(), headers={"User-Agent": "difyctl/0.2.0-rc.1 (darwin; arm64; rc)"})
+
+        assert res.status_code != 426
+
+    def test_prerelease_below_floor_gets_426(self, client):
+        # 0.1.9-rc.1 has core 0.1.9 < 0.2.0 floor → still blocked.
+        res = client.get(_gated_path(), headers={"User-Agent": "difyctl/0.1.9-rc.1 (darwin; arm64; rc)"})
+
+        assert res.status_code == 426
 
     def test_non_difyctl_ua_passes(self, client):
         res = client.get(_gated_path(), headers={"User-Agent": "curl/8.4.0"})
