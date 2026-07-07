@@ -468,21 +468,21 @@ describe('AgentPromptEditor', () => {
         expect(textbox).toHaveFocus()
         expect(filesCategory).toHaveAttribute('data-agent-prompt-menu-active')
       })
-      await user.keyboard('{ArrowUp}')
-      await waitFor(() => {
-        expect(textbox).toHaveFocus()
-        expect(skillsCategory).toHaveAttribute('data-agent-prompt-menu-active')
-      })
       await user.keyboard('{ArrowRight}')
       await waitFor(() => {
         expect(textbox).toHaveFocus()
-        expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toHaveAttribute('data-agent-prompt-menu-active')
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.files\.label/i })).toHaveAttribute('data-agent-prompt-menu-active')
       })
       await user.keyboard('{ArrowLeft}')
       await waitFor(() => {
         expect(textbox).toHaveFocus()
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.files\.label/i })).toHaveAttribute('data-agent-prompt-menu-active')
+        expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).not.toHaveAttribute('data-agent-prompt-menu-active')
+      })
+      await user.keyboard('{ArrowUp}')
+      await waitFor(() => {
+        expect(textbox).toHaveFocus()
         expect(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.label/i })).toHaveAttribute('data-agent-prompt-menu-active')
-        expect(screen.getByRole('button', { name: /agentDetail\.configure\.files\.label/i })).toBeInTheDocument()
       })
       await user.keyboard('{ArrowRight}')
       await waitFor(() => {

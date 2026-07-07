@@ -482,6 +482,7 @@ export function AgentPromptEditor() {
   const slashMenuShouldAutoFocusRef = useRef(false)
   const slashMenuKeepsEditorFocusRef = useRef(false)
   const slashMenuActiveIndexRef = useRef(-1)
+  const slashMenuParentActiveIndexRef = useRef(-1)
   const slashMenuHandledKeyboardEventRef = useRef(false)
   const slashMenuSyncFrameRef = useRef<number | null>(null)
   const slashMenuSyncWindowRef = useRef<Window | null>(null)
@@ -528,6 +529,7 @@ export function AgentPromptEditor() {
     slashMenuShouldAutoFocusRef.current = false
     slashMenuKeepsEditorFocusRef.current = false
     slashMenuActiveIndexRef.current = -1
+    slashMenuParentActiveIndexRef.current = -1
     slashMenuHandledKeyboardEventRef.current = false
   }, [])
 
@@ -548,6 +550,7 @@ export function AgentPromptEditor() {
     slashMenuShouldAutoFocusRef.current = options.autoFocus
     slashMenuKeepsEditorFocusRef.current = !options.autoFocus
     slashMenuActiveIndexRef.current = options.autoFocus ? 0 : -1
+    slashMenuParentActiveIndexRef.current = -1
     if (slashMenuAnnouncementRef.current)
       slashMenuAnnouncementRef.current.textContent = ''
     setSlashMenuView('main')
@@ -618,10 +621,20 @@ export function AgentPromptEditor() {
     if (!item)
       return
 
-    if (item.hasAttribute('data-agent-prompt-menu-category'))
+    if (item.hasAttribute('data-agent-prompt-menu-category')) {
+      const itemIndex = getSlashMenuItems().indexOf(item)
+      slashMenuParentActiveIndexRef.current = itemIndex >= 0
+        ? itemIndex
+        : Math.max(0, slashMenuActiveIndexRef.current)
       slashMenuActiveIndexRef.current = 0
+    }
 
     item.click()
+  }, [getSlashMenuItems])
+
+  const returnToSlashMenuMain = useCallback(() => {
+    slashMenuActiveIndexRef.current = Math.max(0, slashMenuParentActiveIndexRef.current)
+    setSlashMenuView('main')
   }, [])
 
   const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -648,8 +661,7 @@ export function AgentPromptEditor() {
       event.preventDefault()
       event.stopPropagation()
       slashMenuHandledKeyboardEventRef.current = true
-      slashMenuActiveIndexRef.current = 0
-      setSlashMenuView('main')
+      returnToSlashMenuMain()
       return
     }
 
@@ -880,8 +892,7 @@ export function AgentPromptEditor() {
       if (event.key === 'ArrowLeft' && slashMenuView !== 'main') {
         event.preventDefault()
         event.stopPropagation()
-        slashMenuActiveIndexRef.current = 0
-        setSlashMenuView('main')
+        returnToSlashMenuMain()
         return
       }
 
@@ -933,7 +944,7 @@ export function AgentPromptEditor() {
     return () => {
       menuElement.removeEventListener('keydown', handleKeyDown)
     }
-  }, [activateSlashMenuItem, closeSlashMenu, focusPromptEditor, getSlashMenuItems, isSlashMenuOpen, setActiveSlashMenuItem, slashMenuView])
+  }, [activateSlashMenuItem, closeSlashMenu, focusPromptEditor, getSlashMenuItems, isSlashMenuOpen, returnToSlashMenuMain, setActiveSlashMenuItem, slashMenuView])
 
   useIsoLayoutEffect(() => {
     if (!isSlashMenuOpen)
@@ -955,8 +966,11 @@ export function AgentPromptEditor() {
       return
 
     slashMenuShouldAutoFocusRef.current = true
-    setActiveSlashMenuItem(menuItems, 0)
-    menuItems[0]?.focus({ preventScroll: true })
+    const activeIndex = slashMenuActiveIndexRef.current < 0
+      ? 0
+      : Math.min(slashMenuActiveIndexRef.current, menuItems.length - 1)
+    setActiveSlashMenuItem(menuItems, activeIndex)
+    menuItems[activeIndex]?.focus({ preventScroll: true })
   }, [getSlashMenuItems, isSlashMenuOpen, setActiveSlashMenuItem, slashMenuView])
 
   const slashMenuCategories: SlashMenuCategory[] = [
@@ -981,6 +995,14 @@ export function AgentPromptEditor() {
       icon: 'i-ri-book-open-line',
     },
   ]
+  const handleOpenSlashMenuCategory = (view: Exclude<SlashMenuView, 'main'>) => {
+    slashMenuParentActiveIndexRef.current = Math.max(
+      0,
+      slashMenuCategories.findIndex(category => category.key === view),
+    )
+    slashMenuActiveIndexRef.current = 0
+    setSlashMenuView(view)
+  }
   const slashMenuWidth = slashMenuView === 'main' ? slashMenuMainWidth : slashMenuSubmenuWidth
   const slashMenu = !readOnly && isSlashMenuOpen
     ? (
@@ -1011,8 +1033,8 @@ export function AgentPromptEditor() {
             onAddKnowledge={addActions.knowledge}
             onAddSkill={addActions.skills}
             retrievals={retrievals}
-            onBack={() => setSlashMenuView('main')}
-            onOpenCategory={setSlashMenuView}
+            onBack={returnToSlashMenuMain}
+            onOpenCategory={handleOpenSlashMenuCategory}
             onSelect={handleSlashSelect}
           />
         </div>
