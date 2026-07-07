@@ -1,16 +1,13 @@
 import json
-from collections.abc import Iterator
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from models.account import Account, AccountStatus, TenantAccountRole, TenantStatus
-from models.base import TypeBase
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -20,16 +17,6 @@ from services.errors.account import (
     CurrentPasswordIncorrectError,
     NoPermissionError,
 )
-
-
-@pytest.fixture
-def sqlite_session(request: pytest.FixtureRequest) -> Iterator[Session]:
-    models: tuple[type[TypeBase], ...] = request.param
-    engine = create_engine("sqlite:///:memory:")
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    Account.metadata.create_all(engine, tables=tables)
-    with Session(engine, expire_on_commit=False) as session:
-        yield session
 
 
 class TestAccountAssociatedDataFactory:

@@ -4,7 +4,7 @@ import os
 import time
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Concatenate, overload
+from typing import Any, Concatenate, Protocol, cast, overload
 
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
@@ -44,6 +44,60 @@ FIELD_NAME_CODE = "code"
 # Error messages for decryption failures
 ERROR_MSG_INVALID_ENCRYPTED_DATA = "Invalid encrypted data"
 ERROR_MSG_INVALID_ENCRYPTED_CODE = "Invalid encrypted code"
+
+
+class OnceTrueCallable[**P](Protocol):
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> bool: ...
+
+    def mark_success(self) -> None: ...
+
+    def reset_success(self) -> None: ...
+
+
+def once_true[**P](func: Callable[P, bool]) -> OnceTrueCallable[P]:
+    """Wrap a predicate so only a strict True result is memoized."""
+    has_success = False
+
+    def mark_success() -> None:
+        nonlocal has_success
+
+        has_success = True
+
+    def reset_success() -> None:
+        nonlocal has_success
+
+        has_success = False
+
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> bool:
+        nonlocal has_success
+
+        if has_success:
+            return True
+
+        result = func(*args, **kwargs)
+        if result is True:
+            has_success = True
+
+        return result
+
+    wrapper.mark_success = mark_success  # type: ignore[attr-defined]
+    wrapper.reset_success = reset_success  # type: ignore[attr-defined]
+    return cast(OnceTrueCallable[P], wrapper)
+
+
+def mark_setup_completed() -> None:
+    """Remember in this process that one-time self-hosted setup has completed."""
+    _is_setup_completed.mark_success()
+
+
+@once_true
+def _is_setup_completed() -> bool:
+    """Check whether setup exists, caching only successful observations.
+
+    Use `once_true` instead of `@cache` because a pre-setup False result must not be memoized.
+    """
+    return db.session.scalar(select(DifySetup).limit(1)) is not None
 
 
 @overload
@@ -246,7 +300,9 @@ def setup_required[T, **P, R](
 
 
 @overload
-def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Require self-hosted bootstrap setup before serving protected routes."""
+    ...
 
 
 def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
@@ -255,7 +311,7 @@ def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
         # The overloads keep Resource methods method-aware for pyrefly while
         # preserving support for plain functions used in tests and utilities.
         # check setup
-        if dify_config.EDITION == "SELF_HOSTED" and not db.session.scalar(select(DifySetup).limit(1)):
+        if dify_config.EDITION == "SELF_HOSTED" and not _is_setup_completed():
             if os.environ.get("INIT_PASSWORD"):
                 raise NotInitValidateError()
             raise NotSetupError()

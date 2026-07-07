@@ -1,6 +1,6 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { render, screen } from '@testing-library/react'
-import { AgentDetailSection } from '../navigation'
+import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
   pathname: '/roster/agent/agent-1/configure',
@@ -69,5 +69,19 @@ describe('AgentDetailSection', () => {
     expect(agentAvatar?.parentElement?.parentElement).toHaveClass('mr-2')
     expect(agentName.parentElement).toHaveClass('h-10')
     expect(agentName.parentElement?.parentElement).toHaveClass('h-13', 'py-1.5', 'pl-1.5', 'pr-2')
+  })
+})
+
+describe('AgentDetailTop', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('links the combined home control to home', () => {
+    render(<AgentDetailTop />)
+
+    expect(screen.getByRole('link', { name: 'common.mainNav.home' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'common.menus.roster' })).toHaveAttribute('href', '/roster')
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
   })
 })

@@ -11,23 +11,21 @@ import {
 import { dslEnvVarSlots } from '@/features/deployments/shared/domain/dsl'
 import { environmentMatchesIdentifier } from './environment'
 import { effectiveMethodAtom, envVarValuesAtom, manualBindingSelectionsAtom, selectedEnvironmentIdAtom } from './primitives'
-import { deployableEnvironmentsQueryAtom, deploymentOptionsQueryAtom, deploymentOptionsReadyAtom } from './queries'
+import { deployableEnvironmentsDataAtom, deploymentOptionsDataAtom, deploymentOptionsReadyAtom } from './queries'
 import { submittedReleaseReadyAtom } from './release'
 import { dslContentAtom, sourceReady } from './source'
 import { envVarSelectionReady } from './utils'
 
 export const deployableEnvironmentsAtom = atom((get) => {
-  const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
+  const deployableEnvironments = get(deployableEnvironmentsDataAtom)
 
   return sourceReady(get)
-    ? deployableEnvironmentsQuery.data?.environments ?? []
+    ? deployableEnvironments?.environments ?? []
     : []
 })
 
 const deployableEnvironmentsReadyAtom = atom((get) => {
-  const deployableEnvironmentsQuery = get(deployableEnvironmentsQueryAtom)
-
-  return sourceReady(get) && deployableEnvironmentsQuery.isSuccess
+  return sourceReady(get) && Boolean(get(deployableEnvironmentsDataAtom))
 })
 
 export const effectiveSelectedEnvironmentIdAtom = atom((get) => {
@@ -35,10 +33,10 @@ export const effectiveSelectedEnvironmentIdAtom = atom((get) => {
 })
 
 export const deploymentTargetBindingSlotsAtom = atom((get) => {
-  const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
+  const deploymentOptions = get(deploymentOptionsDataAtom)
 
   return sourceReady(get)
-    ? deploymentOptionsQuery.data?.options?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
+    ? deploymentOptions?.options?.credentialSlots?.filter(slot => runtimeCredentialSlotKey(slot)) ?? []
     : []
 })
 
@@ -59,8 +57,8 @@ export const requiredBindingsReadyAtom = atom((get) => {
 
 export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
   const method = get(effectiveMethodAtom)
-  const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
-  const slots = sourceReady(get) ? deploymentOptionsQuery.data?.options?.envVarSlots : undefined
+  const deploymentOptions = get(deploymentOptionsDataAtom)
+  const slots = sourceReady(get) ? deploymentOptions?.options?.envVarSlots : undefined
   const dslContent = get(dslContentAtom)
 
   // Deployment options own the canonical slot list; DSL metadata only enriches import-DSL defaults.
