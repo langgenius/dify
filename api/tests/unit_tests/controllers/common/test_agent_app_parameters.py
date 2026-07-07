@@ -91,9 +91,7 @@ def test_published_agent_app_parameters_requires_existing_active_agent(monkeypat
         False,
     ],
 )
-def test_published_agent_app_parameters_requires_published_agent(
-    monkeypatch, active_config_is_published
-):
+def test_published_agent_app_parameters_requires_published_agent(monkeypatch, active_config_is_published):
     app_model = SimpleNamespace(
         tenant_id="tenant-1",
         bound_agent_id="agent-1",
