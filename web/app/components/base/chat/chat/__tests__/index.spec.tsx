@@ -954,6 +954,30 @@ describe('Chat', () => {
       const innerDivs = screen.getByTestId('chat-footer').querySelectorAll('div')
       expect(innerDivs.length).toBeGreaterThan(0)
     })
+
+    it('should let footer whitespace pass pointer events through while preserving input interaction', () => {
+      renderChat({
+        noChatInput: false,
+      })
+
+      const footer = screen.getByTestId('chat-footer')
+      const footerInner = footer.firstElementChild as HTMLElement
+      const inputWrapper = screen.getByTestId('chat-input-area').parentElement as HTMLElement
+
+      expect(footer).toHaveClass('pointer-events-none')
+      expect(footerInner).toHaveClass('pointer-events-none')
+      expect(inputWrapper).toHaveClass('pointer-events-auto')
+    })
+
+    it('should keep stop responding action interactive inside the pass-through footer', () => {
+      renderChat({
+        isResponding: true,
+        noStopResponding: false,
+        noChatInput: true,
+      })
+
+      expect(screen.getByTestId('stop-responding-container')).toHaveClass('pointer-events-auto')
+    })
   })
 
   describe('Container and Spacing Variations', () => {

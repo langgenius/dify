@@ -129,6 +129,9 @@ const defaultChatHookReturn: Partial<ChatHookReturn> = {
   suggestedQuestions: [],
 }
 
+const getDisabledInputContainer = (textbox: HTMLElement) =>
+  textbox.closest('.opacity-50')
+
 describe('ChatWrapper', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -320,7 +323,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const disabledContainer = chatInput.closest('.pointer-events-none')
+    const disabledContainer = getDisabledInputContainer(chatInput)
     expect(disabledContainer).toBeInTheDocument()
     expect(disabledContainer).toHaveClass('opacity-50')
   })
@@ -337,7 +340,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = chatInput.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(chatInput)
     expect(container).not.toBeInTheDocument()
   })
 
@@ -361,7 +364,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = chatInput.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(chatInput)
     expect(container).toBeInTheDocument()
   })
 
@@ -384,7 +387,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     const textarea = screen.getByRole('textbox')
-    const container = textarea.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(textarea)
     expect(container).not.toBeInTheDocument()
   })
 
@@ -411,7 +414,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = chatInput.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(chatInput)
     expect(container).toBeInTheDocument()
   })
 
@@ -437,7 +440,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     const textarea = screen.getByRole('textbox')
-    const container = textarea.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(textarea)
     expect(container).not.toBeInTheDocument()
   })
 
@@ -456,7 +459,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     const textarea = screen.getByRole('textbox')
-    const container = textarea.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(textarea)
     expect(container).toBeInTheDocument()
   })
 
@@ -472,7 +475,7 @@ describe('ChatWrapper', () => {
 
     render(<ChatWrapper />)
     const textarea = screen.getByRole('textbox')
-    const container = textarea.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(textarea)
     expect(container).not.toBeInTheDocument()
   })
 
@@ -1101,7 +1104,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = chatInput.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(chatInput)
     expect(container).toBeInTheDocument()
   })
 
@@ -1242,7 +1245,7 @@ describe('ChatWrapper', () => {
     // This tests line 106 - early return when hasEmptyInput is set
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = chatInput.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(chatInput)
     expect(container).toBeInTheDocument()
   })
 
@@ -1270,7 +1273,7 @@ describe('ChatWrapper', () => {
     // This tests line 109 - early return when fileIsUploading is set
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = chatInput.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(chatInput)
     expect(container).toBeInTheDocument()
   })
 
@@ -1809,7 +1812,7 @@ describe('ChatWrapper', () => {
     render(<ChatWrapper />)
     const textboxes = screen.getAllByRole('textbox')
     const chatInput = textboxes[textboxes.length - 1]
-    const container = chatInput.closest('.pointer-events-none')
+    const container = getDisabledInputContainer(chatInput)
     // Should not be disabled because it's not required
     expect(container).not.toBeInTheDocument()
   })
