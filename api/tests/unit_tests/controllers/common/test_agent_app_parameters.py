@@ -85,14 +85,14 @@ def test_published_agent_app_parameters_requires_existing_active_agent(monkeypat
 
 
 @pytest.mark.parametrize(
-    ("active_config_snapshot_id", "active_config_is_published"),
+    "active_config_is_published",
     [
-        (None, True),
-        ("snapshot-1", False),
+        True,
+        False,
     ],
 )
 def test_published_agent_app_parameters_requires_published_agent(
-    monkeypatch, active_config_snapshot_id, active_config_is_published
+    monkeypatch, active_config_is_published
 ):
     app_model = SimpleNamespace(
         tenant_id="tenant-1",
@@ -101,13 +101,34 @@ def test_published_agent_app_parameters_requires_published_agent(
     )
     agent = SimpleNamespace(
         id="agent-1",
-        active_config_snapshot_id=active_config_snapshot_id,
+        active_config_snapshot_id=None,
         active_config_is_published=active_config_is_published,
     )
     monkeypatch.setattr(agent_app_parameters.db.session, "scalar", lambda _: agent)
 
     with pytest.raises(AgentAppNotPublishedError, match="not been published"):
         get_published_agent_app_feature_dict_and_user_input_form(app_model)
+
+
+def test_published_agent_app_parameters_allows_unpublished_draft_with_active_snapshot(monkeypatch):
+    app_model = SimpleNamespace(
+        tenant_id="tenant-1",
+        bound_agent_id="agent-1",
+        app_model_config=None,
+    )
+    agent = SimpleNamespace(
+        id="agent-1",
+        active_config_snapshot_id="snapshot-1",
+        active_config_is_published=False,
+    )
+    snapshot = SimpleNamespace(config_snapshot_dict={})
+    query_results = iter([agent, snapshot])
+    monkeypatch.setattr(agent_app_parameters.db.session, "scalar", lambda _: next(query_results))
+
+    features_dict, user_input_form = get_published_agent_app_feature_dict_and_user_input_form(app_model)
+
+    assert features_dict["file_upload"]["enabled"] is True
+    assert user_input_form == []
 
 
 def test_published_agent_app_parameters_requires_published_snapshot(monkeypatch):
