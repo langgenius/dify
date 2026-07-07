@@ -16,7 +16,11 @@ import { ApiKeyGenerateMenu } from '../api-keys/api-key-generate-menu'
 import { ApiKeyList } from '../api-keys/api-key-list'
 import { CreatedApiTokenDialog } from '../api-keys/created-token-dialog'
 import { DeveloperApiDocsDrawer } from '../docs/docs-drawer'
-import { developerApiSettingsQueryAtom } from '../state'
+import {
+  developerApiSettingsAtom,
+  developerApiSettingsIsErrorAtom,
+  developerApiSettingsIsLoadingAtom,
+} from '../state'
 import { DeveloperApiSkeleton } from './skeleton'
 
 type CreatedApiToken = {
@@ -86,21 +90,23 @@ export function DeveloperApiSection() {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const [createdApiToken, setCreatedApiToken] = useState<CreatedApiToken>()
-  const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
-  const accessChannels = developerApiSettingsQuery.data?.accessChannels
+  const developerApiSettings = useAtomValue(developerApiSettingsAtom)
+  const isLoading = useAtomValue(developerApiSettingsIsLoadingAtom)
+  const isError = useAtomValue(developerApiSettingsIsErrorAtom)
+  const accessChannels = developerApiSettings?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
-  const apiUrl = developerApiSettingsQuery.data?.developerApiUrl.apiUrl
-  const apiKeys: ApiKey[] = developerApiSettingsQuery.data?.apiKeys ?? []
-  const environments = developerApiSettingsQuery.data?.environments ?? []
+  const apiUrl = developerApiSettings?.developerApiUrl.apiUrl
+  const apiKeys: ApiKey[] = developerApiSettings?.apiKeys ?? []
+  const environments = developerApiSettings?.environments ?? []
   const visibleCreatedApiToken = createdApiToken && createdApiToken.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined
   const hasSelectableEnvironment = environments.some(environment => Boolean(environment.id))
 
-  if (developerApiSettingsQuery.isLoading)
+  if (isLoading)
     return <DeveloperApiSkeleton />
 
-  if (developerApiSettingsQuery.isError || !appInstanceId)
+  if (isError || !appInstanceId)
     return <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
 
   if (!apiEnabled) {
