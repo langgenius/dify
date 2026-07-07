@@ -1,23 +1,23 @@
 import logging
-from typing import Any, Literal, cast
+from datetime import datetime
+from typing import Any, Literal
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, Field
+from flask_restx import Resource
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import (
     AudioBinaryResponse,
     AudioTranscriptResponse,
-    GeneratedAppResponse,
     SimpleResultResponse,
 )
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import (
-    get_or_create_model,
     query_params_from_model,
     register_response_schema_models,
     register_schema_models,
@@ -36,7 +36,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.app.wraps import get_app_model_with_trial
+from controllers.console.app.wraps import get_app_model_with_trial, with_session
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -56,31 +56,18 @@ from core.errors.error import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from fields.app_fields import (
-    app_detail_fields_with_site,
-    deleted_tool_fields,
-    model_config_fields,
-    site_fields,
-    tag_fields,
-)
-from fields.dataset_fields import dataset_fields
-from fields.member_fields import simple_account_fields
+from fields.base import ResponseModel
 from fields.message_fields import SuggestedQuestionsResponse
-from fields.workflow_fields import (
-    conversation_variable_fields,
-    pipeline_variable_fields,
-    workflow_fields,
-    workflow_partial_fields,
-)
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import uuid_value
+from libs.helper import dump_response, to_timestamp, uuid_value
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
 from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
+from services.app_ref_service import AppRefService
 from services.app_service import AppService
 from services.audio_service import AudioService
 from services.dataset_service import DatasetService
@@ -100,48 +87,6 @@ from services.message_service import MessageService
 from services.recommended_app_service import RecommendedAppService
 
 logger = logging.getLogger(__name__)
-
-
-model_config_model = get_or_create_model("TrialAppModelConfig", model_config_fields)
-workflow_partial_model = get_or_create_model("TrialWorkflowPartial", workflow_partial_fields)
-deleted_tool_model = get_or_create_model("TrialDeletedTool", deleted_tool_fields)
-tag_model = get_or_create_model("TrialTag", tag_fields)
-site_model = get_or_create_model("TrialSite", site_fields)
-
-app_detail_fields_with_site_copy = app_detail_fields_with_site.copy()
-app_detail_fields_with_site_copy["model_config"] = fields.Nested(
-    model_config_model, attribute="app_model_config", allow_null=True
-)
-app_detail_fields_with_site_copy["workflow"] = fields.Nested(workflow_partial_model, allow_null=True)
-app_detail_fields_with_site_copy["deleted_tools"] = fields.List(fields.Nested(deleted_tool_model))
-app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
-app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
-app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
-
-simple_account_model = get_or_create_model("TrialSimpleAccount", simple_account_fields)
-conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
-pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
-
-workflow_fields_copy = workflow_fields.copy()
-workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
-workflow_fields_copy["updated_by"] = fields.Nested(
-    simple_account_model, attribute="updated_by_account", allow_null=True
-)
-workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
-workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
-workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
-
-dataset_model = get_or_create_model("TrialDataset", dataset_fields)
-dataset_list_model = get_or_create_model(
-    "TrialDatasetList",
-    {
-        "data": fields.List(fields.Nested(dataset_model)),
-        "has_more": fields.Boolean,
-        "limit": fields.Integer,
-        "total": fields.Integer,
-        "page": fields.Integer,
-    },
-)
 
 
 class WorkflowRunRequest(BaseModel):
@@ -179,6 +124,259 @@ class TrialDatasetListQuery(BaseModel):
     ids: list[str] = Field(default_factory=list, description="Dataset IDs")
 
 
+type TrialAppMode = Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+type TrialIconType = Literal["emoji", "image", "link"]
+type JsonObject = dict[str, Any]
+
+
+class TrialAppModel(ResponseModel):
+    provider: str
+    name: str
+    mode: str | None = None
+    completion_params: JsonObject = Field(default_factory=dict)
+
+
+class TrialAppAgentMode(ResponseModel):
+    enabled: bool | None = None
+    strategy: str | None = None
+    tools: list[JsonObject] = Field(default_factory=list)
+
+
+class TrialAppModelConfigResponse(ResponseModel):
+    opening_statement: str | None = None
+    suggested_questions: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("suggested_questions_list", "suggested_questions"),
+    )
+    suggested_questions_after_answer: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("suggested_questions_after_answer_dict", "suggested_questions_after_answer"),
+    )
+    speech_to_text: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("speech_to_text_dict", "speech_to_text")
+    )
+    text_to_speech: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("text_to_speech_dict", "text_to_speech")
+    )
+    retriever_resource: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("retriever_resource_dict", "retriever_resource")
+    )
+    annotation_reply: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("annotation_reply_dict", "annotation_reply")
+    )
+    more_like_this: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("more_like_this_dict", "more_like_this")
+    )
+    sensitive_word_avoidance: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("sensitive_word_avoidance_dict", "sensitive_word_avoidance")
+    )
+    external_data_tools: list[JsonObject] = Field(
+        default_factory=list, validation_alias=AliasChoices("external_data_tools_list", "external_data_tools")
+    )
+    model: TrialAppModel | None = Field(default=None, validation_alias=AliasChoices("model_dict", "model"))
+    user_input_form: list[JsonObject] = Field(
+        default_factory=list, validation_alias=AliasChoices("user_input_form_list", "user_input_form")
+    )
+    dataset_query_variable: str | None = None
+    pre_prompt: str | None = None
+    agent_mode: TrialAppAgentMode | None = Field(
+        default=None,
+        validation_alias=AliasChoices("agent_mode_dict", "agent_mode"),
+    )
+    prompt_type: str | None = None
+    chat_prompt_config: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("chat_prompt_config_dict", "chat_prompt_config")
+    )
+    completion_prompt_config: JsonObject | None = Field(
+        default=None, validation_alias=AliasChoices("completion_prompt_config_dict", "completion_prompt_config")
+    )
+    dataset_configs: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("dataset_configs_dict", "dataset_configs"),
+    )
+    file_upload: JsonObject | None = Field(
+        default=None,
+        validation_alias=AliasChoices("file_upload_dict", "file_upload"),
+    )
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialDeletedToolResponse(ResponseModel):
+    type: str
+    tool_name: str
+    provider_id: str
+
+
+class TrialTagResponse(ResponseModel):
+    id: str
+    name: str
+    type: str
+
+
+class TrialSiteResponse(ResponseModel):
+    access_token: str | None = Field(default=None, validation_alias="code")
+    code: str | None = None
+    title: str
+    icon_type: TrialIconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    description: str | None = None
+    default_language: str
+    chat_color_theme: str | None = None
+    chat_color_theme_inverted: bool | None = None
+    customize_domain: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    input_placeholder: str | None = None
+    custom_disclaimer: str | None = None
+    customize_token_strategy: str | None = None
+    prompt_public: bool | None = None
+    app_base_url: str | None = None
+    show_workflow_steps: bool | None = None
+    use_icon_as_answer_icon: bool | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+    icon_url: str | None = None
+
+    @field_validator("icon_type", mode="before")
+    @classmethod
+    def _normalize_icon_type(cls, value: Any) -> str | None:
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialWorkflowPartialResponse(ResponseModel):
+    id: str
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialAppDetailResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None = None
+    mode: TrialAppMode = Field(validation_alias="mode_compatible_with_agent")
+    icon_type: TrialIconType | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    icon_url: str | None = None
+    enable_site: bool
+    enable_api: bool
+    model_config_: TrialAppModelConfigResponse | None = Field(
+        default=None,
+        validation_alias=AliasChoices("app_model_config", "model_config"),
+        alias="model_config",
+    )
+    workflow: TrialWorkflowPartialResponse | None = None
+    api_base_url: str | None = None
+    use_icon_as_answer_icon: bool | None = None
+    max_active_requests: int | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    updated_by: str | None = None
+    updated_at: int | None = None
+    deleted_tools: list[TrialDeletedToolResponse] = Field(default_factory=list)
+    access_mode: str | None = None
+    tags: list[TrialTagResponse] = Field(default_factory=list)
+    permission_keys: list[str] = Field(default_factory=list)
+    site: TrialSiteResponse
+
+    @field_validator("icon_type", mode="before")
+    @classmethod
+    def _normalize_icon_type(cls, value: Any) -> str | None:
+        if hasattr(value, "value"):
+            return value.value
+        return value
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialDatasetResponse(ResponseModel):
+    id: str
+    name: str
+    description: str | None = None
+    permission: str | None = None
+    data_source_type: str | None = None
+    indexing_technique: str | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    permission_keys: list[str] = Field(default_factory=list)
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class TrialDatasetListResponse(ResponseModel):
+    data: list[TrialDatasetResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
+
+
+class TrialSimpleAccount(ResponseModel):
+    id: str
+    name: str | None = None
+    email: str | None = None
+
+
+class TrialWorkflowResponse(ResponseModel):
+    id: str
+    graph: JsonObject = Field(validation_alias=AliasChoices("graph_dict", "graph"))
+    features: JsonObject = Field(default_factory=dict, validation_alias=AliasChoices("features_dict", "features"))
+    hash: str | None = Field(default=None, validation_alias=AliasChoices("unique_hash", "hash"))
+    version: str | None = None
+    marked_name: str | None = None
+    marked_comment: str | None = None
+    created_by: TrialSimpleAccount | None = Field(
+        default=None,
+        validation_alias=AliasChoices("created_by_account", "created_by"),
+    )
+    created_at: int | None = None
+    updated_by: TrialSimpleAccount | None = Field(
+        default=None,
+        validation_alias=AliasChoices("updated_by_account", "updated_by"),
+    )
+    updated_at: int | None = None
+    tool_published: bool | None = None
+    environment_variables: list[JsonObject] = Field(default_factory=list)
+    conversation_variables: list[JsonObject] = Field(default_factory=list)
+    rag_pipeline_variables: list[JsonObject] = Field(default_factory=list)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
 register_schema_models(
     console_ns,
     WorkflowRunRequest,
@@ -192,19 +390,24 @@ register_response_schema_models(
     ParametersResponse,
     AudioBinaryResponse,
     AudioTranscriptResponse,
-    GeneratedAppResponse,
     SimpleResultResponse,
     SiteResponse,
     SuggestedQuestionsResponse,
+    TrialAppDetailResponse,
+    TrialDatasetListResponse,
+    TrialWorkflowResponse,
 )
+
+simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
     @trial_feature_enable
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         """
         Run workflow
         """
@@ -221,9 +424,15 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             app_id = app_model.id
             user_id = current_user.id
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -268,10 +477,11 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
 
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @trial_feature_enable
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -294,9 +504,15 @@ class TrialChatApi(TrialAppResource):
             user_id = current_user.id
 
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -414,6 +630,14 @@ class TrialChatTextApi(TrialAppResource):
             message_id = request_data.message_id
             text = request_data.text
             voice = request_data.voice
+            message_ref = None
+            if message_id:
+                app_ref = AppRefService.create_app_ref(app_model)
+                message_ref = AppRefService.create_message_ref(
+                    app_ref,
+                    message_id,
+                    account_id=current_user.id,
+                )
 
             # Get IDs before they might be detached from session
             app_id = app_model.id
@@ -424,7 +648,7 @@ class TrialChatTextApi(TrialAppResource):
                 session=db.session,
                 text=text,
                 voice=voice,
-                message_id=message_id,
+                message_ref=message_ref,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return response
@@ -456,10 +680,11 @@ class TrialChatTextApi(TrialAppResource):
 
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @trial_feature_enable
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @with_session
+    def post(self, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -476,10 +701,16 @@ class TrialCompletionApi(TrialAppResource):
             user_id = current_user.id
 
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                session=session,
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                streaming=streaming,
             )
 
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -557,34 +788,35 @@ class TrialAppParameterApi(Resource):
 
 
 class AppApi(Resource):
-    @console_ns.response(200, "Success", app_detail_with_site_model)
+    @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @get_app_model_with_trial(None)
-    @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
         """Get app detail"""
 
         app_service = AppService()
         app_model = app_service.get_app(app_model)
 
-        return app_model
+        return dump_response(TrialAppDetailResponse, app_model)
 
 
 class AppWorkflowApi(Resource):
-    @console_ns.response(200, "Success", workflow_model)
+    @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @get_app_model_with_trial(None)
-    @marshal_with(workflow_model)
     def get(self, app_model):
         """Get workflow detail"""
         if not app_model.workflow_id:
             raise AppUnavailableError()
 
         workflow = db.session.get(Workflow, app_model.workflow_id)
-        return workflow
+        if workflow is None:
+            raise AppUnavailableError()
+
+        return dump_response(TrialWorkflowResponse, workflow)
 
 
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
-    @console_ns.response(200, "Success", dataset_list_model)
+    @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @get_app_model_with_trial(None)
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)
@@ -597,10 +829,8 @@ class DatasetListApi(Resource):
         else:
             raise NeedAddIdsError()
 
-        data = cast(list[dict[str, Any]], marshal(datasets, dataset_fields))
-
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
-        return response
+        response = {"data": datasets, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
+        return dump_response(TrialDatasetListResponse, response)
 
 
 console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")

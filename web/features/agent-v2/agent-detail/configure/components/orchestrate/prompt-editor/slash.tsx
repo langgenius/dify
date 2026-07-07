@@ -2,11 +2,11 @@
 
 import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddAction, AgentOrchestrateAddedItem } from '../add-actions-context'
-import type { AgentProviderToolDefaultValue } from '../tools/types'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolTypeEnum, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentFileNode, AgentKnowledgeRetrievalItem, AgentSkill, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import type { AgentProviderToolDefaultValue } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { cn } from '@langgenius/dify-ui/cn'
 import { FileTreeIcon } from '@langgenius/dify-ui/file-tree'
 import { useMemo, useState } from 'react'
@@ -25,7 +25,6 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
-import { addProviderTools } from '../tools/hooks'
 import { useAgentPromptToolIconResolver } from './hooks'
 
 export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'
@@ -42,7 +41,7 @@ type AgentPromptSlashMenuProps = {
   skills: AgentSkill[]
   files: AgentFileNode[]
   tools: AgentTool[]
-  onToolsChange: (tools: AgentTool[]) => void
+  onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onAddCliTool?: AgentOrchestrateAddAction
   onAddFile?: AgentOrchestrateAddAction
   onAddKnowledge?: AgentOrchestrateAddAction
@@ -57,12 +56,16 @@ const createReferenceToken = (kind: string, id: string, label?: string) => (
   `[§${kind}:${id}${label ? `:${label}` : ''}§]`
 )
 
-const createDriveReferenceToken = (kind: 'skill' | 'file', driveKey: string, label: string) => (
-  createReferenceToken(kind, encodeURIComponent(driveKey), label)
+const createConfigReferenceToken = (kind: 'skill' | 'file', name: string, label: string) => (
+  createReferenceToken(kind, name, label)
 )
 
 const isPromptReferenceItem = (item: AgentOrchestrateAddedItem): item is AgentFileNode | AgentSkill => (
   'id' in item && 'name' in item
+)
+
+const isAgentFileNode = (item: AgentOrchestrateAddedItem): item is AgentFileNode => (
+  'icon' in item
 )
 
 const isCliToolItem = (item: AgentOrchestrateAddedItem): item is Extract<AgentTool, { kind: 'cli' }> => (
@@ -79,7 +82,7 @@ export function AgentPromptSlashMenu({
   skills,
   files,
   tools,
-  onToolsChange,
+  onAddProviderTools,
   onAddCliTool,
   onAddFile,
   onAddKnowledge,
@@ -95,8 +98,8 @@ export function AgentPromptSlashMenu({
     if (view === 'skills') {
       onAddSkill?.({
         onAdded: (item) => {
-          if (isPromptReferenceItem(item) && 'skillMdKey' in item && typeof item.skillMdKey === 'string')
-            onSelect(createDriveReferenceToken('skill', item.skillMdKey, item.name))
+          if (isPromptReferenceItem(item))
+            onSelect(createConfigReferenceToken('skill', item.id, item.name))
         },
       })
       return
@@ -105,8 +108,8 @@ export function AgentPromptSlashMenu({
     if (view === 'files') {
       onAddFile?.({
         onAdded: (item) => {
-          if (isPromptReferenceItem(item) && 'driveKey' in item && typeof item.driveKey === 'string')
-            onSelect(createDriveReferenceToken('file', item.driveKey, item.name))
+          if (isAgentFileNode(item))
+            onSelect(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
         },
       })
       return
@@ -163,7 +166,7 @@ export function AgentPromptSlashMenu({
         {view === 'tools' && (
           <AgentPromptToolRows
             configuredTools={tools}
-            onConfiguredToolsChange={onToolsChange}
+            onAddProviderTools={onAddProviderTools}
             onSelect={onSelect}
           />
         )}
@@ -234,7 +237,7 @@ function AgentPromptSkillRows({
           key={skill.id}
           icon="i-ri-box-3-line"
           label={skill.name}
-          onClick={() => skill.skillMdKey && onSelect(createDriveReferenceToken('skill', skill.skillMdKey, skill.name))}
+          onClick={() => onSelect(createConfigReferenceToken('skill', skill.id, skill.name))}
         />
       ))}
     </>
@@ -259,7 +262,10 @@ function AgentPromptFileRows({
             label={file.name}
             depth={depth}
             hasChildren={!!file.children?.length}
-            onClick={() => file.driveKey && onSelect(createDriveReferenceToken('file', file.driveKey, file.name))}
+            onClick={() => {
+              if (!file.children?.length)
+                onSelect(createConfigReferenceToken('file', file.configName ?? file.id, file.name))
+            }}
           />
           {!!file.children?.length && (
             <AgentPromptFileRows files={file.children} depth={depth + 1} onSelect={onSelect} />
@@ -272,11 +278,11 @@ function AgentPromptFileRows({
 
 function AgentPromptToolRows({
   configuredTools,
-  onConfiguredToolsChange,
+  onAddProviderTools,
   onSelect,
 }: {
   configuredTools: AgentTool[]
-  onConfiguredToolsChange: (tools: AgentTool[]) => void
+  onAddProviderTools: (tools: AgentProviderToolDefaultValue[]) => void
   onSelect: (token: string) => void
 }) {
   const { t } = useTranslation('agentV2')
@@ -322,7 +328,7 @@ function AgentPromptToolRows({
   ]
 
   const selectTools = (tools: AgentProviderToolDefaultValue[]) => {
-    onConfiguredToolsChange(addProviderTools(configuredTools, tools))
+    onAddProviderTools(tools)
   }
 
   const toggleProvider = (providerId: string) => {

@@ -7,15 +7,23 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { agentComposerEnvVariablesAtom } from '@/features/agent-v2/agent-composer/store-modules/env'
+import {
+  addEnvVariableAtom,
+  agentComposerEnvVariablesAtom,
+  importEnvVariablesAtom,
+  removeEnvVariableAtom,
+  setEnvVariableKeyAtom,
+  setEnvVariableScopeAtom,
+  setEnvVariableValueAtom,
+} from '@/features/agent-v2/agent-composer/store-modules/env'
 import { checkKeys } from '@/utils/var'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
-import { getEnvImportPlatform, parseEnvVariables } from './env-utils'
+import { getEnvImportPlatform, parseEnvImport } from './env-utils'
 
 const scopeLabelKeys: Record<EnvScope, I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.advancedSettings.envEditor.'>> = {
   plain: 'agentDetail.configure.advancedSettings.envEditor.scopePlain',
@@ -410,7 +418,13 @@ export function EnvVariablesTable({
 export function AgentEnvEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
-  const [envVariables, setEnvVariables] = useAtom(agentComposerEnvVariablesAtom)
+  const envVariables = useAtomValue(agentComposerEnvVariablesAtom)
+  const addEnvVariable = useSetAtom(addEnvVariableAtom)
+  const importEnvVariables = useSetAtom(importEnvVariablesAtom)
+  const removeEnvVariable = useSetAtom(removeEnvVariableAtom)
+  const setEnvVariableKey = useSetAtom(setEnvVariableKeyAtom)
+  const setEnvVariableScope = useSetAtom(setEnvVariableScopeAtom)
+  const setEnvVariableValue = useSetAtom(setEnvVariableValueAtom)
   const starterVariableRef = useRef<EnvVariable | undefined>(undefined)
   if (!starterVariableRef.current)
     starterVariableRef.current = createEnvVariable()
@@ -421,20 +435,6 @@ export function AgentEnvEditor() {
   const envImportTip = t(envImportTipKeys[getCurrentEnvImportPlatform()])
   const envEditorTableId = 'agent-configure-env-editor-table'
   const visibleEnvVariables = envVariables.length > 0 ? envVariables : [starterVariable]
-
-  const updateVariable = (id: string, updater: (variable: EnvVariable) => EnvVariable) => {
-    const existingVariable = envVariables.find(variable => variable.id === id)
-
-    if (existingVariable) {
-      setEnvVariables(envVariables.map(variable => (
-        variable.id === id ? updater(variable) : variable
-      )))
-      return
-    }
-
-    if (id === starterVariable.id)
-      setEnvVariables([updater(starterVariable)])
-  }
 
   const addVariable = ({
     focusField = 'key',
@@ -448,31 +448,41 @@ export function AgentEnvEditor() {
       ...(scope ? { scope } : {}),
     }
 
-    setEnvVariables([
-      ...(envVariables.length > 0 ? envVariables : [starterVariable]),
+    addEnvVariable({
+      starterVariable,
       variable,
-    ])
+    })
     setFocusedVariable({ id: variable.id, field: focusField })
   }
-  const importEnvVariables = async (file: File) => {
-    const importedVariables = parseEnvVariables(await file.text()).map(createEnvVariableFromEntry)
+  const handleImportEnvVariables = async (file: File) => {
+    const {
+      invalidLineCount,
+      variables,
+    } = parseEnvImport(await file.text())
+    const importedVariables = variables.map(createEnvVariableFromEntry)
+
+    if (invalidLineCount > 0) {
+      toast.error(t('agentDetail.configure.advancedSettings.envEditor.importSkippedInvalidLines', {
+        count: invalidLineCount,
+      }))
+    }
 
     if (importedVariables.length === 0)
       return
 
-    setEnvVariables([...envVariables, ...importedVariables])
+    importEnvVariables(importedVariables)
   }
   const updateVariableKey = (id: string, key: string) => {
-    updateVariable(id, variable => ({ ...variable, key }))
+    setEnvVariableKey({ id, key, starterVariable })
   }
   const updateVariableScope = (id: string, scope: EnvScope) => {
-    updateVariable(id, variable => ({ ...variable, scope }))
+    setEnvVariableScope({ id, scope, starterVariable })
   }
   const updateVariableValue = (id: string, value: string) => {
-    updateVariable(id, variable => ({ ...variable, value }))
+    setEnvVariableValue({ id, starterVariable, value })
   }
   const deleteVariable = (id: string) => {
-    setEnvVariables(envVariables.filter(variable => variable.id !== id))
+    removeEnvVariable(id)
   }
 
   return (
@@ -498,7 +508,7 @@ export function AgentEnvEditor() {
                   event.target.value = ''
 
                   if (file)
-                    void importEnvVariables(file)
+                    void handleImportEnvVariables(file)
                 }}
               />
               <Tooltip>

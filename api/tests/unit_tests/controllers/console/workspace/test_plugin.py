@@ -42,8 +42,17 @@ from controllers.console.workspace.plugin import (
     PluginUploadFromGithubApi,
     PluginUploadFromPkgApi,
 )
+from core.plugin.entities.plugin import PluginInstallation
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from models.account import Account, TenantAccountRole, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from models.account import (
+    Account,
+    TenantAccountRole,
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategySetting,
+    TenantPluginDebugPermission,
+    TenantPluginInstallPermission,
+)
 
 
 def _plugin_category_list_item(category: str = "tool") -> dict[str, Any]:
@@ -392,8 +401,8 @@ class TestPluginChangePermissionApi:
         user = _account(TenantAccountRole.NORMAL)
 
         payload = {
-            "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-            "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+            "install_permission": TenantPluginInstallPermission.EVERYONE,
+            "debug_permission": TenantPluginDebugPermission.EVERYONE,
         }
 
         with (
@@ -409,8 +418,8 @@ class TestPluginChangePermissionApi:
         user = _account()
 
         payload = {
-            "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-            "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+            "install_permission": TenantPluginInstallPermission.EVERYONE,
+            "debug_permission": TenantPluginDebugPermission.EVERYONE,
         }
 
         with (
@@ -478,12 +487,23 @@ class TestPluginListInstallationsFromIdsApi:
             app.test_request_context("/", json=payload),
             patch(
                 "controllers.console.workspace.plugin.PluginService.list_installations_from_ids",
-                return_value=[{"id": "p1"}],
+                return_value=[PluginInstallation.model_validate(_plugin_category_list_item())],
             ),
         ):
             result = method(api, "t1")
 
-        assert "plugins" in result
+        assert result["plugins"][0]["id"] == "entity-1"
+        assert result["plugins"][0]["plugin_id"] == "test-author/test-plugin"
+        assert result["plugins"][0]["plugin_unique_identifier"] == "test-author/test-plugin:1.0.0@checksum"
+        assert result["plugins"][0]["version"] == "1.0.0"
+        assert result["plugins"][0]["declaration"]["name"] == "test-plugin"
+        assert "name" not in result["plugins"][0]
+        assert "installation_id" not in result["plugins"][0]
+        assert "latest_version" not in result["plugins"][0]
+        assert "latest_unique_identifier" not in result["plugins"][0]
+        assert "status" not in result["plugins"][0]
+        assert "deprecated_reason" not in result["plugins"][0]
+        assert "alternative_plugin_id" not in result["plugins"][0]
 
     def test_daemon_error(self, app: Flask):
         api = PluginListInstallationsFromIdsApi()
@@ -1008,11 +1028,11 @@ class TestPluginChangeAutoUpgradeApi:
         user = _account()
 
         payload = {
-            "category": TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value,
+            "category": TenantPluginAutoUpgradeCategory.TOOL.value,
             "auto_upgrade": {
-                "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
                 "upgrade_time_of_day": 0,
-                "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
                 "exclude_plugins": [],
                 "include_plugins": [],
             },
@@ -1036,11 +1056,11 @@ class TestPluginChangeAutoUpgradeApi:
         user = _account()
 
         payload = {
-            "category": TenantPluginAutoUpgradeStrategy.PluginCategory.MODEL.value,
+            "category": TenantPluginAutoUpgradeCategory.MODEL.value,
             "auto_upgrade": {
-                "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.LATEST,
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.LATEST,
                 "upgrade_time_of_day": 3600,
-                "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.ALL,
                 "exclude_plugins": [],
                 "include_plugins": [],
             },
@@ -1056,7 +1076,7 @@ class TestPluginChangeAutoUpgradeApi:
 
         assert result["success"] is True
         change.assert_called_once()
-        assert change.call_args.kwargs["category"] == TenantPluginAutoUpgradeStrategy.PluginCategory.MODEL
+        assert change.call_args.kwargs["category"] == TenantPluginAutoUpgradeCategory.MODEL
 
     def test_auto_upgrade_fail(self, app: Flask):
         api = PluginChangeAutoUpgradeApi()
@@ -1065,11 +1085,11 @@ class TestPluginChangeAutoUpgradeApi:
         user = MagicMock(is_admin_or_owner=True)
 
         payload = {
-            "category": TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value,
+            "category": TenantPluginAutoUpgradeCategory.TOOL.value,
             "auto_upgrade": {
-                "strategy_setting": TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
                 "upgrade_time_of_day": 0,
-                "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
                 "exclude_plugins": [],
                 "include_plugins": [],
             },
@@ -1090,16 +1110,16 @@ class TestPluginFetchAutoUpgradeApi:
         method = unwrap(api.get)
 
         auto_upgrade = MagicMock(
-            category=TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL,
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
+            category=TenantPluginAutoUpgradeCategory.TOOL,
+            strategy_setting=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
             upgrade_time_of_day=1,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+            upgrade_mode=TenantPluginAutoUpgradeMode.EXCLUDE,
             exclude_plugins=[],
             include_plugins=[],
         )
 
         with (
-            app.test_request_context(f"/?category={TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value}"),
+            app.test_request_context(f"/?category={TenantPluginAutoUpgradeCategory.TOOL.value}"),
             patch(
                 "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
                 return_value=auto_upgrade,
@@ -1107,7 +1127,7 @@ class TestPluginFetchAutoUpgradeApi:
         ):
             result = method(api, "t1")
 
-        assert result["category"] == TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL
+        assert result["category"] == TenantPluginAutoUpgradeCategory.TOOL
         assert result["auto_upgrade"]["upgrade_time_of_day"] == 1
 
 
@@ -1116,7 +1136,7 @@ class TestPluginAutoUpgradeExcludePluginApi:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_id": "p", "category": TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value}
+        payload = {"plugin_id": "p", "category": TenantPluginAutoUpgradeCategory.TOOL.value}
 
         with (
             app.test_request_context("/", json=payload),
@@ -1130,7 +1150,7 @@ class TestPluginAutoUpgradeExcludePluginApi:
         api = PluginAutoUpgradeExcludePluginApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_id": "p", "category": TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL.value}
+        payload = {"plugin_id": "p", "category": TenantPluginAutoUpgradeCategory.TOOL.value}
 
         with (
             app.test_request_context("/", json=payload),

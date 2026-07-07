@@ -1,12 +1,42 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentSoulConfigWithFiles } from '../conversions'
+import { createStore } from 'jotai'
 import { describe, expect, it } from 'vitest'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 import { defaultAgentSoulConfigFormState } from '../form-state'
+import {
+  agentComposerDraftAtom,
+  agentComposerOriginalConfigAtom,
+  agentComposerOriginalDraftAtom,
+  agentComposerPublishedDraftAtom,
+  rebaseAgentComposerDraftAtom,
+} from '../store'
 
 describe('agent composer store conversions', () => {
+  it('rebases draft baselines through the composer state action', () => {
+    const store = createStore()
+    const nextDraft = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Build draft prompt',
+    }
+    const originalConfig = {
+      prompt: {
+        system_prompt: 'Build draft prompt',
+      },
+    } satisfies AgentSoulConfig
+
+    store.set(rebaseAgentComposerDraftAtom, {
+      draft: nextDraft,
+      originalConfig,
+    })
+
+    expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe('Build draft prompt')
+  })
+
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
-    const baseConfig: AgentSoulConfigWithFiles = {
+    const baseConfig: AgentSoulConfig = {
       app_features: {
         opening_statement: 'Hello',
         suggested_questions: ['What changed?'],
@@ -53,29 +83,30 @@ describe('agent composer store conversions', () => {
           },
         ],
       },
-      files: {
-        skills: [
-          {
-            id: 'tender-analyzer',
-            name: 'Tender Analyzer',
-            description: 'Parses RFPs.',
-            path: 'tender-analyzer',
-            skill_md_key: 'tender-analyzer/SKILL.md',
-            full_archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-          },
-        ],
-        files: [
-          {
-            id: 'files/sample.pdf',
-            file_id: 'drive-file-1',
-            name: 'sample.pdf',
-            drive_key: 'files/sample.pdf',
-          },
-        ],
-      },
+      config_skills: [
+        {
+          name: 'Tender Analyzer',
+          description: 'Parses RFPs.',
+          file_id: 'tool-file-1',
+          file_kind: 'tool_file',
+        },
+      ],
+      config_files: [
+        {
+          file_id: 'drive-file-1',
+          file_kind: 'upload_file',
+          name: 'sample.pdf',
+          mime_type: 'application/pdf',
+        },
+      ],
+      config_note: 'Read the proposal first.',
       model: {
         model: 'gpt-4.1',
         model_provider: 'openai',
+        model_settings: {
+          temperature: 0.2,
+          max_tokens: 1024,
+        },
         plugin_id: 'openai',
       },
       prompt: {
@@ -126,6 +157,10 @@ describe('agent composer store conversions', () => {
       prompt: 'Be precise.',
       model: {
         model: 'gpt-4.1',
+        model_settings: {
+          temperature: 0.2,
+          max_tokens: 1024,
+        },
         provider: 'openai',
         plugin_id: 'openai',
       },
@@ -152,16 +187,19 @@ describe('agent composer store conversions', () => {
       ],
       skills: [
         expect.objectContaining({
+          id: 'Tender Analyzer',
+          description: 'Parses RFPs.',
+          fileId: 'tool-file-1',
           name: 'Tender Analyzer',
-          skillMdKey: 'tender-analyzer/SKILL.md',
-          archiveKey: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
         }),
       ],
       files: [
         expect.objectContaining({
+          configName: 'sample.pdf',
+          icon: 'pdf',
+          id: 'sample.pdf',
           name: 'sample.pdf',
           fileId: 'drive-file-1',
-          driveKey: 'files/sample.pdf',
         }),
       ],
     })
@@ -187,25 +225,32 @@ describe('agent composer store conversions', () => {
     })
 
     expect(publishConfig).not.toHaveProperty('skills_files')
-    expect(publishConfig.files).toEqual({
-      skills: [
-        {
-          id: 'tender-analyzer',
-          name: 'Tender Analyzer',
-          description: 'Parses RFPs.',
-          path: 'tender-analyzer',
-          skill_md_key: 'tender-analyzer/SKILL.md',
-          full_archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        },
-      ],
-      files: [
-        {
-          id: 'files/sample.pdf',
-          file_id: 'drive-file-1',
-          name: 'sample.pdf',
-          drive_key: 'files/sample.pdf',
-        },
-      ],
+    expect(publishConfig).not.toHaveProperty('files')
+    expect(publishConfig.config_skills).toEqual([
+      {
+        name: 'Tender Analyzer',
+        description: 'Parses RFPs.',
+        file_id: 'tool-file-1',
+        file_kind: 'tool_file',
+        size: undefined,
+        hash: undefined,
+        mime_type: undefined,
+      },
+    ])
+    expect(publishConfig.config_files).toEqual([
+      {
+        name: 'sample.pdf',
+        file_id: 'drive-file-1',
+        file_kind: 'upload_file',
+        size: undefined,
+        hash: undefined,
+        mime_type: 'application/pdf',
+      },
+    ])
+    expect(publishConfig.config_note).toBe('Read the proposal first.')
+    expect(publishConfig.model?.model_settings).toEqual({
+      temperature: 0.2,
+      max_tokens: 1024,
     })
     expect(publishConfig.tools?.dify_tools).toEqual([
       expect.objectContaining({
@@ -333,6 +378,121 @@ describe('agent composer store conversions', () => {
         runtime_parameters: {
           query: 'updated query',
         },
+      }),
+    ])
+  })
+
+  it('should preserve oauth2 credential references when saving tool config', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+            credential_ref: {
+              id: 'credential-oauth',
+              provider: 'google',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: 'credential-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'oauth2',
+        credential_ref: {
+          id: 'credential-oauth',
+          provider: 'google',
+          type: 'provider',
+        },
+      }),
+    ])
+  })
+
+  it('should hydrate oauth tool authorization state from credential refs', () => {
+    const formState = agentSoulConfigToFormState({
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+          {
+            provider: 'slack',
+            provider_id: 'slack',
+            provider_type: 'builtin',
+            tool_name: 'post_message',
+            credential_type: 'oauth2',
+            credential_ref: {
+              id: 'slack-oauth',
+              provider: 'slack',
+              type: 'provider',
+            },
+          },
+        ],
+      },
+    })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        id: 'google',
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+      expect.objectContaining({
+        id: 'slack',
+        credentialId: 'slack-oauth',
+        credentialType: 'oauth2',
+        credentialVariant: 'authorized',
+      }),
+    ])
+  })
+
+  it('should not save credentialed tool config without a credential reference', () => {
+    const baseConfig = {
+      tools: {
+        dify_tools: [
+          {
+            provider: 'google',
+            provider_id: 'google',
+            provider_type: 'builtin',
+            tool_name: 'search',
+            credential_type: 'oauth2',
+          },
+        ],
+      },
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(formState.tools).toEqual([
+      expect.objectContaining({
+        credentialId: undefined,
+        credentialType: 'oauth2',
+        credentialVariant: 'unauthorized',
+      }),
+    ])
+    expect(publishConfig.tools?.dify_tools).toEqual([
+      expect.objectContaining({
+        credential_type: 'unauthorized',
+        credential_ref: undefined,
       }),
     ])
   })

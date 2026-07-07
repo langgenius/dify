@@ -1,4 +1,4 @@
-import type { PluginsSort, SearchParamsFromCollection } from './types'
+import type { PluginsSort, SearchParamsFromCollection } from '@dify/contracts/marketplace'
 import { atom, useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback } from 'react'

@@ -113,9 +113,15 @@ export const zSuggestedQuestionsResponse = z.object({
 
 /**
  * ExploreAppMetaResponse
+ *
+ * Metadata consumed by the installed-app chat UI.
+ *
+ * Built-in tool icons are URL strings; API-based tool icons are provider-defined payload objects.
  */
 export const zExploreAppMetaResponse = z.object({
-  tool_icons: z.record(z.string(), z.unknown()).optional(),
+  tool_icons: z
+    .record(z.string(), z.union([z.string(), z.record(z.string(), z.unknown())]))
+    .optional(),
 })
 
 /**
@@ -167,11 +173,6 @@ export const zJsonValue = z
     z.array(z.unknown()),
   ])
   .nullable()
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
 
 /**
  * SimpleConversation
@@ -234,6 +235,7 @@ export const zInstalledAppInfoResponse = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
   id: z.string(),
   mode: z.string().nullish(),
   name: z.string().nullish(),
@@ -533,6 +535,40 @@ export const zExploreMessageInfiniteScrollPagination = z.object({
   limit: z.int(),
 })
 
+/**
+ * InstalledAppInfoResponse
+ */
+export const zInstalledAppInfoResponseWritable = z.object({
+  description: z.string().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  id: z.string(),
+  mode: z.string().nullish(),
+  name: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+})
+
+/**
+ * InstalledAppResponse
+ */
+export const zInstalledAppResponseWritable = z.object({
+  app: zInstalledAppInfoResponseWritable,
+  app_owner_tenant_id: z.string(),
+  editable: z.boolean(),
+  id: z.string(),
+  is_pinned: z.boolean(),
+  last_used_at: z.int().nullish(),
+  uninstallable: z.boolean(),
+})
+
+/**
+ * InstalledAppListResponse
+ */
+export const zInstalledAppListResponseWritable = z.object({
+  installed_apps: z.array(zInstalledAppResponseWritable),
+})
+
 export const zGetInstalledAppsQuery = z.object({
   app_id: z.string().optional(),
 })
@@ -587,7 +623,10 @@ export const zPostInstalledAppsByInstalledAppIdChatMessagesPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdChatMessagesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
@@ -610,7 +649,10 @@ export const zPostInstalledAppsByInstalledAppIdCompletionMessagesPath = z.object
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),
@@ -724,8 +766,10 @@ export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisQue
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
-  = zGeneratedAppResponse
+export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsPath = z.object({
   installed_app_id: z.uuid(),
@@ -812,7 +856,10 @@ export const zPostInstalledAppsByInstalledAppIdWorkflowsRunPath = z.object({
 /**
  * Success
  */
-export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath = z.object({
   installed_app_id: z.uuid(),

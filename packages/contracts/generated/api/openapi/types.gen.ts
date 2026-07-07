@@ -315,7 +315,8 @@ export type MessageMetadata = {
 }
 
 export type OpenApiErrorCode
-  = | 'app_unavailable'
+  = | 'agent_not_published'
+    | 'app_unavailable'
     | 'bad_gateway'
     | 'bad_request'
     | 'completion_request_error'
@@ -369,9 +370,11 @@ export type PermittedExternalAppsListResponse = {
 
 export type PluginDependency = {
   current_identifier?: string | null
-  type: Type
+  type: PluginDependencyType
   value: Github | Marketplace | Package
 }
+
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type RevokeResponse = {
   status: string
@@ -414,8 +417,6 @@ export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'comple
 export type TaskStopResponse = {
   result: 'success'
 }
-
-export type Type = 'github' | 'marketplace' | 'package'
 
 export type UsageInfo = {
   completion_tokens?: number

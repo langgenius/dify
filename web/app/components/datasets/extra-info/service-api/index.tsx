@@ -31,7 +31,7 @@ const ServiceApi = ({
   }, [])
 
   return (
-    <div>
+    <div className="flex items-center">
       <Popover
         open={open}
         onOpenChange={setOpen}

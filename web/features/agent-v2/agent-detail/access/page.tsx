@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
+import { AgentDetailSectionSurface } from '../section-surface'
 import { ServiceApiAccessCard } from './components/service-api-access-card'
 import { WebAppAccessCard } from './components/web-app-access-card'
 import { WorkflowReferencesTable } from './components/workflow-references-table'
@@ -27,10 +28,7 @@ export function AgentAccessPage({
   }))
 
   return (
-    <section
-      aria-label={t('agentDetail.sections.access')}
-      className="flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-components-panel-bg-blur"
-    >
+    <AgentDetailSectionSurface label={t('agentDetail.sections.access')}>
       <header className="h-15.5 shrink-0 px-6 pt-3 pb-2">
         <div className="min-w-0">
           <h2 className="system-xl-semibold text-text-primary">
@@ -73,10 +71,10 @@ export function AgentAccessPage({
               </p>
             </div>
 
-            <WorkflowReferencesTable agentId={agentId} />
+            <WorkflowReferencesTable agentId={agentId} enabled={agentQuery.isSuccess} />
           </section>
         </div>
       </ScrollArea>
-    </section>
+    </AgentDetailSectionSurface>
   )
 }

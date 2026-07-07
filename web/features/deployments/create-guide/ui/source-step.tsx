@@ -4,8 +4,7 @@ import type { GuideMethod, WorkflowSourceApp } from '@/features/deployments/crea
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
@@ -103,15 +102,16 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
   badge?: string
 }) {
   return (
-    <RadioRoot<GuideMethod>
+    <RadioItem<GuideMethod>
       value={value}
-      variant="unstyled"
+      nativeButton
+      render={<button type="button" />}
       className={cn(
         `relative box-content h-[84px] w-full cursor-pointer rounded-xl border-[0.5px]
         border-components-option-card-option-border bg-components-panel-on-panel-item-bg p-3
         text-left shadow-xs outline-hidden hover:shadow-md focus-visible:ring-2
         focus-visible:ring-state-accent-solid sm:w-[240px]`,
-        'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:ring-[0.5px] data-checked:ring-components-option-card-option-selected-border data-checked:ring-inset',
+        'data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:shadow-md data-checked:inset-ring-[0.5px] data-checked:inset-ring-components-option-card-option-selected-border',
       )}
     >
       <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-divider-subtle bg-background-default-subtle">
@@ -132,7 +132,7 @@ function SourceMethodCard({ value, icon, title, description, badge }: {
           </span>
         </TitleTooltip>
       </span>
-    </RadioRoot>
+    </RadioItem>
   )
 }
 

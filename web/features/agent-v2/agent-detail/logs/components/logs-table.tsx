@@ -18,12 +18,16 @@ export function AgentLogsTable({
   isPending,
   isError,
   isSuccess,
+  selectedLogId,
+  onOpenLog,
   onRetry,
 }: {
   logs: AgentLogConversationItemResponse[]
   isPending: boolean
   isError: boolean
   isSuccess: boolean
+  selectedLogId?: string
+  onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
   const { t } = useTranslation('agentV2')
@@ -64,6 +68,8 @@ export function AgentLogsTable({
                 isPending={isPending}
                 isError={isError}
                 isSuccess={isSuccess}
+                selectedLogId={selectedLogId}
+                onOpenLog={onOpenLog}
                 onRetry={onRetry}
               />
             </table>
@@ -82,12 +88,16 @@ function AgentLogsTableBody({
   isPending,
   isError,
   isSuccess,
+  selectedLogId,
+  onOpenLog,
   onRetry,
 }: {
   logs: AgentLogConversationItemResponse[]
   isPending: boolean
   isError: boolean
   isSuccess: boolean
+  selectedLogId?: string
+  onOpenLog: (log: AgentLogConversationItemResponse) => void
   onRetry: () => void
 }) {
   const { t } = useTranslation('agentV2')
@@ -117,44 +127,63 @@ function AgentLogsTableBody({
           {t('agentDetail.logs.empty')}
         </LogsStateRow>
       )}
-      {isSuccess && logs.map(log => (
-        <tr
-          key={log.id}
-          className="h-10 border-b border-divider-subtle hover:bg-background-default-hover"
-        >
-          <td className="px-0">
-            <span className={cn(
-              'mx-auto block size-1.5 rounded-full',
-              log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
+      {isSuccess && logs.map((log) => {
+        const logTitle = log.title || log.conversation_id
+        const isSelected = selectedLogId === log.id
+
+        return (
+          <tr
+            key={log.id}
+            className={cn(
+              'h-10 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover',
+              isSelected && 'bg-background-default-hover',
             )}
-            />
-          </td>
-          <TableCell className="system-sm-medium text-text-secondary">
-            {log.title || notAvailable}
-          </TableCell>
-          <td className="px-3">
-            <LogSourceCell source={log.source} />
-          </td>
-          <TableCell translate="no">
-            {log.end_user_id || notAvailable}
-          </TableCell>
-          <TableCell className="tabular-nums">
-            {log.message_count}
-          </TableCell>
-          <TableCell className="text-text-quaternary">
-            {formatRate(log.user_rate, notAvailable)}
-          </TableCell>
-          <TableCell className="text-text-quaternary">
-            {formatRate(log.operation_rate, notAvailable)}
-          </TableCell>
-          <TableCell>
-            {formatLogTime(log.updated_at)}
-          </TableCell>
-          <TableCell>
-            {formatLogTime(log.created_at)}
-          </TableCell>
-        </tr>
-      ))}
+            onClick={() => onOpenLog(log)}
+          >
+            <td className="px-0">
+              <span className={cn(
+                'mx-auto block size-1.5 rounded-full',
+                log.unread ? 'bg-util-colors-blue-blue-500' : 'bg-transparent',
+              )}
+              />
+            </td>
+            <TableCell>
+              <button
+                type="button"
+                aria-label={logTitle}
+                className="block w-full truncate rounded-sm text-left system-sm-medium text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onOpenLog(log)
+                }}
+              >
+                {log.title || notAvailable}
+              </button>
+            </TableCell>
+            <td className="px-3">
+              <LogSourceCell source={log.source} />
+            </td>
+            <TableCell translate="no">
+              {log.end_user_id || notAvailable}
+            </TableCell>
+            <TableCell className="tabular-nums">
+              {log.message_count}
+            </TableCell>
+            <TableCell className="text-text-quaternary">
+              {formatRate(log.user_rate, notAvailable)}
+            </TableCell>
+            <TableCell className="text-text-quaternary">
+              {formatRate(log.operation_rate, notAvailable)}
+            </TableCell>
+            <TableCell>
+              {formatLogTime(log.updated_at)}
+            </TableCell>
+            <TableCell>
+              {formatLogTime(log.created_at)}
+            </TableCell>
+          </tr>
+        )
+      })}
     </tbody>
   )
 }

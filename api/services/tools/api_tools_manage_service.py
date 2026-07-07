@@ -6,7 +6,7 @@ from httpx import get
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from core.entities.provider_entities import ProviderConfig
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -52,7 +52,7 @@ class ApiToolManageService:
             credentials_schema = [
                 ProviderConfig(
                     name="auth_type",
-                    type=ProviderConfig.Type.SELECT,
+                    type=ProviderConfigType.SELECT,
                     required=True,
                     default="none",
                     options=[
@@ -63,7 +63,7 @@ class ApiToolManageService:
                 ),
                 ProviderConfig(
                     name="api_key_header",
-                    type=ProviderConfig.Type.TEXT_INPUT,
+                    type=ProviderConfigType.TEXT_INPUT,
                     required=False,
                     placeholder=I18nObject(en_US="Enter api key header", zh_Hans="输入 api key header，如：X-API-KEY"),
                     default="api_key",
@@ -71,7 +71,7 @@ class ApiToolManageService:
                 ),
                 ProviderConfig(
                     name="api_key_value",
-                    type=ProviderConfig.Type.TEXT_INPUT,
+                    type=ProviderConfigType.TEXT_INPUT,
                     required=False,
                     placeholder=I18nObject(en_US="Enter api key", zh_Hans="输入 api key"),
                     default="",

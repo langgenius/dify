@@ -15,8 +15,7 @@ import type {
 import { cn } from '@langgenius/dify-ui/cn'
 import { FieldItem, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
-import { Radio } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectLabel, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useCallback, useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
@@ -368,13 +367,13 @@ function Form<
               <div className="flex items-center gap-3">
                 <FieldItem>
                   <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-                    <Radio value={true} />
+                    <Radio<boolean> value={true} />
                     True
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
                   <FieldLabel className="flex items-center gap-1.5 system-sm-regular text-text-secondary">
-                    <Radio value={false} />
+                    <Radio<boolean> value={false} />
                     False
                   </FieldLabel>
                 </FieldItem>

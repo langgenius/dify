@@ -24,7 +24,7 @@ import SelectPackage from './steps/selectPackage'
 const i18nPrefix = 'installFromGitHub'
 
 type SelectOption = {
-  value: string | number
+  value: string
   name: string
 }
 

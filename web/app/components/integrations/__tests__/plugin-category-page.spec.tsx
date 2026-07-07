@@ -1,21 +1,27 @@
 import type { ReactNode } from 'react'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import PluginCategoryPage from '../plugin-category-page'
 
 const {
   mockContainerRef,
+  mockFetchManifestFromMarketPlace,
+  mockSetInstallState,
   mockUseUploader,
+  mockUsePluginInstallation,
   mockPluginInstallationPermission,
 } = vi.hoisted(() => ({
   mockContainerRef: { current: null },
+  mockFetchManifestFromMarketPlace: vi.fn(),
+  mockSetInstallState: vi.fn(),
   mockUseUploader: vi.fn((_: unknown) => ({
     dragging: false,
     fileUploader: { current: null },
     fileChangeHandle: undefined,
     removeFile: undefined,
   })),
+  mockUsePluginInstallation: vi.fn(),
   mockPluginInstallationPermission: {
     restrict_to_marketplace_only: false,
   },
@@ -56,6 +62,34 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', ()
   ),
 }))
 
+vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
+  default: ({
+    installContextCategory,
+    onClose,
+    uniqueIdentifier,
+  }: {
+    installContextCategory?: PluginCategoryEnum
+    onClose: () => void
+    uniqueIdentifier: string
+  }) => (
+    <div
+      data-testid="install-from-marketplace"
+      data-install-context-category={installContextCategory}
+      data-unique-identifier={uniqueIdentifier}
+    >
+      <button type="button" onClick={onClose}>close</button>
+    </div>
+  ),
+}))
+
+vi.mock('@/hooks/use-query-params', () => ({
+  usePluginInstallation: () => mockUsePluginInstallation(),
+}))
+
+vi.mock('@/service/plugins', () => ({
+  fetchManifestFromMarketPlace: (...args: unknown[]) => mockFetchManifestFromMarketPlace(...args),
+}))
+
 type UploaderOptions = {
   onFileChange: (file: File | null) => void
 }
@@ -64,6 +98,7 @@ describe('PluginCategoryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPluginInstallationPermission.restrict_to_marketplace_only = false
+    mockUsePluginInstallation.mockReturnValue([{ packageId: null, bundleInfo: null }, mockSetInstallState])
   })
 
   it.each([
@@ -112,6 +147,33 @@ describe('PluginCategoryPage', () => {
     }))
   })
 
+  it('keeps marketplace install params while install permission is loading', async () => {
+    const packageId = 'junjiem/mcp_see_agent:0.2.4@82caf96890992e9dec2c43c3fac82bfce8bd18a41de7c2b6948151b2d7f7b7a2'
+    mockUsePluginInstallation.mockReturnValue([{ packageId, bundleInfo: null }, mockSetInstallState])
+
+    render(<PluginCategoryPage canInstall={false} isInstallPermissionLoading category={PluginCategoryEnum.agent} />)
+
+    await waitFor(() => {
+      expect(mockUseUploader).toHaveBeenCalled()
+    })
+    expect(mockFetchManifestFromMarketPlace).not.toHaveBeenCalled()
+    expect(mockSetInstallState).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
+  })
+
+  it('clears marketplace install params when install permission is unavailable after loading', async () => {
+    const packageId = 'junjiem/mcp_see_agent:0.2.4@82caf96890992e9dec2c43c3fac82bfce8bd18a41de7c2b6948151b2d7f7b7a2'
+    mockUsePluginInstallation.mockReturnValue([{ packageId, bundleInfo: null }, mockSetInstallState])
+
+    render(<PluginCategoryPage canInstall={false} category={PluginCategoryEnum.agent} />)
+
+    await waitFor(() => {
+      expect(mockSetInstallState).toHaveBeenCalledWith(null)
+    })
+    expect(mockFetchManifestFromMarketPlace).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
+  })
+
   it('opens the local package installer for supported dropped files', () => {
     render(<PluginCategoryPage category={PluginCategoryEnum.tool} />)
 
@@ -122,6 +184,33 @@ describe('PluginCategoryPage', () => {
 
     expect(screen.getByTestId('install-from-local-package')).toHaveAttribute('data-file-name', 'tool.difypkg')
     expect(screen.getByTestId('install-from-local-package')).toHaveAttribute('data-install-context-category', PluginCategoryEnum.tool)
+  })
+
+  it('opens the marketplace installer from package id query params', async () => {
+    const packageId = 'langgenius/telegram_trigger:0.0.6@923a18de89d8cdb7f419d0dff60bf08a8b81b65fef6bf606cf0ce4b0ee56a9ca'
+    mockUsePluginInstallation.mockReturnValue([{ packageId, bundleInfo: null }, mockSetInstallState])
+    mockFetchManifestFromMarketPlace.mockResolvedValue({
+      data: {
+        plugin: {
+          org: 'langgenius',
+          name: 'telegram_trigger',
+          category: PluginCategoryEnum.trigger,
+        },
+        version: { version: '0.0.6' },
+      },
+    })
+
+    render(<PluginCategoryPage category={PluginCategoryEnum.trigger} />)
+
+    await waitFor(() => {
+      expect(mockFetchManifestFromMarketPlace).toHaveBeenCalledWith(encodeURIComponent(packageId))
+      expect(screen.getByTestId('install-from-marketplace')).toHaveAttribute('data-unique-identifier', packageId)
+    })
+    expect(screen.getByTestId('install-from-marketplace')).toHaveAttribute('data-install-context-category', PluginCategoryEnum.trigger)
+
+    fireEvent.click(screen.getByRole('button', { name: 'close' }))
+
+    expect(mockSetInstallState).toHaveBeenCalledWith(null)
   })
 
   it('ignores dropped files when install permission is unavailable', () => {

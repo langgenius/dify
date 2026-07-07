@@ -4,8 +4,7 @@ import type { Role } from '@/models/access-control'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
-import { RadioGroup } from '@langgenius/dify-ui/radio-group'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -288,14 +287,15 @@ const WorkspaceRoleCheckboxList = ({
 
                             return (
                               <li key={role.id}>
-                                <RadioRoot
+                                <RadioItem
                                   value={role.id}
                                   disabled={disabled}
-                                  variant="unstyled"
+                                  nativeButton
                                   render={(
-                                    <div
+                                    <button
+                                      type="button"
                                       className={cn(
-                                        'flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
+                                        'flex w-full cursor-pointer items-start gap-3 rounded-lg border-0 bg-transparent px-3 py-2.5 text-left hover:bg-state-base-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-components-input-border-active',
                                         checked && 'bg-state-accent-hover hover:bg-state-accent-hover',
                                         disabled && 'cursor-not-allowed opacity-50 hover:bg-transparent',
                                       )}
@@ -304,7 +304,7 @@ const WorkspaceRoleCheckboxList = ({
                                 >
                                   <RadioControl className="pointer-events-none mt-0.5" />
                                   {renderRoleText(role)}
-                                </RadioRoot>
+                                </RadioItem>
                               </li>
                             )
                           })}

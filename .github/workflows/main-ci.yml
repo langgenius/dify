@@ -6,8 +6,6 @@ on:
   merge_group:
     branches: ["main"]
     types: [checks_requested]
-  push:
-    branches: ["main"]
 
 permissions:
   actions: write
@@ -48,8 +46,8 @@ jobs:
       vdb-changed: ${{ steps.changes.outputs.vdb }}
       migration-changed: ${{ steps.changes.outputs.migration }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         id: changes
         with:
           filters: |
@@ -324,6 +322,7 @@ jobs:
       - check-changes
     if: needs.pre_job.outputs.should_skip != 'true' && needs.check-changes.outputs.e2e-changed == 'true'
     uses: ./.github/workflows/web-e2e.yml
+    secrets: inherit
 
   web-e2e-skip:
     name: Skip Web Full-Stack E2E

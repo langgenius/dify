@@ -50,5 +50,5 @@
   "snippets.management": "จัดการสนิปเปต",
   "tool.manage": "จัดการเครื่องมือ",
   "workspace.member.manage": "จัดการสมาชิก",
-  "workspace.role.manage": "จัดการสิทธิ์บทบาทและกฎการเข้าถึงทรัพยากร"
+  "workspace.role.manage": "จัดการบทบาทและชุดสิทธิ์"
 }

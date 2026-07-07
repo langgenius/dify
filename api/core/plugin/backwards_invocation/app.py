@@ -3,6 +3,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
@@ -60,6 +61,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_app(
         cls,
+        session: Session,
         app_id: str,
         user_id: str,
         tenant_id: str,
@@ -76,7 +78,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         if not user_id:
             user = EndUserService.get_or_create_end_user(app)
         else:
-            user = cls._get_user(user_id, app)
+            try:
+                user = cls._get_user(user_id, app)
+            except ValueError:
+                # Plugins such as WeCom Bot pass external sender IDs rather than EndUser UUIDs.
+                user = EndUserService.get_or_create_end_user(app, user_id=user_id)
 
         conversation_id = conversation_id or ""
 
@@ -85,20 +91,21 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 if not query:
                     raise ValueError("missing query")
 
-                return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files)
+                return cls.invoke_chat_app(session, app, user, conversation_id, query, stream, inputs, files)
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app)
                 if not workflow:
                     raise ValueError("unexpected app type")
                 return cls.invoke_workflow_app(app, workflow, user, stream, inputs, files)
             case AppMode.COMPLETION:
-                return cls.invoke_completion_app(app, user, stream, inputs, files)
+                return cls.invoke_completion_app(session, app, user, stream, inputs, files)
             case _:
                 raise ValueError("unexpected app type")
 
     @classmethod
     def invoke_chat_app(
         cls,
+        session: Session,
         app: App,
         user: Account | EndUser,
         conversation_id: str,
@@ -151,6 +158,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 )
             case AppMode.CHAT:
                 return ChatAppGenerator().generate(
+                    session=session,
                     app_model=app,
                     user=user,
                     args={
@@ -197,6 +205,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_completion_app(
         cls,
+        session: Session,
         app: App,
         user: EndUser | Account,
         stream: bool,
@@ -207,6 +216,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         invoke completion app
         """
         return CompletionAppGenerator().generate(
+            session=session,
             app_model=app,
             user=user,
             args={"inputs": inputs, "files": files},
@@ -226,6 +236,13 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 EndUser.app_id == app.id,
             )
             user = session.scalar(stmt)
+            if not user:
+                stmt = select(EndUser).where(
+                    EndUser.session_id == user_id,
+                    EndUser.tenant_id == app.tenant_id,
+                    EndUser.app_id == app.id,
+                )
+                user = session.scalar(stmt)
             if not user:
                 stmt = select(Account).where(
                     Account.id == user_id,
