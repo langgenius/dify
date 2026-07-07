@@ -21,10 +21,10 @@ from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.datetime_utils import naive_utc_now
 from models import (
-    ApiToken,
     AgentRuntimeSession,
     AgentRuntimeSessionOwnerType,
     AgentRuntimeSessionStatus,
+    ApiToken,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
     AppDatasetJoin,

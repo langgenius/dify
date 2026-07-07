@@ -3126,8 +3126,7 @@ class TestAgentAppBackingAgent:
         assert payload["metadata"]["conversation_id"] == "old-conversation"
         assert payload["metadata"]["agent_id"] == "agent-9"
         assert (
-            payload["idempotency_key"]
-            == "tenant-1:agent-1:account-1:old-conversation:debug-session-cleanup:"
+            payload["idempotency_key"] == "tenant-1:agent-1:account-1:old-conversation:debug-session-cleanup:"
             "agent-9:snap-9:run-old"
         )
         cleanup_store.mark_cleaned.assert_called_once_with(
@@ -3186,9 +3185,7 @@ class TestAgentAppBackingAgent:
             backend_run_id="run-old",
         )
 
-    def test_refresh_agent_app_debug_conversation_ignores_mark_cleaned_failure(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_refresh_agent_app_debug_conversation_ignores_mark_cleaned_failure(self, monkeypatch: pytest.MonkeyPatch):
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",

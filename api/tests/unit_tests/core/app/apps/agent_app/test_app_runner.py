@@ -519,10 +519,7 @@ def test_successful_turn_enqueues_cleanup_for_superseded_sessions_after_saving_s
     assert payload["metadata"]["conversation_id"] == "conv-1"
     assert payload["metadata"]["agent_id"] == "agent-2"
     assert payload["metadata"]["previous_agent_backend_run_id"] == "run-old"
-    assert (
-        payload["idempotency_key"]
-        == "tenant-1:app-1:conv-1:agent-2:snap-2:superseded-session-cleanup:run-old"
-    )
+    assert payload["idempotency_key"] == "tenant-1:app-1:conv-1:agent-2:snap-2:superseded-session-cleanup:run-old"
 
 
 def test_superseded_session_cleanup_enqueue_failure_does_not_fail_turn(monkeypatch):
