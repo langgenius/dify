@@ -111,14 +111,25 @@ def _markdown_backtick_fence(text: str) -> str:
     return "`" * max(3, longest_backtick_run + 1)
 
 
-def _wrap_build_draft_agent_soul_prompt(prompt: str) -> str:
+_BUILD_DRAFT_AGENT_SOUL_PROMPT = """You are running in build mode.
+
+Objective:
+- Prepare this agent's working environment, configuration, tools, files, notes, and context for later normal runs.
+
+Rules:
+- Do not complete the intended user task now.
+- Do not answer as if this were a normal user-facing run.
+- Make setup and configuration changes only when they help later runs complete the intended task.
+- Use the installed `dify-agent` CLI when you need to inspect or persist Agent configuration."""
+
+
+def _wrap_build_draft_agent_soul_prompt(prompt: str | None) -> str:
     """Reframe build-draft Agent Soul prompts as preparation work for a future run."""
-    fence = _markdown_backtick_fence(prompt)
-    return (
-        "Your current job is to prepare the agent's working environment, configuration, tools, and context "
-        "so future runs can complete the task below smoothly. Do not perform the task itself yet.\n\n"
-        f"{fence}text\n{prompt}\n{fence}"
-    )
+    prompt_body = (prompt or "").strip()
+    if not prompt_body:
+        return _BUILD_DRAFT_AGENT_SOUL_PROMPT + "\n\nIntended task for later normal runs:\nNo task prompt was provided."
+    fence = _markdown_backtick_fence(prompt_body)
+    return _BUILD_DRAFT_AGENT_SOUL_PROMPT + f"\n\nIntended task for later normal runs:\n{fence}text\n{prompt_body}\n{fence}"
 
 
 def _agent_soul_prompt_for_layer(
@@ -131,14 +142,15 @@ def _agent_soul_prompt_for_layer(
     The API-side layer adapter is the product boundary where Agent Soul text
     becomes the model-facing system-prompt layer. ``snapshot`` and normal
     ``draft`` runs pass through the original effective prompt unchanged, while
-    ``build_draft`` reframes that prompt as future work and embeds it in a
-    fenced block.
+    ``build_draft`` always emits a setup prompt. When an original prompt is
+    present, it is reframed as future-run context and embedded in a fenced
+    block; when it is blank, the setup instruction is still kept.
     """
-    if prompt is None:
-        return None
-    if not prompt.strip():
-        return None
     if config_version_kind != "build_draft":
+        if prompt is None:
+            return None
+        if not prompt.strip():
+            return None
         return prompt
     return _wrap_build_draft_agent_soul_prompt(prompt)
 

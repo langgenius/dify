@@ -222,8 +222,15 @@ class TestAgentAppRuntimeRequestBuilder:
 
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
         assert prompt_layer.config.prefix == (
-            "Your current job is to prepare the agent's working environment, configuration, tools, and context "
-            "so future runs can complete the task below smoothly. Do not perform the task itself yet.\n\n"
+            "You are running in build mode.\n\n"
+            "Objective:\n"
+            "- Prepare this agent's working environment, configuration, tools, files, notes, and context for later normal runs.\n\n"
+            "Rules:\n"
+            "- Do not complete the intended user task now.\n"
+            "- Do not answer as if this were a normal user-facing run.\n"
+            "- Make setup and configuration changes only when they help later runs complete the intended task.\n"
+            "- Use the installed `dify-agent` CLI when you need to inspect or persist Agent configuration.\n\n"
+            "Intended task for later normal runs:\n"
             "```text\nYou are Iris.\n```"
         )
 

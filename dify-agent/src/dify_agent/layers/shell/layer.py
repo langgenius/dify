@@ -72,36 +72,38 @@ _SHELL_OUTPUT_PROMPT_EDGE_BYTES = 8 * 1024
 _SHELLCTL_OUTPUT_LIMIT_BYTES = 2 * _SHELL_OUTPUT_PROMPT_EDGE_BYTES
 _REMOTE_COMPLETE_OUTPUT_MAX_BYTES = 1024 * 1024
 _REMOTE_COMMAND_TIMEOUT_SECONDS = 60.0
-_SHELL_LAYER_PREFIX_PROMPT = """You have access to a shell layer. It provides four tools:
+_SHELL_LAYER_PREFIX_PROMPT = """You can run commands in an isolated shell workspace.
+
+Available shell tools:
 
 1. shell_run
-   Start a new shell job in the current isolated workspace.
-   Use it to execute commands or scripts.
+   Starts a new shell job in the current workspace.
+   Use it to run commands or scripts.
 
 2. shell_wait
-   Wait for more output or completion from an existing shell job.
+   Waits for more output or completion from an existing shell job.
    Use it when shell_run returns done=false.
 
 3. shell_input
-   Send stdin text to a running shell job, then wait for new output.
-   Use it for interactive commands that are waiting for input.
+   Sends stdin text to a running shell job, then waits for new output.
+   Use it only when an interactive command is waiting for input.
 
 4. shell_interrupt
-   Interrupt a running shell job.
+   Interrupts a running shell job.
    Use it to stop a long-running, stuck, or no-longer-needed command.
 
 Common arguments:
 
 - script:
-  The command or script to execute. Used by shell_run.
+  Command or script to execute. Used by shell_run.
 
 - job_id:
-  The id of a shell job returned by shell_run.
+  Shell job id returned by shell_run.
   Use it with shell_wait, shell_input, and shell_interrupt.
   Never invent a job_id.
 
 - timeout:
-  Maximum time, in seconds, to wait for output or completion for this tool call.
+  Maximum time in seconds to wait for output or completion for this tool call.
   A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.
 
 - text:
@@ -118,27 +120,33 @@ Usage rules:
 - Use shell_input only when the job is running and waiting for stdin.
 - Use shell_interrupt when a job is stuck or should be stopped.
 
+Installed CLI:
+
+- `dify-agent` is already installed in this shell environment and can be used directly.
+- Use the generated `dify-agent ... --help` output in the config prompt for exact command syntax.
+- Do not install or recreate the `dify-agent` CLI.
+
 Workspace persistence rules:
 
-- The current workspace cwd is stable during this agent run, but it is temporary and may be deleted later.
-- Do not use the current workspace cwd as persistent storage.
-- $HOME outside the current workspace cwd is persistent storage. In build draft mode, when Agent config context reports
-  `config_version.kind` as `build_draft` and `config_version.writable` as true, changes there can be persisted for
-  later runs. In non-build-draft modes, those changes are rolled back.
-- Saving config files, skills, env, or notes still requires the corresponding Agent config CLI mutation command; follow
-  the Agent config CLI help in the config layer. Shell file edits alone do not save config.
+- The current workspace cwd is stable during this run, but it is temporary and may be deleted later.
+- Do not treat files in the current workspace cwd as persisted state.
+- In build mode, config changes persist only after you run the matching `dify-agent config ...` mutation command.
+- Shell file edits alone do not save Agent config files, skills, env, or notes.
+- In non-build modes, local shell changes are not a persistence mechanism for Agent configuration.
 
-The script argument of shell_run can be a normal shell script, or a shebang script.
-If the first line is a shebang, the shell layer executes the script directly.
+shell_run script rules:
+
+- The script argument can be a normal shell script or a shebang script.
+- If the first line is a shebang, the shell executes the script directly.
 
 Tips:
 
 - When using Python, prefer a uv script with a PEP 723 dependency header.
 - If you need MCP, install the MCP server in the shell environment and start that server when you use it.
 
-  Example:
+Example shell_run script:
 
-```shell
+[begin script]
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.12"
@@ -153,7 +161,7 @@ from rich import print
 
 response = httpx.get("https://example.com", timeout=10)
 print(f"[green]status:[/green] {response.status_code}")
-```"""
+[end script]"""
 _SHELL_LAYER_SUFFIX_PROMPT = """Environment variables may contain API keys, tokens, or credentials.
 You may refer to environment variable names when needed."""
 

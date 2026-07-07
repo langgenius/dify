@@ -119,7 +119,7 @@ def test_drive_layer_exposes_agent_stub_cli_usage_suffix_prompt() -> None:
     prompt = layer.suffix_prompts[0]
     assert "Other available skills" in prompt
     assert "other-skill: Other Skill" in prompt
-    assert "Agent Stub file CLI help" in prompt
+    assert "Agent Stub file CLI reference for installed `dify-agent`" in prompt
     assert "$ dify-agent file upload --help" in prompt
     assert "$ dify-agent file download --help" in prompt
     assert prompt.index("$ dify-agent file upload --help") < prompt.index("$ dify-agent file download --help")
