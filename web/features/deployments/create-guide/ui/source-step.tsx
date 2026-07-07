@@ -21,7 +21,14 @@ import {
   dslUnsupportedModeAtom,
   effectiveSelectedAppAtom,
   isReadingDslAtom,
-  sourceAppsQueryAtom,
+  sourceAppsAtom,
+  sourceAppsErrorAtom,
+  sourceAppsFetchNextPageAtom,
+  sourceAppsHasNextPageAtom,
+  sourceAppsIsFetchingAtom,
+  sourceAppsIsFetchingNextPageAtom,
+  sourceAppsIsLoadingAtom,
+  sourceAppsIsPlaceholderDataAtom,
 } from '@/features/deployments/create-guide/state/source'
 import {
   continueFromSourceAtom,
@@ -189,10 +196,23 @@ function SourceAppList() {
   const { t } = useTranslation('deployments')
   const selectSourceApp = useSetAtom(selectSourceAppAtom)
   const effectiveSelectedApp = useAtomValue(effectiveSelectedAppAtom)
-  const sourceAppsQuery = useAtomValue(sourceAppsQueryAtom)
-  const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
-  const sourceAppsLoading = sourceAppsQuery.isLoading || sourceAppsQuery.isPlaceholderData || (sourceAppsQuery.isFetching && sourceApps.length === 0)
-  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(sourceAppsQuery, {
+  const sourceApps = useAtomValue(sourceAppsAtom)
+  const sourceAppsError = useAtomValue(sourceAppsErrorAtom)
+  const sourceAppsFetchNextPage = useAtomValue(sourceAppsFetchNextPageAtom)
+  const sourceAppsHasNextPage = useAtomValue(sourceAppsHasNextPageAtom)
+  const sourceAppsIsFetching = useAtomValue(sourceAppsIsFetchingAtom)
+  const sourceAppsIsFetchingNextPage = useAtomValue(sourceAppsIsFetchingNextPageAtom)
+  const sourceAppsIsLoading = useAtomValue(sourceAppsIsLoadingAtom)
+  const sourceAppsIsPlaceholderData = useAtomValue(sourceAppsIsPlaceholderDataAtom)
+  const sourceAppsLoading = sourceAppsIsLoading || sourceAppsIsPlaceholderData || (sourceAppsIsFetching && sourceApps.length === 0)
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>({
+    error: sourceAppsError,
+    fetchNextPage: sourceAppsFetchNextPage,
+    hasNextPage: sourceAppsHasNextPage,
+    isFetching: sourceAppsIsFetching,
+    isFetchingNextPage: sourceAppsIsFetchingNextPage,
+    isLoading: sourceAppsIsLoading,
+  }, {
     enabled: !sourceAppsLoading,
     rootMargin: '0px 0px 160px 0px',
     threshold: 0.1,
@@ -218,12 +238,12 @@ function SourceAppList() {
                     onSelect={() => selectSourceApp(app)}
                   />
                 ))}
-                {sourceAppsQuery.isFetchingNextPage && (
+                {sourceAppsIsFetchingNextPage && (
                   <div className="border-t border-divider-subtle px-3 py-2 text-center system-xs-regular text-text-tertiary">
                     {t('createModal.loadingApps')}
                   </div>
                 )}
-                {sourceAppsQuery.hasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
+                {sourceAppsHasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
               </div>
             )}
     </div>

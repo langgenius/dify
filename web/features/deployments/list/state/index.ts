@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { keepPreviousData } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
-import { useHydrateAtoms } from 'jotai/utils'
+import { selectAtom, useHydrateAtoms } from 'jotai/utils'
 import { parseAsString, useQueryState } from 'nuqs'
 import { consoleQuery } from '@/service/client'
 import { deploymentStatusPollingInterval } from '../../shared/domain/runtime-status'
@@ -52,8 +52,10 @@ const deploymentsListEnvironmentsQueryAtom = atomWithQuery(() => {
   })
 })
 
+const deploymentsListEnvironmentsDataAtom = selectAtom(deploymentsListEnvironmentsQueryAtom, query => query.data)
+
 export const deploymentsListEnvironmentFilterOptionsAtom = atom((get): DeploymentsListEnvironmentFilterOption[] => {
-  const environments = get(deploymentsListEnvironmentsQueryAtom).data?.environments ?? []
+  const environments = get(deploymentsListEnvironmentsDataAtom)?.environments ?? []
 
   return [
     {
@@ -114,26 +116,34 @@ export const deploymentsListQueryAtom = atomWithInfiniteQuery((get) => {
   })
 })
 
+const deploymentsListDataAtom = selectAtom(deploymentsListQueryAtom, query => query.data)
+export const deploymentsListErrorAtom = selectAtom(deploymentsListQueryAtom, query => query.error)
+export const deploymentsListFetchNextPageAtom = selectAtom(deploymentsListQueryAtom, query => query.fetchNextPage)
+export const deploymentsListHasNextPageAtom = selectAtom(deploymentsListQueryAtom, query => query.hasNextPage)
+export const deploymentsListIsFetchingAtom = selectAtom(deploymentsListQueryAtom, query => query.isFetching)
+export const deploymentsListIsFetchingNextPageAtom = selectAtom(deploymentsListQueryAtom, query => query.isFetchingNextPage)
+export const deploymentsListIsLoadingAtom = selectAtom(deploymentsListQueryAtom, query => query.isLoading)
+const deploymentsListIsErrorAtom = selectAtom(deploymentsListQueryAtom, query => query.isError)
+
 export const deploymentsListRowsAtom = atom((get) => {
-  return get(deploymentsListQueryAtom).data?.pages.flatMap(page => page.appInstanceSummaries) ?? []
+  return get(deploymentsListDataAtom)?.pages.flatMap(page => page.appInstanceSummaries) ?? []
 })
 
 export const deploymentsListShowSkeletonAtom = atom((get) => {
-  const deploymentsListQuery = get(deploymentsListQueryAtom)
-  const pages = deploymentsListQuery.data?.pages ?? []
+  const pages = get(deploymentsListDataAtom)?.pages ?? []
 
-  return deploymentsListQuery.isLoading || (deploymentsListQuery.isFetching && pages.length === 0)
+  return get(deploymentsListIsLoadingAtom) || (get(deploymentsListIsFetchingAtom) && pages.length === 0)
 })
 
 export const deploymentsListShowEmptyStateAtom = atom((get) => {
   return !get(deploymentsListShowSkeletonAtom)
-    && !get(deploymentsListQueryAtom).isError
+    && !get(deploymentsListIsErrorAtom)
     && get(deploymentsListRowsAtom).length === 0
 })
 
 export const deploymentsListShowErrorStateAtom = atom((get) => {
   return !get(deploymentsListShowSkeletonAtom)
-    && get(deploymentsListQueryAtom).isError
+    && get(deploymentsListIsErrorAtom)
 })
 
 export const deploymentsListHasFilterAtom = atom((get) => {
