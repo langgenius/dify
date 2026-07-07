@@ -129,7 +129,9 @@ def _validate_user_accessibility(
         if not webapp_settings:
             raise WebAppAuthRequiredError("Web app settings not found.")
 
-        if WebAppAuthService.is_app_require_permission_check(db.session(), access_mode=webapp_settings.access_mode):
+        if WebAppAuthService.is_app_require_permission_check(
+            access_mode=webapp_settings.access_mode, session=db.session()
+        ):
             app_id = AppService.get_app_id_by_code(app_code, session=db.session())
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id):
                 raise WebAppAuthAccessDeniedError()

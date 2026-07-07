@@ -707,7 +707,7 @@ class AppStarApi(Resource):
     @with_session
     @get_app_model(mode=None)
     def post(self, session: Session, current_user_id: str, app_model: App):
-        AppService.star_app(session, app=app_model, account_id=current_user_id)
+        AppService.star_app(app=app_model, account_id=current_user_id, session=session)
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
     @console_ns.doc("unstar_app")
@@ -723,7 +723,7 @@ class AppStarApi(Resource):
     @with_session
     @get_app_model(mode=None)
     def delete(self, session: Session, current_user_id: str, app_model: App):
-        AppService.unstar_app(session, app=app_model, account_id=current_user_id)
+        AppService.unstar_app(app=app_model, account_id=current_user_id, session=session)
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 

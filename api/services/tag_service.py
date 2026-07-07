@@ -40,7 +40,7 @@ class TagBindingDeletePayload(BaseModel):
 
 class TagService:
     @staticmethod
-    def get_tags(session: Session, tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None):
+    def get_tags(tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None, *, session: Session):
         stmt = (
             select(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)

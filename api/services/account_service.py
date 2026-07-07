@@ -279,7 +279,7 @@ class AccountService:
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
 
     @staticmethod
-    def get_account_by_email(session: Session, email: str) -> Account | None:
+    def get_account_by_email(email: str, *, session: Session) -> Account | None:
         """Plain ``Account`` getter keyed by email. Case-sensitive — use
         :meth:`has_active_account_with_email` for the case-insensitive
         existence check that backs the SSO collision rule.
@@ -287,7 +287,7 @@ class AccountService:
         return session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
 
     @staticmethod
-    def has_active_account_with_email(session: Session, email: str) -> bool:
+    def has_active_account_with_email(email: str, *, session: Session) -> bool:
         if not email:
             return False
         normalized = email.strip().lower()
@@ -302,7 +302,7 @@ class AccountService:
         return row is not None
 
     @staticmethod
-    def get_account_by_id(session: Session, account_id: str) -> Account | None:
+    def get_account_by_id(account_id: str, *, session: Session) -> Account | None:
         """Plain ``Account`` getter — no banned check, no tenant rotation,
         no ``last_active_at`` write. Use this from read-only identity
         endpoints (``/openapi/v1/account``) where ``load_user``'s
@@ -1003,7 +1003,7 @@ class AccountService:
         return token
 
     @staticmethod
-    def get_account_by_email_with_case_fallback(session: Session, email: str) -> Account | None:
+    def get_account_by_email_with_case_fallback(email: str, *, session: Session) -> Account | None:
         """
         Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
 
@@ -1361,10 +1361,7 @@ class TenantService:
         )
 
     @staticmethod
-    def get_account_memberships(
-        session: Session,
-        account_id: str,
-    ) -> list[Row[tuple[TenantAccountJoin, Tenant]]]:
+    def get_account_memberships(account_id: str, *, session: Session) -> list[Row[tuple[TenantAccountJoin, Tenant]]]:
         """Return ``(TenantAccountJoin, Tenant)`` rows for every workspace
         the account belongs to. Unlike :meth:`get_join_tenants` this keeps
         the join row so callers can read ``role``/``current`` alongside the
@@ -1385,10 +1382,7 @@ class TenantService:
         )
 
     @staticmethod
-    def get_workspaces_for_account(
-        session: Session,
-        account_id: str,
-    ) -> list[Row[tuple[Tenant, TenantAccountJoin]]]:
+    def get_workspaces_for_account(account_id: str, *, session: Session) -> list[Row[tuple[Tenant, TenantAccountJoin]]]:
         """``(Tenant, TenantAccountJoin)`` rows for every workspace the
         account belongs to, ordered by ``Tenant.created_at`` ASC — the
         canonical ordering for ``/openapi/v1/workspaces``.
@@ -1407,11 +1401,7 @@ class TenantService:
         )
 
     @staticmethod
-    def account_belongs_to_tenant(
-        session: Session,
-        account_id: uuid.UUID | str | None,
-        tenant_id: str,
-    ) -> bool:
+    def account_belongs_to_tenant(account_id: uuid.UUID | str | None, tenant_id: str, *, session: Session) -> bool:
         """Existence check for ``TenantAccountJoin(account_id, tenant_id)``.
         Backs the CE-deployment membership fallback in
         ``controllers.openapi.auth.strategies.MembershipStrategy``.
@@ -1431,9 +1421,7 @@ class TenantService:
 
     @staticmethod
     def get_account_role_in_tenant(
-        session: Session,
-        account_id: uuid.UUID | str | None,
-        tenant_id: str,
+        account_id: uuid.UUID | str | None, tenant_id: str, *, session: Session
     ) -> TenantAccountRole | None:
         """Return the caller's role in ``tenant_id``, or ``None`` if not a member.
 
@@ -1459,7 +1447,7 @@ class TenantService:
         return TenantAccountRole(role) if role is not None else None
 
     @staticmethod
-    def get_tenant_by_id(session: Session, tenant_id: str) -> Tenant | None:
+    def get_tenant_by_id(tenant_id: str, *, session: Session) -> Tenant | None:
         """Plain ``session.get(Tenant, tenant_id)`` — no status filter.
         Callers map ``status == ARCHIVE`` to their own error code (the
         openapi auth pipeline raises 403 ``workspace unavailable``).
@@ -1467,10 +1455,7 @@ class TenantService:
         return session.get(Tenant, tenant_id)
 
     @staticmethod
-    def get_tenants_by_ids(
-        session: Session,
-        tenant_ids: list[str],
-    ) -> list[Tenant]:
+    def get_tenants_by_ids(tenant_ids: list[str], *, session: Session) -> list[Tenant]:
         """Bulk ``Tenant`` fetch by primary-key list. Order is unspecified
         — callers index by ``tenant.id`` (e.g. for cross-tenant denorm
         in ``/openapi/v1/permitted-external-apps``).
@@ -1483,7 +1468,7 @@ class TenantService:
         return list(session.execute(select(Tenant).where(Tenant.id.in_(tenant_ids))).scalars().all())
 
     @staticmethod
-    def get_tenant_name(session: Session, tenant_id: str) -> str | None:
+    def get_tenant_name(tenant_id: str, *, session: Session) -> str | None:
         """Single-column tenant name read. Used by openapi list endpoints
         to denormalize ``workspace_name`` onto each row without dragging
         the full ``Tenant`` ORM entity through.
@@ -1492,9 +1477,7 @@ class TenantService:
 
     @staticmethod
     def find_workspace_for_account(
-        session: Session,
-        account_id: str,
-        workspace_id: str,
+        account_id: str, workspace_id: str, *, session: Session
     ) -> Row[tuple[Tenant, TenantAccountJoin]] | None:
         """Single ``(Tenant, TenantAccountJoin)`` row scoped to the
         account's membership in ``workspace_id``. ``None`` on non-member
@@ -2020,7 +2003,7 @@ class RegisterService:
 
         check_workspace_member_invite_permission(tenant.id)
 
-        account = AccountService.get_account_by_email_with_case_fallback(session, email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         requires_setup = False
         if not account:

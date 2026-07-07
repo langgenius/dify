@@ -153,13 +153,7 @@ class AppService:
         }[sort_by]
 
     @staticmethod
-    def get_starred_app_ids(
-        session: Session,
-        *,
-        tenant_id: str,
-        account_id: str,
-        app_ids: Sequence[str],
-    ) -> set[str]:
+    def get_starred_app_ids(*, tenant_id: str, account_id: str, app_ids: Sequence[str], session: Session) -> set[str]:
         """Return app IDs starred by this account within the tenant."""
         if not app_ids:
             return set()
@@ -174,38 +168,24 @@ class AppService:
         return set(starred_app_ids)
 
     @staticmethod
-    def get_app_by_id(
-        session: Session,
-        app_id: str,
-    ) -> App | None:
+    def get_app_by_id(app_id: str, *, session: Session) -> App | None:
         return session.get(App, app_id)
 
     @staticmethod
-    def get_visible_app_by_id(
-        session: Session,
-        app_id: str,
-    ) -> App | None:
+    def get_visible_app_by_id(app_id: str, *, session: Session) -> App | None:
         app = session.get(App, app_id)
         if not app or app.status != "normal" or not is_openapi_visible(app):
             return None
         return app
 
     @staticmethod
-    def find_visible_apps_by_ids(
-        session: Session,
-        app_ids: Sequence[str],
-    ) -> list[App]:
+    def find_visible_apps_by_ids(app_ids: Sequence[str], *, session: Session) -> list[App]:
         if not app_ids:
             return []
         return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
 
     @staticmethod
-    def find_visible_apps_by_name(
-        session: Session,
-        *,
-        name: str,
-        tenant_id: str,
-    ) -> list[App]:
+    def find_visible_apps_by_name(*, name: str, tenant_id: str, session: Session) -> list[App]:
         return list(
             session.execute(
                 apply_openapi_gate(
@@ -243,10 +223,7 @@ class AppService:
 
         app_ids = [str(app.id) for app in app_models.items]
         starred_app_ids = self.get_starred_app_ids(
-            session,
-            tenant_id=tenant_id,
-            account_id=user_id,
-            app_ids=app_ids,
+            tenant_id=tenant_id, account_id=user_id, app_ids=app_ids, session=session
         )
         for app in app_models.items:
             app.is_starred = str(app.id) in starred_app_ids
@@ -287,7 +264,7 @@ class AppService:
         return app_models
 
     @staticmethod
-    def star_app(session: Session, *, app: App, account_id: str) -> None:
+    def star_app(*, app: App, account_id: str, session: Session) -> None:
         """Create the account's app star if it does not already exist."""
         existing_star = session.scalar(
             select(AppStar)
@@ -304,7 +281,7 @@ class AppService:
         session.add(AppStar(tenant_id=app.tenant_id, app_id=app.id, account_id=account_id))
 
     @staticmethod
-    def unstar_app(session: Session, *, app: App, account_id: str) -> None:
+    def unstar_app(*, app: App, account_id: str, session: Session) -> None:
         """Remove the account's app star if present."""
         existing_star = session.scalar(
             select(AppStar)

@@ -750,7 +750,9 @@ class TestWebAppAuthService:
         # Arrange: Setup test with private access mode
 
         # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(db_session_with_containers, access_mode="private")
+        result = WebAppAuthService.is_app_require_permission_check(
+            access_mode="private", session=db_session_with_containers
+        )
 
         # Assert: Verify correct result
         assert result is True
@@ -769,7 +771,9 @@ class TestWebAppAuthService:
         # Arrange: Setup test with public access mode
 
         # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(db_session_with_containers, access_mode="public")
+        result = WebAppAuthService.is_app_require_permission_check(
+            access_mode="public", session=db_session_with_containers
+        )
 
         # Assert: Verify correct result
         assert result is False
@@ -789,7 +793,9 @@ class TestWebAppAuthService:
         mock_external_service_dependencies["app_service"].get_app_id_by_code.return_value = "mock_app_id"
 
         # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(db_session_with_containers, app_code="mock_app_code")
+        result = WebAppAuthService.is_app_require_permission_check(
+            app_code="mock_app_code", session=db_session_with_containers
+        )
 
         # Assert: Verify correct result
         assert result is True
@@ -816,7 +822,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            WebAppAuthService.is_app_require_permission_check(db_session_with_containers)
+            WebAppAuthService.is_app_require_permission_check(session=db_session_with_containers)
 
         assert "Either app_code or app_id must be provided." in str(exc_info.value)
 
@@ -834,7 +840,7 @@ class TestWebAppAuthService:
         # Arrange: Setup test with public access mode
 
         # Act: Execute authentication type determination
-        result = WebAppAuthService.get_app_auth_type(db_session_with_containers, access_mode="public")
+        result = WebAppAuthService.get_app_auth_type(access_mode="public", session=db_session_with_containers)
 
         # Assert: Verify correct result
         assert result == WebAppAuthType.PUBLIC
@@ -853,7 +859,7 @@ class TestWebAppAuthService:
         # Arrange: Setup test with private access mode
 
         # Act: Execute authentication type determination
-        result = WebAppAuthService.get_app_auth_type(db_session_with_containers, access_mode="private")
+        result = WebAppAuthService.get_app_auth_type(access_mode="private", session=db_session_with_containers)
 
         # Assert: Verify correct result
         assert result == WebAppAuthType.INTERNAL
@@ -878,7 +884,7 @@ class TestWebAppAuthService:
 
         # Act: Execute authentication type determination
         result: WebAppAuthType = WebAppAuthService.get_app_auth_type(
-            db_session_with_containers, app_code="mock_app_code"
+            app_code="mock_app_code", session=db_session_with_containers
         )
 
         # Assert: Verify correct result
@@ -903,6 +909,6 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            WebAppAuthService.get_app_auth_type(db_session_with_containers)
+            WebAppAuthService.get_app_auth_type(session=db_session_with_containers)
 
         assert "Either app_code or access_mode must be provided." in str(exc_info.value)

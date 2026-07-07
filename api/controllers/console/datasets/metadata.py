@@ -67,7 +67,7 @@ class DatasetMetadataCreateApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user, db.session())
 
         metadata = MetadataService.create_metadata(
-            db.session(), dataset_id_str, metadata_args, current_user, current_tenant_id
+            dataset_id_str, metadata_args, current_user, current_tenant_id, session=db.session()
         )
         return dump_response(DatasetMetadataResponse, metadata), 201
 
@@ -84,7 +84,7 @@ class DatasetMetadataCreateApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str, db.session())
         if dataset is None:
             raise NotFound("Dataset not found.")
-        metadata = MetadataService.get_dataset_metadatas(db.session(), dataset)
+        metadata = MetadataService.get_dataset_metadatas(dataset, session=db.session())
         return dump_response(DatasetMetadataListResponse, metadata), 200
 
 
@@ -111,7 +111,7 @@ class DatasetMetadataApi(Resource):
         DatasetService.check_dataset_permission(dataset, current_user, db.session())
 
         metadata = MetadataService.update_metadata_name(
-            db.session(), dataset_id_str, metadata_id_str, name, current_user, current_tenant_id
+            dataset_id_str, metadata_id_str, name, current_user, current_tenant_id, session=db.session()
         )
         return dump_response(DatasetMetadataResponse, metadata), 200
 
@@ -130,7 +130,7 @@ class DatasetMetadataApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, db.session())
 
-        MetadataService.delete_metadata(db.session(), dataset_id_str, metadata_id_str)
+        MetadataService.delete_metadata(dataset_id_str, metadata_id_str, session=db.session())
         # Frontend callers only await success and invalidate metadata caches; no response body is consumed.
         return "", 204
 
@@ -169,9 +169,9 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
 
         match action:
             case "enable":
-                MetadataService.enable_built_in_field(db.session(), dataset)
+                MetadataService.enable_built_in_field(dataset, session=db.session())
             case "disable":
-                MetadataService.disable_built_in_field(db.session(), dataset)
+                MetadataService.disable_built_in_field(dataset, session=db.session())
         # Frontend callers only await success and invalidate metadata caches; no response body is consumed.
         return "", 204
 
@@ -198,7 +198,7 @@ class DocumentMetadataEditApi(Resource):
 
         metadata_args = MetadataOperationData.model_validate(console_ns.payload or {})
 
-        MetadataService.update_documents_metadata(db.session(), dataset, metadata_args, current_user)
+        MetadataService.update_documents_metadata(dataset, metadata_args, current_user, session=db.session())
 
         # Frontend callers only await success and invalidate caches; no response body is consumed.
         return "", 204

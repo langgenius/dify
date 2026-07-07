@@ -681,7 +681,7 @@ class TestTenantService:
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = TenantAccountRole.ADMIN
 
-        role = TenantService.get_account_role_in_tenant(mock_session, "account-1", "tenant-1")
+        role = TenantService.get_account_role_in_tenant("account-1", "tenant-1", session=mock_session)
 
         assert role == TenantAccountRole.ADMIN
 
@@ -690,7 +690,7 @@ class TestTenantService:
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
 
-        role = TenantService.get_account_role_in_tenant(mock_session, "account-1", "tenant-1")
+        role = TenantService.get_account_role_in_tenant("account-1", "tenant-1", session=mock_session)
 
         assert role is None
 
@@ -699,7 +699,7 @@ class TestTenantService:
         without ever touching the session."""
         mock_session = MagicMock()
 
-        assert TenantService.get_account_role_in_tenant(mock_session, None, "tenant-1") is None
+        assert TenantService.get_account_role_in_tenant(None, "tenant-1", session=mock_session) is None
         mock_session.execute.assert_not_called()
 
     def test_get_account_role_in_tenant_query_is_scoped(self):
@@ -711,7 +711,7 @@ class TestTenantService:
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = TenantAccountRole.NORMAL
 
-        TenantService.get_account_role_in_tenant(mock_session, account_id, tenant_id)
+        TenantService.get_account_role_in_tenant(account_id, tenant_id, session=mock_session)
 
         stmt = mock_session.execute.call_args.args[0]
         compiled = str(stmt.compile(compile_kwargs={"literal_binds": True}))
@@ -1915,7 +1915,9 @@ class TestRegisterService:
                         is_setup=True,
                         session=mock_db_dependencies["db"].session,
                     )
-                    mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, "newuser@example.com")
+                    mock_lookup.assert_called_once_with(
+                        "newuser@example.com", session=mock_db_dependencies["db"].session
+                    )
 
     def test_invite_new_member_normalizes_new_account_email(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
@@ -1961,7 +1963,7 @@ class TestRegisterService:
                         is_setup=True,
                         session=mock_db_dependencies["db"].session,
                     )
-                    mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, mixed_email)
+                    mock_lookup.assert_called_once_with(mixed_email, session=mock_db_dependencies["db"].session)
                     mock_check_permission.assert_called_once_with(
                         mock_tenant,
                         mock_inviter,
@@ -2028,7 +2030,7 @@ class TestRegisterService:
                     mock_tenant, mock_existing_account, "normal", requires_setup=True
                 )
                 mock_task_dependencies.delay.assert_called_once()
-                mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, "existing@example.com")
+                mock_lookup.assert_called_once_with("existing@example.com", session=mock_db_dependencies["db"].session)
 
     def test_invite_existing_active_account_requires_acceptance_before_joining(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
@@ -2621,7 +2623,7 @@ class TestSessionInjectedGetters:
         sentinel_account = MagicMock(spec=Account)
         mock_session.get.return_value = sentinel_account
 
-        result = AccountService.get_account_by_id(mock_session, "user-123")
+        result = AccountService.get_account_by_id("user-123", session=mock_session)
 
         assert result is sentinel_account
         mock_session.get.assert_called_once_with(Account, "user-123")
@@ -2631,7 +2633,7 @@ class TestSessionInjectedGetters:
         mock_session = MagicMock()
         mock_session.get.return_value = None
 
-        assert AccountService.get_account_by_id(mock_session, "missing") is None
+        assert AccountService.get_account_by_id("missing", session=mock_session) is None
 
     @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     def test_get_account_by_email_returns_scalar_or_none(self, sqlite_session: Session):
@@ -2643,9 +2645,9 @@ class TestSessionInjectedGetters:
         sqlite_session.add(account)
         sqlite_session.commit()
 
-        assert AccountService.get_account_by_email(sqlite_session, "alice@example.com") == account
-        assert AccountService.get_account_by_email(sqlite_session, "ALICE@example.com") is None
-        assert AccountService.get_account_by_email(sqlite_session, "ghost@example.com") is None
+        assert AccountService.get_account_by_email("alice@example.com", session=sqlite_session) == account
+        assert AccountService.get_account_by_email("ALICE@example.com", session=sqlite_session) is None
+        assert AccountService.get_account_by_email("ghost@example.com", session=sqlite_session) is None
 
     def test_account_belongs_to_tenant_short_circuits_on_falsy_account_id(self):
         """SSO bearers with no ``account_id`` (and any other falsy id)
@@ -2654,22 +2656,22 @@ class TestSessionInjectedGetters:
         """
         mock_session = MagicMock()
 
-        assert TenantService.account_belongs_to_tenant(mock_session, None, "tenant-1") is False
-        assert TenantService.account_belongs_to_tenant(mock_session, "", "tenant-1") is False
+        assert TenantService.account_belongs_to_tenant(None, "tenant-1", session=mock_session) is False
+        assert TenantService.account_belongs_to_tenant("", "tenant-1", session=mock_session) is False
         mock_session.execute.assert_not_called()
 
     def test_account_belongs_to_tenant_true_when_join_row_exists(self):
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = "join-id"
 
-        assert TenantService.account_belongs_to_tenant(mock_session, "user-1", "tenant-1") is True
+        assert TenantService.account_belongs_to_tenant("user-1", "tenant-1", session=mock_session) is True
         mock_session.execute.assert_called_once()
 
     def test_account_belongs_to_tenant_false_when_no_join(self):
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
 
-        assert TenantService.account_belongs_to_tenant(mock_session, "user-1", "tenant-1") is False
+        assert TenantService.account_belongs_to_tenant("user-1", "tenant-1", session=mock_session) is False
 
     def test_get_account_memberships_returns_join_tenant_pairs(self):
         """Returns whatever ``session.query(...).join(...).filter(...).all()``
@@ -2680,7 +2682,7 @@ class TestSessionInjectedGetters:
         rows = [(MagicMock(), MagicMock()), (MagicMock(), MagicMock())]
         mock_session.query.return_value.join.return_value.filter.return_value.all.return_value = rows
 
-        out = TenantService.get_account_memberships(mock_session, "user-123")
+        out = TenantService.get_account_memberships("user-123", session=mock_session)
 
         assert out == rows
         # No fall-through to the global db.session proxy.
@@ -2694,7 +2696,7 @@ class TestSessionInjectedGetters:
         rows = [(MagicMock(), MagicMock())]
         mock_session.execute.return_value.all.return_value = rows
 
-        out = TenantService.get_workspaces_for_account(mock_session, "user-123")
+        out = TenantService.get_workspaces_for_account("user-123", session=mock_session)
 
         assert out == rows
         assert mock_session.execute.called
@@ -2710,20 +2712,20 @@ class TestSessionInjectedGetters:
         sentinel = MagicMock(spec=Tenant)
         mock_session.get.return_value = sentinel
 
-        assert TenantService.get_tenant_by_id(mock_session, "tenant-1") is sentinel
+        assert TenantService.get_tenant_by_id("tenant-1", session=mock_session) is sentinel
         mock_session.get.assert_called_once_with(Tenant, "tenant-1")
 
     def test_get_tenant_by_id_returns_none_when_missing(self):
         mock_session = MagicMock()
         mock_session.get.return_value = None
 
-        assert TenantService.get_tenant_by_id(mock_session, "missing") is None
+        assert TenantService.get_tenant_by_id("missing", session=mock_session) is None
 
     def test_get_tenants_by_ids_short_circuits_on_empty_input(self):
         """Empty id list must not emit ``WHERE id IN ()``."""
         mock_session = MagicMock()
 
-        assert TenantService.get_tenants_by_ids(mock_session, []) == []
+        assert TenantService.get_tenants_by_ids([], session=mock_session) == []
         mock_session.execute.assert_not_called()
 
     def test_get_tenants_by_ids_returns_scalars(self):
@@ -2731,7 +2733,7 @@ class TestSessionInjectedGetters:
         tenants = [MagicMock(), MagicMock()]
         mock_session.execute.return_value.scalars.return_value.all.return_value = tenants
 
-        assert TenantService.get_tenants_by_ids(mock_session, ["t1", "t2"]) == tenants
+        assert TenantService.get_tenants_by_ids(["t1", "t2"], session=mock_session) == tenants
         mock_session.execute.assert_called_once()
 
     def test_get_tenant_name_returns_scalar_or_none(self):
@@ -2742,10 +2744,10 @@ class TestSessionInjectedGetters:
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = "Acme Inc."
 
-        assert TenantService.get_tenant_name(mock_session, "tenant-1") == "Acme Inc."
+        assert TenantService.get_tenant_name("tenant-1", session=mock_session) == "Acme Inc."
 
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
-        assert TenantService.get_tenant_name(mock_session, "missing") is None
+        assert TenantService.get_tenant_name("missing", session=mock_session) is None
 
     def test_find_workspace_for_account_returns_first_row_or_none(self):
         """Per-id read returns ``session.execute(...).first()`` directly;
@@ -2756,7 +2758,7 @@ class TestSessionInjectedGetters:
         sentinel_row = (MagicMock(), MagicMock())
         mock_session.execute.return_value.first.return_value = sentinel_row
 
-        assert TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1") is sentinel_row
+        assert TenantService.find_workspace_for_account("user-123", "ws-1", session=mock_session) is sentinel_row
 
         mock_session.execute.return_value.first.return_value = None
-        assert TenantService.find_workspace_for_account(mock_session, "user-123", "ws-1") is None
+        assert TenantService.find_workspace_for_account("user-123", "ws-1", session=mock_session) is None

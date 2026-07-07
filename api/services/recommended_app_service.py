@@ -11,7 +11,7 @@ from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFa
 
 class RecommendedAppService:
     @classmethod
-    def get_recommended_apps_and_categories(cls, session: Session, language: str):
+    def get_recommended_apps_and_categories(cls, language: str, *, session: Session):
         """
         Get recommended apps and categories.
         :param language: language
@@ -35,7 +35,7 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def get_learn_dify_apps(cls, session: Session, language: str) -> dict[str, Any]:
+    def get_learn_dify_apps(cls, language: str, *, session: Session) -> dict[str, Any]:
         """
         Get recommended apps marked for the Learn Dify section.
         :param language: language
@@ -52,7 +52,7 @@ class RecommendedAppService:
         return {"recommended_apps": result["recommended_apps"]}
 
     @classmethod
-    def get_recommend_app_detail(cls, session: Session, app_id: str) -> dict[str, Any] | None:
+    def get_recommend_app_detail(cls, app_id: str, *, session: Session) -> dict[str, Any] | None:
         """
         Get recommend app detail.
         :param app_id: app id
@@ -69,7 +69,7 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def add_trial_app_record(cls, session: Session, app_id: str, account_id: str):
+    def add_trial_app_record(cls, app_id: str, account_id: str, *, session: Session):
         """
         Add trial app record.
         :param app_id: app id

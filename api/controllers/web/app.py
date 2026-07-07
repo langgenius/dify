@@ -180,7 +180,9 @@ class AppWebAuthPermission(Resource):
         if not app_id or not app_code:
             raise ValueError("appId must be provided")
 
-        require_permission_check = WebAppAuthService.is_app_require_permission_check(db.session(), app_id=app_id)
+        require_permission_check = WebAppAuthService.is_app_require_permission_check(
+            app_id=app_id, session=db.session()
+        )
         if not require_permission_check:
             return {"result": True}
 
@@ -201,6 +203,6 @@ class AppWebAuthPermission(Resource):
             return {"result": True}
 
         res = True
-        if WebAppAuthService.is_app_require_permission_check(db.session(), app_id=app_id):
+        if WebAppAuthService.is_app_require_permission_check(app_id=app_id, session=db.session()):
             res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_id)
         return {"result": res}

@@ -86,7 +86,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, db.session())
 
-        metadata = MetadataService.create_metadata(db.session(), dataset_id_str, metadata_args)
+        metadata = MetadataService.create_metadata(dataset_id_str, metadata_args, session=db.session())
         return dump_response(DatasetMetadataResponse, metadata), 201
 
     @service_api_ns.doc(
@@ -119,7 +119,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str, db.session())
         if dataset is None:
             raise NotFound("Dataset not found.")
-        metadata = MetadataService.get_dataset_metadatas(db.session(), dataset)
+        metadata = MetadataService.get_dataset_metadatas(dataset, session=db.session())
         return dump_response(DatasetMetadataListResponse, metadata), 200
 
 
@@ -159,7 +159,9 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, db.session())
 
-        metadata = MetadataService.update_metadata_name(db.session(), dataset_id_str, metadata_id_str, payload.name)
+        metadata = MetadataService.update_metadata_name(
+            dataset_id_str, metadata_id_str, payload.name, session=db.session()
+        )
         return dump_response(DatasetMetadataResponse, metadata), 200
 
     @service_api_ns.doc(
@@ -194,7 +196,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user, db.session())
 
-        MetadataService.delete_metadata(db.session(), dataset_id_str, metadata_id_str)
+        MetadataService.delete_metadata(dataset_id_str, metadata_id_str, session=db.session())
         return "", 204
 
 
@@ -264,9 +266,9 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
 
         match action:
             case "enable":
-                MetadataService.enable_built_in_field(db.session(), dataset)
+                MetadataService.enable_built_in_field(dataset, session=db.session())
             case "disable":
-                MetadataService.disable_built_in_field(db.session(), dataset)
+                MetadataService.disable_built_in_field(dataset, session=db.session())
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200
 
 
@@ -310,6 +312,6 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
 
         metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 
-        MetadataService.update_documents_metadata(db.session(), dataset, metadata_args)
+        MetadataService.update_documents_metadata(dataset, metadata_args, session=db.session())
 
         return dump_response(DatasetMetadataActionResponse, {"result": "success"}), 200

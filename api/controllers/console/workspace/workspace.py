@@ -223,7 +223,7 @@ class TenantListApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account):
         tenant_rows: list[tuple[Tenant, TenantAccountJoin]] = [
             (tenant, membership)
-            for tenant, membership in TenantService.get_workspaces_for_account(db.session(), current_user.id)
+            for tenant, membership in TenantService.get_workspaces_for_account(current_user.id, session=db.session())
             if tenant.status == TenantStatus.NORMAL
         ]
         tenants = [tenant for tenant, _ in tenant_rows]

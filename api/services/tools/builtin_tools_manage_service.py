@@ -327,7 +327,7 @@ class BuiltinToolManageService:
 
     @staticmethod
     def generate_builtin_tool_provider_name(
-        session: Session, tenant_id: str, provider: str, credential_type: CredentialType
+        tenant_id: str, provider: str, credential_type: CredentialType, *, session: Session
     ) -> str:
         db_providers = session.scalars(
             select(BuiltinToolProvider)
@@ -428,7 +428,7 @@ class BuiltinToolManageService:
                 if vis_str == "partial_members":
                     credential_entity.partial_member_list = list(
                         CredentialPermissionService.get_partial_member_list(
-                            session, provider.id, CredPermType.BUILTIN_TOOL_PROVIDER
+                            provider.id, CredPermType.BUILTIN_TOOL_PROVIDER, session=session
                         )
                     )
                 if provider.id in borrowed_ids:

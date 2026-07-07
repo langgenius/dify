@@ -335,7 +335,6 @@ def sha256_hex(token: str) -> str:
 
 
 def mint_oauth_token(
-    session: Session,
     redis_client,
     *,
     subject_email: str,
@@ -345,6 +344,7 @@ def mint_oauth_token(
     device_label: str,
     prefix: str,
     ttl_days: int,
+    session: Session,
 ) -> MintResult:
     """Live row rotates in place via partial unique index
     ``uq_oauth_active_per_device``; hard-expired rows are excluded by the
@@ -499,11 +499,7 @@ def subject_match_clauses(ctx: AuthContext) -> tuple[Any, ...]:
     )
 
 
-def list_active_sessions(
-    session: Session,
-    ctx: AuthContext,
-    now: datetime,
-) -> list[OAuthAccessToken]:
+def list_active_sessions(ctx: AuthContext, now: datetime, *, session: Session) -> list[OAuthAccessToken]:
     return list(
         session.execute(
             select(OAuthAccessToken)
@@ -522,11 +518,7 @@ def list_active_sessions(
     )
 
 
-def token_belongs_to_subject(
-    session: Session,
-    token_id: str,
-    ctx: AuthContext,
-) -> bool:
+def token_belongs_to_subject(token_id: str, ctx: AuthContext, *, session: Session) -> bool:
     row = session.execute(
         select(OAuthAccessToken.id).where(
             and_(
@@ -538,11 +530,7 @@ def token_belongs_to_subject(
     return row is not None
 
 
-def revoke_oauth_token(
-    session: Session,
-    redis_client: Any,
-    token_id: str,
-) -> None:
+def revoke_oauth_token(redis_client: Any, token_id: str, *, session: Session) -> None:
     row = (
         session.query(OAuthAccessToken.token_hash)
         .filter(

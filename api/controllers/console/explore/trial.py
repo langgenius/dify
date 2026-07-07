@@ -431,7 +431,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
                 invoke_from=InvokeFrom.EXPLORE,
                 streaming=True,
             )
-            RecommendedAppService.add_trial_app_record(session, app_id, user_id)
+            RecommendedAppService.add_trial_app_record(app_id, user_id, session=session)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
@@ -511,7 +511,7 @@ class TrialChatApi(TrialAppResource):
                 invoke_from=InvokeFrom.EXPLORE,
                 streaming=True,
             )
-            RecommendedAppService.add_trial_app_record(session, app_id, user_id)
+            RecommendedAppService.add_trial_app_record(app_id, user_id, session=session)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
@@ -593,7 +593,7 @@ class TrialChatAudioApi(TrialAppResource):
             user_id = current_user.id
 
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
-            RecommendedAppService.add_trial_app_record(db.session(), app_id, user_id)
+            RecommendedAppService.add_trial_app_record(app_id, user_id, session=db.session())
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
@@ -654,7 +654,7 @@ class TrialChatTextApi(TrialAppResource):
                 voice=voice,
                 message_ref=message_ref,
             )
-            RecommendedAppService.add_trial_app_record(db.session(), app_id, user_id)
+            RecommendedAppService.add_trial_app_record(app_id, user_id, session=db.session())
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
@@ -713,7 +713,7 @@ class TrialCompletionApi(TrialAppResource):
                 streaming=streaming,
             )
 
-            RecommendedAppService.add_trial_app_record(session, app_id, user_id)
+            RecommendedAppService.add_trial_app_record(app_id, user_id, session=session)
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:

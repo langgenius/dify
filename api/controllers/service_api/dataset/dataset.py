@@ -681,10 +681,10 @@ class DatasetApi(DatasetApiResource):
                 dataset,
                 str(payload.permission) if payload.permission else None,
                 payload.partial_member_list,
-                db.session(),
+                session=db.session(),
             )
 
-        dataset = DatasetService.update_dataset(session, dataset_id_str, update_data, current_user)
+        dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user, session=session)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -876,7 +876,7 @@ class DatasetTagsApi(DatasetApiResource):
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
         assert cid is not None
-        tags = TagService.get_tags(db.session(), "knowledge", cid)
+        tags = TagService.get_tags("knowledge", cid, session=db.session())
         return dump_response(KnowledgeTagListResponse, tags), 200
 
     @service_api_ns.doc(

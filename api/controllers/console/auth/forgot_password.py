@@ -82,7 +82,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        account = AccountService.get_account_by_email_with_case_fallback(db.session(), args.email)
+        account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())
 
         token = AccountService.send_reset_password_email(
             account=account,
@@ -180,7 +180,7 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(args.new_password, salt)
 
         email = reset_data.get("email", "")
-        account = AccountService.get_account_by_email_with_case_fallback(db.session(), email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
 
         if account:
             account = db.session.merge(account)

@@ -688,10 +688,10 @@ class DatasetApi(Resource):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         if not dify_config.RBAC_ENABLED:
             DatasetPermissionService.check_permission(
-                session, current_user, dataset, payload.permission, payload.partial_member_list
+                current_user, dataset, payload.permission, payload.partial_member_list, session=session
             )
 
-        dataset = DatasetService.update_dataset(session, dataset_id_str, payload_data, current_user)
+        dataset = DatasetService.update_dataset(dataset_id_str, payload_data, current_user, session=session)
 
         if dataset is None:
             raise NotFound("Dataset not found.")

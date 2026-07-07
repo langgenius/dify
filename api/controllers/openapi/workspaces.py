@@ -64,14 +64,14 @@ def _member_response(account: Account) -> MemberResponse:
 
 
 def _load_tenant(workspace_id: str) -> Tenant:
-    tenant = TenantService.get_tenant_by_id(db.session(), workspace_id)
+    tenant = TenantService.get_tenant_by_id(workspace_id, session=db.session())
     if tenant is None or tenant.status != TenantStatus.NORMAL:
         raise NotFound("workspace not found")
     return tenant
 
 
 def _load_account(account_id: object) -> Account:
-    account = AccountService.get_account_by_id(db.session(), str(account_id)) if account_id else None
+    account = AccountService.get_account_by_id(str(account_id), session=db.session()) if account_id else None
     if account is None:
         raise RuntimeError("authenticated account_id has no Account row")
     return account
@@ -94,7 +94,7 @@ class WorkspacesApi(Resource):
     @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, WorkspaceListResponse, description="Workspace list")
     def get(self, *, auth_data: AuthData):
-        rows = TenantService.get_workspaces_for_account(db.session(), str(auth_data.account_id))
+        rows = TenantService.get_workspaces_for_account(str(auth_data.account_id), session=db.session())
 
         return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows)))
 
@@ -104,7 +104,7 @@ class WorkspaceByIdApi(Resource):
     @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, WorkspaceDetailResponse, description="Workspace detail")
     def get(self, workspace_id: str, *, auth_data: AuthData):
-        row = TenantService.find_workspace_for_account(db.session(), str(auth_data.account_id), workspace_id)
+        row = TenantService.find_workspace_for_account(str(auth_data.account_id), workspace_id, session=db.session())
         # 404 (not 403) on non-member so workspace IDs don't leak across tenants.
         if row is None:
             raise NotFound("workspace not found")
@@ -132,7 +132,7 @@ class WorkspaceSwitchApi(Resource):
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
-        row = TenantService.find_workspace_for_account(db.session(), str(auth_data.account_id), workspace_id)
+        row = TenantService.find_workspace_for_account(str(auth_data.account_id), workspace_id, session=db.session())
         if row is None:
             raise NotFound("workspace not found")
         tenant, membership = row
@@ -194,7 +194,7 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc))
 
         normalized_email = body.email.lower()
-        member = AccountService.get_account_by_email_with_case_fallback(db.session(), normalized_email)
+        member = AccountService.get_account_by_email_with_case_fallback(normalized_email, session=db.session())
         if member is None:
             # invite_new_member just created or fetched this account.
             raise RuntimeError("invited member missing from DB after invite")
@@ -228,7 +228,7 @@ class WorkspaceMemberApi(Resource):
     def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
         operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
-        member = AccountService.get_account_by_id(db.session(), member_id)
+        member = AccountService.get_account_by_id(member_id, session=db.session())
         if member is None:
             raise NotFound("member not found")
 
@@ -262,7 +262,7 @@ class WorkspaceMemberRoleApi(Resource):
     def put(self, workspace_id: str, member_id: str, *, auth_data: AuthData, body: MemberRoleUpdatePayload):
         operator = _load_account(auth_data.account_id)
         tenant = _load_tenant(workspace_id)
-        member = AccountService.get_account_by_id(db.session(), member_id)
+        member = AccountService.get_account_by_id(member_id, session=db.session())
         if member is None:
             raise NotFound("member not found")
 

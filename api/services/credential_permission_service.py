@@ -16,7 +16,7 @@ class CredentialPermissionService:
     """
 
     @classmethod
-    def get_partial_member_list(cls, session: Session, credential_id: str, credential_type: str) -> Sequence[str]:
+    def get_partial_member_list(cls, credential_id: str, credential_type: str, *, session: Session) -> Sequence[str]:
         """Return account_ids that have partial-member access to a credential."""
         return session.scalars(
             select(CredentialPermission.account_id).where(

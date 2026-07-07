@@ -401,7 +401,6 @@ class DatasetService:
 
     @staticmethod
     def create_empty_dataset(
-        session: Session,
         tenant_id: str,
         name: str,
         description: str | None,
@@ -415,6 +414,8 @@ class DatasetService:
         embedding_model_name: str | None = None,
         retrieval_model: RetrievalModel | None = None,
         summary_index_setting: dict[str, Any] | None = None,
+        *,
+        session: Session,
     ):
         # check if dataset name already exists
         if session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
@@ -627,7 +628,7 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
-    def update_dataset(session: Session, dataset_id, data, user):
+    def update_dataset(dataset_id, data, user, *, session: Session):
         """
         Update dataset configuration and settings.
 
@@ -1167,7 +1168,11 @@ class DatasetService:
 
     @staticmethod
     def update_rag_pipeline_dataset_settings(
-        session: Session, dataset: Dataset, knowledge_configuration: KnowledgeConfiguration, has_published: bool = False
+        dataset: Dataset,
+        knowledge_configuration: KnowledgeConfiguration,
+        has_published: bool = False,
+        *,
+        session: Session,
     ):
         if not current_user or not current_user.current_tenant_id:
             raise ValueError("Current user or current tenant not found")
@@ -1813,7 +1818,7 @@ class DocumentService:
             invalid_source_message="Document does not have an uploaded file to download.",
             missing_file_message="Uploaded file not found.",
         )
-        upload_files_by_id = FileService.get_upload_files_by_ids(session, document.tenant_id, [upload_file_id])
+        upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id], session=session)
         upload_file = upload_files_by_id.get(upload_file_id)
         if not upload_file:
             raise NotFound("Uploaded file not found.")
@@ -1853,7 +1858,7 @@ class DocumentService:
             upload_file_ids.append(upload_file_id)
             upload_file_ids_by_document_id[document_id] = upload_file_id
 
-        upload_files_by_id = FileService.get_upload_files_by_ids(session, tenant_id, upload_file_ids)
+        upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids, session=session)
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
             raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
@@ -2779,7 +2784,7 @@ class DocumentService:
         return document
 
     @staticmethod
-    def get_tenant_documents_count(session: Session):
+    def get_tenant_documents_count(*, session: Session):
         assert isinstance(current_user, Account)
 
         documents_count = (
@@ -4313,7 +4318,7 @@ class DatasetPermissionService:
             raise e
 
     @classmethod
-    def check_permission(cls, session: Session, user, dataset, requested_permission, requested_partial_member_list):
+    def check_permission(cls, user, dataset, requested_permission, requested_partial_member_list, *, session: Session):
         if not user.is_dataset_editor:
             raise NoPermissionError("User does not have permission to edit this dataset.")
 

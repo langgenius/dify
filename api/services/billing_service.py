@@ -363,7 +363,7 @@ class BillingService:
         return response.json()
 
     @staticmethod
-    def is_tenant_owner_or_admin(session: Session, current_user: Account):
+    def is_tenant_owner_or_admin(current_user: Account, *, session: Session):
         tenant_id = current_user.current_tenant_id
 
         join: TenantAccountJoin | None = session.scalar(

@@ -23,7 +23,7 @@ def load_app(data: AuthData) -> None:
         uuid.UUID(app_id)
     except ValueError:
         raise NotFound("app not found")
-    app = AppService.get_app_by_id(db.session(), app_id)
+    app = AppService.get_app_by_id(app_id, session=db.session())
     if not app or app.status != AppStatus.NORMAL:
         raise NotFound("app not found")
     data.app = app
@@ -34,7 +34,7 @@ def load_tenant(data: AuthData) -> None:
         return
     if data.app is None:
         raise InternalServerError("pipeline_invariant_violated: app not loaded before load_tenant")
-    tenant = TenantService.get_tenant_by_id(db.session(), str(data.app.tenant_id))
+    tenant = TenantService.get_tenant_by_id(str(data.app.tenant_id), session=db.session())
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise Forbidden("workspace unavailable")
     data.tenant = tenant
@@ -50,7 +50,7 @@ def load_tenant_from_request(data: AuthData) -> None:
         uuid.UUID(workspace_id)
     except ValueError:
         raise NotFound("workspace not found")
-    tenant = TenantService.get_tenant_by_id(db.session(), workspace_id)
+    tenant = TenantService.get_tenant_by_id(workspace_id, session=db.session())
     if tenant is None or tenant.status == TenantStatus.ARCHIVE:
         raise NotFound("workspace not found")
     data.tenant = tenant
@@ -59,7 +59,7 @@ def load_tenant_from_request(data: AuthData) -> None:
 def load_account(data: AuthData) -> None:
     if data.caller is not None:
         return
-    account = AccountService.get_account_by_id(db.session(), str(data.account_id))
+    account = AccountService.get_account_by_id(str(data.account_id), session=db.session())
     if account is None:
         raise Unauthorized("account not found")
     if data.tenant:
@@ -75,7 +75,7 @@ def load_workspace_role(data: AuthData) -> None:
         return
     if data.caller is not None and getattr(data.caller, "status", None) != AccountStatus.ACTIVE:
         return
-    role = TenantService.get_account_role_in_tenant(db.session(), str(data.account_id), str(data.tenant.id))
+    role = TenantService.get_account_role_in_tenant(str(data.account_id), str(data.tenant.id), session=db.session())
     if role is None:
         return
     data.tenant_role = role

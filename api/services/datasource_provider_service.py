@@ -554,7 +554,7 @@ class DatasourceProviderService:
 
     @staticmethod
     def generate_next_datasource_provider_name(
-        session: Session, tenant_id: str, provider_id: DatasourceProviderID, credential_type: CredentialType
+        tenant_id: str, provider_id: DatasourceProviderID, credential_type: CredentialType, *, session: Session
     ) -> str:
         db_providers = session.scalars(
             select(DatasourceProvider).where(

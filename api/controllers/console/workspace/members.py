@@ -135,7 +135,7 @@ def _normalize_enum_value(value: object) -> str:
 def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
     new_member_count = 0
     for email in emails:
-        account = AccountService.get_account_by_email_with_case_fallback(db.session(), email)
+        account = AccountService.get_account_by_email_with_case_fallback(email, session=db.session())
         if not account:
             new_member_count += 1
             continue

@@ -25,7 +25,7 @@ def reset_password(email, new_password, password_confirm):
         return
     normalized_email = email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(db.session(), email.strip())
+    account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=db.session())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))
@@ -67,7 +67,7 @@ def reset_email(email, new_email, email_confirm):
         return
     normalized_new_email = new_email.strip().lower()
 
-    account = AccountService.get_account_by_email_with_case_fallback(db.session(), email.strip())
+    account = AccountService.get_account_by_email_with_case_fallback(email.strip(), session=db.session())
 
     if not account:
         click.echo(click.style(f"Account not found for email: {email}", fg="red"))

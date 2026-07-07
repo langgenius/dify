@@ -56,7 +56,7 @@ class Subscription(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
         args = SubscriptionQuery.model_validate(request.args.to_dict(flat=True))
-        BillingService.is_tenant_owner_or_admin(db.session(), current_user)
+        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
         return BillingService.get_subscription(args.plan, args.interval, current_user.email, current_tenant_id)
 
 
@@ -70,7 +70,7 @@ class Invoices(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
-        BillingService.is_tenant_owner_or_admin(db.session(), current_user)
+        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
         return BillingService.get_invoices(current_user.email, current_tenant_id)
 
 
