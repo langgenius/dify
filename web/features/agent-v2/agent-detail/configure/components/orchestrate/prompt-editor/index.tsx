@@ -23,7 +23,7 @@ import {
   COMMAND_PRIORITY_LOW,
   SELECTION_CHANGE_COMMAND,
 } from 'lexical'
-import { useCallback, useEffect, useMemo, useLayoutEffect as useReactLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useLayoutEffect as useReactLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -43,14 +43,6 @@ import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
 import { insertTokenAtTextRange, replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
-
-const subscribeHydrationState = () => () => {}
-
-const useIsHydrated = () => useSyncExternalStore(
-  subscribeHydrationState,
-  () => true,
-  () => false,
-)
 
 const noopLayoutEffect: typeof useReactLayoutEffect = () => {}
 const useIsoLayoutEffect = typeof document !== 'undefined'
@@ -465,7 +457,6 @@ export function AgentPromptEditor() {
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
-  const isHydrated = useIsHydrated()
   const promptTip = t('agentDetail.configure.prompt.tip')
   const promptPlaceholder = (
     <AgentPromptPlaceholder
@@ -565,7 +556,7 @@ export function AgentPromptEditor() {
   }, [updateSlashMenuPosition])
 
   const syncSlashMenuWithSelection = useCallback(() => {
-    if (!isHydrated || readOnly)
+    if (readOnly)
       return
 
     if (isSelectionAfterSlash(editorRef.current, value)) {
@@ -576,7 +567,7 @@ export function AgentPromptEditor() {
       slashInsertRangeRef.current = null
       closeSlashMenu()
     }
-  }, [closeSlashMenu, isHydrated, openSlashMenu, readOnly, updateSlashMenuPosition, value])
+  }, [closeSlashMenu, openSlashMenu, readOnly, updateSlashMenuPosition, value])
 
   const scheduleSlashMenuSync = useCallback(() => {
     const ownerWindow = editorRef.current?.ownerDocument.defaultView ?? window
@@ -636,7 +627,7 @@ export function AgentPromptEditor() {
   const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     slashMenuHandledKeyboardEventRef.current = false
 
-    if (!isHydrated || readOnly)
+    if (readOnly)
       return
 
     if (event.key === 'Escape' && isSlashMenuOpen) {
@@ -991,7 +982,7 @@ export function AgentPromptEditor() {
     },
   ]
   const slashMenuWidth = slashMenuView === 'main' ? slashMenuMainWidth : slashMenuSubmenuWidth
-  const slashMenu = isHydrated && !readOnly && isSlashMenuOpen
+  const slashMenu = !readOnly && isSlashMenuOpen
     ? (
         <div
           id={agentPromptSlashMenuId}
