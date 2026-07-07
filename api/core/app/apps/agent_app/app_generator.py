@@ -73,7 +73,12 @@ def _append_prompt_file_mappings(query: str, prompt_file_mappings: Sequence[Json
     if not prompt_files:
         return query
     payload = json.dumps(prompt_files, ensure_ascii=False, separators=(",", ":"))
-    return f"{query}\nUser provided files: {payload}"
+    return (
+        f"{query}\n"
+        "User provided files: use dify-agent file download with the listed transfer_method and reference/url "
+        "to get the files and investigate them\n"
+        f"{payload}"
+    )
 
 
 def _prompt_file_locators(prompt_file_mappings: Sequence[JsonValue]) -> list[dict[str, str]]:

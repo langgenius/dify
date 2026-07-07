@@ -485,14 +485,14 @@ def test_cli_file_download_prints_saved_path(
     assert captured.out.strip() == "/tmp/report.pdf"
 
 
-def test_cli_file_download_supports_mapping_json(
+def test_cli_file_download_rejects_mapping_option(
     monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    captured_kwargs: dict[str, object] = {}
+    called = False
 
-    def fake_download_file_from_environment(**kwargs):
-        captured_kwargs.update(kwargs)
+    def fake_download_file_from_environment(**_kwargs):
+        nonlocal called
+        called = True
         return type("Response", (), {"path": Path("/tmp/inputs/report.pdf")})()
 
     _patch_cli_module(
@@ -513,15 +513,8 @@ def test_cli_file_download_supports_mapping_json(
             ]
         )
 
-    captured = capsys.readouterr()
-    assert exc_info.value.code == 0
-    assert captured_kwargs == {
-        "transfer_method": None,
-        "reference_or_url": None,
-        "mapping": json.dumps({"transfer_method": "tool_file", "reference": _reference("tool-file-1")}),
-        "local_dir": "/tmp/inputs",
-    }
-    assert captured.out.strip() == "/tmp/inputs/report.pdf"
+    assert exc_info.value.code == 2
+    assert called is False
 
 
 def test_cli_file_download_rejects_legacy_positional_directory(

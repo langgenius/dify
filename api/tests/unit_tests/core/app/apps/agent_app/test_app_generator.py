@@ -410,6 +410,8 @@ class TestGenerateWorker:
 
         assert runner.run.call_args.kwargs["query"] == (
             "你看得见这张图片吗\nUser provided files: "
+            "use dify-agent file download with the listed transfer_method and reference/url "
+            "to get the files and investigate them\n"
             f"{json.dumps(expected_file_mappings, ensure_ascii=False, separators=(',', ':'))}"
         )
 

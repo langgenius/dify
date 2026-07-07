@@ -454,7 +454,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _resolve_prompt_payload_value(cls, value: Any) -> tuple[Any, bool]:
         # File-valued workflow context must surface as Agent Stub download
         # mappings so the model can materialize those inputs with
-        # `dify-agent file download --mapping ...` inside the sandbox.
+        # `dify-agent file download TRANSFER_METHOD REFERENCE_OR_URL` inside the sandbox.
         download_mapping = cls._agent_stub_download_mapping(value)
         if download_mapping is not None:
             return download_mapping, True
