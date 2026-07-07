@@ -138,6 +138,7 @@ Tips:
 
   Example:
 
+```shell
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.12"
@@ -151,7 +152,8 @@ import httpx
 from rich import print
 
 response = httpx.get("https://example.com", timeout=10)
-print(f"[green]status:[/green] {response.status_code}")"""
+print(f"[green]status:[/green] {response.status_code}")
+```"""
 _SHELL_LAYER_SUFFIX_PROMPT = """Environment variables may contain API keys, tokens, or credentials.
 You may refer to environment variable names when needed."""
 

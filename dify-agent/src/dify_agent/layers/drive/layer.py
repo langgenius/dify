@@ -122,13 +122,13 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
 
     def _format_agent_stub_cli_help(self) -> str:
         command_sections = [
-            f"$ {command}\n{self._agent_stub_cli_help[command]}"
+            _format_shell_transcript(command, self._agent_stub_cli_help[command])
             for command in _AGENT_STUB_FILE_HELP_COMMANDS
             if command in self._agent_stub_cli_help
         ]
         if not command_sections:
             return ""
-        return "Agent Stub file CLI help:\n" + "\n\n".join(command_sections)
+        return "Agent Stub file CLI help from the real shell environment:\n" + "\n\n".join(command_sections)
 
     async def _load_agent_stub_cli_help(self) -> None:
         self._agent_stub_cli_help = {}
@@ -254,6 +254,10 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     @staticmethod
     def _skill_prefix(skill_key: str) -> str:
         return f"{skill_key.rsplit('/', 1)[0]}/"
+
+
+def _format_shell_transcript(command: str, output: str) -> str:
+    return f"```shell\n$ {command}\n{output}\n```"
 
 
 __all__ = ["DifyDriveLayer", "DifyDriveLayerError"]

@@ -131,7 +131,9 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
     assert "dify-agent file download --help" in layer.runtime_state.config_cli_help
     assert layer.runtime_state.push_spec_json_schema == ""
     suffix_prompt = layer.build_suffix_prompt()
-    assert suffix_prompt.index("Agent config CLI help:") < suffix_prompt.index("Agent file CLI help:")
+    assert suffix_prompt.index("Agent config CLI help from the real shell environment:") < suffix_prompt.index(
+        "Agent file CLI help from the real shell environment:"
+    )
     assert "$ dify-agent file upload --help" in suffix_prompt
     assert "$ dify-agent file download --help" in suffix_prompt
 
