@@ -5,9 +5,6 @@ import type {
   PluginPayload,
 } from '@/app/components/plugins/plugin-auth/types'
 import {
-  RiAddLine,
-} from '@remixicon/react'
-import {
   memo,
   useCallback,
   useMemo,
@@ -16,10 +13,10 @@ import {
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/app/components/base/ui/popover'
 import {
   AddApiKeyButton,
   AddOAuthButton,
@@ -56,10 +53,6 @@ const Configure = ({
     }
   }, [pluginPayload, t])
 
-  const handleToggle = useCallback(() => {
-    setOpen(v => !v)
-  }, [])
-
   const handleUpdate = useCallback(() => {
     setOpen(false)
     onUpdate?.()
@@ -67,24 +60,27 @@ const Configure = ({
 
   return (
     <>
-      <PortalToFollowElem
+      <Popover
         open={open}
         onOpenChange={setOpen}
-        placement="bottom-end"
-        offset={{
-          mainAxis: 4,
-          crossAxis: -4,
-        }}
       >
-        <PortalToFollowElemTrigger onClick={handleToggle}>
-          <Button
-            variant="secondary-accent"
-          >
-            <RiAddLine className="h-4 w-4" />
-            {t('dataSource.configure', { ns: 'common' })}
-          </Button>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className="z-[1002]">
+        <PopoverTrigger
+          render={(
+            <Button
+              className="h-8"
+              variant="secondary-accent"
+            >
+              <span className="i-ri-add-line size-4" />
+              {t('dataSource.configure', { ns: 'common' })}
+            </Button>
+          )}
+        />
+        <PopoverContent
+          placement="bottom-end"
+          sideOffset={4}
+          alignOffset={-4}
+          popupClassName="border-none bg-transparent shadow-none"
+        >
           <div className="w-[240px] space-y-1.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg">
             {
               !!canOAuth && (
@@ -122,8 +118,8 @@ const Configure = ({
               )
             }
           </div>
-        </PortalToFollowElemContent>
-      </PortalToFollowElem>
+        </PopoverContent>
+      </Popover>
     </>
   )
 }

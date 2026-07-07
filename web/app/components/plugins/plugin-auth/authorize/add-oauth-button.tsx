@@ -2,11 +2,6 @@ import type { PluginPayload } from '../types'
 import type { ButtonProps } from '@/app/components/base/button'
 import type { FormSchema } from '@/app/components/base/form/types'
 import {
-  RiClipboardLine,
-  RiEqualizer2Line,
-  RiInformation2Fill,
-} from '@remixicon/react'
-import {
   memo,
   useCallback,
   useMemo,
@@ -91,15 +86,15 @@ const AddOAuthButton = ({
       <div className="w-full">
         <div className="mb-4 flex rounded-xl bg-background-section-burn p-4">
           <div className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg">
-            <RiInformation2Fill className="h-5 w-5 text-text-accent" />
+            <span className="i-ri-information-2-fill h-5 w-5 text-text-accent" />
           </div>
           <div className="w-0 grow">
-            <div className="system-sm-regular mb-1.5">
+            <div className="mb-1.5 system-sm-regular">
               {t('auth.clientInfo', { ns: 'plugin' })}
             </div>
             {
               redirect_uri && (
-                <div className="system-sm-medium flex w-full py-0.5">
+                <div className="flex w-full py-0.5 system-sm-medium">
                   <div className="w-0 grow break-words break-all">{redirect_uri}</div>
                   <ActionButton
                     className="shrink-0"
@@ -107,14 +102,14 @@ const AddOAuthButton = ({
                       navigator.clipboard.writeText(redirect_uri || '')
                     }}
                   >
-                    <RiClipboardLine className="h-4 w-4" />
+                    <span className="i-ri-clipboard-line h-4 w-4" />
                   </ActionButton>
                 </div>
               )
             }
           </div>
         </div>
-        <div className="system-sm-medium flex h-6 items-center text-text-secondary">
+        <div className="flex h-6 items-center text-text-secondary system-sm-medium">
           {renderI18nObject(item.label as Record<string, string>)}
           {
             item.required && (
@@ -180,7 +175,6 @@ const AddOAuthButton = ({
       return 'custom'
     }
   }, [isConfigured, is_oauth_custom_client_enabled, is_system_oauth_params_exists])
-
   return (
     <>
       {
@@ -235,7 +229,7 @@ const AddOAuthButton = ({
                 setIsOAuthSettingsOpen(true)
               }}
             >
-              <RiEqualizer2Line className="h-4 w-4" />
+              <span className="i-ri-equalizer-2-line h-4 w-4" />
             </div>
           </Button>
         )
@@ -248,7 +242,7 @@ const AddOAuthButton = ({
             disabled={disabled}
             className="w-full"
           >
-            <RiEqualizer2Line className="mr-0.5 h-4 w-4" />
+            <span className="i-ri-equalizer-2-line mr-0.5 h-4 w-4" />
             {t('auth.setupOAuth', { ns: 'plugin' })}
           </Button>
         )
@@ -256,6 +250,8 @@ const AddOAuthButton = ({
       {
         isOAuthSettingsOpen && (
           <OAuthClientSettings
+            open={isOAuthSettingsOpen}
+            onOpenChange={setIsOAuthSettingsOpen}
             pluginPayload={pluginPayload}
             onClose={() => setIsOAuthSettingsOpen(false)}
             disabled={disabled || isLoading}

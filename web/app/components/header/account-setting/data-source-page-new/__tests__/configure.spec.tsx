@@ -13,10 +13,10 @@ import Configure from '../configure'
 
 // Mock plugin auth components to isolate the unit test for Configure.
 vi.mock('@/app/components/plugins/plugin-auth', () => ({
-  AddApiKeyButton: vi.fn(({ onUpdate, disabled, buttonText }: AddApiKeyButtonProps & { onUpdate: () => void }) => (
+  AddApiKeyButton: vi.fn(({ onUpdate, disabled, buttonText }: AddApiKeyButtonProps) => (
     <button data-testid="add-api-key" onClick={onUpdate} disabled={disabled}>{buttonText}</button>
   )),
-  AddOAuthButton: vi.fn(({ onUpdate, disabled, buttonText }: AddOAuthButtonProps & { onUpdate: () => void }) => (
+  AddOAuthButton: vi.fn(({ onUpdate, disabled, buttonText }: AddOAuthButtonProps) => (
     <button data-testid="add-oauth" onClick={onUpdate} disabled={disabled}>{buttonText}</button>
   )),
 }))
@@ -52,7 +52,7 @@ describe('Configure Component', () => {
   })
 
   describe('Open State Management', () => {
-    it('should toggle and manage the open state correctly', () => {
+    it('should toggle and manage the open state correctly', async () => {
       // Arrange
       // Add a schema so we can detect if it's open by checking for button presence
       const itemWithApiKey: DataSourceAuth = {
@@ -73,7 +73,9 @@ describe('Configure Component', () => {
       // Act: Click again to close
       fireEvent.click(trigger)
       // Assert: Now closed
-      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+      })
     })
   })
 
@@ -134,7 +136,7 @@ describe('Configure Component', () => {
   })
 
   describe('Update Handling', () => {
-    it('should call onUpdate and close the portal when an update is triggered', () => {
+    it('should call onUpdate and close the portal when an update is triggered', async () => {
       // Arrange
       const itemWithApiKey: DataSourceAuth = {
         ...mockItemBase,
@@ -148,10 +150,12 @@ describe('Configure Component', () => {
 
       // Assert
       expect(mockOnUpdate).toHaveBeenCalledTimes(1)
-      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+      })
     })
 
-    it('should handle missing onUpdate callback gracefully', () => {
+    it('should handle missing onUpdate callback gracefully', async () => {
       // Arrange
       const itemWithBoth: DataSourceAuth = {
         ...mockItemBase,
@@ -165,11 +169,16 @@ describe('Configure Component', () => {
       // Act & Assert
       fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       fireEvent.click(screen.getByTestId('add-api-key'))
-      expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+      })
 
       fireEvent.click(screen.getByRole('button', { name: /dataSource.configure/i }))
       fireEvent.click(screen.getByTestId('add-oauth'))
-      expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.queryByTestId('add-api-key')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('add-oauth')).not.toBeInTheDocument()
+      })
     })
   })
 

@@ -1,3 +1,4 @@
+import type { ApiKeyModalProps } from '../api-key-modal'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory } from '../../types'
@@ -5,14 +6,16 @@ import AddApiKeyButton from '../add-api-key-button'
 
 let _mockModalOpen = false
 vi.mock('../api-key-modal', () => ({
-  default: ({ onClose, onUpdate }: { onClose: () => void, onUpdate?: () => void }) => {
-    _mockModalOpen = true
-    return (
-      <div data-testid="api-key-modal">
-        <button data-testid="modal-close" onClick={onClose}>Close</button>
-        <button data-testid="modal-update" onClick={onUpdate}>Update</button>
-      </div>
-    )
+  default: ({ open, onClose, onUpdate }: ApiKeyModalProps) => {
+    _mockModalOpen = !!open
+    return open
+      ? (
+          <div data-testid="api-key-modal">
+            <button data-testid="modal-close" onClick={onClose}>Close</button>
+            <button data-testid="modal-update" onClick={onUpdate}>Update</button>
+          </div>
+        )
+      : null
   },
 }))
 
@@ -45,6 +48,16 @@ describe('AddApiKeyButton', () => {
     render(<AddApiKeyButton pluginPayload={defaultPayload} />)
     fireEvent.click(screen.getByRole('button'))
     expect(screen.getByTestId('api-key-modal')).toBeInTheDocument()
+  })
+
+  it('calls custom onClick instead of mounting the inline modal', () => {
+    const handleClick = vi.fn()
+
+    render(<AddApiKeyButton pluginPayload={defaultPayload} onClick={handleClick} />)
+    fireEvent.click(screen.getByRole('button'))
+
+    expect(handleClick).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('api-key-modal')).not.toBeInTheDocument()
   })
 
   it('respects disabled prop', () => {
