@@ -106,6 +106,8 @@ class SummaryIndexService:
             dataset: Dataset containing the segment
             summary_content: Generated summary content
             status: Summary status (default: SummaryStatus.GENERATING)
+
+        Keyword Args:
             session: SQLAlchemy session used for the summary record.
 
         Returns:
@@ -654,6 +656,8 @@ class SummaryIndexService:
             segment: DocumentSegment to generate summary for
             dataset: Dataset containing the segment
             summary_index_setting: Summary index configuration
+
+        Keyword Args:
             session: SQLAlchemy session used for summary record updates.
 
         Returns:
@@ -714,17 +718,10 @@ class SummaryIndexService:
                     llm_usage.completion_tokens,
                 )
 
-            # Vectorize summary (will delete old vector if exists before creating new one)
-            # Pass the session-managed record to vectorize_summary
-            # vectorize_summary will update status to "completed" and tokens in its own session
-            # vectorize_summary will also ensure summary_content is preserved
             try:
-                # Pass the session to vectorize_summary to avoid session isolation issues
                 SummaryIndexService.vectorize_summary(summary_record_in_session, segment, dataset, session=session)
-                # Refresh the object from database to get the updated status and tokens from vectorize_summary
+                # vectorize_summary mutates status and token fields; refresh before returning the ORM object.
                 session.refresh(summary_record_in_session)
-                # Commit the session
-                # (summary_record_in_session should have status="completed" and tokens from refresh)
                 session.commit()
                 logger.info("Successfully generated and vectorized summary for segment %s", segment.id)
                 return summary_record_in_session
@@ -1062,6 +1059,8 @@ class SummaryIndexService:
             segment: DocumentSegment to update summary for
             dataset: Dataset containing the segment
             summary_content: New summary content
+
+        Keyword Args:
             session: SQLAlchemy session used for summary record updates.
 
         Returns:
@@ -1080,18 +1079,18 @@ class SummaryIndexService:
             return None
 
         try:
+            summary_record = session.scalar(
+                select(DocumentSegmentSummary)
+                .where(
+                    DocumentSegmentSummary.chunk_id == segment.id,
+                    DocumentSegmentSummary.dataset_id == dataset.id,
+                )
+                .limit(1)
+            )
+
             # Check if summary_content is empty (whitespace-only strings are considered empty)
             if not summary_content or not summary_content.strip():
                 # If summary is empty, only delete existing summary vector and record
-                summary_record = session.scalar(
-                    select(DocumentSegmentSummary)
-                    .where(
-                        DocumentSegmentSummary.chunk_id == segment.id,
-                        DocumentSegmentSummary.dataset_id == dataset.id,
-                    )
-                    .limit(1)
-                )
-
                 if summary_record:
                     # Delete old vector if exists
                     old_summary_node_id = summary_record.summary_index_node_id
@@ -1115,16 +1114,6 @@ class SummaryIndexService:
                     # No existing summary record, nothing to do
                     logger.info("No summary record found for segment %s, nothing to delete", segment.id)
                     return None
-
-            # Find existing summary record
-            summary_record = session.scalar(
-                select(DocumentSegmentSummary)
-                .where(
-                    DocumentSegmentSummary.chunk_id == segment.id,
-                    DocumentSegmentSummary.dataset_id == dataset.id,
-                )
-                .limit(1)
-            )
 
             if summary_record:
                 # Update existing summary
@@ -1159,9 +1148,8 @@ class SummaryIndexService:
                     session=session,
                 )
 
-            # Re-vectorize summary. This may take time due to embedding API calls,
-            # but must complete so the summary is properly indexed.
             try:
+                # Vectorization must finish here so the manual summary is searchable immediately.
                 SummaryIndexService.vectorize_summary(summary_record, segment, dataset, session=session)
                 session.refresh(summary_record)
                 session.commit()
@@ -1207,6 +1195,8 @@ class SummaryIndexService:
         Args:
             segment_id: Segment ID (chunk_id)
             dataset_id: Dataset ID
+
+        Keyword Args:
             session: SQLAlchemy session used to read summary records.
 
         Returns:
@@ -1235,6 +1225,8 @@ class SummaryIndexService:
         Args:
             segment_ids: List of segment IDs (chunk_ids)
             dataset_id: Dataset ID
+
+        Keyword Args:
             session: SQLAlchemy session used to read summary records.
 
         Returns:
@@ -1267,6 +1259,8 @@ class SummaryIndexService:
             document_id: Document ID
             dataset_id: Dataset ID
             segment_ids: Optional list of segment IDs to filter by
+
+        Keyword Args:
             session: SQLAlchemy session used to read summary records.
 
         Returns:
@@ -1298,6 +1292,8 @@ class SummaryIndexService:
             document_id: Document ID
             dataset_id: Dataset ID
             tenant_id: Tenant ID
+
+        Keyword Args:
             session: SQLAlchemy session used to read summary status.
 
         Returns:
@@ -1345,6 +1341,8 @@ class SummaryIndexService:
             document_ids: List of document IDs
             dataset_id: Dataset ID
             tenant_id: Tenant ID
+
+        Keyword Args:
             session: SQLAlchemy session used to read summary status.
 
         Returns:

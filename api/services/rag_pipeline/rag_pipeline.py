@@ -1586,12 +1586,11 @@ class RagPipelineService:
 
         return datasource_plugins
 
-    def get_pipeline(self, tenant_id: str, dataset_id: str, session: Session | None = None) -> Pipeline:
+    def get_pipeline(self, tenant_id: str, dataset_id: str) -> Pipeline:
         """
         Get pipeline
         """
-        session = session or self._session
-        dataset: Dataset | None = session.scalar(
+        dataset: Dataset | None = self._session.scalar(
             select(Dataset)
             .where(
                 Dataset.id == dataset_id,
@@ -1601,7 +1600,7 @@ class RagPipelineService:
         )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = session.scalar(
+        pipeline: Pipeline | None = self._session.scalar(
             select(Pipeline)
             .where(
                 Pipeline.id == dataset.pipeline_id,

@@ -272,7 +272,7 @@ class PipelineRunApi(DatasetApiResource):
         dataset_id_str = str(dataset_id)
         # Verify dataset ownership
         stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id_str)
-        dataset = db.session.scalar(stmt)
+        dataset = session.scalar(stmt)
         if not dataset:
             raise NotFound("Dataset not found.")
 
@@ -281,7 +281,7 @@ class PipelineRunApi(DatasetApiResource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        rag_pipeline_service = RagPipelineService(db.session())
+        rag_pipeline_service = RagPipelineService(session)
         pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id_str)
         try:
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(

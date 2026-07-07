@@ -90,25 +90,21 @@ def test_update_document_status_updates_existing_document(mocker: MockerFixture)
     session_mock = mocker.Mock()
     session_mock.get.return_value = document
     add_mock = session_mock.add
-    commit_mock = session_mock.commit
 
     PipelineGenerateService.update_document_status("doc-1", session=session_mock)
 
     assert document.indexing_status == "waiting"
     add_mock.assert_called_once_with(document)
-    commit_mock.assert_called_once()
 
 
 def test_update_document_status_skips_when_document_missing(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = None
     add_mock = session_mock.add
-    commit_mock = session_mock.commit
 
     PipelineGenerateService.update_document_status("missing", session=session_mock)
 
     add_mock.assert_not_called()
-    commit_mock.assert_not_called()
 
 
 # --- generate_single_iteration ---

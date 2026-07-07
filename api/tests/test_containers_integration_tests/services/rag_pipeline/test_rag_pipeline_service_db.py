@@ -104,7 +104,7 @@ class TestRagPipelineServiceGetPipeline:
         service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
         with pytest.raises(ValueError, match="Pipeline not found"):
-            service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id, session=db_session_with_containers)
+            service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
     def test_get_pipeline_returns_pipeline_when_found(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -119,7 +119,7 @@ class TestRagPipelineServiceGetPipeline:
 
         service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
-        result = service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id, session=db_session_with_containers)
+        result = service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
         assert result.id == pipeline.id
 

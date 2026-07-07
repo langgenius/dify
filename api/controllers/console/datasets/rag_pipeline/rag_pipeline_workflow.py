@@ -343,8 +343,8 @@ class DraftRagPipelineRunApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
-    @get_rag_pipeline
     @with_session
+    @get_rag_pipeline
     def post(self, session: Session, current_user: Account, pipeline: Pipeline):
         """
         Run draft workflow
@@ -377,8 +377,8 @@ class PublishedRagPipelineRunApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
     @with_current_user
-    @get_rag_pipeline
     @with_session
+    @get_rag_pipeline
     def post(self, session: Session, current_user: Account, pipeline: Pipeline):
         """
         Run published workflow

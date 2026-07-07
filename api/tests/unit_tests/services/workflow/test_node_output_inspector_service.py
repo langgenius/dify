@@ -8,7 +8,6 @@ logic without DB / network access.
 from __future__ import annotations
 
 import json
-from contextlib import nullcontext
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -31,8 +30,6 @@ from services.workflow.node_output_inspector_service import (
     NodeStatus,
     _resolve_preview_url,
 )
-
-TEST_SESSION: Any = MagicMock()
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -103,20 +100,17 @@ def _non_agent_node(*, node_id: str = "tool-node-1", node_type: str = "tool", ti
     }
 
 
-def _patch_session(
+def _mock_session(
     *,
     workflow_run: SimpleNamespace | None,
     executions: list[SimpleNamespace] | None = None,
 ):
-    """Configure ``TEST_SESSION`` to return the configured rows.
-
-    Returns a context manager that the test uses with ``with``.
-    """
+    """Build a mock DB session with the configured rows."""
     executions = executions or []
-    TEST_SESSION.reset_mock()
-    TEST_SESSION.scalar.return_value = workflow_run
-    TEST_SESSION.scalars.return_value.all.return_value = executions
-    return nullcontext()
+    session = MagicMock()
+    session.scalar.return_value = workflow_run
+    session.scalars.return_value.all.return_value = executions
+    return session
 
 
 def _stub_binding_resolver(*, declared_outputs: list[DeclaredOutputConfig]):
@@ -146,9 +140,9 @@ def _make_service(declared_outputs: list[DeclaredOutputConfig] | None = None) ->
 
 def test_snapshot_404_when_workflow_run_missing():
     service = _make_service()
-    with _patch_session(workflow_run=None):
-        with pytest.raises(NodeOutputInspectorError) as exc:
-            service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="missing", session=TEST_SESSION)
+    session = _mock_session(workflow_run=None)
+    with pytest.raises(NodeOutputInspectorError) as exc:
+        service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="missing", session=session)
     assert exc.value.code == "workflow_run_not_found"
 
 
@@ -159,8 +153,8 @@ def test_snapshot_accepts_published_run_d1_lifted():
         nodes=[_agent_v2_node(node_id="agent-1")],
         triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
     )
-    with _patch_session(workflow_run=run, executions=[]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     assert snapshot.workflow_run_id == "run-1"
     assert [n.node_id for n in snapshot.node_outputs] == ["agent-1"]
 
@@ -172,17 +166,17 @@ def test_snapshot_accepts_webhook_triggered_run():
         nodes=[_agent_v2_node(node_id="agent-1")],
         triggered_from=WorkflowRunTriggeredFrom.WEBHOOK,
     )
-    with _patch_session(workflow_run=run, executions=[]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     assert snapshot.workflow_run_id == "run-1"
 
 
 def test_node_detail_404_when_node_id_absent_from_graph():
     service = _make_service()
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
-    with _patch_session(workflow_run=run, executions=[]):
-        with pytest.raises(NodeOutputInspectorError) as exc:
-            service.node_detail(app_model=_app_model(), workflow_run_id="run-1", node_id="ghost", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[])
+    with pytest.raises(NodeOutputInspectorError) as exc:
+        service.node_detail(app_model=_app_model(), workflow_run_id="run-1", node_id="ghost", session=session)
     assert exc.value.code == "node_not_in_workflow_run"
 
 
@@ -192,30 +186,30 @@ def test_output_preview_404_when_output_name_unknown():
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
     ex = _execution(node_id="agent-1", outputs={"text": "hello"})
-    with _patch_session(workflow_run=run, executions=[ex]):
-        with pytest.raises(NodeOutputInspectorError) as exc:
-            service.output_preview(
-                app_model=_app_model(),
-                workflow_run_id="run-1",
-                node_id="agent-1",
-                output_name="missing",
-                session=TEST_SESSION,
-            )
+    session = _mock_session(workflow_run=run, executions=[ex])
+    with pytest.raises(NodeOutputInspectorError) as exc:
+        service.output_preview(
+            app_model=_app_model(),
+            workflow_run_id="run-1",
+            node_id="agent-1",
+            output_name="missing",
+            session=session,
+        )
     assert exc.value.code == "node_output_not_declared"
 
 
 def test_output_preview_404_when_node_id_absent_from_graph():
     service = _make_service()
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
-    with _patch_session(workflow_run=run, executions=[]):
-        with pytest.raises(NodeOutputInspectorError) as exc:
-            service.output_preview(
-                app_model=_app_model(),
-                workflow_run_id="run-1",
-                node_id="ghost",
-                output_name="report",
-                session=TEST_SESSION,
-            )
+    session = _mock_session(workflow_run=run, executions=[])
+    with pytest.raises(NodeOutputInspectorError) as exc:
+        service.output_preview(
+            app_model=_app_model(),
+            workflow_run_id="run-1",
+            node_id="ghost",
+            output_name="report",
+            session=session,
+        )
     assert exc.value.code == "node_not_in_workflow_run"
 
 
@@ -229,8 +223,8 @@ def test_snapshot_status_pending_when_node_has_no_execution():
         declared_outputs=[DeclaredOutputConfig(name="text", type=DeclaredOutputType.STRING)],
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
-    with _patch_session(workflow_run=run, executions=[]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
 
     assert len(snapshot.node_outputs) == 1
     node = snapshot.node_outputs[0]
@@ -244,8 +238,8 @@ def test_snapshot_status_running():
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
     ex = _execution(node_id="agent-1", status=WorkflowNodeExecutionStatus.RUNNING)
-    with _patch_session(workflow_run=run, executions=[ex]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[ex])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     assert snapshot.node_outputs[0].node_status == NodeStatus.RUNNING
     assert snapshot.node_outputs[0].outputs[0].status == NodeOutputStatus.RUNNING
 
@@ -259,8 +253,8 @@ def test_snapshot_status_failed_node_marks_all_outputs_failed():
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
     ex = _execution(node_id="agent-1", status=WorkflowNodeExecutionStatus.FAILED)
-    with _patch_session(workflow_run=run, executions=[ex]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[ex])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     statuses = {o.name: o.status for o in snapshot.node_outputs[0].outputs}
     assert statuses == {"a": NodeOutputStatus.FAILED, "b": NodeOutputStatus.FAILED}
 
@@ -271,8 +265,8 @@ def test_snapshot_status_ready_when_outputs_present_and_no_failure_metadata():
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
     ex = _execution(node_id="agent-1", outputs={"text": "hello"})
-    with _patch_session(workflow_run=run, executions=[ex]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[ex])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     output = snapshot.node_outputs[0].outputs[0]
     assert output.status == NodeOutputStatus.READY
     assert output.value_preview == "hello"
@@ -293,8 +287,8 @@ def test_snapshot_marks_type_check_failure():
             }
         },
     )
-    with _patch_session(workflow_run=run, executions=[ex]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[ex])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     output = snapshot.node_outputs[0].outputs[0]
     assert output.status == NodeOutputStatus.TYPE_CHECK_FAILED
     assert output.type_check is not None
@@ -323,14 +317,12 @@ def test_snapshot_marks_output_check_failure_when_type_check_passed():
             },
         },
     )
-    with (
-        _patch_session(workflow_run=run, executions=[ex]),
-        patch(
-            "services.workflow.node_output_inspector_service.file_helpers.get_signed_file_url",
-            return_value="https://signed.example/x",
-        ),
+    session = _mock_session(workflow_run=run, executions=[ex])
+    with patch(
+        "services.workflow.node_output_inspector_service.file_helpers.get_signed_file_url",
+        return_value="https://signed.example/x",
     ):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     output = snapshot.node_outputs[0].outputs[0]
     assert output.status == NodeOutputStatus.OUTPUT_CHECK_FAILED
     assert output.output_check is not None
@@ -347,8 +339,8 @@ def test_snapshot_marks_not_produced_when_declared_output_missing_from_payload()
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
     ex = _execution(node_id="agent-1", outputs={"text": "hi"})  # optional_meta missing
-    with _patch_session(workflow_run=run, executions=[ex]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[ex])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     statuses = {o.name: o.status for o in snapshot.node_outputs[0].outputs}
     assert statuses == {"text": NodeOutputStatus.READY, "optional_meta": NodeOutputStatus.NOT_PRODUCED}
 
@@ -366,8 +358,8 @@ def test_non_agent_node_outputs_inferred_from_payload_keys():
         node_type="tool",
         outputs={"message": "sent", "thread_ts": "1234"},
     )
-    with _patch_session(workflow_run=run, executions=[ex]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[ex])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     output_names = sorted(o.name for o in snapshot.node_outputs[0].outputs)
     assert output_names == ["message", "thread_ts"]
     # All inferred outputs should have ``type=None`` since we don't know the
@@ -392,14 +384,12 @@ def test_file_output_preview_includes_signed_url():
         "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
     }
     ex = _execution(node_id="agent-1", outputs={"report": file_payload})
-    with (
-        _patch_session(workflow_run=run, executions=[ex]),
-        patch(
-            "services.workflow.node_output_inspector_service._resolve_preview_url",
-            return_value="https://signed.example/x.pdf",
-        ),
+    session = _mock_session(workflow_run=run, executions=[ex])
+    with patch(
+        "services.workflow.node_output_inspector_service._resolve_preview_url",
+        return_value="https://signed.example/x.pdf",
     ):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     preview_value = snapshot.node_outputs[0].outputs[0].value_preview
     assert isinstance(preview_value, dict)
     assert preview_value["preview_url"] == "https://signed.example/x.pdf"
@@ -418,19 +408,17 @@ def test_file_output_preview_endpoint_returns_full_value_with_signed_url():
         "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
     }
     ex = _execution(node_id="agent-1", outputs={"report": file_payload})
-    with (
-        _patch_session(workflow_run=run, executions=[ex]),
-        patch(
-            "services.workflow.node_output_inspector_service._resolve_preview_url",
-            return_value="https://signed.example/x.pdf",
-        ),
+    session = _mock_session(workflow_run=run, executions=[ex])
+    with patch(
+        "services.workflow.node_output_inspector_service._resolve_preview_url",
+        return_value="https://signed.example/x.pdf",
     ):
         preview = service.output_preview(
             app_model=_app_model(),
             workflow_run_id="run-1",
             node_id="agent-1",
             output_name="report",
-            session=TEST_SESSION,
+            session=session,
         )
     assert preview.output_name == "report"
     assert preview.status == NodeOutputStatus.READY
@@ -484,27 +472,25 @@ def test_array_file_output_preview_includes_signed_urls_for_each_item():
         },
     ]
     ex = _execution(node_id="agent-1", outputs={"files": file_payloads})
-    with (
-        _patch_session(workflow_run=run, executions=[ex]),
-        patch(
-            "services.workflow.node_output_inspector_service._resolve_preview_url",
-            side_effect=[
-                "https://signed.example/1.pdf",
-                "https://signed.example/2.pdf",
-                "https://signed.example/1-detail.pdf",
-                "https://signed.example/2-detail.pdf",
-                "https://signed.example/1-full.pdf",
-                "https://signed.example/2-full.pdf",
-            ],
-        ),
+    session = _mock_session(workflow_run=run, executions=[ex])
+    with patch(
+        "services.workflow.node_output_inspector_service._resolve_preview_url",
+        side_effect=[
+            "https://signed.example/1.pdf",
+            "https://signed.example/2.pdf",
+            "https://signed.example/1-detail.pdf",
+            "https://signed.example/2-detail.pdf",
+            "https://signed.example/1-full.pdf",
+            "https://signed.example/2-full.pdf",
+        ],
     ):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
         preview = service.output_preview(
             app_model=_app_model(),
             workflow_run_id="run-1",
             node_id="agent-1",
             output_name="files",
-            session=TEST_SESSION,
+            session=session,
         )
 
     snapshot_value = snapshot.node_outputs[0].outputs[0].value_preview
@@ -532,14 +518,12 @@ def test_file_output_preview_uses_none_when_signed_url_resolution_fails():
         "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
     }
     ex = _execution(node_id="agent-1", outputs={"report": file_payload})
-    with (
-        _patch_session(workflow_run=run, executions=[ex]),
-        patch(
-            "services.workflow.node_output_inspector_service._resolve_preview_url",
-            side_effect=RuntimeError("boom"),
-        ),
+    session = _mock_session(workflow_run=run, executions=[ex])
+    with patch(
+        "services.workflow.node_output_inspector_service._resolve_preview_url",
+        side_effect=RuntimeError("boom"),
     ):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
 
     preview_value = snapshot.node_outputs[0].outputs[0].value_preview
     assert isinstance(preview_value, dict)
@@ -558,20 +542,18 @@ def test_object_output_preview_does_not_augment_canonical_file_mapping_shape():
         "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
     }
     ex = _execution(node_id="agent-1", outputs={"meta": raw_value})
-    with (
-        _patch_session(workflow_run=run, executions=[ex]),
-        patch(
-            "services.workflow.node_output_inspector_service._resolve_preview_url",
-            return_value="https://signed.example/x.pdf",
-        ),
+    session = _mock_session(workflow_run=run, executions=[ex])
+    with patch(
+        "services.workflow.node_output_inspector_service._resolve_preview_url",
+        return_value="https://signed.example/x.pdf",
     ):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
         preview = service.output_preview(
             app_model=_app_model(),
             workflow_run_id="run-1",
             node_id="agent-1",
             output_name="meta",
-            session=TEST_SESSION,
+            session=session,
         )
 
     assert snapshot.node_outputs[0].outputs[0].value_preview == raw_value
@@ -593,8 +575,8 @@ def test_retried_count_pulled_from_attempt_metadata():
         outputs={"text": "ok"},
         execution_metadata={"attempt": 2},
     )
-    with _patch_session(workflow_run=run, executions=[ex]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[ex])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     assert snapshot.node_outputs[0].outputs[0].retried == 2
 
 
@@ -612,8 +594,8 @@ def test_keeps_latest_execution_per_node_by_index():
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
     older = _execution(node_id="agent-1", outputs={"text": "old"}, index=1)
     newer = _execution(node_id="agent-1", outputs={"text": "new"}, index=5)
-    with _patch_session(workflow_run=run, executions=[older, newer]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[older, newer])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     assert snapshot.node_outputs[0].outputs[0].value_preview == "new"
 
 
@@ -634,8 +616,8 @@ def test_array_typed_output_with_array_item_renders_correctly():
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
     ex = _execution(node_id="agent-1", outputs={"files": []})
-    with _patch_session(workflow_run=run, executions=[ex]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[ex])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     output = snapshot.node_outputs[0].outputs[0]
     assert output.type == DeclaredOutputType.ARRAY
 
@@ -656,6 +638,6 @@ def test_unparseable_graph_blob_yields_empty_snapshot_not_500():
         status=WorkflowExecutionStatus.RUNNING,
         graph="{not valid json",
     )
-    with _patch_session(workflow_run=run, executions=[]):
-        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=TEST_SESSION)
+    session = _mock_session(workflow_run=run, executions=[])
+    snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
     assert snapshot.node_outputs == []

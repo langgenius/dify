@@ -119,4 +119,3 @@ class PipelineGenerateService:
         if document:
             document.indexing_status = IndexingStatus.WAITING
             session.add(document)
-            session.commit()
