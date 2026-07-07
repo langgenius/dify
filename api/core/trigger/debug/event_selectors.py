@@ -30,6 +30,7 @@ from extensions.ext_redis import redis_client
 from graphon.entities.graph_config import NodeConfigDict
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.schedule_utils import calculate_next_run_at
+from models._workflow_exc import NodeNotFoundError
 from models.model import App
 from models.provider_ids import TriggerProviderID
 from models.workflow import Workflow
@@ -209,8 +210,9 @@ class ScheduleTriggerDebugEventPoller(TriggerDebugEventPoller):
 def create_event_poller(
     draft_workflow: Workflow, tenant_id: str, user_id: str, app_id: str, node_id: str
 ) -> TriggerDebugEventPoller:
-    node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
-    if not node_config:
+    try:
+        node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
+    except NodeNotFoundError:
         raise ValueError(f"Node data not found for node {node_id}")
     node_type = draft_workflow.get_node_type_from_node_config(node_config)
     if node_type == TRIGGER_PLUGIN_NODE_TYPE:
@@ -233,8 +235,9 @@ def select_trigger_debug_events(
 ) -> TriggerDebugEvent | None:
     event: TriggerDebugEvent | None = None
     for node_id in node_ids:
-        node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
-        if not node_config:
+        try:
+            node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
+        except NodeNotFoundError:
             raise ValueError(f"Node data not found for node {node_id}")
         poller: TriggerDebugEventPoller = create_event_poller(
             draft_workflow=draft_workflow,

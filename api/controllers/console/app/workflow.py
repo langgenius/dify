@@ -72,6 +72,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import TimestampField, dump_response, to_timestamp, uuid_value
 from libs.login import login_required
 from models import Account, App
+from models._workflow_exc import NodeNotFoundError
 from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
@@ -1679,8 +1680,9 @@ class DraftWorkflowTriggerNodeApi(Resource):
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
-        node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
-        if not node_config:
+        try:
+            node_config = draft_workflow.get_node_config_by_id(node_id=node_id)
+        except NodeNotFoundError:
             raise ValueError(f"Node data not found for node {node_id}")
         node_type: NodeType = draft_workflow.get_node_type_from_node_config(node_config)
         event: TriggerDebugEvent | None = None

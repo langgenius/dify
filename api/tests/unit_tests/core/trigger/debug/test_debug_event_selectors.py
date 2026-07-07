@@ -28,6 +28,7 @@ from core.trigger.debug.event_selectors import (
 )
 from core.trigger.debug.events import PluginTriggerDebugEvent, WebhookDebugEvent
 from graphon.enums import BuiltinNodeTypes, NodeType
+from models._workflow_exc import NodeNotFoundError
 from tests.unit_tests.core.trigger.conftest import VALID_PROVIDER_ID
 
 
@@ -249,7 +250,7 @@ class TestCreateEventPoller:
 
     def test_raises_when_node_config_missing(self):
         wf = MagicMock()
-        wf.get_node_config_by_id.return_value = None
+        wf.get_node_config_by_id.side_effect = NodeNotFoundError("n1")
 
         with pytest.raises(ValueError, match="Node data not found for node n1") as exc_info:
             create_event_poller(wf, "t1", "u1", "a1", "n1")
@@ -291,7 +292,7 @@ class TestSelectTriggerDebugEvents:
 
     def test_raises_when_node_config_missing(self):
         wf = MagicMock()
-        wf.get_node_config_by_id.return_value = None
+        wf.get_node_config_by_id.side_effect = NodeNotFoundError("n1")
         app_model = MagicMock()
         app_model.tenant_id = "t1"
         app_model.id = "a1"
