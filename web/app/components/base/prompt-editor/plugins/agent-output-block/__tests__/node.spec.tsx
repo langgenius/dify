@@ -40,6 +40,16 @@ describe('AgentOutputBlockNode', () => {
     })
   })
 
+  it('should select the output name only for newly inserted editing nodes', () => {
+    runInEditor(() => {
+      const newEditingNode = $createAgentOutputBlockNode('output', 'string', true)
+      const existingEditingNode = $createAgentOutputBlockNode('summary', 'string', true, [], undefined, undefined, false)
+
+      expect(newEditingNode.shouldSelectNameOnEdit()).toBe(true)
+      expect(existingEditingNode.shouldSelectNameOnEdit()).toBe(false)
+    })
+  })
+
   it('should persist and parse file-name output tokens', () => {
     runInEditor(() => {
       const node = $createAgentOutputBlockNode('qna_report.pdf', 'file')

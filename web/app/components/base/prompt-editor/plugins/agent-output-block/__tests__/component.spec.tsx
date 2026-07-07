@@ -1,20 +1,18 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $getNodeByKey } from 'lexical'
 import AgentOutputBlockComponent from '../component'
-import { $createAgentOutputBlockNode } from '../node'
 
-const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockNodeReplace, mockSelectNext } = vi.hoisted(() => ({
+const { mockEditorFocus, mockEditorUpdate, mockGetRootText, mockSetOutput } = vi.hoisted(() => ({
   mockEditorFocus: vi.fn(),
   mockEditorUpdate: vi.fn((callback: () => void) => callback()),
   mockGetRootText: {
     value: '[§output:summary:summary§]',
   },
-  mockNodeReplace: vi.fn(),
-  mockSelectNext: vi.fn(),
+  mockSetOutput: vi.fn(),
 }))
 
 vi.mock('@lexical/react/LexicalComposerContext')
@@ -22,11 +20,14 @@ vi.mock('@langgenius/dify-ui/select', () => ({
   Select: ({
     children,
     onValueChange,
+    open,
   }: {
     children: ReactNode
     onValueChange: (value: string) => void
+    open?: boolean
   }) => (
     <div>
+      <span data-testid="type-select-state">{open ? 'open' : 'closed'}</span>
       {children}
       <button type="button" onClick={() => onValueChange('file')}>Select file</button>
     </div>
@@ -62,11 +63,6 @@ vi.mock('lexical', async (importOriginal) => {
 })
 
 vi.mock('../node', () => ({
-  $createAgentOutputBlockNode: vi.fn((name: string, outputType: string, isEditing: boolean) => ({
-    isEditing,
-    name,
-    outputType,
-  })),
   $isAgentOutputBlockNode: () => true,
 }))
 
@@ -90,13 +86,48 @@ describe('AgentOutputBlockComponent', () => {
       {},
     ] as unknown as ReturnType<typeof useLexicalComposerContext>)
     vi.mocked($getNodeByKey).mockReturnValue({
-      replace: mockNodeReplace.mockReturnValue({
-        selectNext: mockSelectNext,
-      }),
+      setOutput: mockSetOutput,
     } as never)
   })
 
-  it('does not replace the Lexical node while typing an output name and commits on blur', async () => {
+  it('focuses and selects the output name while editing a newly inserted output block', () => {
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="output"
+        outputType="string"
+        isEditing
+        outputs={outputs}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }) as HTMLInputElement
+
+    expect(input).toHaveFocus()
+    expect(input.selectionStart).toBe(0)
+    expect(input.selectionEnd).toBe('output'.length)
+  })
+
+  it('focuses without selecting the output name after an edited output name is committed', () => {
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="summary"
+        outputType="string"
+        isEditing
+        selectNameOnEdit={false}
+        outputs={outputs}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }) as HTMLInputElement
+
+    expect(input).toHaveFocus()
+    expect(input.selectionStart).toBe('summary'.length)
+    expect(input.selectionEnd).toBe('summary'.length)
+  })
+
+  it('does not update the Lexical node while typing an output name and commits on blur', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
@@ -117,12 +148,12 @@ describe('AgentOutputBlockComponent', () => {
     await user.type(input, 'summary')
 
     expect(input).toHaveValue('summary')
-    expect(mockNodeReplace).not.toHaveBeenCalled()
+    expect(mockSetOutput).not.toHaveBeenCalled()
     expect(onChange).not.toHaveBeenCalled()
 
-    await user.tab()
+    fireEvent.blur(input)
 
-    expect($createAgentOutputBlockNode).toHaveBeenCalledWith(
+    expect(mockSetOutput).toHaveBeenCalledWith(
       'summary',
       'string',
       false,
@@ -135,9 +166,9 @@ describe('AgentOutputBlockComponent', () => {
       ]),
       onChange,
       undefined,
+      false,
     )
-    expect(mockNodeReplace).toHaveBeenCalledTimes(1)
-    expect(mockSelectNext).not.toHaveBeenCalled()
+    expect(mockSetOutput).toHaveBeenCalledTimes(1)
     expect(mockEditorFocus).not.toHaveBeenCalled()
     expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({
@@ -148,8 +179,9 @@ describe('AgentOutputBlockComponent', () => {
     ]), '[§output:summary:summary§]')
   })
 
-  it('moves the editor selection after the output block when committing with Enter', async () => {
+  it('syncs the output name and opens the type select when committing with Enter', async () => {
     const user = userEvent.setup()
+    const onChange = vi.fn()
 
     render(
       <AgentOutputBlockComponent
@@ -158,6 +190,7 @@ describe('AgentOutputBlockComponent', () => {
         outputType="string"
         isEditing
         outputs={outputs}
+        onChange={onChange}
       />,
     )
 
@@ -167,11 +200,60 @@ describe('AgentOutputBlockComponent', () => {
     await user.type(input, 'summary')
     await user.keyboard('{Enter}')
 
-    expect(mockNodeReplace).toHaveBeenCalledTimes(1)
-    expect(mockSelectNext).toHaveBeenCalledTimes(1)
-    await waitFor(() => {
-      expect(mockEditorFocus).toHaveBeenCalledTimes(1)
-    })
+    expect(mockSetOutput).toHaveBeenCalledWith(
+      'summary',
+      'string',
+      true,
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+          type: 'string',
+        }),
+      ]),
+      onChange,
+      undefined,
+      false,
+    )
+    expect(screen.getByTestId('type-select-state')).toHaveTextContent('open')
+    expect(mockEditorFocus).not.toHaveBeenCalled()
+  })
+
+  it('syncs the output name and opens the type select when committing with Tab', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+
+    render(
+      <AgentOutputBlockComponent
+        nodeKey="output-node"
+        name="output"
+        outputType="string"
+        isEditing
+        outputs={outputs}
+        onChange={onChange}
+      />,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })
+
+    await user.clear(input)
+    await user.type(input, 'summary')
+    await user.keyboard('{Tab}')
+
+    expect(mockSetOutput).toHaveBeenCalledWith(
+      'summary',
+      'string',
+      true,
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'summary',
+          type: 'string',
+        }),
+      ]),
+      onChange,
+      undefined,
+      false,
+    )
+    expect(screen.getByTestId('type-select-state')).toHaveTextContent('open')
   })
 
   it('commits the input DOM value on Enter even before React state rerenders', () => {
@@ -193,10 +275,10 @@ describe('AgentOutputBlockComponent', () => {
     fireEvent.change(input, { target: { value: 'summary' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    expect($createAgentOutputBlockNode).toHaveBeenCalledWith(
+    expect(mockSetOutput).toHaveBeenCalledWith(
       'summary',
       'string',
-      false,
+      true,
       expect.arrayContaining([
         expect.objectContaining({
           name: 'summary',
@@ -204,6 +286,7 @@ describe('AgentOutputBlockComponent', () => {
       ]),
       onChange,
       undefined,
+      false,
     )
   })
 
@@ -227,10 +310,10 @@ describe('AgentOutputBlockComponent', () => {
     fireEvent.change(input, { target: { value: 'qna_report.pdf' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    expect($createAgentOutputBlockNode).toHaveBeenCalledWith(
+    expect(mockSetOutput).toHaveBeenCalledWith(
       'qna_report.pdf',
       'file',
-      false,
+      true,
       expect.arrayContaining([
         expect.objectContaining({
           name: 'qna_report.pdf',
@@ -243,6 +326,7 @@ describe('AgentOutputBlockComponent', () => {
       ]),
       onChange,
       undefined,
+      false,
     )
     expect(onChange).toHaveBeenCalledWith(expect.arrayContaining([
       expect.objectContaining({
@@ -272,10 +356,10 @@ describe('AgentOutputBlockComponent', () => {
     fireEvent.change(input, { target: { value: 'report.customext' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    expect($createAgentOutputBlockNode).toHaveBeenCalledWith(
+    expect(mockSetOutput).toHaveBeenCalledWith(
       'report.customext',
       'string',
-      false,
+      true,
       expect.arrayContaining([
         expect.objectContaining({
           name: 'report.customext',
@@ -284,6 +368,7 @@ describe('AgentOutputBlockComponent', () => {
       ]),
       onChange,
       undefined,
+      false,
     )
   })
 
@@ -313,7 +398,7 @@ describe('AgentOutputBlockComponent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Select file' }))
 
-    expect($createAgentOutputBlockNode).toHaveBeenCalledWith(
+    expect(mockSetOutput).toHaveBeenCalledWith(
       'summary',
       'file',
       false,
@@ -325,6 +410,7 @@ describe('AgentOutputBlockComponent', () => {
       ]),
       onChange,
       undefined,
+      false,
     )
   })
 
@@ -350,7 +436,7 @@ describe('AgentOutputBlockComponent', () => {
     await user.type(input, 'summary')
     await user.keyboard('{Enter}')
 
-    expect(mockNodeReplace).not.toHaveBeenCalled()
+    expect(mockSetOutput).not.toHaveBeenCalled()
     expect(onChange).not.toHaveBeenCalled()
     expect(mockEditorFocus).not.toHaveBeenCalled()
   })
