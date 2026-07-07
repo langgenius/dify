@@ -76,7 +76,7 @@ const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
 })
 
 export const workspacePermissionKeysAtom = atom((get) => {
-  return get(workspacePermissionKeysQueryAtom).data?.workspace.permission_keys ?? emptyWorkspacePermissionKeys
+  return get(workspacePermissionKeysQueryAtom).data?.workspace?.permission_keys ?? emptyWorkspacePermissionKeys
 })
 
 export const workspacePermissionKeysLoadingAtom = atom((get) => {
