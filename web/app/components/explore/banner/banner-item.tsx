@@ -1,4 +1,5 @@
 /* eslint-disable react/set-state-in-effect */
+import type { KeyboardEvent } from 'react'
 import type { Banner } from '@/models/app'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,6 +36,7 @@ export function BannerItem({
 
   const [resetKey, setResetKey] = useState(0)
   const textAreaRef = useRef<HTMLDivElement>(null)
+  const maxWidthFrameRef = useRef<number | undefined>(undefined)
   const [maxWidth, setMaxWidth] = useState<number | undefined>(undefined)
 
   const slideInfo = useMemo(() => {
@@ -76,30 +78,44 @@ export function BannerItem({
 
   const incrementResetKey = useCallback(() => setResetKey(prev => prev + 1), [])
 
-  useEffect(() => {
-    const updateMaxWidth = () => {
-      if (window.innerWidth < RESPONSIVE_BREAKPOINT && textAreaRef.current) {
-        const textAreaWidth = textAreaRef.current.offsetWidth
-        setMaxWidth(Math.min(textAreaWidth, MAX_RESPONSIVE_WIDTH))
-      }
-      else {
-        setMaxWidth(undefined)
-      }
+  const updateMaxWidth = useCallback(() => {
+    if (window.innerWidth < RESPONSIVE_BREAKPOINT && textAreaRef.current) {
+      const textAreaWidth = textAreaRef.current.offsetWidth
+      setMaxWidth(Math.min(textAreaWidth, MAX_RESPONSIVE_WIDTH))
     }
+    else {
+      setMaxWidth(undefined)
+    }
+  }, [])
 
-    updateMaxWidth()
+  const scheduleMaxWidthUpdate = useCallback(() => {
+    if (maxWidthFrameRef.current !== undefined)
+      return
 
-    const resizeObserver = new ResizeObserver(updateMaxWidth)
+    maxWidthFrameRef.current = window.requestAnimationFrame(() => {
+      maxWidthFrameRef.current = undefined
+      updateMaxWidth()
+    })
+  }, [updateMaxWidth])
+
+  useEffect(() => {
+    scheduleMaxWidthUpdate()
+
+    const resizeObserver = new ResizeObserver(scheduleMaxWidthUpdate)
     if (textAreaRef.current)
       resizeObserver.observe(textAreaRef.current)
 
-    window.addEventListener('resize', updateMaxWidth)
+    window.addEventListener('resize', scheduleMaxWidthUpdate)
 
     return () => {
+      if (maxWidthFrameRef.current !== undefined) {
+        window.cancelAnimationFrame(maxWidthFrameRef.current)
+        maxWidthFrameRef.current = undefined
+      }
       resizeObserver.disconnect()
-      window.removeEventListener('resize', updateMaxWidth)
+      window.removeEventListener('resize', scheduleMaxWidthUpdate)
     }
-  }, [])
+  }, [scheduleMaxWidthUpdate])
 
   useEffect(() => {
     incrementResetKey()
@@ -127,11 +143,22 @@ export function BannerItem({
     if (banner.link)
       window.open(banner.link, '_blank', 'noopener,noreferrer')
   }, [accountId, banner, incrementResetKey, language, sort])
+  const handleBannerKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ')
+      return
+
+    event.preventDefault()
+    handleBannerClick()
+  }, [handleBannerClick])
 
   return (
     <div
-      className="flex h-[224px] w-full cursor-pointer items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-xs xl:h-[184px]"
+      className="flex h-[224px] w-full cursor-pointer items-start overflow-hidden rounded-2xl bg-components-panel-on-panel-item-bg shadow-xs outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:h-[184px]"
+      role="button"
+      tabIndex={0}
+      aria-label={title}
       onClick={handleBannerClick}
+      onKeyDown={handleBannerKeyDown}
     >
       <div className="flex min-w-px flex-1 flex-col items-end self-stretch rounded-2xl py-6 pl-8">
         <div className="w-full min-w-0 pr-4" style={responsiveStyle}>

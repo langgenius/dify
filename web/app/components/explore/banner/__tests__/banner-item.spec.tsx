@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
 import type { Banner } from '@/models/app'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BannerItem } from '../banner-item'
 
@@ -37,9 +37,11 @@ const createMockBanner = (overrides: Partial<Banner> = {}): Banner => ({
 
 const mockResizeObserverObserve = vi.fn()
 const mockResizeObserverDisconnect = vi.fn()
+let mockResizeObserverCallbacks: ResizeObserverCallback[] = []
 
 class MockResizeObserver {
-  constructor(_callback: ResizeObserverCallback) {
+  constructor(callback: ResizeObserverCallback) {
+    mockResizeObserverCallbacks.push(callback)
   }
 
   observe(...args: Parameters<ResizeObserver['observe']>) {
@@ -69,6 +71,9 @@ const renderBannerItem = (
   )
 }
 
+const getIndicatorButtons = () =>
+  screen.queryAllByText(/^\d{2}$/).map(label => label.closest('button'))
+
 describe('BannerItem', () => {
   let mockWindowOpen: ReturnType<typeof vi.spyOn>
 
@@ -77,6 +82,7 @@ describe('BannerItem', () => {
     mockSlideNodes.mockReturnValue([{}, {}, {}])
 
     vi.stubGlobal('ResizeObserver', MockResizeObserver)
+    mockResizeObserverCallbacks = []
 
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
@@ -128,8 +134,7 @@ describe('BannerItem', () => {
       const banner = createMockBanner({ link: 'https://test-link.com' })
       renderBannerItem(banner, { sort: 2, language: 'zh-Hans', accountId: 'account-123' })
 
-      const bannerElement = screen.getByText('Test Banner Title').closest('div[class*="cursor-pointer"]')
-      fireEvent.click(bannerElement!)
+      fireEvent.click(screen.getByRole('button', { name: 'Test Banner Title' }))
 
       expect(mockTrackEvent).toHaveBeenCalledWith('explore_banner_click', expect.objectContaining({
         banner_id: 'banner-1',
@@ -152,8 +157,7 @@ describe('BannerItem', () => {
       const banner = createMockBanner({ link: '' })
       renderBannerItem(banner)
 
-      const bannerElement = screen.getByText('Test Banner Title').closest('div[class*="cursor-pointer"]')
-      fireEvent.click(bannerElement!)
+      fireEvent.click(screen.getByRole('button', { name: 'Test Banner Title' }))
 
       expect(mockTrackEvent).toHaveBeenCalledWith('explore_banner_click', expect.objectContaining({
         link: '',
@@ -166,7 +170,11 @@ describe('BannerItem', () => {
     it('renders correct number of indicator buttons', () => {
       mockSlideNodes.mockReturnValue([{}, {}, {}])
       renderBannerItem()
-      expect(screen.getAllByRole('button')).toHaveLength(3)
+      expect(['01', '02', '03'].map(label => screen.getByText(label).closest('button'))).toEqual([
+        expect.any(HTMLButtonElement),
+        expect.any(HTMLButtonElement),
+        expect.any(HTMLButtonElement),
+      ])
     })
 
     it('renders indicator buttons with correct numbers', () => {
@@ -185,12 +193,27 @@ describe('BannerItem', () => {
       fireEvent.click(secondIndicator!)
 
       expect(mockScrollTo).toHaveBeenCalledWith(1)
+      expect(mockWindowOpen).not.toHaveBeenCalled()
+    })
+
+    it('does not activate the banner when an indicator is used from the keyboard', () => {
+      mockSlideNodes.mockReturnValue([{}, {}, {}])
+      renderBannerItem()
+
+      const indicatorButton = screen.getByText('02').closest('button')
+
+      fireEvent.keyDown(indicatorButton!, { key: 'Enter' })
+      fireEvent.click(indicatorButton!)
+
+      expect(mockScrollTo).toHaveBeenCalledWith(1)
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+      expect(mockWindowOpen).not.toHaveBeenCalled()
     })
 
     it('renders no indicators when no slides', () => {
       mockSlideNodes.mockReturnValue([])
       renderBannerItem()
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      expect(getIndicatorButtons()).toHaveLength(0)
     })
   })
 
@@ -210,6 +233,33 @@ describe('BannerItem', () => {
     it('sets up ResizeObserver on mount', () => {
       renderBannerItem()
       expect(mockResizeObserverObserve).toHaveBeenCalled()
+    })
+
+    it('schedules responsive width updates outside the ResizeObserver callback', () => {
+      const animationFrameCallbacks: FrameRequestCallback[] = []
+      const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+        animationFrameCallbacks.push(callback)
+        return animationFrameCallbacks.length
+      })
+      const cancelAnimationFrameSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {})
+
+      try {
+        renderBannerItem()
+        act(() => {
+          animationFrameCallbacks.splice(0).forEach(callback => callback(0))
+        })
+        requestAnimationFrameSpy.mockClear()
+
+        act(() => {
+          mockResizeObserverCallbacks[0]?.([], {} as ResizeObserver)
+        })
+
+        expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(1)
+      }
+      finally {
+        requestAnimationFrameSpy.mockRestore()
+        cancelAnimationFrameSpy.mockRestore()
+      }
     })
 
     it('adds resize event listener on mount', () => {
@@ -323,21 +373,20 @@ describe('BannerItem', () => {
     it('calculates next index correctly for first slide', () => {
       mockSlideNodes.mockReturnValue([{}, {}, {}])
       renderBannerItem()
-      expect(screen.getAllByRole('button')).toHaveLength(3)
+      expect(getIndicatorButtons()).toHaveLength(3)
     })
 
     it('handles single slide case', () => {
       mockSlideNodes.mockReturnValue([{}])
       renderBannerItem()
-      expect(screen.getAllByRole('button')).toHaveLength(1)
+      expect(getIndicatorButtons()).toHaveLength(1)
     })
   })
 
   describe('wrapper styling', () => {
-    it('has cursor-pointer class', () => {
-      const { container } = renderBannerItem()
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('cursor-pointer')
+    it('shows pointer affordance on the banner activation control', () => {
+      renderBannerItem()
+      expect(screen.getByRole('button', { name: 'Test Banner Title' })).toHaveClass('cursor-pointer')
     })
 
     it('has rounded-2xl class', () => {

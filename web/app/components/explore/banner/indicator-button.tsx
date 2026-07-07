@@ -1,5 +1,5 @@
-/* eslint-disable react-hooks-extra/no-direct-set-state-in-use-effect */
-import type { FC } from 'react'
+/* eslint-disable react/set-state-in-effect */
+import type { FC, KeyboardEvent, MouseEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -64,18 +64,23 @@ export const IndicatorButton: FC<IndicatorButtonProps> = ({
       if (frameIdRef.current)
         cancelAnimationFrame(frameIdRef.current)
     }
-  }, [isNextSlide, autoplayDelay, resetKey, isPaused])
+  }, [isNextSlide, autoplayDelay, resetKey, isPaused, shouldAnimate])
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
+  const handleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
     onClick()
   }, [onClick])
+  const handleKeyDown = useCallback((event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'Enter' || event.key === ' ')
+      event.stopPropagation()
+  }, [])
 
   const progressDegrees = progress * DEGREES_PER_PERCENT
 
   return (
     <button
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       className={cn(
         'relative flex h-[18px] w-[20px] items-center justify-center rounded-[7px] border border-divider-subtle p-[2px] text-center system-2xs-semibold-uppercase transition-colors',
         isActive
