@@ -7031,11 +7031,6 @@
       "count": 1
     }
   },
-  "web/service/access-control/__tests__/use-permission-keys.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/access-control/__tests__/use-workspace-access-rules.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
