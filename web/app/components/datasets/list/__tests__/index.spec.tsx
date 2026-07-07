@@ -8,6 +8,7 @@ const mockReplace = vi.fn()
 let mockAppContextState = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceManager: true,
+  isCurrentWorkspaceOwner: true,
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
 }
 let mockIsCurrentWorkspaceOwner = true
@@ -132,6 +133,7 @@ describe('List', () => {
     mockAppContextState = {
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
+      isCurrentWorkspaceOwner: true,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     }
     mockIsCurrentWorkspaceOwner = true
@@ -170,6 +172,7 @@ describe('List', () => {
       mockAppContextState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: true,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
 
@@ -282,6 +285,7 @@ describe('List', () => {
       mockAppContextState = {
         isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: true,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -303,6 +307,7 @@ describe('List', () => {
       mockAppContextState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: true,
         workspacePermissionKeys: [],
       }
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -367,6 +372,7 @@ describe('List', () => {
         useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
           isCurrentWorkspaceEditor: false,
           isCurrentWorkspaceManager: false,
+          isCurrentWorkspaceOwner: false,
           workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
         }),
       }))
@@ -425,6 +431,7 @@ describe('List', () => {
         useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
           isCurrentWorkspaceEditor: true,
           isCurrentWorkspaceManager: true,
+          isCurrentWorkspaceOwner: true,
           workspacePermissionKeys: ['dataset.create_and_management'],
         }),
       }))
@@ -452,6 +459,7 @@ describe('List', () => {
         useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
           isCurrentWorkspaceEditor: true,
           isCurrentWorkspaceManager: true,
+          isCurrentWorkspaceOwner: true,
           workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
         }),
       }))
@@ -489,6 +497,7 @@ describe('List', () => {
         useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
           isCurrentWorkspaceEditor: true,
           isCurrentWorkspaceManager: true,
+          isCurrentWorkspaceOwner: false,
           workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
         }),
       }))

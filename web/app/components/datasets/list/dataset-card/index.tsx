@@ -5,10 +5,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import {
+  useDatasetACLCapabilities,
+  useDatasetWorkspaceAccess,
+} from '@/app/components/datasets/hooks/use-dataset-access'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
-import { getDatasetACLCapabilities, hasOnlyDatasetPreviewPermission, hasPermission } from '@/utils/permission'
+import { hasOnlyDatasetPreviewPermission } from '@/utils/permission'
 import CornerLabels from './components/corner-labels'
 import DatasetCardFooter from './components/dataset-card-footer'
 import DatasetCardHeader from './components/dataset-card-header'
@@ -32,8 +35,7 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { canManageDatasetTags } = useDatasetWorkspaceAccess()
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
   const {
@@ -53,13 +55,8 @@ const DatasetCard = ({
     return dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
   }, [dataset.runtime_mode, dataset.is_published])
   const isPreviewOnly = hasOnlyDatasetPreviewPermission(dataset.permission_keys)
-  const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset.maintainer,
-    workspacePermissionKeys,
-  }), [dataset.maintainer, dataset.permission_keys, currentUserId, workspacePermissionKeys])
-  const canManageAppTags = hasPermission(workspacePermissionKeys, 'dataset.tag.manage')
-  const canBindOrUnbindTags = !isPreviewOnly && (canManageAppTags || datasetACLCapabilities.canEdit)
+  const datasetACLCapabilities = useDatasetACLCapabilities(dataset)
+  const canBindOrUnbindTags = !isPreviewOnly && (canManageDatasetTags || datasetACLCapabilities.canEdit)
 
   const showPreviewOnlyAccessWarning = () => {
     toast.warning(t('noAccessResourcePermission', { ns: 'app' }))

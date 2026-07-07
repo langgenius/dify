@@ -9,13 +9,12 @@ import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-la
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'
 import StatusItem from '@/app/components/datasets/documents/status-item'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-access'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import useTimestamp from '@/hooks/use-timestamp'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { formatNumber } from '@/utils/format'
-import { getDatasetACLCapabilities } from '@/utils/permission'
 import DocumentSourceIcon from './document-source-icon'
 import { renderTdValue } from './utils'
 
@@ -62,13 +61,7 @@ const DocumentTableRow = React.memo(({
   const searchParams = useSearchParams()
   const documentNameId = React.useId()
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset?.maintainer,
-    workspacePermissionKeys,
-  }), [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys])
+  const datasetACLCapabilities = useDatasetACLCapabilities(dataset)
 
   const isFile = doc.data_source_type === DataSourceType.FILE
   const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''

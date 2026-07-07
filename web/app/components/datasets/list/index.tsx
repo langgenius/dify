@@ -5,13 +5,12 @@ import { useBoolean, useDebounceFn } from 'ahooks'
 // Libraries
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
+import { useDatasetWorkspaceAccess } from '@/app/components/datasets/hooks/use-dataset-access'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { TagManagementModal } from '@/features/tag-management/components/tag-management-modal'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
 import { useDatasetApiBaseUrl, useDatasetList, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { hasPermission } from '@/utils/permission'
 // Components
 import FilterEmptyState from '../../base/filter-empty-state'
 import ExternalAPIPanel from '../external-api/external-api-panel'
@@ -22,7 +21,11 @@ import DatasetListHeader from './header'
 const List = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const { isCurrentWorkspaceOwner } = useAppContext()
+  const {
+    isCurrentWorkspaceOwner,
+    canCreateDataset,
+    canConnectExternalDataset,
+  } = useDatasetWorkspaceAccess()
   const [showTagManagementModal, setShowTagManagementModal] = useState(false)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
@@ -48,9 +51,6 @@ const List = () => {
     handleTagsUpdate()
   }
 
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
-  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
-  const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
   const datasetListQuery = useDatasetList({
     initialPage: 1,

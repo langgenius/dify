@@ -9,7 +9,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import {
+  useDatasetACLCapabilities,
+  useDatasetWorkspaceAccess,
+} from '@/app/components/datasets/hooks/use-dataset-access'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DatasourceType } from '@/models/pipeline'
@@ -17,7 +20,6 @@ import { useRouter } from '@/next/navigation'
 import { useCurrentPlanVectorSpace } from '@/service/use-billing'
 import { useFileUploadConfig } from '@/service/use-common'
 import { usePublishedPipelineInfo } from '@/service/use-pipeline'
-import { getDatasetACLCapabilities } from '@/utils/permission'
 import { useDataSourceStore } from './data-source/store'
 import DataSourceProvider from './data-source/store/provider'
 import {
@@ -40,15 +42,9 @@ const CreateFormPipeline = () => {
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
   const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const pipelineId = dataset?.pipeline_id
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const isLoadingWorkspacePermissionKeys = useAppContextWithSelector(state => state.isLoadingWorkspacePermissionKeys)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { isLoadingWorkspacePermissionKeys } = useDatasetWorkspaceAccess()
   const dataSourceStore = useDataSourceStore()
-  const canAddDocumentsToDataset = getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset?.maintainer,
-    workspacePermissionKeys,
-  }).canUse
+  const canAddDocumentsToDataset = useDatasetACLCapabilities(dataset).canUse
   const shouldRedirectToDocuments = !!dataset
     && !isLoadingWorkspacePermissionKeys
     && !canAddDocumentsToDataset

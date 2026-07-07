@@ -4,9 +4,8 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDatasetWorkspaceAccess } from '@/app/components/datasets/hooks/use-dataset-access'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
 import Card from './card'
 
 type ServiceApiProps = {
@@ -19,8 +18,7 @@ const ServiceApi = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageSecretKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
+  const { canManageDatasetApiKeys: canManageSecretKey } = useDatasetWorkspaceAccess()
 
   const handleOpenSecretKeyModal = useCallback(() => {
     setIsSecretKeyModalVisible(true)

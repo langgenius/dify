@@ -27,7 +27,7 @@ import { useContext } from 'use-context-selector'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import Loading from '@/app/components/base/loading'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useDatasetACLCapabilities } from '@/app/components/datasets/hooks/use-dataset-access'
 import DatasetDetailContext from '@/context/dataset-detail'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
@@ -35,7 +35,6 @@ import {
   useExternalKnowledgeBaseHitTesting,
   useHitTesting,
 } from '@/service/knowledge/use-hit-testing'
-import { getDatasetACLCapabilities } from '@/utils/permission'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
 import EmptyRecords from './components/empty-records'
 import QueryInput from './components/query-input'
@@ -63,13 +62,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
 
   const [currPage, setCurrPage] = useState<number>(0)
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canRunRetrievalRecall = React.useMemo(() => getDatasetACLCapabilities(currentDataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: currentDataset?.maintainer,
-    workspacePermissionKeys,
-  }).canRetrievalRecall, [currentDataset?.maintainer, currentDataset?.permission_keys, currentUserId, workspacePermissionKeys])
+  const canRunRetrievalRecall = useDatasetACLCapabilities(currentDataset).canRetrievalRecall
   const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 }, { enabled: canRunRetrievalRecall })
 
   const total = recordsRes?.total || 0
@@ -133,6 +126,21 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   if (!canRunRetrievalRecall)
     return <Loading type="app" />
 
+  let rightPanelContent = renderEmptyState()
+  if (isRetrievalLoading) {
+    rightPanelContent = (
+      <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
+        <CardSkelton />
+      </div>
+    )
+  }
+  else if (hitResult?.records.length) {
+    rightPanelContent = renderHitResults(hitResult.records)
+  }
+  else if (externalHitResult?.records.length) {
+    rightPanelContent = renderHitResults(externalHitResult.records)
+  }
+
   return (
     <div className="relative flex size-full gap-x-6 overflow-y-auto pl-6">
       <div className="flex min-w-0 flex-1 flex-col py-3">
@@ -193,23 +201,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         onClose={hideRightPanel}
       >
         <div className="flex min-w-0 flex-1 flex-col pt-3">
-          {isRetrievalLoading
-            ? (
-                <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
-                  <CardSkelton />
-                </div>
-              )
-            : (
-                (() => {
-                  if (!hitResult?.records.length && !externalHitResult?.records.length)
-                    return renderEmptyState()
-
-                  if (hitResult?.records.length)
-                    return renderHitResults(hitResult.records)
-
-                  return renderHitResults(externalHitResult?.records || [])
-                })()
-              )}
+          {rightPanelContent}
         </div>
       </FloatRightContainer>
       <Drawer

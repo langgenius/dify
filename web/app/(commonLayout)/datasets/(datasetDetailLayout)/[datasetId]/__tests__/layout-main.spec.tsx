@@ -31,6 +31,19 @@ vi.mock('@/context/app-context', () => ({
     userProfile: { id: 'user-1' },
     workspacePermissionKeys: [],
   }),
+  useSelector: (selector: (state: {
+    isCurrentWorkspaceDatasetOperator: boolean
+    isLoadingCurrentWorkspace: boolean
+    isLoadingWorkspacePermissionKeys: boolean
+    userProfile: { id: string }
+    workspacePermissionKeys: string[]
+  }) => unknown) => selector({
+    isCurrentWorkspaceDatasetOperator: false,
+    isLoadingCurrentWorkspace: false,
+    isLoadingWorkspacePermissionKeys: false,
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }),
 }))
 
 vi.mock('@/context/event-emitter', () => ({

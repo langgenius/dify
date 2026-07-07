@@ -2,15 +2,16 @@
 
 import type { ResourceOpenScope } from '@/models/access-control'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import {
+  useDatasetACLCapabilities,
+  useDatasetRbacEnabled,
+} from '@/app/components/datasets/hooks/use-dataset-access'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useLocale } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useDatasetAccessRules,
@@ -19,7 +20,6 @@ import {
   useUpdateDatasetOpenScope,
   useUpdateDatasetUserAccessSettings,
 } from '@/service/access-control/use-dataset-access-config'
-import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type DatasetAccessConfigPageProps = {
   datasetId: string
@@ -30,16 +30,8 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const locale = useLocale()
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
   const dataset = useDatasetDetailContextWithSelector(state => state.dataset)
-  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const isRbacEnabled = systemFeatures.rbac_enabled
-  const canAccessConfig = useMemo(() => getDatasetACLCapabilities(dataset?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: dataset?.maintainer,
-    workspacePermissionKeys,
-    isRbacEnabled,
-  }).canAccessConfig, [currentUserId, dataset?.maintainer, dataset?.permission_keys, isRbacEnabled, workspacePermissionKeys])
+  const isRbacEnabled = useDatasetRbacEnabled()
+  const canAccessConfig = useDatasetACLCapabilities(dataset, { isRbacEnabled }).canAccessConfig
   const { data: datasetAccessRulesResponse, isLoading: isLoadingDatasetAccessRules } = useDatasetAccessRules(datasetId, language, { enabled: canAccessConfig })
   const { data: datasetUserAccessSettingsResponse, isLoading: isLoadingDatasetUserAccessSettings } = useDatasetUserAccessSettings(datasetId, language, { enabled: canAccessConfig })
   const { mutate: updateDatasetOpenScope, isPending: isUpdatingDatasetOpenScope } = useUpdateDatasetOpenScope(datasetId)

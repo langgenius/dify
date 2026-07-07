@@ -2,11 +2,10 @@
 
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useDatasetWorkspaceAccess } from '@/app/components/datasets/hooks/use-dataset-access'
 import { ExternalApiPanelProvider } from '@/context/external-api-panel-context'
 import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
 import { usePathname, useRouter } from '@/next/navigation'
-import { hasPermission } from '@/utils/permission'
 
 const isDatasetCreatePath = (pathname: string) => {
   return pathname === '/datasets/create'
@@ -21,15 +20,14 @@ const isDatasetExternalConnectPath = (pathname: string) => {
 }
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
-  const currentWorkspaceId = useAppContextSelector(state => state.currentWorkspace.id)
-  const isLoadingCurrentWorkspace = useAppContextSelector(state => state.isLoadingCurrentWorkspace)
-  const isLoadingWorkspacePermissionKeys = useAppContextSelector(state => state.isLoadingWorkspacePermissionKeys)
-  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
+  const {
+    currentWorkspaceId,
+    isLoadingAccess,
+    canCreateDataset,
+    canConnectExternalDataset,
+  } = useDatasetWorkspaceAccess()
   const router = useRouter()
   const pathname = usePathname()
-  const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
-  const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
-  const canConnectExternalDataset = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const shouldRedirectToDatasets = !isLoadingAccess
     && !!currentWorkspaceId
     && ((isDatasetCreatePath(pathname) && !canCreateDataset)
