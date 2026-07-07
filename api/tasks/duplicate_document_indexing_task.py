@@ -14,7 +14,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import IndexingStatus
 from services.feature_service import FeatureService
 
@@ -146,6 +146,30 @@ def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[st
                     segment_ids = [segment.id for segment in segments]
                     segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
                     session.execute(segment_delete_stmt)
+
+                    # clean up old summary data (PG records + vector embeddings)
+                    summary_records = session.scalars(
+                        select(DocumentSegmentSummary).where(
+                            DocumentSegmentSummary.document_id == document.id
+                        )
+                    ).all()
+                    if summary_records:
+                        summary_node_ids = [
+                            r.summary_index_node_id
+                            for r in summary_records
+                            if r.summary_index_node_id
+                        ]
+                        if summary_node_ids:
+                            from core.rag.datasource.vdb.vector_factory import Vector
+                            vector = Vector(dataset)
+                            vector.delete_by_ids(summary_node_ids)
+
+                        summary_ids = [r.id for r in summary_records]
+                        summary_delete_stmt = delete(DocumentSegmentSummary).where(
+                            DocumentSegmentSummary.id.in_(summary_ids)
+                        )
+                        session.execute(summary_delete_stmt)
+
                     session.commit()
 
                 document.indexing_status = IndexingStatus.PARSING
