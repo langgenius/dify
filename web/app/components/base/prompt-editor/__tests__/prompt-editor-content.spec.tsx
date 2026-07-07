@@ -382,23 +382,24 @@ describe('PromptEditorContent', () => {
       await waitFor(() => {
         captures.editor!.getEditorState().read(() => {
           const root = $getRoot()
-          let outputNode: AgentOutputBlockNode | null = null
 
-          const visitNode = (node: Parameters<typeof $isElementNode>[0]) => {
+          const findOutputNode = (node: Parameters<typeof $isElementNode>[0]): AgentOutputBlockNode | null => {
             if (!$isElementNode(node))
-              return
+              return null
 
-            node.getChildren().forEach((child) => {
-              if (child instanceof AgentOutputBlockNode) {
-                outputNode = child
-                return
-              }
+            for (const child of node.getChildren()) {
+              if (child instanceof AgentOutputBlockNode)
+                return child
 
-              visitNode(child)
-            })
+              const outputNode = findOutputNode(child)
+              if (outputNode)
+                return outputNode
+            }
+
+            return null
           }
 
-          visitNode(root)
+          const outputNode = findOutputNode(root)
           expect(outputNode?.shouldSelectNameOnEdit()).toBe(false)
           expect(outputNode?.shouldOpenTypeSelectOnEdit()).toBe(true)
           expect(outputNode?.getOnChange()).toBe(nextOnChange)
