@@ -222,8 +222,9 @@ def test_main_ci_passes_style_base_rev_input() -> None:
     )
     assert style_job is not None
     assert "uses: ./.github/workflows/style.yml" in style_job.group("job")
-    assert 'base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}' in style_job.group(
-        "job"
+    assert (
+        "base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
+        in style_job.group("job")
     )
 
     api_filter = re.search(
@@ -518,9 +519,7 @@ def test_base_rev_mode_works_without_local_main_branch(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_base_rev_mode_ignores_github_base_sha_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_base_rev_mode_ignores_github_base_sha_environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     init_repo(tmp_path)
     write_repo_file(
         tmp_path,
